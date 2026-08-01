@@ -835,7 +835,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/wali-kelas" element={
-                      <ProtectedRoute requiredCapability="academic.homeroom.manage">
+                      <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.view.wali.kelas', 'academic.teaching.view']}>
                         <WaliKelasPage />
                       </ProtectedRoute>
                     } />
@@ -879,7 +879,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/cetak" element={
-                      <ProtectedRoute requiredCapability="academic.view.wali.kelas">
+                      <ProtectedRoute requiredCapability={['academic.view.wali.kelas', 'academic.homeroom.manage', 'academic.teaching.view']}>
                         <CetakRaporPage />
                       </ProtectedRoute>
                     } />

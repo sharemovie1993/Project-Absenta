@@ -17,7 +17,9 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { raporApi } from '../../api/rapor.api';
-import { kelasApi, tahunPelajaranApi } from '../../api/academic.api';
+import { tahunPelajaranApi } from '../../api/academic.api';
+import { useKelasOptions } from '../../hooks/useKelasOptions';
+import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { toast } from 'sonner';
 
 export default function CetakRaporPage() {
@@ -26,6 +28,10 @@ export default function CetakRaporPage() {
   // Filters State
   const [selectedKelas, setSelectedKelas] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Use Kelas & Siswa Hooks
+  const { rawList: classList, isLoading: isLoadingClasses } = useKelasOptions({ filterByJenjang: false, onlyActive: false });
+  const { rawList: studentList, isLoading: isLoadingStudents } = useSiswaOptions({ kelasId: selectedKelas, onlyActive: false });
 
   // Modal State for Rapor Summary (Absensi & Catatan)
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
@@ -43,23 +49,25 @@ export default function CetakRaporPage() {
     queryKey: ['academic-years'],
     queryFn: () => tahunPelajaranApi.getAll()
   });
-  const activeYear = useMemo(() => (years?.data ?? []).find(y => y.is_active), [years]);
-  const activeSemester = useMemo(() => activeYear?.Semester?.find((s: any) => s.is_active), [activeYear]);
+  const activeYear = useMemo(() => {
+    const list = Array.isArray(years?.data) ? years.data : (Array.isArray(years) ? years : []);
+    return list.find((y: any) => y.is_active) || list[0] || null;
+  }, [years]);
 
-  const { data: classes } = useQuery({
-    queryKey: ['classes'],
-    queryFn: () => kelasApi.getAll()
-  });
+  const activeSemester = useMemo(() => {
+    const semList = activeYear?.Semester || [];
+    return semList.find((s: any) => s.is_active) || semList[0] || null;
+  }, [activeYear]);
 
   // Fetch Leger (Grades, Ranks & Rata-rata)
   const { data: leger, isLoading: isLoadingLeger } = useQuery({
     queryKey: ['leger', selectedKelas, activeYear?.id, activeSemester?.id],
     queryFn: () => raporApi.getLeger({
       kelas_id: selectedKelas,
-      tahun_pelajaran_id: activeYear!.id,
-      semester_id: activeSemester!.id
+      tahun_pelajaran_id: activeYear?.id || '',
+      semester_id: activeSemester?.id || ''
     }),
-    enabled: !!selectedKelas && !!activeYear && !!activeSemester
+    enabled: !!selectedKelas && !!activeYear?.id && !!activeSemester?.id
   });
 
   // Mutation for Rapor Summary Upsert
@@ -89,33 +97,61 @@ export default function CetakRaporPage() {
 
   const handleSummarySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !selectedKelas) return;
+    if (!selectedStudent || !selectedKelas || !activeYear?.id || !activeSemester?.id) return;
     summaryMutation.mutate({
       siswa_id: selectedStudent.id,
       kelas_id: selectedKelas,
-      tahun_pelajaran_id: activeYear!.id,
-      semester_id: activeSemester!.id,
+      tahun_pelajaran_id: activeYear.id,
+      semester_id: activeSemester.id,
       ...summaryForm
     });
   };
 
   const handleExportLeger = () => {
-    if (!selectedKelas) return;
+    if (!selectedKelas || !activeYear?.id || !activeSemester?.id) return;
     const url = raporApi.getLegerExportUrl({
       kelas_id: selectedKelas,
-      tahun_pelajaran_id: activeYear!.id,
-      semester_id: activeSemester!.id
+      tahun_pelajaran_id: activeYear.id,
+      semester_id: activeSemester.id
     });
     window.open(url, '_blank');
   };
 
   const filteredStudents = useMemo(() => {
-    if (!leger?.data?.students) return [];
-    return leger.data.students.filter((s: any) => 
-      s.nama_siswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.nis.includes(searchQuery)
-    );
-  }, [leger, searchQuery]);
+    // Primary source: studentList from useSiswaOptions
+    const baseList = studentList && studentList.length > 0 ? studentList : (leger?.data?.students || []);
+    if (!baseList || baseList.length === 0) return [];
+
+    const legerStudents = leger?.data?.students || [];
+
+    return baseList
+      .map((s: any) => {
+        const foundLeger = legerStudents.find((ls: any) => ls.id === s.id || ls.siswa_id === s.id);
+        const name = s.nama_siswa || s.nama || s.nama_lengkap || '—';
+        const nisVal = s.nis || '—';
+
+        return {
+          id: s.id,
+          nama_siswa: name,
+          nis: nisVal,
+          rank: foundLeger?.rank || '—',
+          rata_rata: foundLeger?.rata_rata ?? 0,
+          sakit: foundLeger?.sakit ?? (s as any).sakit ?? 0,
+          izin: foundLeger?.izin ?? (s as any).izin ?? 0,
+          alpa: foundLeger?.alpa ?? (s as any).alpa ?? 0,
+          catatan_wali: foundLeger?.catatan_wali || '',
+          keputusan_transisi: foundLeger?.keputusan_transisi || '',
+        };
+      })
+      .filter((s: any) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          s.nama_siswa.toLowerCase().includes(q) ||
+          s.nis.toLowerCase().includes(q)
+        );
+      });
+  }, [studentList, leger, searchQuery]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Rapor', href: '/rapor/dashboard' },
@@ -127,6 +163,7 @@ export default function CetakRaporPage() {
       title="Leger Kelas & Cetakan Rapor"
       description="Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pengunduhan PDF lembar e-Rapor resmi."
       breadcrumbs={breadcrumbs}
+      hardeningModuleKey="cetakraporpage"
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         
@@ -141,7 +178,7 @@ export default function CetakRaporPage() {
                 className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-850 dark:text-white focus:ring-1 focus:ring-indigo-500 min-w-[200px]"
               >
                 <option value="">Pilih Kelas</option>
-                {classes?.data?.map((k: any) => (
+                {classList?.map((k: any) => (
                   <option key={k.id} value={k.id}>{k.nama_kelas}</option>
                 ))}
               </select>
@@ -219,19 +256,23 @@ export default function CetakRaporPage() {
                       </Button>
 
                       {/* PDF Links */}
-                      <a href={raporApi.getPdfRaporUrl(student.id, activeYear!.id, activeSemester!.id)} target="_blank" rel="noopener noreferrer">
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
-                          <Printer size={13} />
-                          RAPOR
-                        </Button>
-                      </a>
+                      {activeYear?.id && activeSemester?.id && (
+                        <>
+                          <a href={raporApi.getPdfRaporUrl(student.id, activeYear.id, activeSemester.id)} target="_blank" rel="noopener noreferrer">
+                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
+                              <Printer size={13} />
+                              RAPOR
+                            </Button>
+                          </a>
 
-                      <a href={raporApi.getPdfP5Url(student.id, activeYear!.id, activeSemester!.id)} target="_blank" rel="noopener noreferrer">
-                        <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
-                          <Printer size={13} />
-                          P5
-                        </Button>
-                      </a>
+                          <a href={raporApi.getPdfP5Url(student.id, activeYear.id, activeSemester.id)} target="_blank" rel="noopener noreferrer">
+                            <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
+                              <Printer size={13} />
+                              P5
+                            </Button>
+                          </a>
+                        </>
+                      )}
 
                       <a href={raporApi.getPdfSklUrl(student.id)} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="text-xs font-bold border-slate-200 text-slate-650 hover:bg-slate-50">

@@ -43,6 +43,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.students.view.detail',
     'academic.view.kelas',
     'academic.view.mapel',
+    'academic.view.wali.kelas',
+    'academic.homeroom.manage',
     'attendance.reports.view',
     'academic.schedules.view.list',
     'kesiswaan.schedules.view.list',
@@ -582,7 +584,9 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id === 'cooperative.reports.view.daily' ||
         id === 'cooperative.reports.view.monthly' ||
         id === 'attendance.recap.view.global' ||
-        id === 'attendance.monitoring.view.live.status'
+        id === 'attendance.monitoring.view.live.status' ||
+        id === 'academic.view.wali.kelas' ||
+        id === 'academic.homeroom.manage'
       )) return false;
       return domainOf(id) === 'ORGANIZATIONAL';
     });
