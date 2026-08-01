@@ -86,6 +86,42 @@ export const getAllUserCrossModuleItems = (
 };
 
 /**
+ * getAllUserPrimaryItems()
+ * ─────────────────────────────────────────────────────────────────────────────
+ * MENGAMBIL SEMUA PRIMARY ITEMS DARI SELURUH WORKSPACE YANG DIMILIKI USER.
+ * Digunakan oleh StaffPortalAppLauncher (Blok 3) agar daftar menu manajemen & data
+ * tetap konsisten dan tidak terpengaruh berpindah activeWorkspaceId di mode desktop.
+ */
+export const getAllUserPrimaryItems = (
+  allItems: FlatMenuItem[],
+  user: any
+): FlatMenuItem[] => {
+  if (isAdminUser(user)) {
+    return allItems.filter((item) => {
+      const p = (item.path || '').toLowerCase();
+      return p && p !== '#' && p !== '/dashboard' && !p.startsWith('menu:');
+    });
+  }
+
+  const userWorkspaces = resolveUserWorkspaces(user);
+  const workspacesToScan = userWorkspaces.length > 0 ? userWorkspaces : ROLE_WORKSPACES;
+
+  const resultMap = new Map<string, FlatMenuItem>();
+
+  workspacesToScan.forEach((ws) => {
+    const { primaryItems } = filterNavByWorkspace(allItems, user, ws.id);
+    primaryItems.forEach((item) => {
+      const key = (item.path || item.title).toLowerCase();
+      if (!resultMap.has(key)) {
+        resultMap.set(key, item);
+      }
+    });
+  });
+
+  return Array.from(resultMap.values());
+};
+
+/**
  * filterNavByWorkspace()
  * ─────────────────────────────────────────────────────────────────────────────
  * LOGIKA INTI PENYARINGAN MENU berdasarkan `activeWorkspaceId` dan `user.role`.

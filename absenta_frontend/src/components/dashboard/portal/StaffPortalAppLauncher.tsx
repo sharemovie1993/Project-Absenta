@@ -35,7 +35,7 @@ import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { useNavStore } from '../../../store/navStore';
-import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems } from '../../../helpers/workspaceNavFilter';
+import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getAllUserPrimaryItems } from '../../../helpers/workspaceNavFilter';
 import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
@@ -277,16 +277,16 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN (Primary Workspace Items dari Backend API)
-  // Hanya primaryItems — menu utama jabatan struktural, BUKAN cross-module
+  // ── BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (Semua Primary Items dari SELURUH Workspace User)
+  // Menampilkan seluruh menu utama manajemen & data akademik milik user secara statis (bebas dari efek switch workspace desktop)
   const block3PrimaryTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     // 1. Normalisasi grouped-menu → FlatMenuItem[]
     const flatItems = normalizeFlatMenu(backendGroupedMenu);
 
-    // 2. Filter via helper terpusat — ambil HANYA primaryItems
-    const { primaryItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
+    // 2. Ambil seluruh primaryItems dari SELURUH workspace yang berhak diakses user (Opsi A Overview Tool)
+    const primaryItems = getAllUserPrimaryItems(flatItems, user);
 
     // 3. Konversi FlatMenuItem → AppTileData
     return primaryItems.map((item, idx) => {
@@ -302,7 +302,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         categoryLabel: item.categoryLabel,
       };
     });
-  }, [backendGroupedMenu, user, activeWorkspaceId]);
+  }, [backendGroupedMenu, user]);
 
   // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (SELESIH SEMUA WORKSPACE USER — OPSI A)
   // Memuat seluruh crossModulePaths dari SELURUH workspace milik user (bukan hanya workspace aktif)
