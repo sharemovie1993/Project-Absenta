@@ -341,6 +341,7 @@ async function main() {
         { label: 'Dashboard Hubin', icon: 'LayoutDashboard', path: '/hubin/dashboard', required_capability: 'dashboard.view.hubin' },
         { label: 'Kemitraan & MoU', icon: 'Building2', path: '/hubin/mitra', required_capability: 'hubin.partners.manage, hubin.mou.view.list' },
         { label: 'Penempatan PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list' },
+        { label: 'Nilai & Sertifikat PKL', icon: 'Award', path: '/hubin/nilai-pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list' },
         { label: 'Presensi Mandiri Siswa', icon: 'Clock', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.absensi.view.history, hubin.pkl.view.list' },
         { label: 'Monitoring & Jurnal', icon: 'Activity', path: '/hubin/monitoring', required_capability: 'hubin.pkl.view.list, hubin.logbook.manage' },
         { label: 'BKK & Lowongan Kerja', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
