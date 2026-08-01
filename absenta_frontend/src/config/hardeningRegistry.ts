@@ -1134,7 +1134,8 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
 
 
 export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => {
-  const baseConfig = HARDENING_REGISTRY[moduleKey] || {
+  const keyLower = String(moduleKey).toLowerCase();
+  const baseConfig = HARDENING_REGISTRY[moduleKey] || HARDENING_REGISTRY[keyLower] || {
     moduleName: String(moduleKey),
     displayName: String(moduleKey),
     standards: []
@@ -1147,7 +1148,7 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
   };
 
   // Inject static code analysis findings dynamically
-  const auditData = (auditReport as any)[moduleKey];
+  const auditData = (auditReport as any)[moduleKey] || (auditReport as any)[keyLower];
   if (auditData) {
     // 1. Audit Kriteria: Standardisasi Layout Utama (Layout Standard Guard)
     config.standards.push({
