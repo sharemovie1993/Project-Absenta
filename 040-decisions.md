@@ -227,17 +227,14 @@
   3. Membangun komponen **`SiswaPortalAppLauncher.tsx`** yang 100% DINAMIS berbasis API Backend & RBAC (tanpa menu hardcoded).
 - **Rasional**: Memberikan pengalaman visual bergaya aplikasi mobile (grid ikon squircle) yang optimal dan kontekstual secara otomatis sesuai kombinasi peran dan ukuran layar pengguna.
 
-2026-08: Portal App Launcher — 4-Block Structure dengan Deduplication & Opsi A Cross-Module Merge
+2026-08: Portal App Launcher — Function-Centric 4-Block Structure dengan Priority Elevator Pejabat
 - **Keputusan**:
-  Launcher Portal Apps distrukturisasi menjadi **4 Blok Unik Terdeduplikasi**:
-  1. **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan aksi cepat kontekstual dari `quickActions` di `UnifiedStaffDashboard.tsx` (dinamis berdasarkan role/PTK type). Berfungsi sebagai **Prioritas Pertama**.
-  2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Aksi operasional harian pengajaran & rombel (Jadwal Mengajar, Jurnal KBM, Presensi Guru, Catat Pelanggaran, Tindak Masal, + Khusus Wali Kelas: Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Risikolog Siswa).
-  3. **🏛️ Blok 3 — Ruang Kerja Jabatan**: Menu struktural backend berbasis RBAC (`primaryItems` dari workspace aktif).
-  4. **🔗 Blok 4 — Informasi Lintas Modul (Opsi A — Static & Complete)**: Menggabungkan `crossModulePaths` dari **SELURUH workspace yang dimiliki user** (diresolusi via `getAllUserCrossModuleItems()` dan `resolveUserWorkspaces(user)`).
-  **Aturan UX Cross-Module**:
-  - **App Launcher (Blok 4)** = **Overview Tool** (Opsi A). Menggabungkan semua akses lintas modul milik user tanpa tergantung `activeWorkspaceId` yang dipilih di mode desktop.
-  - **Sidebar** = **Context Tool**. Tetap menampilkan informasi lintas modul yang spesifik untuk workspace yang sedang dipilih user di mode desktop.
-- **Rasional**: Mencegah kebingungan pengguna (mental model UX) di mana Blok 4 di App Launcher berubah-ubah jumlah itemnya hanya karena berpindah workspace di mode desktop. App Launcher menyajikan gambaran lengkap seluruh hak akses lintas modul pengguna.
+  1. Mengadopsi urutan 4-Blok Fungsi-Centric dengan penyesuaian **Prioritas Pejabat/Struktural**:
+     - **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan 1-tap & modal aksi cepat harian (*Jadwal Saya, Riwayat Ajar, Kehadiran Saya, Catat Pelanggaran, Tindak Masal*).
+     - **🏛️ Blok 2 — Manajemen & Data Akademik**: Administrasi master data & kurikulum yang **100% UTUH & RUNTUT** menjaga alur dependensi prasyarat basis data (*Struktur Kurikulum ➔ Mata Pelajaran ➔ Guru Mapel ➔ Wali Kelas ➔ Kalender Akademik ➔ Jam KBM ➔ Jadwal Pelajaran ➔ Piket ➔ RPP ➔ P5*). Berfungsi sebagai **Anchor Utama Deduplikasi**.
+     - **🏫 Blok 3 — Operasional Harian & KBM**: Aplikasi tugas operasional harian (*Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Isi Jurnal KBM*). Mengalah terhadap Blok 2 & 1, diurutkan berdasarkan bobot frekuensi penggunaan.
+     - **🔗 Blok 4 — Informasi Lintas Modul**: Layanan & informasi pendukung lintas unit kerja (*BP/BK, Sarpras, Kesiswaan, Koperasi, PKL*). Mengalah terhadap Blok 2, 3, & 1, diurutkan berdasarkan bobot frekuensi penggunaan.
+- **Rasional**: Pejabat sekolah (Wakasek, Kaprog, Kabeng, Kepsek, TU) menghabiskan 80% waktunya di ruang jabatan mengelola data sekolah, sehingga modul Manajemen & Data Akademik dinaikkan ke Blok 2 sebagai prioritas utama. Bagi Guru Biasa tanpa peran struktural, Blok 2 menyembunyikan diri secara otomatis sehingga Operasional Harian langsung naik ke posisi utama.
 
 2026-08: Centralized Workspace Navigation Filter — `workspaceNavFilter.ts`
 - **Keputusan**:
