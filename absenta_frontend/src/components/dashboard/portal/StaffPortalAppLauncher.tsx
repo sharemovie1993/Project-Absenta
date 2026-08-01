@@ -186,53 +186,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
   const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || isPiket;
 
-  // ── BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (Operasional Pengajaran & Rombel Diri) ──
+  // ── BLOK 2: 🏫 RUANG KERJA GURU (Operasional Harian Pengajaran Universal) ──
   const block2GuruTiles = useMemo<AppTileData[]>(() => {
-    const items: AppTileData[] = [];
-
-    // Fasilitas Khusus Wali Kelas
-    if (isWaliKelas) {
-      items.push(
-        {
-          id: 'b2-monitoring-kbm',
-          title: 'Live KBM Kelas',
-          iconComp: Monitor,
-          colorClass: 'text-blue-600 dark:text-blue-400',
-          bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
-          badgeText: 'Live',
-          path: '/kesiswaan/monitoring',
-        },
-        {
-          id: 'b2-rekap-absensi',
-          title: 'Rekap Absensi Rombel',
-          iconComp: Activity,
-          colorClass: 'text-emerald-600 dark:text-emerald-400',
-          bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-          badgeText: absentStudentsCount > 0 ? `${absentStudentsCount}` : undefined,
-          path: '/attendance/rekap',
-        },
-        {
-          id: 'b2-cetak-rapor',
-          title: 'Cetak e-Rapor Wali',
-          iconComp: Printer,
-          colorClass: 'text-indigo-600 dark:text-indigo-400',
-          bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
-          badgeText: 'eRapor',
-          path: '/rapor/cetak',
-        },
-        {
-          id: 'b2-risikolog',
-          title: 'Risikolog Siswa',
-          iconComp: AlertTriangle,
-          colorClass: 'text-amber-600 dark:text-amber-400',
-          bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
-          path: '/kesiswaan/risikolog',
-        }
-      );
-    }
-
-    // Fasilitas Operasional Pengajaran Utama Guru (100% Lengkap & Presisi)
-    items.push(
+    const items: AppTileData[] = [
       {
         id: 'b2-absensi-kbm',
         title: 'Absensi KBM Kelas',
@@ -241,6 +197,15 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
         badgeText: 'Live',
         path: '/attendance/ops',
+      },
+      {
+        id: 'b2-rekap-absensi',
+        title: 'Rekap Absensi Rombel',
+        iconComp: Activity,
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+        badgeText: absentStudentsCount > 0 ? `${absentStudentsCount}` : undefined,
+        path: '/attendance/rekap',
       },
       {
         id: 'b2-input-nilai',
@@ -281,8 +246,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
         onClick: onOpenAbsenGuruModal,
-      }
-    );
+      },
+    ];
 
     // Input Pelanggaran Cepat untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
     if (!isKurikulumRole || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
@@ -475,11 +440,14 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
+    const seenPathsInB4 = new Set<string>();
     const filtered = block4CrossModuleTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
       const titleKey = normalizeKey(t.title);
       if (pathKey && existingPaths.has(pathKey)) return false;
       if (titleKey && existingTitles.has(titleKey)) return false;
+      if (pathKey && seenPathsInB4.has(pathKey)) return false;
+      if (pathKey) seenPathsInB4.add(pathKey);
       return true;
     });
 

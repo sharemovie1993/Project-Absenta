@@ -189,9 +189,19 @@ export const filterNavByWorkspace = (
   }
   // 2. Workspace Wali Kelas
   else if (currentWs.id === 'WALIKELAS_WORKSPACE') {
+    const walikelasPaths = new Set([
+      '/attendance/monitoring',
+      '/kesiswaan/monitoring',
+      '/attendance/rekap',
+      '/rapor/dashboard',
+      '/rapor/nilai',
+      '/rapor/cetak',
+      '/rapor/p5',
+      '/kesiswaan/pelanggaran'
+    ]);
     primaryItems = validItems.filter((item) => {
       const p = (item.path || '').toLowerCase();
-      return p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket');
+      return walikelasPaths.has(p);
     });
   }
   // 3. Workspace Guru
