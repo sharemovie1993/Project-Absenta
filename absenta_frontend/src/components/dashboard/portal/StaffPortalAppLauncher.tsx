@@ -1,9 +1,10 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App dengan 3 BLOK UTAMA TERINTEGRASI BACKEND & WORKSPACE ENGINE:
+ * Launcher Portal App dengan 4 BLOK UTAMA TERINTEGRASI BACKEND & WORKSPACE ENGINE:
  * - Blok 1: ⚡ Aksi Cepat Diri (Quick Actions Dinamis Pengguna)
  * - Blok 2: 🏫 Ruang Kerja Guru & Wali Kelas (Aplikasi Operasional Pengajaran & Rombel Diri)
- * - Blok 3: 🏛️ Ruang Kerja Jabatan & Informasi Lintas Modul (Modul Dinamis Backend & Cross-Module Filtered)
+ * - Blok 3: 🏛️ Ruang Kerja Jabatan (Primary Workspace — Menu Jabatan Struktural dari Backend API)
+ * - Blok 4: 🔗 Informasi Lintas Modul (Cross-Module Paths — Akses ke Modul Lain yang Relevan)
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +28,7 @@ import {
   Loader2,
   Compass,
   Zap,
+  Network,
 } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -274,19 +276,19 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL
-  // Menggunakan helper terpusat workspaceNavFilter agar 100% sinkron dengan Sidebar.tsx
-  const block3BackendTiles = useMemo<AppTileData[]>(() => {
+  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN (Primary Workspace Items dari Backend API)
+  // Hanya primaryItems — menu utama jabatan struktural, BUKAN cross-module
+  const block3PrimaryTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     // 1. Normalisasi grouped-menu → FlatMenuItem[]
     const flatItems = normalizeFlatMenu(backendGroupedMenu);
 
-    // 2. Filter menggunakan logika TERPUSAT dari workspaceNavFilter.ts
-    const { allAllowedItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
+    // 2. Filter via helper terpusat — ambil HANYA primaryItems
+    const { primaryItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
 
     // 3. Konversi FlatMenuItem → AppTileData
-    return allAllowedItems.map((item, idx) => {
+    return primaryItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       return {
         id: `b3-item-${item.id || idx}`,
@@ -301,7 +303,34 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     });
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // ── HELPER DEDUPLIKASI TERPUSAT (Hanya menyaring duplikat langsung, menjaga ketersediaan Blok 2 & Blok 3) ──
+  // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (crossModuleItems saja)
+  // Item-item yang berasal dari crossModulePaths workspace — akses ke modul lain yang diizinkan
+  const block4CrossModuleTiles = useMemo<AppTileData[]>(() => {
+    if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
+
+    // 1. Normalisasi grouped-menu → FlatMenuItem[]
+    const flatItems = normalizeFlatMenu(backendGroupedMenu);
+
+    // 2. Filter via helper terpusat — ambil HANYA crossModuleItems
+    const { crossModuleItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
+
+    // 3. Konversi FlatMenuItem → AppTileData
+    return crossModuleItems.map((item, idx) => {
+      const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
+      return {
+        id: `b4-item-${item.id || idx}`,
+        title: item.title,
+        iconName: item.icon,
+        colorClass: accent.colorClass,
+        bgLightClass: accent.bgLightClass,
+        badgeText: item.isPremium ? 'PRO' : undefined,
+        path: item.path,
+        categoryLabel: item.categoryLabel,
+      };
+    });
+  }, [backendGroupedMenu, user, activeWorkspaceId]);
+
+  // ── HELPER DEDUPLIKASI TERPUSAT ──
   const normalizeKey = (val?: string) => {
     if (!val) return '';
     return val
@@ -324,38 +353,63 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return block2GuruTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block2GuruTiles, searchQuery]);
 
-  // 3. Filtered Blok 3 (Ruang Kerja Jabatan - Dideduplikasi terhadap Blok 1 & Blok 2)
+  // 3. Filtered Blok 3 (Ruang Kerja Jabatan) — deduplikasi terhadap Blok 1 & 2
   const deduplicatedBlock3 = useMemo(() => {
     const existingPaths = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
       ...block2GuruTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
-
     const existingTitles = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...block2GuruTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
-
-    return block3BackendTiles.filter((t) => {
+    return block3PrimaryTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
       const titleKey = normalizeKey(t.title);
-
       if (pathKey && existingPaths.has(pathKey)) return false;
       if (titleKey && existingTitles.has(titleKey)) return false;
-
       return true;
     });
-  }, [block3BackendTiles, block1QuickActionTiles, block2GuruTiles]);
+  }, [block3PrimaryTiles, block1QuickActionTiles, block2GuruTiles]);
 
   const filteredBlock3 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return deduplicatedBlock3;
     return deduplicatedBlock3.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
+      (t) => t.title.toLowerCase().includes(q) ||
+             (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
     );
   }, [deduplicatedBlock3, searchQuery]);
+
+  // 4. Filtered Blok 4 (Informasi Lintas Modul) — deduplikasi terhadap Blok 1, 2, & 3
+  const deduplicatedBlock4 = useMemo(() => {
+    const existingPaths = new Set([
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block2GuruTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock3.map((t) => normalizeKey(t.path)).filter(Boolean),
+    ]);
+    const existingTitles = new Set([
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block2GuruTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock3.map((t) => normalizeKey(t.title)).filter(Boolean),
+    ]);
+    return block4CrossModuleTiles.filter((t) => {
+      const pathKey = normalizeKey(t.path);
+      const titleKey = normalizeKey(t.title);
+      if (pathKey && existingPaths.has(pathKey)) return false;
+      if (titleKey && existingTitles.has(titleKey)) return false;
+      return true;
+    });
+  }, [block4CrossModuleTiles, block1QuickActionTiles, block2GuruTiles, deduplicatedBlock3]);
+
+  const filteredBlock4 = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return deduplicatedBlock4;
+    return deduplicatedBlock4.filter(
+      (t) => t.title.toLowerCase().includes(q) ||
+             (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
+    );
+  }, [deduplicatedBlock4, searchQuery]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
@@ -366,7 +420,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (3 Blok Lengkap & Unik)
+                Portal App Launcher (4 Blok Lengkap & Unik)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -378,7 +432,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terstruktur ke Dalam 3 Blok: Aksi Cepat Diri, Ruang Kerja Guru, & Ruang Kerja Jabatan.
+              Navigasi Ikon Aplikasi Terstruktur ke Dalam 4 Blok: Aksi Cepat Diri, Ruang Kerja Guru, Ruang Kerja Jabatan, & Informasi Lintas Modul.
             </p>
           </div>
 
@@ -481,27 +535,72 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏛️ RUANG KERJA JABATAN & INFORMASI LINTAS MODUL (DINAMIS BACKEND API)
+          BLOK 3: 🏛️ RUANG KERJA JABATAN (PRIMARY WORKSPACE — MENU JABATAN STRUKTURAL)
       ───────────────────────────────────────────────────────────────────────────── */}
-      <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-lg bg-blue-600 text-white shadow-2xs">
-              <Building2 size={14} />
+      {(filteredBlock3.length > 0 || isMenuLoading) && (
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-blue-600 text-white shadow-2xs">
+                <Building2 size={14} />
+              </div>
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                3. Ruang Kerja Jabatan
+              </h2>
             </div>
-            <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              3. Ruang Kerja Jabatan & Informasi Lintas Modul
-            </h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredBlock3.length} Menu Jabatan
+            </span>
           </div>
 
-          <span className="text-[10px] font-bold text-slate-400">
-            {filteredBlock3.length} Aplikasi Modul
-          </span>
-        </div>
+          {filteredBlock3.length > 0 ? (
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
+              {filteredBlock3.map((tile) => (
+                <MemoizedAppTileItem
+                  key={tile.id}
+                  tile={tile}
+                  onNavigate={handleTileNavigate}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
+              <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Menu jabatan struktural tidak tersedia untuk peran ini.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
-        {filteredBlock3.length > 0 ? (
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          BLOK 4: 🔗 INFORMASI LINTAS MODUL (CROSS-MODULE PATHS — AKSES KE MODUL LAIN)
+          Hanya muncul jika ada cross-module items yang tersedia & belum ada di Blok 1/2/3
+      ───────────────────────────────────────────────────────────────────────────── */}
+      {filteredBlock4.length > 0 && (
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 border-dashed">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-teal-600 text-white shadow-2xs">
+                <Network size={14} />
+              </div>
+              <div>
+                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  4. Informasi Lintas Modul
+                </h2>
+                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  Akses ke modul lain yang relevan dengan jabatan Anda
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredBlock4.length} Akses Lintas
+            </span>
+          </div>
+
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredBlock3.map((tile) => (
+            {filteredBlock4.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}
@@ -509,15 +608,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               />
             ))}
           </div>
-        ) : (
-          <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-            <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Seluruh aplikasi ruang kerja telah disajikan pada Blok Aksi Cepat Diri & Ruang Kerja Utama.
-            </p>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 };
