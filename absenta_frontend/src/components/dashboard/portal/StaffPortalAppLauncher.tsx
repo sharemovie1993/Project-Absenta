@@ -190,11 +190,12 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   const block2GuruTiles = useMemo<AppTileData[]>(() => {
     const items: AppTileData[] = [];
 
+    // Fasilitas Khusus Wali Kelas
     if (isWaliKelas) {
       items.push(
         {
           id: 'b2-monitoring-kbm',
-          title: 'Live KBM',
+          title: 'Live KBM Kelas',
           iconComp: Monitor,
           colorClass: 'text-blue-600 dark:text-blue-400',
           bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
@@ -203,7 +204,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         },
         {
           id: 'b2-rekap-absensi',
-          title: 'Rekap Absensi',
+          title: 'Rekap Absensi Rombel',
           iconComp: Activity,
           colorClass: 'text-emerald-600 dark:text-emerald-400',
           bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
@@ -211,16 +212,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           path: '/attendance/rekap',
         },
         {
-          id: 'b2-input-nilai',
-          title: 'Input Nilai Rapor',
-          iconComp: FileText,
-          colorClass: 'text-purple-600 dark:text-purple-400',
-          bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
-          path: '/rapor/nilai',
-        },
-        {
           id: 'b2-cetak-rapor',
-          title: 'Cetak e-Rapor',
+          title: 'Cetak e-Rapor Wali',
           iconComp: Printer,
           colorClass: 'text-indigo-600 dark:text-indigo-400',
           bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
@@ -238,8 +231,25 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       );
     }
 
-    // Aksi Pengajaran & Presensi Diri Guru
+    // Fasilitas Operasional Pengajaran Utama Guru (100% Lengkap & Presisi)
     items.push(
+      {
+        id: 'b2-absensi-kbm',
+        title: 'Absensi KBM Kelas',
+        iconComp: Monitor,
+        colorClass: 'text-blue-600 dark:text-blue-400',
+        bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
+        badgeText: 'Live',
+        path: '/attendance/ops',
+      },
+      {
+        id: 'b2-input-nilai',
+        title: 'Input Nilai Rapor',
+        iconComp: FileText,
+        colorClass: 'text-purple-600 dark:text-purple-400',
+        bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
+        path: '/rapor/nilai',
+      },
       {
         id: 'b2-jurnal-kbm',
         title: 'Isi Jurnal KBM',
@@ -247,6 +257,22 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: 'text-indigo-600 dark:text-indigo-400',
         bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
         onClick: onOpenJurnalModal,
+      },
+      {
+        id: 'b2-perangkat-ajar',
+        title: 'Perangkat Ajar (RPP)',
+        iconComp: FileText,
+        colorClass: 'text-teal-600 dark:text-teal-400',
+        bgLightClass: 'bg-teal-50 dark:bg-teal-950/60',
+        path: '/kurikulum/perangkat',
+      },
+      {
+        id: 'b2-kalender',
+        title: 'Kalender Akademik',
+        iconComp: Calendar,
+        colorClass: 'text-cyan-600 dark:text-cyan-400',
+        bgLightClass: 'bg-cyan-50 dark:bg-cyan-950/60',
+        path: '/kurikulum/kalender',
       },
       {
         id: 'b2-absen-guru',
@@ -258,7 +284,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       }
     );
 
-    // Catat Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
+    // Input Pelanggaran Cepat untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
     if (!isKurikulumRole || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
       items.push({
         id: 'b2-catat-pelanggaran',
