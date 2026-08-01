@@ -45,7 +45,19 @@ export class WhatsappController {
     const { tenant_id } = request.user as any;
     try {
       await waGatewayService.initTenant(tenant_id);
-      return reply.send({ success: true, message: 'Menghubungkan ke WhatsApp...' });
+
+      // Wait up to 3 seconds for QR code generation
+      let qr = await waGatewayService.getQRBase64(tenant_id);
+      if (!qr) {
+        for (let i = 0; i < 6; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          qr = await waGatewayService.getQRBase64(tenant_id);
+          if (qr) break;
+        }
+      }
+
+      const health = waGatewayService.getHealthStatus(tenant_id);
+      return reply.send({ success: true, message: 'Menghubungkan ke WhatsApp...', qr, data: health });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }
@@ -75,7 +87,15 @@ export class WhatsappController {
   async getLocalQR(request: any, reply: any) {
     const { tenant_id } = request.user as any;
     try {
-      const qr = waGatewayService.getQRBase64(tenant_id);
+      let qr = await waGatewayService.getQRBase64(tenant_id);
+      if (!qr) {
+        await waGatewayService.initTenant(tenant_id);
+        for (let i = 0; i < 4; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          qr = await waGatewayService.getQRBase64(tenant_id);
+          if (qr) break;
+        }
+      }
       return reply.send({ success: true, qr });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

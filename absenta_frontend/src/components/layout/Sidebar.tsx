@@ -189,7 +189,35 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { activeHub, setActiveHub, activeWorkspaceId, detectHubFromPath } = useNavStore();
+  const { activeHub, setActiveHub, activeWorkspaceId, setActiveWorkspaceId, detectHubFromPath } = useNavStore();
+
+  const userWorkspaces = React.useMemo(() => {
+    return resolveUserWorkspaces(user);
+  }, [user]);
+
+  const initializedUserIdRef = React.useRef<string | null>(null);
+
+  // Otomatis pilih workspace jabatan struktural utama (misal Wali Kelas) saat pertama kali buka Desktop Mode
+  useEffect(() => {
+    const isAdmin = String(user?.role?.name || '').toUpperCase() === 'ADMIN' || 
+                    String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN' || 
+                    user?.tenant_id === 'system';
+
+    if (!isAdmin && userWorkspaces.length > 0 && user?.id) {
+      if (initializedUserIdRef.current !== user.id) {
+        initializedUserIdRef.current = user.id;
+        const primaryWsId = userWorkspaces[0].id;
+        if (activeWorkspaceId !== primaryWsId) {
+          setActiveWorkspaceId(primaryWsId);
+        }
+      } else {
+        const isValidCurrent = userWorkspaces.some(w => w.id === activeWorkspaceId);
+        if (!isValidCurrent) {
+          setActiveWorkspaceId(userWorkspaces[0].id);
+        }
+      }
+    }
+  }, [user?.id, userWorkspaces, activeWorkspaceId, setActiveWorkspaceId, user?.role?.name, user?.tenant_id]);
 
   // Auto-detect hub on mount and path change
   useEffect(() => {

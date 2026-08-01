@@ -94,9 +94,15 @@ const WhatsappSettingsPage: React.FC = () => {
             setQrCode(qrRes.qr);
           }
         } else if (status === 'disconnected') {
-          setLocalStatus('disconnected');
-          setConnectedNumber(null);
-          setQrCode(null);
+          const qrRes = (await getLocalWhatsappQR()) as WaQrResponse;
+          if (qrRes.success && qrRes.qr) {
+            setLocalStatus('connecting');
+            setQrCode(qrRes.qr);
+          } else {
+            setLocalStatus('disconnected');
+            setConnectedNumber(null);
+            setQrCode(null);
+          }
         }
       }
     } catch (err) {
@@ -107,8 +113,11 @@ const WhatsappSettingsPage: React.FC = () => {
   const handleConnectLocal = useCallback(async () => {
     try {
       setLocalStatus('connecting');
-      const response = (await connectLocalWhatsapp()) as WaApiResponse;
+      const response = (await connectLocalWhatsapp()) as any;
       if (response.success) {
+        if (response.qr) {
+          setQrCode(response.qr);
+        }
         toast.success('Sesi WhatsApp diinisialisasi. Menunggu QR code...');
         fetchLocalStatus();
       }

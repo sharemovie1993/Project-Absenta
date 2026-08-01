@@ -36,6 +36,25 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
     return resolveUserWorkspaces(user, can);
   }, [user, can]);
 
+  const initializedUserIdRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isAdmin && userWorkspaces.length > 0 && user?.id) {
+      if (initializedUserIdRef.current !== user.id) {
+        initializedUserIdRef.current = user.id;
+        const primaryWsId = userWorkspaces[0].id;
+        if (activeWorkspaceId !== primaryWsId) {
+          setActiveWorkspaceId(primaryWsId);
+        }
+      } else {
+        const isValidCurrent = userWorkspaces.some(w => w.id === activeWorkspaceId);
+        if (!isValidCurrent) {
+          setActiveWorkspaceId(userWorkspaces[0].id);
+        }
+      }
+    }
+  }, [user?.id, userWorkspaces, activeWorkspaceId, isAdmin, setActiveWorkspaceId]);
+
   const handleHubClick = (hubId: any) => {
     setActiveHub(hubId);
     const paths: Record<string, string> = {
