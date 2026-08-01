@@ -35,7 +35,7 @@ import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { useNavStore } from '../../../store/navStore';
-import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser } from '../../../helpers/workspaceNavFilter';
+import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems } from '../../../helpers/workspaceNavFilter';
 import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
@@ -303,18 +303,23 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     });
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (crossModuleItems saja)
-  // Item-item yang berasal dari crossModulePaths workspace — akses ke modul lain yang diizinkan
+  // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (SELESIH SEMUA WORKSPACE USER — OPSI A)
+  // Memuat seluruh crossModulePaths dari SELURUH workspace milik user (bukan hanya workspace aktif)
   const block4CrossModuleTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     // 1. Normalisasi grouped-menu → FlatMenuItem[]
     const flatItems = normalizeFlatMenu(backendGroupedMenu);
 
-    // 2. Filter via helper terpusat — ambil HANYA crossModuleItems
-    const { crossModuleItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
+    // 2. Set of primary paths dari Blok 3 agar tidak ada duplikasi
+    const primaryPathSet = new Set(
+      block3PrimaryTiles.map((item) => (item.path || '').toLowerCase()).filter(Boolean)
+    );
 
-    // 3. Konversi FlatMenuItem → AppTileData
+    // 3. Filter menggabungkan seluruh crossModulePaths dari seluruh workspace pengguna
+    const crossModuleItems = getAllUserCrossModuleItems(flatItems, user, primaryPathSet);
+
+    // 4. Konversi FlatMenuItem → AppTileData
     return crossModuleItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       return {
@@ -328,7 +333,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         categoryLabel: item.categoryLabel,
       };
     });
-  }, [backendGroupedMenu, user, activeWorkspaceId]);
+  }, [backendGroupedMenu, user, block3PrimaryTiles]);
 
   // ── HELPER DEDUPLIKASI TERPUSAT ──
   const normalizeKey = (val?: string) => {

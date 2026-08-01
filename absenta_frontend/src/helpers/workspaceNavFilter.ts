@@ -15,7 +15,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { ROLE_WORKSPACES } from '../config/navigation.config';
+import { ROLE_WORKSPACES, resolveUserWorkspaces } from '../config/navigation.config';
 
 // ── Tipe Data Flat Menu Item (hasil normalisasi dari backend grouped-menu) ──
 export interface FlatMenuItem {
@@ -48,6 +48,41 @@ export const isAdminUser = (user: any): boolean => {
     roleName.startsWith('PLATFORM_') ||
     user?.tenant_id === 'system'
   );
+};
+
+/**
+ * getAllUserCrossModuleItems()
+ * ─────────────────────────────────────────────────────────────────────────────
+ * MENGAMBIL SEMUA CROSS-MODULE ITEMS DARI SELURUH WORKSPACE YANG DIMILIKI USER (OPSI A).
+ * Digunakan oleh StaffPortalAppLauncher (Blok 4) agar daftar informasi lintas modul
+ * tetap konsisten dan tidak berubah-ubah saat user berpindah activeWorkspaceId di desktop mode.
+ */
+export const getAllUserCrossModuleItems = (
+  allItems: FlatMenuItem[],
+  user: any,
+  excludePrimaryPaths: Set<string> = new Set()
+): FlatMenuItem[] => {
+  if (isAdminUser(user)) return [];
+
+  const userWorkspaces = resolveUserWorkspaces(user);
+  const workspacesToScan = userWorkspaces.length > 0 ? userWorkspaces : ROLE_WORKSPACES;
+
+  const allCrossPaths = new Set<string>();
+  workspacesToScan.forEach((ws) => {
+    (ws.crossModulePaths || []).forEach((p) => {
+      allCrossPaths.add(p.toLowerCase());
+    });
+  });
+
+  const validItems = allItems.filter((item) => {
+    const p = (item.path || '').toLowerCase();
+    return p && p !== '#' && p !== '/dashboard' && !p.startsWith('menu:');
+  });
+
+  return validItems.filter((item) => {
+    const p = (item.path || '').toLowerCase();
+    return p && !excludePrimaryPaths.has(p) && allCrossPaths.has(p);
+  });
 };
 
 /**
