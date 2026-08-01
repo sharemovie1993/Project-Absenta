@@ -188,45 +188,7 @@ export default function CetakRaporPage() {
       });
   }, [studentList, leger, searchQuery]);
 
-  // ── Stats for AnalyticsCard ──
-  const statsData = useMemo(() => {
-    const total = filteredStudents.length;
-    const avgScore = total > 0
-      ? (filteredStudents.reduce((acc, curr) => acc + (curr.rata_rata || 0), 0) / total).toFixed(1)
-      : '0.0';
-    const filledCatatan = filteredStudents.filter((s) => Boolean(s.catatan_wali)).length;
 
-    return [
-      {
-        title: 'Total Siswa Rombel',
-        value: total.toString(),
-        subtitle: 'Siswa terdaftar di kelas ini',
-        icon: <Users className="w-5 h-5 text-white" />,
-        gradient: 'from-blue-500 to-indigo-600',
-      },
-      {
-        title: 'Rata-Rata Rapor',
-        value: avgScore,
-        subtitle: 'Rata-rata akumulasi nilai kelas',
-        icon: <Calculator className="w-5 h-5 text-white" />,
-        gradient: 'from-emerald-500 to-teal-600',
-      },
-      {
-        title: 'Ranking Utama #1',
-        value: filteredStudents[0]?.nama_siswa || '—',
-        subtitle: `Nilai: ${filteredStudents[0]?.rata_rata || 0}`,
-        icon: <Award className="w-5 h-5 text-white" />,
-        gradient: 'from-amber-500 to-orange-600',
-      },
-      {
-        title: 'Kelengkapan Catatan',
-        value: `${filledCatatan}/${total}`,
-        subtitle: 'Catatan wali kelas terisi',
-        icon: <CheckCircle className="w-5 h-5 text-white" />,
-        gradient: 'from-purple-500 to-indigo-600',
-      },
-    ];
-  }, [filteredStudents]);
 
   // ── Summary mutation ──
   const summaryMutation = useMutation({
@@ -379,7 +341,6 @@ export default function CetakRaporPage() {
       description="Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pratinjau PDF lembar e-Rapor resmi di tab baru."
       breadcrumbs={breadcrumbs}
       instruction={PAGE_INSTRUCTION}
-      stats={statsData}
       hardeningModuleKey="cetakraporpage"
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
@@ -515,7 +476,7 @@ export default function CetakRaporPage() {
         isOpen={!!selectedTranskripStudent}
         onClose={() => setSelectedTranskripStudent(null)}
         selectedStudent={selectedTranskripStudent}
-        transkripData={(transkripData?.data || transkripData) as any}
+        transkripData={(transkripData?.data || transkripData || null) as unknown as TranskripNilaiData}
         isLoading={isLoadingTranskrip}
       />
     </AcademicPageLayout>
