@@ -550,7 +550,24 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         return p && !primaryPathSet.has(p) && allowedCrossPaths.has(p);
       });
 
-      const finalNav: NavItem[] = [...cleanEmptyParents(primaryItems)];
+      const finalNav: NavItem[] = [];
+
+      // ── Header Section: Label Workspace Aktif (di atas primary items) ──
+      // Hanya tampil saat ada primary items (non-admin workspace)
+      if (primaryItems.length > 0) {
+        const wsHeaderLabel = currentWs.id === 'TEACHER_WORKSPACE' || currentWs.id === 'WALIKELAS_WORKSPACE'
+          ? `RUANG KERJA ${currentWs.label.toUpperCase()}`
+          : `RUANG KERJA ${currentWs.label.toUpperCase()}`;
+
+        finalNav.push({
+          label: wsHeaderLabel,
+          type: 'header',
+          icon: LayoutGrid,
+          _isWorkspaceHeader: true,
+        } as NavItem);
+      }
+
+      finalNav.push(...cleanEmptyParents(primaryItems));
 
       if (crossModuleItems.length > 0) {
         finalNav.push({
@@ -562,6 +579,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       }
 
       return finalNav;
+
     }
 
     const finalTree: NavItem[] = [];
@@ -676,18 +694,27 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
       if (item.type === 'header') {
         const isCrossModuleHeader = item.label === 'INFORMASI LINTAS MODUL';
+        const isWorkspaceHeader = (item as any)._isWorkspaceHeader === true;
         return (
-          <li key={`header-${index}`} className={cn("mt-5 mb-2.5 px-3.5", depth > 0 && "hidden")}>
+          <li key={`header-${index}`} className={cn("mb-2.5 px-3.5", depth > 0 && "hidden", isWorkspaceHeader ? "mt-3" : "mt-5")}>
             <div className={cn(
               "flex items-center gap-2 pb-2",
-              isCrossModuleHeader && "border-b border-emerald-500/20 dark:border-emerald-500/10"
+              isCrossModuleHeader && "border-b border-emerald-500/20 dark:border-emerald-500/10",
+              isWorkspaceHeader && "border-b border-indigo-500/20 dark:border-indigo-500/10",
             )}>
               <span className={cn(
                 "text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5",
-                isCrossModuleHeader ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"
+                isCrossModuleHeader
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : isWorkspaceHeader
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-400 dark:text-slate-500"
               )}>
                 {isCrossModuleHeader && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+                )}
+                {isWorkspaceHeader && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
                 )}
                 {item.label}
               </span>
@@ -695,6 +722,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           </li>
         );
       }
+
 
       const itemPath = item.path || '';
       const currentPath = `${location.pathname}${location.search || ''}`;
