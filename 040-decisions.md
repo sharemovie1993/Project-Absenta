@@ -227,14 +227,15 @@
   3. Membangun komponen **`SiswaPortalAppLauncher.tsx`** yang 100% DINAMIS berbasis API Backend & RBAC (tanpa menu hardcoded).
 - **Rasional**: Memberikan pengalaman visual bergaya aplikasi mobile (grid ikon squircle) yang optimal dan kontekstual secara otomatis sesuai kombinasi peran dan ukuran layar pengguna.
 
-2026-08: Portal App Launcher — Function-Centric 4-Block Structure dengan Priority Elevator Pejabat
+2026-08: Portal App Launcher — Dynamic Structural Block Naming Architecture
 - **Keputusan**:
-  1. Mengadopsi urutan 4-Blok Fungsi-Centric dengan penyesuaian **Prioritas Pejabat/Struktural**:
+  1. Mengadopsi penamaan Blok App Launcher yang dinamis berbasis peran struktural pengguna:
      - **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan 1-tap & modal aksi cepat harian (*Jadwal Saya, Riwayat Ajar, Kehadiran Saya, Catat Pelanggaran, Tindak Masal*).
-     - **🏛️ Blok 2 — Manajemen & Data Akademik**: Administrasi master data & kurikulum yang **100% UTUH & RUNTUT** menjaga alur dependensi prasyarat basis data (*Struktur Kurikulum ➔ Mata Pelajaran ➔ Guru Mapel ➔ Wali Kelas ➔ Kalender Akademik ➔ Jam KBM ➔ Jadwal Pelajaran ➔ Piket ➔ RPP ➔ P5*). Berfungsi sebagai **Anchor Utama Deduplikasi**.
-     - **🏫 Blok 3 — Operasional Harian & KBM**: Aplikasi tugas operasional harian (*Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Isi Jurnal KBM*). Mengalah terhadap Blok 2 & 1, diurutkan berdasarkan bobot frekuensi penggunaan.
+     - **🏛️ Blok 2 — Ruang Kerja Jabatan : [Dinamis Nama Jabatan]**: Menampilkan menu master data & administrasi jabatan struktural pengguna (misal: `RUANG KERJA JABATAN : KURIKULUM & WALI KELAS`). Menu disusun **100% UTUH & RUNTUT** menjaga alur dependensi prasyarat basis data (*Struktur ➔ Mapel ➔ Guru ➔ Wali ➔ Kalender ➔ Jam ➔ Jadwal ➔ Piket ➔ RPP ➔ P5*). Berfungsi sebagai **Anchor Utama Deduplikasi**.
+       *Catatan*: Jika pengguna adalah **Guru Biasa (tanpa jabatan struktural)**, Blok 2 secara otomatis menyembunyikan diri (*auto-hide*).
+     - **🏫 Blok 3 — Ruang Kerja Guru**: Aplikasi tugas operasional harian pengajaran & KBM (*Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Isi Jurnal KBM*). Mengalah terhadap Blok 2 & 1, diurutkan berdasarkan bobot frekuensi penggunaan.
      - **🔗 Blok 4 — Informasi Lintas Modul**: Layanan & informasi pendukung lintas unit kerja (*BP/BK, Sarpras, Kesiswaan, Koperasi, PKL*). Mengalah terhadap Blok 2, 3, & 1, diurutkan berdasarkan bobot frekuensi penggunaan.
-- **Rasional**: Pejabat sekolah (Wakasek, Kaprog, Kabeng, Kepsek, TU) menghabiskan 80% waktunya di ruang jabatan mengelola data sekolah, sehingga modul Manajemen & Data Akademik dinaikkan ke Blok 2 sebagai prioritas utama. Bagi Guru Biasa tanpa peran struktural, Blok 2 menyembunyikan diri secara otomatis sehingga Operasional Harian langsung naik ke posisi utama.
+- **Rasional**: Memberikan identitas visual yang tepat bagi pejabat sekolah dengan menampilkan nama jabatan mereka secara eksplisit di Blok 2, sekaligus menjaga kerapian antarmuka bagi guru biasa tanpa blok kosong.
 
 2026-08: Centralized Workspace Navigation Filter — `workspaceNavFilter.ts`
 - **Keputusan**:
