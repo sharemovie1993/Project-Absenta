@@ -16,6 +16,9 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
 import { kelasApi, mapelApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
+import { useKelasOptions } from '../../hooks/useKelasOptions';
+import { useMapelOptions } from '../../hooks/useMapelOptions';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { toast } from 'sonner';
 
 export default function InputNilaiPage() {
@@ -53,22 +56,12 @@ export default function InputNilaiPage() {
     catatan_deskripsi?: string;
   }>>([]);
 
-  // Metadata Fetch
-  const { data: years } = useQuery({
-    queryKey: ['academic-years'],
-    queryFn: () => tahunPelajaranApi.getAll()
-  });
-  const activeYear = useMemo(() => (years?.data ?? []).find(y => y.is_active), [years]);
+  // Consume Standardized Custom Hooks
+  const { rawList: classes } = useKelasOptions({ onlyActive: true });
+  const { rawList: subjects } = useMapelOptions();
+  const { activeTahunPelajaran: activeYear } = useTahunPelajaranOptions();
   const activeSemester = useMemo(() => activeYear?.Semester?.find((s: any) => s.is_active), [activeYear]);
 
-  const { data: classes } = useQuery({
-    queryKey: ['classes'],
-    queryFn: () => kelasApi.getAll()
-  });
-  const { data: subjects } = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => mapelApi.getAll()
-  });
   const { data: categories } = useQuery({
     queryKey: ['jenis-penilaian'],
     queryFn: () => raporApi.getJenisPenilaian()
@@ -427,7 +420,7 @@ export default function InputNilaiPage() {
                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Pilih Kelas</option>
-                {classes?.data?.map((k: any) => (
+                {classes?.map((k: any) => (
                   <option key={k.id} value={k.id}>{k.nama_kelas}</option>
                 ))}
               </select>
@@ -444,7 +437,7 @@ export default function InputNilaiPage() {
                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Pilih Mapel</option>
-                {subjects?.data?.map((m: any) => (
+                {subjects?.map((m: any) => (
                   <option key={m.id} value={m.id}>{m.nama_mapel}</option>
                 ))}
               </select>
