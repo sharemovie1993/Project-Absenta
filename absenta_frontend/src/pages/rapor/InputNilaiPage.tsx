@@ -168,12 +168,20 @@ export default function InputNilaiPage() {
     }
   }, [selectedKelas, selectedMapel, studentsInKelas, existingGrades]);
 
+  // Success Banner State
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
   // Save Batch Sumatif Mutation
   const sumatifSaveMutation = useMutation({
     mutationFn: raporApi.upsertBatchSumatifNilai,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
-      toast.success('Nilai Sumatif & Capaian Kompetensi sekelas berhasil disimpan!');
+      queryClient.invalidateQueries({ queryKey: ['students-by-kelas'] });
+      toast.success('🎉 BERHASIL DISIMPAN! Nilai Sumatif & Capaian Kompetensi sekelas telah tersimpan ke database.', {
+        duration: 5000,
+      });
+      setSaveSuccessMsg('Daftar nilai sumatif & capaian kompetensi sekelas berhasil tersimpan permanen ke database!');
+      setTimeout(() => setSaveSuccessMsg(null), 6000);
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal menyimpan nilai sumatif');
@@ -185,7 +193,10 @@ export default function InputNilaiPage() {
     mutationFn: raporApi.upsertBulkNilai,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
-      toast.success('Nilai siswa sekelas berhasil disimpan');
+      queryClient.invalidateQueries({ queryKey: ['students-by-kelas'] });
+      toast.success('🎉 BERHASIL DISIMPAN! Nilai siswa sekelas berhasil tersimpan ke database.');
+      setSaveSuccessMsg('Daftar nilai siswa sekelas berhasil tersimpan permanen!');
+      setTimeout(() => setSaveSuccessMsg(null), 6000);
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal menyimpan nilai');
@@ -542,6 +553,23 @@ export default function InputNilaiPage() {
             </div>
           </div>
         </Card>
+
+        {saveSuccessMsg && (
+          <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-white text-sm">
+                ✓
+              </div>
+              <div>
+                <p className="text-xs font-bold">{saveSuccessMsg}</p>
+                <p className="text-[10px] text-emerald-100">Nilai siap digunakan untuk penerbitan Leger & e-Rapor resmi Dinas.</p>
+              </div>
+            </div>
+            <button onClick={() => setSaveSuccessMsg(null)} className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all text-white">
+              Tutup
+            </button>
+          </div>
+        )}
 
         {selectedKelas && selectedMapel && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
