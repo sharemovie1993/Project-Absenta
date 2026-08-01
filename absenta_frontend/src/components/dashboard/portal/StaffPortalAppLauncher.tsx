@@ -454,7 +454,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terstruktur ke Dalam 4 Blok: Aksi Cepat Diri, Ruang Kerja Guru, Ruang Kerja Jabatan, & Informasi Lintas Modul.
+              Navigasi Ikon Aplikasi Terstruktur Berbasis Fungsi: Aksi Cepat Diri, Operasional Harian & KBM, Manajemen & Data Akademik, & Informasi Lintas Modul.
             </p>
           </div>
 
@@ -526,7 +526,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (OPERASIONAL HARIAN LENGKAP)
+          BLOK 2: 🏫 OPERASIONAL HARIAN & KBM (PRESENSI, JURNAL, LIVE KBM, & E-RAPOR)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock2.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -536,11 +536,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Sparkles size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Ruang Kerja Guru & Wali Kelas
+                2. Operasional Harian & KBM
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock2.length} Aplikasi Operasional
+              {filteredBlock2.length} Operasional Harian
             </span>
           </div>
 
@@ -557,7 +557,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏛️ RUANG KERJA JABATAN (PRIMARY WORKSPACE — MENU JABATAN STRUKTURAL)
+          BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (ADMINISTRASI, KURIKULUM & MASTER DATA)
       ───────────────────────────────────────────────────────────────────────────── */}
       {(filteredBlock3.length > 0 || isMenuLoading) && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -567,11 +567,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Building2 size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                3. Ruang Kerja Jabatan
+                3. Manajemen & Data Akademik
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock3.length} Menu Jabatan
+              {filteredBlock3.length} Master & Administrasi
             </span>
           </div>
 
@@ -589,7 +589,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
               <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Menu jabatan struktural tidak tersedia untuk peran ini.
+                Menu manajemen & data akademik tidak tersedia untuk peran ini.
               </p>
             </div>
           )}
@@ -597,8 +597,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 4: 🔗 INFORMASI LINTAS MODUL (CROSS-MODULE PATHS — AKSES KE MODUL LAIN)
-          Hanya muncul jika ada cross-module items yang tersedia & belum ada di Blok 1/2/3
+          BLOK 4: 🔗 INFORMASI LINTAS MODUL (LAYANAN LINTAS UNIT KERJA)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock4.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 border-dashed">
@@ -612,12 +611,12 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                   4. Informasi Lintas Modul
                 </h2>
                 <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  Akses ke modul lain yang relevan dengan jabatan Anda
+                  Layanan & informasi pendukung lintas unit kerja
                 </p>
               </div>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock4.length} Akses Lintas
+              {filteredBlock4.length} Layanan Lintas
             </span>
           </div>
 
