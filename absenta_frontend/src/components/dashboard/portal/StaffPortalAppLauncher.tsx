@@ -32,8 +32,8 @@ import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
-import { ROLE_WORKSPACES } from '../../../config/navigation.config';
 import { useNavStore } from '../../../store/navStore';
+import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser } from '../../../helpers/workspaceNavFilter';
 import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
@@ -274,96 +274,31 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (PENYARINGAN LOGIKA SIDEBAR) ──
+  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL
+  // Menggunakan helper terpusat workspaceNavFilter agar 100% sinkron dengan Sidebar.tsx
   const block3BackendTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
-    const isAdmin =
-      String(user?.role?.name || '').toUpperCase() === 'ADMIN' ||
-      String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN' ||
-      user?.tenant_id === 'system';
+    // 1. Normalisasi grouped-menu → FlatMenuItem[]
+    const flatItems = normalizeFlatMenu(backendGroupedMenu);
 
-    const currentWs = ROLE_WORKSPACES.find((w) => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
+    // 2. Filter menggunakan logika TERPUSAT dari workspaceNavFilter.ts
+    const { allAllowedItems } = filterNavByWorkspace(flatItems, user, activeWorkspaceId);
 
-    const allBackendTiles: AppTileData[] = [];
-    let tileCounter = 0;
-
-    backendGroupedMenu.forEach((group) => {
-      if (!group.items || group.items.length === 0) return;
-
-      group.items.forEach((item) => {
-        const accent = COLOR_ACCENTS[tileCounter % COLOR_ACCENTS.length];
-        tileCounter++;
-
-        allBackendTiles.push({
-          id: `b3-item-${item.id || tileCounter}`,
-          title: item.name,
-          iconName: item.icon || item.name,
-          colorClass: accent.colorClass,
-          bgLightClass: accent.bgLightClass,
-          badgeText: item.premiumInfo?.isPremium ? 'PRO' : undefined,
-          path: item.path,
-          categoryLabel: group.label,
-        });
-      });
+    // 3. Konversi FlatMenuItem → AppTileData
+    return allAllowedItems.map((item, idx) => {
+      const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
+      return {
+        id: `b3-item-${item.id || idx}`,
+        title: item.title,
+        iconName: item.icon,
+        colorClass: accent.colorClass,
+        bgLightClass: accent.bgLightClass,
+        badgeText: item.isPremium ? 'PRO' : undefined,
+        path: item.path,
+        categoryLabel: item.categoryLabel,
+      };
     });
-
-    if (isAdmin) {
-      return allBackendTiles;
-    }
-
-    // UNTUK NON-ADMIN: PENYARINGAN WORKSPACE PERSIS LOGIKA SIDEBAR.TSX
-    const allowedCrossPaths = new Set(
-      (currentWs.crossModulePaths || []).map((p) => p.toLowerCase())
-    );
-
-    const filteredTiles = allBackendTiles.filter((tile) => {
-      const p = (tile.path || '').toLowerCase();
-      if (!p || p === '#' || p === '/dashboard') return false;
-
-      if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
-        const catName = (tile.categoryLabel || '').toUpperCase();
-        if (currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()))) return true;
-      }
-
-      if (allowedCrossPaths.has(p)) return true;
-
-      if (currentWs.id === 'WALIKELAS_WORKSPACE') {
-        if (p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket')) return true;
-      } else if (currentWs.id === 'TEACHER_WORKSPACE') {
-        if (
-          p.includes('riwayat-ajar') ||
-          p.includes('my-attendance') ||
-          p.includes('/kurikulum/jadwal') ||
-          p.includes('/kurikulum/perangkat') ||
-          p.includes('/kurikulum/kalender') ||
-          p.includes('/rapor/nilai') ||
-          p.includes('/rapor/p5')
-        )
-          return true;
-      } else if (currentWs.id === 'KEPSEK_WORKSPACE') {
-        if (
-          p === '/kurikulum/dashboard' ||
-          p === '/attendance/guru-monitoring' ||
-          p === '/kurikulum/supervisi' ||
-          p === '/attendance/rekap' ||
-          p === '/kesiswaan/monitoring' ||
-          p === '/kurikulum/perangkat'
-        )
-          return true;
-      }
-
-      return false;
-    });
-
-    if (filteredTiles.length === 0) {
-      return allBackendTiles.filter((t) => {
-        const p = (t.path || '').toLowerCase();
-        return p && p !== '#' && p !== '/dashboard';
-      });
-    }
-
-    return filteredTiles;
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
   // ── HELPER DEDUPLIKASI TERPUSAT (Hanya menyaring duplikat langsung, menjaga ketersediaan Blok 2 & Blok 3) ──
