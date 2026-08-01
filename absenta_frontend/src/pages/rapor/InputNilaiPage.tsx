@@ -11,7 +11,8 @@ import {
   Sparkles,
   Calculator
 } from 'lucide-react';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
+import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
@@ -517,11 +518,41 @@ export default function InputNilaiPage() {
   ], []);
 
   return (
-    <AcademicPageLayout
-      title="Input Nilai KBM & Rapor Kurikulum Merdeka"
-      description="Pencatatan nilai sumatif, ulangan harian, dan capaian kompetensi siswa kelas terintegrasi."
-      breadcrumbs={breadcrumbs}
+    <OperationalPageLayout
+      title="Input Nilai & Capaian Kompetensi Rapor"
+      shortTitle="Input Nilai Rapor"
+      subtitle={`Pengisian Lembar Kerja Operasional Kurikulum Merdeka${activeYear ? ` — TP ${activeYear.tahun}` : ''}${activeSemester ? ` (${activeSemester.nama_semester})` : ''}`}
+      backPath="/dashboard"
+      backLabel="Kembali ke Dashboard"
       hardeningModuleKey="inputnilaipage"
+      statusBadge={
+        <Badge variant="success" className="font-bold flex items-center gap-1">
+          <Sparkles size={12} />
+          POS OPERASIONAL LAYAR PENUH
+        </Badge>
+      }
+      stats={[
+        {
+          title: 'Kelas Rombel',
+          value: selectedKelasObj?.nama_kelas || 'Belum Dipilih',
+          subtitle: `${studentsInKelas?.length || 0} Siswa Terdaftar`,
+          icon: <Layers className="w-5 h-5 text-indigo-500" />
+        },
+        {
+          title: 'Mata Pelajaran',
+          value: subjects?.find((m: any) => m.id === selectedMapel)?.nama_mapel || 'Belum Dipilih',
+          subtitle: `${subjects?.length || 0} Mapel KBM Kelas`,
+          icon: <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+        },
+        {
+          title: 'Status Pengisian',
+          value: selectedMapel && mapelStatusMap.get(selectedMapel) 
+            ? `${mapelStatusMap.get(selectedMapel)?.count || 0}/${studentsInKelas?.length || 0} Siswa` 
+            : '—',
+          subtitle: entryMode === 'sumatif' ? 'Mode Sumatif Merdeka' : 'Mode Kategori',
+          icon: <Save className="w-5 h-5 text-amber-500" />
+        }
+      ]}
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         
@@ -971,6 +1002,6 @@ export default function InputNilaiPage() {
         )}
 
       </div>
-    </AcademicPageLayout>
+    </OperationalPageLayout>
   );
 }

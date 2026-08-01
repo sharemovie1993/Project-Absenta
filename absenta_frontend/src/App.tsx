@@ -878,11 +878,6 @@ function App() {
                         <RaporDashboard />
                       </ProtectedRoute>
                     } />
-                    <Route path="/rapor/nilai" element={
-                      <ProtectedRoute requiredCapability="academic.teaching.view">
-                        <InputNilaiPage />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/rapor/cetak" element={
                       <ProtectedRoute requiredCapability="academic.view.wali.kelas">
                         <CetakRaporPage />
@@ -1474,6 +1469,17 @@ function App() {
                       </div>
                     }>
                       <RABCalculatorPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/rapor/nilai" element={
+                  <ProtectedRoute requiredCapability="academic.teaching.view">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <InputNilaiPage />
                     </Suspense>
                   </ProtectedRoute>
                 } />
