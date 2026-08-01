@@ -77,7 +77,7 @@ export default function CetakRaporPage() {
     kelasId: selectedKelas,
     onlyActive: false,
   });
-  const { options: tpOptions, activeTp } = useTahunPelajaranOptions();
+  const { options: tpOptions, activeTahunPelajaran: activeTp } = useTahunPelajaranOptions();
   const { options: semesterOptions, activeSemester: activeSem } = useSemesterOptions();
 
   const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState('');
@@ -95,17 +95,26 @@ export default function CetakRaporPage() {
     }
   }, [activeSem, selectedSemester]);
 
+  // Auto-select first class when classList loads and no class is selected
+  React.useEffect(() => {
+    if (!selectedKelas && classList && classList.length > 0) {
+      setSelectedKelas(classList[0].id);
+    }
+  }, [classList, selectedKelas]);
+
   const activeYear = useMemo<AcademicYear | null>(() => {
     const targetId = selectedTahunPelajaran || activeTp?.id;
     if (!targetId) return null;
-    return { id: targetId, nama: activeTp?.tahun || targetId, is_active: true };
-  }, [activeTp, selectedTahunPelajaran]);
+    const matched = (tpOptions ?? []).find(t => t.value === targetId);
+    return { id: targetId, nama: (matched?.raw as any)?.tahun || activeTp?.tahun || targetId, is_active: true };
+  }, [activeTp, selectedTahunPelajaran, tpOptions]);
 
   const activeSemester = useMemo<Semester | null>(() => {
     const targetId = selectedSemester || activeSem?.id;
     if (!targetId) return null;
-    return { id: targetId, nama: activeSem?.nama_semester || targetId, is_active: true };
-  }, [activeSem, selectedSemester]);
+    const matched = (semesterOptions ?? []).find(s => s.value === targetId);
+    return { id: targetId, nama: (matched?.raw as any)?.nama_semester || activeSem?.nama_semester || targetId, is_active: true };
+  }, [activeSem, selectedSemester, semesterOptions]);
 
   // ── Rekap Absensi custom hooks ──
   const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas, undefined, activeYear?.id);
@@ -140,6 +149,8 @@ export default function CetakRaporPage() {
 
   // ── Filtered students ──
   const filteredStudents = useMemo<LegerStudent[]>(() => {
+    if (!selectedKelas) return [];
+
     const safeStudentList: RawStudent[] = Array.isArray(studentList) ? studentList : [];
     const safeLegerStudents: RawLegerEntry[] = Array.isArray(leger?.data?.students)
       ? (leger.data.students as RawLegerEntry[])
