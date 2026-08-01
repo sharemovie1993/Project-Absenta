@@ -439,40 +439,40 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
       // TU Keuangan
       if (caps.includes('billing.invoices.view.list') || hasRole('TU_KEUANGAN', 'TU_KEPALA')) {
-        actions.push({ label: 'Tagihan SPP', icon: Wallet, onClick: () => navigate('/billing/invoices'), color: 'amber' });
+        actions.push({ label: 'Tagihan SPP', icon: Wallet, onClick: () => navigate('/billing/invoices'), color: 'amber', path: '/billing/invoices' });
       }
 
       // TU Sarpras
       if (caps.includes('sarpras.inventory.view.list') || hasRole('TU_SARPRAS', 'TU_KEPALA')) {
-        actions.push({ label: 'Inventaris Aset', icon: Package, onClick: () => navigate('/sarpras/inventory'), color: 'purple' });
+        actions.push({ label: 'Inventaris Aset', icon: Package, onClick: () => navigate('/sarpras/inventory'), color: 'purple', path: '/sarpras/inventory' });
       }
 
       // TU Kepegawaian / Koordinator TU
       if (caps.includes('academic.students.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
-        actions.push({ label: 'Data Siswa', icon: GraduationCap, onClick: () => navigate('/academic/siswa'), color: 'rose' });
+        actions.push({ label: 'Data Siswa', icon: GraduationCap, onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
       }
       if (caps.includes('academic.teachers.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
-        actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange' });
+        actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange', path: '/academic/guru' });
       }
 
       // Pejabat / Staf Gerbang juga berhak Tindak Masal & Catat Pelanggaran
-      actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald' });
-      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber' });
+      actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
+      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
 
       return actions;
     }
 
     const actions: QuickAction[] = [
-      { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`),          color: 'blue'   },
-      { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo' },
-      { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald' },
+      { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`), color: 'blue', path: '/kurikulum/jadwal' },
+      { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo', path: '/attendance/riwayat-ajar' },
+      { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald', path: '/attendance/my-attendance' },
     ];
-    if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'),         color: 'rose'   });
-    if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple' });
+    if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
+    if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple', path: '/attendance/monitoring' });
     
     // Posisikan Catat & Tindak Pelanggaran di Aksi Cepat
-    actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald' });
-    actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber' });
+    actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
+    actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
     
     return actions;
   }, [isWaliKelas, isKurikulum, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);

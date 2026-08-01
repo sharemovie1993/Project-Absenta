@@ -10,6 +10,7 @@ export interface QuickAction {
   icon: LucideIcon;
   onClick: () => void;
   color?: 'blue' | 'emerald' | 'amber' | 'orange' | 'indigo' | 'rose' | 'purple';
+  path?: string;
 }
 
 interface QuickActionGridProps {

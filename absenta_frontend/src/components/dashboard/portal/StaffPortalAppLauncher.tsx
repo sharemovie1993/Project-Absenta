@@ -166,6 +166,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: accent.colorClass,
         bgLightClass: accent.bgLightClass,
         onClick: act.onClick,
+        path: act.path,
       };
     });
   }, [quickActions]);
@@ -200,7 +201,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           iconComp: FileText,
           colorClass: 'text-purple-600 dark:text-purple-400',
           bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
-          path: '/rapor/input-nilai',
+          path: '/rapor/nilai',
         },
         {
           id: 'b2-cetak-rapor',
@@ -351,22 +352,38 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block1QuickActionTiles, searchQuery]);
 
-  // 2. Filtered Blok 2 (Ruang Kerja Guru & Wali Kelas)
+  // 2. Filtered Blok 2 (Ruang Kerja Guru & Wali Kelas) — deduplikasi terhadap Blok 1
+  const deduplicatedBlock2 = useMemo(() => {
+    const existingPaths = new Set(
+      block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean)
+    );
+    const existingTitles = new Set(
+      block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean)
+    );
+    return block2GuruTiles.filter((t) => {
+      const pathKey = normalizeKey(t.path);
+      const titleKey = normalizeKey(t.title);
+      if (pathKey && existingPaths.has(pathKey)) return false;
+      if (titleKey && existingTitles.has(titleKey)) return false;
+      return true;
+    });
+  }, [block2GuruTiles, block1QuickActionTiles]);
+
   const filteredBlock2 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return block2GuruTiles;
-    return block2GuruTiles.filter((t) => t.title.toLowerCase().includes(q));
-  }, [block2GuruTiles, searchQuery]);
+    if (!q) return deduplicatedBlock2;
+    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
+  }, [deduplicatedBlock2, searchQuery]);
 
   // 3. Filtered Blok 3 (Ruang Kerja Jabatan) — deduplikasi terhadap Blok 1 & 2
   const deduplicatedBlock3 = useMemo(() => {
     const existingPaths = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...block2GuruTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
     const existingTitles = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...block2GuruTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
     return block3PrimaryTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
@@ -375,7 +392,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       if (titleKey && existingTitles.has(titleKey)) return false;
       return true;
     });
-  }, [block3PrimaryTiles, block1QuickActionTiles, block2GuruTiles]);
+  }, [block3PrimaryTiles, block1QuickActionTiles, deduplicatedBlock2]);
 
   const filteredBlock3 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -390,12 +407,12 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   const deduplicatedBlock4 = useMemo(() => {
     const existingPaths = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...block2GuruTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
       ...deduplicatedBlock3.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
     const existingTitles = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...block2GuruTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...deduplicatedBlock3.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
     return block4CrossModuleTiles.filter((t) => {
@@ -405,7 +422,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       if (titleKey && existingTitles.has(titleKey)) return false;
       return true;
     });
-  }, [block4CrossModuleTiles, block1QuickActionTiles, block2GuruTiles, deduplicatedBlock3]);
+  }, [block4CrossModuleTiles, block1QuickActionTiles, deduplicatedBlock2, deduplicatedBlock3]);
 
   const filteredBlock4 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
