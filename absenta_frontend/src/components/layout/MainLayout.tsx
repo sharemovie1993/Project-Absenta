@@ -144,13 +144,13 @@ function MainLayoutContent() {
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",
-            isTvMode
+            isTvMode || isHideSidebarForPortal
               ? "grid grid-cols-1"
               : `grid grid-cols-1 lg:grid-cols-[320px_1fr] ${showInstruction ? 'xl:grid-cols-[320px_1fr_300px]' : 'xl:grid-cols-[320px_1fr_0px]'}`
           )}>
             
-            {/* Sidebar Kiri (Grid-Integrated) */}
-            {!isMobile && !isTvMode && (
+            {/* Sidebar Kiri (Grid-Integrated) - Sembunyikan Saat Portal Launcher Mode */}
+            {!isMobile && !isTvMode && !isHideSidebarForPortal && (
               <aside className="hidden lg:block w-80 flex-shrink-0">
                 <div className="sticky top-20">
                   <div className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.08)] bg-white dark:bg-slate-900 mb-8 flex flex-col min-h-[calc(100vh-160px)]">

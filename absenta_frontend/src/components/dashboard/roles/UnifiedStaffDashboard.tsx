@@ -275,10 +275,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     setDashboardMode(mode);
     if (typeof window !== 'undefined') {
       localStorage.setItem('absenta_dashboard_mode', mode);
+      window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: mode }));
     }
     toast.success(
       mode === 'portal'
-        ? 'Beralih ke Mode Portal Apps 📱'
+        ? 'Beralih ke Mode Portal Apps 📱 (Full-Width Launcher)'
         : 'Beralih ke Mode Dashboard Desktop 🖥️'
     );
   };
