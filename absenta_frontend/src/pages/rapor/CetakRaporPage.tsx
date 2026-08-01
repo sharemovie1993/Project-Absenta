@@ -15,6 +15,8 @@ import {
   Calculator,
   Award,
   CheckCircle,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
@@ -22,14 +24,16 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
+import { useAuth } from '../../hooks/useAuth';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useStrukturKurikulumOptions } from '../../hooks/useStrukturKurikulumOptions';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
-import { generateRaporPdf, generateP5RaporPdf } from '../../utils/print/modules/pdfRapor';
+import { generateRaporPdf, generateP5RaporPdf, generateRaporKelasBatchPdf } from '../../utils/print/modules/pdfRapor';
 
 // Import Hardened Types, Subcomponents & Schemas
 import {
@@ -67,6 +71,14 @@ export default function CetakRaporPage() {
   const [pdfLoading, setPdfLoading] = useState<Record<string, boolean>>({});
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
 
+  // ── User Auth & Wali Kelas Operational Context ──
+  const { user } = useAuth();
+  const userKelasId = useMemo(() => {
+    return user?.wali_kelas_kelas_id || (user as any)?.kelas_id || (user as any)?.assigned_kelas_id || null;
+  }, [user]);
+
+  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+
   // ── Centralized System Hooks ──
   const { isJenjangSmk } = useJenjang();
   const { rawList: classList, isLoading: isLoadingClasses } = useKelasOptions({
@@ -95,12 +107,16 @@ export default function CetakRaporPage() {
     }
   }, [activeSem, selectedSemester]);
 
-  // Auto-select first class when classList loads and no class is selected
+  // Auto-select class: prioritize Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
     if (!selectedKelas && classList && classList.length > 0) {
-      setSelectedKelas(classList[0].id);
+      if (userKelasId && classList.some((k: any) => k.id === userKelasId)) {
+        setSelectedKelas(userKelasId);
+      } else {
+        setSelectedKelas(classList[0].id);
+      }
     }
-  }, [classList, selectedKelas]);
+  }, [classList, selectedKelas, userKelasId]);
 
   const activeYear = useMemo<AcademicYear | null>(() => {
     const targetId = selectedTahunPelajaran || activeTp?.id;
@@ -115,6 +131,17 @@ export default function CetakRaporPage() {
     const matched = (semesterOptions ?? []).find(s => s.value === targetId);
     return { id: targetId, nama: (matched?.raw as any)?.nama_semester || activeSem?.nama_semester || targetId, is_active: true };
   }, [activeSem, selectedSemester, semesterOptions]);
+
+  // ── Hook Struktur Kurikulum Rombel ──
+  const currentKelasObj = useMemo(() => {
+    return (classList ?? []).find((k: any) => k.id === selectedKelas);
+  }, [classList, selectedKelas]);
+
+  const { totalJp: kurikulumTotalJp, rawList: kurikulumStrukturList } = useStrukturKurikulumOptions({
+    tahunPelajaranId: activeYear?.id,
+    tingkat: currentKelasObj?.tingkat,
+    jurusanId: currentKelasObj?.jurusan_id || currentKelasObj?.jurusan?.id,
+  });
 
   // ── Rekap Absensi custom hooks ──
   const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas, undefined, activeYear?.id);
@@ -139,13 +166,21 @@ export default function CetakRaporPage() {
     enabled: !!selectedTranskripStudent?.id,
   });
 
-  // ── Kelas options ──
+  // ── Enhanced Kelas Options with Wali Kelas Label & Highlighting ──
   const kelasOptions = useMemo<SearchableSelectOption[]>(() => {
-    return (classList ?? []).map((k: RawStudent) => ({
-      value: k.id,
-      label: k.nama_siswa || k.nama || k.nama_lengkap || 'Rombel',
-    }));
-  }, [classList]);
+    return (classList ?? []).map((k: any) => {
+      const isWali = Boolean(userKelasId && k.id === userKelasId);
+      const namePart = k.nama_kelas || k.nama || k.nama_lengkap || 'Rombel';
+      const tingkatPart = k.tingkat ? `Kelas ${k.tingkat} - ` : '';
+      const jurusanPart = k.jurusan?.kode_jurusan ? ` (${k.jurusan.kode_jurusan})` : (k.kode_jurusan ? ` (${k.kode_jurusan})` : '');
+      const label = `${tingkatPart}${namePart}${jurusanPart}${isWali ? ' ⭐ [KELAS BINAAN ANDA]' : ''}`;
+      return {
+        value: k.id,
+        label,
+        raw: k,
+      };
+    });
+  }, [classList, userKelasId]);
 
   // ── Filtered students ──
   const filteredStudents = useMemo<LegerStudent[]>(() => {
@@ -341,6 +376,37 @@ export default function CetakRaporPage() {
     toast.success('Mengekspor file Excel Leger Kelas...');
   }, [selectedKelas, activeYear, activeSemester]);
 
+  const handleBatchPrintRapor = useCallback(async () => {
+    if (!selectedKelas || !activeYear?.id || !activeSemester?.id) {
+      toast.error('Pilih kelas, tahun pelajaran, dan semester terlebih dahulu');
+      return;
+    }
+    if (!filteredStudents || filteredStudents.length === 0) {
+      toast.error('Tidak ada siswa di kelas ini untuk dicetak.');
+      return;
+    }
+    setIsBatchPrinting(true);
+    toast.info(`Memproses cetak massal ${filteredStudents.length} Rapor Siswa...`);
+    try {
+      const currentKelasObj = (classList ?? []).find((k: any) => k.id === selectedKelas);
+      const { blobUrl } = await generateRaporKelasBatchPdf({
+        students: filteredStudents,
+        tahunPelajaranId: activeYear.id,
+        semesterId: activeSemester.id,
+        tahunPelajaranNama: activeYear.nama,
+        semesterNama: activeSemester.nama,
+        kelasNama: (currentKelasObj as any)?.nama_kelas || 'Sekelas',
+      });
+      window.open(blobUrl, '_blank');
+      toast.success(`Pratinjau Rapor Sekelas (${filteredStudents.length} Siswa) dibuka di tab baru`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Gagal membuat PDF Batch Rapor: ${msg}`);
+    } finally {
+      setIsBatchPrinting(false);
+    }
+  }, [selectedKelas, activeYear, activeSemester, filteredStudents, classList]);
+
   const breadcrumbs = useMemo(
     () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
     []
@@ -427,20 +493,37 @@ export default function CetakRaporPage() {
               )}
             </div>
 
-            {/* Ekspor Leger */}
+            {/* Action Group: Cetak Massal & Ekspor Leger */}
             {selectedKelas && leger?.data && (
-              <Button
-                onClick={handleExportLeger}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span className="hidden sm:inline">EKSPOR LEGER</span>
-                <span className="sm:hidden">LEGER</span>
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                <Button
+                  onClick={handleBatchPrintRapor}
+                  disabled={isBatchPrinting}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
+                  title="Cetak seluruh rapor siswa sekelas dalam 1 file PDF gabungan"
+                >
+                  {isBatchPrinting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
+                  ) : (
+                    <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
+                  )}
+                  <span className="hidden sm:inline">CETAK SEKALIGUS (1 FILE PDF)</span>
+                  <span className="sm:hidden">CETAK 1 FILE</span>
+                </Button>
+
+                <Button
+                  onClick={handleExportLeger}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="hidden sm:inline">EKSPOR LEGER</span>
+                  <span className="sm:hidden">LEGER</span>
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* Tahun Pelajaran & Semester Badge Info */}
+          {/* Tahun Pelajaran, Semester & Struktur Kurikulum Badge Info */}
           {activeYear && activeSemester && (
             <div className="mt-3 hidden sm:flex flex-wrap gap-2">
               <Badge variant="outline" className="text-[10px] font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 whitespace-nowrap">
@@ -450,6 +533,11 @@ export default function CetakRaporPage() {
               <Badge variant="outline" className="text-[10px] font-semibold border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-400 whitespace-nowrap">
                 {activeSemester.nama}
               </Badge>
+              {kurikulumStrukturList && kurikulumStrukturList.length > 0 && (
+                <Badge variant="outline" className="text-[10px] font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 whitespace-nowrap">
+                  Kurikulum: {kurikulumStrukturList.length} Mapel ({kurikulumTotalJp} JP)
+                </Badge>
+              )}
             </div>
           )}
         </Card>

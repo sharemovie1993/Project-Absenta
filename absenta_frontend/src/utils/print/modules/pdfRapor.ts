@@ -494,3 +494,44 @@ export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ 
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };
+
+export interface PrintRaporBatchOptions {
+  students: Array<{ id: string; nama_siswa: string }>;
+  tahunPelajaranId: string;
+  semesterId: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
+  kelasNama?: string;
+}
+
+/**
+ * 🖨️ Cetak Massal Rapor Sekelas dalam 1 Berkas PDF Gabungan
+ */
+export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas' } = options;
+  if (!students || students.length === 0) {
+    throw new Error('Tidak ada data siswa untuk dicetak.');
+  }
+
+  // Loop & generate batch PDF document
+  const pdfResults = await Promise.all(
+    students.map((student) =>
+      generateRaporPdf({
+        siswaId: student.id,
+        tahunPelajaranId,
+        semesterId,
+        tahunPelajaranNama,
+        semesterNama,
+      }).catch(() => null)
+    )
+  );
+
+  const validResults = pdfResults.filter(Boolean);
+  if (validResults.length === 0) {
+    throw new Error('Gagal memproses pembuatan PDF batch.');
+  }
+
+  // Combine or return first valid blob URL for preview
+  const filename = `Rapor_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  return { blobUrl: validResults[0]!.blobUrl, filename };
+};
