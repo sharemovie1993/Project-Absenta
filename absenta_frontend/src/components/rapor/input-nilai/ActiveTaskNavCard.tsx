@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { TeacherTaskItem } from '../../../types/inputNilai.types';
+import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 
 interface ActiveTaskNavCardProps {
   selectedKelasName?: string;
@@ -27,6 +28,9 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
   nextTask,
   onNavigateTask,
 }) => {
+  const shortMapel = getShortSubjectName(selectedMapelName);
+  const isShortened = shortMapel !== selectedMapelName;
+
   return (
     <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-3xl shadow-xl border border-indigo-900/60 flex flex-col sm:flex-row items-center justify-between gap-4">
       
@@ -37,8 +41,13 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
         </div>
         <div>
           <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
-            <h3 className="text-sm font-black text-white tracking-wide">
-              {selectedMapelName}
+            <h3 className="text-sm font-black text-white tracking-wide flex items-center gap-1.5">
+              <span>{shortMapel}</span>
+              {isShortened && (
+                <span className="text-[11px] font-normal text-indigo-300/80 hidden md:inline">
+                  ({selectedMapelName})
+                </span>
+              )}
             </h3>
             {currentTaskStatus && (
               <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full border shadow-sm ${
@@ -75,8 +84,8 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
           <ChevronLeft size={16} className="text-indigo-400 group-hover:-translate-x-0.5 transition-transform" />
           <div className="text-left hidden sm:block">
             <span className="block text-[8px] text-slate-400 uppercase font-black tracking-wider">◀️ Mundur</span>
-            <span className="block text-[10px] font-bold text-slate-200 truncate max-w-[110px]">
-              {prevTask ? `${prevTask.nama_kelas} - ${prevTask.nama_mapel}` : 'Awal Rombel'}
+            <span className="block text-[10px] font-bold text-slate-200 truncate max-w-[120px]">
+              {prevTask ? `${prevTask.nama_kelas} - ${getShortSubjectName(prevTask.nama_mapel)}` : 'Awal Rombel'}
             </span>
           </div>
           <span className="sm:hidden">Mundur</span>
@@ -99,8 +108,8 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
           <span className="sm:hidden">Maju</span>
           <div className="text-right hidden sm:block">
             <span className="block text-[8px] text-indigo-200 uppercase font-black tracking-wider">Maju ▶️</span>
-            <span className="block text-[10px] font-bold text-white truncate max-w-[110px]">
-              {nextTask ? `${nextTask.nama_kelas} - ${nextTask.nama_mapel}` : 'Akhir Rombel'}
+            <span className="block text-[10px] font-bold text-white truncate max-w-[120px]">
+              {nextTask ? `${nextTask.nama_kelas} - ${getShortSubjectName(nextTask.nama_mapel)}` : 'Akhir Rombel'}
             </span>
           </div>
           <ChevronRight size={16} className="text-white group-hover:translate-x-0.5 transition-transform" />

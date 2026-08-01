@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { TeacherProgressInfo, TeacherTaskItem } from '../../../types/inputNilai.types';
+import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 
 interface TeacherProgressCardProps {
   progressInfo?: TeacherProgressInfo;
@@ -185,8 +186,8 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
                           <span className="px-2 py-0.5 rounded-lg bg-indigo-600 text-white font-black text-[11px] shrink-0">
                             {t.nama_kelas}
                           </span>
-                          <span className="text-slate-800 dark:text-slate-200 truncate">
-                            {t.nama_mapel}
+                          <span className="text-slate-800 dark:text-slate-200 truncate" title={t.nama_mapel}>
+                            {getShortSubjectName(t.nama_mapel)}
                           </span>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
