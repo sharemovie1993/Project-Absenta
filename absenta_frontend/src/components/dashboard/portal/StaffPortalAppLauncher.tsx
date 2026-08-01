@@ -241,14 +241,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     // Aksi Pengajaran & Presensi Diri Guru
     items.push(
       {
-        id: 'b2-jadwal',
-        title: 'Jadwal Mengajar',
-        iconComp: Calendar,
-        colorClass: 'text-cyan-600 dark:text-cyan-400',
-        bgLightClass: 'bg-cyan-50 dark:bg-cyan-950/60',
-        path: '/jadwal/saya',
-      },
-      {
         id: 'b2-jurnal-kbm',
         title: 'Isi Jurnal KBM',
         iconComp: BookOpen,
