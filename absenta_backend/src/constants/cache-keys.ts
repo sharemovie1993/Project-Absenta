@@ -93,6 +93,14 @@ export const CACHE_KEYS = {
   HUBIN: {
     PKL_REKAP: (tenantId: string, kelasId?: string) => `hubin:${tenantId}:pkl_rekap:${kelasId || 'all'}`,
     PKL_SERTIFIKAT: (tenantId: string, siswaId: string) => `hubin:${tenantId}:sertifikat:${siswaId}`,
+    MITRA_LIST: (tenantId: string, search: string = '') => `hubin:${tenantId}:mitra:${search || 'all'}`,
+    PENEMPATAN_LIST: (tenantId: string, status?: string) => `hubin:${tenantId}:penempatan:${status || 'all'}`,
+    LOGBOOK_LIST: (tenantId: string, siswaId?: string) => `hubin:${tenantId}:logbook:${siswaId || 'all'}`,
+    MONITORING_LIST: (tenantId: string, guruId?: string) => `hubin:${tenantId}:monitoring:${guruId || 'all'}`,
+    NILAI_LIST: (tenantId: string, penempatanId?: string) => `hubin:${tenantId}:nilai:${penempatanId || 'all'}`,
+    BKK_LOWONGAN: (tenantId: string) => `hubin:${tenantId}:bkk:lowongan`,
+    TRACER_STUDY: (tenantId: string) => `hubin:${tenantId}:tracer`,
+    TEFA_PROJECTS: (tenantId: string) => `hubin:${tenantId}:tefa`,
     ALL: (tenantId: string) => `hubin:${tenantId}:*`
   },
 
@@ -149,18 +157,7 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `sarpras:${tenantId}:*`
   },
 
-  // 🏭 HUBIN, DUDI, PKL/Prakerin, BKK, Tracer Study, & TEFA related caches
-  HUBIN: {
-    MITRA_LIST: (tenantId: string, search: string = '') => `hubin:${tenantId}:mitra:${search || 'all'}`,
-    PENEMPATAN_LIST: (tenantId: string, status?: string) => `hubin:${tenantId}:penempatan:${status || 'all'}`,
-    LOGBOOK_LIST: (tenantId: string, siswaId?: string) => `hubin:${tenantId}:logbook:${siswaId || 'all'}`,
-    MONITORING_LIST: (tenantId: string, guruId?: string) => `hubin:${tenantId}:monitoring:${guruId || 'all'}`,
-    NILAI_LIST: (tenantId: string, penempatanId?: string) => `hubin:${tenantId}:nilai:${penempatanId || 'all'}`,
-    BKK_LOWONGAN: (tenantId: string) => `hubin:${tenantId}:bkk:lowongan`,
-    TRACER_STUDY: (tenantId: string) => `hubin:${tenantId}:tracer`,
-    TEFA_PROJECTS: (tenantId: string) => `hubin:${tenantId}:tefa`,
-    ALL: (tenantId: string) => `hubin:${tenantId}:*`
-  },
+
 
   SYSTEM_CONFIG: {
     ACTIVE: (tenantId: string | null) => `system_config:${tenantId || 'global'}:active`
