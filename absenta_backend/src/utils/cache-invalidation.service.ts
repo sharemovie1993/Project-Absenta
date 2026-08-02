@@ -117,12 +117,17 @@ export class CacheInvalidationService {
   }
 
   /**
-   * 📋 Invalidate cache penilaian & leger rapor
+   * 📜 Invalidate cache Rapor, Nilai Formatif/Sumatif, Leger, P5, & E-Rapor Cetak
    */
-  async invalidateRaporCache(tenantId: string) {
+  async invalidateRaporCache(tenantId: string, kelasId?: string) {
     await cacheService.deletePattern(`academic:${tenantId}:leger:*`);
     await cacheService.deletePattern(`academic:${tenantId}:nilai_kelas:*`);
     await cacheService.deletePattern(`academic:${tenantId}:transkrip:*`);
+    await cacheService.deletePattern(`rapor:${tenantId}:*`);
+    if (kelasId) {
+      await cacheService.deletePattern(`rapor:${tenantId}:leger:${kelasId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
   }
 
   /**
@@ -225,16 +230,7 @@ export class CacheInvalidationService {
     await this.invalidateDashboardCache(tenantId);
   }
 
-  /**
-   * 📜 Invalidate cache Rapor, Nilai Formatif/Sumatif, Leger, P5, & E-Rapor Cetak
-   */
-  async invalidateRaporCache(tenantId: string, kelasId?: string) {
-    await cacheService.deletePattern(`rapor:${tenantId}:*`);
-    if (kelasId) {
-      await cacheService.deletePattern(`rapor:${tenantId}:leger:${kelasId}*`);
-    }
-    await this.invalidateDashboardCache(tenantId);
-  }
+
 
   /**
    * 💰 Invalidate cache billing-related
