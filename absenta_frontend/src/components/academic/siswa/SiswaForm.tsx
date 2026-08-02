@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '../../../lib/utils';
 import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
@@ -51,6 +52,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 }) => {
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
+  const queryClient = useQueryClient();
 
 
   const [loading, setLoading] = useState(false);
@@ -371,6 +373,11 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       } else {
         await createSiswa(payload as CreateSiswaPayload);
       }
+
+      // Client-side cache invalidation for dropdowns, stats, and roster lists
+      queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
 
       toast.success(isEditMode ? 'Data siswa berhasil diperbarui' : 'Siswa baru berhasil ditambahkan');
       onSuccess?.();

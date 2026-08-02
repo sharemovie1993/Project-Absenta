@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera } from 'lucide-react';
 import { 
@@ -311,6 +312,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     fetchKelas();
   }, []);
 
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
