@@ -181,6 +181,16 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `koperasi:${tenantId}:*`
   },
 
+  // 📜 RAPOR (Pengolahan Nilai Formatif/Sumatif, Leger, P5, & Cetak E-Rapor) related caches
+  RAPOR: {
+    NILAI_GRID: (tenantId: string, kelasId: string, mapelId: string) => `rapor:${tenantId}:nilai:${kelasId}:${mapelId}`,
+    LEGER_LIST: (tenantId: string, kelasId: string, semesterId?: string) => `rapor:${tenantId}:leger:${kelasId}:${semesterId || 'active'}`,
+    P5_PROJECTS: (tenantId: string, kelasId?: string) => `rapor:${tenantId}:p5:${kelasId || 'all'}`,
+    TEACHER_PROGRESS: (tenantId: string) => `rapor:${tenantId}:progress`,
+    RAPOR_STUDENT_PREVIEW: (tenantId: string, siswaId: string, semesterId?: string) => `rapor:${tenantId}:preview:${siswaId}:${semesterId || 'active'}`,
+    ALL: (tenantId: string) => `rapor:${tenantId}:*`
+  },
+
 
 
   SYSTEM_CONFIG: {

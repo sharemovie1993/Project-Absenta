@@ -226,6 +226,17 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 📜 Invalidate cache Rapor, Nilai Formatif/Sumatif, Leger, P5, & E-Rapor Cetak
+   */
+  async invalidateRaporCache(tenantId: string, kelasId?: string) {
+    await cacheService.deletePattern(`rapor:${tenantId}:*`);
+    if (kelasId) {
+      await cacheService.deletePattern(`rapor:${tenantId}:leger:${kelasId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 💰 Invalidate cache billing-related
    */
   async invalidateBillingCache(tenantId: string) {
