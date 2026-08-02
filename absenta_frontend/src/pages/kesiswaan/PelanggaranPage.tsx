@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -118,16 +119,27 @@ export default function PelanggaranPage() {
     return !!effectiveWaliKelasId || pos.includes('WALIKELAS');
   }, [user, effectiveWaliKelasId]);
 
-  // Penentuan mode tampilan: Jika user punya rombel binaan DAN (aktif di WALIKELAS_WORKSPACE ATAU bukan Staf Kesiswaan/Admin murni)
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
+
+  // Penentuan mode tampilan (URL Context > Active Workspace > Role Default):
+  // 1. Jika URL membawa query ?context=walikelas -> Paksa mode Wali Kelas (filter rombel binaan).
+  // 2. Jika URL membawa query ?context=kesiswaan/kurikulum/sekolah -> Paksa mode Eksekutif Sekolah (lintas rombel).
+  // 3. Fallback: Gunakan activeWorkspaceId atau ketersediaan effectiveWaliKelasId.
   const isWaliKelas = useMemo(() => {
     if (!effectiveWaliKelasId) return false;
+
+    if (urlContext === 'walikelas' || urlContext === 'manual') return true;
+    if (urlContext === 'kesiswaan' || urlContext === 'kurikulum' || urlContext === 'sekolah') return false;
+
     const roleName = String(user?.role?.name || '').toUpperCase();
     const isPureAdminOrKesiswaan = roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName === 'KESISWAAN';
 
     if (activeWorkspaceId === 'WALIKELAS_WORKSPACE') return true;
     if (!isPureAdminOrKesiswaan && isWaliKelasRole) return true;
     return false;
-  }, [effectiveWaliKelasId, activeWorkspaceId, user, isWaliKelasRole]);
+  }, [effectiveWaliKelasId, urlContext, activeWorkspaceId, user, isWaliKelasRole]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
