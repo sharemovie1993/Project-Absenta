@@ -91,6 +91,7 @@ export class StrukturKurikulumService {
     }
 
     await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateBebanGuruCache(tenantId);
     return result;
   }
 
@@ -99,6 +100,7 @@ export class StrukturKurikulumService {
       where: { id, tenant_id: tenantId }
     });
     await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateBebanGuruCache(tenantId);
     return res;
   }
 

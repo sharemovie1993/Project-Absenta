@@ -209,11 +209,19 @@ export const useMasterStrukturState = () => {
     });
   }, [mapping?.data, selectedTingkat]);
 
+  const invalidateStrukturKurikulumCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+    queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['mapel-options-list'] });
+  }, [queryClient]);
+
   // Mutations
   const upsertMutation = useMutation({
     mutationFn: (data: Partial<StrukturKurikulum>) => kurikulumApi.upsertStruktur(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+      invalidateStrukturKurikulumCache();
       toast.success('Struktur kurikulum berhasil disimpan');
       closeModal();
     },
@@ -223,7 +231,7 @@ export const useMasterStrukturState = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => kurikulumApi.deleteStruktur(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+      invalidateStrukturKurikulumCache();
       toast.success('Data dihapus');
     }
   });
@@ -382,7 +390,7 @@ export const useMasterStrukturState = () => {
       
       try {
         await Promise.all(promises);
-        queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+        invalidateStrukturKurikulumCache();
         toast.success(`Berhasil memetakan ${selections.length} mata pelajaran`);
         closeModal();
       } catch (err) {
@@ -422,7 +430,7 @@ export const useMasterStrukturState = () => {
       const promises = Array.from(selectedRowIds).map(id => kurikulumApi.deleteStruktur(id));
       try {
         await Promise.all(promises);
-        queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+        invalidateStrukturKurikulumCache();
         toast.success(`Berhasil menghapus ${count} pemetaan`);
         setSelectedRowIds(new Set());
       } catch (err) {
