@@ -72,6 +72,8 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['struktur-kurikulum-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       toast.success(res.message || 'Struktur kurikulum berhasil disalin!');
       if (onSuccess) onSuccess();
       onClose();

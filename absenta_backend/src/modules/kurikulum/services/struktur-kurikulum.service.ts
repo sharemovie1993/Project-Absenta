@@ -1,5 +1,6 @@
 import { prisma } from '../../../utils/prisma';
 import { cacheService } from '../../../utils/cache.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 import { CACHE_KEYS } from '../../../constants/cache-keys';
 
 export function calculatePositionEquivalency(code: string = '', name: string = ''): number {
@@ -71,28 +72,34 @@ export class StrukturKurikulumService {
       }
     });
 
+    let result;
     if (existing) {
-      return prisma.strukturKurikulum.update({
+      result = await prisma.strukturKurikulum.update({
         where: { id: existing.id },
         data: {
           jp_per_minggu: data.jp_per_minggu,
           kelompok: data.kelompok
         }
       });
+    } else {
+      result = await prisma.strukturKurikulum.create({
+        data: {
+          tenant_id: tenantId,
+          ...data
+        }
+      });
     }
 
-    return prisma.strukturKurikulum.create({
-      data: {
-        tenant_id: tenantId,
-        ...data
-      }
-    });
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    return result;
   }
 
   static async delete(tenantId: string, id: string) {
-    return prisma.strukturKurikulum.deleteMany({
+    const res = await prisma.strukturKurikulum.deleteMany({
       where: { id, tenant_id: tenantId }
     });
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    return res;
   }
 
   static async getByTingkatGrouped(tenantId: string, tahunPelajaranId: string) {
