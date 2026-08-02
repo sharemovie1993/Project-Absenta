@@ -6,6 +6,7 @@ import { exportPoliciesCommand, importPoliciesCommand, resetPoliciesCommand } fr
 import { logAdminResetUserPasswordCommand, logAdminUpdateRolePermissionsCommand } from './commands/audit-log.command';
 import { sidebarRenderingService } from '@/modules/menu/services/sidebar-rendering.service';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export interface CreateUserInput {
   email: string;

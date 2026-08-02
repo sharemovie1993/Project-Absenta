@@ -191,6 +191,16 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `rapor:${tenantId}:*`
   },
 
+  // 👤 USER Management & Access Control related caches
+  USER: {
+    PROFILE: (userId: string) => `user:profile:${userId}`,
+    CAPABILITIES: (userId: string) => `user:capabilities:${userId}`,
+    MENU_SIDEBAR: (userId: string) => `user:sidebar:${userId}`,
+    USERS_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', role?: string) =>
+      `user:${tenantId}:list:${page}:${limit}:${search || 'all'}:${role || 'all'}`,
+    ALL: (tenantId: string) => `user:${tenantId}:*`
+  },
+
 
 
   SYSTEM_CONFIG: {

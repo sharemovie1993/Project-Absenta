@@ -230,6 +230,19 @@ export class CacheInvalidationService {
     await this.invalidateDashboardCache(tenantId);
   }
 
+  /**
+   * 👤 Invalidate cache User accounts, RBAC roles, & sidebar capabilities
+   */
+  async invalidateUserCache(tenantId: string, userId?: string) {
+    await cacheService.deletePattern(`user:${tenantId}:*`);
+    if (userId) {
+      await cacheService.deletePattern(`user:profile:${userId}*`);
+      await cacheService.deletePattern(`user:capabilities:${userId}*`);
+      await cacheService.deletePattern(`user:sidebar:${userId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
 
 
   /**
