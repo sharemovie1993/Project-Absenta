@@ -742,19 +742,21 @@ export const UnifiedStaffDashboard: React.FC = () => {
           onSwitchToDesktop={() => handleToggleMode('desktop')}
           onOpenJurnalModal={() => {
             const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-            if (sesiHariIni) {
+            if (sesiHariIni?.raw) {
               setSessionForJournal(sesiHariIni.raw);
               setJournalModalOpen(true);
             } else {
-              toast.error('Tidak ada sesi mengajar aktif hari ini untuk diisi jurnal');
+              toast('Belum ada sesi KBM aktif. Mengarahkan ke Manajemen Sesi...', { icon: 'ℹ️' });
+              navigate('/attendance/ops?tab=sesi');
             }
           }}
           onOpenAbsenGuruModal={() => {
             const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-            if (sesiHariIni) {
+            if (sesiHariIni?.raw) {
               setSelectedSesi(sesiHariIni.raw);
             } else {
-              toast.error('Tidak ada sesi pengajaran aktif untuk dilaporkan');
+              toast('Belum ada sesi KBM aktif. Mengarahkan ke Absensi Kelas...', { icon: 'ℹ️' });
+              navigate('/attendance/ops?tab=sesi');
             }
           }}
           onOpenCatatPelanggaranModal={() => setCatatModalOpen(true)}
