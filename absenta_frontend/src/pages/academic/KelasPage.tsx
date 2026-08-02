@@ -63,8 +63,11 @@ export const KelasPage: React.FC = () => {
   const { tingkatList: hookTingkatList } = useJenjang();
   const guruIdFromUrl = searchParams.get('guru_id') || '';
 
-  const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // Permissions — harus di atas useQuery agar 'canView' sudah terdefinisi saat dipakai di 'enabled'
+  const canCreate = can('academic.structures.create');
+  const canEdit = can('academic.structures.update');
+  const canView = can('academic.structures.view.list');
+
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({
     queryKey: ['academic-stats'],
@@ -74,6 +77,14 @@ export const KelasPage: React.FC = () => {
   });
 
   const stats = statsRes?.data || null;
+
+  // Local UI state
+  const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [subMode, setSubMode] = useState<'manual' | null>(null);
 
   const sortedTingkatStats = useMemo(() => {
     const statsMap = new Map((stats?.active_kelas_by_tingkat || []).map(item => [item.tingkat, item.count]));
