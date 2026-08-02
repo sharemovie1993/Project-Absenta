@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KonselingSiswa, type KasusBK } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
@@ -43,6 +44,13 @@ export const KonselingSection: React.FC = () => {
 
   const confirm = useConfirm();
   const { can } = useAuth();
+  const queryClient = useQueryClient();
+  const invalidateBpbkCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+    queryClient.invalidateQueries({ queryKey: ['konseling-history'] });
+    queryClient.invalidateQueries({ queryKey: ['ews-risk-students'] });
+    queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
+  }, [queryClient]);
 
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
@@ -141,6 +149,7 @@ export const KonselingSection: React.FC = () => {
       const res = await bpbkApi.deleteKonseling(id);
       if (res.success) {
         toast.success('Catatan konseling berhasil dihapus');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
@@ -156,6 +165,7 @@ export const KonselingSection: React.FC = () => {
       const res = await bpbkApi.restoreKonseling(id);
       if (res.success) {
         toast.success('Catatan konseling berhasil dipulihkan');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error('Gagal memulihkan catatan');
@@ -187,6 +197,7 @@ export const KonselingSection: React.FC = () => {
       }
       setModalOpen(false);
       resetForm();
+      invalidateBpbkCache();
       fetchData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan catatan konseling';

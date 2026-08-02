@@ -171,6 +171,17 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🧠 Invalidate cache BPBK konseling, home visit, & EWS
+   */
+  async invalidateBpbkCache(tenantId: string, siswaId?: string) {
+    await cacheService.deletePattern(`bpbk:${tenantId}:*`);
+    if (siswaId) {
+      await cacheService.deletePattern(`bpbk:${tenantId}:ews:${siswaId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 💰 Invalidate cache billing-related
    */
   async invalidateBillingCache(tenantId: string) {

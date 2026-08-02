@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KasusBK } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -79,6 +80,12 @@ export const CasesSection: React.FC = () => {
 
   const confirm = useConfirm();
   const { can } = useAuth();
+  const queryClient = useQueryClient();
+  const invalidateBpbkCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+    queryClient.invalidateQueries({ queryKey: ['ews-risk-students'] });
+    queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
+  }, [queryClient]);
 
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
@@ -192,6 +199,7 @@ export const CasesSection: React.FC = () => {
       const res = await bpbkApi.deleteKasusBK(id);
       if (res.success) {
         toast.success('Kasus BK berhasil diarsipkan');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error('Gagal menghapus kasus BK');
@@ -206,6 +214,7 @@ export const CasesSection: React.FC = () => {
       const res = await bpbkApi.restoreKasusBK(id);
       if (res.success) {
         toast.success('Kasus BK berhasil dipulihkan dari keranjang sampah');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error('Gagal memulihkan kasus');
@@ -229,6 +238,7 @@ export const CasesSection: React.FC = () => {
       const res = await bpbkApi.reopenKasusBK(id);
       if (res.success) {
         toast.success('Kasus BK berhasil dibuka kembali');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error('Gagal membuka kembali kasus');
@@ -253,6 +263,7 @@ export const CasesSection: React.FC = () => {
         setCloseModalOpen(false);
         setCloseCaseId(null);
         setCatatanSelesai('');
+        invalidateBpbkCache();
         fetchData();
       } else {
         toast.error('Gagal menyelesaikan kasus');
@@ -283,6 +294,7 @@ export const CasesSection: React.FC = () => {
       }
       setModalOpen(false);
       resetForm();
+      invalidateBpbkCache();
       fetchData();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gagal menyimpan kasus BK');

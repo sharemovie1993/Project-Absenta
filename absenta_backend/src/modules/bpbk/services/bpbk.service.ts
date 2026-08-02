@@ -8,6 +8,7 @@ import { systemConfigService } from '../../system-config/services/system-config.
 import { randomBytes } from 'crypto';
 import { cacheService } from '../../../utils/cache.service';
 import { getSmartFrontendBaseUrl } from '../../../utils/url-helper';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class BpbkService {
   // === Helper getWaliKelasClassIds ===
@@ -331,6 +332,7 @@ export class BpbkService {
       await this.triggerParentNotification(tenantId, res.siswa_id, ParentEventType.BK_CASE_ALERT, {});
     }
 
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -357,6 +359,7 @@ export class BpbkService {
       entity_id: id,
       metadata: { oldValue: oldVal, newValue: res }
     });
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -378,6 +381,8 @@ export class BpbkService {
       entity_id: id,
       metadata: { oldValue: oldVal, newValue: res }
     });
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
+    return res;
     return res;
   }
 
@@ -661,6 +666,7 @@ export class BpbkService {
       metadata: { newValue: res }
     });
 
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -688,6 +694,7 @@ export class BpbkService {
       entity_id: id,
       metadata: { oldValue: oldVal, newValue: res }
     });
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -709,6 +716,7 @@ export class BpbkService {
       entity_id: id,
       metadata: { oldValue: oldVal, newValue: res }
     });
+    await cacheInvalidationService.invalidateBpbkCache(tenantId, res.siswa_id);
     return res;
   }
 
@@ -1732,13 +1740,14 @@ export class BpbkService {
       where: { tenant_id: tenantId, key: 'bpbk_ews_weights' }
     });
     const serialized = JSON.stringify(weights);
+    let result;
     if (existing) {
-      return prisma.config.update({
+      result = await prisma.config.update({
         where: { id: existing.id },
         data: { value: serialized }
       });
     } else {
-      return prisma.config.create({
+      result = await prisma.config.create({
         data: {
           tenant_id: tenantId,
           key: 'bpbk_ews_weights',
@@ -1747,6 +1756,8 @@ export class BpbkService {
         }
       });
     }
+    await cacheInvalidationService.invalidateBpbkCache(tenantId);
+    return result;
   }
 
   static async getCalendarEvents(tenantId: string, query: { start?: string; end?: string }) {
