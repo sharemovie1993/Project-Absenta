@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ClipboardList,
@@ -75,8 +76,21 @@ const SarprasLoansPage: React.FC = () => {
   const { activeWorkspaceId } = useNavStore();
   const { can } = useAuth();
 
-  const isPersonalTeacherMode = activeWorkspaceId === 'TEACHER_WORKSPACE';
-  const isKurikulumWorkspace = activeWorkspaceId === 'KURIKULUM_WORKSPACE';
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const urlMode = searchParams.get('mode') || searchParams.get('context');
+
+  const isPersonalTeacherMode = useMemo(() => {
+    if (urlMode === 'personal' || urlMode === 'teacher') return true;
+    if (urlMode === 'manage' || urlMode === 'kurikulum' || urlMode === 'sarpras') return false;
+    return activeWorkspaceId === 'TEACHER_WORKSPACE';
+  }, [urlMode, activeWorkspaceId]);
+
+  const isKurikulumWorkspace = useMemo(() => {
+    if (urlMode === 'kurikulum') return true;
+    if (urlMode === 'personal' || urlMode === 'manage' || urlMode === 'sarpras') return false;
+    return activeWorkspaceId === 'KURIKULUM_WORKSPACE';
+  }, [urlMode, activeWorkspaceId]);
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
