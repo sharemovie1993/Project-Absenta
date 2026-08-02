@@ -596,7 +596,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Building2 size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Ruang Kerja Jabatan {dynamicJabatanLabel ? `: ${dynamicJabatanLabel.toUpperCase()}` : ''}
+                2. Ruang Kerja {dynamicJabatanLabel ? `: ${dynamicJabatanLabel.toUpperCase()}` : ''}
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
