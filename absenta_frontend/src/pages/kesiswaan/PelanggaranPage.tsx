@@ -228,8 +228,11 @@ export default function PelanggaranPage() {
     queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+    queryClient.invalidateQueries({ queryKey: ['bpbk-ews-list'] });
+    queryClient.invalidateQueries({ queryKey: ['pelanggaran-list'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
     queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
   }, [queryClient]);
 
   const resetForm = useCallback(() => {

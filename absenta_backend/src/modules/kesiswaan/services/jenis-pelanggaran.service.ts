@@ -1,4 +1,5 @@
 import { prisma } from '@/utils/prisma';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export const DEFAULT_JENIS_PELANGGARAN = [
   { kategori: "Pelanggaran Ringan", nama_pelanggaran: "Terlambat Masuk Sekolah", poin: 5 },
@@ -51,7 +52,7 @@ export async function createJenisPelanggaran(
   tenantId: string,
   input: { kategori: string; nama_pelanggaran: string; poin: number }
 ) {
-  return prisma.jenisPelanggaran.create({
+  const res = await prisma.jenisPelanggaran.create({
     data: {
       tenant_id: tenantId,
       kategori: input.kategori,
@@ -59,6 +60,9 @@ export async function createJenisPelanggaran(
       poin: input.poin
     }
   });
+
+  await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+  return res;
 }
 
 export async function updateJenisPelanggaran(
@@ -66,7 +70,7 @@ export async function updateJenisPelanggaran(
   id: string,
   input: { kategori?: string; nama_pelanggaran?: string; poin?: number }
 ) {
-  return prisma.jenisPelanggaran.updateMany({
+  const res = await prisma.jenisPelanggaran.updateMany({
     where: { id, tenant_id: tenantId },
     data: {
       ...(typeof input.kategori !== 'undefined' ? { kategori: input.kategori } : {}),
@@ -74,12 +78,18 @@ export async function updateJenisPelanggaran(
       ...(typeof input.poin !== 'undefined' ? { poin: input.poin } : {})
     }
   });
+
+  await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+  return res;
 }
 
 export async function deleteJenisPelanggaran(tenantId: string, id: string) {
-  return prisma.jenisPelanggaran.deleteMany({
+  const res = await prisma.jenisPelanggaran.deleteMany({
     where: { id, tenant_id: tenantId }
   });
+
+  await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+  return res;
 }
 
 export async function countJenisPelanggaran(tenantId: string) {

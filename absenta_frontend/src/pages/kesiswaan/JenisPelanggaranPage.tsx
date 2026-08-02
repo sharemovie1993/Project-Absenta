@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -26,6 +27,7 @@ const jenisPelanggaranSchema = z.object({
 });
 
 export default function JenisPelanggaranPage() {
+  const queryClient = useQueryClient();
   const [data, setData] = useState<JenisPelanggaran[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -109,6 +111,10 @@ export default function JenisPelanggaranPage() {
         toast.success('Data berhasil disimpan');
       }
       setModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       fetchData(currentPage);
       resetForm();
     } catch (err) {
@@ -139,6 +145,10 @@ export default function JenisPelanggaranPage() {
       try {
         await kesiswaanApi.deleteJenisPelanggaran(id);
         toast.success('Data berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+        queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         fetchData(currentPage);
       } catch (err) {
         toast.error('Gagal menghapus data');
