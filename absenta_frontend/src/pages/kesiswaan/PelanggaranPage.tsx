@@ -204,6 +204,19 @@ export default function PelanggaranPage() {
     queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
   }, [queryClient]);
 
+  const resetForm = useCallback(() => {
+    setFormData({
+      siswa_id: '',
+      jenis_pelanggaran: '',
+      poin: 0,
+      keterangan: '',
+      tanggal: new Date().toISOString().split('T')[0],
+      status: 'BARU'
+    });
+    setSelectedSiswa(null);
+    setSelectedId(null);
+  }, []);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const validation = pelanggaranSchema.safeParse(formData);
@@ -229,19 +242,6 @@ export default function PelanggaranPage() {
       toast.error('Gagal menyimpan catatan');
     }
   }, [selectedId, formData, fetchData, invalidateAllPelanggaranCaches, resetForm]);
-
-  const resetForm = useCallback(() => {
-    setFormData({
-      siswa_id: '',
-      jenis_pelanggaran: '',
-      poin: 0,
-      keterangan: '',
-      tanggal: new Date().toISOString().split('T')[0],
-      status: 'BARU'
-    });
-    setSelectedSiswa(null);
-    setSelectedId(null);
-  }, []);
 
   const handleEdit = useCallback((item: Pelanggaran) => {
     setFormData({
