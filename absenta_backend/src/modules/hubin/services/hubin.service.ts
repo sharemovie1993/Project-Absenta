@@ -107,6 +107,7 @@ export class HubinService {
       },
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_CREATE', 'MitraIndustri', result.id, { nama: result.nama });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
@@ -166,6 +167,7 @@ export class HubinService {
       data,
     });
     this.log(tenantId, userId || null, 'HUBIN_MITRA_UPDATE', 'MitraIndustri', id, { nama: result.nama });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
@@ -174,6 +176,7 @@ export class HubinService {
       where: { id, tenant_id: tenantId },
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_DELETE', 'MitraIndustri', id, { nama: result.nama });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
@@ -355,6 +358,7 @@ export class HubinService {
       },
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', result.id, { siswa_nama: siswa?.nama_siswa });
+    await cacheInvalidationService.invalidateHubinCache(tenantId, data.siswa_id);
     return result;
   }
 
@@ -405,6 +409,7 @@ export class HubinService {
       siswa_nama: result.Siswa?.nama_siswa, 
       status: result.status 
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId, result.siswa_id);
     return result;
   }
 
@@ -469,6 +474,7 @@ export class HubinService {
       this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', res.id, { siswa_nama: siswa?.nama_siswa });
       results.push(res);
     }
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return results;
   }
 

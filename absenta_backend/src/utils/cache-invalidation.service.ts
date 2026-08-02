@@ -191,6 +191,17 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🏭 Invalidate cache HUBIN, DUDI, PKL/Prakerin, BKK, Tracer Study, & TEFA
+   */
+  async invalidateHubinCache(tenantId: string, siswaId?: string) {
+    await cacheService.deletePattern(`hubin:${tenantId}:*`);
+    if (siswaId) {
+      await cacheService.deletePattern(`hubin:${tenantId}:siswa:${siswaId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 🧠 Invalidate cache BPBK konseling, home visit, & EWS
    */
   async invalidateBpbkCache(tenantId: string, siswaId?: string) {
