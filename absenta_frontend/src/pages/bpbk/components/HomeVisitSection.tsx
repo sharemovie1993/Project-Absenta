@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type HomeVisit } from '../../../api/bpbk.api';
 import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
 import { Card } from '../../../components/ui/Card';
@@ -107,6 +108,8 @@ export const HomeVisitSection: React.FC = () => {
       const res = await bpbkApi.deleteHomeVisit(id);
       if (res.success) {
         toast.success('Log kunjungan rumah berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['bpbk-homevisit-list'] });
+        queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
         fetchData();
       } else {
         toast.error(res.message || 'Gagal menghapus');
