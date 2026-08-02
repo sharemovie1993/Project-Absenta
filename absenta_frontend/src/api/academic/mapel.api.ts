@@ -35,6 +35,14 @@ export interface UpdateMapelPayload {
   tingkat?: number;
 }
 
+export const mapelQueryKeys = {
+  all: ['mapel'] as const,
+  list: (params: { page?: number; limit?: number; search?: string; tingkat?: string }) =>
+    ['mapel', 'list', params] as const,
+  options: ['mapel-options-list'] as const,
+  detail: (id: string) => ['mapel', 'detail', id] as const,
+};
+
 // Get Mapel List - GET /api/academic/mapel
 export const getMapelList = async (
   page = 1, 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -27,7 +27,7 @@ import {
 // Lazy load Table to improve mobile performance (TBT)
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { MobileAcademicList } from '../shared/MobileAcademicList';
-import { getJurusanList, deleteJurusan } from '../../../api/academic/jurusan.api';
+import { getJurusanList, deleteJurusan, jurusanQueryKeys } from '../../../api/academic/jurusan.api';
 import type { Jurusan } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -60,12 +60,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
     queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
   }, [queryClient]);
 
-  const [jurusans, setJurusans] = useState<Jurusan[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [pageInput, setPageInput] = useState('1');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -78,6 +74,17 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   
   const { can } = useAuth();
+
+  // Queries using React Query
+  const { data: listRes, isLoading: loading, refetch } = useQuery({
+    queryKey: jurusanQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm }),
+    queryFn: () => getJurusanList(currentPage, itemsPerPage, debouncedSearchTerm),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const jurusans = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -89,45 +96,13 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
     return jurusans.every(j => selectedIds.has(j.id));
   }, [jurusans, selectedIds]);
 
-  // Fetch jurusans
-  const fetchJurusans = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getJurusanList(page, itemsPerPage, search);
-      
-      if (response.success) {
-        setJurusans(response.data);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.total);
-        setCurrentPage(response.pagination.page);
-      } else {
-        toast.error('Gagal memuat data jurusan');
-      }
-    } catch (error) {
-      console.error('Error fetching jurusans:', error);
-      toast.error('Terjadi kesalahan saat memuat data jurusan');
-    } finally {
-      setLoading(false);
-    }
-  }, [itemsPerPage]);
-
-  useEffect(() => {
-    fetchJurusans(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, fetchJurusans]);
-
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
 
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchJurusans(currentPage, debouncedSearchTerm);
-    }
-  }, [refreshTrigger, fetchJurusans, currentPage, debouncedSearchTerm]);
-
   const handlePageChange = useCallback((page: number) => {
-    fetchJurusans(page, debouncedSearchTerm);
-  }, [fetchJurusans, debouncedSearchTerm]);
+    setCurrentPage(page);
+  }, []);
 
   const handleDelete = useCallback(async (jurusan: Jurusan) => {
     try {
@@ -149,7 +124,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Jurusan berhasil dihapus');
         invalidateJurusanCache();
-        fetchJurusans(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: jurusanQueryKeys.all });
+        refetch();
       } else {
         toast.error(response.message || 'Gagal menghapus jurusan');
       }
@@ -160,7 +136,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       setDeleting(false);
       confirm.setLoading(false);
     }
-  }, [fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
+  }, [confirm, invalidateJurusanCache, queryClient, refetch]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -199,7 +175,9 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
       
-      fetchJurusans(currentPage, debouncedSearchTerm);
+      invalidateJurusanCache();
+      queryClient.invalidateQueries({ queryKey: jurusanQueryKeys.all });
+      refetch();
     } catch (err: any) {
       console.error('Error bulk deleting jurusan:', err);
       toast.error('Terjadi kesalahan saat menghapus data terpilih');
@@ -207,7 +185,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, jurusans, fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
+  }, [selectedIds, jurusans, confirm, invalidateJurusanCache, queryClient, refetch]);
 
   const columns = useMemo(() => [
     { 
@@ -458,7 +436,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
                   <Button
                       variant="toolbarOutline"
                       size="toolbarIcon"
-                      onClick={() => fetchJurusans(currentPage, debouncedSearchTerm)}
+                      onClick={() => refetch()}
                       aria-label="Refresh Data"
                       className="rounded-xl"
                     >

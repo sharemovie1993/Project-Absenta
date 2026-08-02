@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { 
   Edit, 
@@ -24,8 +24,12 @@ import {
   SearchableSelect
 } from '../../ui';
 import { BookOpen } from 'lucide-react';
-import { getMapelList, deleteMapel } from '../../../api/academic/mapel.api';
-import { getJurusanList } from '../../../api/academic/jurusan.api';
+import { 
+  getMapelList, 
+  deleteMapel, 
+  mapelQueryKeys
+} from '../../../api/academic/mapel.api';
+import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -59,16 +63,12 @@ const MapelList = React.memo<MapelListProps>(({
   }, [queryClient]);
 
   const confirm = useConfirm();
-  const [mapels, setMapels] = useState<Mapel[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedMapel, setSelectedMapel] = useState<Mapel | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -82,18 +82,21 @@ const MapelList = React.memo<MapelListProps>(({
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeTab, setActiveTab] = useState<'ALL' | 'UMUM' | 'KEJURUAN'>('ALL');
-  const [jurusans, setJurusans] = useState<any[]>([]);
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
 
-  useEffect(() => {
-    if (jenjang === 'SMK' || jenjang === 'MAK') {
-      getJurusanList(1, 100).then(res => {
-        if (res.success) {
-          setJurusans(res.data);
-        }
-      }).catch(err => console.error('Error fetching jurusans:', err));
-    }
-  }, [jenjang]);
+  // Jurusan options from hook (replaces manual useEffect + getJurusanList)
+  const { rawList: jurusans } = useJurusanOptions();
+
+  // Queries using React Query
+  const { data: listRes, isLoading: loading, refetch } = useQuery({
+    queryKey: mapelQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, tingkat: filterTingkat }),
+    queryFn: () => getMapelList(currentPage, itemsPerPage, debouncedSearchTerm, filterTingkat),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const mapels = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -114,43 +117,11 @@ const MapelList = React.memo<MapelListProps>(({
     return mapels.every(m => selectedIds.has(m.id));
   }, [mapels, selectedIds]);
 
-  // Fetch mapels with debounced search
-  const fetchMapels = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getMapelList(page, itemsPerPage, search, filterTingkat);
-      
-      if (response.success) {
-        setMapels(response.data);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.total);
-        setCurrentPage(response.pagination.page);
-      } else {
-        toast.error('Gagal memuat data mata pelajaran');
-      }
-    } catch (error) {
-      console.error('Error fetching mapels:', error);
-      toast.error('Terjadi kesalahan saat memuat data mata pelajaran');
-    } finally {
-      setLoading(false);
-    }
-  }, [itemsPerPage, filterTingkat]);
-
-  useEffect(() => {
-    fetchMapels(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, filterTingkat, fetchMapels]);
-
-  // Refresh when refreshTrigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchMapels(currentPage, debouncedSearchTerm);
-    }
-  }, [refreshTrigger, fetchMapels, currentPage, debouncedSearchTerm]);
-
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
-    fetchMapels(page, debouncedSearchTerm);
-  }, [fetchMapels, debouncedSearchTerm]);
+    setCurrentPage(page);
+  }, []);
+
 
   const handleItemsPerPageChange = (value: string) => {
     const newVal = parseInt(value, 10);
@@ -206,7 +177,8 @@ const MapelList = React.memo<MapelListProps>(({
       if (response.success) {
         toast.success(response.message || 'Mata pelajaran berhasil dihapus');
         invalidateMapelCache();
-        fetchMapels(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: mapelQueryKeys.all });
+        refetch();
       } else {
         toast.error(response.message || 'Gagal menghapus mata pelajaran');
       }
@@ -218,7 +190,7 @@ const MapelList = React.memo<MapelListProps>(({
       setDeleting(false);
       confirm.setLoading(false);
     }
-  }, [fetchMapels, currentPage, debouncedSearchTerm, confirm]);
+  }, [confirm, invalidateMapelCache, queryClient, refetch]);
 
 
 
@@ -259,7 +231,9 @@ const MapelList = React.memo<MapelListProps>(({
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
       
-      fetchMapels(currentPage, debouncedSearchTerm);
+      invalidateMapelCache();
+      queryClient.invalidateQueries({ queryKey: mapelQueryKeys.all });
+      refetch();
     } catch (err: any) {
       console.error('Error bulk deleting mapel:', err);
       toast.error('Terjadi kesalahan saat menghapus data terpilih');
@@ -267,7 +241,7 @@ const MapelList = React.memo<MapelListProps>(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
+  }, [selectedIds, mapels, confirm, invalidateMapelCache, queryClient, refetch]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -487,7 +461,7 @@ const MapelList = React.memo<MapelListProps>(({
                <Button
                  variant="toolbarOutline"
                  size="toolbarIcon"
-                 onClick={() => fetchMapels(currentPage, debouncedSearchTerm)}
+                 onClick={() => refetch()}
                  aria-label="Refresh Data"
                  className="rounded-xl"
                  disabled={loading}

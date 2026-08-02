@@ -44,6 +44,14 @@ export interface UpdateKelasPayload {
 }
 
 
+export const kelasQueryKeys = {
+  all: ['kelas'] as const,
+  list: (params: { page?: number; limit?: number; search?: string; tingkat?: string; jurusan_id?: string; guru_id?: string; is_active?: string }) =>
+    ['kelas', 'list', params] as const,
+  options: ['kelas-options-list'] as const,
+  detail: (id: string) => ['kelas', 'detail', id] as const,
+};
+
 // Get Kelas List - GET /api/academic/kelas
 export const getKelasList = async (
   page = 1, 

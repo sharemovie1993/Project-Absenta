@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
@@ -43,8 +44,6 @@ export const MapelPage: React.FC = () => {
   const [subMode, setSubMode] = useState<'manual' | null>(null);
   const [presetOpen, setPresetOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -53,22 +52,15 @@ export const MapelPage: React.FC = () => {
   const canEdit = can('academic.subjects.update');
   const canView = can('academic.subjects.view.list');
 
-  // Load academic stats
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!canView) return;
-      try {
-        setIsLoadingStats(true);
-        const response = await getAcademicStats();
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error loading academic stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, [canView, refreshTrigger]);
+  // Queries using React Query
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: getAcademicStats,
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stats = statsRes?.data || null;
 
   const academicStats = useMemo(() => [
     {

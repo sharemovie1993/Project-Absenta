@@ -38,6 +38,14 @@ export interface UpdateJurusanPayload {
   durasi_jurusan?: string | null;
 }
 
+export const jurusanQueryKeys = {
+  all: ['jurusan'] as const,
+  list: (params: { page?: number; limit?: number; search?: string }) =>
+    ['jurusan', 'list', params] as const,
+  options: ['jurusan-options-list'] as const,
+  detail: (id: string) => ['jurusan', 'detail', id] as const,
+};
+
 // Get Jurusan List - GET /api/academic/jurusan
 export const getJurusanList = async (
   page = 1, 

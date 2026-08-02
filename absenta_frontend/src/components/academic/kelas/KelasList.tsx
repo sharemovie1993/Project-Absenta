@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { 
   Search, 
@@ -28,8 +28,9 @@ import {
   Loader,
   type Column
 } from '../../ui';
-import { getKelasList, deleteKelas, updateKelas } from '../../../api/academic/kelas.api';
+import { getKelasList, deleteKelas, updateKelas, kelasQueryKeys } from '../../../api/academic/kelas.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
+import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Kelas, Jurusan } from '../../../types/academic';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -71,13 +72,9 @@ const KelasList = React.memo<KelasListProps>(({
   }, [queryClient]);
 
   const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
-  const [kelasList, setKelasList] = useState<Kelas[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pageInput, setPageInput] = useState('1');
   const [deleting, setDeleting] = useState(false);
@@ -93,11 +90,40 @@ const KelasList = React.memo<KelasListProps>(({
   const [filterJurusan, setFilterJurusan] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
+
+  // Jurusan options hook
+  const { rawList: jurusanList } = useJurusanOptions();
 
   const { user, can } = useAuth();
   const { tingkatList, jenjang } = useJenjang();
   const hasJurusan = ['SMA', 'MA', 'SMK', 'MAK'].includes(String(jenjang || '').toUpperCase());
+
+  // Queries using React Query
+  const { data: listRes, isLoading: loading, refetch } = useQuery({
+    queryKey: kelasQueryKeys.list({
+      page: currentPage,
+      limit: viewMode === 'tree' ? 200 : itemsPerPage,
+      search: debouncedSearchTerm,
+      tingkat: filterTingkat,
+      jurusan_id: filterJurusan,
+      guru_id: guruId,
+      is_active: filterStatus
+    }),
+    queryFn: () => getKelasList(
+      currentPage,
+      viewMode === 'tree' ? 200 : itemsPerPage,
+      debouncedSearchTerm,
+      filterTingkat,
+      filterJurusan,
+      guruId,
+      filterStatus
+    ),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const kelasList = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -134,47 +160,8 @@ const KelasList = React.memo<KelasListProps>(({
     }));
   }, [kelasList, tingkatList]);
 
-  // Fetch jurusan list for filter
-  useEffect(() => {
-    const fetchJurusan = async () => {
-      try {
-        const res = await getJurusanList(1, 100);
-        if (res.success) {
-          setJurusanList(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch jurusan list', err);
-      }
-    };
-    fetchJurusan();
-  }, []);
-
-  // Fetch kelas with debounced search
-  const fetchKelas = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const limit = viewMode === 'tree' ? 200 : itemsPerPage;
-      const response = await getKelasList(page, limit, search, filterTingkat, filterJurusan, guruId, filterStatus);
-      
-      if (response.success) {
-        setKelasList(response.data);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.total);
-        setCurrentPage(response.pagination.page);
-      } else {
-        toast.error('Gagal memuat data kelas');
-      }
-    } catch (error) {
-      console.error('Error fetching kelas:', error);
-      toast.error('Terjadi kesalahan saat memuat data kelas');
-    } finally {
-      setLoading(false);
-    }
-  }, [viewMode, itemsPerPage, filterTingkat, filterJurusan, filterStatus]);
-
   // Toggle active status handler
   const handleToggleActive = async (kelas: Kelas) => {
-    // Protection: Only allow deactivation if class has zero students
     if (kelas.is_active && (kelas._count?.Siswa || 0) > 0) {
       toast.error(`Kelas ${kelas.nama_kelas} tidak dapat dinonaktifkan karena masih memiliki siswa terdaftar.`);
       return;
@@ -186,8 +173,8 @@ const KelasList = React.memo<KelasListProps>(({
       const response = await updateKelas(kelas.id, { is_active: targetState });
       if (response.success) {
         toast.success(`Kelas ${kelas.nama_kelas} berhasil ${targetState ? 'diaktifkan' : 'dinonaktifkan'}.`);
-        // Optimistic UI update
-        setKelasList(prev => prev.map(k => k.id === kelas.id ? { ...k, is_active: targetState } : k));
+        refetch();
+        invalidateKelasCache();
       } else {
         toast.error(response.message || 'Gagal mengubah status kelas');
       }
@@ -198,16 +185,6 @@ const KelasList = React.memo<KelasListProps>(({
       setTogglingId(null);
     }
   };
-
-  // Reset page when search term changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchTerm]);
-
-  // Fetch data
-  useEffect(() => {
-    fetchKelas(currentPage, debouncedSearchTerm);
-  }, [fetchKelas, currentPage, debouncedSearchTerm, filterTingkat, filterJurusan, filterStatus, itemsPerPage, refreshTrigger, guruId, viewMode]);
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -277,7 +254,8 @@ const KelasList = React.memo<KelasListProps>(({
       if (response.success) {
         toast.success(response.message || 'Kelas berhasil dihapus');
         invalidateKelasCache();
-        fetchKelas(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: kelasQueryKeys.all });
+        refetch();
       } else {
         toast.error(response.message || 'Gagal menghapus kelas');
       }
@@ -289,7 +267,7 @@ const KelasList = React.memo<KelasListProps>(({
       setDeleting(false);
       confirm.setLoading(false);
     }
-  }, [fetchKelas, currentPage, debouncedSearchTerm, confirm]);
+  }, [confirm, invalidateKelasCache, queryClient, refetch]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -323,7 +301,9 @@ const KelasList = React.memo<KelasListProps>(({
       const next = new Set<string>(selectedIds);
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
-      fetchKelas(currentPage, searchTerm);
+      invalidateKelasCache();
+      queryClient.invalidateQueries({ queryKey: kelasQueryKeys.all });
+      refetch();
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
       toast.error(msg);
@@ -331,7 +311,7 @@ const KelasList = React.memo<KelasListProps>(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, fetchKelas, currentPage, searchTerm, confirm]);
+  }, [selectedIds, confirm, invalidateKelasCache, queryClient, refetch]);
 
   // Table columns configuration
   const columns = useMemo(() => {
@@ -741,7 +721,7 @@ const KelasList = React.memo<KelasListProps>(({
                  <Button
                    variant="toolbarOutline"
                    size="toolbarIcon"
-                   onClick={() => fetchKelas(currentPage, debouncedSearchTerm)}
+                   onClick={() => refetch()}
                    aria-label="Refresh Data"
                    className="rounded-xl"
                    disabled={loading}

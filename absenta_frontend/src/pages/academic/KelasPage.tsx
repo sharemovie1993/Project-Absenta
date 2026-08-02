@@ -8,6 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Kelas } from '../../types/academic';
+import { useQuery } from '@tanstack/react-query';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { School, Users, Download, FileText, LayoutGrid, ChevronRight } from 'lucide-react';
 import { 
@@ -64,34 +65,15 @@ export const KelasPage: React.FC = () => {
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [subMode, setSubMode] = useState<'manual' | null>(null);
+  // Queries using React Query
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: getAcademicStats,
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Permissions
-  const canCreate = can('academic.structures.create');
-  const canEdit = can('academic.structures.update');
-  const canView = can('academic.structures.view.list');
-
-  // Load academic stats
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!canView) return;
-      try {
-        setIsLoadingStats(true);
-        const response = await getAcademicStats();
-        setStats(response.data);
-      } catch (error) {
-        console.error('Failed to load academic stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, [canView, refreshTrigger]);
+  const stats = statsRes?.data || null;
 
   const sortedTingkatStats = useMemo(() => {
     const statsMap = new Map((stats?.active_kelas_by_tingkat || []).map(item => [item.tingkat, item.count]));
