@@ -170,14 +170,6 @@ const SarprasMaintenancePage: React.FC = () => {
   const totalPages = useMemo(() => data?.data?.pagination?.totalPages || 0, [data]);
   const stats = useMemo(() => statsData?.data || { inProgress: 0, completed: 0, totalCost: 0 }, [statsData]);
 
-  const assetOptions = useMemo(() => {
-    const list = (assetsData?.data?.list || []) as Asset[];
-    return list?.map((a) => ({
-      value: a.id,
-      label: `${a.nama} ${a.kode ? `(${a.kode})` : ''} — ${a.kondisi}`
-    })) || [];
-  }, [assetsData]);
-
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (payload: CreateRepairPayload) => sarprasApi.createRepair(payload),
