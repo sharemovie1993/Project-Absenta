@@ -165,6 +165,8 @@ export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-pelanggaran'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-pelanggaran-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-stats'] });
 
       // Reset form
       setFormData({
