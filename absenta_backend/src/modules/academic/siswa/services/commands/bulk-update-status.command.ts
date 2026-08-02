@@ -1,4 +1,5 @@
 import { siswaDb } from '../repositories/siswa.db';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export async function bulkUpdateStatusCommand(
   scope: { tenantId: string; org: any },
@@ -117,6 +118,10 @@ export async function bulkUpdateStatusCommand(
     } catch (error) {
       console.error('Error syncing SiswaAkademik status:', error);
     }
+  }
+
+  if (scope.tenantId) {
+    await cacheInvalidationService.invalidateSiswaCache(scope.tenantId);
   }
 
   return result;

@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { SiswaStatus } from '@/constants/enums';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 interface MapPpdbStudentsInput {
   siswaIds: string[];
@@ -109,6 +110,10 @@ export async function mapPpdbStudentsCommand(
         message: err.message
       });
     }
+  }
+
+  if (successCount > 0) {
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
   }
 
   return {

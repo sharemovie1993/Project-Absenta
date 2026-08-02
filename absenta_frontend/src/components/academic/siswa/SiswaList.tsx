@@ -313,6 +313,11 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   }, []);
 
   const queryClient = useQueryClient();
+  const invalidateSiswaCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
+  }, [queryClient]);
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -403,6 +408,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       }
 
       if (successCount > 0) {
+        invalidateSiswaCache();
         toast.success(`${successCount} siswa berhasil dipindahkan ke kelas ${targetKelas?.nama_kelas || ''}!`);
       }
       if (failCount > 0) {
@@ -461,6 +467,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       const res = await deleteAllSiswa();
       if (res.success) {
         toast.success(res.message);
+        invalidateSiswaCache();
         // Reset pagination and selection
         setCurrentPage(1);
         setSelectedIds(new Set());
@@ -703,6 +710,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       
       if (response.success) {
         toast.success(response.message || 'Siswa berhasil dihapus');
+        invalidateSiswaCache();
         fetchSiswas(currentPage, searchTerm);
         onRefresh?.();
       } else {
@@ -962,6 +970,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
       } else {
         toast.success(`Berhasil menghapus ${succeeded.length} siswa`);
+      }
+      if (succeeded.length > 0) {
+        invalidateSiswaCache();
       }
       const next = new Set<string>(selectedIds);
       (succeeded || []).forEach(id => next.delete(id));

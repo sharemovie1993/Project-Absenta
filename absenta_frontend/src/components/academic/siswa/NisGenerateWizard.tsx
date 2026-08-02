@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { GripVertical, ArrowUp, ArrowDown, Sparkles, RefreshCw, CheckCircle2, AlertTriangle, Users, ChevronRight } from 'lucide-react';
 import { Modal, Button, ModalFooter } from '../../ui';
 import { getNisWizardPreview, generateNisMassal, type NisWizardKelas } from '../../../api/academic/siswa.api';
@@ -19,6 +20,7 @@ interface WizardResult {
 }
 
 export const NisGenerateWizard: React.FC<NisGenerateWizardProps> = ({ isOpen, onClose, onSuccess }) => {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<WizardStep>('loading');
   const [kelasList, setKelasList] = useState<NisWizardKelas[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -79,7 +81,11 @@ export const NisGenerateWizard: React.FC<NisGenerateWizardProps> = ({ isOpen, on
       if (res.success && res.data) {
         setResult(res.data);
         setStep('result');
-        if (res.data.generated > 0) onSuccess();
+        if (res.data.generated > 0) {
+          queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+          queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+          onSuccess();
+        }
       } else {
         toast.error(res.message || 'Gagal generate NIS');
       }

@@ -1,6 +1,7 @@
 
 
 import React, { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Modal, ModalFooter } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { AlertTriangle, Upload } from 'lucide-react';
@@ -26,6 +27,7 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = Rea
   siswaId,
   onSuccess
 }) => {
+  const queryClient = useQueryClient();
 
   const [status, setStatus] = useState('KELUAR');
   const [alasan, setAlasan] = useState('');
@@ -52,6 +54,9 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = Rea
         toast.success('Siswa berhasil dinyatakan keluar resmi');
         setAlasan('');
         setFile(null);
+        queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
         onSuccess();
         onClose();
       } else {

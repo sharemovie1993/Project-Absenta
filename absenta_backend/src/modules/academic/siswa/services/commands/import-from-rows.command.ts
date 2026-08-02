@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { findBestMatch, parseSmartDate, normalizePhone } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
   if (!row) return undefined;
@@ -175,6 +176,10 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         error: error.message
       });
     }
+  }
+
+  if (successCount > 0) {
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
   }
 
   return {
