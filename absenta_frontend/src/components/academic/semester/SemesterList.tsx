@@ -170,7 +170,8 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Semester berhasil dihapus');
         invalidateSemesterCache();
-        fetchSemesters(currentPage, searchTerm);
+        queryClient.invalidateQueries({ queryKey: semesterQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus semester');
@@ -180,10 +181,9 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus semester');
     } finally {
       setDeleting(false);
-      setLoading(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSemesters, currentPage, searchTerm, onRefresh]);
+  }, [confirm, currentPage, searchTerm, onRefresh, invalidateSemesterCache, queryClient, refetch]);
 
   // Handle set active
   const handleSetActive = useCallback(async (semester: Semester) => {
@@ -217,7 +217,8 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       if (response.success) {
         toast.success(`Semester "${semester.nama_semester}" berhasil diaktifkan`);
         invalidateSemesterCache();
-        fetchSemesters(currentPage, searchTerm);
+        queryClient.invalidateQueries({ queryKey: semesterQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error('Gagal mengaktifkan semester');
