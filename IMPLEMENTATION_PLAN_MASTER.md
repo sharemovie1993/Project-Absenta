@@ -38,11 +38,14 @@ Seluruh komponen Frontend di 20 Modul (Tabel List, Detail Modal Show, Edit/Creat
 
 ---
 
-## 🧪 Siklus 3-Tahap Eksekusi Per Modul/Domain
-Untuk setiap modul/domain, eksekusi dilakukan secara ketat melalui 3 siklus:
-1. 🔍 **Tahap 1 (Backend Multi-Channel Audit)**: Memastikan `CacheInvalidationService` dan filter scope `tenant_id` dipanggil pada seluruh channel mutasi (Form UI, Impor Excel, Batch Action, Cron Worker, WA/Webhook Callback).
-2. ⚡ **Tahap 2 (Frontend Installation & React Query Migration)**: Pemasangan `useQuery` pada Tabel & Detail View, `useMutation` + `queryClient.invalidateQueries({ queryKey: [...] })` pada Form Create/Edit, serta penggunaan custom hooks pada dropdown.
-3. 🧪 **Tahap 3 (Script Test & Type-Check)**: Pengujian otomatis via script validator (`scratch/verify_*.py`) dan kompilasi strict `npx tsc --noEmit` (0 Error).
+## 🧪 Siklus 5-Langkah Single-Shot Refactoring Standard (Prosedur Anti-Error)
+Untuk setiap file komponen yang dimigrasi dari `useEffect` ke `useQuery`, AI Agent **WAJIB mengeksekusi 5 langkah ketat** berikut agar tidak terjadi cascading error atau Babel identifier collisions:
+
+1. 🔍 **Langkah 1 (Audit Variabel & Fungsi Legacy)**: Scan seluruh file untuk mencatat nama variabel `useState` lama (`loading`, `data`, `totalPages`, `totalItems`, `stats`) dan fungsi fetch lama (`fetchX()`) beserta seluruh lokasi pemanggilannya (handler tombol, toolbar, dan array dependensi `useCallback`/`useMemo`/`useEffect`).
+2. 🧹 **Langkah 2 (Pembersihan State Bentrok)**: Hapus deklarasi `useState` lama yang namanya sama dengan `useQuery` return keys sebelum menginjeksi `useQuery`.
+3. 🔄 **Langkah 3 (Penggantian Total Pemanggilan Legacy)**: Ganti SELURUH pemanggilan `fetchX()` di tombol, modal, dan array dependensi dengan `refetch()` atau `queryClient.invalidateQueries(...)`.
+4. ⚡ **Langkah 4 (Injeksi Presisi `useQuery` & `useMutation`)**: Pasang `useQuery` dengan `staleTime: 5 * 60 * 1000` (5 Menit) dan `useMutation` untuk penulisan data.
+5. 🧪 **Langkah 5 (Verifikasi Mandiri Sebelum Melapor)**: Jalankan `npx tsc --noEmit` di terminal secara mandiri untuk memastikan **0 Error Kompilasi** sebelum melaporkan hasil ke pengguna.
 
 ---
 
