@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getJadwalKegiatan,
   createJadwalKegiatan,
@@ -51,6 +52,7 @@ const formatDate = (date: Date | string): string => {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function JadwalKegiatanPage() {
+  const queryClient = useQueryClient();
   // ── State ──
   const [items, setItems] = useState<JadwalKegiatanItem[]>([]);
   const [classes, setClasses] = useState<Kelas[]>([]);
@@ -127,6 +129,10 @@ export default function JadwalKegiatanPage() {
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil diperbarui');
         handleCloseModal();
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         fetchData();
       }
     } else {
@@ -134,6 +140,10 @@ export default function JadwalKegiatanPage() {
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil dibuat');
         handleCloseModal();
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         fetchData();
       }
     }
@@ -154,6 +164,10 @@ export default function JadwalKegiatanPage() {
       const res = await deleteJadwalKegiatan(id);
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         fetchData();
       }
     } catch (err: unknown) {
@@ -168,6 +182,10 @@ export default function JadwalKegiatanPage() {
       const res = await updateJadwalKegiatan(item.id, { aktif: !item.aktif });
       if (res.success) {
         toast.success(`Jadwal ${!item.aktif ? 'diaktifkan' : 'dinonaktifkan'}`);
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         fetchData();
       }
     } catch (err: unknown) {

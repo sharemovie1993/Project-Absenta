@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { DataScope } from '../../../../types/fastify';
 import { Hari } from '@prisma/client';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateJadwalKegiatanInput {
   nama: string;
@@ -64,7 +65,7 @@ export class JadwalKegiatanService {
       throw new Error('Format waktu_mulai dan waktu_selesai harus HH:mm');
     }
 
-    return prisma.jadwalKegiatan.create({
+    const created = await prisma.jadwalKegiatan.create({
       data: {
         tenant_id: scope.tenantId,
         nama: input.nama,
@@ -81,6 +82,10 @@ export class JadwalKegiatanService {
         aktif: true,
       },
     });
+
+    await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
+    await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    return created;
   }
 
   async update(scope: DataScope, id: string, input: UpdateJadwalKegiatanInput) {
@@ -99,18 +104,26 @@ export class JadwalKegiatanService {
     if (input.berlaku_sampai !== undefined) data.berlaku_sampai = input.berlaku_sampai ? new Date(input.berlaku_sampai) : null;
     if (input.aktif !== undefined) data.aktif = input.aktif;
 
-    return prisma.jadwalKegiatan.update({
+    const updated = await prisma.jadwalKegiatan.update({
       where: { id },
       data,
     });
+
+    await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
+    await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    return updated;
   }
 
   async delete(scope: DataScope, id: string) {
     await this.getById(scope, id);
 
-    return prisma.jadwalKegiatan.delete({
+    const deleted = await prisma.jadwalKegiatan.delete({
       where: { id },
     });
+
+    await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
+    await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    return deleted;
   }
 }
 
