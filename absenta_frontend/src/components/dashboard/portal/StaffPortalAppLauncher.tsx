@@ -33,6 +33,7 @@ import {
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
+import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
 import { iconForName } from '../../../lib/iconForName';
 import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getPrimaryStructuralWorkspaceItems } from '../../../helpers/workspaceNavFilter';
 import { resolveUserWorkspaces, getUserPositions } from '../../../config/navigation.config';
@@ -140,6 +141,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
   // Integrated Dynamic Smart Menu from Backend API
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
+  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
 
   const handleTileNavigate = useCallback(
     (path?: string, onClick?: () => void) => {
@@ -480,15 +482,46 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     );
   }, [deduplicatedBlock4, searchQuery]);
 
-  // Dynamic Jabatan Label (e.g. "KURIKULUM & WALI KELAS" / "KURIKULUM")
+  // Dynamic Wali Kelas Class Name via useWaliKelasOptions Hook & Profile
+  const waliKelasNama = useMemo(() => {
+    // 1. Direct profile assignment
+    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
+    if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
+
+    // 2. Canonical useWaliKelasOptions hook list
+    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
+      const found = waliKelasAssignments.find(
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+      );
+      if (found?.Kelas?.nama_kelas) {
+        return found.Kelas.nama_kelas;
+      }
+    }
+    return '';
+  }, [user, waliKelasAssignments]);
+
+  // Dynamic Jabatan Label (e.g. "WALI KELAS (X PPLG 1)" / "KURIKULUM & WALI KELAS (XII RPL 2)")
   const dynamicJabatanLabel = useMemo(() => {
     const userWorkspaces = resolveUserWorkspaces(user);
     const structuralWorkspaces = userWorkspaces.filter(
       (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
     );
     if (structuralWorkspaces.length === 0) return '';
-    return structuralWorkspaces.map((w) => w.label).join(' & ');
-  }, [user]);
+    return structuralWorkspaces
+      .map((w) => {
+        if (w.id === 'WALIKELAS_WORKSPACE' && waliKelasNama) {
+          return `WALI KELAS ${waliKelasNama}`;
+        }
+        return w.label;
+      })
+      .join(' & ');
+  }, [user, waliKelasNama]);
+
+  // Clean first name without trailing commas/punctuation
+  const cleanFirstName = useMemo(() => {
+    const raw = String(user?.full_name || '').split(' ')[0] || '';
+    return raw.replace(/[,!.]+$/g, '').trim();
+  }, [user?.full_name]);
 
   const hasStructuralBlock = filteredBlock3.length > 0;
 
@@ -510,7 +543,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              Halo, {user?.full_name?.split(' ')[0]}!
+              Halo, {cleanFirstName}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
               Navigasi Ikon Aplikasi Terstruktur Berbasis Fungsi & Peran Jabatan Sekolah.
