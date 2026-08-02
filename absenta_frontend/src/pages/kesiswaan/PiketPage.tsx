@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
@@ -60,6 +61,7 @@ export const PRINT_PRESETS: PrintPreset[] = [
 ];
 
 export default function PiketPage() {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isAdmin, can } = useAuth();
   const currentGuruId = user?.guru_profile?.id;
@@ -175,6 +177,11 @@ export default function PiketPage() {
       const res = await piketApi.markReturned(id);
       if (res.success) {
         toast.success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
+        queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-range'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         await fetchPermits();
       }
     } catch (err: unknown) {
@@ -506,6 +513,11 @@ export default function PiketPage() {
                 const res = await piketApi.deletePermit(permitToDelete);
                 if (res.success) {
                   toast.success('Surat izin keluar berhasil dibatalkan');
+                  queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
+                  queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
+                  queryClient.invalidateQueries({ queryKey: ['piket-range'] });
+                  queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+                  queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
                   await fetchPermits();
                 }
               } catch (err: unknown) {

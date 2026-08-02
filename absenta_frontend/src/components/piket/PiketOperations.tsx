@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -31,6 +32,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
   printPaperSize,
   setPrintPaperSize
 }) => {
+  const queryClient = useQueryClient();
 
   const scannerInputRef = useRef<any>(null);
 
@@ -111,6 +113,11 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
         }
         
         // Refresh daily lists
+        queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-range'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         await fetchPermits();
         
         // Reset scanner states
