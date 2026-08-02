@@ -196,14 +196,12 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
   ], [onView, onEdit, getConditionColor]);
 
   const categoriesOptions = useMemo(() => {
-    const opts = categories?.data?.map((c: { id: string; nama: string }) => ({ value: c.id, label: c.nama })) || [];
-    return [{ value: '', label: 'Semua Kategori' }, ...opts];
-  }, [categories]);
+    return [{ value: '', label: 'Semua Kategori' }, ...(categoryOptions || [])];
+  }, [categoryOptions]);
 
   const locationsOptions = useMemo(() => {
-    const opts = locations?.data?.map((l: { id: string; nama: string }) => ({ value: l.id, label: l.nama })) || [];
-    return [{ value: '', label: 'Semua Lokasi' }, ...opts];
-  }, [locations]);
+    return [{ value: '', label: 'Semua Lokasi' }, ...(locationOptions || [])];
+  }, [locationOptions]);
 
   const conditionOptions = useMemo(() => [
     { value: '', label: 'Semua Kondisi' },
