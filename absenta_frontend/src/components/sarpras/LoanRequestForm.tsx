@@ -6,6 +6,7 @@ import { sarprasApi } from '../../api/sarpras.api';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
+import { useSarprasAsetOptions } from '../../hooks/useSarprasAsetOptions';
 
 interface LoanRequestFormProps {
   onSuccess?: () => void;
@@ -40,20 +41,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
 
-  // Fetch loanable assets
-  const { data: assetsData, isLoading: loadingAssets } = useQuery({
-    queryKey: ['sarpras-assets-loanable'],
-    queryFn: () => sarprasApi.getAssets({ is_loanable: 'true', limit: 100 }),
-    enabled: subscription !== undefined
-  });
-
-  const assetOptions = useMemo(() => {
-    const list = (assetsData?.data?.list as Asset[]) || [];
-    return list.map((a: Asset) => ({
-      value: a.id,
-      label: `${a.nama} ${a.kode ? `(${a.kode})` : ''} — Stok: ${a.jumlah}`
-    }));
-  }, [assetsData]);
+  // Fetch loanable assets via custom hook
+  const { options: assetOptions, isLoading: loadingAssets } = useSarprasAsetOptions({ isLoanable: true });
 
   const mutation = useMutation({
     mutationFn: (data: { asset_id: string; peminjam_id?: string; tanggal_kembali_plan?: Date; catatan?: string }) => sarprasApi.requestLoan(data),

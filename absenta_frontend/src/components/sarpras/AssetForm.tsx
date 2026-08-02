@@ -12,6 +12,8 @@ import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader, 
 import { sarprasApi } from '../../api/sarpras.api';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { useSarprasKategoriOptions } from '../../hooks/useSarprasKategoriOptions';
+import { useRuanganOptions } from '../../hooks/useRuanganOptions';
 
 interface AssetFormProps {
   assetId?: string;
@@ -81,7 +83,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
   }, [formData.nama]);
 
   const handleSelectSuggestion = (item: any) => {
-    const matchedCategory = categories?.data?.find(
+    const matchedCategory = categoriesList.find(
       (c: any) => c.nama.toLowerCase().includes(item.category_name.toLowerCase()) || 
                   item.category_name.toLowerCase().includes(c.nama.toLowerCase())
     );
@@ -97,17 +99,9 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
     setShowSuggestions(false);
   };
 
-  // Load dropdown data
-  const { data: categories } = useQuery({ 
-    queryKey: ['sarpras-categories'], 
-    queryFn: sarprasApi.getCategories,
-    enabled: isEnabled
-  });
-  const { data: locations } = useQuery({ 
-    queryKey: ['sarpras-locations'], 
-    queryFn: sarprasApi.getLocations,
-    enabled: isEnabled
-  });
+  // Load dropdown data via SARPRAS custom hooks
+  const { options: categoryOptions, rawList: categoriesList } = useSarprasKategoriOptions();
+  const { options: locationOptions } = useRuanganOptions();
 
   // Load asset if editing
   const { data: assetDetail, isLoading: isLoadingDetail } = useQuery({
