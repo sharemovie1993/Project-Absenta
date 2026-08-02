@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer } from 'lucide-react';
@@ -22,6 +23,13 @@ interface Props {
 }
 
 const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
+  const queryClient = useQueryClient();
+  const invalidateWaliKelasCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+  }, [queryClient]);
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [items, setItems] = useState<WaliKelasStrukturAssignment[]>([]);
@@ -177,6 +185,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
         return;
       }
       toast.success(res.message || 'Berhasil menonaktifkan penugasan');
+      invalidateWaliKelasCache();
       fetchData(currentPage, debouncedSearchTerm, includeInactive);
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menonaktifkan';
@@ -201,6 +210,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
         return;
       }
       toast.success('Berhasil mengaktifkan penugasan');
+      invalidateWaliKelasCache();
       fetchData(currentPage, debouncedSearchTerm, includeInactive);
     } catch (e: any) {
       toast.error(e?.message || 'Gagal mengaktifkan');

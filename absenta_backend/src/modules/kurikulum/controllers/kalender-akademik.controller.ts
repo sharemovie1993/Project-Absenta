@@ -1,4 +1,5 @@
 import { prisma } from '../../../utils/prisma';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class KalenderAkademikController {
   // GET /kurikulum/kalender?tahun_pelajaran_id=xxx
@@ -169,6 +170,11 @@ export class KalenderAkademikController {
         }
       });
 
+      if (tenantId) {
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+      }
+
       return reply.status(201).send({ data: event, message: 'Event kalender berhasil ditambahkan.' });
     } catch (error: any) {
       request.log.error(error);
@@ -197,6 +203,11 @@ export class KalenderAkademikController {
         }
       });
 
+      if (tenantId) {
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+      }
+
       return reply.send({ data: updated, message: 'Event kalender berhasil diperbarui.' });
     } catch (error: any) {
       request.log.error(error);
@@ -214,6 +225,12 @@ export class KalenderAkademikController {
       if (!existing) return reply.status(404).send({ error: 'NOT_FOUND', message: 'Event tidak ditemukan.' });
 
       await prisma.kalenderAkademik.delete({ where: { id } });
+
+      if (tenantId) {
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+      }
+
       return reply.send({ message: 'Event kalender berhasil dihapus.' });
     } catch (error: any) {
       request.log.error(error);
@@ -382,6 +399,11 @@ export class KalenderAkademikController {
         createdEvents.push(ev);
       }
 
+      if (createdEvents.length > 0 && tenantId) {
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+      }
+
       let message = '';
       if (createdEvents.length === 0) {
         message = 'Semua event hari libur standar sudah terdaftar (tidak ada duplikasi).';
@@ -501,6 +523,11 @@ export class KalenderAkademikController {
           tenant_id: tenantId
         }
       });
+
+      if (tenantId) {
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+      }
 
       return reply.send({ message: `Berhasil menghapus ${ids.length} event kalender secara massal.` });
     } catch (error: any) {

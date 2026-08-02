@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { Button, ModalFooter } from '../../ui';
 import { assignWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
@@ -18,6 +19,7 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
   onCancel,
   preset
 }) => {
+  const queryClient = useQueryClient();
   const [assigning, setAssigning] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState(preset?.guru_id || '');
   const [selectedKelasId, setSelectedKelasId] = useState(preset?.kelas_id || '');
@@ -35,6 +37,10 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
         return;
       }
       toast.success('Berhasil menyimpan penugasan wali kelas');
+      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
       onSuccess?.();
     } catch (e: any) {
       toast.error(e?.message || 'Gagal menyimpan penugasan');

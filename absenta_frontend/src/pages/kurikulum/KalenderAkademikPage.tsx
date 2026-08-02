@@ -202,6 +202,8 @@ export default function KalenderAkademikPage() {
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ['kalender-akademik'] }); 
       qc.invalidateQueries({ queryKey: ['kalender-stats'] }); 
+      qc.invalidateQueries({ queryKey: ['attendance-config'] });
+      qc.invalidateQueries({ queryKey: ['academic-stats'] });
       toast.success('Event berhasil ditambahkan'); 
       closeModal(); 
     },
@@ -213,6 +215,8 @@ export default function KalenderAkademikPage() {
     onSuccess: () => { 
       qc.invalidateQueries({ queryKey: ['kalender-akademik'] }); 
       qc.invalidateQueries({ queryKey: ['kalender-stats'] }); 
+      qc.invalidateQueries({ queryKey: ['attendance-config'] });
+      qc.invalidateQueries({ queryKey: ['academic-stats'] });
       toast.success('Event berhasil diperbarui'); 
       closeModal(); 
     },
@@ -224,6 +228,8 @@ export default function KalenderAkademikPage() {
     onSuccess: (_, id: string) => {
       qc.invalidateQueries({ queryKey: ['kalender-akademik'] });
       qc.invalidateQueries({ queryKey: ['kalender-stats'] });
+      qc.invalidateQueries({ queryKey: ['attendance-config'] });
+      qc.invalidateQueries({ queryKey: ['academic-stats'] });
       setSelectedIds(prev => prev.filter(x => x !== id));
       toast.success('Event dihapus');
     },
@@ -237,6 +243,8 @@ export default function KalenderAkademikPage() {
       setSelectedIds([]);
       qc.invalidateQueries({ queryKey: ['kalender-akademik'] });
       qc.invalidateQueries({ queryKey: ['kalender-stats'] });
+      qc.invalidateQueries({ queryKey: ['attendance-config'] });
+      qc.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: () => toast.error('Gagal menghapus event secara massal'),
   });
@@ -248,6 +256,8 @@ export default function KalenderAkademikPage() {
       toast.success(res.message || 'Hari libur standar berhasil ditambahkan secara massal!');
       qc.invalidateQueries({ queryKey: ['kalender-akademik'] });
       qc.invalidateQueries({ queryKey: ['kalender-stats'] });
+      qc.invalidateQueries({ queryKey: ['attendance-config'] });
+      qc.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: MutationError) => {
       const msg = err?.response?.data?.message || err?.message || 'Gagal menambahkan hari libur standar secara massal.';
