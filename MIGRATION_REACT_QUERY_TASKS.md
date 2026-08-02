@@ -16,9 +16,9 @@ Artifact ini adalah **Daftar Tugas Terpusat (Task Management Document)** untuk m
 ## 📦 BATCH 0: CORE MASTER DATA FOUNDATION
 - [x] **Task 0.1**: Migrasi `TahunPelajaranPage.tsx` & `TahunPelajaranList.tsx` (`staleTime: 5 min`) — ✅ **DONE (Commit 34f88b0b)**
 - [x] **Task 0.2**: Migrasi `SemesterPage.tsx` & `SemesterList.tsx` (`staleTime: 5 min`) — ✅ **DONE (Commit 34f88b0b, e574145b, 8bcbf504)**
-- [ ] **Task 0.3**: Migrasi `KelasPage.tsx` & `KelasList.tsx` (`useQuery` + `useMutation`)
-- [ ] **Task 0.4**: Migrasi `JurusanPage.tsx` & `JurusanList.tsx` (`useQuery` + `useMutation`)
-- [ ] **Task 0.5**: Migrasi `MapelPage.tsx` & `MapelList.tsx` (`useQuery` + `useMutation`)
+- [x] **Task 0.3**: Migrasi `KelasPage.tsx` & `KelasList.tsx` (`useQuery` + `useMutation`) — ✅ **DONE (Commit 2e892823)**
+- [x] **Task 0.4**: Migrasi `JurusanPage.tsx` & `JurusanList.tsx` (`useQuery` + `useMutation`) — ✅ **DONE (Commit 2e892823)**
+- [x] **Task 0.5**: Migrasi `MapelPage.tsx` & `MapelList.tsx` (`useQuery` + `useMutation`) — ✅ **DONE (Commit 2e892823)**
 
 ---
 
