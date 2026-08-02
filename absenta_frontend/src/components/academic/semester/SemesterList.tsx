@@ -230,7 +230,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       setActivating(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSemesters, currentPage, searchTerm, onRefresh]);
+  }, [confirm, currentPage, searchTerm, onRefresh, invalidateSemesterCache, queryClient, refetch]);
 
   // Table columns configuration
   const columns = useMemo(() => [
