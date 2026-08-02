@@ -144,14 +144,29 @@ export class PelanggaranService {
       const { getRedisConnection } = await import('../../../infra/redis/redisClient');
       const redis = getRedisConnection();
       if (redis) {
-        const keys = await redis.keys(`*kesiswaan:pelanggaran:${tenantId}*`);
-        if (keys.length > 0) {
-          await redis.del(...keys);
+        const patterns = [`*kesiswaan:pelanggaran:${tenantId}*`];
+        if (siswaId) {
+          patterns.push(`*bpbk:ews:${tenantId}:${siswaId}*`);
+        }
+        for (const pattern of patterns) {
+          const keys = await redis.keys(pattern);
+          if (keys.length > 0) {
+            await redis.del(...keys);
+          }
         }
       }
     } catch (err) {
       console.warn('[PelanggaranService] Non-blocking cache invalidation notice:', (err as any)?.message);
     }
+  }
+
+  /**
+   * Generates deterministic Redis cache key for Pelanggaran query
+   */
+  static buildCacheKey(tenantId: string, type: 'list' | 'analytics' | 'detail', params: any): string {
+    const serialized = JSON.stringify(params || {});
+    const hash = Buffer.from(serialized).toString('base64').replace(/=/g, '');
+    return `kesiswaan:pelanggaran:${tenantId}:${type}:${hash}`;
   }
 
   static async getAll(tenantId: string, query: {
@@ -167,6 +182,22 @@ export class PelanggaranService {
     const limit = Number(query.limit) || 10;
     const offset = (page - 1) * limit;
 
+    // 1. Coba baca dari Redis Cache (Cache HIT Check)
+    const cacheKey = PelanggaranService.buildCacheKey(tenantId, 'list', { query, scope });
+    try {
+      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          console.log(`[PelanggaranService] ⚡ Cache HIT for key: ${cacheKey}`);
+          return JSON.parse(cached);
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
+    }
+
     let where: Prisma.PelanggaranSiswaWhereInput = {
       tenant_id: tenantId,
     };
@@ -174,10 +205,8 @@ export class PelanggaranService {
     if (scope) {
       where = applyDataScope(where, scope);
       
-      // If student scope (userId present), refine where to filter by student's user identity
       if (scope.userId) {
           where.Siswa = { user_id: scope.userId };
-          // Remove default user_id filter from applyDataScope if it exists, as it refers to student's user_id indirectly
           delete (where as any).user_id; 
       }
     }
@@ -236,7 +265,7 @@ export class PelanggaranService {
       }),
     ]);
 
-    return {
+    const resultPayload = {
       list,
       pagination: {
         total,
@@ -245,6 +274,20 @@ export class PelanggaranService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    // 2. Simpan ke Redis Cache dengan TTL 300s (Cache WRITE)
+    try {
+      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        await redis.set(cacheKey, JSON.stringify(resultPayload), 'EX', 300);
+        console.log(`[PelanggaranService] 💾 Cache WRITE for key: ${cacheKey}`);
+      }
+    } catch (cacheErr) {
+      console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
+    }
+
+    return resultPayload;
   }
   static async getById(tenantId: string, id: string) {
     return prisma.pelanggaranSiswa.findFirst({
@@ -264,6 +307,21 @@ export class PelanggaranService {
 
   static async getAnalytics(tenantId: string, query: { year?: number }) {
     const year = Number(query.year) || new Date().getFullYear();
+
+    const cacheKey = PelanggaranService.buildCacheKey(tenantId, 'analytics', { year });
+    try {
+      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          console.log(`[PelanggaranService] ⚡ Cache HIT for analytics key: ${cacheKey}`);
+          return JSON.parse(cached);
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
+    }
 
     const start = new Date(`${year}-01-01T00:00:00.000Z`);
     const end = new Date(`${year}-12-31T23:59:59.999Z`);
@@ -304,9 +362,22 @@ export class PelanggaranService {
       jumlah: count,
     }));
 
-    return {
+    const analyticsPayload = {
       trend_bulanan: months,
       distribusi_kategori: kategori,
     };
+
+    try {
+      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        await redis.set(cacheKey, JSON.stringify(analyticsPayload), 'EX', 600); // 10 mins TTL
+        console.log(`[PelanggaranService] 💾 Cache WRITE for analytics key: ${cacheKey}`);
+      }
+    } catch (cacheErr) {
+      console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
+    }
+
+    return analyticsPayload;
   }
 }
