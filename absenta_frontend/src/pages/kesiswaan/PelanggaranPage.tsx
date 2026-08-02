@@ -33,6 +33,7 @@ import { Loader } from '../../components/ui/Loader';
 import { z } from 'zod';
 
 import { useAuthStore } from '../../store/authStore';
+import { useJenisPelanggaranOptions } from '../../hooks/useJenisPelanggaranOptions';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -105,7 +106,6 @@ export default function PelanggaranPage() {
     status: 'BARU'
   });
   const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
-  const [jenisPelanggaranList, setJenisPelanggaranList] = useState<JenisPelanggaran[]>([]);
 
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -143,20 +143,8 @@ export default function PelanggaranPage() {
     }
   }, [debouncedSearch, itemsPerPage, isWaliKelas, waliKelasId]);
 
-  const fetchJenisPelanggaran = useCallback(async () => {
-    try {
-      let result = await kesiswaanApi.getJenisPelanggaran();
-      if (!result.data || result.data.length === 0) {
-        try {
-          await kesiswaanApi.seedJenisPelanggaran();
-          result = await kesiswaanApi.getJenisPelanggaran();
-        } catch (e: unknown) { console.error(e); }
-      }
-      setJenisPelanggaranList(result.data || []);
-    } catch (err: unknown) {
-      console.error(err);
-    }
-  }, []);
+  // Hook Kanonikal Jenis Pelanggaran (Query Caching & Auto-sync)
+  const { rawList: jenisPelanggaranList, options: jenisPelanggaranSelectOptions } = useJenisPelanggaranOptions();
 
   useEffect(() => {
     fetchData(1);
@@ -530,17 +518,14 @@ export default function PelanggaranPage() {
                 id="jenis-pelanggaran-select"
                 value={formData.jenis_pelanggaran}
                 onValueChange={(val) => {
-                  const selectedItem = jenisPelanggaranList.find(i => i.nama_pelanggaran === val);
+                  const selectedItem = jenisPelanggaranList.find(i => i.id === val || i.nama_pelanggaran === val);
                   setFormData(prev => ({
                     ...prev,
-                    jenis_pelanggaran: val,
+                    jenis_pelanggaran: selectedItem ? selectedItem.nama_pelanggaran : val,
                     poin: selectedItem ? selectedItem.poin : prev.poin
                   }));
                 }}
-                options={(jenisPelanggaranList ?? [])?.map(item => ({
-                  label: `[${item.kategori}] ${item.nama_pelanggaran}`,
-                  value: item.nama_pelanggaran
-                }))}
+                options={jenisPelanggaranSelectOptions}
                 placeholder="Pilih kategori perilaku..."
                 searchPlaceholder="Cari kategori..."
               />

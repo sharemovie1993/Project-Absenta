@@ -12,11 +12,15 @@ export class PelanggaranService {
     keterangan?: string;
     status?: string;
   }) {
-    // Ambil info akademik saat ini dari data Siswa
-    const siswa = await prisma.siswa.findUnique({
-      where: { id: data.siswa_id },
+    // Ambil info akademik saat ini dari data Siswa dengan verifikasi tenant_id ketat
+    const siswa = await prisma.siswa.findFirst({
+      where: { id: data.siswa_id, tenant_id: tenantId },
       select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true }
     });
+
+    if (!siswa) {
+      throw new Error('Siswa tidak ditemukan atau tidak terdaftar di instansi sekolah ini');
+    }
 
     let siswaAkademikId: string | undefined;
     if (siswa && siswa.tahun_pelajaran_id && siswa.semester_id) {
