@@ -285,12 +285,33 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── SEPARASI STRUCTURAL WORKSPACES (JABATAN UTAMA vs JABATAN KEDUA) ──
+  // ── SEPARASI STRUCTURAL WORKSPACES (JABATAN UTAMA PIMPINAN vs JABATAN KEDUA) ──
   const userWorkspaces = useMemo(() => resolveUserWorkspaces(user), [user]);
-  const structuralWorkspaces = useMemo(
-    () => userWorkspaces.filter((w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'),
-    [userWorkspaces]
-  );
+  const structuralWorkspaces = useMemo(() => {
+    const filtered = userWorkspaces.filter(
+      (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
+    );
+
+    // Hirarki Prioritas Jabatan Utama Pimpinan: Kurikulum/Kesiswaan/Kepsek/Sarpras/Hubin > Wali Kelas
+    const PIMPINAN_PRIORITY: Record<string, number> = {
+      KURIKULUM_WORKSPACE: 1,
+      KESISWAAN_WORKSPACE: 2,
+      KEPSEK_WORKSPACE: 3,
+      SARPRAS_WORKSPACE: 4,
+      HUBIN_WORKSPACE: 5,
+      KAPROG_WORKSPACE: 6,
+      KABENG_WORKSPACE: 7,
+      BPBK_WORKSPACE: 8,
+      GERBANG_WORKSPACE: 9,
+      WALIKELAS_WORKSPACE: 10,
+    };
+
+    return [...filtered].sort((a, b) => {
+      const pA = PIMPINAN_PRIORITY[a.id] ?? 50;
+      const pB = PIMPINAN_PRIORITY[b.id] ?? 50;
+      return pA - pB;
+    });
+  }, [userWorkspaces]);
 
   const primaryWs = structuralWorkspaces[0];
   const secondaryWs = structuralWorkspaces.length > 1 ? structuralWorkspaces[1] : null;
