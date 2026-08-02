@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Label, Input, Modal, Loader } from '../../ui';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import { SearchableSelect } from '../../ui/SearchableSelect';
@@ -37,6 +38,7 @@ interface PendingRow {
 }
 
 export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
+  const queryClient = useQueryClient();
   const [jadwal, setJadwal] = useState<JadwalKBM[]>([]);
   const [jadwalKegiatan, setJadwalKegiatan] = useState<JadwalKegiatanItem[]>([]);
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'KBM' | 'KEGIATAN'>('ALL');
@@ -192,6 +194,12 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
     try {
       setIsDeleting(true);
       await deleteJadwalKBM(deletingId);
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+      queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       setRefreshKey(prev => prev + 1);
       setIsDeleteModalOpen(false);
       setDeletingId(null);

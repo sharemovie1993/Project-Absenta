@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Play, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, RefreshCw, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -23,6 +24,7 @@ export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
   semesterId,
   onSuccess
 }) => {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [classes, setClasses] = useState<any[]>([]);
@@ -113,6 +115,12 @@ export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
 
       if (res.success) {
         toast.success(`Berhasil menerapkan ${res.data?.count || 0} slot jadwal pelajaran`);
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+        queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         setStep(3);
         if (onSuccess) onSuccess();
       } else {

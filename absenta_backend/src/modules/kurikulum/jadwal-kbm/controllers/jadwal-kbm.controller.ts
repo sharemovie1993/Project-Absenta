@@ -1056,6 +1056,7 @@ export class JadwalKBMController {
       void this.syncSessionsToday(tenantId);
 
       if (totalDeleted > 0) {
+        await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
         return reply.send({
           success: true,
           message: `Berhasil mengosongkan/reset ${totalDeleted} item (Jadwal KBM, Kegiatan, & Sesi Absensi).`,
@@ -1213,6 +1214,8 @@ export class JadwalKBMController {
       // Auto-sync sessions for today in background (organic behavior)
       void this.syncSessionsToday(tenantId);
 
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+
       return reply.status(200).send({
         success: true,
         message: `Import selesai. Berhasil: ${result.success}, Gagal: ${result.failed}`,
@@ -1280,6 +1283,8 @@ export class JadwalKBMController {
       });
 
       void this.syncSessionsToday(tenantId);
+
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
       return reply.send({
         success: true,

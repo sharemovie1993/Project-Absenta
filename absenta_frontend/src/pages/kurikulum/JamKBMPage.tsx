@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, SectionCard } from '@/components/ui';
@@ -59,7 +60,8 @@ function PanelLoader() {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function JamKBMPage() {
+export const JamKBMPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const confirm = useConfirm();
   const { jenjang } = useJenjang();
@@ -176,6 +178,11 @@ export default function JamKBMPage() {
       const response = await updateTenant(tenantId, { shift_jam_pelajaran: parsed.data });
       if (response && response.success !== false) {
         toast.success('Konfigurasi Shift & Waktu KBM berhasil disimpan!');
+        queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-profile'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         fetchTenant();
       } else {
         toast.error(response?.message || 'Gagal menyimpan konfigurasi');
@@ -334,4 +341,6 @@ export default function JamKBMPage() {
       </div>
     </AcademicPageLayout>
   );
-}
+};
+
+export default JamKBMPage;
