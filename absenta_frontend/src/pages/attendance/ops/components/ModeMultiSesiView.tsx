@@ -125,6 +125,7 @@ export default function ModeMultiSesiView({
 
   // 3. Manajemen Sesi (Admin, Petugas Kelas, Guru Mapel — BUKAN Wali Kelas Murni)
   const canAccessSesi = !isWaliKelasPos && (isAdmin || isPetugasSiswa || isPetugasGuru || caps.includes('attendance.sessions.view.list'));
+  const canCreateSession = isAdmin || isPetugasSiswa || caps.includes('attendance.sessions.create');
   
   const canAccessAny = canAccessInput || canAccessManual || canAccessSesi;
 
