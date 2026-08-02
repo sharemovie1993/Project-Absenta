@@ -102,8 +102,13 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     onSuccess: (_, { node }) => {
       toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
       setEditingNode(null);
     },
     onError: (error: any) => {
@@ -124,8 +129,13 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Gagal menghapus anggota');

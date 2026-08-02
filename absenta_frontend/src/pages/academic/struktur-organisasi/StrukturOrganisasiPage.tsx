@@ -115,6 +115,8 @@ const StrukturOrganisasiPage: React.FC = () => {
       }
       setIsFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     } catch (err: unknown) {
       const error = err as { message?: string } | null;
       toast.error(error?.message || 'Gagal menyimpan jabatan');

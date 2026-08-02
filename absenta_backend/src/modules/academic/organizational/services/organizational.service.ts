@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '@/utils/prisma';
 import { organizationalContextCache } from '@/modules/auth/services/organizational-context-cache';
 import { sidebarRenderingService } from '@/modules/menu/services/sidebar-rendering.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 function uniqueStrings(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
@@ -33,7 +34,7 @@ export class OrganizationalService {
     const unit_type = input.unit_type ? String(input.unit_type).trim() : null;
     if (!code || !name || !scope_type) throw new Error('code, name, scope_type are required');
 
-    return prisma.organizationalPosition.create({
+    const created = await prisma.organizationalPosition.create({
       data: {
         tenant_id: tenantId,
         code,
@@ -44,6 +45,8 @@ export class OrganizationalService {
         updated_at: new Date(),
       },
     });
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    return created;
   }
 
   async updatePosition(tenantId: string, id: string, input: any) {
@@ -66,6 +69,7 @@ export class OrganizationalService {
     });
 
     await this.invalidateUsersByPosition(id);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return updated;
   }
 
@@ -78,6 +82,7 @@ export class OrganizationalService {
 
     await this.invalidateUsersByPosition(id);
     await prisma.organizationalPosition.delete({ where: { id } });
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async updatePositionCapabilities(tenantId: string, positionId: string, rawCaps: unknown) {
@@ -115,6 +120,7 @@ export class OrganizationalService {
     });
 
     await this.invalidateUsersByPosition(positionId);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
 
     return prisma.organizationalCapability.findMany({
       where: { position_id: positionId },
@@ -175,6 +181,7 @@ export class OrganizationalService {
 
     await organizationalContextCache.invalidateUser(user_id);
     await sidebarRenderingService.invalidateUser(user_id);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return data;
   }
 
@@ -189,6 +196,7 @@ export class OrganizationalService {
     await organizationalContextCache.invalidateUser(String(existing.user_id));
     await sidebarRenderingService.invalidateUser(String(existing.user_id));
     await this.invalidateUsersByPosition(String(existing.position_id));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 }
 
