@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 /**
  * CATATAN DESAIN OPSI B (STRICT OPERATIONAL STATUS) & PRINSIP SAAS:
@@ -481,6 +482,7 @@ export class SemesterService {
       return updatedSemester;
     });
 
+    await cacheInvalidationService.invalidateAcademicCache(existingSemester.tenant_id);
     return result as SemesterResponse;
   }
 
@@ -508,6 +510,7 @@ export class SemesterService {
       },
     });
 
+    await cacheInvalidationService.invalidateAcademicCache(existingSemester.tenant_id);
     return updated as SemesterResponse;
   }
 }

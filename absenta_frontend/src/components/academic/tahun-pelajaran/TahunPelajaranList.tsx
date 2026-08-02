@@ -79,6 +79,8 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.all });
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.stats });
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.active });
+      queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['semester-aktif'] });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Gagal mengaktifkan tahun pelajaran');
@@ -92,6 +94,8 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
         toast.success(res.message || 'Tahun pelajaran berhasil dihapus');
         queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.all });
         queryClient.invalidateQueries({ queryKey: academicQueryKeys.stats });
+        queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['semester-aktif'] });
       } else {
         toast.error(res.message || 'Gagal menghapus tahun pelajaran');
       }

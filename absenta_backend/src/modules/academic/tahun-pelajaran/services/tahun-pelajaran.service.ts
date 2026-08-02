@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '@/utils/rbac';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateTahunPelajaranInput {
   tahun: string;
@@ -447,6 +448,7 @@ export class TahunPelajaranService {
       },
     });
 
+    await cacheInvalidationService.invalidateAcademicCache(existingTahunPelajaran.tenant_id);
     return tahunPelajaran as TahunPelajaranResponse;
   }
 }

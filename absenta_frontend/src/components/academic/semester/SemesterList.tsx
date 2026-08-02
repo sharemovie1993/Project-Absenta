@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Edit, Trash2, Eye, Plus, Search, RefreshCw, CheckCircle, Circle, FileSpreadsheet, Download, Calendar } from 'lucide-react';
@@ -45,6 +46,13 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const confirm = useConfirm();
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const invalidateSemesterCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['semester-aktif'] });
+    queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
@@ -210,6 +218,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       
       if (response.success) {
         toast.success(response.message || 'Semester berhasil dihapus');
+        invalidateSemesterCache();
         fetchSemesters(currentPage, searchTerm);
         onRefresh?.();
       } else {
@@ -256,6 +265,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       
       if (response.success) {
         toast.success(`Semester "${semester.nama_semester}" berhasil diaktifkan`);
+        invalidateSemesterCache();
         fetchSemesters(currentPage, searchTerm);
         onRefresh?.();
       } else {
