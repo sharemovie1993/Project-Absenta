@@ -157,6 +157,17 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `sarpras:${tenantId}:*`
   },
 
+  // 🧠 BPBK (Bimbingan Konseling, Konseling, Home Visit, EWS & Asesmen) related caches
+  BPBK: {
+    KONSELING_LIST: (tenantId: string, siswaId?: string) => `bpbk:${tenantId}:konseling:${siswaId || 'all'}`,
+    HOME_VISIT_LIST: (tenantId: string, siswaId?: string) => `bpbk:${tenantId}:home_visit:${siswaId || 'all'}`,
+    EWS_LIST: (tenantId: string, status?: string) => `bpbk:${tenantId}:ews:${status || 'all'}`,
+    PEMANGGILAN_LIST: (tenantId: string) => `bpbk:${tenantId}:pemanggilan`,
+    RUJUKAN_LIST: (tenantId: string) => `bpbk:${tenantId}:rujukan`,
+    ASESMEN_LIST: (tenantId: string) => `bpbk:${tenantId}:asesmen`,
+    ALL: (tenantId: string) => `bpbk:${tenantId}:*`
+  },
+
 
 
   SYSTEM_CONFIG: {
