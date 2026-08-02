@@ -122,8 +122,6 @@ export async function getAllSiswaQuery(
     }
   }
 
-  const page = params?.page || 1;
-  const limit = params?.limit || 10;
   const skip = (page - 1) * limit;
 
   const total = await siswaDb.siswa.count({ where: whereClause });
