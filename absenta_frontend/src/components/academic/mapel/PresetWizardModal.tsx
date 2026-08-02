@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Button } from '../../ui';
 import { getPresetsByJenjang, initializeMapelPreset, getMapelList, type GlobalMapelPreset } from '../../../api/academic/mapel.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
@@ -25,6 +26,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   jenjang,
   onSuccess
 }) => {
+  const queryClient = useQueryClient();
   // Track step dynamically using index
   const [stepIndex, setStepIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -387,6 +389,10 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
       const ids = Array.from(selectedIds);
       const res = await initializeMapelPreset(ids);
       if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['mapel-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+
         toast.success(res.message || 'Mata pelajaran preset berhasil diterapkan');
         onSuccess();
         onClose();

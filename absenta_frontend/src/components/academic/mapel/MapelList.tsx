@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { 
   Edit, 
@@ -50,6 +51,13 @@ const MapelList = React.memo<MapelListProps>(({
   isExporting = false,
   refreshTrigger = 0 
 }) => {
+  const queryClient = useQueryClient();
+  const invalidateMapelCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['mapel-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
+
   const confirm = useConfirm();
   const [mapels, setMapels] = useState<Mapel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +205,7 @@ const MapelList = React.memo<MapelListProps>(({
       
       if (response.success) {
         toast.success(response.message || 'Mata pelajaran berhasil dihapus');
+        invalidateMapelCache();
         fetchMapels(currentPage, debouncedSearchTerm);
       } else {
         toast.error(response.message || 'Gagal menghapus mata pelajaran');

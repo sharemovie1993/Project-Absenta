@@ -3,6 +3,7 @@ import { findBestMatch } from '@/utils/normalization';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
 import { DataScope } from '../../../../types/fastify';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 const prisma = new PrismaClient();
 
@@ -224,6 +225,7 @@ export const mapelService = {
       },
     });
 
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
     return mapel as MapelResponse;
   },
 
@@ -304,6 +306,7 @@ export const mapelService = {
       },
     });
 
+    await cacheInvalidationService.invalidateAcademicCache(existingMapel.tenant_id);
     return mapel as MapelResponse;
   },
 
@@ -351,6 +354,8 @@ export const mapelService = {
     await prisma.mapel.delete({
       where: { id: mapelId },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(existingMapel.tenant_id);
   },
 
   async importFromExcel(data: any[], scope: DataScope) {

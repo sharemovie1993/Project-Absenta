@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, X, RefreshCw } from 'lucide-react';
@@ -31,6 +32,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
   onCancel,
   mode = 'create'
 }) => {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
@@ -138,6 +140,10 @@ export const MapelForm = React.memo<MapelFormProps>(({
       }
 
       if (response.success) {
+        queryClient.invalidateQueries({ queryKey: ['mapel-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+
         toast.success(isEditMode ? 'Mata pelajaran berhasil diperbarui' : 'Mata pelajaran berhasil dibuat');
         onSuccess?.();
       } else {
