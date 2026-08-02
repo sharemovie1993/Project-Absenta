@@ -114,14 +114,16 @@ export const MyAttendancePage: React.FC = () => {
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['my-attendance-rekap', bulanKey, tenantId, user?.id],
     queryFn: () => (isGuru ? getRekapBulananGuruMe({ bulan: bulanKey }) : getRekapBulananSiswaMe({ bulan: bulanKey })),
-    enabled: !!user
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000
   });
 
   // 2. Query Detail Harian
   const { data: harianData } = useQuery({
     queryKey: ['my-attendance-harian', selectedDate, tenantId, user?.id],
     queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
-    enabled: !!user && !isGuru
+    enabled: !!user && !isGuru,
+    staleTime: 5 * 60 * 1000
   });
 
   // 2b. Query Tracking Harian (timeline sesi)
@@ -133,7 +135,7 @@ export const MyAttendancePage: React.FC = () => {
     queryKey: ['my-tracking-harian', selectedDate, mySiswaId],
     queryFn: () => getTrackingHarianSiswa(mySiswaId, { tanggal: selectedDate }),
     enabled: !!mySiswaId && !isGuru,
-    staleTime: 2 * 60 * 1000
+    staleTime: 5 * 60 * 1000
   });
 
   // 2c. Query Sesi Mengajar Guru untuk tanggal terpilih
@@ -141,7 +143,7 @@ export const MyAttendancePage: React.FC = () => {
     queryKey: ['teacher-daily-sessions', selectedDate, tenantId, user?.id],
     queryFn: () => getSesiAbsensiList({ tanggal: selectedDate, summary: true, guru_id: 'me' }),
     enabled: !!user && isGuru,
-    staleTime: 2 * 60 * 1000
+    staleTime: 5 * 60 * 1000
   });
 
   const teacherSessions = useMemo(() => {
@@ -157,7 +159,7 @@ export const MyAttendancePage: React.FC = () => {
     queryKey: ['teacher-tracking-harian', selectedDate, user?.id],
     queryFn: () => getTrackingHarianGuruMe({ tanggal: selectedDate }),
     enabled: !!user && isGuru,
-    staleTime: 2 * 60 * 1000
+    staleTime: 5 * 60 * 1000
   });
 
   const teacherTrackingData = teacherTrackingRes?.data;
@@ -166,7 +168,8 @@ export const MyAttendancePage: React.FC = () => {
   const { data: siswaMeRes } = useQuery({
     queryKey: ['my-siswa-profile-me', user?.id],
     queryFn: () => siswaApi.getMe(),
-    enabled: !isGuru && !!user
+    enabled: !isGuru && !!user,
+    staleTime: 15 * 60 * 1000
   });
 
   const mySiswaProfile = siswaMeRes?.data;
@@ -176,7 +179,7 @@ export const MyAttendancePage: React.FC = () => {
     (user as { kelas_id?: string })?.kelas_id ||
     (user as { Kelas?: { id?: string } })?.Kelas?.id;
 
-  // 4. Query Class Leaderboard
+  // 4. Query Class Leaderboard (Hanya jika modal dibuka)
   const { data: kelasLeaderboardRes } = useQuery({
     queryKey: ['my-class-leaderboard-me', bulanKey, kelasId],
     queryFn: async () => {
@@ -191,14 +194,16 @@ export const MyAttendancePage: React.FC = () => {
       }
       return null;
     },
-    enabled: !isGuru
+    enabled: !isGuru && showLeaderboardModal,
+    staleTime: 5 * 60 * 1000
   });
 
-  // 5. Query All Classmates Roster
+  // 5. Query All Classmates Roster (Lazy: Hanya jika modal dibuka)
   const { data: allClassmatesRes } = useQuery({
     queryKey: ['classmates-roster-list', kelasId],
     queryFn: () => siswaApi.getAll({ kelas_id: kelasId, limit: 100 }),
-    enabled: !!kelasId && !isGuru
+    enabled: !!kelasId && !isGuru && showLeaderboardModal,
+    staleTime: 10 * 60 * 1000
   });
 
   // 6. Query Scoped Leaderboard
