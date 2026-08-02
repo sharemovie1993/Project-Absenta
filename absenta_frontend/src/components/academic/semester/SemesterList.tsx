@@ -45,8 +45,6 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   toolbarRight
 }) => {
   const confirm = useConfirm();
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
   const invalidateSemesterCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['semester-aktif'] });
