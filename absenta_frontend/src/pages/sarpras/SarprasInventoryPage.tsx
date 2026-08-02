@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Lucide from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -30,7 +30,7 @@ interface SubscriptionFeature {
 }
 
 const SarprasInventoryPage: React.FC = () => {
-  // toolbarLeft={ toolbarRight={ isEmpty emptyState NoData items.length data.length === 0
+  const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -75,8 +75,13 @@ const SarprasInventoryPage: React.FC = () => {
   
   const handleSuccess = useCallback(() => {
     setModalState({ isOpen: false, mode: null });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-categories'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-locations'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
     setRefreshTrigger(prev => prev + 1);
-  }, []);
+  }, [queryClient]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },

@@ -138,6 +138,17 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `kesiswaan:${tenantId}:*`
   },
 
+  // 🏗️ SARPRAS & Asset Management related caches
+  SARPRAS: {
+    ASET_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', kategoriId?: string, kondisi?: string, lokasiId?: string) =>
+      `sarpras:${tenantId}:aset:${page}:${limit}:${search || 'all'}:${kategoriId || 'all'}:${kondisi || 'all'}:${lokasiId || 'all'}`,
+    RUANGAN_LIST: (tenantId: string) => `sarpras:${tenantId}:ruangan`,
+    PEMINJAMAN_LIST: (tenantId: string, status?: string) => `sarpras:${tenantId}:peminjaman:${status || 'all'}`,
+    PEMELIHARAAN_LIST: (tenantId: string, status?: string) => `sarpras:${tenantId}:pemeliharaan:${status || 'all'}`,
+    STATS: (tenantId: string) => `sarpras:${tenantId}:stats`,
+    ALL: (tenantId: string) => `sarpras:${tenantId}:*`
+  },
+
   SYSTEM_CONFIG: {
     ACTIVE: (tenantId: string | null) => `system_config:${tenantId || 'global'}:active`
   }

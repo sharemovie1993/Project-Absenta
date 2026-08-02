@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { activityLogService } from '../../activity/services/activity-log.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class LoanService {
   static async requestLoan(tenantId: string, userId: string, data: {
@@ -51,6 +52,7 @@ export class LoanService {
       metadata: { asset_id: data.asset_id, asset_nama: asset.nama }
     });
 
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
     return loan;
   }
 
@@ -122,6 +124,7 @@ export class LoanService {
       metadata: { status, asset_id: loan.asset_id, asset_nama: loan.Asset.nama }
     });
 
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
     return updatedLoan;
   }
 

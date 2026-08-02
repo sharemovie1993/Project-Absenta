@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ClipboardList,
   Clock,
@@ -72,6 +72,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 const SarprasLoansPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { activeWorkspaceId } = useNavStore();
   const { can } = useAuth();
@@ -345,6 +346,15 @@ const SarprasLoansPage: React.FC = () => {
   const handleOpenRequest = useCallback(() => setRequestModalOpen(true), []);
   const handleCloseScan = useCallback(() => setScanModalOpen(false), []);
   const handleCloseRequest = useCallback(() => setRequestModalOpen(false), []);
+
+  const handleRequestSuccess = useCallback(() => {
+    handleCloseRequest();
+    queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+    refetch();
+  }, [handleCloseRequest, queryClient, refetch]);
 
   const handlePageChange = useCallback((newPage: number) => setPage(newPage), []);
   const handleLimitChange = useCallback((newLimit: number) => {

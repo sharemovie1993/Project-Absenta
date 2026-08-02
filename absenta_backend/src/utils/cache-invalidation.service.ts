@@ -183,6 +183,14 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🏗️ Invalidate cache SARPRAS, aset, peminjaman, & pemeliharaan
+   */
+  async invalidateSarprasCache(tenantId: string) {
+    await cacheService.deletePattern(`sarpras:${tenantId}:*`);
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 🧠 Invalidate cache BPBK konseling, home visit, & EWS
    */
   async invalidateBpbkCache(tenantId: string, siswaId?: string) {

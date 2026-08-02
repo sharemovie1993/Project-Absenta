@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { generateAssetCode } from '../utils/sarpras.utils';
 import { activityLogService } from '../../activity/services/activity-log.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 import puppeteer from 'puppeteer';
 import QRCode from 'qrcode';
 

@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { activityLogService } from '../../activity/services/activity-log.service';
 import { AssetService } from './asset.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class RepairService {
   static async createRepair(tenantId: string, data: {
@@ -56,6 +57,7 @@ export class RepairService {
     }
 
     AssetService.publishRealtimeDashboardUpdate(tenantId);
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
     return repair;
   }
 
@@ -148,6 +150,7 @@ export class RepairService {
     }
 
     AssetService.publishRealtimeDashboardUpdate(tenantId);
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
     return updatedRepair;
   }
 
