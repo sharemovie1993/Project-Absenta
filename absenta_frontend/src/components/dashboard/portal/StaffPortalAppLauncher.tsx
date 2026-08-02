@@ -285,40 +285,92 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (Murni Workspace Jabatan Struktural Utama User)
-  // Menampilkan menu utama jabatan struktural (misal Kurikulum) 100% murni dalam urutan canonical database
-  const block3PrimaryTiles = useMemo<AppTileData[]>(() => {
-    if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
+  // ── SEPARASI STRUCTURAL WORKSPACES (JABATAN UTAMA vs JABATAN KEDUA) ──
+  const userWorkspaces = useMemo(() => resolveUserWorkspaces(user), [user]);
+  const structuralWorkspaces = useMemo(
+    () => userWorkspaces.filter((w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'),
+    [userWorkspaces]
+  );
 
-    // 1. Normalisasi grouped-menu → FlatMenuItem[]
-    const flatItems = normalizeFlatMenu(backendGroupedMenu);
+  const primaryWs = structuralWorkspaces[0];
+  const secondaryWs = structuralWorkspaces.length > 1 ? structuralWorkspaces[1] : null;
 
-    // 2. Ambil primaryItems murni dari workspace jabatan struktural utama user (terisolasi dalam canonical order)
-    const primaryItems = getPrimaryStructuralWorkspaceItems(flatItems, user);
+  // Dynamic Wali Kelas Class Name via useWaliKelasOptions Hook & Profile
+  const waliKelasNama = useMemo(() => {
+    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
+    if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
 
-    // Pastikan Wali Kelas selalu memiliki menu "Belum Hadir" (/attendance/ops?tab=manual) di posisi depan Blok 2
-    if (isWaliKelas) {
-      const hasOps = primaryItems.some((item) => (item.path || '').toLowerCase().startsWith('/attendance/ops'));
-      if (!hasOps) {
-        primaryItems.unshift({
-          id: 'wk-belum-hadir',
-          title: 'Belum Hadir',
-          path: '/attendance/ops?tab=manual',
-          icon: 'UserCheck',
-          categoryLabel: 'Wali Kelas',
-        });
-      }
+    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
+      const found = waliKelasAssignments.find(
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+      );
+      if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
     }
+    return '';
+  }, [user, waliKelasAssignments]);
 
-    // 3. Konversi FlatMenuItem → AppTileData (Mempertahankan urutan asli database)
+  const primaryWsTitle = useMemo(() => {
+    if (!primaryWs) return 'MANAJEMEN AKADEMIK';
+    if (primaryWs.id === 'WALIKELAS_WORKSPACE' && waliKelasNama) {
+      return `WALI KELAS ${waliKelasNama}`;
+    }
+    return primaryWs.label;
+  }, [primaryWs, waliKelasNama]);
+
+  const secondaryWsTitle = useMemo(() => {
+    if (!secondaryWs) return '';
+    if (secondaryWs.id === 'WALIKELAS_WORKSPACE' && waliKelasNama) {
+      return `WALI KELAS ${waliKelasNama}`;
+    }
+    return secondaryWs.label;
+  }, [secondaryWs, waliKelasNama]);
+
+  // Dynamic Jabatan Label (e.g. "KURIKULUM & WALI KELAS XII RPL 1")
+  const dynamicJabatanLabel = useMemo(() => {
+    if (structuralWorkspaces.length === 0) return '';
+    return structuralWorkspaces
+      .map((w) => {
+        if (w.id === 'WALIKELAS_WORKSPACE' && waliKelasNama) {
+          return `WALI KELAS ${waliKelasNama}`;
+        }
+        return w.label;
+      })
+      .join(' & ');
+  }, [structuralWorkspaces, waliKelasNama]);
+
+  // Clean first name without trailing commas/punctuation
+  const cleanFirstName = useMemo(() => {
+    const raw = String(user?.full_name || '').split(' ')[0] || '';
+    return raw.replace(/[,!.]+$/g, '').trim();
+  }, [user?.full_name]);
+
+  // ── BLOK 2: 🏛️ RUANG KERJA JABATAN UTAMA (Waka / Pimpinan Struktural) ──
+  const block2PrimaryTiles = useMemo<AppTileData[]>(() => {
+    if (!backendGroupedMenu || backendGroupedMenu.length === 0 || !primaryWs) return [];
+
+    const flatItems = normalizeFlatMenu(backendGroupedMenu);
+    const { primaryItems } = filterNavByWorkspace(flatItems, user, primaryWs.id);
+
     return primaryItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       const isOpsPath = (item.path || '').toLowerCase().startsWith('/attendance/ops');
-      const itemTitle = isOpsPath && isWaliKelas ? 'Belum Hadir' : item.title;
-      const itemPath = isOpsPath && isWaliKelas ? '/attendance/ops?tab=manual' : item.path;
+      const isPelanggaranPath = (item.path || '').toLowerCase().startsWith('/kesiswaan/pelanggaran');
+
+      let itemTitle = item.title;
+      let itemPath = item.path;
+
+      if (isOpsPath && primaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Belum Hadir';
+        itemPath = '/attendance/ops?tab=manual';
+      } else if (isPelanggaranPath && primaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Pelanggaran Rombel';
+        itemPath = '/kesiswaan/pelanggaran?context=walikelas';
+      } else if (isPelanggaranPath) {
+        itemPath = '/kesiswaan/pelanggaran?context=kesiswaan';
+      }
 
       return {
-        id: `b3-item-${item.id || idx}`,
+        id: `b2-prim-${item.id || idx}`,
         title: itemTitle,
         iconName: item.icon,
         colorClass: accent.colorClass,
@@ -328,29 +380,73 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         categoryLabel: item.categoryLabel,
       };
     });
-  }, [backendGroupedMenu, user, isWaliKelas]);
+  }, [backendGroupedMenu, user, primaryWs]);
 
-  // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (SELESIH SEMUA WORKSPACE USER — OPSI A)
-  // Memuat seluruh crossModulePaths dari SELURUH workspace milik user (bukan hanya workspace aktif)
-  const block4CrossModuleTiles = useMemo<AppTileData[]>(() => {
+  // ── BLOK 3: 🏫 RUANG KERJA JABATAN KEDUA (Slot Khusus Double Jabatan, e.g. Wali Kelas) ──
+  const block3SecondaryTiles = useMemo<AppTileData[]>(() => {
+    if (!backendGroupedMenu || backendGroupedMenu.length === 0 || !secondaryWs) return [];
+
+    const flatItems = normalizeFlatMenu(backendGroupedMenu);
+    const { primaryItems } = filterNavByWorkspace(flatItems, user, secondaryWs.id);
+
+    if (secondaryWs.id === 'WALIKELAS_WORKSPACE') {
+      const hasOps = primaryItems.some((item) => (item.path || '').toLowerCase().startsWith('/attendance/ops'));
+      if (!hasOps) {
+        primaryItems.unshift({
+          id: 'sec-wk-belum-hadir',
+          title: 'Belum Hadir',
+          path: '/attendance/ops?tab=manual',
+          icon: 'UserCheck',
+          categoryLabel: 'Wali Kelas',
+        });
+      }
+    }
+
+    return primaryItems.map((item, idx) => {
+      const accent = COLOR_ACCENTS[(idx + 2) % COLOR_ACCENTS.length];
+      const isOpsPath = (item.path || '').toLowerCase().startsWith('/attendance/ops');
+      const isPelanggaranPath = (item.path || '').toLowerCase().startsWith('/kesiswaan/pelanggaran');
+
+      let itemTitle = item.title;
+      let itemPath = item.path;
+
+      if (isOpsPath && secondaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Belum Hadir';
+        itemPath = '/attendance/ops?tab=manual';
+      } else if (isPelanggaranPath && secondaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Pelanggaran Rombel';
+        itemPath = '/kesiswaan/pelanggaran?context=walikelas';
+      }
+
+      return {
+        id: `b3-sec-${item.id || idx}`,
+        title: itemTitle,
+        iconName: item.icon,
+        colorClass: accent.colorClass,
+        bgLightClass: accent.bgLightClass,
+        badgeText: item.isPremium ? 'PRO' : undefined,
+        path: itemPath,
+        categoryLabel: item.categoryLabel,
+      };
+    });
+  }, [backendGroupedMenu, user, secondaryWs]);
+
+  // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL ──
+  const block5CrossModuleTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
-    // 1. Normalisasi grouped-menu → FlatMenuItem[]
     const flatItems = normalizeFlatMenu(backendGroupedMenu);
+    const existingPaths = new Set([
+      ...block2PrimaryTiles.map((item) => (item.path || '').toLowerCase()).filter(Boolean),
+      ...block3SecondaryTiles.map((item) => (item.path || '').toLowerCase()).filter(Boolean),
+    ]);
 
-    // 2. Set of primary paths dari Blok 3 agar tidak ada duplikasi
-    const primaryPathSet = new Set(
-      block3PrimaryTiles.map((item) => (item.path || '').toLowerCase()).filter(Boolean)
-    );
+    const crossModuleItems = getAllUserCrossModuleItems(flatItems, user, existingPaths);
 
-    // 3. Filter menggabungkan seluruh crossModulePaths dari seluruh workspace pengguna
-    const crossModuleItems = getAllUserCrossModuleItems(flatItems, user, primaryPathSet);
-
-    // 4. Konversi FlatMenuItem → AppTileData
     return crossModuleItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       return {
-        id: `b4-item-${item.id || idx}`,
+        id: `b5-item-${item.id || idx}`,
         title: item.title,
         iconName: item.icon,
         colorClass: accent.colorClass,
@@ -360,7 +456,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         categoryLabel: item.categoryLabel,
       };
     });
-  }, [backendGroupedMenu, user, block3PrimaryTiles]);
+  }, [backendGroupedMenu, user, block2PrimaryTiles, block3SecondaryTiles]);
 
   // ── HELPER DEDUPLIKASI & FREQUENCY SORTING TERPUSAT ──
   const normalizeKey = (val?: string) => {
@@ -371,24 +467,20 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       .replace(/[\s\-_/]+/g, '');
   };
 
-  // Kalkulator Bobot Frekuensi Penggunaan (10 = Paling Kiri / Hot, 99 = Paling Kanan)
   const getFrequencyWeight = (item: AppTileData): number => {
     const p = (item.path || '').toLowerCase();
     const t = (item.title || '').toLowerCase();
 
-    // High Frequency / Hot Operations (Leftmost, 10-25)
     if (p.includes('/attendance/monitoring') || t.includes('live kbm')) return 10;
     if (p.includes('/attendance/rekap') || t.includes('rekap absensi')) return 15;
     if (p.includes('/rapor/nilai') || t.includes('input nilai')) return 20;
     if (p.includes('/bpbk/cases') || t.includes('monitoring kasus') || p.includes('/kesiswaan/pelanggaran')) return 25;
 
-    // Medium Frequency Operations (30-45)
     if (p.includes('/rapor/cetak') || t.includes('cetak e-rapor')) return 30;
     if (p.includes('/kesiswaan/risikolog') || t.includes('risikolog')) return 35;
     if (p.includes('/kesiswaan/jadwal-kegiatan') || t.includes('jadwal kegiatan')) return 40;
     if (p.includes('/bpbk/asesmen') || t.includes('asesmen')) return 45;
 
-    // Lower Frequency Services (50+)
     if (p.includes('/bpbk/rujukan') || t.includes('rujukan')) return 50;
     if (p.includes('/sarpras/loans') || t.includes('peminjaman')) return 60;
     if (p.includes('/cooperative') || t.includes('koperasi')) return 70;
@@ -397,35 +489,43 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return 99;
   };
 
-  // 1. Filtered Blok 1 (Aksi Cepat Diri)
+  // Filtered Blok 1 (Aksi Cepat Diri)
   const filteredBlock1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return block1QuickActionTiles;
     return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block1QuickActionTiles, searchQuery]);
 
-  // 3. Blok 3 (Manajemen & Data Akademik) — ANCHOR UTAMA (Menjaga Alur Dependensi Master Data 100% Utuh & Runtut)
-  const deduplicatedBlock3 = useMemo(() => {
-    return block3PrimaryTiles;
-  }, [block3PrimaryTiles]);
-
-  const filteredBlock3 = useMemo(() => {
+  // Filtered Blok 2 (Primary Workspace)
+  const filteredBlock2Primary = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return deduplicatedBlock3;
-    return deduplicatedBlock3.filter(
+    if (!q) return block2PrimaryTiles;
+    return block2PrimaryTiles.filter(
       (t) => t.title.toLowerCase().includes(q) ||
              (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
     );
-  }, [deduplicatedBlock3, searchQuery]);
+  }, [block2PrimaryTiles, searchQuery]);
 
-  // 2. Filtered Blok 2 (Operasional Harian & KBM) — HORMAT KE BLOK 3 (Anchor Utama) & Blok 1 + Sorted by Frequency
-  const deduplicatedBlock2 = useMemo(() => {
+  // Filtered Blok 3 (Secondary Workspace)
+  const filteredBlock3Secondary = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return block3SecondaryTiles;
+    return block3SecondaryTiles.filter(
+      (t) => t.title.toLowerCase().includes(q) ||
+             (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
+    );
+  }, [block3SecondaryTiles, searchQuery]);
+
+  // Filtered Blok 4 (Operasional Pengajaran Guru)
+  const deduplicatedBlock4Guru = useMemo(() => {
     const existingPaths = new Set([
-      ...block3PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block2PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block3SecondaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
     const existingTitles = new Set([
-      ...block3PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block2PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block3SecondaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
     const filtered = block2GuruTiles.filter((t) => {
@@ -436,94 +536,51 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       return true;
     });
 
-    // Urutkan berdasarkan bobot frekuensi penggunaan (Kiri ke Kanan)
     return [...filtered].sort((a, b) => getFrequencyWeight(a) - getFrequencyWeight(b));
-  }, [block2GuruTiles, block3PrimaryTiles, block1QuickActionTiles]);
+  }, [block2GuruTiles, block2PrimaryTiles, block3SecondaryTiles, block1QuickActionTiles]);
 
-  const filteredBlock2 = useMemo(() => {
+  const filteredBlock4Guru = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return deduplicatedBlock2;
-    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
-  }, [deduplicatedBlock2, searchQuery]);
+    if (!q) return deduplicatedBlock4Guru;
+    return deduplicatedBlock4Guru.filter((t) => t.title.toLowerCase().includes(q));
+  }, [deduplicatedBlock4Guru, searchQuery]);
 
-  // 4. Filtered Blok 4 (Informasi Lintas Modul) — HORMAT KE BLOK 3 (Anchor Utama), Blok 1, & Blok 2 + Sorted by Frequency
-  const deduplicatedBlock4 = useMemo(() => {
+  // Filtered Blok 5 (Informasi Lintas Modul)
+  const deduplicatedBlock5Cross = useMemo(() => {
     const existingPaths = new Set([
-      ...block3PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block2PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block3SecondaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock4Guru.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
     const existingTitles = new Set([
-      ...block3PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block2PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block3SecondaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock4Guru.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
-    const seenPathsInB4 = new Set<string>();
-    const filtered = block4CrossModuleTiles.filter((t) => {
+    const seenPathsInB5 = new Set<string>();
+    const filtered = block5CrossModuleTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
       const titleKey = normalizeKey(t.title);
       if (pathKey && existingPaths.has(pathKey)) return false;
       if (titleKey && existingTitles.has(titleKey)) return false;
-      if (pathKey && seenPathsInB4.has(pathKey)) return false;
-      if (pathKey) seenPathsInB4.add(pathKey);
+      if (pathKey && seenPathsInB5.has(pathKey)) return false;
+      if (pathKey) seenPathsInB5.add(pathKey);
       return true;
     });
 
-    // Urutkan berdasarkan bobot frekuensi penggunaan (Kiri ke Kanan)
     return [...filtered].sort((a, b) => getFrequencyWeight(a) - getFrequencyWeight(b));
-  }, [block4CrossModuleTiles, block3PrimaryTiles, block1QuickActionTiles, deduplicatedBlock2]);
+  }, [block5CrossModuleTiles, block2PrimaryTiles, block3SecondaryTiles, block1QuickActionTiles, deduplicatedBlock4Guru]);
 
-  const filteredBlock4 = useMemo(() => {
+  const filteredBlock5Cross = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return deduplicatedBlock4;
-    return deduplicatedBlock4.filter(
+    if (!q) return deduplicatedBlock5Cross;
+    return deduplicatedBlock5Cross.filter(
       (t) => t.title.toLowerCase().includes(q) ||
              (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
     );
-  }, [deduplicatedBlock4, searchQuery]);
-
-  // Dynamic Wali Kelas Class Name via useWaliKelasOptions Hook & Profile
-  const waliKelasNama = useMemo(() => {
-    // 1. Direct profile assignment
-    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
-    if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
-
-    // 2. Canonical useWaliKelasOptions hook list
-    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
-      const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
-      );
-      if (found?.Kelas?.nama_kelas) {
-        return found.Kelas.nama_kelas;
-      }
-    }
-    return '';
-  }, [user, waliKelasAssignments]);
-
-  // Dynamic Jabatan Label (e.g. "WALI KELAS (X PPLG 1)" / "KURIKULUM & WALI KELAS (XII RPL 2)")
-  const dynamicJabatanLabel = useMemo(() => {
-    const userWorkspaces = resolveUserWorkspaces(user);
-    const structuralWorkspaces = userWorkspaces.filter(
-      (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
-    );
-    if (structuralWorkspaces.length === 0) return '';
-    return structuralWorkspaces
-      .map((w) => {
-        if (w.id === 'WALIKELAS_WORKSPACE' && waliKelasNama) {
-          return `WALI KELAS ${waliKelasNama}`;
-        }
-        return w.label;
-      })
-      .join(' & ');
-  }, [user, waliKelasNama]);
-
-  // Clean first name without trailing commas/punctuation
-  const cleanFirstName = useMemo(() => {
-    const raw = String(user?.full_name || '').split(' ')[0] || '';
-    return raw.replace(/[,!.]+$/g, '').trim();
-  }, [user?.full_name]);
-
-  const hasStructuralBlock = filteredBlock3.length > 0;
+  }, [deduplicatedBlock5Cross, searchQuery]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
@@ -587,7 +644,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 1: ⚡ AKSI CEPAT DIRI (QUICK ACTIONS DARI UNIFIED DASHBOARD)
+          BLOK 1: ⚡ AKSI CEPAT DIRI
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock1.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -618,10 +675,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏛️ RUANG KERJA JABATAN (DINAMIS DENGAN NAMA JABATAN MELEKAT)
-          Hanya tampil jika pengguna memiliki posisi/jabatan struktural
+          BLOK 2: 🏛️ RUANG KERJA JABATAN UTAMA (LIST JAJARAN PIMPINAN WAKA / KEPSEK / STRUCTURAL)
       ───────────────────────────────────────────────────────────────────────────── */}
-      {hasStructuralBlock && (
+      {filteredBlock2Primary.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
           <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
@@ -629,16 +685,16 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Building2 size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Ruang Kerja {dynamicJabatanLabel ? `: ${dynamicJabatanLabel.toUpperCase()}` : ''}
+                2. Ruang Kerja : {primaryWsTitle.toUpperCase()}
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock3.length} Menu Jabatan
+              {filteredBlock2Primary.length} Menu Struktural
             </span>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredBlock3.map((tile) => (
+            {filteredBlock2Primary.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}
@@ -650,9 +706,40 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏫 RUANG KERJA GURU (OPERASIONAL HARIAN PENGAJARAN & KBM)
+          BLOK 3: 🏫 RUANG KERJA JABATAN KEDUA (SLOT KHUSUS UNTUK DOUBLE JABATAN, MISAL: WALI KELAS)
       ───────────────────────────────────────────────────────────────────────────── */}
-      {filteredBlock2.length > 0 && (
+      {filteredBlock3Secondary.length > 0 && (
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-emerald-600 text-white shadow-2xs">
+                <Users size={14} />
+              </div>
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                3. Ruang Kerja Jabatan Kedua : {secondaryWsTitle.toUpperCase()}
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredBlock3Secondary.length} Menu Jabatan Kedua
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
+            {filteredBlock3Secondary.map((tile) => (
+              <MemoizedAppTileItem
+                key={tile.id}
+                tile={tile}
+                onNavigate={handleTileNavigate}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          BLOK 4: 🏫 OPERASIONAL PENGAJARAN GURU (UNIVERSAL GURU & KBM)
+      ───────────────────────────────────────────────────────────────────────────── */}
+      {filteredBlock4Guru.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
           <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
@@ -660,16 +747,16 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Sparkles size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                {hasStructuralBlock ? '3. Ruang Kerja Guru' : '2. Ruang Kerja Guru'}
+                {secondaryWs ? '4. Operasional Pengajaran Guru' : '3. Operasional Pengajaran Guru'}
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock2.length} Operasional Guru
+              {filteredBlock4Guru.length} Operasional Guru
             </span>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredBlock2.map((tile) => (
+            {filteredBlock4Guru.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}
@@ -681,9 +768,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 4: 🔗 INFORMASI LINTAS MODUL (LAYANAN LINTAS UNIT KERJA)
+          BLOK 5: 🔗 INFORMASI LINTAS MODUL (LAYANAN LINTAS UNIT KERJA / EKOSISTEM)
       ───────────────────────────────────────────────────────────────────────────── */}
-      {filteredBlock4.length > 0 && (
+      {filteredBlock5Cross.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 border-dashed">
           <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
@@ -692,7 +779,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               </div>
               <div>
                 <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  {hasStructuralBlock ? '4. Informasi Lintas Modul' : '3. Informasi Lintas Modul'}
+                  {secondaryWs ? '5. Informasi Lintas Modul' : '4. Informasi Lintas Modul'}
                 </h2>
                 <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                   Layanan & informasi pendukung lintas unit kerja
@@ -700,12 +787,12 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               </div>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock4.length} Layanan Lintas
+              {filteredBlock5Cross.length} Layanan Lintas
             </span>
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredBlock4.map((tile) => (
+            {filteredBlock5Cross.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}
