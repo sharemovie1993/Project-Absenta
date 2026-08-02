@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { 
   Search, 
@@ -62,6 +63,13 @@ const KelasList = React.memo<KelasListProps>(({
   activeTahunPelajaran
 }) => {
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
+  const invalidateKelasCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
+
   const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,6 +276,7 @@ const KelasList = React.memo<KelasListProps>(({
       
       if (response.success) {
         toast.success(response.message || 'Kelas berhasil dihapus');
+        invalidateKelasCache();
         fetchKelas(currentPage, debouncedSearchTerm);
       } else {
         toast.error(response.message || 'Gagal menghapus kelas');

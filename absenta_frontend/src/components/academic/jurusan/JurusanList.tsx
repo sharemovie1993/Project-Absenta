@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -52,6 +53,13 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
+  const invalidateJurusanCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jurusan-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+  }, [queryClient]);
+
   const [jurusans, setJurusans] = useState<Jurusan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,6 +148,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       
       if (response.success) {
         toast.success(response.message || 'Jurusan berhasil dihapus');
+        invalidateJurusanCache();
         fetchJurusans(currentPage, debouncedSearchTerm);
       } else {
         toast.error(response.message || 'Gagal menghapus jurusan');

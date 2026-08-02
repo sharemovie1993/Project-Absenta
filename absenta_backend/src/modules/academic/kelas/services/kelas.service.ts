@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { findBestMatch } from '@/utils/normalization';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateKelasInput {
   nama_kelas: string;
@@ -535,6 +536,8 @@ export class KelasService {
       },
     });
 
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
     return this.withDerivedWaliKelas(kelas!);
   }
 

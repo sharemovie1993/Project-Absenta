@@ -3,6 +3,7 @@ import { findBestMatch } from '@/utils/normalization';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { DataScope } from '../../../../types/fastify';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateJurusanInput {
   nama: string;
@@ -210,6 +211,8 @@ export class JurusanService {
       console.warn('Failed to create automatic Sarpras Location for Jurusan:', err);
     }
 
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
     return jurusan as JurusanResponse;
   }
 
