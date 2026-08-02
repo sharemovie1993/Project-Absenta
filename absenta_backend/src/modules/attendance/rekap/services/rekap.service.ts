@@ -855,7 +855,6 @@ export class RekapService {
     if (cached) {
       return cached;
     }
-
     // Validasi siswa
     const siswa = await prisma.siswa.findFirst({
       where: {
@@ -930,18 +929,36 @@ export class RekapService {
       const whereAbsen: any = {
         siswa_id: siswaId,
         tenant_id: tenantId,
-        waktu_tap: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
+        created_at: { gte: startOfMonth, lte: endOfMonth },
+        waktu_tap: { gte: startOfMonth, lte: endOfMonth },
       };
-
-      if (tahunPelajaranId) {
-        whereAbsen.tahun_pelajaran_id_snapshot = tahunPelajaranId;
-      }
-
-      const presensiList = await prisma.absenGerbangSiswa.findMany({
+      if (tahunPelajaranId) whereAbsen.tahun_pelajaran_id_snapshot = tahunPelajaranId;
+      const absenGerbang = await prisma.absenGerbangSiswa.findMany({
         where: whereAbsen,
+        orderBy: { waktu_tap: 'asc' },
+      });
+
+      // Group by date
+      const attendanceByDate = new Map<string, any>();
+      absenGerbang.forEach(absen => {
+        if (!absen.waktu_tap) return; // Skip if null
+        const dateKey = formatDateKey(absen.waktu_tap);
+        if (!attendanceByDate.has(dateKey)) {
+          attendanceByDate.set(dateKey, absen);
+        } else {
+          // Keep the earliest/latest? Or prioritize status?
+          // Simple logic: first tap of day defines status (usually 'HADIR')
+        }
+      });
+
+      attendanceByDate.forEach(absen => {
+        const status = (absen.status === 'HADIR' && absen.is_terlambat) ? 'TERLAMBAT' : absen.status;
+        if (statistik[status] !== undefined) statistik[status]++;
+        
+        detail.push({
+          tanggal: formatDateKey(absen.waktu_tap),
+          status: status
+        });
 
         // Poin calculation: Prioritize DB value
         if (absen.poin_kehadiran && absen.poin_kehadiran > 0) {
@@ -1099,7 +1116,7 @@ export class RekapService {
     const totalEffectiveDays = statistik.HADIR + statistik.IZIN + statistik.SAKIT + statistik.ALPA + statistik.TERLAMBAT + statistik.DISPEN;
     const persentase_kehadiran = totalEffectiveDays > 0 ? Math.round(((statistik.HADIR + statistik.TERLAMBAT) / totalEffectiveDays) * 100) : 0;
 
-    return {
+    const result: RekapBulananSiswaResponse = {
       nama_siswa: siswa.nama_siswa,
       bulan,
       statistik,
@@ -1112,6 +1129,9 @@ export class RekapService {
       total_poin,
       detail
     };
+
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
 
