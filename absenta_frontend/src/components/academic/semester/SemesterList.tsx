@@ -55,8 +55,6 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [activating, setActivating] = useState(false);
   
