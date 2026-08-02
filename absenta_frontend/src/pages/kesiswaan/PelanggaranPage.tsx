@@ -156,10 +156,6 @@ export default function PelanggaranPage() {
     fetchData(page);
   }, [fetchData]);
 
-  useEffect(() => {
-    fetchJenisPelanggaran();
-  }, [fetchJenisPelanggaran]);
-
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const validation = pelanggaranSchema.safeParse(formData);
