@@ -32,6 +32,8 @@ import { cn } from '../../lib/utils';
 import { Loader } from '../../components/ui/Loader';
 import { z } from 'zod';
 
+import { useAuthStore } from '../../store/authStore';
+
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -68,13 +70,26 @@ const pelanggaranSchema = z.object({
 });
 
 export default function PelanggaranPage() {
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [data, setData] = useState<Pelanggaran[]>([]);
   const [loading, setLoading] = useState(true); // Skeleton loading guard
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
-  
+
+  // Deteksi Konteks Peran (Kesiswaan vs Wali Kelas)
+  const isKesiswaan = useMemo(() => {
+    const caps = user?.capabilities || [];
+    const pos = user?.position_codes || [];
+    return pos.includes('KESISWAAN') || caps.includes('kesiswaan.pelanggaran.manage') || user?.role?.name === 'KESISWAAN';
+  }, [user]);
+
+  const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
+  const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
+  const isWaliKelas = !isKesiswaan && (!!waliKelasId || (user?.position_codes || []).includes('WALIKELAS'));
+  const waliKelasNama = typeof waliKelasObj === 'object' ? waliKelasObj?.nama_kelas : '';
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -89,23 +104,28 @@ export default function PelanggaranPage() {
     tanggal: new Date().toISOString().split('T')[0],
     status: 'BARU'
   });
-  // Tipe eksplisit Siswa – pengganti tipe longgar sebelumnya
   const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
   const [jenisPelanggaranList, setJenisPelanggaranList] = useState<JenisPelanggaran[]>([]);
 
   const confirm = useConfirm();
-
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const result = await kesiswaanApi.getPelanggaran({
+      const params: any = {
         page,
         limit: itemsPerPage,
         search: debouncedSearch,
         elevated_context: 'true'
-      });
+      };
+
+      // Konteks Wali Kelas: Otomatis memfilter kasus khusus siswa rombel bimbingan
+      if (isWaliKelas && waliKelasId) {
+        params.kelas_id = waliKelasId;
+      }
+
+      const result = await kesiswaanApi.getPelanggaran(params);
       const list = result.data?.list || result.list || [];
       setData(list);
       
@@ -121,7 +141,7 @@ export default function PelanggaranPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, itemsPerPage]);
+  }, [debouncedSearch, itemsPerPage, isWaliKelas, waliKelasId]);
 
   const fetchJenisPelanggaran = useCallback(async () => {
     try {
@@ -408,12 +428,14 @@ export default function PelanggaranPage() {
 
   return (
     <AcademicPageLayout
-      title="Catatan Perkembangan"
-      description="Rekam jejak kedisiplinan dan pembinaan karakter siswa."
+      title={isWaliKelas ? `Kasus Pelanggaran Siswa ${waliKelasNama ? `(${waliKelasNama})` : ''}` : "Manajemen Kasus Pelanggaran Siswa"}
+      description={isWaliKelas 
+        ? `Pantauan khusus catatan kedisiplinan dan pembinaan karakter siswa kelas ${waliKelasNama || 'bimbingan Anda'}.`
+        : "Pusat pemantauan & penanganan kedisiplinan siswa seluruh sekolah."}
       breadcrumbs={[
         { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Kesiswaan', path: '/kesiswaan' },
-        { label: 'Catatan Perkembangan', path: '/kesiswaan/pelanggaran' }
+        { label: isWaliKelas ? 'Wali Kelas' : 'Kesiswaan', path: isWaliKelas ? '/academic/siswa' : '/kesiswaan' },
+        { label: 'Kasus Pelanggaran', path: '/kesiswaan/pelanggaran' }
       ]}
       stats={pageStats}
       hardeningModuleKey="kesiswaan_pelanggaran"

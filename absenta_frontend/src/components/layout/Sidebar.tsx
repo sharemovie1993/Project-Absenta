@@ -19,7 +19,7 @@ import Tooltip from '../ui/Tooltip';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { useNavStore, type HubType } from '../../store/navStore';
 import { HubSwitcher } from './HubSwitcher';
-import { getHubByLabel, ROLE_WORKSPACES } from '@/config/navigation.config';
+import { getHubByLabel, ROLE_WORKSPACES, resolveUserWorkspaces } from '@/config/navigation.config';
 import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '../../hooks/useJenjang';
