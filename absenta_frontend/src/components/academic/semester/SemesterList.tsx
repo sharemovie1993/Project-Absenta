@@ -415,7 +415,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
                <Button
                   variant="toolbarOutline"
                   size="toolbarIcon"
-                  onClick={() => fetchSemesters(currentPage, searchTerm)}
+                  onClick={() => refetch()}
                   aria-label="Refresh Data"
                   className="rounded-xl"
                   disabled={loading}
