@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -119,9 +119,25 @@ export default function PelanggaranPage() {
     return !!effectiveWaliKelasId || pos.includes('WALIKELAS');
   }, [user, effectiveWaliKelasId]);
 
+  const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
+
+  // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
+  const isDualRoleUser = useMemo(() => {
+    if (!effectiveWaliKelasId) return false;
+    const pos = user?.position_codes || [];
+    const roleName = String(user?.role?.name || '').toUpperCase();
+    const isLeadershipOrStaff = pos.includes('KURIKULUM') || pos.includes('KESISWAAN') || pos.includes('KEPSEK') || pos.includes('SARPRAS') || pos.includes('HUBIN') || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+    return isLeadershipOrStaff;
+  }, [effectiveWaliKelasId, user]);
+
+  const handleContextSwitch = useCallback((targetContext: 'walikelas' | 'kesiswaan') => {
+    const params = new URLSearchParams(location.search);
+    params.set('context', targetContext);
+    navigate({ search: params.toString() }, { replace: true });
+  }, [location.search, navigate]);
 
   // Penentuan mode tampilan (URL Context > Active Workspace > Role Default):
   // 1. Jika URL membawa query ?context=walikelas -> Paksa mode Wali Kelas (filter rombel binaan).
@@ -448,7 +464,37 @@ export default function PelanggaranPage() {
   }, [data]);
 
   const toolbar = useMemo(() => (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
+      {/* Context Switcher Pill untuk Pengguna Double Jabatan (Wali Kelas + Pimpinan) */}
+      {isDualRoleUser && (
+        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold shadow-xs">
+          <button
+            type="button"
+            onClick={() => handleContextSwitch('walikelas')}
+            className={`px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold cursor-pointer flex items-center gap-1.5 ${
+              isWaliKelas
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🟢</span>
+            <span>Rombel {waliKelasNama || 'Binaan'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleContextSwitch('kesiswaan')}
+            className={`px-2.5 py-1 rounded-lg transition-all text-[11px] font-bold cursor-pointer flex items-center gap-1.5 ${
+              !isWaliKelas
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🔵</span>
+            <span>Seluruh Sekolah</span>
+          </button>
+        </div>
+      )}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
         <Input
@@ -468,7 +514,7 @@ export default function PelanggaranPage() {
         Tambah Catatan
       </Button>
     </div>
-  ), [searchTerm, resetForm]);
+  ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, searchTerm, resetForm]);
 
   return (
     <AcademicPageLayout
