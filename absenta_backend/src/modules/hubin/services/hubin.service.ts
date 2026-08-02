@@ -512,6 +512,7 @@ export class HubinService {
       include: { Siswa: { select: { nama_siswa: true } } }
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_PKL_REMOVE', 'SiswaPkl', id, { siswa_nama: result.Siswa?.nama_siswa });
+    await cacheInvalidationService.invalidateHubinCache(tenantId, result.siswa_id);
     return result;
   }
 
@@ -625,7 +626,7 @@ export class HubinService {
     });
 
     if (existing) {
-      return await prisma.absensiPkl.update({
+      const res = await prisma.absensiPkl.update({
         where: { id: existing.id },
         data: {
           jam_masuk: new Date(),
@@ -638,9 +639,11 @@ export class HubinService {
           address_snapshot: data.address_snapshot || existing.address_snapshot
         }
       });
+      await cacheInvalidationService.invalidateHubinCache(tenantId);
+      return res;
     }
 
-    return await prisma.absensiPkl.create({
+    const res = await prisma.absensiPkl.create({
       data: {
         tenant_id: tenantId,
         siswa_pkl_id: siswaPklId,
@@ -658,6 +661,8 @@ export class HubinService {
         is_verified: isOutsideRadius ? false : false 
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async checkOut(tenantId: string, siswaPklId: string, data: { latitude: number; longitude: number; accuracy?: number; kegiatan?: string; image_url?: string; is_dinas_luar?: boolean; address_snapshot?: string }) {
@@ -725,7 +730,7 @@ export class HubinService {
         isOutsideRadius = true;
       }
     }
-    return await prisma.absensiPkl.update({
+    const res = await prisma.absensiPkl.update({
       where: { id: existing.id },
       data: {
         jam_pulang: new Date(),
@@ -737,6 +742,8 @@ export class HubinService {
         address_snapshot: data.address_snapshot || existing.address_snapshot
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async updateLogbook(tenantId: string, siswaPklId: string, data: { kegiatan: string; absensiId?: string; image_url?: string }) {
@@ -762,13 +769,15 @@ export class HubinService {
       throw new Error('Data absensi tidak ditemukan');
     }
 
-    return await prisma.absensiPkl.update({
+    const res = await prisma.absensiPkl.update({
       where: { id: existing.id },
       data: {
         kegiatan: data.kegiatan,
         image_url: data.image_url || existing.image_url
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async syncOfflineLogbook(
@@ -876,7 +885,7 @@ export class HubinService {
         });
       }
     }
-
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return results;
   }
 
@@ -884,12 +893,14 @@ export class HubinService {
     if (requesterId) {
       await this.ensureOwnership(tenantId, id, requesterId, org);
     }
-    return await prisma.siswaPkl.update({
+    const res = await prisma.siswaPkl.update({
       where: { id, tenant_id: tenantId },
       data: {
         nilai_json: nilai
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async addKunjungan(tenantId: string, id: string, data: any, requesterId?: string, org?: any) {
@@ -920,16 +931,18 @@ export class HubinService {
       ...data
     });
 
-    return await prisma.siswaPkl.update({ 
+    const res = await prisma.siswaPkl.update({ 
       where: { id },
       data: {
         kunjungan_json: kunjunganList
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async submitJurnalPortofolio(tenantId: string, id: string, data: { file_url: string }) {
-    return await prisma.siswaPkl.update({
+    const res = await prisma.siswaPkl.update({
       where: { id, tenant_id: tenantId },
       data: {
         jurnal_json: {
@@ -939,6 +952,8 @@ export class HubinService {
         }
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   async reviewJurnalPortofolio(tenantId: string, id: string, data: { status: string; catatan?: string }, requesterId?: string, org?: any) {
@@ -963,7 +978,7 @@ export class HubinService {
       }
     }
 
-    return await prisma.siswaPkl.update({
+    const res = await prisma.siswaPkl.update({
       where: { id },
       data: {
         jurnal_json: {
@@ -974,6 +989,8 @@ export class HubinService {
         }
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   private async ensureOwnership(tenantId: string, id: string, userId: string, org?: any) {
@@ -1064,6 +1081,7 @@ export class HubinService {
   async updateSettings(tenantId: string, data: { folderUrl: string; driveMode: string }) {
     await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_FOLDER_URL', data.folderUrl);
     await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_MODE', data.driveMode);
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return { success: true };
   }
 
@@ -1078,7 +1096,7 @@ export class HubinService {
       }
     }
     
-    return await prisma.absensiPkl.update({
+    const res = await prisma.absensiPkl.update({
       where: { id },
       data: {
         is_verified: true,
@@ -1086,6 +1104,8 @@ export class HubinService {
         verifikasi_at: new Date()
       }
     });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
   }
 
   // --- 5. MANAJEMEN RIWAYAT MoU (MoU History) ---
@@ -1118,6 +1138,7 @@ export class HubinService {
     });
 
     this.log(tenantId, actorUserId || null, 'HUBIN_MOU_CREATE', 'HubinMoUHistory', history.id, { mou_nomor: history.mou_nomor });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return history;
   }
 
@@ -1127,6 +1148,7 @@ export class HubinService {
       data: { deleted_at: new Date() }
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_MOU_DELETE', 'HubinMoUHistory', id, { mou_nomor: result.mou_nomor });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
@@ -1182,6 +1204,7 @@ export class HubinService {
       }
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_LOWONGAN_CREATE', 'HubinLowongan', result.id, { posisi: result.judul_posisi });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
@@ -1194,6 +1217,7 @@ export class HubinService {
       data: updateData
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_LOWONGAN_UPDATE', 'HubinLowongan', id, { posisi: result.judul_posisi });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
   }
 
