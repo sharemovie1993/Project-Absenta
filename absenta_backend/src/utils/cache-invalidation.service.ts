@@ -42,19 +42,22 @@ export class CacheInvalidationService {
   }
 
   /**
-   * 👥 Invalidate cache user-related
+   * 👥 Invalidate cache user accounts, RBAC roles, & sidebar capabilities
    */
   async invalidateUserCache(tenantId: string, userId?: string) {
-    // Invalidate tenant user stats
+    // Invalidate tenant user stats & list
     await cacheService.delete(CACHE_KEYS.TENANT.USERS(tenantId));
+    await cacheService.deletePattern(`user:${tenantId}:*`);
     
-    // Invalidate dashboard cache (karena user stats mempengaruhi dashboard)
+    // Invalidate dashboard cache
     await this.invalidateDashboardCache(tenantId);
     
     if (userId) {
-      // Invalidate specific user cache jika ada
-      const userPattern = `user:${userId}:*`;
-      await cacheService.deletePattern(userPattern);
+      // Invalidate specific user cache
+      await cacheService.deletePattern(`user:${userId}:*`);
+      await cacheService.deletePattern(`user:profile:${userId}*`);
+      await cacheService.deletePattern(`user:capabilities:${userId}*`);
+      await cacheService.deletePattern(`user:sidebar:${userId}*`);
     }
   }
 
@@ -230,18 +233,7 @@ export class CacheInvalidationService {
     await this.invalidateDashboardCache(tenantId);
   }
 
-  /**
-   * 👤 Invalidate cache User accounts, RBAC roles, & sidebar capabilities
-   */
-  async invalidateUserCache(tenantId: string, userId?: string) {
-    await cacheService.deletePattern(`user:${tenantId}:*`);
-    if (userId) {
-      await cacheService.deletePattern(`user:profile:${userId}*`);
-      await cacheService.deletePattern(`user:capabilities:${userId}*`);
-      await cacheService.deletePattern(`user:sidebar:${userId}*`);
-    }
-    await this.invalidateDashboardCache(tenantId);
-  }
+
 
 
 

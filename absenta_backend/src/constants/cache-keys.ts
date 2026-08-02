@@ -55,6 +55,10 @@ export const CACHE_KEYS = {
   USER: {
     PROFILE: (userId: string) => `user:${userId}:profile`,
     PERMISSIONS: (userId: string) => `user:${userId}:permissions`,
+    CAPABILITIES: (userId: string) => `user:capabilities:${userId}`,
+    MENU_SIDEBAR: (userId: string) => `user:sidebar:${userId}`,
+    USERS_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', role?: string) =>
+      `user:${tenantId}:list:${page}:${limit}:${search || 'all'}:${role || 'all'}`,
     ROLES: () => `user:roles:all`,
     ALL: (userId: string) => `user:${userId}:*`
   },
@@ -191,15 +195,7 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `rapor:${tenantId}:*`
   },
 
-  // 👤 USER Management & Access Control related caches
-  USER: {
-    PROFILE: (userId: string) => `user:profile:${userId}`,
-    CAPABILITIES: (userId: string) => `user:capabilities:${userId}`,
-    MENU_SIDEBAR: (userId: string) => `user:sidebar:${userId}`,
-    USERS_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', role?: string) =>
-      `user:${tenantId}:list:${page}:${limit}:${search || 'all'}:${role || 'all'}`,
-    ALL: (tenantId: string) => `user:${tenantId}:*`
-  },
+
 
 
 

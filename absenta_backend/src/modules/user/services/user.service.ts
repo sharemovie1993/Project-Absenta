@@ -199,6 +199,10 @@ export class UserService {
       },
     }) as any;
 
+    if (user.tenant_id) {
+      await cacheInvalidationService.invalidateUserCache(user.tenant_id, user.id);
+    }
+
     return {
       id: user.id,
       email: user.email,
