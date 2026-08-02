@@ -109,8 +109,10 @@ export class JadwalKegiatanService {
       data,
     });
 
-    await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
-    await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    if (scope.tenantId) {
+      await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
+      await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    }
     return updated;
   }
 
@@ -121,8 +123,10 @@ export class JadwalKegiatanService {
       where: { id },
     });
 
-    await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
-    await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    if (scope.tenantId) {
+      await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
+      await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
+    }
     return deleted;
   }
 }
