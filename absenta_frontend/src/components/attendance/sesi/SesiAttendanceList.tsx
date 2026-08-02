@@ -223,6 +223,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       if (sesi?.id) {
         queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance', sesi.id] });
       }
+      queryClient.invalidateQueries({ queryKey: ['attendance-today-me-class'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
     }
   });
 
