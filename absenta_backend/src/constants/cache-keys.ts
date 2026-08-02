@@ -65,6 +65,9 @@ export const CACHE_KEYS = {
     KELAS: (tenantId: string) => `academic:${tenantId}:kelas`,
     GURU: (tenantId: string) => `academic:${tenantId}:guru`,
     SISWA: (tenantId: string) => `academic:${tenantId}:siswa`,
+    SISWA_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', kelasId?: string, status?: string, gender?: string, tingkat?: string) =>
+      `academic:${tenantId}:siswa_list:${page}:${limit}:${search || 'all'}:${kelasId || 'all'}:${status || 'all'}:${gender || 'all'}:${tingkat || 'all'}`,
+    SISWA_DETAIL: (tenantId: string, siswaId: string) => `academic:${tenantId}:siswa_detail:${siswaId}`,
     MAPEL: (tenantId: string) => `academic:${tenantId}:mapel`,
     BEBAN_GURU: (tenantId: string, yearId?: string, semId?: string) => `academic:${tenantId}:beban_guru:${yearId || 'default'}:${semId || 'default'}`,
     JADWAL_GRID: (tenantId: string, kelasId?: string, yearId?: string, semId?: string) => `academic:${tenantId}:jadwal_grid:${kelasId || 'all'}:${yearId || 'default'}:${semId || 'default'}`,

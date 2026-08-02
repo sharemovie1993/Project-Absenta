@@ -64,6 +64,21 @@ export class CacheInvalidationService {
   async invalidateAcademicCache(tenantId: string) {
     await cacheService.delete(CACHE_KEYS.TENANT.ACADEMIC(tenantId));
     await this.invalidateBebanGuruCache(tenantId);
+    await this.invalidateSiswaCache(tenantId);
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
+   * 👨‍🎓 Invalidate cache terkait Siswa & Roster Kelas
+   */
+  async invalidateSiswaCache(tenantId: string, siswaId?: string) {
+    await cacheService.deletePattern(`academic:${tenantId}:siswa_list:*`);
+    if (siswaId) {
+      await cacheService.delete(CACHE_KEYS.ACADEMIC.SISWA_DETAIL(tenantId, siswaId));
+    } else {
+      await cacheService.deletePattern(`academic:${tenantId}:siswa_detail:*`);
+    }
+    await this.invalidateRekapCache(tenantId);
     await this.invalidateDashboardCache(tenantId);
   }
 

@@ -1,11 +1,33 @@
 import type { PaginatedSiswaResponse, PaginationParams, SiswaResponse } from '../siswa.types';
 import { siswaDb } from '../repositories/siswa.db';
+import { CacheService } from '@/utils/cache.service';
+import { CACHE_KEYS } from '@/constants/cache-keys';
+
+const cacheService = CacheService.getInstance();
 
 export async function getAllSiswaQuery(
   scope: { tenantId: string; org: any },
   params: PaginationParams
 ): Promise<PaginatedSiswaResponse> {
   const { tenantId, org } = scope;
+  const page = params?.page || 1;
+  const limit = params?.limit || 10;
+  const search = params?.search || '';
+  const kelasId = params?.kelas_id || '';
+  const status = params?.status || '';
+  const gender = params?.gender || '';
+  const tingkat = params?.tingkat !== undefined ? String(params.tingkat) : '';
+
+  const isSearchable = !!search || !!params?.user_id;
+  const cacheKey = CACHE_KEYS.ACADEMIC.SISWA_LIST(tenantId, page, limit, search, kelasId, status, gender, tingkat);
+
+  if (!isSearchable) {
+    const cached = await cacheService.get<PaginatedSiswaResponse>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   let whereClause: any = { tenant_id: tenantId };
 
   if (params?.search) {
@@ -182,7 +204,7 @@ export async function getAllSiswaQuery(
     poin_prestasi: (s.PrestasiSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
   }));
 
-  return {
+  const result: PaginatedSiswaResponse = {
     data: formattedSiswa as SiswaResponse[],
     pagination: {
       page,
@@ -191,4 +213,10 @@ export async function getAllSiswaQuery(
       totalPages,
     },
   };
+
+  if (!isSearchable) {
+    await cacheService.set(cacheKey, result, 300);
+  }
+
+  return result;
 }

@@ -27,6 +27,8 @@ import { getSiswaTimelineQuery } from './queries/get-siswa-timeline.query';
 import { getSiswaExitBundleQuery } from './queries/get-siswa-exit-bundle.query';
 import { mapPpdbStudentsCommand } from './commands/map-ppdb-students.command';
 
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+
 export type { PaginationParams, SiswaResponse, PaginatedSiswaResponse, CreateSiswaInput, UpdateSiswaInput } from './siswa.types';
 
 export class SiswaService {
@@ -52,7 +54,9 @@ export class SiswaService {
       alasan?: string;
     },
   ): Promise<any> {
-    return bulkUpdateStatusCommand({ tenantId, org }, payload);
+    const res = await bulkUpdateStatusCommand({ tenantId, org }, payload);
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
+    return res;
   }
 
   async sendParentAccess(siswaId: string, tenantId: string, org: any): Promise<any> {
@@ -60,19 +64,27 @@ export class SiswaService {
   }
 
   async createSiswa(input: CreateSiswaInput, tenantId: string, org: any): Promise<SiswaResponse> {
-    return createSiswaCommand(input, { tenantId, org });
+    const res = await createSiswaCommand(input, { tenantId, org });
+    await cacheInvalidationService.invalidateSiswaCache(tenantId, res.id);
+    return res;
   }
 
   async updateSiswa(siswaId: string, input: UpdateSiswaInput, tenantId: string, org: any, userId?: string): Promise<SiswaResponse> {
-    return updateSiswaCommand(siswaId, input, { tenantId, org, userId });
+    const res = await updateSiswaCommand(siswaId, input, { tenantId, org, userId });
+    await cacheInvalidationService.invalidateSiswaCache(tenantId, siswaId);
+    return res;
   }
 
   async deleteSiswa(siswaId: string, tenantId: string, org: any): Promise<SiswaResponse> {
-    return deleteSiswaCommand(siswaId, { tenantId, org });
+    const res = await deleteSiswaCommand(siswaId, { tenantId, org });
+    await cacheInvalidationService.invalidateSiswaCache(tenantId, siswaId);
+    return res;
   }
 
   async deleteAllSiswa(tenantId: string): Promise<{ count: number }> {
-    return deleteAllSiswaCommand(tenantId);
+    const res = await deleteAllSiswaCommand(tenantId);
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
+    return res;
   }
 
   async checkAcademicStatus(
@@ -94,7 +106,9 @@ export class SiswaService {
   }
 
   async syncSiswaAkademik(tenantId: string, yearId: string, semesterId: string, kelasId?: string, userId?: string): Promise<any> {
-    return syncSiswaAkademikCommand(tenantId, yearId, semesterId, kelasId, userId);
+    const res = await syncSiswaAkademikCommand(tenantId, yearId, semesterId, kelasId, userId);
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
+    return res;
   }
 
   async syncSiswaAkademikWithDefaults(input: {
@@ -104,7 +118,9 @@ export class SiswaService {
     kelas_id?: string;
     userId?: string;
   }): Promise<any> {
-    return syncSiswaAkademikWithDefaultsCommand(input);
+    const res = await syncSiswaAkademikWithDefaultsCommand(input);
+    await cacheInvalidationService.invalidateSiswaCache(input.tenantId);
+    return res;
   }
 
   async generateRfidForSiswa(tenantId: string, siswaId: string) {
