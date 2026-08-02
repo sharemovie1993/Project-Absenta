@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Badge, SearchableSelect, ConfirmDialog } from '../ui';
 import { 
   Calendar, 
@@ -62,10 +63,25 @@ const SLOT_TIME: Record<number, { start: string; end: string }> = {
 export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   tahunPelajaranId,
   semesterId,
-  onRefresh
+  readOnly = false,
+  onRefresh,
+  initialViewMode = 'KELAS',
+  initialKelasId,
+  initialGuruId,
 }) => {
+  const queryClient = useQueryClient();
+
+  const invalidateJadwalBuilderCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+    queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+    queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  };
+
   // Mode state
-  const [viewMode, setViewModeState] = useState<ViewMode>('KELAS');
+  const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
   const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
@@ -427,6 +443,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     try {
       await deleteJadwalKBM(id);
       setAllJadwal(prev => prev.filter(j => j.id !== id));
+      invalidateJadwalBuilderCache();
       toast.success('Slot jadwal berhasil dikosongkan.');
       if (onRefresh) onRefresh();
     } catch (err: any) {
@@ -453,6 +470,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       try {
         await deleteJadwalKBM(existing.id);
         setAllJadwal(prev => prev.filter(j => j.id !== existing.id));
+        invalidateJadwalBuilderCache();
         toast.success('Slot jadwal berhasil dikosongkan.');
         if (onRefresh) onRefresh();
       } catch (err) {
@@ -671,6 +689,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           };
 
           setAllJadwal(prev => [...prev.filter(j => j.id !== classExisting?.id && j.id !== existing?.id), newSlot]);
+          invalidateJadwalBuilderCache();
           toast.success('Jadwal berhasil ditempatkan.');
           if (onRefresh) onRefresh();
         }
@@ -789,6 +808,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       if (res && res.success !== false) {
         toast.success(res.message || 'Jadwal berhasil dikosongkan.');
         setAllJadwal([]);
+        invalidateJadwalBuilderCache();
         fetchSchedules();
         if (onRefresh) onRefresh();
       } else {
