@@ -375,6 +375,9 @@ export default function InputNilaiPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       setSaveSuccessMsg('Seluruh nilai Sumatif & Capaian Kompetensi berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Berhasil!');
     },
@@ -389,6 +392,9 @@ export default function InputNilaiPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       setSaveSuccessMsg('Nilai Kategori berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Bulk Berhasil!');
     },

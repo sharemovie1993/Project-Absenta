@@ -241,6 +241,8 @@ export default function CetakRaporPage() {
     mutationFn: raporApi.upsertRaporSummary,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leger'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       toast.success('Rekap absensi & catatan wali kelas berhasil disimpan');
       setIsSummaryModalOpen(false);
     },
