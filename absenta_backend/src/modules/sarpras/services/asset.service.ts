@@ -9,12 +9,14 @@ import QRCode from 'qrcode';
 export class AssetService {
   // --- Category ---
   static async createCategory(tenantId: string, data: { nama: string; deskripsi?: string }) {
-    return prisma.sarprasCategory.create({
+    const res = await prisma.sarprasCategory.create({
       data: {
         tenant_id: tenantId,
         ...data
       }
     });
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
+    return res;
   }
 
   static async getCategories(tenantId: string) {
@@ -55,17 +57,21 @@ export class AssetService {
   }
 
   static async updateCategory(tenantId: string, id: string, data: { nama?: string; deskripsi?: string }) {
-    return prisma.sarprasCategory.update({
+    const res = await prisma.sarprasCategory.update({
       where: { id, tenant_id: tenantId },
       data
     });
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
+    return res;
   }
 
   static async deleteCategory(tenantId: string, id: string) {
-    return prisma.sarprasCategory.update({
+    const res = await prisma.sarprasCategory.update({
       where: { id, tenant_id: tenantId },
       data: { deleted_at: new Date() }
     });
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
+    return res;
   }
 
   // --- Location ---
@@ -912,6 +918,7 @@ export class AssetService {
 
     // Trigger realtime stats broadcast
     this.publishRealtimeDashboardUpdate(tenantId);
+    await cacheInvalidationService.invalidateSarprasCache(tenantId);
 
     return updatedAsset;
   }
