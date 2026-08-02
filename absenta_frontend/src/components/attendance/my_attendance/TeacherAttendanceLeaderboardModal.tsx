@@ -119,12 +119,12 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama guru atau NIP..."
+              placeholder={selectedPtk === 'PENDIDIK' ? 'Cari nama guru atau NIP...' : 'Cari nama staf TU atau NIP...'}
               className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
             />
           </div>
           <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-xs px-3 py-1.5 border-none shrink-0">
-            {filteredLeaderboard.length} Pengajar
+            {filteredLeaderboard.length} {selectedPtk === 'PENDIDIK' ? 'Pendidik' : 'Staf TU'}
           </Badge>
         </div>
 
