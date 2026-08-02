@@ -1,5 +1,6 @@
 import { prisma } from '../../../../utils/prisma';
 import { Hari } from '@prisma/client';
+import { cacheInvalidationService } from '../../../../utils/cache-invalidation.service';
 
 export class JadwalPiketService {
   /**
@@ -169,7 +170,7 @@ export class JadwalPiketService {
       throw new Error(`Guru tersebut sudah memiliki jadwal piket pada hari ${data.hari}`);
     }
 
-    return await prisma.jadwalPiketGuru.create({
+    const created = await prisma.jadwalPiketGuru.create({
       data: {
         tenant_id: tenantId,
         tahun_pelajaran_id: data.tahun_pelajaran_id,
@@ -187,6 +188,9 @@ export class JadwalPiketService {
         Guru: { select: { nama_guru: true, nip: true } }
       }
     });
+
+    await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+    return created;
   }
 
   /**
@@ -233,6 +237,9 @@ export class JadwalPiketService {
         createdItems.push(created);
       }
     }
+    if (createdItems.length > 0) {
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+    }
     return createdItems;
   }
 
@@ -248,19 +255,25 @@ export class JadwalPiketService {
     jam_selesai?: string;
     catatan?: string;
   }) {
-    return await prisma.jadwalPiketGuru.update({
+    const updated = await prisma.jadwalPiketGuru.update({
       where: { id, tenant_id: tenantId },
       data
     });
+
+    await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+    return updated;
   }
 
   /**
    * 6. Hapus Penugasan Piket
    */
   async deleteJadwalPiket(tenantId: string, id: string) {
-    return await prisma.jadwalPiketGuru.delete({
+    const deleted = await prisma.jadwalPiketGuru.delete({
       where: { id, tenant_id: tenantId }
     });
+
+    await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+    return deleted;
   }
 
   /**

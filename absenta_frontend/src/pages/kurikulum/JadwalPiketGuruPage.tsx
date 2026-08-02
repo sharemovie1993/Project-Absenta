@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
@@ -74,6 +75,7 @@ import { HARI_LIST } from '../../constants/day.constants';
 
 
 export default function JadwalPiketGuruPage() {
+  const queryClient = useQueryClient();
   const { user, isAdmin, can } = useAuth();
   const currentGuruId = user?.guru_profile?.id;
 
@@ -118,6 +120,8 @@ export default function JadwalPiketGuruPage() {
         toast.success('Catatan piket berhasil diperbarui');
         setSchedules(prev => prev.map(s => s.id === id ? { ...s, catatan: editingCatatanText } : s));
         setEditingCatatanId(null);
+        queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
       }
     } catch (err: any) {
       console.error(err);
@@ -445,6 +449,10 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Jadwal piket guru berhasil diperbarui');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
+          queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+          queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+          queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
           await fetchSchedules();
         }
       } else {
@@ -463,6 +471,10 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Guru berhasil ditugaskan untuk piket');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
+          queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+          queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+          queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
           await fetchSchedules();
         }
       }
@@ -499,6 +511,10 @@ export default function JadwalPiketGuruPage() {
         toast.success(`Berhasil menugaskan ${res.data.length} guru untuk piket hari ${bulkHari}`);
         setIsBulkModalOpen(false);
         setBulkGuruIds([]);
+        queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+        queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         await fetchSchedules();
       }
     } catch (err: any) {
@@ -516,6 +532,10 @@ export default function JadwalPiketGuruPage() {
       const res = await piketGuruApi.delete(itemToDelete);
       if (res.success) {
         toast.success('Penugasan piket berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+        queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         await fetchSchedules();
       }
     } catch (err: any) {
