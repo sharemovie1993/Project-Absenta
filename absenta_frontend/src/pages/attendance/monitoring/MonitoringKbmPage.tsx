@@ -16,17 +16,17 @@ const stats = [
 ];
 
 const instructionData = {
-  title: "Panduan Monitoring KBM",
-  description: "Pantau jurnal mengajar guru dan kehadiran siswa secara realtime.",
+  title: "Panduan Monitoring Live KBM",
+  description: "Pantau presensi kelas & keberadaan guru di kelas secara real-time saat ini.",
   items: [
-    { text: "Daftar kelas yang sedang berlangsung akan ditampilkan beserta gurunya." },
-    { text: "Anda dapat melihat progres materi yang diajarkan saat ini." }
+    { text: "Daftar kelas yang sedang berlangsung saat ini ditampilkan beserta gurunya." },
+    { text: "Guru Piket dapat menugaskan pengganti (Inval) jika ada kelas kosong." }
   ]
 };
 
 const breadcrumbs = [
   { label: 'Presensi', path: '/attendance/ops' },
-  { label: 'Monitoring KBM', active: true }
+  { label: 'Monitoring Live KBM', active: true }
 ];
 
 const MonitoringKbmPage: React.FC = () => {
@@ -36,8 +36,8 @@ const MonitoringKbmPage: React.FC = () => {
 
   return (
     <PageLayout
-      title="Monitoring KBM"
-      description="Pantau aktivitas pembelajaran dan jurnal mengajar guru secara real-time di seluruh kelas."
+      title="Monitoring Live KBM"
+      description="Pantau aktivitas pembelajaran & keberadaan guru di kelas secara real-time saat ini."
       stats={memoStats}
       instruction={instructionData}
       breadcrumbs={memoBreadcrumbs}

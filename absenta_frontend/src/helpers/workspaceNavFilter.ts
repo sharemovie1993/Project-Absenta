@@ -343,8 +343,11 @@ export const filterNavByWorkspace = (
 };
 
 export const TWO_WORD_TITLE_MAP: Record<string, string> = {
-  'Live Monitoring KBM Kelas': 'Monitoring KBM',
-  'Live Monitoring KBM': 'Monitoring KBM',
+  'Live Monitoring KBM Kelas': 'Monitoring Live KBM',
+  'Live Monitoring KBM': 'Monitoring Live KBM',
+  'Monitoring KBM': 'Monitoring Live KBM',
+  'Rekap KBM': 'Audit Realisasi JP',
+  'Rekapitulasi KBM': 'Audit Realisasi JP',
   'Laporan & Rekap Presensi': 'Rekap Presensi',
   'Cetak Rapor & Wali': 'Cetak Rapor',
   'Cetak Rapor & Catatan Wali': 'Cetak Rapor',

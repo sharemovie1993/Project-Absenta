@@ -160,19 +160,19 @@ export default function RekapKBMPage() {
   return (
     <AcademicPageLayout
       hardeningModuleKey={hardeningModuleKey}
-      title="Rekap KBM"
-      description="Monitoring realisasi jam mengajar guru terhadap rencana JP per semester."
+      title="Audit Realisasi JP Mengajar"
+      description="Laporan rekapitulasi ketercapaian jam mengajar (JP) guru per semester untuk audit kurikulum & tunjangan profesi."
       breadcrumbs={[
         { label: 'Kurikulum', path: '/kurikulum/dashboard' },
-        { label: 'Rekap KBM' }
+        { label: 'Audit Realisasi JP' }
       ]}
       instruction={{
-        title: 'Panduan Rekap KBM',
-        description: 'Rekap KBM memperlihatkan keterlaksanaan jam mengajar setiap guru berdasarkan data sesi absensi.',
+        title: 'Panduan Audit Realisasi JP Mengajar',
+        description: 'Halaman ini menyajikan audit akumulasi jam mengajar setiap guru (Beban Rencana vs Realisasi Sesi Absensi Sah) selama 1 semester.',
         items: [
-          { text: 'JP Rencana diambil dari penugasan Guru Mapel per semester.' },
-          { text: 'JP Terlaksana dihitung dari sesi absensi dengan status CLOSED.' },
-          { text: 'Guru dengan persentase rendah (<60%) perlu mendapat perhatian dari Wakasek Kurikulum.' },
+          { text: 'JP Rencana diambil dari alokasi Struktur Kurikulum & Ploting Guru Mapel.' },
+          { text: 'JP Terlaksana dihitung dari akumulasi sesi absensi KBM yang telah selesai (CLOSED).' },
+          { text: 'Digunakan sebagai dokumen pendukung verifikasi audit jam mengajar (TPG/SKTP) & evaluasi kurikulum.' },
         ]
       }}
     >
