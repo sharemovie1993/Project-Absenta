@@ -5,6 +5,7 @@ import { AccountingService } from '../laporan/accounting.service';
 import { ProductCategoryService } from './product-category.service';
 import { activityLogService } from '../../activity/services/activity-log.service';
 import bcrypt from 'bcrypt';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class TokoService {
 
@@ -63,6 +64,7 @@ export class TokoService {
             }
         });
 
+        await cacheInvalidationService.invalidateKoperasiCache(tenantId);
         return product;
     }
 

@@ -168,6 +168,19 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `bpbk:${tenantId}:*`
   },
 
+  // 🛒 KOPERASI ERP, POS Toko, RFID E-Wallet, & Simpan Pinjam related caches
+  KOPERASI: {
+    PRODUCT_LIST: (tenantId: string, search: string = '', kategoriId?: string) =>
+      `koperasi:${tenantId}:products:${search || 'all'}:${kategoriId || 'all'}`,
+    POS_TRANSACTIONS: (tenantId: string, date: string) => `koperasi:${tenantId}:pos:${date}`,
+    EWALLET_BALANCE: (tenantId: string, memberId: string) => `ewallet:${tenantId}:balance:${memberId}`,
+    SAVINGS_SUMMARY: (tenantId: string, memberId?: string) => `koperasi:${tenantId}:savings:${memberId || 'all'}`,
+    LOANS_LIST: (tenantId: string, status?: string) => `koperasi:${tenantId}:loans:${status || 'all'}`,
+    MEMBERS_LIST: (tenantId: string) => `koperasi:${tenantId}:members`,
+    STATS: (tenantId: string) => `koperasi:${tenantId}:stats`,
+    ALL: (tenantId: string) => `koperasi:${tenantId}:*`
+  },
+
 
 
   SYSTEM_CONFIG: {

@@ -213,6 +213,19 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🛒 Invalidate cache Koperasi ERP, POS Toko, E-Wallet RFID, & Simpan Pinjam
+   */
+  async invalidateKoperasiCache(tenantId: string, memberId?: string) {
+    await cacheService.deletePattern(`koperasi:${tenantId}:*`);
+    await cacheService.deletePattern(`cooperative:${tenantId}:*`);
+    if (memberId) {
+      await cacheService.deletePattern(`koperasi:${tenantId}:member:${memberId}*`);
+      await cacheService.deletePattern(`ewallet:${tenantId}:member:${memberId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 💰 Invalidate cache billing-related
    */
   async invalidateBillingCache(tenantId: string) {
