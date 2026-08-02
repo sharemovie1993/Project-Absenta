@@ -43,7 +43,7 @@ export class PrestasiService {
       }
     });
 
-    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    await cacheInvalidationService.invalidatePrestasiCache(tenantId);
     return created;
   }
 
@@ -58,7 +58,7 @@ export class PrestasiService {
       data
     });
 
-    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    await cacheInvalidationService.invalidatePrestasiCache(tenantId);
     return updated;
   }
 
@@ -68,7 +68,7 @@ export class PrestasiService {
       where: { id }
     });
 
-    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    await cacheInvalidationService.invalidatePrestasiCache(tenantId);
     return deleted;
   }
 
@@ -120,7 +120,7 @@ export class PrestasiService {
       }
     });
 
-    await cacheInvalidationService.invalidatePelanggaranCache(tenantId, data.siswa_id);
+    await cacheInvalidationService.invalidatePrestasiCache(tenantId, data.siswa_id);
     return created;
   }
 
@@ -137,7 +137,7 @@ export class PrestasiService {
       data
     });
 
-    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    await cacheInvalidationService.invalidatePrestasiCache(tenantId);
     return updated;
   }
 

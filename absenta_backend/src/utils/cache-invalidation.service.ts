@@ -171,6 +171,18 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🏆 Invalidate cache prestasi & penghargaan siswa
+   */
+  async invalidatePrestasiCache(tenantId: string, siswaId?: string) {
+    await cacheService.deletePattern(`kesiswaan:prestasi:${tenantId}:*`);
+    await cacheService.deletePattern(`kesiswaan:${tenantId}:*`);
+    if (siswaId) {
+      await cacheService.deletePattern(`bpbk:${tenantId}:ews:${siswaId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 🧠 Invalidate cache BPBK konseling, home visit, & EWS
    */
   async invalidateBpbkCache(tenantId: string, siswaId?: string) {
