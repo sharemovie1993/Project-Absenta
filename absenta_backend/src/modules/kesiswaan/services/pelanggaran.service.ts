@@ -84,6 +84,9 @@ export class PelanggaranService {
       console.error('[EWS INTEGRATION ERROR] Failed to run real-time EWS alert:', ewsErr);
     }
 
+    // Invalidate Cache setelah create
+    await PelanggaranService.invalidateCache(tenantId, data.siswa_id);
+
     return violation;
   }
 
@@ -103,10 +106,15 @@ export class PelanggaranService {
       throw new Error('Pelanggaran not found');
     }
 
-    return prisma.pelanggaranSiswa.update({
+    const updated = await prisma.pelanggaranSiswa.update({
       where: { id },
       data,
     });
+
+    // Invalidate Cache setelah update
+    await PelanggaranService.invalidateCache(tenantId, existing.siswa_id);
+
+    return updated;
   }
 
   static async delete(tenantId: string, id: string) {
@@ -118,9 +126,32 @@ export class PelanggaranService {
       throw new Error('Pelanggaran not found');
     }
 
-    return prisma.pelanggaranSiswa.delete({
+    const deleted = await prisma.pelanggaranSiswa.delete({
       where: { id },
     });
+
+    // Invalidate Cache setelah delete
+    await PelanggaranService.invalidateCache(tenantId, existing.siswa_id);
+
+    return deleted;
+  }
+
+  /**
+   * Invalidate Redis/In-Memory Cache untuk data Pelanggaran & Analitik Kedisiplinan
+   */
+  static async invalidateCache(tenantId: string, siswaId?: string) {
+    try {
+      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        const keys = await redis.keys(`*kesiswaan:pelanggaran:${tenantId}*`);
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      }
+    } catch (err) {
+      console.warn('[PelanggaranService] Non-blocking cache invalidation notice:', (err as any)?.message);
+    }
   }
 
   static async getAll(tenantId: string, query: {

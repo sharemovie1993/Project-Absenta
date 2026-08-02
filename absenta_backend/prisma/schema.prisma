@@ -312,6 +312,9 @@ model PelanggaranSiswa {
   @@index([tanggal])
   @@index([tenant_id, status])
   @@index([tenant_id, created_at])
+  @@index([tenant_id, kelas_id])
+  @@index([tenant_id, kelas_id, tanggal])
+  @@index([tenant_id, siswa_id, status])
 }
 
 model SupervisiGuru {

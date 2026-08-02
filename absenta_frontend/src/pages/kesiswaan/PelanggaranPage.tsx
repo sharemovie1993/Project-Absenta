@@ -194,6 +194,14 @@ export default function PelanggaranPage() {
     fetchData(page);
   }, [fetchData]);
 
+  // Comprehensive Cache Invalidation Helper (Pilar Cache Hardening)
+  const invalidateAllPelanggaranCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+    queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+  }, [queryClient]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const validation = pelanggaranSchema.safeParse(formData);
@@ -210,7 +218,7 @@ export default function PelanggaranPage() {
         await kesiswaanApi.createPelanggaran(formData);
         toast.success('Catatan perkembangan berhasil disimpan');
       }
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      invalidateAllPelanggaranCaches();
       setModalOpen(false);
       fetchData();
       resetForm();
@@ -218,7 +226,7 @@ export default function PelanggaranPage() {
       console.error(err);
       toast.error('Gagal menyimpan catatan');
     }
-  }, [selectedId, formData, fetchData, queryClient]);
+  }, [selectedId, formData, fetchData, invalidateAllPelanggaranCaches, resetForm]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -369,7 +377,7 @@ export default function PelanggaranPage() {
               if (ok) {
                 kesiswaanApi.deletePelanggaran(item.id).then(() => {
                   toast.success('Catatan perkembangan berhasil dihapus');
-                  queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+                  invalidateAllPelanggaranCaches();
                   fetchData();
                 }).catch(() => toast.error('Gagal menghapus catatan perkembangan'));
               }
@@ -382,7 +390,7 @@ export default function PelanggaranPage() {
         </div>
       )
     }
-  ], [getStatusDisplay, handleEdit, fetchData, queryClient]);
+  ], [getStatusDisplay, handleEdit, fetchData, invalidateAllPelanggaranCaches]);
 
   const pageStats = useMemo(() => {
     const total = data?.length || 0;
