@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { kesiswaanApi, type JenisPelanggaran, type JenisPrestasi } from '../../../api/kesiswaan.api';
 import { bpbkApi } from '../../../api/bpbk.api';
 import { Badge } from '../../../components/ui/Badge';
@@ -18,6 +19,7 @@ import { Plus, Edit2, Trash2, ShieldAlert, Trophy } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 
 export const SettingsSection: React.FC = () => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
   
   const [violations, setViolations] = useState<JenisPelanggaran[]>([]);
@@ -88,6 +90,10 @@ export const SettingsSection: React.FC = () => {
         toast.success('Kategori pelanggaran baru berhasil ditambahkan');
       }
       setViolationModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       fetchViolations();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
@@ -107,6 +113,10 @@ export const SettingsSection: React.FC = () => {
     try {
       await kesiswaanApi.deleteJenisPelanggaran(id);
       toast.success('Kategori pelanggaran berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       fetchViolations();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
@@ -130,6 +140,9 @@ export const SettingsSection: React.FC = () => {
         toast.success('Kategori prestasi baru berhasil ditambahkan');
       }
       setAchievementModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       fetchAchievements();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
@@ -149,6 +162,9 @@ export const SettingsSection: React.FC = () => {
     try {
       await kesiswaanApi.deleteJenisPrestasi(id);
       toast.success('Kategori prestasi berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       fetchAchievements();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
