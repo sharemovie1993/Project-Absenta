@@ -376,6 +376,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       const isOpsPath = (item.path || '').toLowerCase().startsWith('/attendance/ops');
       const isPelanggaranPath = (item.path || '').toLowerCase().startsWith('/kesiswaan/pelanggaran');
+      const isSiswaPath = (item.path || '').toLowerCase().startsWith('/academic/siswa');
 
       let itemTitle = item.title;
       let itemPath = item.path;
@@ -386,8 +387,14 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       } else if (isPelanggaranPath && primaryWs.id === 'WALIKELAS_WORKSPACE') {
         itemTitle = 'Pelanggaran Rombel';
         itemPath = '/kesiswaan/pelanggaran?context=walikelas';
+      } else if (isSiswaPath && primaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Siswa Kelas Saya';
+        itemPath = '/academic/siswa?context=walikelas';
       } else if (isPelanggaranPath) {
         itemPath = '/kesiswaan/pelanggaran?context=kesiswaan';
+      } else if (isSiswaPath) {
+        itemTitle = 'Data Siswa Sekolah';
+        itemPath = '/academic/siswa?context=sekolah';
       }
 
       return {
@@ -427,6 +434,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       const accent = COLOR_ACCENTS[(idx + 2) % COLOR_ACCENTS.length];
       const isOpsPath = (item.path || '').toLowerCase().startsWith('/attendance/ops');
       const isPelanggaranPath = (item.path || '').toLowerCase().startsWith('/kesiswaan/pelanggaran');
+      const isSiswaPath = (item.path || '').toLowerCase().startsWith('/academic/siswa');
 
       let itemTitle = item.title;
       let itemPath = item.path;
@@ -437,6 +445,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       } else if (isPelanggaranPath && secondaryWs.id === 'WALIKELAS_WORKSPACE') {
         itemTitle = 'Pelanggaran Rombel';
         itemPath = '/kesiswaan/pelanggaran?context=walikelas';
+      } else if (isSiswaPath && secondaryWs.id === 'WALIKELAS_WORKSPACE') {
+        itemTitle = 'Siswa Kelas Saya';
+        itemPath = '/academic/siswa?context=walikelas';
       }
 
       return {

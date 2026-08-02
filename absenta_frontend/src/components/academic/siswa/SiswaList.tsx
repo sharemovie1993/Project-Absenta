@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera } from 'lucide-react';
 import { 
@@ -310,14 +311,41 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     fetchKelas();
   }, []);
 
-  // Auto-set filter kelas untuk Wali Kelas saat komponen pertama kali dimount
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
+
+  // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
+  const isDualRoleUser = useMemo(() => {
+    if (!waliKelasData?.id) return false;
+    const pos = (user as any)?.position_codes || [];
+    const roleName = String((user as any)?.role?.name || (user as any)?.roleName || '').toUpperCase();
+    const isLeadershipOrStaff = pos.includes('KURIKULUM') || pos.includes('KESISWAAN') || pos.includes('KEPSEK') || pos.includes('SARPRAS') || pos.includes('HUBIN') || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+    return isLeadershipOrStaff;
+  }, [waliKelasData, user]);
+
+  const isWaliKelasMode = useMemo(() => {
+    if (urlContext === 'walikelas') return true;
+    if (urlContext === 'sekolah' || urlContext === 'kesiswaan' || urlContext === 'kurikulum') return false;
+    if (waliKelasData?.id && !isDualRoleUser) return true;
+    return false;
+  }, [urlContext, waliKelasData, isDualRoleUser]);
+
+  const handleContextSwitch = useCallback((targetContext: 'walikelas' | 'sekolah') => {
+    const params = new URLSearchParams(location.search);
+    params.set('context', targetContext);
+    navigate({ search: params.toString() }, { replace: true });
+  }, [location.search, navigate]);
+
+  // Auto-set filter kelas berdasarkan konteks navigasi (Wali Kelas vs Seluruh Sekolah)
   useEffect(() => {
-    // Original logic: set default class if user is a Walas
-    if (waliKelasData?.id && !filterKelas) {
+    if (isWaliKelasMode && waliKelasData?.id) {
       setFilterKelas(waliKelasData.id);
+    } else if (urlContext === 'sekolah' || urlContext === 'kesiswaan' || urlContext === 'kurikulum') {
+      setFilterKelas('');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waliKelasData?.id]);
+  }, [isWaliKelasMode, waliKelasData?.id, urlContext]);
 
   // Fetch siswas with debounced search
   const fetchSiswas = useCallback(async (page = 1, search = '') => {
@@ -1065,6 +1093,36 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               onSelectedRowKeysChange={setSelectedIds}
               toolbarLeft={
                 <div className="flex flex-col w-full gap-4 p-4">
+                  {/* Context Switcher Pill untuk Dual Role (Wali Kelas + Pimpinan) */}
+                  {isDualRoleUser && (
+                    <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold shadow-xs w-fit">
+                      <button
+                        type="button"
+                        onClick={() => handleContextSwitch('walikelas')}
+                        className={`px-3 py-1.5 rounded-lg transition-all text-xs font-bold cursor-pointer flex items-center gap-1.5 ${
+                          isWaliKelasMode
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <span>🟢</span>
+                        <span>Rombel {waliKelasData?.nama || 'Binaan'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleContextSwitch('sekolah')}
+                        className={`px-3 py-1.5 rounded-lg transition-all text-xs font-bold cursor-pointer flex items-center gap-1.5 ${
+                          !isWaliKelasMode
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <span>🔵</span>
+                        <span>Seluruh Sekolah</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Row 1: Search & Filters */}
                   <div className="flex flex-col md:flex-row gap-4 items-center">
                     <div className="flex-1 w-full">

@@ -469,7 +469,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo', path: '/attendance/riwayat-ajar' },
       { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald', path: '/attendance/my-attendance' },
     ];
-    if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
+    if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa?context=walikelas'), color: 'rose', path: '/academic/siswa?context=walikelas' });
     
     // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
     const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');

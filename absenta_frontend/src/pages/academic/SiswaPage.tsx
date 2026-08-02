@@ -339,14 +339,19 @@ const SiswaPage: React.FC = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
+  const isWaliKelasContext = urlContext === 'walikelas';
+
   return (
     <AcademicPageLayout
-      title="Data Siswa"
-      description="Kelola biodata lengkap dan identitas siswa. Digunakan saat menerima siswa baru atau memperbarui biodata mereka."
+      title={isWaliKelasContext ? "Siswa Kelas Saya" : "Master Data Siswa Sekolah"}
+      description={isWaliKelasContext 
+        ? "Direktori & pemantauan khusus data siswa rombel binaan Anda." 
+        : "Pusat pengelolaan & pemantauan biodata lengkap siswa seluruh sekolah."}
       breadcrumbs={[
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Akademik', path: '/academic' },
-        { label: 'Data Siswa', path: '/academic/siswa' }
+        { label: isWaliKelasContext ? 'Kelas Saya' : 'Data Siswa', path: '/academic/siswa' }
       ]}
       stats={statCards}
       isLoadingStats={isLoadingStats}
