@@ -33,7 +33,9 @@ import { Loader } from '../../components/ui/Loader';
 import { z } from 'zod';
 
 import { useAuthStore } from '../../store/authStore';
+import { useNavStore } from '../../store/navStore';
 import { useJenisPelanggaranOptions } from '../../hooks/useJenisPelanggaranOptions';
+import { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -79,17 +81,53 @@ export default function PelanggaranPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // Deteksi Konteks Peran (Kesiswaan vs Wali Kelas)
-  const isKesiswaan = useMemo(() => {
-    const caps = user?.capabilities || [];
-    const pos = user?.position_codes || [];
-    return pos.includes('KESISWAAN') || caps.includes('kesiswaan.pelanggaran.manage') || user?.role?.name === 'KESISWAAN';
-  }, [user]);
+  const { activeWorkspaceId } = useNavStore();
+  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
 
-  const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
-  const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
-  const isWaliKelas = !isKesiswaan && (!!waliKelasId || (user?.position_codes || []).includes('WALIKELAS'));
-  const waliKelasNama = typeof waliKelasObj === 'object' ? waliKelasObj?.nama_kelas : '';
+  // Resolusi nama & ID rombel binaan Wali Kelas menggunakan profile & useWaliKelasOptions hook
+  const effectiveWaliKelasId = useMemo(() => {
+    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
+    const directId = typeof directObj === 'object' ? directObj?.id : directObj || (user as any)?.guru_profile?.kelas_id;
+    if (directId) return directId;
+
+    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
+      const found = waliKelasAssignments.find(
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+      );
+      if (found?.kelas_id) return found.kelas_id;
+      if (found?.Kelas?.id) return found.Kelas.id;
+    }
+    return null;
+  }, [user, waliKelasAssignments]);
+
+  const waliKelasNama = useMemo(() => {
+    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
+    if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
+
+    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
+      const found = waliKelasAssignments.find(
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+      );
+      if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
+    }
+    return '';
+  }, [user, waliKelasAssignments]);
+
+  const isWaliKelasRole = useMemo(() => {
+    const pos = user?.position_codes || [];
+    return !!effectiveWaliKelasId || pos.includes('WALIKELAS');
+  }, [user, effectiveWaliKelasId]);
+
+  // Penentuan mode tampilan: Jika user punya rombel binaan DAN (aktif di WALIKELAS_WORKSPACE ATAU bukan Staf Kesiswaan/Admin murni)
+  const isWaliKelas = useMemo(() => {
+    if (!effectiveWaliKelasId) return false;
+    const roleName = String(user?.role?.name || '').toUpperCase();
+    const isPureAdminOrKesiswaan = roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName === 'KESISWAAN';
+
+    if (activeWorkspaceId === 'WALIKELAS_WORKSPACE') return true;
+    if (!isPureAdminOrKesiswaan && isWaliKelasRole) return true;
+    return false;
+  }, [effectiveWaliKelasId, activeWorkspaceId, user, isWaliKelasRole]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -121,8 +159,8 @@ export default function PelanggaranPage() {
       };
 
       // Konteks Wali Kelas: Otomatis memfilter kasus khusus siswa rombel bimbingan
-      if (isWaliKelas && waliKelasId) {
-        params.kelas_id = waliKelasId;
+      if (isWaliKelas && effectiveWaliKelasId) {
+        params.kelas_id = effectiveWaliKelasId;
       }
 
       const result = await kesiswaanApi.getPelanggaran(params);
@@ -141,7 +179,7 @@ export default function PelanggaranPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, itemsPerPage, isWaliKelas, waliKelasId]);
+  }, [debouncedSearch, itemsPerPage, isWaliKelas, effectiveWaliKelasId]);
 
   // Hook Kanonikal Jenis Pelanggaran (Query Caching & Auto-sync)
   const { rawList: jenisPelanggaranList, options: jenisPelanggaranSelectOptions } = useJenisPelanggaranOptions();
