@@ -8,6 +8,7 @@ import { deleteGuruDocumentCommand } from './commands/delete-guru-document.comma
 import { getGuruDocumentsQuery } from './queries/get-guru-documents.query';
 import { MultipartFile } from '@fastify/multipart';
 import { removeLidMappingByPhone } from '../../../whatsapp/services/wa-chatbot-resolver.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateGuruInput {
   user_id?: string | null;
@@ -438,6 +439,8 @@ export class GuruService {
       (guru as any).email = (guru as any).User.email;
     }
 
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
     return guru as GuruResponse;
   }
 
@@ -569,6 +572,7 @@ export class GuruService {
         updatedGuru.email = updatedGuru.User.email;
       }
 
+      await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);
       return updatedGuru as GuruResponse;
     }
 
@@ -576,6 +580,7 @@ export class GuruService {
       (guru as any).email = (guru as any).User.email;
     }
 
+    await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);
     return guru as GuruResponse;
   }
 

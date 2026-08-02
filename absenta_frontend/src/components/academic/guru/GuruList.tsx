@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -71,6 +72,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [gurus, setGurus] = useState<Guru[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
   const [filterStatusKepegawaian, setFilterStatusKepegawaian] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<string>('ALL');
   const [filterJenisPtk, setFilterJenisPtk] = useState<string>('ALL');
@@ -298,6 +300,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       
       if (response.success) {
         toast.success(response.message || 'Guru berhasil dihapus');
+        invalidateGuruCache();
         fetchGurus(currentPage, debouncedSearchTerm);
         onRefresh?.();
       } else {
@@ -315,6 +318,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 
   const [togglingJenisPtkId, setTogglingJenisPtkId] = useState<string | null>(null);
 
+  const invalidateGuruCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
+
   const handleToggleActive = useCallback(async (guru: Guru) => {
     try {
       setTogglingId(guru.id);
@@ -323,6 +333,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const response = await updateGuru(guru.id, { status: targetState });
       if (response.success) {
         toast.success(`Status ${guru.nama_guru} berhasil diubah.`);
+        invalidateGuruCache();
         fetchGurus(currentPage, debouncedSearchTerm);
         onRefresh?.();
       } else {
@@ -335,7 +346,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     } finally {
       setTogglingId(null);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh]);
+  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh, invalidateGuruCache]);
 
   const handleToggleJenisPtk = useCallback(async (guru: Guru) => {
     try {
@@ -345,6 +356,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const response = await updateGuru(guru.id, { jenis_ptk: targetState });
       if (response.success) {
         toast.success(`Fungsi kerja ${guru.nama_guru} berhasil diubah.`);
+        invalidateGuruCache();
         fetchGurus(currentPage, debouncedSearchTerm);
         onRefresh?.();
       } else {
@@ -357,7 +369,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     } finally {
       setTogglingJenisPtkId(null);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh]);
+  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh, invalidateGuruCache]);
 
   // Table columns configuration
   const columns = useMemo(() => [

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { cn } from '../../../lib/utils';
 import { useForm } from 'react-hook-form';
@@ -57,6 +58,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
 }) => {
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
+  const queryClient = useQueryClient();
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -442,6 +444,12 @@ export const GuruForm = React.memo<GuruFormProps>(({
           }
         }
       }
+
+      // Client-side cache invalidation for Teacher/PTK domain
+      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
 
       toast.success(isEditMode ? 'Data guru berhasil diperbarui' : 'Guru baru berhasil ditambahkan');
       onSuccess?.();
