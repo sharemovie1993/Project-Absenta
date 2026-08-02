@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '@/utils/rbac';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface CreateProgramKeahlianInput {
   nama: string;
@@ -177,6 +178,8 @@ export class ProgramKeahlianService {
       },
     });
 
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
     return programKeahlian as ProgramKeahlianResponse;
   }
 
