@@ -144,6 +144,18 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🚨 Invalidate cache kasus pelanggaran & EWS BPBK
+   */
+  async invalidatePelanggaranCache(tenantId: string, siswaId?: string) {
+    await cacheService.deletePattern(`kesiswaan:pelanggaran:${tenantId}:*`);
+    await cacheService.deletePattern(`kesiswaan:${tenantId}:*`);
+    if (siswaId) {
+      await cacheService.deletePattern(`bpbk:${tenantId}:ews:${siswaId}*`);
+    }
+    await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
    * 💰 Invalidate cache billing-related
    */
   async invalidateBillingCache(tenantId: string) {

@@ -2,6 +2,9 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { applyDataScope } from '../../../utils/applyDataScope';
 import { DataScope } from '../../../types/fastify';
+import { cacheService } from '../../../utils/cache.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
 
 export class PelanggaranService {
   static async create(tenantId: string, data: {
@@ -141,32 +144,10 @@ export class PelanggaranService {
    */
   static async invalidateCache(tenantId: string, siswaId?: string) {
     try {
-      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
-      const redis = getRedisConnection();
-      if (redis) {
-        const patterns = [`*kesiswaan:pelanggaran:${tenantId}*`];
-        if (siswaId) {
-          patterns.push(`*bpbk:ews:${tenantId}:${siswaId}*`);
-        }
-        for (const pattern of patterns) {
-          const keys = await redis.keys(pattern);
-          if (keys.length > 0) {
-            await redis.del(...keys);
-          }
-        }
-      }
+      await cacheInvalidationService.invalidatePelanggaranCache(tenantId, siswaId);
     } catch (err) {
       console.warn('[PelanggaranService] Non-blocking cache invalidation notice:', (err as any)?.message);
     }
-  }
-
-  /**
-   * Generates deterministic Redis cache key for Pelanggaran query
-   */
-  static buildCacheKey(tenantId: string, type: 'list' | 'analytics' | 'detail', params: any): string {
-    const serialized = JSON.stringify(params || {});
-    const hash = Buffer.from(serialized).toString('base64').replace(/=/g, '');
-    return `kesiswaan:pelanggaran:${tenantId}:${type}:${hash}`;
   }
 
   static async getAll(tenantId: string, query: {
@@ -182,17 +163,21 @@ export class PelanggaranService {
     const limit = Number(query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // 1. Coba baca dari Redis Cache (Cache HIT Check)
-    const cacheKey = PelanggaranService.buildCacheKey(tenantId, 'list', { query, scope });
+    // 1. Coba baca dari Redis/Memory Cache (Cache HIT Check via CACHE_KEYS)
+    const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_LIST(
+      tenantId,
+      page,
+      limit,
+      query.search || '',
+      (query as any).kelas_id,
+      query.status
+    );
+
     try {
-      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
-      const redis = getRedisConnection();
-      if (redis) {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          console.log(`[PelanggaranService] ⚡ Cache HIT for key: ${cacheKey}`);
-          return JSON.parse(cached);
-        }
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        console.log(`[PelanggaranService] ⚡ Cache HIT for key: ${cacheKey}`);
+        return cached;
       }
     } catch (cacheErr) {
       console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
@@ -275,22 +260,25 @@ export class PelanggaranService {
       },
     };
 
-    // 2. Simpan ke Redis Cache dengan TTL 300s (Cache WRITE)
+    // 2. Simpan ke Cache via cacheService (Cache WRITE dengan CACHE_TTL.DEFAULT)
     try {
-      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
-      const redis = getRedisConnection();
-      if (redis) {
-        await redis.set(cacheKey, JSON.stringify(resultPayload), 'EX', 300);
-        console.log(`[PelanggaranService] 💾 Cache WRITE for key: ${cacheKey}`);
-      }
+      await cacheService.set(cacheKey, resultPayload, CACHE_TTL.DEFAULT);
+      console.log(`[PelanggaranService] 💾 Cache WRITE for key: ${cacheKey}`);
     } catch (cacheErr) {
       console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
     }
 
     return resultPayload;
   }
+
   static async getById(tenantId: string, id: string) {
-    return prisma.pelanggaranSiswa.findFirst({
+    const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_DETAIL(tenantId, id);
+    try {
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+    } catch (e) {}
+
+    const res = await prisma.pelanggaranSiswa.findFirst({
       where: { id, tenant_id: tenantId },
       include: {
         Siswa: {
@@ -303,21 +291,24 @@ export class PelanggaranService {
         },
       },
     });
+
+    if (res) {
+      try {
+        await cacheService.set(cacheKey, res, CACHE_TTL.DEFAULT);
+      } catch (e) {}
+    }
+    return res;
   }
 
   static async getAnalytics(tenantId: string, query: { year?: number }) {
     const year = Number(query.year) || new Date().getFullYear();
 
-    const cacheKey = PelanggaranService.buildCacheKey(tenantId, 'analytics', { year });
+    const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_ANALYTICS(tenantId, year);
     try {
-      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
-      const redis = getRedisConnection();
-      if (redis) {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          console.log(`[PelanggaranService] ⚡ Cache HIT for analytics key: ${cacheKey}`);
-          return JSON.parse(cached);
-        }
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        console.log(`[PelanggaranService] ⚡ Cache HIT for analytics key: ${cacheKey}`);
+        return cached;
       }
     } catch (cacheErr) {
       console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
@@ -368,12 +359,8 @@ export class PelanggaranService {
     };
 
     try {
-      const { getRedisConnection } = await import('../../../infra/redis/redisClient');
-      const redis = getRedisConnection();
-      if (redis) {
-        await redis.set(cacheKey, JSON.stringify(analyticsPayload), 'EX', 600); // 10 mins TTL
-        console.log(`[PelanggaranService] 💾 Cache WRITE for analytics key: ${cacheKey}`);
-      }
+      await cacheService.set(cacheKey, analyticsPayload, CACHE_TTL.DASHBOARD);
+      console.log(`[PelanggaranService] 💾 Cache WRITE for analytics key: ${cacheKey}`);
     } catch (cacheErr) {
       console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
     }

@@ -128,6 +128,10 @@ export const CACHE_KEYS = {
   // 🎒 Kesiswaan & Piket related caches
   KESISWAAN: {
     PIKET_HARIAN: (tenantId: string, date: string) => `kesiswaan:piket:${tenantId}:${date}`,
+    PELANGGARAN_LIST: (tenantId: string, page: number = 1, limit: number = 10, search: string = '', kelasId?: string, status?: string) => 
+      `kesiswaan:pelanggaran:${tenantId}:${page}:${limit}:${search || 'all'}:${kelasId || 'all'}:${status || 'all'}`,
+    PELANGGARAN_ANALYTICS: (tenantId: string, year: number) => `kesiswaan:pelanggaran:${tenantId}:analytics:${year}`,
+    PELANGGARAN_DETAIL: (tenantId: string, id: string) => `kesiswaan:pelanggaran:${tenantId}:detail:${id}`,
     ALL: (tenantId: string) => `kesiswaan:${tenantId}:*`
   },
 
