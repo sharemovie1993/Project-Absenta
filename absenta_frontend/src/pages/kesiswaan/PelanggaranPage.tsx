@@ -200,6 +200,8 @@ export default function PelanggaranPage() {
     queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
     queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+    queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
   }, [queryClient]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
