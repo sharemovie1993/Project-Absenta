@@ -252,6 +252,8 @@ export class ProgramKeahlianService {
       },
     });
 
+    await cacheInvalidationService.invalidateStrukturTree(existing.tenant_id);
+    await cacheInvalidationService.invalidateAcademicCache(existing.tenant_id);
     return updated as ProgramKeahlianResponse;
   }
 
@@ -293,6 +295,9 @@ export class ProgramKeahlianService {
     await prisma.programKeahlian.delete({
       where: { id },
     });
+
+    await cacheInvalidationService.invalidateStrukturTree(existing.tenant_id);
+    await cacheInvalidationService.invalidateAcademicCache(existing.tenant_id);
   }
 }
 

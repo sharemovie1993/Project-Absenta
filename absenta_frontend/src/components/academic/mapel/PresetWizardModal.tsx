@@ -392,6 +392,9 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
         queryClient.invalidateQueries({ queryKey: ['mapel-options-list'] });
         queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['program-keahlian-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jurusan-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
 
         toast.success(res.message || 'Mata pelajaran preset berhasil diterapkan');
         onSuccess();

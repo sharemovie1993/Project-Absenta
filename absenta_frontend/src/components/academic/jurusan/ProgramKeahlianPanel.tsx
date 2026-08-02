@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Loader2, Search, BookMarked, Building2, X, Check, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { ProgramKeahlian } from '../../../types/academic';
@@ -31,6 +32,13 @@ const EMPTY_FORM: FormState = {
 };
 
 export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }) => {
+  const queryClient = useQueryClient();
+  const invalidateProgramKeahlianCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['program-keahlian-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['jurusan-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+  }, [queryClient]);
+
   const [list, setList] = useState<ProgramKeahlian[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -144,6 +152,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
         await createProgramKeahlian(payload);
         toast.success('Program Keahlian ditambahkan');
       }
+      invalidateProgramKeahlianCache();
       setShowForm(false);
       load();
     } catch (err: any) {
@@ -163,6 +172,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
     try {
       await deleteProgramKeahlian(pk.id);
       toast.success('Program Keahlian dihapus');
+      invalidateProgramKeahlianCache();
       load();
     } catch (err: any) {
       toast.error(err?.message || 'Gagal menghapus');
@@ -206,6 +216,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
       }
 
       setSelectedIds(new Set());
+      invalidateProgramKeahlianCache();
       load();
     } catch (err: any) {
       toast.error(err?.message || 'Gagal menghapus secara massal');
