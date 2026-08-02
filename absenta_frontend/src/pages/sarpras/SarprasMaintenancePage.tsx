@@ -31,6 +31,7 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { useSarprasAsetOptions } from '../../hooks/useSarprasAsetOptions';
 import useConfirm from '../../hooks/useConfirm';
 import { z } from 'zod';
 
@@ -135,12 +136,8 @@ const SarprasMaintenancePage: React.FC = () => {
     enabled: subscription !== undefined
   });
 
-  // Fetch assets for dropdown (damaged or needing repair)
-  const { data: assetsData, isLoading: loadingAssets } = useQuery({
-    queryKey: ['sarpras-assets-for-repair'],
-    queryFn: () => sarprasApi.getAssets({ limit: 200 }),
-    enabled: createModalOpen
-  });
+  // Fetch assets for dropdown via custom hook
+  const { options: assetOptions, isLoading: loadingAssets } = useSarprasAsetOptions();
 
   // Real client-side interactive sorting implementation (Pilar 7)
   const repairs: RepairRecord[] = useMemo(() => {

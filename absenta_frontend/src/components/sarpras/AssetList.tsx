@@ -27,6 +27,8 @@ import { AssetPrintLabelModal } from './AssetPrintLabelModal';
 import { SearchableSelect } from '../ui/SearchableSelect';
 
 import { useAuthStore } from '../../store/authStore';
+import { useSarprasKategoriOptions } from '../../hooks/useSarprasKategoriOptions';
+import { useRuanganOptions } from '../../hooks/useRuanganOptions';
 
 interface AssetListProps {
   onEdit?: (asset: Asset) => void;
@@ -57,16 +59,8 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
   const [filterLocation, setFilterLocation] = useState('');
   const [filterCondition, setFilterCondition] = useState('');
 
-  const { data: categories } = useQuery({ 
-    queryKey: ['sarpras-categories'], 
-    queryFn: sarprasApi.getCategories,
-    enabled: isEnabled
-  });
-  const { data: locations } = useQuery({ 
-    queryKey: ['sarpras-locations'], 
-    queryFn: sarprasApi.getLocations,
-    enabled: isEnabled
-  });
+  const { options: categoryOptions } = useSarprasKategoriOptions();
+  const { options: locationOptions } = useRuanganOptions();
 
   // Debounce search
   useEffect(() => {
