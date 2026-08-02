@@ -131,47 +131,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
     }
   }, [assetDetail]);
 
-  const categoryOptions = useMemo(() => {
-    return categories?.data?.map((c: { id: string; nama: string }) => ({ value: c.id, label: c.nama })) || [];
-  }, [categories]);
-
-  const locationOptions = useMemo(() => {
-    if (!locations?.data) return [];
-
-    const classrooms: any[] = [];
-    const majors: any[] = [];
-    const general: any[] = [];
-
-    locations.data.forEach((l: { id: string; nama: string; kelas_id?: string; unit_id?: string }) => {
-      const option = { value: l.id, label: `   • ${l.nama}` };
-      if (l.kelas_id) {
-        classrooms.push(option);
-      } else if (l.unit_id) {
-        majors.push(option);
-      } else {
-        general.push(option);
-      }
-    });
-
-    const options: any[] = [];
-
-    if (classrooms.length > 0) {
-      options.push({ value: 'header-classrooms', label: '🏢 RUANG KELAS', disabled: true });
-      options.push(...classrooms);
-    }
-
-    if (majors.length > 0) {
-      options.push({ value: 'header-majors', label: '🔬 LABORATORIUM / JURUSAN', disabled: true });
-      options.push(...majors);
-    }
-
-    if (general.length > 0) {
-      options.push({ value: 'header-general', label: '📦 FASILITAS UMUM / TAMBAHAN', disabled: true });
-      options.push(...general);
-    }
-
-    return options;
-  }, [locations]);
+  // Create/Update mutation
 
   const mutation = useMutation({
     mutationFn: (data: unknown) => assetId 
