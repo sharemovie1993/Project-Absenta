@@ -270,7 +270,7 @@ async function main() {
         { label: 'Jadwal Pelajaran', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Jadwal Piket Guru', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, kesiswaan.piket.view' },
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
-        { label: 'Rekap KBM', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
+        { label: 'Audit Realisasi JP Mengajar', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.manage.academic' },
       ]
@@ -300,7 +300,7 @@ async function main() {
         { label: 'Pendaftaran Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.face.templates' },
         { label: 'Operasional Presensi', icon: 'Activity', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
         { label: 'Jurnal & Riwayat Mengajar', icon: 'FileText', path: '/attendance/riwayat-ajar', required_capability: 'attendance.sessions.update.journal, academic.teaching.view' },
-        { label: 'Live Monitoring KBM Kelas', icon: 'Monitor', path: '/attendance/monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.walikelas' },
+        { label: 'Monitoring Live KBM Kelas', icon: 'Monitor', path: '/attendance/monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.walikelas' },
         { label: 'Monitoring Mengajar Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.kepsek' },
         { label: 'Kehadiran Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
         { label: 'Laporan & Rekap Presensi', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
