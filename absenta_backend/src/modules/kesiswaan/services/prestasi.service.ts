@@ -1,5 +1,6 @@
 import { prisma } from '../../../utils/prisma';
 import { Prisma } from '@prisma/client';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export const DEFAULT_JENIS_PRESTASI = [
   { kategori: "Akademik", nama_prestasi: "Juara 1 Kelas / Umum", poin: 30 },
@@ -33,7 +34,7 @@ export class PrestasiService {
     nama_prestasi: string;
     poin: number;
   }) {
-    return prisma.jenisPrestasi.create({
+    const created = await prisma.jenisPrestasi.create({
       data: {
         tenant_id: tenantId,
         kategori: data.kategori,
@@ -41,6 +42,9 @@ export class PrestasiService {
         poin: data.poin
       }
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    return created;
   }
 
   static async updateJenisPrestasi(tenantId: string, id: string, data: {
@@ -49,17 +53,23 @@ export class PrestasiService {
     poin?: number;
   }) {
     await this.verifyOwner('jenisPrestasi', id, tenantId);
-    return prisma.jenisPrestasi.update({
+    const updated = await prisma.jenisPrestasi.update({
       where: { id },
       data
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    return updated;
   }
 
   static async deleteJenisPrestasi(tenantId: string, id: string) {
     await this.verifyOwner('jenisPrestasi', id, tenantId);
-    return prisma.jenisPrestasi.delete({
+    const deleted = await prisma.jenisPrestasi.delete({
       where: { id }
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    return deleted;
   }
 
   static async getAllJenisPrestasi(tenantId: string) {
@@ -96,7 +106,7 @@ export class PrestasiService {
       siswaAkademikId = sa?.id;
     }
 
-    return prisma.prestasiSiswa.create({
+    const created = await prisma.prestasiSiswa.create({
       data: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
@@ -109,6 +119,9 @@ export class PrestasiService {
         keterangan: data.keterangan
       }
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId, data.siswa_id);
+    return created;
   }
 
   static async updatePrestasiSiswa(tenantId: string, id: string, data: {
@@ -119,17 +132,23 @@ export class PrestasiService {
     keterangan?: string;
   }) {
     await this.verifyOwner('prestasiSiswa', id, tenantId);
-    return prisma.prestasiSiswa.update({
+    const updated = await prisma.prestasiSiswa.update({
       where: { id },
       data
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    return updated;
   }
 
   static async deletePrestasiSiswa(tenantId: string, id: string) {
     await this.verifyOwner('prestasiSiswa', id, tenantId);
-    return prisma.prestasiSiswa.delete({
+    const deleted = await prisma.prestasiSiswa.delete({
       where: { id }
     });
+
+    await cacheInvalidationService.invalidatePelanggaranCache(tenantId);
+    return deleted;
   }
 
   static async getAllPrestasiSiswa(tenantId: string, query: {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { kesiswaanApi, type PrestasiSiswa, type JenisPrestasi } from '../../../api/kesiswaan.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
@@ -27,6 +28,7 @@ interface Student {
 }
 
 export const PrestasiSection: React.FC = () => {
+  const queryClient = useQueryClient();
   const [data, setData] = useState<PrestasiSiswa[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -138,6 +140,10 @@ export const PrestasiSection: React.FC = () => {
       const res = await kesiswaanApi.deletePrestasiSiswa(id);
       if (res.success) {
         toast.success('Catatan prestasi berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
+        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
         fetchData();
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
@@ -170,6 +176,10 @@ export const PrestasiSection: React.FC = () => {
         await kesiswaanApi.createPrestasiSiswa(formData);
         toast.success('Catatan prestasi baru berhasil disimpan');
       }
+      queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
       setModalOpen(false);
       resetForm();
       fetchData();
