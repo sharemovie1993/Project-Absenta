@@ -108,19 +108,23 @@ export default function ModeMultiSesiView({
   const caps = user?.capabilities || [];
   const positionCodes = user?.position_codes || [];
   
-  const isGerbangPos = positionCodes.includes('GERBANG');
-  const isWaliKelasPos = positionCodes.includes('WALIKELAS');
+  const isGerbangPos = positionCodes.includes('GERBANG') || user?.role?.name === 'GERBANG' || user?.role?.name === 'PETUGAS_GERBANG';
+  const isWaliKelasPos = positionCodes.includes('WALIKELAS') || !!(user as any)?.guru_profile?.wali_kelas_di;
 
-  const canAccessInput =
+  // 1. Scanner Gerbang (HANYA Admin, Operator, Satpam/Petugas Gerbang Murni — BUKAN Wali Kelas & BUKAN Petugas Kelas)
+  const canAccessInput = !isWaliKelasPos && !isPetugasSiswa && (
     isAdmin ||
     isGerbangPos ||
     user?.role?.name === 'OPERATOR' ||
     caps.includes('attendance.gate.tap.entry') ||
-    caps.includes('attendance.scan.gate');
+    caps.includes('attendance.scan.gate')
+  );
   
+  // 2. Cek Manual (Wali Kelas, Petugas Kelas, Guru, Admin)
   const canAccessManual = isAdmin || isPetugasSiswa || isWaliKelasPos || isPetugasGuru || caps.includes('attendance.sessions.update.attendance');
-  const canAccessSesi = isAdmin || isPetugasSiswa || isPetugasGuru || caps.includes('attendance.sessions.view.list');
-  const canCreateSession = isAdmin || caps.includes('attendance.sessions.create');
+
+  // 3. Manajemen Sesi (Admin, Petugas Kelas, Guru Mapel — BUKAN Wali Kelas Murni)
+  const canAccessSesi = !isWaliKelasPos && (isAdmin || isPetugasSiswa || isPetugasGuru || caps.includes('attendance.sessions.view.list'));
   
   const canAccessAny = canAccessInput || canAccessManual || canAccessSesi;
 
@@ -136,8 +140,6 @@ export default function ModeMultiSesiView({
     tanggal: today,
     enabled: canAccessAny
   });
-
-
 
   useEffect(() => {
     if (!isConnected || !tenantId) return;
@@ -163,14 +165,33 @@ export default function ModeMultiSesiView({
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
   useEffect(() => {
-    if (!canAccessInput && activeTab === 'gerbang') {
+    if (isWaliKelasPos) {
+      setActiveTab('manual');
+    } else if (isPetugasSiswa && activeTab === 'gerbang') {
+      setActiveTab('manual');
+    } else if (!canAccessInput && activeTab === 'gerbang') {
       if (canAccessManual) setActiveTab('manual');
       else if (canAccessSesi) setActiveTab('sesi');
     }
-  }, [canAccessInput, canAccessManual, canAccessSesi, activeTab]);
+  }, [isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessManual, canAccessSesi, activeTab]);
 
   const tabOptions = useMemo((): TabOption[] => {
     const opts: TabOption[] = [];
+
+    // 🔴 WALI KELAS: HANYA melihat Cek Manual (Belum Hadir). Tab Manajemen Sesi & Scanner Gerbang DIHILANGKAN.
+    if (isWaliKelasPos) {
+      opts.push({ id: 'manual', label: 'Cek Manual', icon: ClipboardCheck });
+      return opts;
+    }
+
+    // 🟡 PETUGAS KELAS: HANYA melihat Cek Manual & Manajemen Sesi. Tab Scanner Gerbang DIHILANGKAN.
+    if (isPetugasSiswa) {
+      opts.push({ id: 'manual', label: 'Cek Manual', icon: ClipboardCheck });
+      opts.push({ id: 'sesi', label: 'Manajemen Sesi', icon: Activity });
+      return opts;
+    }
+
+    // 🔵 PERAN LAIN (Gerbang / Satpam / Admin / Operator)
     if (canAccessInput) {
       opts.push({ id: 'gerbang', label: 'Scanner Gerbang', icon: MapPin });
     }
@@ -181,12 +202,12 @@ export default function ModeMultiSesiView({
       opts.push({ id: 'sesi', label: 'Manajemen Sesi', icon: Activity });
     }
     return opts;
-  }, [canAccessInput, canAccessManual, canAccessSesi]);
+  }, [isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessManual, canAccessSesi]);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20 overflow-visible">
-      {/* Header Tab Switcher (No redundant title, topbar already has title) */}
-      {tabOptions.length > 0 && (
+      {/* Header Tab Switcher (Hanya tampil jika ada lebih dari 1 opsi tab) */}
+      {tabOptions.length > 1 && (
         <div className="flex items-center justify-between sm:justify-end gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 sm:hidden">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isConnected ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50'}`}>
