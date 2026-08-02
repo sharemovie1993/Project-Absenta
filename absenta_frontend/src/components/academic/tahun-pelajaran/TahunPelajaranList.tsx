@@ -54,7 +54,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   const { data: listRes, isLoading: loading } = useQuery({
     queryKey: academicQueryKeys.tahunPelajaran.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, status: filterStatus }),
     queryFn: () => getTahunPelajaranList(currentPage, itemsPerPage, debouncedSearchTerm, filterStatus),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 
   const tahunPelajarans = listRes?.data || [];

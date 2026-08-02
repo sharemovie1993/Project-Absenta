@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Edit, Trash2, Eye, Plus, Search, RefreshCw, CheckCircle, Circle, FileSpreadsheet, Download, Calendar } from 'lucide-react';
@@ -16,7 +16,8 @@ import {
   getSemesterList, 
   deleteSemester, 
   setActiveSemester, 
-  getSemesterDetail
+  getSemesterDetail,
+  semesterQueryKeys
 } from '../../../api/academic/semester.api';
 import type { Semester } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -75,67 +76,21 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     return user?.capabilities?.includes('academic.semesters.update') || user?.capabilities?.includes('academic.semesters.delete');
   }, [user]);
 
-  // Fetch semesters with debounced search
-  const fetchSemesters = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getSemesterList(page, itemsPerPage, search, tahunPelajaranId);
-      
-      if (response.success && response.data) {
-        setSemesters(response.data || []);
-        // Add null safety check for pagination
-        if (response.pagination) {
-          setTotalPages(response.pagination.totalPages || 1);
-          setTotalItems(response.pagination.total || 0);
-          setCurrentPage(response.pagination.page || 1);
-        } else {
-          // Fallback values if pagination is undefined
-          setTotalPages(1);
-          setTotalItems(0);
-          setCurrentPage(1);
-        }
-      } else {
-        toast.error('Gagal memuat data semester');
-        // Reset to default values on error
-        setSemesters([]);
-        setTotalPages(1);
-        setTotalItems(0);
-        setCurrentPage(1);
-      }
-    } catch (error) {
-      console.error('Error fetching semesters:', error);
-      toast.error('Terjadi kesalahan saat memuat data semester');
-      // Reset to default values on error
-      setSemesters([]);
-      setTotalPages(1);
-      setTotalItems(0);
-      setCurrentPage(1);
-    } finally {
-      setLoading(false);
-    }
-  }, [tahunPelajaranId, itemsPerPage]);
+  // Queries using React Query
+  const { data: listRes, isLoading: loading, refetch } = useQuery({
+    queryKey: semesterQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, tahunPelajaranId }),
+    queryFn: () => getSemesterList(currentPage, itemsPerPage, debouncedSearchTerm, tahunPelajaranId),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Debounced search effect
-  useEffect(() => {
-    fetchSemesters(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, fetchSemesters]);
-
-  // Refresh when refreshTrigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchSemesters(currentPage, searchTerm);
-    }
-  }, [refreshTrigger, fetchSemesters, currentPage, searchTerm]);
-
-  // Initial load
-  useEffect(() => {
-    fetchSemesters();
-  }, [fetchSemesters]);
+  const semesters = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
 
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
-    fetchSemesters(page, searchTerm);
-  }, [fetchSemesters, searchTerm]);
+    setCurrentPage(page);
+  }, []);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {

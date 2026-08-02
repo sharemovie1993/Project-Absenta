@@ -5,10 +5,43 @@ Penerapan arsitektur **Dual-Layer Multi-Channel Cache Invalidation** (Backend Re
 
 ---
 
+## 🚀 FASE STRATEGIS: MIGRASI TOTAL TO REACT QUERY (`useQuery` & `useMutation`)
+
+Seluruh komponen Frontend di 20 Modul (Tabel List, Detail Modal Show, Edit/Create Form, & Dropdown Options) dimigrasi 100% dari `useEffect` manual ke **TanStack React Query Standard**:
+
+### 🎯 Standar Pola Arsitektur Unifikasi Frontend:
+1. **📋 Tabel & List View (READ)**: 
+   - Wajib menggunakan `useQuery({ queryKey: [domain, params], queryFn: apiFn, staleTime: 5 * 60 * 1000 })` atau dedicated custom hook (`useSiswaList`, `useGuruList`, `usePelanggaranList`, dll).
+   - Menjamin: Instant load 0ms dari RAM, auto deduplication, kebal guncangan jaringan / offline sejenak, zero blank screen.
+2. **👁️ Detail View Modal (SHOW)**:
+   - Wajib menggunakan `useQuery({ queryKey: [domain-detail, id], queryFn: () => getDetail(id), enabled: !!id && isOpen })`.
+   - Menjamin: Instant preview 0ms, auto-hydration.
+3. **✏️ Edit & Create Form (WRITE / MUTATION)**:
+   - Wajib menggunakan `useMutation({ mutationFn: saveFn, onSuccess: () => queryClient.invalidateQueries({ queryKey: [domain] }) })`.
+   - Menjamin: Auto invalidation & instant table refresh.
+4. **🔽 Dropdown Options**:
+   - Wajib menggunakan 28 Dedicated Custom Hooks (`useKelasOptions`, `useSiswaOptions`, `useGuruOptions`, `useDudiOptions`, `useBpbkEwsOptions`, `useKoperasiProductOptions`, `useUserListOptions`, dll).
+
+---
+
+## 🗺️ MASTER MIGRATION ROADMAP (9 BATCHES / ALL MODULES)
+
+- [ ] **Batch 0: Core Master Data Foundation** (`TahunPelajaranPage.tsx`, `SemesterPage.tsx`, `JurusanPage.tsx`, `KelasPage.tsx`, `MapelPage.tsx`)
+- [ ] **Batch 1: Modul Kesiswaan & Akademik Basic** (`SiswaList.tsx`, `GuruPage.tsx`, `PelanggaranPage.tsx`, `PrestasiPage.tsx`, `PiketPage.tsx`)
+- [ ] **Batch 2: Modul BPBK Student Care** (`KonselingSection.tsx`, `HomeVisitSection.tsx`, `CasesSection.tsx`, `PemanggilanSection.tsx`, `RujukanSection.tsx`, `AsesmenSection.tsx`)
+- [ ] **Batch 3: Modul Kurikulum & Supervisi** (`MasterStrukturPage.tsx`, `JadwalKBMList.tsx`, `JadwalPiketGuruPage.tsx`, `PerangkatAjarPage.tsx`, `SupervisiPage.tsx`, `RekapKBMPage.tsx`)
+- [ ] **Batch 4: Modul HUBIN & PKL** (`MitraIndustriPage.tsx`, `PenempatanPklPage.tsx`, `AbsensiPklPage.tsx`, `MonitoringPklPage.tsx`, `InputNilaiPklPage.tsx`, `BkkPage.tsx`, `TracerStudyPage.tsx`)
+- [ ] **Batch 5: Modul SARPRAS & Inventaris** (`SarprasInventoryPage.tsx`, `SarprasLoansPage.tsx`, `SarprasMaintenancePage.tsx`, `SarprasCatalogPage.tsx`)
+- [ ] **Batch 6: Modul KOPERASI ERP & POS** (`POS.tsx`, `Products.tsx`, `Members.tsx`, `Savings.tsx`, `Loans.tsx`)
+- [ ] **Batch 7: Modul RAPOR & Evaluasi** (`InputNilaiPage.tsx`, `CetakRaporPage.tsx`, `P5Page.tsx`)
+- [ ] **Batch 8: Modul USERS & RBAC** (`UsersPage.tsx`, `StrukturOrganisasiPage.tsx`)
+
+---
+
 ## 🧪 Siklus 3-Tahap Eksekusi Per Modul/Domain
 Untuk setiap modul/domain, eksekusi dilakukan secara ketat melalui 3 siklus:
 1. 🔍 **Tahap 1 (Backend Multi-Channel Audit)**: Memastikan `CacheInvalidationService` dan filter scope `tenant_id` dipanggil pada seluruh channel mutasi (Form UI, Impor Excel, Batch Action, Cron Worker, WA/Webhook Callback).
-2. ⚡ **Tahap 2 (Frontend Installation)**: Pemasangan `useQueryClient` dan `queryClient.invalidateQueries({ queryKey: [...] })` pada setiap handler mutasi UI di browser.
+2. ⚡ **Tahap 2 (Frontend Installation & React Query Migration)**: Pemasangan `useQuery` pada Tabel & Detail View, `useMutation` + `queryClient.invalidateQueries({ queryKey: [...] })` pada Form Create/Edit, serta penggunaan custom hooks pada dropdown.
 3. 🧪 **Tahap 3 (Script Test & Type-Check)**: Pengujian otomatis via script validator (`scratch/verify_*.py`) dan kompilasi strict `npx tsc --noEmit` (0 Error).
 
 ---

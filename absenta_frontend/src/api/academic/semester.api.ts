@@ -40,6 +40,14 @@ export interface SetActiveSemesterResponse {
   };
 }
 
+export const semesterQueryKeys = {
+  all: ['semesters'] as const,
+  list: (params: { page?: number; limit?: number; search?: string; tahunPelajaranId?: string }) =>
+    ['semesters', 'list', params] as const,
+  active: ['semesters', 'active'] as const,
+  detail: (id: string) => ['semesters', 'detail', id] as const,
+};
+
 // Get Semester List - GET /api/academic/semester
 export const getSemesterList = async (
   page = 1, 

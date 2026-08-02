@@ -4,8 +4,9 @@ import { Button, Card, Modal, SectionCard } from '../../components/ui';
 import SemesterList from '../../components/academic/semester/SemesterList';
 import { useAuth } from '../../hooks/useAuth';
 import type { Semester } from '../../types/academic';
+import { useQuery } from '@tanstack/react-query';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { getActiveSemester, getSemesterList } from '../../api/academic/semester.api';
+import { getActiveSemester, getSemesterList, semesterQueryKeys } from '../../api/academic/semester.api';
 import { Clock, Calendar } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
@@ -34,40 +35,26 @@ export const SemesterPage: React.FC = () => {
   const canView = can('academic.semesters.view.list');
   const canSetActive = can('academic.semesters.set_active');
 
-  const [activeSemesterData, setActiveSemesterData] = useState<Semester | null>(null);
+  // Queries using React Query
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: getAcademicStats,
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Load academic stats & active semester fallback
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setIsLoadingStats(true);
-        const [statsRes, activeRes] = await Promise.all([
-          getAcademicStats().catch(() => null),
-          getActiveSemester().catch(() => null)
-        ]);
+  const { data: activeRes } = useQuery({
+    queryKey: semesterQueryKeys.active,
+    queryFn: getActiveSemester,
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  });
 
-        if (statsRes?.data) {
-          setStats(statsRes.data);
-        }
-
-        // Try active semester single endpoint first
-        if (activeRes?.data) {
-          const act = Array.isArray(activeRes.data) ? activeRes.data[0] : activeRes.data;
-          if (act) setActiveSemesterData(act as any);
-        } else {
-          // Fallback to searching active item from list
-          const listRes = await getSemesterList(1, 50).catch(() => null);
-          const activeItem = listRes?.data?.find(s => s.is_active);
-          if (activeItem) setActiveSemesterData(activeItem);
-        }
-      } catch (error) {
-        console.error('Failed to load academic stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, [refreshTrigger]);
+  const stats = statsRes?.data;
+  const activeSemesterData = useMemo(() => {
+    if (!activeRes?.data) return null;
+    return Array.isArray(activeRes.data) ? activeRes.data[0] : activeRes.data;
+  }, [activeRes]);
 
   const navigate = useNavigate();
 
