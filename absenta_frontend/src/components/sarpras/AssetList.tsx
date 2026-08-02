@@ -270,7 +270,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
             <Label htmlFor="filterCategory" className="text-xs font-semibold text-slate-500 mb-1 block">Kategori</Label>
             <SearchableSelect 
                id="filterCategory"
-               options={categoriesOptions} 
+               options={categoryOptions} 
                value={filterCategory} 
                onValueChange={setFilterCategory} 
             />
@@ -279,7 +279,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
             <Label htmlFor="filterLocation" className="text-xs font-semibold text-slate-500 mb-1 block">Lokasi</Label>
             <SearchableSelect 
                id="filterLocation"
-               options={locationsOptions} 
+               options={locationOptions} 
                value={filterLocation} 
                onValueChange={setFilterLocation} 
             />

@@ -185,8 +185,12 @@ const SarprasLoansPage: React.FC = () => {
 
   const handleRequestSuccess = useCallback(() => {
     setRequestModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
     refetch();
-  }, [refetch]);
+  }, [queryClient, refetch]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);
@@ -346,15 +350,6 @@ const SarprasLoansPage: React.FC = () => {
   const handleOpenRequest = useCallback(() => setRequestModalOpen(true), []);
   const handleCloseScan = useCallback(() => setScanModalOpen(false), []);
   const handleCloseRequest = useCallback(() => setRequestModalOpen(false), []);
-
-  const handleRequestSuccess = useCallback(() => {
-    handleCloseRequest();
-    queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
-    queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-    refetch();
-  }, [handleCloseRequest, queryClient, refetch]);
 
   const handlePageChange = useCallback((newPage: number) => setPage(newPage), []);
   const handleLimitChange = useCallback((newLimit: number) => {
