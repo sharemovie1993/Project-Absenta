@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, updateTenant, type UpdateTenantRequest } from '../../../api/tenants.api';
 import { Button, Input, Label, ModalFooter, Loader, Alert, Switch } from '../../ui';
@@ -8,6 +9,7 @@ import { Clock, Settings2, Save, RefreshCw, CalendarDays } from 'lucide-react';
 import { HARI_LIST } from '../../../constants/day.constants';
 
 const TenantAttendanceFormComponent: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -66,6 +68,9 @@ const TenantAttendanceFormComponent: React.FC = () => {
       const response = await updateTenant(user.tenant_id, updateData);
       if (response.success) {
         toast.success('Pengaturan berhasil disimpan');
+        queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       } else {
         toast.error(response.message || 'Gagal menyimpan pengaturan');
       }

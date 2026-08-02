@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma'
 import { RoleName, JenisKegiatan } from '../../../../constants/enums'
 import { isSystemSuperAdmin } from '@/utils/rbac'
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service'
 
 export interface CreateJKMInput { nama: string; tipe: JenisKegiatan; urutan?: number; aktif?: boolean }
 export interface UpdateJKMInput { nama?: string; tipe?: JenisKegiatan; urutan?: number | null; aktif?: boolean }
@@ -132,6 +133,7 @@ export class JenisKegiatanMasterService {
         aktif: input.aktif ?? true,
       },
     })
+    await cacheInvalidationService.invalidateAttendanceCache(tenantId)
     return created as JenisKegiatanMasterResponse
   }
 
@@ -155,6 +157,7 @@ export class JenisKegiatanMasterService {
         ...(input.aktif !== undefined && { aktif: input.aktif }),
       },
     })
+    await cacheInvalidationService.invalidateAttendanceCache(existing.tenant_id)
     return updated as JenisKegiatanMasterResponse
   }
 
@@ -164,5 +167,6 @@ export class JenisKegiatanMasterService {
     const existing = await prisma.jenisKegiatanMaster.findFirst({ where })
     if (!existing) throw new Error('Jenis Kegiatan not found or not in the same tenant')
     await prisma.jenisKegiatanMaster.delete({ where: { id } })
+    await cacheInvalidationService.invalidateAttendanceCache(existing.tenant_id)
   }
 }

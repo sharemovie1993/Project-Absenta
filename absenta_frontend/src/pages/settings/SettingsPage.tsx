@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserNotificationPreferences } from '@/api/notifications.api';
@@ -25,6 +26,7 @@ const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 
 const SettingsPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, isLoading, can } = useAuth();
   const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
   const isTenantAdmin = user?.role?.name === 'ADMIN' && !isSuperAdminUser;
@@ -200,6 +202,9 @@ const SettingsPage: React.FC = () => {
       const d = await saveSystemConfig(payload);
       if (d) {
         setSaveMessage('Konfigurasi berhasil disimpan');
+        queryClient.invalidateQueries({ queryKey: ['system-config'] });
+        queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi';

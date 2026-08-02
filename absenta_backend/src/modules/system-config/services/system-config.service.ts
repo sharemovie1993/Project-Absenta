@@ -3,6 +3,7 @@ import { isSystemSuperAdmin } from '@/utils/rbac';
 import { Prisma } from '@prisma/client';
 import { cacheService } from '@/utils/cache.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface SystemConfigPayload {
   tenant_id?: string | null;
@@ -334,6 +335,9 @@ export const systemConfigService = {
       await cacheService.delete(CACHE_KEYS.SYSTEM_CONFIG.ACTIVE(tenantIdToUse || null));
       if (tenantIdToUse) {
         await cacheService.delete(CACHE_KEYS.SYSTEM_CONFIG.ACTIVE(null));
+        // Invalidate attendance & academic cache as system config may affect shift/schedule rules
+        await cacheInvalidationService.invalidateAttendanceCache(tenantIdToUse);
+        await cacheInvalidationService.invalidateAcademicCache(tenantIdToUse);
       }
 
       return result;

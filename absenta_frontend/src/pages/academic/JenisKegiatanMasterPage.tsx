@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   SectionCard
 } from '../../components/ui';
@@ -21,7 +22,14 @@ const JenisKegiatanForm = lazy(() => import('../../components/academic/jenis-keg
 type ModalMode = 'create' | 'edit' | 'view' | null;
 
 export default function JenisKegiatanMasterPage() {
+  const queryClient = useQueryClient();
   const { can, isLoading: authLoading } = useAuth();
+
+  const invalidateJenisKegiatanCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-list'] });
+    queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
 
   const showConfirm = useConfirm();
   
@@ -55,6 +63,7 @@ export default function JenisKegiatanMasterPage() {
 
   const onFormSuccess = () => {
     closeModal();
+    invalidateJenisKegiatanCache();
     fetchList();
   };
 
@@ -73,6 +82,7 @@ export default function JenisKegiatanMasterPage() {
       const res = await jenisKegiatanMasterApi.delete(id); 
       if (res.success) {
         toast.success('Kategori berhasil dihapus');
+        invalidateJenisKegiatanCache();
         fetchList(); 
       }
     } catch (error: unknown) {
