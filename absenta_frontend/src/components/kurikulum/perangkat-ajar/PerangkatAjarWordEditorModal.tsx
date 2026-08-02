@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Save,
   Loader2,
@@ -54,6 +55,7 @@ export default function PerangkatAjarWordEditorModal({
   itemData,
   onSaveSuccess,
 }: PerangkatAjarWordEditorModalProps) {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [loading, setLoading] = useState(false);
@@ -345,6 +347,11 @@ export default function PerangkatAjarWordEditorModal({
       });
 
       toast.success('Naskah Perangkat Ajar berhasil disimpan ke repositori!');
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       onSaveSuccess();
       onClose();
     } catch (err: any) {

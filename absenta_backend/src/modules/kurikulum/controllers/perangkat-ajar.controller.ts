@@ -9,6 +9,7 @@ import { z } from 'zod';
 import axios from 'axios';
 import { PdfGeneratorService } from '../../reporting/services/pdf-generator.service';
 import { buildAIPromptForJenis, buildFallbackHtmlForJenis } from '../helpers/perangkat-ajar-layout.helper';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 
 
@@ -161,6 +162,7 @@ export class PerangkatAjarController {
       const parsed = perangkatAjarReviewSchema.parse(req.body);
 
       const result = await PerangkatAjarService.reviewPerangkat(tenant_id, id, reviewerId, parsed);
+      await cacheInvalidationService.invalidateAcademicCache(tenant_id);
       return sendResponse(reply, 200, true, 'Verifikasi perangkat ajar berhasil disimpan', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -540,6 +542,7 @@ export class PerangkatAjarController {
         console.warn('[LIBRARY INDEXING] Auto-index to library notice:', libErr.message);
       }
 
+      await cacheInvalidationService.invalidateAcademicCache(tenant_id);
       return sendResponse(reply, 200, true, 'Perubahan naskah perangkat ajar berhasil disimpan', result);
     } catch (error: any) {
       return sendError(reply, 500, `Gagal menyimpan dokumen editor: ${error.message}`, error);
@@ -649,6 +652,7 @@ export class PerangkatAjarController {
         }
       });
 
+      await cacheInvalidationService.invalidateAcademicCache(req.user?.tenant_id || '');
       return sendResponse(reply, 201, true, 'Preset topik berhasil ditambahkan', preset);
     } catch (error: any) {
       return sendError(reply, 500, `Gagal membuat preset topik: ${error.message}`, error);
@@ -674,6 +678,7 @@ export class PerangkatAjarController {
         }
       });
 
+      await cacheInvalidationService.invalidateAcademicCache(req.user?.tenant_id || '');
       return sendResponse(reply, 200, true, 'Preset topik berhasil diperbarui', preset);
     } catch (error: any) {
       return sendError(reply, 500, `Gagal memperbarui preset topik: ${error.message}`, error);
@@ -684,6 +689,7 @@ export class PerangkatAjarController {
     try {
       const { id } = req.params;
       await prisma.globalTopikPreset.delete({ where: { id } });
+      await cacheInvalidationService.invalidateAcademicCache(req.user?.tenant_id || '');
       return sendResponse(reply, 200, true, 'Preset topik berhasil dihapus');
     } catch (error: any) {
       return sendError(reply, 500, `Gagal menghapus preset topik: ${error.message}`, error);

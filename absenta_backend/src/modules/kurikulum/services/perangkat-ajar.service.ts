@@ -1,5 +1,6 @@
 import { prisma } from '../../../utils/prisma';
 import { storageService } from '../../../infra/storage/storage.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class PerangkatAjarService {
   static async uploadPerangkat(
@@ -14,7 +15,7 @@ export class PerangkatAjarService {
       file_url: string;
     }
   ) {
-    return prisma.perangkatAjar.create({
+    const created = await prisma.perangkatAjar.create({
       data: {
         tenant_id: tenantId,
         guru_id: data.guru_id,
@@ -27,6 +28,9 @@ export class PerangkatAjarService {
         status: 'PENDING',
       },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return created;
   }
 
   static async reviewPerangkat(
@@ -46,7 +50,7 @@ export class PerangkatAjarService {
       throw new Error('Perangkat ajar tidak ditemukan atau bukan milik tenant Anda');
     }
 
-    return prisma.perangkatAjar.update({
+    const updated = await prisma.perangkatAjar.update({
       where: { id },
       data: {
         status: data.status,
@@ -55,6 +59,9 @@ export class PerangkatAjarService {
         reviewed_at: new Date(),
       },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return updated;
   }
 
   static async getPerangkatById(tenantId: string, id: string) {
@@ -138,9 +145,12 @@ export class PerangkatAjarService {
       console.error(`Failed to delete physical file: ${existing.file_url}`, err);
     }
 
-    return prisma.perangkatAjar.delete({
+    const deleted = await prisma.perangkatAjar.delete({
       where: { id },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return deleted;
   }
 
   static async bulkDeletePerangkat(tenantId: string, ids: string[]) {
@@ -160,9 +170,12 @@ export class PerangkatAjarService {
       }
     }
 
-    return prisma.perangkatAjar.deleteMany({
+    const res = await prisma.perangkatAjar.deleteMany({
       where: { id: { in: items.map((i) => i.id) }, tenant_id: tenantId }
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return res;
   }
 }
 

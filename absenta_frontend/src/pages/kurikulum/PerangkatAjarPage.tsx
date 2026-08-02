@@ -312,6 +312,9 @@ export default function PerangkatAjarPage() {
       setUploadForm({ judul: '', jenis: '', mapel_id: '', guru_id: '', file: null });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas';
@@ -328,6 +331,9 @@ export default function PerangkatAjarPage() {
       setSelectedPerangkatId(null);
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal memperbarui status verifikasi';
@@ -341,6 +347,9 @@ export default function PerangkatAjarPage() {
       toast.success('Dokumen perangkat ajar berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen';
@@ -355,6 +364,9 @@ export default function PerangkatAjarPage() {
       setSelectedRowKeys(new Set());
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen terpilih';
@@ -384,6 +396,9 @@ export default function PerangkatAjarPage() {
       setIsLibraryModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal mengklaim template';
