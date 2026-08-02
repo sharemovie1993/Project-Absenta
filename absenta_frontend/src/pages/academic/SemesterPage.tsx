@@ -25,8 +25,6 @@ export const SemesterPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   // Permissions
