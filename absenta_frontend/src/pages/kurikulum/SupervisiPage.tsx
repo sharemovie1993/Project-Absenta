@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Input, Badge, Loader, SectionCard } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
 import toast from 'react-hot-toast';
@@ -55,7 +56,15 @@ const TAB_OPTIONS = [
 
 // ─── Page Component ───────────────────────────────────────────────────────────
 export default function SupervisiPage() {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const invalidateSupervisiCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['supervisi-list'] });
+    queryClient.invalidateQueries({ queryKey: ['supervisi-analytics'] });
+    queryClient.invalidateQueries({ queryKey: ['supervisi-recommendations'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
 
   // ── Tab state ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'LIST' | 'ANALYTICS'>('LIST');
@@ -226,6 +235,7 @@ export default function SupervisiPage() {
       setModalOpen(false);
       setFormData(DEFAULT_FORM);
       setSelectedId(null);
+      invalidateSupervisiCache();
       fetchData();
     } catch (err) {
       console.error(err);
@@ -260,6 +270,7 @@ export default function SupervisiPage() {
     try {
       await kurikulumApi.deleteSupervisi(item.id);
       toast.success('Jadwal supervisi berhasil dihapus');
+      invalidateSupervisiCache();
       fetchData();
     } catch (err) {
       console.error(err);

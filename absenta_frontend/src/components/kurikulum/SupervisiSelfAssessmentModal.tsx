@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { kurikulumApi } from '../../api/kurikulum.api';
@@ -24,6 +25,7 @@ export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModal
   initialData,
   onSuccess
 }) => {
+  const queryClient = useQueryClient();
   const [targetPembelajaran, setTargetPembelajaran] = useState(initialData?.target_pembelajaran || '');
   const [nilaiSelf, setNilaiSelf] = useState<number>(initialData?.nilai_self || 80);
   const [catatanSelf, setCatatanSelf] = useState(initialData?.catatan_self || '');
@@ -48,6 +50,9 @@ export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModal
         catatan_self: catatanSelf || undefined
       });
       toast.success('Evaluasi diri berhasil disimpan.');
+      queryClient.invalidateQueries({ queryKey: ['supervisi-list'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisi-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       onSuccess();
       onClose();
     } catch (err: any) {

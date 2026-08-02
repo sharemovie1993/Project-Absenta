@@ -114,7 +114,7 @@ export default function RekapKBMPage() {
   });
 
   const { data: rekapData, isLoading } = useQuery({
-    queryKey: ['rekap-kbm', semesterId, tahunPelajaranId],
+    queryKey: ['rekap-kbm-guru', semesterId, tahunPelajaranId],
     queryFn: () => kurikulumApi.getRekapKBM({ semester_id: semesterId || undefined, tahun_pelajaran_id: tahunPelajaranId || undefined }),
   });
 

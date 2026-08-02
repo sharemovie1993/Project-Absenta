@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { Prisma } from '@prisma/client';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface SupervisiItemResult {
   id: string;
@@ -106,7 +107,7 @@ export class SupervisiService {
     nilai?: number;
     supervisor_id?: string;
   }) {
-    return prisma.supervisiGuru.create({
+    const created = await prisma.supervisiGuru.create({
       data: {
         tenant_id: tenantId,
         guru_id: data.guru_id,
@@ -120,6 +121,9 @@ export class SupervisiService {
         supervisor_id: data.supervisor_id,
       },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return created;
   }
 
   static async update(tenantId: string, id: string, data: {
@@ -141,10 +145,13 @@ export class SupervisiService {
       throw new Error('Supervisi not found');
     }
 
-    return prisma.supervisiGuru.update({
+    const updated = await prisma.supervisiGuru.update({
       where: { id },
       data,
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return updated;
   }
 
   static async delete(tenantId: string, id: string) {
@@ -156,9 +163,12 @@ export class SupervisiService {
       throw new Error('Supervisi not found');
     }
 
-    return prisma.supervisiGuru.delete({
+    const deleted = await prisma.supervisiGuru.delete({
       where: { id },
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return deleted;
   }
 
   static async getAll(tenantId: string, query: {
@@ -282,7 +292,7 @@ export class SupervisiService {
       throw new Error('Hanya guru yang disupervisi yang dapat mengisi evaluasi diri');
     }
 
-    return prisma.supervisiGuru.update({
+    const updatedSelf = await prisma.supervisiGuru.update({
       where: { id },
       data: {
         target_pembelajaran: data.target_pembelajaran,
@@ -291,6 +301,9 @@ export class SupervisiService {
         is_self_evaluated: true
       }
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return updatedSelf;
   }
 
   static async getAnalytics(tenantId: string) {
