@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { Button, Input, Label, Alert, AlertDescription, ModalFooter, Loader } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialData, kelasId, tahunPelajaranId, semesterId }) => {
+  const queryClient = useQueryClient();
   const [mapelOptions, setMapelOptions] = useState<{ value: string; label: string }[]>([]);
   const [guruOptions, setGuruOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
@@ -169,6 +171,9 @@ export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialDat
         await createJadwalKBM(payload);
       }
       
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+      queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+
       onSuccess();
     } catch (err: any) {
       LogService.error('Failed to save jadwal', err);

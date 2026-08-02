@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Alert, ModalFooter } from '../../ui';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
+  const queryClient = useQueryClient();
   const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [jurusanOptions, setJurusanOptions] = useState<any[]>([]);
@@ -80,6 +82,10 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
       };
       const res = await assignGuruMapel(payload);
       if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+
         toast.success('Penugasan berhasil disimpan');
         onSuccess?.();
       } else {

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Table } from '../../ui/Table';
 import { Button } from '../../ui/Button';
 import { Loader } from '../../ui/Loader';
@@ -29,6 +30,12 @@ interface Props {
 }
 
 const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizard, onOpenTimeOff }) => {
+  const queryClient = useQueryClient();
+  const invalidateJadwalCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+  }, [queryClient]);
 
   const { user } = useAuthStore();
   const confirm = useConfirm();
@@ -226,6 +233,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         return;
       }
       toast.success(res.message || 'Pengampu berhasil dihapus');
+      invalidateJadwalCache();
       fetchData();
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menghapus pengampu';
