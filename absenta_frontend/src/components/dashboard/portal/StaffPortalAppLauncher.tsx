@@ -34,7 +34,6 @@ import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
-import { useNavStore } from '../../../store/navStore';
 import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getPrimaryStructuralWorkspaceItems } from '../../../helpers/workspaceNavFilter';
 import { resolveUserWorkspaces, getUserPositions } from '../../../config/navigation.config';
 import { type QuickAction } from '../shared/QuickActionGrid';
@@ -141,7 +140,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
   // Integrated Dynamic Smart Menu from Backend API
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
-  const activeWorkspaceId = useNavStore((state) => state.activeWorkspaceId);
 
   const handleTileNavigate = useCallback(
     (path?: string, onClick?: () => void) => {
