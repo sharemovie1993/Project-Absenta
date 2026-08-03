@@ -112,6 +112,7 @@ export const createIzinSchema = z.object({
     required_error: 'Alasan wajib diisi'
   }).min(1, 'Alasan tidak boleh kosong'),
   tipe_izin: z.string().default('IZIN_KELUAR'),
+  status: z.string().optional(),
   jam_keluar: z.preprocess((val) => {
     if (!val) return undefined;
     return new Date(String(val));

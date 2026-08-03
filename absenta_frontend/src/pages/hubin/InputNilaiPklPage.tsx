@@ -19,6 +19,9 @@ import { hubinApi } from '../../api/hubin.api';
 import { kelasApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 
+import { useDudiOptions } from '../../hooks/useDudiOptions';
+import { useActivePklStudents } from '../../hooks/useActivePklStudents';
+
 export default function InputNilaiPklPage() {
   const queryClient = useQueryClient();
 
@@ -38,17 +41,13 @@ export default function InputNilaiPklPage() {
     queryFn: () => kelasApi.getAll()
   });
 
-  // Fetch Mitra DUDI List
-  const { data: mitraList } = useQuery({
-    queryKey: ['mitra-list'],
-    queryFn: () => hubinApi.getMitra({ limit: 200 })
-  });
+  // Integrated Custom Hooks (Pilar 31 Data Layer)
+  const { options: mitraOptions, rawList: rawMitraList } = useDudiOptions();
+  const { rawList: activePklStudentsList, isLoading: isLoadingPkl } = useActivePklStudents({ kelas_id: selectedKelas });
 
-  // Fetch PKL Students
-  const { data: pklRekap, isLoading: isLoadingPkl } = useQuery({
+  const { data: pklRekap, isLoading: isLoadingRekap } = useQuery({
     queryKey: ['pkl-rekap', selectedKelas],
-    queryFn: () => hubinApi.getRekapPklSiswa({ kelas_id: selectedKelas }),
-    enabled: !!selectedKelas
+    queryFn: () => hubinApi.getRekapPklSiswa({ kelas_id: selectedKelas || undefined }),
   });
 
   // Fetch Setting Deskripsi TP List
@@ -61,12 +60,18 @@ export default function InputNilaiPklPage() {
   const [scores, setScores] = useState<Array<any>>([]);
 
   useEffect(() => {
-    if (pklRekap?.data) {
-      setScores(pklRekap.data.map((item: any) => ({
+    const rawList = Array.isArray(pklRekap?.data) 
+      ? pklRekap.data 
+      : Array.isArray(pklRekap) 
+      ? pklRekap 
+      : (pklRekap as any)?.data?.list || [];
+
+    if (Array.isArray(rawList)) {
+      setScores(rawList.map((item: any) => ({
         siswa_pkl_id: item.id,
-        nama_siswa: item.Siswa?.nama_siswa || '',
-        nis: item.Siswa?.nis || '',
-        mitra_nama: item.Mitra?.nama || '-',
+        nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
+        nis: item.Siswa?.nis || item.nis || '',
+        mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
         instruktur_nama: item.instruktur_nama || '',
         penanggung_jawab_nama: item.penanggung_jawab_nama || '',
         alamat_dudi: item.alamat_dudi || item.Mitra?.alamat || '',
@@ -300,38 +305,37 @@ export default function InputNilaiPklPage() {
                   </select>
                 </div>
 
-                {selectedKelas && (
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button
-                      type="button"
-                      onClick={() => setShowPasteModal(true)}
-                      variant="outline"
-                      className="border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 rounded-xl font-bold text-xs"
-                    >
-                      <ClipboardPaste className="w-4 h-4 mr-1.5" />
-                      Paste dari Excel
-                    </Button>
-                    <Button
-                      onClick={handleSaveAll}
-                      disabled={saveBatchMutation.isPending}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-100"
-                    >
-                      <Save className="w-4 h-4 mr-1.5" />
-                      SIMPAN SEMUA NILAI PKL
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    onClick={() => setShowPasteModal(true)}
+                    variant="outline"
+                    className="border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 rounded-xl font-bold text-xs"
+                  >
+                    <ClipboardPaste className="w-4 h-4 mr-1.5" />
+                    Paste dari Excel
+                  </Button>
+                  <Button
+                    onClick={handleSaveAll}
+                    disabled={saveBatchMutation.isPending || scores.length === 0}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-100"
+                  >
+                    <Save className="w-4 h-4 mr-1.5" />
+                    SIMPAN SEMUA NILAI PKL
+                  </Button>
+                </div>
               </div>
             </Card>
 
             {/* Grid Table Input Nilai PKL */}
-            {selectedKelas && (
-              <Card className="p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
-                {isLoadingPkl ? (
-                  <div className="text-center py-20 text-slate-400 text-xs italic">Menarik daftar penempatan PKL kelas...</div>
-                ) : scores.length === 0 ? (
-                  <div className="text-center py-20 text-slate-400 text-xs italic">Belum ada siswa yang ditempatkan PKL di rombel ini.</div>
-                ) : (
+            <Card className="p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
+              {isLoadingRekap || isLoadingPkl ? (
+                <div className="text-center py-20 text-slate-400 text-xs italic">Menarik data rekap penempatan PKL...</div>
+              ) : scores.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 text-xs italic">
+                  {selectedKelas ? 'Belum ada siswa yang ditempatkan PKL di rombel ini.' : 'Belum ada data penempatan PKL tersedia.'}
+                </div>
+              ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse min-w-[1200px]">
                       <thead>
@@ -478,7 +482,6 @@ export default function InputNilaiPklPage() {
                   </div>
                 )}
               </Card>
-            )}
 
           </div>
         ) : (
@@ -502,8 +505,8 @@ export default function InputNilaiPklPage() {
                     className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white"
                   >
                     <option value="">-- Semua Mitra DUDI --</option>
-                    {mitraList?.data?.map((m: any) => (
-                      <option key={m.id} value={m.id}>{m.nama}</option>
+                    {mitraOptions?.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
                 </div>

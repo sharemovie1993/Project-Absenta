@@ -289,23 +289,27 @@ model JenisPelanggaran {
 }
 
 model PelanggaranSiswa {
-  id                String   @id @default(uuid())
-  tenant_id         String
-  siswa_id          String
-  siswa_akademik_id String?
-  kelas_id          String?
-  tanggal           DateTime @db.Date
-  jenis_pelanggaran String
-  poin              Int      @default(0)
-  status            String   @default("BARU") // BARU, PROSES, SELESAI
-  keterangan        String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  siswa_id           String
+  siswa_akademik_id  String?
+  kelas_id           String?
+  tahun_pelajaran_id String?
+  semester_id        String?
+  tanggal            DateTime        @db.Date
+  jenis_pelanggaran  String
+  poin               Int             @default(0)
+  status             String          @default("BARU") // BARU, PROSES, SELESAI
+  keterangan         String?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
 
-  Tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa         Siswa          @relation(fields: [siswa_id], references: [id])
-  SiswaAkademik SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id])
-  Kelas         Kelas?         @relation(fields: [kelas_id], references: [id])
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa          Siswa           @relation(fields: [siswa_id], references: [id])
+  SiswaAkademik  SiswaAkademik?  @relation(fields: [siswa_akademik_id], references: [id])
+  Kelas          Kelas?          @relation(fields: [kelas_id], references: [id])
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: SetNull)
+  Semester       Semester?       @relation(fields: [semester_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -315,35 +319,41 @@ model PelanggaranSiswa {
   @@index([tenant_id, kelas_id])
   @@index([tenant_id, kelas_id, tanggal])
   @@index([tenant_id, siswa_id, status])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
 }
 
 model SupervisiGuru {
-  id                  String   @id @default(uuid())
+  id                  String          @id @default(uuid())
   tenant_id           String
   guru_id             String
   supervisor_id       String?
-  tanggal             DateTime @db.Date
+  tahun_pelajaran_id String?
+  semester_id        String?
+  tanggal             DateTime        @db.Date
   mapel               String?
   kelas               String?
   jam_ke              Int?
-  status              String   @default("SCHEDULED") // SCHEDULED, COMPLETED
+  status              String          @default("SCHEDULED") // SCHEDULED, COMPLETED
   catatan             String?
   nilai               Int?
-  target_pembelajaran String?  @db.Text
+  target_pembelajaran String?         @db.Text
   nilai_self          Int?
-  catatan_self        String?  @db.Text
-  is_self_evaluated   Boolean  @default(false)
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  catatan_self        String?         @db.Text
+  is_self_evaluated   Boolean         @default(false)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
 
-  Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Guru       Guru   @relation(fields: [guru_id], references: [id])
-  Supervisor Guru?  @relation("Supervisor", fields: [supervisor_id], references: [id])
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru           Guru            @relation(fields: [guru_id], references: [id])
+  Supervisor     Guru?           @relation("Supervisor", fields: [supervisor_id], references: [id])
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: SetNull)
+  Semester       Semester?       @relation(fields: [semester_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([guru_id])
   @@index([tanggal])
   @@index([tenant_id, tanggal])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
 }
 
 model Permission {
@@ -876,6 +886,10 @@ model TahunPelajaran {
   P5Projek          P5Projek[]
   PerangkatAjar     PerangkatAjar[]
   KalenderAkademik  KalenderAkademik[]
+  GuruMapel         GuruMapel[]
+  PelanggaranSiswa  PelanggaranSiswa[]
+  SupervisiGuru     SupervisiGuru[]
+  GuruTimeOff       GuruTimeOff[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -901,6 +915,12 @@ model Semester {
   RaporSiswa         RaporSiswa[]
   P5Projek           P5Projek[]
   PerangkatAjar      PerangkatAjar[]
+  GuruMapel          GuruMapel[]
+  JadwalKegiatan     JadwalKegiatan[]
+  StrukturKurikulum  StrukturKurikulum[]
+  PelanggaranSiswa   PelanggaranSiswa[]
+  SupervisiGuru      SupervisiGuru[]
+  GuruTimeOff        GuruTimeOff[]
 
   @@index([tenant_id])
 }
@@ -1625,43 +1645,53 @@ model PlanChangeRequest {
 }
 
 model GuruMapel {
-  id         String   @id @default(uuid())
-  tenant_id  String
-  guru_id    String
-  mapel_id   String
-  kelas_id   String?
-  jurusan_id String?
-  created_at DateTime @default(now())
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  guru_id            String
+  mapel_id           String
+  kelas_id           String?
+  jurusan_id         String?
+  tahun_pelajaran_id String?
+  semester_id        String?
+  created_at         DateTime        @default(now())
 
-  Guru       Guru     @relation(fields: [guru_id], references: [id])
-  Mapel      Mapel    @relation(fields: [mapel_id], references: [id])
-  Kelas      Kelas?   @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  Jurusan    Jurusan? @relation(fields: [jurusan_id], references: [id], onDelete: Cascade)
-  Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru           Guru            @relation(fields: [guru_id], references: [id])
+  Mapel          Mapel           @relation(fields: [mapel_id], references: [id])
+  Kelas          Kelas?          @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  Jurusan        Jurusan?        @relation(fields: [jurusan_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester       Semester?       @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([tenant_id, guru_id])
   @@index([tenant_id, mapel_id])
   @@index([tenant_id, guru_id, mapel_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id])
   @@index([jurusan_id])
 }
 
 model GuruTimeOff {
-  id          String   @id @default(uuid())
-  tenant_id   String
-  guru_id     String
-  hari        Hari
-  slot_index  Int?     // null = Full Day Time-Off, atau 1..10 untuk jam tertentu
-  keterangan  String?
-  created_at  DateTime @default(now())
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  guru_id            String
+  tahun_pelajaran_id String?
+  semester_id        String?
+  hari               Hari
+  slot_index         Int?            // null = Full Day Time-Off, atau 1..10 untuk jam tertentu
+  keterangan         String?
+  created_at         DateTime        @default(now())
 
-  Guru   Guru   @relation(fields: [guru_id], references: [id], onDelete: Cascade)
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru           Guru            @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester       Semester?       @relation(fields: [semester_id], references: [id], onDelete: Cascade)
 
   @@unique([tenant_id, guru_id, hari, slot_index])
   @@index([tenant_id])
   @@index([guru_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
 }
 
 model KelasMapel {
@@ -2181,6 +2211,7 @@ model JadwalKegiatan {
   berlaku_mulai      DateTime
   berlaku_sampai     DateTime?
   tahun_pelajaran_id String
+  semester_id        String?
   aktif              Boolean   @default(true)
   dibuat_oleh        String // user_id
   created_at         DateTime  @default(now())
@@ -2188,10 +2219,12 @@ model JadwalKegiatan {
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester?      @relation(fields: [semester_id], references: [id], onDelete: Cascade)
   SesiAbsensi    SesiAbsensi[]
 
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
 }
 
 model AnggotaKegiatanEskul {
@@ -2211,25 +2244,28 @@ model AnggotaKegiatanEskul {
 }
 
 model StrukturKurikulum {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   tenant_id          String
   mapel_id           String
   tahun_pelajaran_id String
+  semester_id        String?
   tingkat            Int
   jurusan_id         String?
-  jp_per_minggu      Int      @default(2)
+  jp_per_minggu      Int       @default(2)
   kelompok           String? // Nasional, Kejuruan, Pilihan
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester?      @relation(fields: [semester_id], references: [id], onDelete: Cascade)
   Mapel          Mapel          @relation(fields: [mapel_id], references: [id])
   Jurusan        Jurusan?       @relation(fields: [jurusan_id], references: [id])
 
   @@index([tenant_id])
   @@index([tenant_id, tahun_pelajaran_id, mapel_id])
   @@index([tenant_id, tahun_pelajaran_id, tingkat])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
 }
 
 model ProgresMateri {

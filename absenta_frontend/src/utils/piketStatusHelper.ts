@@ -37,6 +37,83 @@ export function getPermitGateStage(
   return 'PENDING_GATE';
 }
 
+export interface FullLifecycleStep {
+  code: 'PENDING_UTAMA' | 'PRINTED' | 'OUTSIDE' | 'RETURNED' | 'EARLY_DISMISSAL';
+  stepIndex: number; // 1 to 4
+  label: string;
+  shortLabel: string;
+  badgeClass: string;
+  dotColor: string;
+}
+
+/**
+ * Determine canonical 3-tier lifecycle progress across Jurusan -> Piket Utama -> Satpam Gate
+ */
+export function getPermitFullLifecycleStatus(
+  permit: IzinKeluarSiswa,
+  exitedGateIds: string[] = []
+): FullLifecycleStep {
+  const isReturned = permit.status === 'KEMBALI' || Boolean(permit.jam_kembali);
+  const isPulangAwal = permit.tipe_izin === 'PULANG_AWAL';
+  const isPending =
+    permit.status === 'PENDING' ||
+    permit.status === 'MENUNGGU_VERIFIKASI' ||
+    permit.status === 'RUJUKAN_JURUSAN' ||
+    permit.status === 'MENUNGGU' ||
+    (permit.tipe_izin === 'IZIN_JURUSAN' && permit.status !== 'DISETUJUI' && permit.status !== 'KEMBALI' && !permit.jam_kembali);
+  const isGateExited = exitedGateIds.includes(permit.id);
+
+  if (isReturned) {
+    return isPulangAwal ? {
+      code: 'EARLY_DISMISSAL',
+      stepIndex: 4,
+      label: 'Pulang Awal (Selesai)',
+      shortLabel: '🏠 Pulang Awal',
+      badgeClass: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200',
+      dotColor: 'bg-purple-500',
+    } : {
+      code: 'RETURNED',
+      stepIndex: 4,
+      label: 'Sudah Kembali ke Sekolah',
+      shortLabel: '✅ Sudah Kembali',
+      badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200',
+      dotColor: 'bg-emerald-500',
+    };
+  }
+
+  if (isGateExited) {
+    return {
+      code: 'OUTSIDE',
+      stepIndex: 3,
+      label: 'Lewat Gerbang (Di Luar)',
+      shortLabel: '🏃 Di Luar Gerbang',
+      badgeClass: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200',
+      dotColor: 'bg-rose-500 animate-pulse',
+    };
+  }
+
+  if (isPending) {
+    return {
+      code: 'PENDING_UTAMA',
+      stepIndex: 1,
+      label: 'Menuju Meja Piket Utama',
+      shortLabel: '🚶 Menuju Meja Utama',
+      badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200',
+      dotColor: 'bg-amber-500 animate-ping',
+    };
+  }
+
+  // Default: DISETUJUI / TERCETAK tetapi belum lewat gerbang
+  return {
+    code: 'PRINTED',
+    stepIndex: 2,
+    label: 'Slip Tercetak (Di Area Sekolah)',
+    shortLabel: '📄 Slip Tercetak',
+    badgeClass: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200',
+    dotColor: 'bg-indigo-500',
+  };
+}
+
 /**
  * Get unified status badge configuration for UI components
  */

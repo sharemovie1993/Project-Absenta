@@ -61,6 +61,17 @@ export default async function guruRoutes(fastify: any) {
     return guruController.updateGuru(request, reply);
   });
 
+  // PATCH /guru/:id/max-jp - Proxy update max_jp
+  fastify.patch('/:id/max-jp', {
+    preHandler: [
+      requireCapability(['academic.teachers.update', 'academic.teaching.manage'], { exemptRoles: [RoleName.ADMIN, RoleName.SUPERADMIN] }),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.updateGuruMaxJp(request, reply);
+  });
+
   // DELETE /guru/:id - Delete guru
   fastify.delete('/:id', {
     preHandler: [

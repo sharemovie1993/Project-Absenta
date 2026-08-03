@@ -187,6 +187,8 @@ export const hubinApi = {
   // Mitra
   getMitra: (params?: { search?: string; page?: number; limit?: number }) => 
     requestWithFallback<any>('get', '/hubin/mitra', { params }),
+  getMitraList: (params?: { search?: string; page?: number; limit?: number }) => 
+    requestWithFallback<any>('get', '/hubin/mitra', { params }),
   createMitra: (data: Partial<MitraIndustri>) => requestWithFallback<any>('post', '/hubin/mitra', { data }),
   updateMitra: (id: string, data: Partial<MitraIndustri>) => requestWithFallback<any>('put', `/hubin/mitra/${id}`, { data }),
   deleteMitra: (id: string) => requestWithFallback<any>('delete', `/hubin/mitra/${id}`),

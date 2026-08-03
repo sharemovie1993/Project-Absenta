@@ -12,6 +12,7 @@ export class PiketService {
     guru_piket_id?: string;
     alasan: string;
     tipe_izin: string;
+    status?: string;
     jam_keluar: Date;
   }) {
     let academicId = data.siswa_akademik_id;
@@ -44,7 +45,7 @@ export class PiketService {
         alasan: data.alasan,
         tipe_izin: data.tipe_izin || 'IZIN_KELUAR',
         jam_keluar: data.jam_keluar,
-        status: 'DISETUJUI'
+        status: data.status || 'DISETUJUI'
       },
       include: {
         SiswaAkademik: {

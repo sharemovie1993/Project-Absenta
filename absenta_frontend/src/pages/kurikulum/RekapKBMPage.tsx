@@ -18,8 +18,9 @@ import { Badge } from '../../components/ui/Badge';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { Label } from '../../components/ui/Label';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { tahunPelajaranApi, semesterApi } from '../../api/academic.api';
-import { useTahunPelajaranOptions, useSemesterOptions, useGuruOptions } from '../../components/common';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useGuruOptions } from '../../hooks/useGuruOptions';
 import { z } from 'zod';
 
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
@@ -158,11 +159,6 @@ export default function RekapKBMPage() {
     rendah: filtered.filter((g: RekapKBMRecord) => g.persentase < 60).length,
   }), [filtered]);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const parsed = searchSchema.safeParse({ query: e.target.value });
-    setSearch(parsed.success ? (parsed.data.query ?? '') : '');
-  }, []);
-
   return (
     <AcademicPageLayout
       hardeningModuleKey={hardeningModuleKey}
@@ -183,8 +179,8 @@ export default function RekapKBMPage() {
       }}
     >
       {/* ─── Filter Section ───────────────────────────────────────────── */}
-      <SectionCard title="Panel Pencarian & Filter">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'end' }}>
+      <SectionCard title="Panel Pencarian & Filter" fullWidth>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
             <Label>Tahun Pelajaran</Label>
             <Suspense fallback={null}>
@@ -212,7 +208,7 @@ export default function RekapKBMPage() {
             </Suspense>
           </div>
           <div>
-            <Label>Pilih / Cari Guru</Label>
+            <Label>Pilih Guru</Label>
             <Suspense fallback={null}>
               <SearchableSelect
                 options={guruSelectOptions}
@@ -268,6 +264,7 @@ export default function RekapKBMPage() {
 
       {/* ─── Main Content Grid ──────────────────────────────────────── */}
       <SectionCard
+        fullWidth
         title={`Data Rekapitulasi Mengajar Guru (${filtered.length})`}
         actions={
           <div style={{ display: 'flex', gap: 6, background: 'var(--bg-secondary, #f3f4f6)', padding: 3, borderRadius: 8 }}>

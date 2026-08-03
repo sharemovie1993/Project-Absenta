@@ -118,6 +118,14 @@ export const updateGuru = async (
   });
 };
 
+// Proxy Update Max JP - PATCH /api/academic/guru/:id/max-jp
+export const updateGuruMaxJp = async (id: string, max_jp: number): Promise<SingleGuruResponse> => {
+  return requestWithFallback<SingleGuruResponse>('patch', `/academic/guru/${id}/max-jp`, {
+    data: { max_jp },
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+};
+
 // Delete Guru - DELETE /api/academic/guru/:id
 export const deleteGuru = async (id: string): Promise<{ success: boolean; message: string }> => {
   return requestWithFallback<{ success: boolean; message: string }>('delete', `/academic/guru/${id}`);

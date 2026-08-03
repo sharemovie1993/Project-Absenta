@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserX, UserCheck, Award, ShoppingCart, Eye, Printer, Check, Copy, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, CheckCircle2, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
@@ -39,35 +40,16 @@ const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
   );
 };
 
+interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
+
 const Dashboard: React.FC = () => {
   const receiptStyles = { backgroundColor: '#FCFBF7' };
   const { user, subscription, isSuperAdmin } = useAuth();
-  const [stats, setStats] = useState({
-    totalMembers: 0,
-    totalSavings: 0,
-    totalLoans: 0,
-    dueInstallments: 0
-  });
 
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [criticalStock, setCriticalStock] = useState<CriticalStockItem[]>([]);
-  const [criticalStockLoading, setCriticalStockLoading] = useState(false);
-
-  interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [memberStatus, setMemberStatus] = useState<'loading' | 'member' | 'non-member'>('loading');
-  const [mySavingsSum, setMySavingsSum] = useState<number>(0);
-  const [myShuSum, setMyShuSum] = useState<number>(0);
-  const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
-  const [salesLoading, setSalesLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
-  const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
   const [salesPage, setSalesPage] = useState(1);
   const salesPageLimit = 10;
 
@@ -90,62 +72,106 @@ const Dashboard: React.FC = () => {
     { name: 'Jun', simpanan: 2390000, pinjaman: 3800000 },
   ], []);
 
-  const fetchData = useCallback(async () => {
-    // SECURITY: Do not fetch data if the module is locked for CORE_PLATFORM
-    if (isLocked) {
-      setLoading(false);
-      return;
-    }
+  // ── React Query Hooks ──
+  const { data: memberInfo = null, isLoading: loadingMemberInfo } = useQuery<MemberInfo | null>({
+    queryKey: ['cooperative-member-me', user?.id],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/members/me');
+        return res?.data?.data || null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: isGuruOrSiswa && !isLocked,
+  });
 
-    try {
-      setLoading(true);
+  const memberStatus = useMemo<'loading' | 'member' | 'non-member'>(() => {
+    if (!isGuruOrSiswa) return 'member';
+    if (loadingMemberInfo) return 'loading';
+    return memberInfo && memberInfo.status === 'ACTIVE' ? 'member' : 'non-member';
+  }, [isGuruOrSiswa, loadingMemberInfo, memberInfo]);
+
+  const { data: stats = { totalMembers: 0, totalSavings: 0, totalLoans: 0, dueInstallments: 0 }, isLoading: loadingStats, dataUpdatedAt } = useQuery({
+    queryKey: ['cooperative-dashboard-stats'],
+    queryFn: async () => {
       const statsRes = await api.get('/cooperative/dashboard/stats');
-      const raw = statsRes.data.data || {};
-      setStats({
+      const raw = statsRes.data?.data || {};
+      return {
         totalMembers: Number(raw.totalMembers) || 0,
         totalSavings: Number(raw.totalSavings) || 0,
         totalLoans: Number(raw.totalLoans) || 0,
         dueInstallments: Number(raw.dueInstallments) || 0,
-      });
+      };
+    },
+    enabled: !isLocked,
+    refetchInterval: isTvMode ? 60000 : false,
+  });
 
+  const { data: announcements = [] } = useQuery<Announcement[]>({
+    queryKey: ['cooperative-announcements'],
+    queryFn: async () => {
       try {
         const annRes = await api.get('/cooperative/announcements');
-        const annList = annRes.data.data;
-        setAnnouncements(Array.isArray(annList) ? annList : []);
+        const annList = annRes.data?.data;
+        return Array.isArray(annList) ? annList : [];
       } catch {
-        // Announcements API may not exist yet — silently ignore
-        setAnnouncements([]);
+        return [];
       }
-    } catch (error) {
-      console.error('Failed to fetch dashboard data', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked]);
+    },
+    enabled: !isLocked,
+  });
 
-  const fetchCriticalStock = useCallback(async () => {
-    if (isLocked) return;
-    try {
-      setCriticalStockLoading(true);
+  const { data: criticalStock = [], isLoading: criticalStockLoading } = useQuery<CriticalStockItem[]>({
+    queryKey: ['cooperative-critical-stock'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/reports/inventory/stock');
-      const items = res.data.items || [];
-      const critical = items.filter((item: CriticalStockItem) => item.status === 'HABIS' || item.status === 'RENDAH');
-      setCriticalStock(critical);
-    } catch (err) {
-      console.error('Failed to fetch critical stock for TV mode:', err);
-    } finally {
-      setCriticalStockLoading(false);
-    }
-  }, [isLocked]);
+      const items = res.data?.items || [];
+      return items.filter((item: CriticalStockItem) => item.status === 'HABIS' || item.status === 'RENDAH');
+    },
+    enabled: !isLocked && !isGuruOrSiswa,
+    refetchInterval: isTvMode ? 60000 : false,
+  });
 
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchData();
-    if (!isGuruOrSiswa) {
-      fetchCriticalStock();
-    }
-  }, [subscription, fetchData, fetchCriticalStock, isGuruOrSiswa]);
+  const { data: mySavingsSum = 0 } = useQuery<number>({
+    queryKey: ['cooperative-my-savings', memberInfo?.memberNo],
+    queryFn: async () => {
+      const savingsRes = await api.get('/cooperative/savings');
+      return (savingsRes.data || []).reduce((sum: number, s: { amount?: number | string }) => sum + Number(s.amount || 0), 0);
+    },
+    enabled: memberStatus === 'member',
+  });
 
+  const { data: myShuSum = 0 } = useQuery<number>({
+    queryKey: ['cooperative-my-shu', memberInfo?.memberNo],
+    queryFn: async () => {
+      const shuRes = await api.get('/cooperative/shu/my-history');
+      if (shuRes.data?.success) {
+        return (shuRes.data.data || []).reduce((sum: number, h: { totalShu?: number | string }) => sum + Number(h.totalShu || 0), 0);
+      }
+      return 0;
+    },
+    enabled: memberStatus === 'member',
+  });
+
+  const { data: salesHistory = [], isLoading: salesLoading } = useQuery<Sale[]>({
+    queryKey: ['cooperative-sales-history'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/toko/history');
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: memberStatus === 'member',
+  });
+
+  const { data: coopSettings = null } = useQuery<CoopSettingsData | null>({
+    queryKey: ['cooperative-settings'],
+    queryFn: fetchCoopSettings,
+  });
+
+  const loading = loadingStats;
+  const lastRefresh = useMemo(() => new Date(dataUpdatedAt || Date.now()), [dataUpdatedAt]);
+
+  // TV Mode Auto Rotation
   useEffect(() => {
     if (!isTvMode) return;
     const interval = setInterval(() => {
@@ -154,94 +180,12 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [isTvMode]);
 
-  useEffect(() => {
-    if (!isTvMode) return;
-    const refetchInterval = setInterval(() => {
-      fetchData();
-      if (!isGuruOrSiswa) {
-        fetchCriticalStock();
-      }
-    }, 60000);
-    return () => clearInterval(refetchInterval);
-  }, [isTvMode, fetchData, fetchCriticalStock, isGuruOrSiswa]);
-
-  const fetchSalesHistory = useCallback(async () => {
-    try {
-      setSalesLoading(true);
-      const res = await api.get('/cooperative/toko/history');
-      setSalesHistory(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Failed to fetch sales history:', err);
-      toast.error('Gagal memuat riwayat belanja');
-    } finally {
-      setSalesLoading(false);
-    }
-  }, []);
-
-  const loadCoopSettings = useCallback(async () => {
-    const data = await fetchCoopSettings();
-    setCoopSettings(data);
-  }, []);
-
   const printReceipt = useCallback((sale: Sale) => {
     if (!sale || !coopSettings) return;
     const rawName = memberInfo?.User?.full_name || user?.full_name || 'Tamu';
     const rawMemberNo = memberInfo?.memberNo || '';
     printCoopReceipt(sale, coopSettings, rawName, rawMemberNo, 'Mandiri');
   }, [coopSettings, memberInfo, user]);
-
-  // Cek status keanggotaan koperasi untuk GURU/SISWA
-  useEffect(() => {
-    if (!isGuruOrSiswa) {
-      // Operator/pengurus koperasi tidak perlu dicek — langsung anggap ok
-      setMemberStatus('member');
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get('/cooperative/members/me');
-        if (!cancelled) {
-          const data = res?.data?.data;
-          setMemberInfo(data);
-          setMemberStatus(data && data.status === 'ACTIVE' ? 'member' : 'non-member');
-        }
-      } catch {
-        if (!cancelled) {
-          setMemberStatus('non-member');
-          setMemberInfo(null);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isGuruOrSiswa]);
-
-  useEffect(() => {
-    if (memberStatus === 'member') {
-      const fetchPersonalData = async () => {
-        try {
-          const savingsRes = await api.get('/cooperative/savings');
-          const totalMySavings = (savingsRes.data || []).reduce((sum: number, s: { amount?: number | string }) => sum + Number(s.amount || 0), 0);
-          setMySavingsSum(totalMySavings);
-        } catch (err) {
-          console.error('Failed to fetch personal savings:', err);
-        }
-        
-        try {
-          const shuRes = await api.get('/cooperative/shu/my-history');
-          if (shuRes.data?.success) {
-            const totalMyShu = (shuRes.data.data || []).reduce((sum: number, h: { totalShu?: number | string }) => sum + Number(h.totalShu || 0), 0);
-            setMyShuSum(totalMyShu);
-          }
-        } catch (err) {
-          console.error('Failed to fetch personal SHU:', err);
-        }
-      };
-      fetchPersonalData();
-      fetchSalesHistory();
-      loadCoopSettings();
-    }
-  }, [memberStatus]);
 
   const fmtTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 

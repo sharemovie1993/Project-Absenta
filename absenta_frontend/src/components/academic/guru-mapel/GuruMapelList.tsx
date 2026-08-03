@@ -12,7 +12,7 @@ import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
-import { getGuruList } from '../../../api/academic/guru.api';
+import { getGuruList, updateGuruMaxJp } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import { getJurusanForDropdown, getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
@@ -23,6 +23,8 @@ import { exportDataToExcel } from '../../../utils/export.utils';
 import { getMapelColor } from '../../../utils/mapelColorHelper';
 import { useGuruOptions } from '../../../hooks/useGuruOptions';
 import { useMapelOptions } from '../../../hooks/useMapelOptions';
+import { TahunPelajaranSelect } from '../../common/TahunPelajaranSelect';
+import { SemesterSelect } from '../../common/SemesterSelect';
 
 interface Props {
   refreshTrigger?: number;
@@ -53,6 +55,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const debouncedSearch = useDebounce(search, 500);
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
+  const [selectedTahunPelajaranId, setSelectedTahunPelajaranId] = useState<string>('');
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
@@ -71,7 +75,10 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
 
   const fetchBebanData = useCallback(async () => {
     try {
-      const res = await kurikulumApi.getBebanMengajar();
+      const res = await kurikulumApi.getBebanMengajar({
+        tahun_pelajaran_id: selectedTahunPelajaranId || undefined,
+        semester_id: selectedSemesterId || undefined,
+      });
       if (res?.success && Array.isArray(res?.data)) {
         const bMap = new Map<string, any>();
         res.data.forEach((b: any) => {
@@ -88,7 +95,26 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     } catch (e) {
       console.error('Failed to load beban guru data:', e);
     }
-  }, []);
+  }, [selectedTahunPelajaranId, selectedSemesterId]);
+
+  const handleProxyUpdateMaxJp = useCallback(async (guruId: string, guruName: string, newMaxJp: number) => {
+    try {
+      const res = await updateGuruMaxJp(guruId, newMaxJp);
+      if (res?.success !== false) {
+        toast.success(`Batas Max JP ${guruName} diperbarui menjadi ${newMaxJp} JP!`);
+        invalidateJadwalCache();
+        queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        fetchBebanData();
+      } else {
+        toast.error(res?.message || 'Gagal memperbarui Max JP');
+      }
+    } catch (err: any) {
+      console.error('Error proxy updating max JP:', err);
+      toast.error(err?.message || 'Gagal memperbarui Max JP');
+    }
+  }, [invalidateJadwalCache, queryClient, fetchBebanData]);
 
   const handleSearchGuru = useCallback(async (query: string) => {
     try {
@@ -120,7 +146,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       fetchBebanData();
       const res = await listGuruMapel({
         guru_id: selectedGuruId || undefined,
-        mapel_id: selectedMapelId || undefined
+        mapel_id: selectedMapelId || undefined,
+        tahun_pelajaran_id: selectedTahunPelajaranId || undefined,
+        semester_id: selectedSemesterId || undefined,
       });
       if (res.success) {
         const term = debouncedSearch.toLowerCase();
@@ -141,7 +169,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedGuruId, selectedMapelId, fetchBebanData]);
+  }, [debouncedSearch, selectedGuruId, selectedMapelId, selectedTahunPelajaranId, selectedSemesterId, fetchBebanData]);
 
   useEffect(() => {
     fetchData();
@@ -295,34 +323,10 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const columns = useMemo(() => [
     {
       key: 'Guru',
-      label: 'Guru Pengampu & Progress JP',
+      label: 'Guru Pengampu & Jabatan',
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
         const bebanInfo = bebanGuruMap.get(gm.guru_id);
-        const currentKbmJp = bebanInfo ? bebanInfo.current_jp : 0;
-        const positionJp = bebanInfo ? bebanInfo.ekuivalen_position_jp : 0;
-        const totalCalculatedJp = bebanInfo ? bebanInfo.total_calculated_jp : currentKbmJp;
-        const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;
-
-        const rawPercentage = Math.round((totalCalculatedJp / maxJp) * 100);
-        const percentage = Math.min(rawPercentage, 100);
-
-        let barColor = 'bg-amber-500';
-        let statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP`;
-        let textColor = 'text-amber-700 dark:text-amber-400';
-
-        if (totalCalculatedJp === maxJp) {
-          barColor = 'bg-emerald-500';
-          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Sesuai 100%)`;
-          textColor = 'text-emerald-700 dark:text-emerald-400';
-        } else if (totalCalculatedJp > maxJp) {
-          barColor = 'bg-rose-500';
-          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Lebih ${totalCalculatedJp - maxJp} JP)`;
-          textColor = 'text-rose-600 dark:text-rose-400';
-        } else {
-          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Kurang ${maxJp - totalCalculatedJp} JP)`;
-        }
-
         const activePositions = bebanInfo?.positions || [];
 
         return (
@@ -338,10 +342,43 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
                 </span>
               ))}
             </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'ProgressBeban',
+      label: 'Beban JP & Progress',
+      render: (_: any, gm: GuruMapel) => {
+        const bebanInfo = bebanGuruMap.get(gm.guru_id);
+        const currentKbmJp = bebanInfo ? bebanInfo.current_jp : 0;
+        const positionJp = bebanInfo ? bebanInfo.ekuivalen_position_jp : 0;
+        const totalCalculatedJp = bebanInfo ? bebanInfo.total_calculated_jp : currentKbmJp;
+        const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;
 
-            {/* Workload Progress Bar & Numbers below Guru Name */}
-            <div className="flex items-center gap-2 pl-6">
-              <div className="w-28 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0 shadow-inner">
+        const rawPercentage = Math.round((totalCalculatedJp / maxJp) * 100);
+        const percentage = Math.min(rawPercentage, 100);
+
+        let barColor = 'bg-amber-500';
+        let statusBadge = `${totalCalculatedJp}/${maxJp} JP`;
+        let textColor = 'text-amber-700 dark:text-amber-400';
+
+        if (totalCalculatedJp === maxJp) {
+          barColor = 'bg-emerald-500';
+          statusBadge = `${totalCalculatedJp}/${maxJp} JP (Sesuai)`;
+          textColor = 'text-emerald-700 dark:text-emerald-400';
+        } else if (totalCalculatedJp > maxJp) {
+          barColor = 'bg-rose-500';
+          statusBadge = `${totalCalculatedJp}/${maxJp} JP (+${totalCalculatedJp - maxJp} JP)`;
+          textColor = 'text-rose-600 dark:text-rose-400';
+        } else {
+          statusBadge = `${totalCalculatedJp}/${maxJp} JP (-${maxJp - totalCalculatedJp} JP)`;
+        }
+
+        return (
+          <div className="flex flex-col gap-1 py-1 min-w-[180px]">
+            <div className="flex items-center gap-2">
+              <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0 shadow-inner">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                   style={{ width: `${percentage}%` }}
@@ -349,9 +386,74 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
               </div>
               <span className={`text-[10px] font-black tracking-tight ${textColor}`}>
                 {statusBadge}
-                {positionJp > 0 && ` [KBM: ${currentKbmJp} + Jabatan: ${positionJp}]`}
               </span>
             </div>
+            {positionJp > 0 && (
+              <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500">
+                KBM: {currentKbmJp} JP + Jabatan: {positionJp} JP
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'KuotaMaxJp',
+      label: 'Kuota Max JP',
+      render: (_: any, gm: GuruMapel, rowIndex: number) => {
+        const bebanInfo = bebanGuruMap.get(gm.guru_id);
+        const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;
+
+        if (!canManage) {
+          return (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              {maxJp} JP
+            </span>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-1.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl px-2.5 py-1 w-fit shadow-2xs group hover:border-amber-400 transition-all" title="Gunakan tombol Panah Atas / Bawah di keyboard untuk navigasi antar baris">
+            <input
+              type="number"
+              data-maxjp-index={rowIndex}
+              key={`${gm.guru_id}-${maxJp}`}
+              min={1}
+              max={100}
+              defaultValue={maxJp}
+              onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                  setTimeout(() => {
+                    const nextInput = document.querySelector<HTMLInputElement>(`[data-maxjp-index="${rowIndex + 1}"]`);
+                    if (nextInput) {
+                      nextInput.focus();
+                      nextInput.select();
+                    }
+                  }, 50);
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                  setTimeout(() => {
+                    const prevInput = document.querySelector<HTMLInputElement>(`[data-maxjp-index="${rowIndex - 1}"]`);
+                    if (prevInput) {
+                      prevInput.focus();
+                      prevInput.select();
+                    }
+                  }, 50);
+                }
+              }}
+              onBlur={async (e) => {
+                const newVal = Number(e.target.value);
+                if (newVal && newVal !== maxJp) {
+                  await handleProxyUpdateMaxJp(gm.guru_id, gm.Guru?.nama_guru || 'Guru', newVal);
+                }
+              }}
+              className="w-12 text-xs font-black text-center bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg py-0.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 tabular-nums shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">JP</span>
           </div>
         );
       }
@@ -515,6 +617,23 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
           />
         </div>
         <div className="w-full md:w-52">
+          <TahunPelajaranSelect
+            value={selectedTahunPelajaranId}
+            onValueChange={setSelectedTahunPelajaranId}
+            autoSelectActive={true}
+            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <SemesterSelect
+            tahunPelajaranId={selectedTahunPelajaranId}
+            value={selectedSemesterId}
+            onValueChange={setSelectedSemesterId}
+            autoSelectActive={true}
+            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+          />
+        </div>
+        <div className="w-full md:w-48">
           <SearchableSelect
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
@@ -525,7 +644,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        <div className="w-full md:w-52">
+        <div className="w-full md:w-48">
           <SearchableSelect
             value={selectedMapelId}
             onValueChange={setSelectedMapelId}

@@ -27,6 +27,7 @@ export interface CreateGuruInput {
   pendidikan_terakhir?: string | null;
   jenis_ptk?: string | null;
   foto?: string | null;
+  max_jp?: number | null;
 }
 
 export interface UpdateGuruInput {
@@ -46,6 +47,7 @@ export interface UpdateGuruInput {
   pendidikan_terakhir?: string | null;
   jenis_ptk?: string | null;
   foto?: string | null;
+  max_jp?: number | null;
 }
 
 export interface GuruResponse {
@@ -64,7 +66,8 @@ export interface GuruResponse {
   agama?: string | null;
   status_kepegawaian?: string | null;
   pendidikan_terakhir?: string | null;
-  jenis_ptk?: string | null;
+  jenis_ptk: string | null;
+  max_jp?: number | null;
   created_at: Date;
   updated_at: Date;
   User?: {
@@ -423,6 +426,7 @@ export class GuruService {
         status_kepegawaian: input.status_kepegawaian ?? null,
         pendidikan_terakhir: input.pendidikan_terakhir ?? null,
         jenis_ptk: input.jenis_ptk ?? 'PENDIDIK',
+        max_jp: input.max_jp ?? 24,
       },
       include: {
         User: {
@@ -531,6 +535,7 @@ export class GuruService {
     if (input.pendidikan_terakhir !== undefined) updateData.pendidikan_terakhir = input.pendidikan_terakhir;
     if (input.jenis_ptk !== undefined) updateData.jenis_ptk = input.jenis_ptk;
     if (input.foto !== undefined) updateData.foto = input.foto;
+    if (input.max_jp !== undefined) updateData.max_jp = input.max_jp;
 
     const guru = await prisma.guru.update({
       where: { id: guruId },

@@ -19,17 +19,21 @@ export interface CreateGuruMapelPayload {
   mapel_id: string;
   kelas_id?: string | null;
   jurusan_id?: string | null;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
 }
 
 // GET /api/kurikulum/guru-mapel
 export const listGuruMapel = async (
-  filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string }
+  filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string; tahun_pelajaran_id?: string; semester_id?: string }
 ): Promise<ListGuruMapelResponse> => {
   const params = new URLSearchParams();
   if (filters?.guru_id) params.append('guru_id', filters.guru_id);
   if (filters?.mapel_id) params.append('mapel_id', filters.mapel_id);
   if (filters?.kelas_id) params.append('kelas_id', filters.kelas_id);
   if (filters?.jurusan_id) params.append('jurusan_id', filters.jurusan_id);
+  if (filters?.tahun_pelajaran_id) params.append('tahun_pelajaran_id', filters.tahun_pelajaran_id);
+  if (filters?.semester_id) params.append('semester_id', filters.semester_id);
 
   const url = `/kurikulum/guru-mapel${params.toString() ? `?${params.toString()}` : ''}`;
   return requestWithFallback<ListGuruMapelResponse>('get', url);

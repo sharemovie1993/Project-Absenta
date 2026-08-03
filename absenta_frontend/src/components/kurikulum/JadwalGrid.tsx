@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
+import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
 interface JadwalGridProps {
   jadwal: JadwalKBM[];
@@ -71,13 +72,14 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
     fetchTenantShift();
   }, []);
 
-  // Resolve slot time dynamically based on the class shift assignment
-  const resolveSlotTime = (targetKelasId: string, slotIndex: number): { start: string; end: string } => {
+  // Resolve slot time dynamically based on day and class shift assignment
+  const resolveSlotTime = (day: string, targetKelasId: string, slotIndex: number): { start: string; end: string } => {
     if (shiftJamPelajaran) {
       const assignedShiftId = shiftJamPelajaran.class_assignments?.[targetKelasId] || 'pagi';
       const shift = shiftJamPelajaran.shifts?.find((s: any) => s.id === assignedShiftId) || shiftJamPelajaran.shifts?.[0];
       if (shift) {
-        const slot = shift.slots?.find((sl: any) => sl.slot === slotIndex);
+        const slotsForDay = getSlotsForDay(shift, day);
+        const slot = slotsForDay.find((sl: any) => sl.slot === slotIndex);
         if (slot) {
           return { start: slot.start, end: slot.end };
         }
@@ -210,7 +212,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
             HARI / WAKTU
           </div>
           {SLOTS.map(slot => {
-            const time = resolveSlotTime(selectedKelasId || '', slot);
+            const time = resolveSlotTime('SENIN', selectedKelasId || '', slot);
             return (
               <div 
                 key={slot} 
@@ -321,7 +323,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                   
                                   <div className="flex flex-col gap-0.5 mt-1">
                                     <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">
-                                      {resolveSlotTime(item.kelas_id || '', slot).start} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
+                                      {resolveSlotTime(day, item.kelas_id || '', slot).start} - {resolveSlotTime(day, item.kelas_id || '', slot + colSpan - 1).end}
                                     </div>
                                     {item.Guru && (
                                       <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">

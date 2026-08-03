@@ -28,7 +28,8 @@ export interface Student {
 
 interface SmartStudentPickerProps {
   id?: string;
-  onSelect: (student: Student) => void;
+  onSelect?: (student: Student) => void;
+  onSelectStudent?: (student: Student) => void;
   placeholder?: string;
   scope?: 'teaching' | 'global' | 'piket';
   mode?: 'siswa' | 'guru' | 'universal';
@@ -42,6 +43,7 @@ interface SmartStudentPickerProps {
   value?: string;
   onChange?: (val: string) => void;
   onEnter?: (val: string) => void;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 function matchesJurusan(s: any, filterJurusan: string): boolean {
@@ -81,6 +83,7 @@ function matchesJurusan(s: any, filterJurusan: string): boolean {
 export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStudentPickerProps>(({
   id,
   onSelect,
+  onSelectStudent,
   placeholder,
   scope = 'global',
   mode = 'siswa',
@@ -93,7 +96,8 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
   disabled = false,
   value,
   onChange,
-  onEnter
+  onEnter,
+  inputRef: externalInputRef
 }, ref) => {
   const [inputValue, setInputValue] = useState(value || '');
   const [results, setResults] = useState<Student[]>([]);
@@ -116,7 +120,6 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
   const scannerControlsRef = useRef<{ stop: () => void } | null>(null);
   const hidTimerRef = useRef<number | null>(null);
 
-
   // Combine external ref and internal ref
   const combinedRef = (node: HTMLInputElement) => {
     (inputRef as any).current = node;
@@ -125,6 +128,11 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
     } else if (ref) {
       (ref as any).current = node;
     }
+    if (typeof externalInputRef === 'function') {
+      externalInputRef(node);
+    } else if (externalInputRef) {
+      (externalInputRef as any).current = node;
+    }
   };
 
   // 0. Logic: Selection (Define first to avoid initialization error)
@@ -132,8 +140,11 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
     setInputValue('');
     setResults([]);
     setShowDropdown(false);
-    onSelect(student);
-  }, [onSelect]);
+    const callback = onSelect || onSelectStudent;
+    if (typeof callback === 'function') {
+      callback(student);
+    }
+  }, [onSelect, onSelectStudent]);
 
   // 1. Logic: Search API
   const performSearch = useCallback(async (term: string, isHID = false) => {

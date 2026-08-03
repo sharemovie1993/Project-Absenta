@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { motion } from 'framer-motion';
 import { 
@@ -61,11 +62,6 @@ const SarprasDashboard: React.FC = () => {
   const { user, subscription } = useAuthStore();
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [stats, setStats] = useState<AssetStats | null>(null);
-  const [loans, setLoans] = useState<LoanRecord[]>([]);
-  const [repairs, setRepairs] = useState<RepairRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   // TV Mode Auto Rotation
   useEffect(() => {
@@ -86,47 +82,45 @@ const SarprasDashboard: React.FC = () => {
     return !Array.isArray(features) || !features.includes('SARPRAS');
   }, [features]);
 
-  const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [statsRes, loansRes, repairsRes] = await Promise.all([
-        requestWithFallback<StandardApiResponse<AssetStats>>('get', '/sarpras/assets/stats'),
-        sarprasApi.getLoans({ limit: 50 }),
-        sarprasApi.getRepairs({ limit: 50, status: 'PROSES' })
-      ]);
+  // ── Query Hooks ──
+  const { data: stats = null, isLoading: loadingStats, dataUpdatedAt } = useQuery<AssetStats | null>({
+    queryKey: ['sarpras-stats'],
+    queryFn: async () => {
+      const statsRes = await requestWithFallback<StandardApiResponse<AssetStats>>('get', '/sarpras/assets/stats');
+      return statsRes.success && statsRes.data ? statsRes.data : null;
+    },
+    refetchInterval: isTvMode ? 60000 : false,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      if (statsRes.success && statsRes.data) {
-        setStats(statsRes.data);
-      }
+  const { data: loans = [], isLoading: loadingLoans } = useQuery<LoanRecord[]>({
+    queryKey: ['sarpras-loans-recent'],
+    queryFn: async () => {
+      const loansRes = await sarprasApi.getLoans({ limit: 50 });
       if (loansRes.success && loansRes.data) {
-        const list = Array.isArray(loansRes.data) ? loansRes.data : (loansRes.data?.list || []);
-        setLoans(list);
+        return Array.isArray(loansRes.data) ? loansRes.data : (loansRes.data?.list || []);
       }
+      return [];
+    },
+    refetchInterval: isTvMode ? 60000 : false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: repairs = [], isLoading: loadingRepairs } = useQuery<RepairRecord[]>({
+    queryKey: ['sarpras-repairs-active'],
+    queryFn: async () => {
+      const repairsRes = await sarprasApi.getRepairs({ limit: 50, status: 'PROSES' });
       if (repairsRes.success && repairsRes.data) {
-        const list = Array.isArray(repairsRes.data) ? repairsRes.data : (repairsRes.data?.list || []);
-        setRepairs(list);
+        return Array.isArray(repairsRes.data) ? repairsRes.data : (repairsRes.data?.list || []);
       }
-      setLastRefresh(new Date());
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return [];
+    },
+    refetchInterval: isTvMode ? 60000 : false,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchDashboardData();
-  }, [subscription, fetchDashboardData]);
-
-  // Auto-refresh in TV Mode
-  useEffect(() => {
-    if (!isTvMode) return;
-    const timer = setInterval(() => {
-      fetchDashboardData();
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [isTvMode, fetchDashboardData]);
+  const isLoading = loadingStats || loadingLoans || loadingRepairs;
+  const lastRefresh = useMemo(() => new Date(dataUpdatedAt || Date.now()), [dataUpdatedAt]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },

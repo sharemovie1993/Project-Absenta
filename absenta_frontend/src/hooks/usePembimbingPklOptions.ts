@@ -1,16 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { hubinApi, type MitraIndustri } from '../api/hubin.api';
+import { guruApi } from '../api/academic.api';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
-export function useDudiOptions(search?: string) {
+export function usePembimbingPklOptions() {
   const query = useQuery({
-    queryKey: ['hubin-dudi-options-list', search],
+    queryKey: ['hubin-pembimbing-pkl-options'],
     queryFn: async () => {
-      const res = await hubinApi.getMitra({ limit: 200, search: search || undefined });
-      const list: MitraIndustri[] = Array.isArray(res.data) 
-        ? res.data 
-        : res.data?.list || res.data?.data || (Array.isArray(res) ? res : []);
+      const res = await guruApi.getAll({ limit: 500, jenis_ptk: 'PENDIDIK' });
+      const list = Array.isArray(res) ? res : res?.data || [];
       return list;
     },
     staleTime: 10 * 60 * 1000,
@@ -21,10 +19,10 @@ export function useDudiOptions(search?: string) {
   }, [query.data]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
-    return rawList.map((m: MitraIndustri) => ({
-      value: m.id,
-      label: `${m.nama}${m.bidang ? ` (${m.bidang})` : ''}`,
-      raw: m
+    return rawList.map((g: any) => ({
+      value: g.id,
+      label: `${g.nama_guru || g.full_name || 'Guru'}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+      raw: g
     }));
   }, [rawList]);
 

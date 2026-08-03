@@ -30,6 +30,7 @@ import useConfirm from '../../../hooks/useConfirm';
 import { InterviewModal, RejectModal, STATUS_CONFIG } from './bkk/BkkModals';
 import { JobCard } from './bkk/JobCard';
 import { BkkPelamarTab } from './bkk/BkkPelamarTab';
+import { useBkkLowonganOptions } from '../../../hooks/useBkkLowonganOptions';
 
 // ─── Zod Schema Validation Guards (Pillar 25) ───
 const lowonganFormSchema = z.object({
@@ -98,10 +99,8 @@ export const BkkSection: React.FC = () => {
   }, [user]);
 
   // ── Queries ──
-  const { data: lowonganData, isLoading: loadingJobs } = useQuery({
-    queryKey: ['hubin-lowongan', searchTerm],
-    queryFn: () => hubinApi.getLowongan({ search: searchTerm }),
-  });
+  const { options: lowonganOptions, rawList: lowonganRawList, isLoading: loadingJobs } = useBkkLowonganOptions(searchTerm);
+  const lowonganData = useMemo(() => lowonganRawList, [lowonganRawList]);
 
   const { data: lamaranData, isLoading: loadingApplicants } = useQuery({
     queryKey: ['hubin-lamaran'],

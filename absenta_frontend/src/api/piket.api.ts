@@ -53,6 +53,7 @@ export const piketApi = {
     guru_piket_id?: string;
     alasan: string;
     tipe_izin: string;
+    status?: string;
     jam_keluar: string; // ISO date string
   }): Promise<{ success: boolean; data: IzinKeluarSiswa }> => {
     const response = await api.post('/kesiswaan/piket', data, {

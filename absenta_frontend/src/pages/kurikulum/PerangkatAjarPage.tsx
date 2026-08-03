@@ -26,6 +26,8 @@ import { useAuth } from '../../hooks/useAuth';
 import useConfirm from '../../hooks/useConfirm';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useMapelOptions, useGuruOptions } from '../../components/common';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 
 import {
   uploadPerangkatSchema,
@@ -180,24 +182,10 @@ export default function PerangkatAjarPage() {
   });
 
   // Canonical Reference Options Hooks
+  const { rawList: tahunPelajaranList, activeYear } = useTahunPelajaranOptions();
+  const { rawList: semesterList, activeSemester } = useSemesterOptions({ tahunPelajaranId: activeYear?.id });
   const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
   const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
-
-  // Queries
-  const { data: years } = useQuery({
-    queryKey: ['tahun-pelajaran-list'],
-    queryFn: () => tahunPelajaranApi.getAll()
-  });
-
-  const activeYear = useMemo(() => {
-    const list = years?.data ?? [];
-    return list.find((y) => y.is_active) || list[0];
-  }, [years]);
-
-  const activeSemester = useMemo(() => {
-    const list = activeYear?.Semester ?? [];
-    return list.find((s) => s.is_active) || list[0];
-  }, [activeYear]);
 
   const currentGuru = useMemo(() => {
     return (guruRawList || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id);

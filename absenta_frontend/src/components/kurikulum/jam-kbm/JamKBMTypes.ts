@@ -13,6 +13,13 @@ export interface BreakItem {
   duration: number;
 }
 
+export interface DayPattern {
+  start_time: string;
+  slot_duration?: number;
+  breaks?: BreakItem[];
+  slots: TimeSlot[];
+}
+
 export interface ShiftItem {
   id: string;
   name: string;
@@ -20,11 +27,13 @@ export interface ShiftItem {
   slot_duration?: number;
   breaks?: BreakItem[];
   slots: TimeSlot[];
+  day_patterns?: Record<string, DayPattern>;
 }
 
 export interface ShiftConfig {
   shifts: ShiftItem[];
   class_assignments: Record<string, string>;
+  daily_max_jp?: Record<string, number>;
 }
 
 export interface KelasOption {
@@ -46,21 +55,39 @@ export const breakItemSchema = z.object({
   duration: z.number().int().min(5, 'Durasi istirahat minimal 5 menit').max(120, 'Durasi istirahat maksimal 120 menit'),
 });
 
+export const dayPatternSchema = z.object({
+  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  slot_duration: z.number().int().min(20).max(120).optional(),
+  breaks: z.array(breakItemSchema).optional(),
+  slots: z.array(timeSlotSchema),
+});
+
 export const shiftItemSchema = z.object({
   id: z.string().min(1, 'ID shift wajib ada'),
   name: z.string().min(1, 'Nama shift wajib diisi').max(50, 'Nama shift terlalu panjang'),
   start_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   slot_duration: z.number().int().min(20, 'Durasi minimal 20 menit').max(120, 'Durasi maksimal 120 menit').optional(),
-  breaks: z.array(breakItemSchema).max(3, 'Maksimum 3 istirahat per shift').optional(),
+  breaks: z.array(breakItemSchema).max(5, 'Maksimum 5 istirahat per shift').optional(),
   slots: z.array(timeSlotSchema).min(1, 'Shift harus memiliki setidaknya 1 slot waktu'),
+  day_patterns: z.record(z.string(), dayPatternSchema).optional(),
 });
 
 export const shiftConfigSchema = z.object({
   shifts: z.array(shiftItemSchema).min(1, 'Harus ada setidaknya 1 shift'),
   class_assignments: z.record(z.string(), z.string()),
+  daily_max_jp: z.record(z.string(), z.number()).optional(),
 });
 
 export type ShiftConfigInput = z.infer<typeof shiftConfigSchema>;
+
+export const getSlotsForDay = (shift: ShiftItem | undefined, day: string): TimeSlot[] => {
+  if (!shift) return [];
+  const upperDay = (day || '').toUpperCase();
+  if (shift.day_patterns && shift.day_patterns[upperDay] && shift.day_patterns[upperDay].slots?.length > 0) {
+    return shift.day_patterns[upperDay].slots;
+  }
+  return shift.slots || [];
+};
 
 // ─── Time Utility Functions ────────────────────────────────────────────────────
 export const toMins = (t: string): number => {

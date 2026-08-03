@@ -19,6 +19,7 @@ export const createGuruSchema = z.object({
   pendidikan_terakhir: z.string().optional().nullable(),
   jenis_ptk: z.string().optional().nullable(),
   foto: z.string().optional().nullable(),
+  max_jp: z.number().int().min(1, 'Batas JP minimal 1').max(100, 'Batas JP maksimal 100').optional().nullable(),
 });
 
 export const updateGuruSchema = createGuruSchema.extend({

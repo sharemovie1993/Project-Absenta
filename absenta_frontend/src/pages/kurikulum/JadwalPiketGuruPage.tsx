@@ -397,6 +397,8 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Jadwal piket guru berhasil diperbarui');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['piket-guru-list'] });
+          queryClient.invalidateQueries({ queryKey: ['piket-guru'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
           queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
@@ -421,6 +423,8 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Guru berhasil ditugaskan untuk piket');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['piket-guru-list'] });
+          queryClient.invalidateQueries({ queryKey: ['piket-guru'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
           queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
@@ -463,6 +467,8 @@ export default function JadwalPiketGuruPage() {
         toast.success(`Berhasil menugaskan ${res.data.length} guru untuk piket hari ${bulkHari}`);
         setIsBulkModalOpen(false);
         setBulkGuruIds([]);
+        queryClient.invalidateQueries({ queryKey: ['piket-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-guru'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
         queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
@@ -486,6 +492,8 @@ export default function JadwalPiketGuruPage() {
       const res = await piketGuruApi.delete(itemToDelete);
       if (res.success) {
         toast.success('Penugasan piket berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['piket-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-guru'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
         queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });

@@ -32,6 +32,8 @@ import { SectionCard, Table, Button, Input, Loader } from '../../components/ui';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
+import { useDudiOptions } from '../../hooks/useDudiOptions';
+import { usePembimbingPklOptions } from '../../hooks/usePembimbingPklOptions';
 
 import type {
   SiswaData,
@@ -153,17 +155,9 @@ export const PenempatanPklSection: React.FC = () => {
     return count > 1;
   }, [rawPenempatan]);
 
-  const { data: mitraList, isLoading: isLoadingMitra } = useQuery({
-    queryKey: ['mitra-remote-search', { search: mitraSearch }],
-    queryFn: () => hubinApi.getMitra({ search: mitraSearch, limit: 250 }),
-    enabled: isEnabled
-  });
-
-  const { data: guruList, isLoading: isLoadingGuru } = useQuery({
-    queryKey: ['guru-remote-search', { search: guruSearch }],
-    queryFn: () => guruApi.getAll({ search: guruSearch, limit: 250 }),
-    enabled: isEnabled
-  });
+  // Integrated Custom Hooks (Pilar 31 Data Layer)
+  const { options: mitraOptions, isLoading: isLoadingMitra } = useDudiOptions(mitraSearch);
+  const { options: guruOptions, isLoading: isLoadingGuru } = usePembimbingPklOptions();
 
   // Mutations
   const createMutation = useMutation({
@@ -371,8 +365,7 @@ export const PenempatanPklSection: React.FC = () => {
     kunjunganMutation.mutate({ id: selectedPkl.id, data });
   }, [selectedPkl, kunjunganMutation]);
 
-  const rawMitra = useMemo(() => Array.isArray(mitraList) ? (mitraList as MitraData[]) : ((mitraList as { data?: MitraData[] })?.data) || [], [mitraList]);
-  const rawGuru = useMemo(() => Array.isArray(guruList) ? (guruList as PembimbingData[]) : ((guruList as { data?: PembimbingData[] })?.data) || [], [guruList]);
+  const rawGuru = useMemo(() => guruOptions.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
 
   const activeGuruId = useMemo(() => {
     if (user?.guru_profile?.id) return user.guru_profile.id;

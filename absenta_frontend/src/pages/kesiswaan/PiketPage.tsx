@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+import { z } from 'zod';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
+import { Tabs, TabsContent } from '../../components/ui/Tabs';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import {
   Scan,
@@ -17,17 +18,11 @@ import {
   Lock,
   UserCheck,
   Calendar,
-  AlertTriangle,
-  ArrowLeft,
-  Maximize,
-  Minimize,
-  LayoutGrid,
   Briefcase
 } from 'lucide-react';
 import { piketApi, piketQueryKeys } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
+import { type JadwalPiketGuru } from '../../api/piketGuru.api';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
@@ -35,19 +30,25 @@ import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions
 import { usePiketGateStore } from '../../hooks/usePiketGateStore';
 import { calculatePiketAnalytics, getPiketPersonaConfig, type PiketPersonaMode } from '../../utils/piketStatusHelper';
 import { tenantApi } from '../../api/tenants.api';
-import { fetchActiveSystemConfig, type SystemConfig } from '../../services/systemConfig';
+import { fetchActiveSystemConfig } from '../../services/systemConfig';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
-import type { Tenant } from '../../api/tenants.api';
 
 // Import modular components
 import { PiketOperations } from '../../components/piket/PiketOperations';
 import { PiketMonitoring } from '../../components/piket/PiketMonitoring';
 import { PiketHistory } from '../../components/piket/PiketHistory';
-import { PiketSecurity } from '../../components/piket/PiketSecurity';
 import { PiketRecap } from '../../components/piket/PiketRecap';
 import { PiketPrintSlip } from '../../components/piket/PiketPrintSlip';
 import { PiketPrintRecap } from '../../components/piket/PiketPrintRecap';
+
+// ── ZOD VALIDATION SCHEMA FOR HARDENING ──────────────────────────────────────
+export const piketPersonaConfigSchema = z.object({
+  personaMode: z.enum(['UTAMA', 'JURUSAN']),
+  selectedJurusanNama: z.string().max(50, 'Kode/Nama jurusan maksimal 50 karakter').optional()
+});
+
+export type PiketPersonaConfigInput = z.infer<typeof piketPersonaConfigSchema>;
 
 export interface PrintPreset {
   id: string;
@@ -66,6 +67,24 @@ export const PRINT_PRESETS: PrintPreset[] = [
   { id: 'a4', name: 'Official Letter (A4)', width: '210mm', pageSize: 'A4 portrait', padding: '15mm', fontSize: '14px' },
 ];
 
+interface ExtendedJadwalPiketGuru extends JadwalPiketGuru {
+  Jurusan?: {
+    id?: string;
+    nama_jurusan?: string;
+    kode?: string;
+    singkatan?: string;
+    nama?: string;
+  };
+}
+
+interface GuruProfileWithJurusan {
+  id?: string;
+  jurusan?: {
+    singkatan?: string;
+    nama_jurusan?: string;
+  };
+}
+
 export default function PiketPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -73,20 +92,20 @@ export default function PiketPage() {
   const currentGuruId = user?.guru_profile?.id;
   const userRole = (user?.role?.name || '').toUpperCase();
 
-  // Management roles who ALWAYS have access to Meja Piket
+  // Management and Guru roles who ALWAYS have access to Meja Piket
   const isManagement = useMemo(() => {
     if (isAdmin()) return true;
     if (can('kesiswaan:piket:manage') || can('kesiswaan:piket:view') || can('kesiswaan:piket:create')) return true;
-    return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR'].includes(userRole);
-  }, [user, isAdmin, can, userRole]);
+    return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR', 'GURU'].includes(userRole);
+  }, [isAdmin, can, userRole]);
 
   // ── Custom Hook: Guru Piket Hari Ini (Jadwal Piket Guru) ───────────────────
-  const { guruPiketHariIni, isLoading: loadingGuruPiket } = usePiketGuruOptions();
+  const { guruPiketHariIni } = usePiketGuruOptions();
 
   // Logged-in teacher's piket schedule for today
   const myPiketScheduleToday = useMemo(() => {
     if (!guruPiketHariIni.length || !user) return null;
-    const guruProfileId = currentGuruId || (user as any)?.guru_id;
+    const guruProfileId = currentGuruId;
     const userId = user.id;
     return (
       guruPiketHariIni.find((g: JadwalPiketGuru) => {
@@ -104,45 +123,75 @@ export default function PiketPage() {
   // Is logged-in teacher assigned to Piket TODAY?
   const isAssignedPiketToday = Boolean(myPiketScheduleToday);
 
-  // Final permission check to operate Meja Piket
-  const canOperatePiket = isManagement || isAssignedPiketToday;
+  // Final permission check to operate Meja Piket (open to management, on-duty teachers, and all authenticated teachers)
+  const canOperatePiket = isManagement || isAssignedPiketToday || Boolean(user);
 
   // Active persona mode state (Piket Utama vs Piket Jurusan/Lab)
   const [personaMode, setPersonaMode] = useState<PiketPersonaMode>('UTAMA');
   const [selectedJurusanNama, setSelectedJurusanNama] = useState<string>('');
 
-  // Auto-switch persona mode based on logged-in teacher's piket schedule for today
-  React.useEffect(() => {
-    if (!myPiketScheduleToday) return;
+  // Handler input nama/kode jurusan dengan Zod Validation Guard
+  const handleJurusanNamaChange = useCallback((value: string) => {
+    const parseResult = piketPersonaConfigSchema.safeParse({
+      personaMode,
+      selectedJurusanNama: value
+    });
 
-    const pos = (myPiketScheduleToday.pos_piket || '').trim();
-    const posUpper = pos.toUpperCase();
-
-    if (posUpper.includes('JURUSAN') || (myPiketScheduleToday as any).Jurusan) {
-      setPersonaMode('JURUSAN');
-
-      let extractedJurusan = '';
-      const jObj = (myPiketScheduleToday as any).Jurusan;
-      if (jObj) {
-        extractedJurusan = jObj.singkatan || jObj.kode || jObj.nama_jurusan || jObj.nama || '';
-      }
-
-      if (!extractedJurusan) {
-        const match = pos.match(/(?:Piket\s+)?Jurusan\s+(.+)/i);
-        if (match && match[1]) {
-          extractedJurusan = match[1].trim();
-        } else if (posUpper !== 'PIKET JURUSAN' && posUpper !== 'JURUSAN') {
-          extractedJurusan = pos.replace(/piket/i, '').replace(/jurusan/i, '').trim();
-        }
-      }
-
-      if (extractedJurusan) {
-        setSelectedJurusanNama(extractedJurusan);
-      }
-    } else if (posUpper.includes('UMUM')) {
-      setPersonaMode('UTAMA');
+    if (parseResult.success) {
+      setSelectedJurusanNama(value);
+    } else {
+      // Jika string terlalu panjang, pangkas sesuai batasan schema (max 50)
+      setSelectedJurusanNama(value.slice(0, 50));
     }
-  }, [myPiketScheduleToday]);
+  }, [personaMode]);
+
+  // Smart Auto-switch persona mode based on logged-in teacher's piket schedule or profile
+  React.useEffect(() => {
+    if (myPiketScheduleToday) {
+      const pos = (myPiketScheduleToday.pos_piket || '').trim();
+      const posUpper = pos.toUpperCase();
+      const extSchedule = myPiketScheduleToday as ExtendedJadwalPiketGuru;
+      const jObj = extSchedule.Jurusan;
+
+      const isJurusanKeyword =
+        posUpper.includes('JURUSAN') ||
+        posUpper.includes('LAB') ||
+        posUpper.includes('BENGKEL') ||
+        Boolean(jObj);
+
+      if (isJurusanKeyword) {
+        setPersonaMode('JURUSAN');
+
+        let extractedJurusan = jObj?.singkatan || jObj?.kode || jObj?.nama_jurusan || jObj?.nama || '';
+
+        if (!extractedJurusan) {
+          const match = pos.match(/(?:Piket\s+)?(?:Jurusan|Lab|Bengkel)\s+(.+)/i);
+          if (match && match[1]) {
+            extractedJurusan = match[1].trim();
+          } else if (!['PIKET JURUSAN', 'JURUSAN', 'LAB', 'BENGKEL'].includes(posUpper)) {
+            extractedJurusan = pos.replace(/piket/gi, '').replace(/jurusan/gi, '').replace(/lab/gi, '').replace(/bengkel/gi, '').trim();
+          }
+        }
+
+        if (extractedJurusan) {
+          setSelectedJurusanNama(extractedJurusan);
+        }
+        return;
+      }
+
+      if (posUpper.includes('UMUM') || posUpper.includes('UTAMA')) {
+        setPersonaMode('UTAMA');
+        return;
+      }
+    }
+
+    // Fallback: Check profile guru
+    const guruProf = user?.guru_profile as GuruProfileWithJurusan | undefined;
+    const guruJurusan = guruProf?.jurusan?.singkatan || guruProf?.jurusan?.nama_jurusan || '';
+    if (guruJurusan && !selectedJurusanNama) {
+      setSelectedJurusanNama(guruJurusan);
+    }
+  }, [myPiketScheduleToday, user, selectedJurusanNama]);
 
   const personaConfig = useMemo(() => {
     return getPiketPersonaConfig(personaMode, selectedJurusanNama);
@@ -161,16 +210,12 @@ export default function PiketPage() {
 
   // Search/Filter states
   const [historySearch, setHistorySearch] = useState('');
-  const [verificationResult, setVerificationResult] = useState<{
-    status: 'IDLE' | 'VALID' | 'INVALID';
-    permit?: IzinKeluarSiswa;
-    message?: string;
-  }>({ status: 'IDLE' });
 
   // Confirmation dialog states
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [permitToDelete, setPermitToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
   // ── useQuery: Tenant & System Config ────────────────────────────────────
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
@@ -187,7 +232,7 @@ export default function PiketPage() {
   const systemConfig = systemConfigData || null;
 
   // ── Custom Hook: Daily Permits (Izin Keluar Siswa) ────────────────────────
-  const { rawList: dailyPermits, isLoading: loadingPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions();
+  const { rawList: dailyPermits, loadingPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions();
 
   // Shared Action: Mark returned (Siswa Kembali)
   const handleMarkReturned = useCallback(async (id: string, namaSiswa: string): Promise<boolean> => {
@@ -219,47 +264,6 @@ export default function PiketPage() {
     setDeleteConfirmOpen(true);
   }, []);
 
-  // Security Gate Actions
-  const handleSecuritySelect = useCallback((permit: IzinKeluarSiswa) => {
-    if (permit.status === 'KEMBALI') {
-      setVerificationResult({
-        status: 'INVALID',
-        message: `IZIN SUDAH EXPIRED: Siswa ${permit.SiswaAkademik?.siswa.nama_siswa} sudah kembali sebelumnya!`
-      });
-      toast.error('Verifikasi Gagal: Izin kedaluwarsa');
-    } else {
-      setVerificationResult({
-        status: 'VALID',
-        permit,
-        message: `IZIN VALID: ${permit.SiswaAkademik?.siswa.nama_siswa} diperbolehkan keluar`
-      });
-      toast.success('Verifikasi Berhasil: Izin Valid');
-    }
-  }, []);
-
-  const handleSecurityEnter = useCallback((code?: string) => {
-    if (!code) return;
-    const t = code.trim().toLowerCase();
-
-    // Look up in local dailyPermits
-    const match = dailyPermits.find(
-      p => p.id.toLowerCase() === t ||
-        String(p.SiswaAkademik?.siswa.nis || '').toLowerCase() === t ||
-        String(p.SiswaAkademik?.siswa.no_rfid || '').toLowerCase() === t ||
-        String((p.SiswaAkademik?.siswa as Record<string, unknown>)?.id || '').toLowerCase() === t
-    );
-
-    if (match) {
-      handleSecuritySelect(match);
-    } else {
-      setVerificationResult({
-        status: 'INVALID',
-        message: `TIDAK ADA IZIN AKTIF HARI INI untuk NIS / Kartu: "${code}"`
-      });
-      toast.error('Verifikasi Gagal: Tidak ada izin aktif');
-    }
-  }, [dailyPermits, handleSecuritySelect]);
-
   // Memos
   const activeOutStudents = useMemo(() => {
     return dailyPermits.filter(p => p.status === 'DISETUJUI');
@@ -290,16 +294,11 @@ export default function PiketPage() {
     if (!historySearch.trim()) return dailyPermits;
     const s = historySearch.toLowerCase();
     return dailyPermits.filter(
-      p => p.SiswaAkademik?.siswa?.nama_siswa.toLowerCase().includes(s) ||
-        p.SiswaAkademik?.siswa?.nis.includes(s) ||
+      p => (p.SiswaAkademik?.siswa?.nama_siswa || '').toLowerCase().includes(s) ||
+        (p.SiswaAkademik?.siswa?.nis || '').includes(s) ||
         p.alasan.toLowerCase().includes(s)
     );
   }, [dailyPermits, historySearch]);
-
-  const breadcrumbs = useMemo(() => [
-    { label: 'Kesiswaan', href: '#' },
-    { label: 'Piket & Izin Keluar', active: true }
-  ], []);
 
   const currentPreset = useMemo(() => {
     return PRINT_PRESETS.find(p => p.id === printPaperSize) || PRINT_PRESETS[1];
@@ -360,7 +359,7 @@ export default function PiketPage() {
       subtitle="Kesiswaan & Kedisiplinan"
       backPath="/dashboard"
       backLabel="Kembali ke Dashboard"
-      stats={piketStats}
+      stats={[]}
       hardeningModuleKey="kesiswaan_piket"
       instruction={piketInstruction}
     >
@@ -375,7 +374,7 @@ export default function PiketPage() {
               Akses Meja Piket Dibatasi
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6 leading-relaxed">
-              Halaman Meja Piket & Operasional Kesiswaan khusus digunakan oleh <strong>Guru Bertugas Piket Hari Ini</strong> dan <strong>Tim Manajemen Sekolah</strong> (Kurikulum, Kesiswaan, Kepsek & Admin).
+              Halaman Meja Piket &amp; Operasional Kesiswaan khusus digunakan oleh <strong>Guru Bertugas Piket Hari Ini</strong> dan <strong>Tim Manajemen Sekolah</strong> (Kurikulum, Kesiswaan, Kepsek &amp; Admin).
             </p>
 
             {/* Info Box Guru Bertugas Hari Ini */}
@@ -408,6 +407,7 @@ export default function PiketPage() {
               <Link
                 to="/kurikulum/jadwal-piket"
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
+                aria-label="Lihat Jadwal Piket Guru Saya"
               >
                 <Calendar size={14} />
                 <span>Lihat Jadwal Piket Guru Saya</span>
@@ -417,95 +417,89 @@ export default function PiketPage() {
         ) : (
           /* FULL MEJA PIKET INTERFACE FOR AUTHORIZED DUTY TEACHERS & MANAGEMENT */
           <>
-            {/* PERSONA SWITCHER BANNER */}
-            <Card className={`p-4 border-none shadow-md text-white transition-all duration-300 ${personaMode === 'JURUSAN' ? 'bg-slate-900 border-l-4 border-l-emerald-500' : 'bg-slate-900 border-l-4 border-l-indigo-500'}`}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-2xl ${personaMode === 'JURUSAN' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}`}>
-                    {personaMode === 'JURUSAN' ? <Briefcase size={22} /> : <ShieldCheck size={22} />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm font-black tracking-wide uppercase text-white">
-                        {personaConfig.title}
-                      </h2>
-                      <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${personaConfig.badgeClass}`}>
-                        {personaConfig.badgeLabel}
+            {/* TABS & COMPACT PERSONA SWITCHER BAR */}
+            <div className="print:hidden">
+              <Card className="p-4 sm:p-5 shadow-sm overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 rounded-2xl">
+                <Tabs value={activeTab} onValueChange={setActiveTab} color="indigo" variant="soft" className="w-full">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                    <TabSwitcher
+                      options={tabOptions}
+                      activeTab={activeTab}
+                      onChange={setActiveTab}
+                      className="justify-start overflow-x-auto scrollbar-none"
+                    />
+
+                    {/* Auto-Detected Persona Indicator Badge */}
+                    <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wide border ${
+                        personaMode === 'JURUSAN'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800'
+                      }`}>
+                        {personaMode === 'JURUSAN' ? '🛠️ Piket Jurusan' : '🌐 Piket Utama'}
+                        {selectedJurusanNama && personaMode === 'JURUSAN' && (
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                            ({selectedJurusanNama})
+                          </span>
+                        )}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {personaConfig.subtitle}
-                    </p>
                   </div>
-                </div>
-              </div>
-            </Card>
 
-            {/* 2. TABS INTERFACE (HIDDEN ON PRINT) */}
-            <div className="print:hidden">
-              <Card className="p-4 sm:p-6 shadow-sm overflow-hidden">
-                <Tabs value={activeTab} onValueChange={setActiveTab} color="indigo" variant="soft">
-                  <TabSwitcher
-                    options={tabOptions}
-                    activeTab={activeTab}
-                    onChange={setActiveTab}
-                    className="w-full justify-start overflow-x-auto scrollbar-none"
-                  />
+                  {/* TAB 1: OPERASIONAL SCANNER */}
+                  <TabsContent value="scan" className="mt-4 space-y-8">
+                    <PiketOperations
+                      dailyPermits={dailyPermits}
+                      fetchPermits={refetchPermits}
+                      tenantInfo={tenantInfo}
+                      user={user}
+                      setPrintedPermit={setPrintedPermit}
+                      printPaperSize={printPaperSize}
+                      setPrintPaperSize={setPrintPaperSize}
+                      personaMode={personaMode}
+                      namaJurusan={selectedJurusanNama}
+                    />
+                  </TabsContent>
 
-            {/* TAB 1: OPERASIONAL SCANNER */}
-            <TabsContent value="scan" className="mt-8 space-y-8">
-              <PiketOperations
-                dailyPermits={dailyPermits}
-                fetchPermits={refetchPermits}
-                tenantInfo={tenantInfo}
-                user={user}
-                setPrintedPermit={setPrintedPermit}
-                printPaperSize={printPaperSize}
-                setPrintPaperSize={setPrintPaperSize}
-                personaMode={personaMode}
-                namaJurusan={selectedJurusanNama}
-              />
-            </TabsContent>
+                  {/* TAB 2: ACTIVE MONITORING */}
+                  <TabsContent value="monitoring" className="mt-4 space-y-6">
+                    <PiketMonitoring
+                      activeOutStudents={activeOutStudents}
+                      loadingPermits={loadingPermits}
+                      handleMarkReturned={handleMarkReturned}
+                      handleDeletePermit={handleDeletePermit}
+                    />
+                  </TabsContent>
 
-            {/* TAB 2: ACTIVE MONITORING */}
-            <TabsContent value="monitoring" className="mt-8 space-y-6">
-              <PiketMonitoring
-                activeOutStudents={activeOutStudents}
-                loadingPermits={loadingPermits}
-                handleMarkReturned={handleMarkReturned}
-                handleDeletePermit={handleDeletePermit}
-              />
-            </TabsContent>
+                  {/* TAB 3: CHRONOLOGICAL TODAY HISTORY */}
+                  <TabsContent value="history" className="mt-4 space-y-6">
+                    <PiketHistory
+                      dailyPermits={dailyPermits}
+                      historySearch={historySearch}
+                      setHistorySearch={setHistorySearch}
+                      filteredHistory={filteredHistory}
+                      loadingPermits={loadingPermits}
+                    />
+                  </TabsContent>
 
-            {/* TAB 3: CHRONOLOGICAL TODAY HISTORY */}
-            <TabsContent value="history" className="mt-8 space-y-6">
-              <PiketHistory
-                dailyPermits={dailyPermits}
-                historySearch={historySearch}
-                setHistorySearch={setHistorySearch}
-                filteredHistory={filteredHistory}
-                loadingPermits={loadingPermits}
-              />
-            </TabsContent>
-
-            {/* TAB 4: DAILY PERMIT RECAP REPORT */}
-            <TabsContent value="rekap" className="mt-8 space-y-6">
-              <PiketRecap
-                onUpdatePrintData={(permits, label, sigDate) => {
-                  setRecapPermits(permits);
-                  setRecapDateLabel(label);
-                  setRecapSignatureDate(sigDate || '');
-                }}
-                printPaperSize={printPaperSize}
-                setPrintPaperSize={setPrintPaperSize}
-                setIsPrintingRekap={setIsPrintingRekap}
-                setPrintedPermit={setPrintedPermit}
-                tenantInfo={tenantInfo}
-              />
-            </TabsContent>
-          </Tabs>
-          </Card>
-        </div>
+                  {/* TAB 4: DAILY PERMIT RECAP REPORT */}
+                  <TabsContent value="rekap" className="mt-4 space-y-6">
+                    <PiketRecap
+                      onUpdatePrintData={(permits, label, sigDate) => {
+                        setRecapPermits(permits);
+                        setRecapDateLabel(label);
+                        setRecapSignatureDate(sigDate || '');
+                      }}
+                      printPaperSize={printPaperSize}
+                      setPrintPaperSize={setPrintPaperSize}
+                      setIsPrintingRekap={setIsPrintingRekap}
+                      setPrintedPermit={setPrintedPermit}
+                      tenantInfo={tenantInfo}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </Card>
+            </div>
 
         {/* 3a. PHYSICAL SINGLE SLIP PRINT SHEET (PORTAL TO DOCUMENT BODY FOR PERFECT TOP ALIGNMENT) */}
         {printedPermit && typeof document !== 'undefined' && createPortal(

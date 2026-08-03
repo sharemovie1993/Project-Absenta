@@ -99,18 +99,19 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
   const isEnabled = subscription !== undefined && hasHubinFeature;
   const isStudent = user?.role?.name === 'SISWA';
 
-  // -- Data Fetching (Explicit for Tenant Info) --
+  // -- Data Fetching (Tenant Info via React Query) --
+  const { data: tenantRes } = useQuery({
+    queryKey: ['my-tenant-info', user?.tenant_id],
+    queryFn: () => getMyTenant(),
+    enabled: !!user?.tenant_id,
+    staleTime: 10 * 60 * 1000,
+  });
+
   useEffect(() => {
-    const fetchTenant = async () => {
-      try {
-        const res = await getMyTenant();
-        if (res.success) setTenantInfo(res.data as SchoolTenantInfo);
-      } catch (err) {
-        console.error('Gagal memuat profil sekolah:', err);
-      }
-    };
-    if (user?.tenant_id) fetchTenant();
-  }, [user?.tenant_id]);
+    if (tenantRes?.success && tenantRes?.data) {
+      setTenantInfo(tenantRes.data as SchoolTenantInfo);
+    }
+  }, [tenantRes]);
 
   // -- React Query Hooks (emptyState handled in child views) --
   const { data: penempatanData, isLoading: isLoadingAll } = useQuery({

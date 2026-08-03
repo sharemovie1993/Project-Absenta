@@ -8,6 +8,8 @@ export interface CreateGuruMapelInput {
   mapel_id: string;
   kelas_id?: string | null;
   jurusan_id?: string | null;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
 }
 
 export interface GuruMapelResponse {
@@ -17,6 +19,8 @@ export interface GuruMapelResponse {
   mapel_id: string;
   kelas_id?: string | null;
   jurusan_id?: string | null;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
   created_at: Date;
   Guru?: {
     id: string;
@@ -41,7 +45,7 @@ export class GuruMapelService {
   async listAssignments(
     requestingUserRole: RoleName,
     requestingUserTenantId: string | undefined,
-    filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string }
+    filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string; tahun_pelajaran_id?: string; semester_id?: string }
   ): Promise<GuruMapelResponse[]> {
     const whereClause: any = {};
 
@@ -53,6 +57,8 @@ export class GuruMapelService {
     if (filters?.mapel_id) whereClause.mapel_id = filters.mapel_id;
     if (filters?.kelas_id) whereClause.kelas_id = filters.kelas_id;
     if (filters?.jurusan_id) whereClause.jurusan_id = filters.jurusan_id;
+    if (filters?.tahun_pelajaran_id) whereClause.tahun_pelajaran_id = filters.tahun_pelajaran_id;
+    if (filters?.semester_id) whereClause.semester_id = filters.semester_id;
 
     const data = await prisma.guruMapel.findMany({
       where: whereClause,
@@ -74,7 +80,7 @@ export class GuruMapelService {
       where: { id: input.guru_id, tenant_id: tenantId },
     });
     if (!guru) {
-      throw new Error('Guru not found or not in the same tenant');
+      throw new Error('Guru tidak ditemukan');
     }
 
     // Ensure Mapel exists in tenant
@@ -82,7 +88,21 @@ export class GuruMapelService {
       where: { id: input.mapel_id, tenant_id: tenantId },
     });
     if (!mapel) {
-      throw new Error('Mapel not found or not in the same tenant');
+      throw new Error('Mapel tidak ditemukan');
+    }
+
+    let tpId = input.tahun_pelajaran_id || null;
+    let semId = input.semester_id || null;
+
+    if (!tpId || !semId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true }
+      });
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true, tahun_pelajaran_id: activeTp?.id }
+      });
+      if (!tpId) tpId = activeTp?.id || null;
+      if (!semId) semId = activeSem?.id || null;
     }
 
     // Prevent duplicate assignment
@@ -92,11 +112,13 @@ export class GuruMapelService {
         guru_id: input.guru_id,
         mapel_id: input.mapel_id,
         kelas_id: input.kelas_id || null,
-        jurusan_id: input.jurusan_id || null
+        jurusan_id: input.jurusan_id || null,
+        tahun_pelajaran_id: tpId,
+        semester_id: semId,
       },
     });
     if (existing) {
-      throw new Error('Assignment already exists');
+      throw new Error('Penugasan guru mapel sudah ada');
     }
 
     const created = await prisma.guruMapel.create({
@@ -105,7 +127,9 @@ export class GuruMapelService {
         guru_id: input.guru_id,
         mapel_id: input.mapel_id,
         kelas_id: input.kelas_id || null,
-        jurusan_id: input.jurusan_id || null
+        jurusan_id: input.jurusan_id || null,
+        tahun_pelajaran_id: tpId,
+        semester_id: semId,
       },
       include: {
         Guru: { select: { id: true, nama_guru: true } },

@@ -17,20 +17,14 @@ import {
 } from './components/HubinDashboardComponents';
 import { HubinTvModeLayout } from './components/HubinTvModeLayout';
 
+import { useQuery } from '@tanstack/react-query';
+
 export const HubinDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, subscription } = useAuthStore();
   const { isTvMode } = useTvStore();
 
   const [currentScene, setCurrentScene] = useState(0);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-
-  const [stats, setStats] = useState<HubinStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [activities, setActivities] = useState<HubinActivity[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
 
   const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
 
@@ -50,40 +44,27 @@ export const HubinDashboardPage: React.FC = () => {
     navigate(`/hubin/${tabId}`);
   }, [navigate]);
 
-  const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
-    setActivitiesLoading(true);
-    setError(null);
+  // React Query Data Fetching (Pilar 31)
+  const { data: statsRes, isLoading: loading, error: statsErr, dataUpdatedAt } = useQuery({
+    queryKey: ['hubin-dashboard-stats'],
+    queryFn: () => hubinApi.getStats(),
+    enabled: subscription !== undefined,
+    refetchInterval: isTvMode ? 60_000 : false,
+    staleTime: 30_000,
+  });
 
-    try {
-      const [statsRes, actRes] = await Promise.all([
-        hubinApi.getStats(),
-        hubinApi.getRecentActivity()
-      ]);
+  const { data: actRes, isLoading: activitiesLoading } = useQuery({
+    queryKey: ['hubin-recent-activities'],
+    queryFn: () => hubinApi.getRecentActivity(),
+    enabled: subscription !== undefined,
+    refetchInterval: isTvMode ? 60_000 : false,
+    staleTime: 30_000,
+  });
 
-      if (statsRes.success) {
-        setStats(statsRes.data);
-      } else {
-        setError('Gagal memuat statistik HUBIN');
-      }
-
-      if (actRes.success) {
-        setActivities(actRes.data || []);
-      }
-      setLastRefresh(new Date());
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'Koneksi bermasalah saat memuat data Hubin';
-      setError(errMsg);
-    } finally {
-      setLoading(false);
-      setActivitiesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchDashboardData();
-  }, [subscription, fetchDashboardData]);
+  const stats = statsRes?.data || null;
+  const activities = actRes?.data || [];
+  const error = statsErr ? (statsErr as Error).message : (!statsRes?.success && statsRes ? 'Gagal memuat statistik HUBIN' : null);
+  const lastRefresh = useMemo(() => new Date(dataUpdatedAt || Date.now()), [dataUpdatedAt]);
 
   // TV Mode Auto Rotation
   useEffect(() => {
@@ -93,15 +74,6 @@ export const HubinDashboardPage: React.FC = () => {
     }, 15000);
     return () => clearInterval(interval);
   }, [isTvMode]);
-
-  // Auto refresh in TV Mode
-  useEffect(() => {
-    if (!isTvMode) return;
-    const timer = setInterval(() => {
-      fetchDashboardData();
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [isTvMode, fetchDashboardData]);
 
   const instruction = useMemo(() => ({
     title: "Panduan Portal Hubungan Industri (HUBIN)",

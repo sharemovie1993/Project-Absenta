@@ -37,6 +37,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavStore } from '../../store/navStore';
 import { useJenisPelanggaranOptions } from '../../hooks/useJenisPelanggaranOptions';
 import { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
+import { TahunPelajaranSelect } from '../../components/common/TahunPelajaranSelect';
+import { SemesterSelect } from '../../components/common/SemesterSelect';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -79,6 +81,8 @@ export default function PelanggaranPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
+  const [selectedTahunPelajaranId, setSelectedTahunPelajaranId] = useState<string>('');
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
 
   const { activeWorkspaceId } = useNavStore();
   const { rawList: waliKelasAssignments } = useWaliKelasOptions();
@@ -178,13 +182,15 @@ export default function PelanggaranPage() {
       page: currentPage,
       limit: itemsPerPage,
       search: debouncedSearch,
-      elevated_context: 'true'
+      elevated_context: 'true',
+      tahun_pelajaran_id: selectedTahunPelajaranId || undefined,
+      semester_id: selectedSemesterId || undefined,
     };
     if (isWaliKelas && effectiveWaliKelasId) {
       params.kelas_id = effectiveWaliKelasId;
     }
     return params;
-  }, [currentPage, itemsPerPage, debouncedSearch, isWaliKelas, effectiveWaliKelasId]);
+  }, [currentPage, itemsPerPage, debouncedSearch, isWaliKelas, effectiveWaliKelasId, selectedTahunPelajaranId, selectedSemesterId]);
 
   const { data: pelanggaranRes, isLoading: loading, refetch } = useQuery({
     queryKey: kesiswaanQueryKeys.pelanggaranList(queryParams),
@@ -481,6 +487,23 @@ export default function PelanggaranPage() {
         </div>
       )}
 
+      <div className="w-48">
+        <TahunPelajaranSelect
+          value={selectedTahunPelajaranId}
+          onValueChange={setSelectedTahunPelajaranId}
+          autoSelectActive={true}
+          triggerClassName="h-9 text-[11px] font-medium w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+        />
+      </div>
+      <div className="w-40">
+        <SemesterSelect
+          tahunPelajaranId={selectedTahunPelajaranId}
+          value={selectedSemesterId}
+          onValueChange={setSelectedSemesterId}
+          autoSelectActive={true}
+          triggerClassName="h-9 text-[11px] font-medium w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+        />
+      </div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
         <Input
@@ -488,7 +511,7 @@ export default function PelanggaranPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           aria-label="Cari Siswa atau Kategori"
-          className="w-56 h-9 pl-9 text-[11px] font-medium rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
+          className="w-48 h-9 pl-9 text-[11px] font-medium rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         />
       </div>
       <Button
@@ -500,7 +523,7 @@ export default function PelanggaranPage() {
         Tambah Catatan
       </Button>
     </div>
-  ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, searchTerm, resetForm]);
+  ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, selectedTahunPelajaranId, selectedSemesterId, searchTerm, resetForm]);
 
   return (
     <AcademicPageLayout

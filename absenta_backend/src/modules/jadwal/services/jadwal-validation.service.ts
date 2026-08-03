@@ -82,14 +82,14 @@ export class JadwalValidationService {
         };
       }
 
-      // 3. Check Teacher Max Hours (Max 8 JP / 360 Minutes per day)
+      // 3. Check Teacher Max Hours (Per-day limit: Senin 10 JP, Selasa-Kamis 12 JP, Jumat 6 JP)
       const maxHoursExceeded = await this.checkTeacherMaxHours(params);
       if (maxHoursExceeded) {
         return {
           is_valid: false,
           error: {
             code: 'GURU_MAX_HOURS_EXCEEDED',
-            message: `Guru mengajar melebihi batas maksimal 8 jam pelajaran (360 menit) per hari. Akumulasi saat ini: ${maxHoursExceeded.current_minutes} menit.`,
+            message: `Guru mengajar melebihi batas maksimal ${maxHoursExceeded.max_jp} jam pelajaran (${maxHoursExceeded.max_minutes} menit) pada hari ${params.hari}. Akumulasi saat ini: ${maxHoursExceeded.current_minutes} menit.`,
             details: maxHoursExceeded,
           },
         };
@@ -265,7 +265,35 @@ export class JadwalValidationService {
   }
 
   private async checkTeacherMaxHours(params: ValidationParams) {
-    const MAX_TEACHING_MINUTES = 360; // 8 JP @ 45 minutes
+    const DEFAULT_DAILY_MAX_JP: Record<string, number> = {
+      SENIN: 10,
+      SELASA: 12,
+      RABU: 12,
+      KAMIS: 12,
+      JUMAT: 6,
+      SABTU: 6,
+      MINGGU: 0,
+    };
+
+    let maxJpForDay = DEFAULT_DAILY_MAX_JP[params.hari] ?? 8;
+    if (params.tenant_id) {
+      try {
+        const configRecord = await prisma.config.findFirst({
+          where: { tenant_id: params.tenant_id, key: 'shift_jam_pelajaran' },
+          select: { value: true },
+        });
+        if (configRecord?.value) {
+          const config = JSON.parse(configRecord.value);
+          if (config.daily_max_jp && typeof config.daily_max_jp[params.hari] === 'number') {
+            maxJpForDay = config.daily_max_jp[params.hari];
+          }
+        }
+      } catch (err) {
+        // Fallback to default mapping if tenant config query fails
+      }
+    }
+
+    const MAX_TEACHING_MINUTES = maxJpForDay * 45; // JP @ 45 minutes
 
     const [startH, startM] = params.jam_mulai.split(':').map(Number);
     const [endH, endM] = params.jam_selesai.split(':').map(Number);
@@ -329,6 +357,7 @@ export class JadwalValidationService {
         existing_minutes: totalExistingMinutes,
         current_minutes: grandTotal,
         max_minutes: MAX_TEACHING_MINUTES,
+        max_jp: maxJpForDay,
       };
     }
 

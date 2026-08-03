@@ -1,5 +1,6 @@
 import { guruService, CreateGuruInput, UpdateGuruInput } from '../services/guru.service';
 import { createGuruSchema, updateGuruSchema } from '../services/guru.schema';
+import { updateGuruMaxJpCommand } from '../services/commands/update-guru-max-jp.command';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { getPaginationParams } from '../../../../utils/pagination';
@@ -592,6 +593,33 @@ export class GuruController {
     } catch (error: any) {
       console.error('Download document error:', error);
       return reply.status(500).send({ success: false, message: error.message || 'Failed to download file' });
+    }
+  }
+
+  async updateGuruMaxJp(request: any, reply: any) {
+    try {
+      const { id: guruId } = request.params;
+      const tenantId = request.tenantId || request.dataScope?.tenantId;
+      const { max_jp } = request.body || {};
+
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Context Tenant tidak ditemukan' });
+      }
+
+      const updated = await updateGuruMaxJpCommand({
+        tenantId,
+        guruId,
+        maxJp: Number(max_jp),
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: `Batas Max JP guru berhasil diperbarui menjadi ${updated.max_jp} JP`,
+        data: updated,
+      });
+    } catch (error: any) {
+      console.error('Update max JP error:', error);
+      return reply.status(400).send({ success: false, message: error.message || 'Gagal mengubah max JP' });
     }
   }
 }

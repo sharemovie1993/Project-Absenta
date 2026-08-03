@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Badge, SearchableSelect, ConfirmDialog } from '../ui';
 import { 
@@ -70,14 +70,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 }) => {
   const queryClient = useQueryClient();
 
-  const invalidateJadwalBuilderCache = () => {
+  const invalidateJadwalBuilderCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
     queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
     queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
     queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-  };
+  }, [queryClient]);
 
   // Mode state
   const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
@@ -126,9 +127,30 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [kelasRawList]);
 
+  const { data: allGuruMapelRes } = useQuery({
+    queryKey: ['guru-mapel-all-builder', tahunPelajaranId, semesterId],
+    queryFn: () => (tahunPelajaranId && semesterId) ? listGuruMapel({
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId
+    }).catch(() => null) : listGuruMapel().catch(() => null),
+    enabled: !!tahunPelajaranId && !!semesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assignedGuruIds = useMemo(() => {
+    if (allGuruMapelRes?.success && Array.isArray(allGuruMapelRes.data)) {
+      return new Set(allGuruMapelRes.data.map(gm => gm.guru_id));
+    }
+    return null;
+  }, [allGuruMapelRes]);
+
   const guruList = useMemo(() => {
-    return (guruRawList || []).slice().sort((a, b) => (a.nama_guru || '').localeCompare(b.nama_guru || ''));
-  }, [guruRawList]);
+    let list = (guruRawList || []).slice();
+    if (assignedGuruIds !== null && assignedGuruIds.size > 0) {
+      list = list.filter(g => assignedGuruIds.has(g.id));
+    }
+    return list.sort((a, b) => (a.nama_guru || '').localeCompare(b.nama_guru || ''));
+  }, [guruRawList, assignedGuruIds]);
 
   const mapelList = useMemo(() => {
     return (mapelRawList || []).slice().sort((a, b) => (a.nama_mapel || '').localeCompare(b.nama_mapel || ''));
@@ -157,7 +179,16 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     staleTime: 5 * 60 * 1000,
   });
 
-  const allJadwal = useMemo(() => schedulesRes?.data || [], [schedulesRes]);
+  const [localJadwal, setLocalJadwal] = useState<JadwalKBM[]>([]);
+
+  useEffect(() => {
+    if (schedulesRes?.data) {
+      setLocalJadwal(schedulesRes.data);
+    }
+  }, [schedulesRes]);
+
+  const allJadwal = localJadwal;
+  const setAllJadwal = setLocalJadwal;
 
   // Confirmation Dialog State
   const [confirmState, setConfirmState] = useState<{
@@ -232,7 +263,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       tahun_pelajaran_id: tahunPelajaranId,
       semester_id: semesterId
     }).catch(() => null) : null,
-    enabled: bebanModalOpen && !!tahunPelajaranId && !!semesterId,
+    enabled: !!tahunPelajaranId && !!semesterId,
     staleTime: 5 * 60 * 1000,
   });
   const bebanGuruList = useMemo(() => bebanGuruRes?.data || [], [bebanGuruRes]);
@@ -300,12 +331,25 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     return list.filter(m => m.nama_mapel.toLowerCase().includes(searchMapel.toLowerCase()));
   }, [mapelList, searchMapel, viewMode, mappedMapelIds]);
 
+  const bebanGuruMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (bebanGuruRes?.success && Array.isArray(bebanGuruRes.data)) {
+      bebanGuruRes.data.forEach((b: any) => map.set(b.id, b));
+    }
+    return map;
+  }, [bebanGuruRes]);
+
   const guruSelectOptions = useMemo(() => {
-    return guruList.map(g => ({
-      label: g.nama_guru,
-      value: g.id
-    }));
-  }, [guruList]);
+    return guruList.map(g => {
+      const bebanInfo = bebanGuruMap.get(g.id);
+      const totalJp = bebanInfo ? bebanInfo.total_calculated_jp : 0;
+      const maxJp = bebanInfo ? bebanInfo.max_jp : (g.max_jp || 24);
+      return {
+        label: `${g.nama_guru} (${totalJp}/${maxJp} JP)`,
+        value: g.id
+      };
+    });
+  }, [guruList, bebanGuruMap]);
 
   const keKelasSelectOptions = useMemo(() => {
     return kelasList.map(k => ({
