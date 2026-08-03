@@ -94,9 +94,14 @@ const WhatsappSettingsPage: React.FC = () => {
             setQrCode(qrRes.qr);
           }
         } else {
-          setLocalStatus('disconnected');
+          // Hanya ubah ke disconnected jika tidak ada QR aktif di state
+          setLocalStatus((prevStatus) => {
+            if (prevStatus === 'connecting') {
+              return 'connecting'; // Pertahankan connecting jika baru diinisialisasi
+            }
+            return 'disconnected';
+          });
           setConnectedNumber(null);
-          setQrCode(null);
         }
       }
     } catch (err) {
@@ -114,13 +119,13 @@ const WhatsappSettingsPage: React.FC = () => {
           setQrCode(response.qr);
         }
         toast.success('Sesi WhatsApp diinisialisasi. Menunggu QR code...');
-        fetchLocalStatus();
       }
     } catch (err: unknown) {
       toast.error(extractWaError(err, 'Gagal memulai sesi WhatsApp'));
       setLocalStatus('disconnected');
+      setQrCode(null);
     }
-  }, [fetchLocalStatus]);
+  }, []);
 
   const handleDisconnectLocal = useCallback(async () => {
     try {
