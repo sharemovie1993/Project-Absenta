@@ -194,12 +194,19 @@ async function connectTenant(tenantId: string): Promise<void> {
   sock.ev.on('connection.update', async (update: any) => {
     const { connection, lastDisconnect, qr } = update;
 
+    const isAuthenticated = Boolean(state.creds?.me?.id);
+
     if (qr) {
-      const b64 = await generateQRBase64(qr);
-      entry.qrBase64 = b64;
-      entry.status = 'connecting';
-      entry.emitter.emit('qr', b64);
-      console.log(`[WA-Pool:${tenantId}] QR tersedia — silakan scan di Admin Panel.`);
+      // HANYA proses & kirim QR code jika akun BELUM terotentikasi di disk
+      if (!isAuthenticated) {
+        const b64 = await generateQRBase64(qr);
+        entry.qrBase64 = b64;
+        entry.status = 'connecting';
+        entry.emitter.emit('qr', b64);
+        console.log(`[WA-Pool:${tenantId}] QR tersedia — silakan scan di Admin Panel.`);
+      } else {
+        console.log(`[WA-Pool:${tenantId}] Abaikan transient QR karena akun sudah terotentikasi (${state.creds?.me?.id}).`);
+      }
     }
 
     if (connection === 'open') {
@@ -225,12 +232,20 @@ async function connectTenant(tenantId: string): Promise<void> {
         sock.ev.removeAllListeners('creds.update');
       } catch (_) {}
 
-      entry.connectedNumber = null;
       entry.emitter.emit('disconnected', statusCode);
 
       if (shouldReconnect) {
-        entry.status = 'connecting';
-        await syncStatusToDB(tenantId, 'connecting', null);
+        // Jika akun sudah terotentikasi di disk, pertahankan status 'connected' selama reconnect otomatis
+        if (isAuthenticated) {
+          entry.status = 'connected';
+          if (sock.user?.id) {
+            entry.connectedNumber = sock.user.id.split(':')[0];
+          }
+        } else {
+          entry.status = 'connecting';
+          entry.connectedNumber = null;
+          await syncStatusToDB(tenantId, 'connecting', null);
+        }
 
         const isRestart = statusCode === DisconnectReason.restartRequired;
         const delay = isRestart ? 2000 : Math.max(5000, Math.min(5000 * entry.retryCount, 30_000));
@@ -244,12 +259,15 @@ async function connectTenant(tenantId: string): Promise<void> {
           setTimeout(() => connectTenant(tenantId), delay);
         } else {
           console.log(`[WA-Pool:${tenantId}] Batas maksimum retry tercapai.`);
-          entry.status = 'disconnected';
-          await syncStatusToDB(tenantId, 'disconnected', null);
+          if (!isAuthenticated) {
+            entry.status = 'disconnected';
+            await syncStatusToDB(tenantId, 'disconnected', null);
+          }
         }
       } else {
         console.log(`[WA-Pool:${tenantId}] Sesi logout — hapus auth & scan ulang.`);
         entry.status = 'disconnected';
+        entry.connectedNumber = null;
         await syncStatusToDB(tenantId, 'disconnected', null);
         clearTenantAuth(tenantId);
       }
