@@ -67,7 +67,7 @@ const WhatsappSettingsPage: React.FC = () => {
   const [trialResult, setTrialResult] = useState<TestResult | null>(null);
   const [validationErrors, setValidationErrors] = useState<WaValidationErrors>({});
 
-  const [localStatus, setLocalStatus] = useState<LocalStatus>(null);
+  const [localStatus, setLocalStatus] = useState<LocalStatus>('disconnected');
   const [connectedNumber, setConnectedNumber] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [dbProviderName, setDbProviderName] = useState<string | null>(null);
@@ -93,7 +93,7 @@ const WhatsappSettingsPage: React.FC = () => {
           if (qrRes.success && qrRes.qr) {
             setQrCode(qrRes.qr);
           }
-        } else if (status === 'disconnected') {
+        } else {
           const qrRes = (await getLocalWhatsappQR()) as WaQrResponse;
           if (qrRes.success && qrRes.qr) {
             setLocalStatus('connecting');
@@ -107,6 +107,7 @@ const WhatsappSettingsPage: React.FC = () => {
       }
     } catch (err) {
       console.warn('[WA] fetchLocalStatus:', extractWaError(err, 'Unknown error'));
+      setLocalStatus('disconnected');
     }
   }, []);
 

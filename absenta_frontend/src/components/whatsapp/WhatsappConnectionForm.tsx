@@ -117,8 +117,8 @@ const LocalGatewaySection: React.FC<{
       </div>
     )}
 
-    {/* DISCONNECTED */}
-    {status === 'disconnected' && (
+    {/* DISCONNECTED / UNINITIALIZED */}
+    {(!status || status === 'disconnected') && (
       <div className="text-center py-8 space-y-4 max-w-md mx-auto">
         <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto border border-slate-200 dark:border-slate-700">
           <QrCode className="h-8 w-8 text-slate-400" />
