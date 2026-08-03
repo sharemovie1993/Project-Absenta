@@ -467,19 +467,7 @@ export const PenempatanPklSection: React.FC = () => {
     </div>
   ) : null;
 
-  const mitraOptions = useMemo(() => {
-    return (rawMitra ?? [])?.map((m: MitraData) => ({
-      label: m.nama,
-      value: m.id
-    })) || [];
-  }, [rawMitra]);
 
-  const guruOptions = useMemo(() => {
-    return (rawGuru ?? [])?.map((g: PembimbingData) => ({
-      label: g.nama_guru || g.full_name || '',
-      value: g.id
-    })) || [];
-  }, [rawGuru]);
 
   // Table Columns
   const columns = useMemo(() => getPenempatanColumns({
