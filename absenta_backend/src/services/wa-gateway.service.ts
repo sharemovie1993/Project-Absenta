@@ -71,13 +71,16 @@ function ensureDir(dir: string) {
 // ─── Connect (per-tenant) ────────────────────────────────────────────────────
 
 function isMasterInstance(): boolean {
-  const instanceId = process.env.NODE_APP_INSTANCE;
   const serviceRole = String(process.env.SERVICE_ROLE || process.env.WORKER_ROLE || '').trim().toLowerCase();
 
-  // If explicit SERVICE_ROLE=worker is specified, this process handles WA
-  if (serviceRole === 'worker' || serviceRole === 'wa-worker' || serviceRole === 'wa_worker') return true;
+  // Explicit Dedicated WA Worker process handles WA socket
+  if (serviceRole === 'wa-worker' || serviceRole === 'wa_worker' || serviceRole === 'worker') return true;
 
-  // In PM2 Cluster mode, only instance 0 handles active WA socket connection to prevent Error 440
+  // Explicit HTTP API instances DO NOT handle WA socket directly (delegates via Redis RPC)
+  if (serviceRole === 'api') return false;
+
+  // Fallback for PM2 Cluster mode if SERVICE_ROLE is unconfigured
+  const instanceId = process.env.NODE_APP_INSTANCE;
   if (instanceId !== undefined && instanceId !== '' && instanceId !== '0') {
     return false;
   }
