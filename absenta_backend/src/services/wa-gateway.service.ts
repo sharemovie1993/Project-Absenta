@@ -753,11 +753,32 @@ const waGatewayServiceLocal = {
       const connections = await prisma.waTenantConnection.findMany({
         where: { status: { in: ['connected', 'connecting'] } },
       });
+      const restoredTenantIds = new Set<string>();
+
       for (const conn of connections) {
+        restoredTenantIds.add(conn.tenant_id);
         console.log(`[WA-Pool] Restoring koneksi tenant: ${conn.tenant_id}`);
         connectTenant(conn.tenant_id).catch((e: any) =>
           console.error(`[WA-Pool] Gagal restore ${conn.tenant_id}:`, e.message)
         );
+      }
+
+      // Restore active LOCAL configs with disk creds even if status was disconnected
+      const activeConfigs = await prisma.whatsappConfig.findMany({
+        where: { provider_name: 'LOCAL', is_active: true },
+      });
+
+      for (const cfg of activeConfigs) {
+        if (!restoredTenantIds.has(cfg.tenant_id)) {
+          const authDir = getTenantAuthDir(cfg.tenant_id);
+          const credsFile = path.join(authDir, 'creds.json');
+          if (fs.existsSync(credsFile)) {
+            console.log(`[WA-Pool] Restoring active LOCAL WA session with disk creds for tenant: ${cfg.tenant_id}`);
+            connectTenant(cfg.tenant_id).catch((e: any) =>
+              console.error(`[WA-Pool] Gagal restore creds disk ${cfg.tenant_id}:`, e.message)
+            );
+          }
+        }
       }
     } catch (e: any) {
       console.error('[WA-Pool] Gagal restore connections:', e.message);

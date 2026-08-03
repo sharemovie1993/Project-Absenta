@@ -62,3 +62,8 @@ Thumbs.db
 
 # Backup files
 backups/
+
+# Runtime WA Auth & Tunnels (Persistent storage)
+wa_auth/
+tunnels/
+
