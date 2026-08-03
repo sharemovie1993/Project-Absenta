@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'absenta-api:3003',
       script: './dist/main.js',
+      cwd: __dirname,
       instances: 4,
       exec_mode: 'cluster',
       env: {
@@ -14,6 +15,7 @@ module.exports = {
     {
       name: 'absenta-wa-service',
       script: './dist/workers/wa-worker.js',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       env: {
