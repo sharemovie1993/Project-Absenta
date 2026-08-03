@@ -33,7 +33,7 @@ async function startWaWorker() {
     });
 
     // 2. Bootstrap WhatsApp Gateway Pool & Restore Active Sessions
-    await trackService('WhatsApp Gateway Pool Master', 'wa-gateway', async () => {
+    await trackService('WhatsApp Gateway Pool Master', 'worker', async () => {
       await waGatewayService.restoreConnections();
     });
 
