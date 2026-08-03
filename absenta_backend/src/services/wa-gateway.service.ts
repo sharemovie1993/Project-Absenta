@@ -58,7 +58,7 @@ export interface WaConnectionState {
 
 const pool = new Map<string, WaConnectionState>();
 
-const BASE_AUTH_DIR = path.join(process.cwd(), 'wa_auth');
+const BASE_AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, '../../wa_auth');
 
 function getTenantAuthDir(tenantId: string): string {
   return path.join(BASE_AUTH_DIR, tenantId);
