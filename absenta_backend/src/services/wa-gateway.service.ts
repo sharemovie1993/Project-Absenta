@@ -667,6 +667,16 @@ const waGatewayServiceLocal = {
   },
 
   getQRBase64(tenantId: string): string | null {
+    const authDir = getTenantAuthDir(tenantId);
+    const credsFile = path.join(authDir, 'creds.json');
+    if (fs.existsSync(credsFile)) {
+      try {
+        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+        if (credsData?.me?.id) {
+          return null; // Akun terotentikasi di disk — JANGAN PERNAH kembalikan QR code!
+        }
+      } catch (_) {}
+    }
     return pool.get(tenantId)?.qrBase64 ?? null;
   },
 
