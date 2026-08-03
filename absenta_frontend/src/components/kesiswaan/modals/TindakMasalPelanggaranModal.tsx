@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { 
   CheckCircle2, 
@@ -55,42 +55,34 @@ export const TindakMasalPelanggaranModal: React.FC<TindakMasalPelanggaranModalPr
   onSuccess
 }) => {
   const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [lateList, setLateList] = useState<Pelanggaran[]>([]);
   const [completedList, setCompletedList] = useState<string[]>([]);
   
   const [tindakanNotes, setTindakanNotes] = useState('Tindakan Pembinaan Lapangan Gerbang Selesai');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const processingTapRef = useRef<Set<string>>(new Set());
 
-  // Fetch only late students needing discipline today
-  const fetchLateViolations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await kesiswaanApi.getPelanggaran({ limit: 150 });
-      const rawList: Pelanggaran[] = res?.data?.list || res?.data || (Array.isArray(res) ? res : []);
-      
-      // Filter ONLY tardiness cases needing discipline (BARU, PERLU_PEMBINAAN, PROSES)
-      const tardyOnly = rawList.filter(item => 
-        item.jenis_pelanggaran.toLowerCase().includes('terlambat') &&
-        (item.status === 'BARU' || item.status === 'PERLU_PEMBINAAN' || item.status === 'PROSES')
-      );
+  // ── useQuery: Late Violations ─────────────────────────────────────────────
+  const { data: rawListRes, isLoading: loading, refetch: fetchLateViolations } = useQuery({
+    queryKey: ['kesiswaan-late-violations', isOpen],
+    queryFn: () => kesiswaanApi.getPelanggaran({ limit: 150 }).catch(() => null),
+    enabled: isOpen,
+    staleTime: 1 * 60 * 1000,
+  });
 
-      setLateList(tardyOnly);
-      setSelectedIds(tardyOnly.map(item => item.id));
-    } catch {
-      toast.error('Gagal mengambil daftar siswa terlambat');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const lateList = useMemo(() => {
+    const rawList: Pelanggaran[] = rawListRes?.data?.list || rawListRes?.data || (Array.isArray(rawListRes) ? rawListRes : []);
+    return rawList.filter(item => 
+      item.jenis_pelanggaran.toLowerCase().includes('terlambat') &&
+      (item.status === 'BARU' || item.status === 'PERLU_PEMBINAAN' || item.status === 'PROSES')
+    );
+  }, [rawListRes]);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchLateViolations();
+    if (lateList.length > 0 && selectedIds.length === 0) {
+      setSelectedIds(lateList.map(item => item.id));
     }
-  }, [isOpen, fetchLateViolations]);
+  }, [lateList, selectedIds.length]);
 
   // RFID Tap / Student Picker Handler for 1-by-1 Verification
   const handleVerifyStudentTap = useCallback(async (siswaObj: any) => {

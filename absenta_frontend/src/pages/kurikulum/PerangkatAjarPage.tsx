@@ -21,10 +21,11 @@ import { Card, Button, Badge, SectionCard, TabSwitcher } from '../../components/
 import { Table, Column } from '../../components/ui/Table';
 
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { tahunPelajaranApi, mapelApi, guruApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
 import useConfirm from '../../hooks/useConfirm';
+import { useJenjang } from '../../hooks/useJenjang';
+import { useMapelOptions, useGuruOptions } from '../../components/common';
 
 import {
   uploadPerangkatSchema,
@@ -178,20 +179,14 @@ export default function PerangkatAjarPage() {
     catatan_reviewer: '',
   });
 
+  // Canonical Reference Options Hooks
+  const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
+  const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+
   // Queries
   const { data: years } = useQuery({
     queryKey: ['tahun-pelajaran-list'],
     queryFn: () => tahunPelajaranApi.getAll()
-  });
-
-  const { data: mapels } = useQuery({
-    queryKey: ['mapel-list'],
-    queryFn: () => mapelApi.getAll()
-  });
-
-  const { data: teachers } = useQuery({
-    queryKey: ['guru-list'],
-    queryFn: () => guruApi.getAll({ limit: 1000 })
   });
 
   const activeYear = useMemo(() => {
@@ -205,17 +200,18 @@ export default function PerangkatAjarPage() {
   }, [activeYear]);
 
   const currentGuru = useMemo(() => {
-    return (teachers?.data ?? [])?.find((g) => g.user_id === user?.id);
-  }, [teachers, user]);
+    return (guruRawList || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id);
+  }, [guruRawList, user]);
 
   const { data: teacherAssignedMapels } = useQuery({
     queryKey: ['guru-assigned-mapels', currentGuru?.id],
-    queryFn: () => kurikulumApi.getGuruMapel(currentGuru!.id),
+    queryFn: () => currentGuru?.id ? kurikulumApi.getGuruMapel(currentGuru.id).catch(() => null) : null,
     enabled: !!currentGuru?.id
   });
 
   const teacherMapelIds = useMemo(() => {
-    return teacherAssignedMapels?.data?.map((m: { id: string }) => m.id) ?? [];
+    const list = teacherAssignedMapels?.data || [];
+    return list.map((m: { id: string; mapel_id?: string; Mapel?: { id: string } }) => m.mapel_id || m.Mapel?.id || m.id);
   }, [teacherAssignedMapels]);
 
   const filterStatus = useMemo(() => {
@@ -244,10 +240,12 @@ export default function PerangkatAjarPage() {
     }),
   });
 
+  const { jenjang } = useJenjang();
+
   const { data: libraryTemplatesData, isLoading: isLoadingLibrary } = useQuery({
-    queryKey: ['perangkat-library-templates', librarySearch, libraryJenisFilter, isAIModalOpen, isWizardModalOpen],
+    queryKey: ['perangkat-library-templates', librarySearch, libraryJenisFilter, isAIModalOpen, isWizardModalOpen, jenjang],
     queryFn: () => kurikulumApi.getLibraryTemplates({
-      jenjang: 'SMK',
+      jenjang: jenjang || 'SMK',
       nama_mapel: librarySearch || undefined,
       jenis: libraryJenisFilter || undefined,
       search: librarySearch || undefined,
@@ -257,16 +255,16 @@ export default function PerangkatAjarPage() {
   });
 
   const selectedMapelForAI = useMemo(() => {
-    return (mapels?.data ?? [])?.find((m) => m.id === aiForm.mapel_id);
-  }, [mapels, aiForm.mapel_id]);
+    return (mapelRawList || []).find((m) => m.id === aiForm.mapel_id);
+  }, [mapelRawList, aiForm.mapel_id]);
 
   // Auto select first mapel if aiForm.mapel_id is empty
   React.useEffect(() => {
-    const list = mapels?.data ?? [];
+    const list = mapelRawList || [];
     if (!aiForm.mapel_id && list.length > 0) {
       setAiForm((prev) => ({ ...prev, mapel_id: list[0].id }));
     }
-  }, [mapels, aiForm.mapel_id]);
+  }, [mapelRawList, aiForm.mapel_id]);
 
   const selectedMapelNameClean = useMemo(() => {
     if (!selectedMapelForAI?.nama_mapel) return undefined;
@@ -459,6 +457,48 @@ export default function PerangkatAjarPage() {
   });
 
 
+  // Select Options
+  const filterJenisOptions = useMemo(() => [
+    { label: 'Semua Jenis Berkas', value: '' },
+    { label: 'Modul Ajar', value: 'MODUL_AJAR' },
+    { label: 'ATP (Alur Tujuan Pembelajaran)', value: 'ATP' },
+    { label: 'Modul Projek (P5)', value: 'MODUL_PROJEK' },
+    { label: 'Program Tahunan (PROTA)', value: 'PROTA' },
+    { label: 'Program Semester (PROMES)', value: 'PROMES' },
+    { label: 'KKTP', value: 'KKTP' },
+    { label: 'RPP / Modul Ajar Legacy', value: 'RPP' },
+    { label: 'Silabus Legacy', value: 'SILABUS' },
+  ], []);
+
+  const mapelOptions = useMemo(() => {
+    if (teacherMapelIds.length > 0) {
+      const teacherMapels = canonicalMapelOptions.filter((m) => teacherMapelIds.includes(m.value));
+      if (teacherMapels.length > 0) return teacherMapels;
+    }
+    return canonicalMapelOptions;
+  }, [canonicalMapelOptions, teacherMapelIds]);
+
+  const filterMapelOptions = useMemo(() => [
+    { label: 'Semua Mata Pelajaran', value: '' },
+    ...canonicalMapelOptions
+  ], [canonicalMapelOptions]);
+
+  const teacherOptions = useMemo(() => [
+    { label: 'Pilih Guru Pengajar', value: '' },
+    ...canonicalGuruOptions
+  ], [canonicalGuruOptions]);
+
+  const handleOpenUploadModal = useCallback(() => {
+    setUploadForm({
+      judul: '',
+      jenis: '',
+      mapel_id: teacherMapelIds.length > 0 ? teacherMapelIds[0] : (mapelOptions[0]?.value || ''),
+      guru_id: currentGuru?.id || '',
+      file: null,
+    });
+    setIsUploadModalOpen(true);
+  }, [currentGuru, teacherMapelIds, mapelOptions]);
+
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
       title: 'Hapus Perangkat Ajar',
@@ -555,38 +595,6 @@ export default function PerangkatAjarPage() {
 
     saveAIMutation.mutate(result.data);
   };
-
-  // Select Options
-  const filterJenisOptions = useMemo(() => [
-    { label: 'Semua Jenis Berkas', value: '' },
-    { label: 'Modul Ajar', value: 'MODUL_AJAR' },
-    { label: 'ATP (Alur Tujuan Pembelajaran)', value: 'ATP' },
-    { label: 'Modul Projek (P5)', value: 'MODUL_PROJEK' },
-    { label: 'Program Tahunan (PROTA)', value: 'PROTA' },
-    { label: 'Program Semester (PROMES)', value: 'PROMES' },
-    { label: 'KKTP', value: 'KKTP' },
-    { label: 'RPP / Modul Ajar Legacy', value: 'RPP' },
-    { label: 'Silabus Legacy', value: 'SILABUS' },
-  ], []);
-
-  const mapelOptions = useMemo(() => {
-    const all = (mapels?.data ?? [])?.map((m) => ({ label: `${m.nama_mapel} (${m.kode_mapel})`, value: m.id }));
-    if (teacherMapelIds.length > 0) {
-      const teacherMapels = all.filter((m) => teacherMapelIds.includes(m.value));
-      if (teacherMapels.length > 0) return teacherMapels;
-    }
-    return all;
-  }, [mapels, teacherMapelIds]);
-
-  const filterMapelOptions = useMemo(() => [
-    { label: 'Semua Mata Pelajaran', value: '' },
-    ...mapelOptions
-  ], [mapelOptions]);
-
-  const teacherOptions = useMemo(() => [
-    { label: 'Pilih Guru Pengajar', value: '' },
-    ...(teachers?.data ?? [])?.map((g) => ({ label: g.nama_guru, value: g.id }))
-  ], [teachers]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Kurikulum', href: '/kurikulum/dashboard' },
@@ -766,7 +774,7 @@ export default function PerangkatAjarPage() {
 
               <Button
                 type="button"
-                onClick={() => setIsUploadModalOpen(true)}
+                onClick={handleOpenUploadModal}
                 variant="toolbarPrimary"
                 size="toolbar"
                 className="rounded-xl shrink-0"

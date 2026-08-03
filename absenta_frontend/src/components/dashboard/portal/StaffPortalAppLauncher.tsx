@@ -28,6 +28,7 @@ import {
   Loader2,
   Compass,
   Zap,
+  ShieldCheck,
   Network,
 } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
@@ -270,6 +271,17 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
         onClick: onOpenTindakMasalModal,
+      });
+    }
+
+    if (isGerbang || isPiketOrKesiswaanOrIndustrial) {
+      items.push({
+        id: 'b2-pos-satpam',
+        title: 'Pos Satpam Gerbang',
+        iconComp: ShieldCheck,
+        colorClass: 'text-indigo-600 dark:text-indigo-400',
+        bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
+        onClick: () => navigate('/kesiswaan/pos-keamanan'),
       });
     }
 

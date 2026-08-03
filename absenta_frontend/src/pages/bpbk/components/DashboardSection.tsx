@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { bpbkApi, type BpbkDashboardStats } from '../../../api/bpbk.api';
+import React, { useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { bpbkApi, type BpbkDashboardStats, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card, CardContent } from '../../../components/ui/Card';
 import { Loader } from '../../../components/ui/Loader';
 import { Button } from '../../../components/ui/Button';
@@ -44,29 +45,15 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
   onViewSiswaDetail,
   onViewSiswa 
 }) => {
-  const [stats, setStats] = useState<BpbkDashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const res = await bpbkApi.getDashboardStats();
-        if (res.success) {
-          setStats(res.data);
-        } else {
-          setError('Gagal memuat statistik');
-        }
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const { data: stats, isLoading: loading, error } = useQuery({
+    queryKey: bpbkQueryKeys.stats(),
+    queryFn: async () => {
+      const res = await bpbkApi.getDashboardStats();
+      if (!res.success) throw new Error(res.message || 'Gagal memuat statistik');
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (loading) {
     return (
@@ -80,7 +67,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
   if (error || !stats) {
     return (
       <div className="p-6 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold">
-        {error || 'Gagal memuat data'}
+        {error ? (error instanceof Error ? error.message : 'Gagal memuat data') : 'Gagal memuat data'}
       </div>
     );
   }

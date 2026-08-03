@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import WaliKelasList from '../../components/academic/wali-kelas/WaliKelasList';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,24 +11,17 @@ import { SectionCard } from '../../components/ui';
 const WaliKelasPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // Permission: Admin handled by layout, but we need it for stats loading
   const canView = useMemo(() => can('academic.homeroom.manage'), [can]);
 
-  const loadStats = useCallback(async () => {
-    try {
-      setIsLoadingStats(true);
-      const response = await getAcademicStats();
-      setStats(response.data);
-    } catch (error) { console.error('Failed to load stats:', error); }
-    finally { setIsLoadingStats(false); }
-  }, []);
-
-  useEffect(() => {
-    if (canView) loadStats();
-  }, [refreshKey, canView, loadStats]);
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats', canView, refreshKey],
+    queryFn: () => getAcademicStats(),
+    enabled: canView,
+    staleTime: 10 * 60 * 1000,
+  });
+  const stats = statsRes?.data || null;
 
   const navigate = useNavigate();
 

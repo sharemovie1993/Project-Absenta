@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getJadwalKegiatan,
   createJadwalKegiatan,
@@ -53,50 +53,43 @@ const formatDate = (date: Date | string): string => {
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function JadwalKegiatanPage() {
   const queryClient = useQueryClient();
-  // ── State ──
-  const [items, setItems] = useState<JadwalKegiatanItem[]>([]);
-  const [classes, setClasses] = useState<Kelas[]>([]);
-  const [masterKegiatans, setMasterKegiatans] = useState<JenisKegiatanMaster[]>([]);
-  const [activeTahunPelajaranId, setActiveTahunPelajaranId] = useState<string>('');
-  const [activeTahunPelajaranName, setActiveTahunPelajaranName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
-  // Preset master name when opening 'Atur' from a card (not yet configured)
-  const [presetMasterNama, setPresetMasterNama] = useState<string>('');
-
-  // Point #7: useConfirm instead of window.confirm
   const { confirm } = useConfirm();
 
-  // ── Fetch ──
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [resJadwal, resClasses, resMaster, activeTp] = await Promise.all([
-        getJadwalKegiatan(),
-        // Point #1: Safe fallback on error
-        getKelasList(1, 100).catch(() => ({ data: [] as Kelas[] })),
-        jenisKegiatanMasterApi.getAll({ limit: 100 }).catch(() => ({ data: [] as JenisKegiatanMaster[] })),
-        getActiveTahunPelajaran().catch(() => null),
-      ]);
-      if (resJadwal.success) setItems(resJadwal.data ?? []);
-      setClasses(resClasses.data ?? []);
-      setMasterKegiatans(resMaster.data ?? []);
-      if (activeTp) {
-        setActiveTahunPelajaranId(activeTp.id);
-        setActiveTahunPelajaranName(activeTp.tahun);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gagal memuat data';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
+  const [presetMasterNama, setPresetMasterNama] = useState<string>('');
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // ── useQuery: Jadwal & Master Data ───────────────────────────────────────
+  const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useQuery({
+    queryKey: ['jadwal-kegiatan-list'],
+    queryFn: getJadwalKegiatan,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: kelasRes } = useQuery({
+    queryKey: ['kelas-list-dropdown'],
+    queryFn: () => getKelasList(1, 100).catch(() => ({ data: [] as Kelas[] })),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: masterRes } = useQuery({
+    queryKey: ['jenis-kegiatan-master-list'],
+    queryFn: () => jenisKegiatanMasterApi.getAll({ limit: 100 }).catch(() => ({ data: [] as JenisKegiatanMaster[] })),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: activeTp } = useQuery({
+    queryKey: ['active-tahun-pelajaran'],
+    queryFn: () => getActiveTahunPelajaran().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
+  const classes = useMemo(() => kelasRes?.data ?? [], [kelasRes]);
+  const masterKegiatans = useMemo(() => masterRes?.data ?? [], [masterRes]);
+  const activeTahunPelajaranId = activeTp?.id ?? '';
+  const activeTahunPelajaranName = activeTp?.tahun ?? '';
+  const loading = loadingJadwal;
 
   // ── Modal Handlers ──
   const handleOpenCreate = useCallback(() => {
@@ -133,7 +126,7 @@ export default function JadwalKegiatanPage() {
         queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        fetchData();
+        refetchJadwal();
       }
     } else {
       const res = await createJadwalKegiatan(payload);
@@ -144,10 +137,10 @@ export default function JadwalKegiatanPage() {
         queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        fetchData();
+        refetchJadwal();
       }
     }
-  }, [editingItem, handleCloseModal, fetchData]);
+  }, [editingItem, handleCloseModal, queryClient, refetchJadwal]);
 
   // ── Delete ──
   const handleDelete = useCallback(async (id: string, nama: string) => {
@@ -168,13 +161,13 @@ export default function JadwalKegiatanPage() {
         queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        fetchData();
+        refetchJadwal();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal menghapus data';
       toast.error(message);
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetchJadwal]);
 
   // ── Toggle Active ──
   const handleToggleActive = useCallback(async (item: JadwalKegiatanItem) => {
@@ -186,13 +179,13 @@ export default function JadwalKegiatanPage() {
         queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        fetchData();
+        refetchJadwal();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal mengubah status';
       toast.error(message);
     }
-  }, [fetchData]);
+  }, [queryClient, refetchJadwal]);
 
   // ── Handle open create from master card (pre-fills kategori kegiatan) ──
   const handleOpenCreateFromMaster = useCallback((nama: string) => {

@@ -86,28 +86,45 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title={isEditMode ? 'Edit Jadwal Supervisi' : 'Tambah Jadwal Supervisi'}
+        size="lg"
       >
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
 
-          {/* Guru */}
-          <div>
-            <Label htmlFor="guru-select">Guru</Label>
-            <Suspense fallback={<Loader />}>
-              <SearchableSelect
-                id="guru-select"
-                value={formData.guru_id}
-                onValueChange={(val) => set({ guru_id: val })}
-                options={guruOptions}
-                placeholder="Pilih Guru"
-                searchPlaceholder="Cari Guru..."
-              />
-            </Suspense>
+          {/* Guru & Supervisor Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <Label htmlFor="guru-select">Guru Terobservasi</Label>
+              <Suspense fallback={<Loader />}>
+                <SearchableSelect
+                  id="guru-select"
+                  value={formData.guru_id}
+                  onValueChange={(val) => set({ guru_id: val })}
+                  options={guruOptions}
+                  placeholder="Pilih Guru"
+                  searchPlaceholder="Cari Guru..."
+                />
+              </Suspense>
+            </div>
+
+            <div>
+              <Label htmlFor="supervisor-select">Supervisor / Penilai</Label>
+              <Suspense fallback={<Loader />}>
+                <SearchableSelect
+                  id="supervisor-select"
+                  value={formData.supervisor_id}
+                  onValueChange={(val) => set({ supervisor_id: val })}
+                  options={filteredSupervisorOptions}
+                  placeholder="Pilih Supervisor"
+                  searchPlaceholder="Cari Supervisor..."
+                />
+              </Suspense>
+            </div>
           </div>
 
           {/* Tanggal & Jam */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <Label htmlFor="tanggal-input">Tanggal</Label>
+              <Label htmlFor="tanggal-input">Tanggal Supervisi</Label>
               <Input
                 id="tanggal-input"
                 type="date"
@@ -118,7 +135,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
               />
             </div>
             <div>
-              <Label htmlFor="jam-ke-input">Jam Ke</Label>
+              <Label htmlFor="jam-ke-input">Jam Ke-</Label>
               <Input
                 id="jam-ke-input"
                 type="number"
@@ -134,10 +151,10 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
 
           {/* Automasi Rekomendasi Jadwal */}
           {formData.guru_id && formData.tanggal && !isEditMode && (
-            <div className="space-y-2 border border-indigo-50 dark:border-indigo-950/40 rounded-2xl p-4 bg-indigo-50/20 dark:bg-indigo-950/10">
-              <div className="flex items-center justify-between">
+            <div className="space-y-2 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-3 sm:p-4 bg-indigo-50/20 dark:bg-indigo-950/10">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1">
-                  <Clock size={12} /> Automasi Jadwal
+                  <Clock size={12} /> Automasi Rekomendasi Jadwal
                 </span>
                 <Button
                   type="button"
@@ -145,7 +162,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
                   size="sm"
                   onClick={onFetchRecommendations}
                   loading={loadingRecs}
-                  className="text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl px-2 h-7"
+                  className="w-full sm:w-auto text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl px-2.5 h-7"
                 >
                   Cari Jadwal Mengajar Guru
                 </Button>
@@ -156,7 +173,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
                   <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">
                     Pilih Slot Jam Mengajar:
                   </label>
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {recommendations?.map((rec) => (
                       <div
                         key={rec.id}
@@ -179,7 +196,7 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
                         </div>
                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{rec.mapel}</div>
                         <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
-                          ✓ {rec.recommended_supervisors.length} supervisor bebas bentrok tersedia
+                          ✓ {rec.recommended_supervisors.length} supervisor bebas bentrok
                         </div>
                       </div>
                     ))}
@@ -189,47 +206,33 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
             </div>
           )}
 
-          {/* Mapel */}
-          <div>
-            <Label htmlFor="mapel-select">Mata Pelajaran</Label>
-            <Suspense fallback={<Loader />}>
-              <SearchableSelect
-                id="mapel-select"
-                value={formData.mapel}
-                onValueChange={(val) => set({ mapel: val })}
-                options={mapelOptions}
-                placeholder="Pilih Mata Pelajaran"
-              />
-            </Suspense>
-          </div>
+          {/* Mapel & Kelas Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <Label htmlFor="mapel-select">Mata Pelajaran</Label>
+              <Suspense fallback={<Loader />}>
+                <SearchableSelect
+                  id="mapel-select"
+                  value={formData.mapel}
+                  onValueChange={(val) => set({ mapel: val })}
+                  options={mapelOptions}
+                  placeholder="Pilih Mata Pelajaran"
+                />
+              </Suspense>
+            </div>
 
-          {/* Kelas */}
-          <div>
-            <Label htmlFor="kelas-select">Kelas</Label>
-            <Suspense fallback={<Loader />}>
-              <SearchableSelect
-                id="kelas-select"
-                value={formData.kelas}
-                onValueChange={(val) => set({ kelas: val })}
-                options={kelasOptions}
-                placeholder="Pilih Kelas"
-              />
-            </Suspense>
-          </div>
-
-          {/* Supervisor */}
-          <div>
-            <Label htmlFor="supervisor-select">Supervisor / Penilai</Label>
-            <Suspense fallback={<Loader />}>
-              <SearchableSelect
-                id="supervisor-select"
-                value={formData.supervisor_id}
-                onValueChange={(val) => set({ supervisor_id: val })}
-                options={filteredSupervisorOptions}
-                placeholder="Pilih Supervisor"
-                searchPlaceholder="Cari Supervisor..."
-              />
-            </Suspense>
+            <div>
+              <Label htmlFor="kelas-select">Kelas</Label>
+              <Suspense fallback={<Loader />}>
+                <SearchableSelect
+                  id="kelas-select"
+                  value={formData.kelas}
+                  onValueChange={(val) => set({ kelas: val })}
+                  options={kelasOptions}
+                  placeholder="Pilih Kelas"
+                />
+              </Suspense>
+            </div>
           </div>
 
           {/* Catatan */}
@@ -244,10 +247,10 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
             />
           </div>
 
-          {/* Status & Nilai */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Status & Nilai Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <Label htmlFor="status-select">Status</Label>
+              <Label htmlFor="status-select">Status Supervisi</Label>
               <Suspense fallback={<Loader />}>
                 <SearchableSelect
                   id="status-select"
@@ -279,11 +282,13 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 mt-6">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Batal
             </Button>
-            <Button type="submit">Simpan</Button>
+            <Button type="submit" className="w-full sm:w-auto">
+              Simpan Jadwal Supervisi
+            </Button>
           </div>
         </form>
       </Modal>

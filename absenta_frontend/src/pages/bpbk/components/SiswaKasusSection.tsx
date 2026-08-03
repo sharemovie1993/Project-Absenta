@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getSiswaList, type Siswa } from '../../../api/academic/siswa.api';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getSiswaList, type Siswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
 import { getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
@@ -17,18 +18,14 @@ interface SiswaKasusSectionProps {
 }
 
 export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = ({ onViewSiswaDetail }) => {
-  const [siswa, setSiswa] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
-  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('AKTIF');
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -39,41 +36,23 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = ({ onViewSisw
     setSortOrder(order);
   }, []);
 
-  // Load classes dropdown
-  useEffect(() => {
-    const fetchKelas = async () => {
-      try {
-        const data = await getKelasForDropdown();
-        setKelasOptions(data || []);
-      } catch (err: unknown) {
-        console.error('Error loading kelas dropdown:', err);
-      }
-    };
-    fetchKelas();
-  }, []);
+  // ── useQuery: Dropdown Kelas ──────────────────────────────────────────────
+  const { data: kelasOptionsData } = useQuery({
+    queryKey: ['dropdown-kelas'],
+    queryFn: getKelasForDropdown,
+    staleTime: 10 * 60 * 1000,
+  });
+  const kelasOptions = kelasOptionsData || [];
 
-  const fetchSiswa = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getSiswaList(
-        page,
-        limit,
-        debouncedSearch,
-        selectedKelas,
-        selectedStatus
-      );
-      setSiswa(res.data || []);
-      setTotalPages(res.pagination?.totalPages || 1);
-    } catch (err: unknown) {
-      console.error('Error loading siswa roster:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch, selectedKelas, selectedStatus]);
+  // ── useQuery: Siswa Roster List ──────────────────────────────────────────
+  const { data: siswaRes, isLoading: loading } = useQuery({
+    queryKey: siswaQueryKeys.list({ page, limit, search: debouncedSearch, kelas_id: selectedKelas, status: selectedStatus }),
+    queryFn: () => getSiswaList(page, limit, debouncedSearch, selectedKelas, selectedStatus),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchSiswa();
-  }, [fetchSiswa]);
+  const siswa = useMemo(() => siswaRes?.data || [], [siswaRes]);
+  const totalPages = siswaRes?.pagination?.totalPages || 1;
 
   const columns: Column[] = useMemo(() => [
     {

@@ -7,6 +7,7 @@ import { Loader } from '../ui/Loader';
 import { CheckCircle, LogIn } from 'lucide-react';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { LiveDuration } from './LiveDuration';
+import { getTipeIzinBadgeConfig } from '../../utils/piketStatusHelper';
 
 interface PiketMonitoringProps {
   activeOutStudents: IzinKeluarSiswa[];
@@ -44,11 +45,14 @@ export const PiketMonitoring: React.FC<PiketMonitoringProps> = React.memo(({
     {
       key: 'tipe_izin',
       label: 'Tipe Izin',
-      render: (v: string) => (
-        <Badge variant={v === 'PULANG_AWAL' ? 'warning' : 'info'} className="text-[9px] font-black uppercase tracking-widest">
-          {v === 'PULANG_AWAL' ? 'Pulang Awal' : 'Izin Sementara'}
-        </Badge>
-      )
+      render: (v: string) => {
+        const cfg = getTipeIzinBadgeConfig(v);
+        return (
+          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest ${cfg.badgeClass}`}>
+            {cfg.icon} {cfg.label}
+          </span>
+        );
+      }
     },
     {
       key: 'alasan',

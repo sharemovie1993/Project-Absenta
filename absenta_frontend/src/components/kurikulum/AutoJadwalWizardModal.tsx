@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Play, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, RefreshCw, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { getKelasForDropdown } from '../../api/dropdown.api';
+import { useKelasOptions } from '../common';
 import { previewAutoJadwal, applyAutoJadwal } from '../../api/attendance/jadwalKBM.api';
 import { toast } from 'react-hot-toast';
 
@@ -27,33 +27,27 @@ export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
   const queryClient = useQueryClient();
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
-  const [classes, setClasses] = useState<any[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [overwrite, setOverwrite] = useState<boolean>(true);
   
   // Solver results
   const [solverResult, setSolverResult] = useState<any>(null);
-  
+
+  // ── useKelasOptions ────────────────────────────────────────────────────────
+  const { rawList: kelasRawList } = useKelasOptions();
+  const classes = useMemo(() => {
+    return (kelasRawList || []).map(k => ({ value: k.id, label: k.nama_kelas }));
+  }, [kelasRawList]);
+
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setSolverResult(null);
-      
-      const fetchClasses = async () => {
-        try {
-          const res = await getKelasForDropdown();
-          const list = Array.isArray(res) ? res : [];
-          setClasses(list);
-          setSelectedClassIds(list.map((c: any) => c.value));
-        } catch (e) {
-          console.error(e);
-          toast.error('Gagal mengambil daftar rombel');
-        }
-      };
-      
-      fetchClasses();
+      if (classes.length > 0) {
+        setSelectedClassIds(classes.map(c => c.value));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, classes]);
 
   const handleToggleClass = (classId: string) => {
     setSelectedClassIds(prev => 

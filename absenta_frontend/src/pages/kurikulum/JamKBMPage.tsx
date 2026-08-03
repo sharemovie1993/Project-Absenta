@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, SectionCard } from '@/components/ui';
 import { Save, RefreshCw, Clock, Users } from 'lucide-react';
 import { getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
-import { getKelasForDropdown } from '@/api/dropdown.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useJenjang } from '@/hooks/useJenjang';
+import { useKelasOptions } from '@/components/common';
 import { toast } from 'react-hot-toast';
 import useConfirm from '@/hooks/useConfirm';
 import {
@@ -68,79 +68,68 @@ export const JamKBMPage: React.FC = () => {
   const canManage = can('academic.schedules.manage') || can('academic.manage.academic');
 
   // ── State ──
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [kelasList, setKelasList] = useState<KelasOption[]>([]);
   const [activeShiftTab, setActiveShiftTab] = useState<'SHIFTS' | 'CLASSES'>('SHIFTS');
   const [activeSelectedShiftId, setActiveSelectedShiftId] = useState<string>('pagi');
   const [shiftConfig, setShiftConfig] = useState<ShiftConfig>(DEFAULT_SHIFT_CONFIG);
 
-  // ── Fetch ──
-  const fetchTenant = useCallback(async () => {
-    if (!user?.tenant_id) return;
-    try {
-      setLoading(true);
-      const [response, kelasRes] = await Promise.all([
-        getTenantById(user.tenant_id),
-        getKelasForDropdown().catch(() => null),
-      ]);
+  // ── useKelasOptions & useQuery ──────────────────────────────────────────────
+  const { rawList: kelasRawList } = useKelasOptions();
+  const kelasList = useMemo<KelasOption[]>(() => {
+    return (kelasRawList || []).map(k => ({ value: k.id, label: k.nama_kelas }));
+  }, [kelasRawList]);
 
-      if (kelasRes) setKelasList(kelasRes as KelasOption[]);
+  const { data: tenantRes, isLoading: loading, refetch: fetchTenant } = useQuery({
+    queryKey: ['my-tenant-jam-kbm', user?.tenant_id],
+    queryFn: () => user?.tenant_id ? getTenantById(user.tenant_id).catch(() => null) : null,
+    enabled: !!user?.tenant_id,
+    staleTime: 10 * 60 * 1000,
+  });
 
-      if (response.success) {
-        const data = response.data;
-        setTenant(data);
+  const tenant = tenantRes?.data || null;
 
-        if (data.shift_jam_pelajaran) {
-          const loadedConfig = data.shift_jam_pelajaran as ShiftConfig;
-          const upgradedShifts = (loadedConfig.shifts || []).map((shift) => {
-            const parsedInfo = parseSlots(shift.slots || []);
-            const effectiveDuration = shift.slot_duration ?? (parsedInfo.slot_duration > 0 ? parsedInfo.slot_duration : 45);
-            const effectiveStartTime = shift.start_time || parsedInfo.start_time || '07:00';
-            const effectiveBreaks = shift.breaks || parsedInfo.breaks || [];
+  useEffect(() => {
+    if (!tenant) return;
+    if (tenant.shift_jam_pelajaran) {
+      const loadedConfig = tenant.shift_jam_pelajaran as ShiftConfig;
+      const upgradedShifts = (loadedConfig.shifts || []).map((shift) => {
+        const parsedInfo = parseSlots(shift.slots || []);
+        const effectiveDuration = shift.slot_duration ?? (parsedInfo.slot_duration > 0 ? parsedInfo.slot_duration : 45);
+        const effectiveStartTime = shift.start_time || parsedInfo.start_time || '07:00';
+        const effectiveBreaks = shift.breaks || parsedInfo.breaks || [];
 
-            if (shift.slots && shift.slots.length < 12) {
-              const newSlots = regenerateSlots(effectiveStartTime, effectiveDuration, effectiveBreaks, 12);
-              return { 
-                ...shift, 
-                start_time: effectiveStartTime, 
-                slot_duration: effectiveDuration, 
-                breaks: effectiveBreaks, 
-                slots: newSlots 
-              };
-            }
-
-            return {
-              ...shift,
-              start_time: effectiveStartTime,
-              slot_duration: effectiveDuration,
-              breaks: effectiveBreaks
-            };
-          });
-          setShiftConfig({ ...loadedConfig, shifts: upgradedShifts });
-          if (upgradedShifts.length > 0) {
-            setActiveSelectedShiftId(upgradedShifts[0].id);
-          }
-        } else {
-          const slots = getPresetSlotsForJenjang(data.jenjang ?? '');
-          const preset: ShiftConfig = {
-            shifts: [{ id: 'pagi', name: 'Shift Pagi', slots }],
-            class_assignments: {},
+        if (shift.slots && shift.slots.length < 12) {
+          const newSlots = regenerateSlots(effectiveStartTime, effectiveDuration, effectiveBreaks, 12);
+          return { 
+            ...shift, 
+            start_time: effectiveStartTime, 
+            slot_duration: effectiveDuration, 
+            breaks: effectiveBreaks, 
+            slots: newSlots 
           };
-          setShiftConfig(preset);
-          setActiveSelectedShiftId('pagi');
         }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal memuat data konfigurasi KBM';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.tenant_id]);
 
-  useEffect(() => { fetchTenant(); }, [fetchTenant]);
+        return {
+          ...shift,
+          start_time: effectiveStartTime,
+          slot_duration: effectiveDuration,
+          breaks: effectiveBreaks
+        };
+      });
+      setShiftConfig({ ...loadedConfig, shifts: upgradedShifts });
+      if (upgradedShifts.length > 0) {
+        setActiveSelectedShiftId(upgradedShifts[0].id);
+      }
+    } else {
+      const slots = getPresetSlotsForJenjang(tenant.jenjang ?? '');
+      const preset: ShiftConfig = {
+        shifts: [{ id: 'pagi', name: 'Shift Pagi', slots }],
+        class_assignments: {},
+      };
+      setShiftConfig(preset);
+      setActiveSelectedShiftId('pagi');
+    }
+  }, [tenant]);
 
   useEffect(() => {
     if ((shiftConfig.shifts?.length || 0) <= 1 && activeShiftTab === 'CLASSES') {

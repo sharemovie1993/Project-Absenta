@@ -1,5 +1,27 @@
 import api from '../lib/axiosInstance';
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const bpbkQueryKeys = {
+  all: ['bpbk'] as const,
+  konseling: () => [...bpbkQueryKeys.all, 'konseling'] as const,
+  konselingList: (filters: Record<string, any>) => [...bpbkQueryKeys.konseling(), 'list', filters] as const,
+  homeVisit: () => [...bpbkQueryKeys.all, 'home-visit'] as const,
+  homeVisitList: (filters: Record<string, any>) => [...bpbkQueryKeys.homeVisit(), 'list', filters] as const,
+  cases: () => [...bpbkQueryKeys.all, 'cases'] as const,
+  casesList: (filters: Record<string, any>) => [...bpbkQueryKeys.cases(), 'list', filters] as const,
+  pemanggilan: () => [...bpbkQueryKeys.all, 'pemanggilan'] as const,
+  pemanggilanList: (filters: Record<string, any>) => [...bpbkQueryKeys.pemanggilan(), 'list', filters] as const,
+  rujukan: () => [...bpbkQueryKeys.all, 'rujukan'] as const,
+  rujukanList: (filters: Record<string, any>) => [...bpbkQueryKeys.rujukan(), 'list', filters] as const,
+  asesmen: () => [...bpbkQueryKeys.all, 'asesmen'] as const,
+  asesmenList: (filters: Record<string, any>) => [...bpbkQueryKeys.asesmen(), 'list', filters] as const,
+  ews: (params?: Record<string, any>) => [...bpbkQueryKeys.all, 'ews', params] as const,
+  stats: () => [...bpbkQueryKeys.all, 'stats'] as const,
+  reports: () => [...bpbkQueryKeys.all, 'reports'] as const,
+  studentRiskTrend: (id: string) => [...bpbkQueryKeys.all, 'student-risk-trend', id] as const,
+  auditLogs: (filters: Record<string, any>) => [...bpbkQueryKeys.all, 'audit-logs', filters] as const,
+};
+
 
 
 export interface KonselingSiswa {

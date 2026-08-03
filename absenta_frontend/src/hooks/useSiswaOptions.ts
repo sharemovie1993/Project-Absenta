@@ -6,27 +6,30 @@ import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
 export interface UseSiswaOptionsParams {
   kelasId?: string;
+  jurusanId?: string;
+  jurusanNama?: string;
   onlyActive?: boolean;
 }
 
 export function useSiswaOptions(params: UseSiswaOptionsParams = {}) {
-  const { kelasId, onlyActive = true } = params;
+  const { kelasId, jurusanId, jurusanNama, onlyActive = true } = params;
 
   const query = useQuery({
-    queryKey: ['siswa-options-list', kelasId, onlyActive],
+    queryKey: ['siswa-options-list', kelasId, jurusanId, jurusanNama, onlyActive],
     queryFn: () => {
-      console.log('🔍 [useSiswaOptions] Executing queryFn for kelasId:', kelasId);
+      console.log('🔍 [useSiswaOptions] Executing queryFn for params:', { kelasId, jurusanId, jurusanNama });
       return siswaApi.getAll({
         limit: 1000,
-        ...(kelasId ? { kelas_id: kelasId } : {})
-      });
+        ...(kelasId ? { kelas_id: kelasId } : {}),
+        ...(jurusanId ? { jurusan_id: jurusanId } : {}),
+        ...(jurusanNama ? { jurusan: jurusanNama } : {}),
+      } as any);
     },
     staleTime: 5 * 60 * 1000,
   });
 
   const rawList: Siswa[] = useMemo(() => {
     const list = query.data?.data || (Array.isArray(query.data) ? (query.data as unknown as Siswa[]) : []);
-    console.log('📦 [useSiswaOptions] rawList length:', list.length, 'data:', list);
     return list;
   }, [query.data]);
 
@@ -39,12 +42,29 @@ export function useSiswaOptions(params: UseSiswaOptionsParams = {}) {
         const sKelasId = s.kelas_id || s.Kelas?.id;
         if (sKelasId && sKelasId !== kelasId) return false;
       }
+
+      if (jurusanId || jurusanNama) {
+        const jId = jurusanId ? String(jurusanId).toLowerCase() : '';
+        const jNama = jurusanNama ? String(jurusanNama).toUpperCase().trim() : '';
+
+        const sJurusanObj = (s as any).Kelas?.Jurusan;
+        const sJurusanId = String((s as any).jurusan_id || sJurusanObj?.id || '').toLowerCase();
+        const sJurusanNamaStr = (
+          sJurusanObj?.nama_jurusan ||
+          sJurusanObj?.singkatan ||
+          sJurusanObj?.kode ||
+          s.Kelas?.nama_kelas ||
+          ''
+        ).toUpperCase();
+
+        if (jId && sJurusanId && sJurusanId !== jId) return false;
+        if (jNama && !sJurusanNamaStr.includes(jNama)) return false;
+      }
       
       return isStatusActive;
     });
-    console.log('🎯 [useSiswaOptions] filteredList length:', res.length, 'for kelasId:', kelasId);
     return res;
-  }, [rawList, kelasId, onlyActive]);
+  }, [rawList, kelasId, jurusanId, jurusanNama, onlyActive]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
     return filteredList.map((s) => ({

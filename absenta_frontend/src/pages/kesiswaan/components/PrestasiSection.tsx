@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { kesiswaanApi, type PrestasiSiswa, type JenisPrestasi } from '../../../api/kesiswaan.api';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { kesiswaanApi, type PrestasiSiswa, type JenisPrestasi, kesiswaanQueryKeys } from '../../../api/kesiswaan.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import type { Column } from '../../../components/ui/Table';
@@ -29,14 +29,10 @@ interface Student {
 
 export const PrestasiSection: React.FC = () => {
   const queryClient = useQueryClient();
-  const [data, setData] = useState<PrestasiSiswa[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -49,7 +45,6 @@ export const PrestasiSection: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
-  const [categories, setCategories] = useState<JenisPrestasi[]>([]);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -59,8 +54,10 @@ export const PrestasiSection: React.FC = () => {
     keterangan: ''
   });
 
-  const fetchCategories = useCallback(async () => {
-    try {
+  // ── useQuery: Categories & Prestasi List ──────────────────────────────────
+  const { data: catRes } = useQuery({
+    queryKey: kesiswaanQueryKeys.jenisPrestasi(),
+    queryFn: async () => {
       let res = await kesiswaanApi.getJenisPrestasi();
       if (!res.data || res.data.length === 0) {
         try {
@@ -70,34 +67,21 @@ export const PrestasiSection: React.FC = () => {
           console.error('Failed to seed default jenis prestasi:', e);
         }
       }
-      setCategories(res.data || []);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  }, []);
+      return res.data || [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const categories = catRes || [];
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await kesiswaanApi.getPrestasiSiswa({
-        page,
-        limit,
-        search: debouncedSearch
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-      setTotalItems(res.data?.pagination?.totalItems || res.data?.pagination?.total || 0);
-    } catch (err) {
-      console.error('Error fetching achievements:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch]);
+  const { data: listRes, isLoading: loading, refetch } = useQuery({
+    queryKey: kesiswaanQueryKeys.prestasiList({ page, limit, search: debouncedSearch }),
+    queryFn: () => kesiswaanApi.getPrestasiSiswa({ page, limit, search: debouncedSearch }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-    fetchCategories();
-  }, [fetchData, fetchCategories]);
+  const data = useMemo(() => listRes?.data?.list || [], [listRes]);
+  const totalPages = listRes?.data?.pagination?.totalPages || 1;
+  const totalItems = listRes?.data?.pagination?.totalItems || listRes?.data?.pagination?.total || 0;
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -140,18 +124,19 @@ export const PrestasiSection: React.FC = () => {
       const res = await kesiswaanApi.deletePrestasiSiswa(id);
       if (res.success) {
         toast.success('Catatan prestasi berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
         queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
-        fetchData();
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
       }
     } catch (err: any) {
       toast.error(err.message || 'Koneksi bermasalah');
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetch]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,17 +161,18 @@ export const PrestasiSection: React.FC = () => {
         await kesiswaanApi.createPrestasiSiswa(formData);
         toast.success('Catatan prestasi baru berhasil disimpan');
       }
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
       setModalOpen(false);
       resetForm();
-      fetchData();
+      refetch();
     } catch (err: any) {
       toast.error(err.message || 'Gagal menyimpan catatan prestasi');
     }
-  }, [selectedId, formData, fetchData, resetForm]);
+  }, [selectedId, formData, queryClient, refetch, resetForm]);
 
   const handleCategoryChange = useCallback((catId: string) => {
     const matched = categories.find(c => c.id === catId);

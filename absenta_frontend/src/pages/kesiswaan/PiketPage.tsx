@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -21,13 +21,19 @@ import {
   ArrowLeft,
   Maximize,
   Minimize,
-  LayoutGrid
+  LayoutGrid,
+  Briefcase
 } from 'lucide-react';
-import { piketApi } from '../../api/piket.api';
+import { piketApi, piketQueryKeys } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
+import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
+import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions';
+import { usePiketGateStore } from '../../hooks/usePiketGateStore';
+import { calculatePiketAnalytics, getPiketPersonaConfig, type PiketPersonaMode } from '../../utils/piketStatusHelper';
 import { tenantApi } from '../../api/tenants.api';
 import { fetchActiveSystemConfig, type SystemConfig } from '../../services/systemConfig';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -74,43 +80,76 @@ export default function PiketPage() {
     return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR'].includes(userRole);
   }, [user, isAdmin, can, userRole]);
 
-  // Guru Piket Hari Ini State
-  const [guruPiketHariIni, setGuruPiketHariIni] = useState<JadwalPiketGuru[]>([]);
-  const [loadingGuruPiket, setLoadingGuruPiket] = useState(true);
+  // ── Custom Hook: Guru Piket Hari Ini (Jadwal Piket Guru) ───────────────────
+  const { guruPiketHariIni, isLoading: loadingGuruPiket } = usePiketGuruOptions();
+
+  // Logged-in teacher's piket schedule for today
+  const myPiketScheduleToday = useMemo(() => {
+    if (!guruPiketHariIni.length || !user) return null;
+    const guruProfileId = currentGuruId || (user as any)?.guru_id;
+    const userId = user.id;
+    return (
+      guruPiketHariIni.find((g: JadwalPiketGuru) => {
+        const gGuruId = String(g.guru_id || '');
+        const gUserId = String(g.Guru?.user_id || '');
+        const gGuruProfileId = String(g.Guru?.id || '');
+        return (
+          (guruProfileId && (gGuruId === String(guruProfileId) || gGuruProfileId === String(guruProfileId))) ||
+          (userId && (gGuruId === String(userId) || gUserId === String(userId)))
+        );
+      }) || null
+    );
+  }, [user, currentGuruId, guruPiketHariIni]);
 
   // Is logged-in teacher assigned to Piket TODAY?
-  const isAssignedPiketToday = useMemo(() => {
-    if (!currentGuruId || !guruPiketHariIni.length) return false;
-    return guruPiketHariIni.some((g: JadwalPiketGuru) => String(g.guru_id) === String(currentGuruId));
-  }, [currentGuruId, guruPiketHariIni]);
+  const isAssignedPiketToday = Boolean(myPiketScheduleToday);
 
   // Final permission check to operate Meja Piket
   const canOperatePiket = isManagement || isAssignedPiketToday;
 
-  // Load Guru Piket Hari Ini
-  useEffect(() => {
-    const loadGuruPiket = async () => {
-      setLoadingGuruPiket(true);
-      try {
-        const res = await piketGuruApi.getHariIni();
-        if (res.success && res.data) {
-          setGuruPiketHariIni(res.data.guru_piket || []);
-        }
-      } catch (err) {
-        console.error('Failed to load guru piket hari ini:', err);
-      } finally {
-        setLoadingGuruPiket(false);
-      }
-    };
-    loadGuruPiket();
-  }, []);
+  // Active persona mode state (Piket Utama vs Piket Jurusan/Lab)
+  const [personaMode, setPersonaMode] = useState<PiketPersonaMode>('UTAMA');
+  const [selectedJurusanNama, setSelectedJurusanNama] = useState<string>('');
 
-  // Shared States
+  // Auto-switch persona mode based on logged-in teacher's piket schedule for today
+  React.useEffect(() => {
+    if (!myPiketScheduleToday) return;
+
+    const pos = (myPiketScheduleToday.pos_piket || '').trim();
+    const posUpper = pos.toUpperCase();
+
+    if (posUpper.includes('JURUSAN') || (myPiketScheduleToday as any).Jurusan) {
+      setPersonaMode('JURUSAN');
+
+      let extractedJurusan = '';
+      const jObj = (myPiketScheduleToday as any).Jurusan;
+      if (jObj) {
+        extractedJurusan = jObj.singkatan || jObj.kode || jObj.nama_jurusan || jObj.nama || '';
+      }
+
+      if (!extractedJurusan) {
+        const match = pos.match(/(?:Piket\s+)?Jurusan\s+(.+)/i);
+        if (match && match[1]) {
+          extractedJurusan = match[1].trim();
+        } else if (posUpper !== 'PIKET JURUSAN' && posUpper !== 'JURUSAN') {
+          extractedJurusan = pos.replace(/piket/i, '').replace(/jurusan/i, '').trim();
+        }
+      }
+
+      if (extractedJurusan) {
+        setSelectedJurusanNama(extractedJurusan);
+      }
+    } else if (posUpper.includes('UMUM')) {
+      setPersonaMode('UTAMA');
+    }
+  }, [myPiketScheduleToday]);
+
+  const personaConfig = useMemo(() => {
+    return getPiketPersonaConfig(personaMode, selectedJurusanNama);
+  }, [personaMode, selectedJurusanNama]);
+
+  // Tab Active State
   const [activeTab, setActiveTab] = useState('scan');
-  const [dailyPermits, setDailyPermits] = useState<IzinKeluarSiswa[]>([]);
-  const [loadingPermits, setLoadingPermits] = useState(true);
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
 
   // Printing States
   const [printedPermit, setPrintedPermit] = useState<(IzinKeluarSiswa & { qrCodeUrl?: string }) | null>(null);
@@ -132,64 +171,47 @@ export default function PiketPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [permitToDelete, setPermitToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // ── useQuery: Tenant & System Config ────────────────────────────────────
+  const { data: tenantRes } = useQuery({
+    queryKey: ['my-tenant'],
+    queryFn: () => tenantApi.getMyTenant().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const tenantInfo = tenantRes?.success ? tenantRes.data : null;
 
-  // Load Permits on Mount
-  const fetchPermits = useCallback(async () => {
-    setLoadingPermits(true);
-    try {
-      const res = await piketApi.getDailyPermits();
-      if (res.success) {
-        setDailyPermits(res.data);
-      }
-    } catch (err: unknown) {
-      console.error('Failed to load permits:', err);
-      toast.error('Gagal memuat daftar izin hari ini');
-    } finally {
-      setLoadingPermits(false);
-    }
-  }, []);
+  const { data: systemConfigData } = useQuery({
+    queryKey: ['system-config'],
+    queryFn: () => fetchActiveSystemConfig().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const systemConfig = systemConfigData || null;
 
-  useEffect(() => {
-    fetchPermits();
-
-    // Fetch School Tenant Details
-    const fetchTenant = async () => {
-      try {
-        const [tenantRes, configRes] = await Promise.all([
-          tenantApi.getMyTenant(),
-          fetchActiveSystemConfig()
-        ]);
-
-        if (tenantRes.success) {
-          setTenantInfo(tenantRes.data);
-        }
-        setSystemConfig(configRes);
-      } catch (err: unknown) {
-        console.error('Gagal memuat profil sekolah atau konfigurasi:', err);
-      }
-    };
-    fetchTenant();
-  }, [fetchPermits]);
+  // ── Custom Hook: Daily Permits (Izin Keluar Siswa) ────────────────────────
+  const { rawList: dailyPermits, isLoading: loadingPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions();
 
   // Shared Action: Mark returned (Siswa Kembali)
-  const handleMarkReturned = useCallback(async (id: string, namaSiswa: string) => {
+  const handleMarkReturned = useCallback(async (id: string, namaSiswa: string): Promise<boolean> => {
     try {
       const res = await piketApi.markReturned(id);
       if (res.success) {
         toast.success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
+        queryClient.invalidateQueries({ queryKey: piketQueryKeys.all });
         queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
         queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
         queryClient.invalidateQueries({ queryKey: ['piket-range'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        await fetchPermits();
+        refetchPermits();
+        return true;
       }
+      return false;
     } catch (err: unknown) {
       console.error(err);
       const e = err as { message?: string };
       toast.error(e.message || 'Gagal memproses kepulangan siswa');
+      return false;
     }
-  }, [fetchPermits]);
+  }, [queryClient, refetchPermits]);
 
   // Shared Action: Delete/Cancel permit (Batal Izin)
   const handleDeletePermit = useCallback(async (id: string) => {
@@ -261,7 +283,6 @@ export default function PiketPage() {
       colorClass: 'text-rose-600 dark:text-rose-400'
     },
     { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-600 dark:text-blue-400' },
-    { id: 'security', label: 'Pos Keamanan', icon: ShieldCheck, colorClass: 'text-slate-700 dark:text-slate-300' },
     { id: 'rekap', label: 'Rekap Harian', icon: FileText, colorClass: 'text-violet-600 dark:text-violet-400' }
   ], [activeOutStudents]);
 
@@ -284,32 +305,32 @@ export default function PiketPage() {
     return PRINT_PRESETS.find(p => p.id === printPaperSize) || PRINT_PRESETS[1];
   }, [printPaperSize]);
 
+  const { exitedGateIds } = usePiketGateStore();
+
   const piketStats = useMemo(() => {
-    const activeOutCount = dailyPermits.filter(p => p.status === 'DISETUJUI').length;
-    const totalCount = dailyPermits.length;
-    const returnedCount = dailyPermits.filter(p => p.status === 'KEMBALI').length;
+    const { countSedangDiLuar, countSudahKembali, countPulangAwal, totalPermitsToday } = calculatePiketAnalytics(dailyPermits, exitedGateIds);
 
     return [
       {
         title: 'Siswa di Luar (Aktif)',
-        value: activeOutCount,
+        value: countSedangDiLuar,
         icon: <Clock size={14} />,
         gradient: 'from-amber-500 to-orange-600',
         subtitle: 'Izin keluar yang masih aktif'
       },
       {
         title: 'Total Izin Terbit',
-        value: totalCount,
+        value: totalPermitsToday,
         icon: <FileText size={14} />,
         gradient: 'from-indigo-500 to-blue-600',
-        subtitle: 'Seluruh surat izin hari ini'
+        subtitle: `${countPulangAwal} izin pulang awal`
       },
       {
         title: 'Siswa Sudah Kembali',
-        value: returnedCount,
+        value: countSudahKembali,
         icon: <CheckCircle size={14} />,
         gradient: 'from-emerald-500 to-teal-600',
-        subtitle: 'Kembali & terverifikasi satpam'
+        subtitle: 'Izin sementara kembali ke sekolah'
       },
       {
         title: 'Status Gerbang',
@@ -319,7 +340,7 @@ export default function PiketPage() {
         subtitle: 'Pos satpam terkoneksi real-time'
       }
     ];
-  }, [dailyPermits]);
+  }, [dailyPermits, exitedGateIds]);
 
   const piketInstruction = useMemo(() => ({
     title: "Panduan Penggunaan Meja Piket & Kedisiplinan",
@@ -396,6 +417,30 @@ export default function PiketPage() {
         ) : (
           /* FULL MEJA PIKET INTERFACE FOR AUTHORIZED DUTY TEACHERS & MANAGEMENT */
           <>
+            {/* PERSONA SWITCHER BANNER */}
+            <Card className={`p-4 border-none shadow-md text-white transition-all duration-300 ${personaMode === 'JURUSAN' ? 'bg-slate-900 border-l-4 border-l-emerald-500' : 'bg-slate-900 border-l-4 border-l-indigo-500'}`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-2xl ${personaMode === 'JURUSAN' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}`}>
+                    {personaMode === 'JURUSAN' ? <Briefcase size={22} /> : <ShieldCheck size={22} />}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm font-black tracking-wide uppercase text-white">
+                        {personaConfig.title}
+                      </h2>
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${personaConfig.badgeClass}`}>
+                        {personaConfig.badgeLabel}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {personaConfig.subtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             {/* 2. TABS INTERFACE (HIDDEN ON PRINT) */}
             <div className="print:hidden">
               <Card className="p-4 sm:p-6 shadow-sm overflow-hidden">
@@ -411,12 +456,14 @@ export default function PiketPage() {
             <TabsContent value="scan" className="mt-8 space-y-8">
               <PiketOperations
                 dailyPermits={dailyPermits}
-                fetchPermits={fetchPermits}
+                fetchPermits={refetchPermits}
                 tenantInfo={tenantInfo}
                 user={user}
                 setPrintedPermit={setPrintedPermit}
                 printPaperSize={printPaperSize}
                 setPrintPaperSize={setPrintPaperSize}
+                personaMode={personaMode}
+                namaJurusan={selectedJurusanNama}
               />
             </TabsContent>
 
@@ -441,19 +488,7 @@ export default function PiketPage() {
               />
             </TabsContent>
 
-            {/* TAB 4: SECURITY GATE CHECKPOINT */}
-            <TabsContent value="security" className="mt-8 space-y-6 max-w-2xl mx-auto">
-              <PiketSecurity
-                dailyPermits={dailyPermits}
-                verificationResult={verificationResult}
-                setVerificationResult={setVerificationResult}
-                handleSecuritySelect={handleSecuritySelect}
-                handleSecurityEnter={handleSecurityEnter}
-                handleMarkReturned={handleMarkReturned}
-              />
-            </TabsContent>
-
-            {/* TAB 5: DAILY PERMIT RECAP REPORT */}
+            {/* TAB 4: DAILY PERMIT RECAP REPORT */}
             <TabsContent value="rekap" className="mt-8 space-y-6">
               <PiketRecap
                 onUpdatePrintData={(permits, label, sigDate) => {
@@ -513,12 +548,13 @@ export default function PiketPage() {
                 const res = await piketApi.deletePermit(permitToDelete);
                 if (res.success) {
                   toast.success('Surat izin keluar berhasil dibatalkan');
+                  queryClient.invalidateQueries({ queryKey: piketQueryKeys.all });
                   queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
                   queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
                   queryClient.invalidateQueries({ queryKey: ['piket-range'] });
                   queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
                   queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-                  await fetchPermits();
+                  refetchPermits();
                 }
               } catch (err: unknown) {
                 console.error(err);

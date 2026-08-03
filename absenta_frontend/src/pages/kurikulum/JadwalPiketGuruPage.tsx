@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
@@ -36,6 +36,11 @@ import { GuruSelect } from '../../components/common/GuruSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
 import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useGuruOptions } from '../../hooks/useGuruOptions';
+import { useJurusanOptions } from '../../hooks/useJurusanOptions';
+import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
 
 function getPosBadgeStyle(posName: string = '') {
   const pos = posName.toUpperCase();
@@ -54,8 +59,6 @@ function getPosBadgeStyle(posName: string = '') {
   return 'bg-sky-100 dark:bg-sky-950/70 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800';
 }
 
-
-
 const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
   1: { start: '06:30', end: '07:45' },
   2: { start: '07:45', end: '08:30' },
@@ -72,7 +75,6 @@ const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
 };
 
 import { HARI_LIST } from '../../constants/day.constants';
-
 
 export default function JadwalPiketGuruPage() {
   const queryClient = useQueryClient();
@@ -91,14 +93,7 @@ export default function JadwalPiketGuruPage() {
 
   const [activeHari, setActiveHari] = useState<Hari>('SENIN');
   const [piketFilterMode, setPiketFilterMode] = useState<'ALL' | 'MY_PIKET'>('ALL');
-  const [schedules, setSchedules] = useState<JadwalPiketGuru[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Dropdown Master Data
-  const [tahunPelajaranList, setTahunPelajaranList] = useState<{ id: string; tahun: string; is_active: boolean }[]>([]);
-  const [semesterList, setSemesterList] = useState<{ id: string; nama_semester: string; is_active: boolean }[]>([]);
-  const [guruList, setGuruList] = useState<Guru[]>([]);
 
   // Selected Filter
   const [selectedTpId, setSelectedTpId] = useState<string>('');
@@ -106,6 +101,65 @@ export default function JadwalPiketGuruPage() {
 
   // View Mode State (Grid vs Table)
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
+
+  // ── Standardized Options Hooks (Pilar 31 & Google Agentic Standard) ───────
+  const { rawList: tahunPelajaranList, activeYear: activeTp } = useTahunPelajaranOptions();
+  const { rawList: semesterList, activeSemester: activeSem } = useSemesterOptions({ tahunPelajaranId: selectedTpId });
+  const { rawList: guruList } = useGuruOptions({ jenisPtk: 'ALL' });
+  const { options: jurusanOptions, rawList: jurusanList } = useJurusanOptions();
+
+  // Auto-preselect Active TP & Semester
+  useEffect(() => {
+    if (activeTp && !selectedTpId) {
+      setSelectedTpId(activeTp.id);
+    }
+  }, [activeTp, selectedTpId]);
+
+  useEffect(() => {
+    if (activeSem && !selectedSemId) {
+      setSelectedSemId(activeSem.id);
+    }
+  }, [activeSem, selectedSemId]);
+
+  const { data: tenantRes } = useQuery({
+    queryKey: ['my-tenant'],
+    queryFn: () => getMyTenant().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const tenantSlots = useMemo(() => {
+    if (tenantRes?.data?.shift_jam_pelajaran?.shifts?.[0]?.slots) {
+      const rawSlots = tenantRes.data.shift_jam_pelajaran.shifts[0].slots;
+      const mapped: Record<number, { start: string; end: string }> = {};
+      rawSlots.forEach((s: any) => {
+        if (s.slot) {
+          mapped[s.slot] = { start: s.start || s.jam_mulai, end: s.end || s.jam_selesai };
+        }
+      });
+      return { ...DEFAULT_SLOT_TIMES, ...mapped };
+    }
+    return DEFAULT_SLOT_TIMES;
+  }, [tenantRes]);
+
+  // ── Custom Hook: Schedules (Jadwal Piket Guru) ──────────────────────────
+  const { list: schedules, isLoading: loading, refetch: fetchSchedules } = usePiketGuruOptions(
+    selectedTpId && selectedSemId
+      ? { tahun_pelajaran_id: selectedTpId, semester_id: selectedSemId }
+      : undefined
+  );
+
+  // ── useQuery: Teaching Load ───────────────────────────────────────────────
+  const { data: teachingLoadRes } = useQuery({
+    queryKey: ['teaching-load-piket', selectedTpId, selectedSemId, activeHari],
+    queryFn: () => (selectedTpId && selectedSemId) ? piketGuruApi.getTeachingLoad({
+      tahun_pelajaran_id: selectedTpId,
+      semester_id: selectedSemId,
+      hari: activeHari
+    }).catch(() => null) : null,
+    enabled: !!selectedTpId && !!selectedSemId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const teachingLoadMap = teachingLoadRes?.data || {};
 
   // Quick Inline Edit Catatan state
   const [editingCatatanId, setEditingCatatanId] = useState<string | null>(null);
@@ -118,8 +172,8 @@ export default function JadwalPiketGuruPage() {
       const res = await piketGuruApi.update(id, { catatan: editingCatatanText });
       if (res.success) {
         toast.success('Catatan piket berhasil diperbarui');
-        setSchedules(prev => prev.map(s => s.id === id ? { ...s, catatan: editingCatatanText } : s));
         setEditingCatatanId(null);
+        fetchSchedules();
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
       }
@@ -136,9 +190,6 @@ export default function JadwalPiketGuruPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPiketGuru | null>(null);
-
-
-
 
   // Form State Single Assign
   const [formGuruId, setFormGuruId] = useState('');
@@ -165,11 +216,6 @@ export default function JadwalPiketGuruPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
-
-  // Master Tenant Shift Slot Config
-  const [tenantSlots, setTenantSlots] = useState<Record<number, { start: string; end: string }>>(DEFAULT_SLOT_TIMES);
 
   const getSlotStartTime = useCallback((slot: number) => {
     if (tenantSlots[slot]?.start) return tenantSlots[slot].start;
@@ -203,80 +249,6 @@ export default function JadwalPiketGuruPage() {
     setBulkJamSelesai(getSlotEndTime(slot));
   };
 
-  // Fetch Master Data (TP, Semester, Guru, Tenant, Jurusan)
-  useEffect(() => {
-    const fetchMaster = async () => {
-      try {
-        const [tpRes, semRes, guruRes, tenantRes, jurusanRes] = await Promise.all([
-          tahunPelajaranApi.getAll(),
-          semesterApi.getAll(),
-          guruApi.getAll({ limit: 1000 }),
-          getMyTenant().catch(() => null),
-          jurusanApi.getAll().catch(() => ({ success: false, data: [] }))
-        ]);
-
-        if (tpRes.success) {
-          setTahunPelajaranList(tpRes.data || []);
-          const activeTp = tpRes.data?.find(t => t.is_active);
-          if (activeTp) setSelectedTpId(activeTp.id);
-          else if (tpRes.data?.length) setSelectedTpId(tpRes.data[0].id);
-        }
-
-        if (semRes.success) {
-          setSemesterList(semRes.data || []);
-          const activeSem = semRes.data?.find(s => s.is_active);
-          if (activeSem) setSelectedSemId(activeSem.id);
-          else if (semRes.data?.length) setSelectedSemId(semRes.data[0].id);
-        }
-
-        if (guruRes.success) {
-          setGuruList(guruRes.data || []);
-        }
-
-        if (jurusanRes?.success) {
-          setJurusanList(jurusanRes.data || []);
-        }
-
-        if (tenantRes?.data?.shift_jam_pelajaran?.shifts?.[0]?.slots) {
-          const rawSlots = tenantRes.data.shift_jam_pelajaran.shifts[0].slots;
-          const mapped: Record<number, { start: string; end: string }> = {};
-          rawSlots.forEach((s: any) => {
-            if (s.slot) {
-              mapped[s.slot] = { start: s.start || s.jam_mulai, end: s.end || s.jam_selesai };
-            }
-          });
-          setTenantSlots(prev => ({ ...prev, ...mapped }));
-        }
-      } catch (err) {
-        console.error('Failed to load master data:', err);
-      }
-    };
-
-    fetchMaster();
-  }, []);
-
-  const [teachingLoadMap, setTeachingLoadMap] = useState<Record<string, { total_jp: number; detail: Array<{ kelas: string; mapel: string; jam: string }> }>>({});
-
-  const fetchTeachingLoad = useCallback(async () => {
-    if (!selectedTpId || !selectedSemId) return;
-    try {
-      const res = await piketGuruApi.getTeachingLoad({
-        tahun_pelajaran_id: selectedTpId,
-        semester_id: selectedSemId,
-        hari: activeHari
-      });
-      if (res.success) {
-        setTeachingLoadMap(res.data || {});
-      }
-    } catch (err) {
-      console.error('Failed to load teaching load:', err);
-    }
-  }, [selectedTpId, selectedSemId, activeHari]);
-
-  useEffect(() => {
-    fetchTeachingLoad();
-  }, [fetchTeachingLoad]);
-
   const filteredBulkGuruList = useMemo(() => {
     if (!bulkSearchTerm.trim()) return guruList;
     const q = bulkSearchTerm.toLowerCase();
@@ -285,30 +257,6 @@ export default function JadwalPiketGuruPage() {
       (g.nip || '').toLowerCase().includes(q)
     );
   }, [guruList, bulkSearchTerm]);
-
-  // Fetch Schedules when filters change
-  const fetchSchedules = useCallback(async () => {
-    if (!selectedTpId || !selectedSemId) return;
-    setLoading(true);
-    try {
-      const res = await piketGuruApi.getList({
-        tahun_pelajaran_id: selectedTpId,
-        semester_id: selectedSemId
-      });
-      if (res.success) {
-        setSchedules(res.data || []);
-      }
-    } catch (err) {
-      console.error('Gagal memuat jadwal piket:', err);
-      toast.error('Gagal memuat data jadwal piket guru');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTpId, selectedSemId]);
-
-  useEffect(() => {
-    fetchSchedules();
-  }, [fetchSchedules]);
 
   // Group schedules by Hari
   const schedulesByHari = useMemo(() => {
@@ -449,6 +397,8 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Jadwal piket guru berhasil diperbarui');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
+          queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
           queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
@@ -471,6 +421,8 @@ export default function JadwalPiketGuruPage() {
         if (res.success) {
           toast.success('Guru berhasil ditugaskan untuk piket');
           setIsModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
+          queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
           queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
@@ -511,6 +463,8 @@ export default function JadwalPiketGuruPage() {
         toast.success(`Berhasil menugaskan ${res.data.length} guru untuk piket hari ${bulkHari}`);
         setIsBulkModalOpen(false);
         setBulkGuruIds([]);
+        queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
         queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
@@ -532,6 +486,8 @@ export default function JadwalPiketGuruPage() {
       const res = await piketGuruApi.delete(itemToDelete);
       if (res.success) {
         toast.success('Penugasan piket berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: ['jadwal-piket-guru-list'] });
+        queryClient.invalidateQueries({ queryKey: ['teaching-load-piket'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-piket-list'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
         queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
@@ -1089,22 +1045,23 @@ export default function JadwalPiketGuruPage() {
 
       {/* MODAL ADD / EDIT SINGLE */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <ShieldCheck className="text-indigo-600 dark:text-indigo-400" size={18} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150 my-auto overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3 shrink-0">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <ShieldCheck className="text-indigo-600 dark:text-indigo-400" size={20} />
                 <span>{editingItem ? 'Edit Penugasan Piket Guru' : 'Tambah Penugasan Piket Guru'}</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveSingle} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveSingle} className="space-y-4 text-xs overflow-y-auto pr-1.5 mt-3 flex-1 scrollbar-thin">
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Pilih Guru <span className="text-rose-500">*</span>
@@ -1178,6 +1135,32 @@ export default function JadwalPiketGuruPage() {
                       </button>
                     )}
                   </div>
+
+                  {formPos.includes('Jurusan') && jurusanOptions.length > 0 && (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800">
+                      <label className="block text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">
+                        🎯 Pilih Jurusan Spesifik untuk Piket:
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const opt = jurusanOptions.find(o => o.value === e.target.value);
+                          if (opt) {
+                            const j = opt.raw as any;
+                            const labelStr = j.kode || j.singkatan || j.kode_jurusan || j.nama || j.nama_jurusan || 'Jurusan';
+                            setFormPos(`Piket Jurusan ${labelStr}`);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 text-slate-800 dark:text-slate-100 font-semibold"
+                      >
+                        <option value="">-- Pilih Jurusan --</option>
+                        {jurusanOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1307,22 +1290,23 @@ export default function JadwalPiketGuruPage() {
 
       {/* MODAL BULK ASSIGN */}
       {isBulkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Users className="text-indigo-600 dark:text-indigo-400" size={18} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150 my-auto overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3 shrink-0">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Users className="text-indigo-600 dark:text-indigo-400" size={20} />
                 <span>Penugasan Piket Guru Massal</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsBulkModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveBulk} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveBulk} className="space-y-4 text-xs overflow-y-auto pr-1.5 mt-3 flex-1 scrollbar-thin">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -1369,6 +1353,32 @@ export default function JadwalPiketGuruPage() {
                       </button>
                     )}
                   </div>
+
+                  {bulkPos.includes('Jurusan') && jurusanOptions.length > 0 && (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800">
+                      <label className="block text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">
+                        🎯 Pilih Jurusan Spesifik untuk Piket Massal:
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const opt = jurusanOptions.find(o => o.value === e.target.value);
+                          if (opt) {
+                            const j = opt.raw as any;
+                            const labelStr = j.kode || j.singkatan || j.kode_jurusan || j.nama || j.nama_jurusan || 'Jurusan';
+                            setBulkPos(`Piket Jurusan ${labelStr}`);
+                          }
+                        }}
+                        className="w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs py-1.5 px-2.5 text-slate-800 dark:text-slate-100 font-semibold"
+                      >
+                        <option value="">-- Pilih Jurusan --</option>
+                        {jurusanOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { bpbkApi, type KasusBK } from '../../../api/bpbk.api';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -59,8 +59,6 @@ const getVisibilityColor = (vis: string) => {
 };
 
 export const CasesSection: React.FC = () => {
-  const [data, setData] = useState<KasusBK[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -70,21 +68,17 @@ export const CasesSection: React.FC = () => {
   const [selectedVisibility, setSelectedVisibility] = useState('');
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-
   const confirm = useConfirm();
   const { can } = useAuth();
   const queryClient = useQueryClient();
   const invalidateBpbkCache = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
+    queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
     queryClient.invalidateQueries({ queryKey: ['ews-risk-students'] });
-    queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
   }, [queryClient]);
 
   // Form states
@@ -110,32 +104,34 @@ export const CasesSection: React.FC = () => {
     keterangan: ''
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getKasusBK({
-        page,
-        limit,
-        search: debouncedSearch,
-        kategori: selectedKategori,
-        status: selectedStatus,
-        prioritas: selectedPrioritas,
-        visibility: selectedVisibility,
-        show_deleted: showDeleted ? 'true' : 'false'
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-      setTotalItems(res.data?.pagination?.totalItems || res.data?.pagination?.total || 0);
-    } catch (err) {
-      console.error('Error fetching cases:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch, selectedKategori, selectedStatus, selectedPrioritas, selectedVisibility, showDeleted]);
+  // ── useQuery: Cases List ──────────────────────────────────────────────────
+  const { data: casesRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.casesList({
+      page,
+      limit,
+      search: debouncedSearch,
+      kategori: selectedKategori,
+      status: selectedStatus,
+      prioritas: selectedPrioritas,
+      visibility: selectedVisibility,
+      show_deleted: showDeleted ? 'true' : 'false'
+    }),
+    queryFn: () => bpbkApi.getKasusBK({
+      page,
+      limit,
+      search: debouncedSearch,
+      kategori: selectedKategori,
+      status: selectedStatus,
+      prioritas: selectedPrioritas,
+      visibility: selectedVisibility,
+      show_deleted: showDeleted ? 'true' : 'false'
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const data = useMemo(() => casesRes?.data?.list || [], [casesRes]);
+  const totalPages = casesRes?.data?.pagination?.totalPages || 1;
+  const totalItems = casesRes?.data?.pagination?.totalItems || casesRes?.data?.pagination?.total || 0;
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -170,7 +166,6 @@ export const CasesSection: React.FC = () => {
 
   const handleViewDetail = useCallback(async (item: KasusBK) => {
     try {
-      setLoading(true);
       const res = await bpbkApi.getKasusBKById(item.id);
       if (res.success) {
         setSelectedCase(res.data);
@@ -180,8 +175,6 @@ export const CasesSection: React.FC = () => {
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Koneksi bermasalah');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -200,14 +193,14 @@ export const CasesSection: React.FC = () => {
       if (res.success) {
         toast.success('Kasus BK berhasil diarsipkan');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error('Gagal menghapus kasus BK');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Koneksi bermasalah');
     }
-  }, [confirm, fetchData]);
+  }, [confirm, invalidateBpbkCache, refetch]);
 
   const handleRestore = useCallback(async (id: string) => {
     try {
@@ -215,14 +208,14 @@ export const CasesSection: React.FC = () => {
       if (res.success) {
         toast.success('Kasus BK berhasil dipulihkan dari keranjang sampah');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error('Gagal memulihkan kasus');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Koneksi bermasalah');
     }
-  }, [fetchData]);
+  }, [invalidateBpbkCache, refetch]);
 
   const handleReopen = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -239,14 +232,14 @@ export const CasesSection: React.FC = () => {
       if (res.success) {
         toast.success('Kasus BK berhasil dibuka kembali');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error('Gagal membuka kembali kasus');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Koneksi bermasalah');
     }
-  }, [confirm, fetchData]);
+  }, [confirm, invalidateBpbkCache, refetch]);
 
   const handleCloseSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,14 +257,14 @@ export const CasesSection: React.FC = () => {
         setCloseCaseId(null);
         setCatatanSelesai('');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error('Gagal menyelesaikan kasus');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gagal menutup kasus');
     }
-  }, [closeCaseId, catatanSelesai, fetchData]);
+  }, [closeCaseId, catatanSelesai, invalidateBpbkCache, refetch]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,11 +288,11 @@ export const CasesSection: React.FC = () => {
       setModalOpen(false);
       resetForm();
       invalidateBpbkCache();
-      fetchData();
+      refetch();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gagal menyimpan kasus BK');
     }
-  }, [selectedId, formData, fetchData, resetForm]);
+  }, [selectedId, formData, invalidateBpbkCache, refetch, resetForm]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);

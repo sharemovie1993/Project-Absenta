@@ -102,6 +102,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     if (cleanPath.endsWith('/jenis-pelanggaran')) return 'kesiswaan_jenis_pelanggaran';
     if (cleanPath.endsWith('/monitoring') && cleanPath.includes('/kesiswaan')) return 'kesiswaan_monitoring';
     if (cleanPath.endsWith('/piket')) return 'kesiswaan_piket';
+    if (cleanPath.endsWith('/pos-keamanan')) return 'kesiswaan_pos_keamanan';
     if (cleanPath.endsWith('/guru')) return 'academic_guru';
     if (cleanPath.endsWith('/kelas')) return 'academic_kelas';
     if (cleanPath.endsWith('/siswa')) return 'academic_siswa';

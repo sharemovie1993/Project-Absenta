@@ -2,6 +2,15 @@ import { requestWithFallback, downloadBlob } from '../apiUtils';
 import { importDataFromExcel } from '../../utils/import.utils';
 import type { Guru } from "../../types/academic";
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const guruQueryKeys = {
+  all: ['guru'] as const,
+  lists: () => [...guruQueryKeys.all, 'list'] as const,
+  list: (filters: Record<string, any>) => [...guruQueryKeys.lists(), filters] as const,
+  detail: (id: string) => [...guruQueryKeys.all, 'detail', id] as const,
+};
+
+
 export interface PaginatedGuruResponse {
   success: boolean;
   message: string;

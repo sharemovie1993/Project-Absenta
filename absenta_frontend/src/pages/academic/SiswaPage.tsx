@@ -11,6 +11,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
 import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
+import { useQuery } from '@tanstack/react-query';
 import { getAcademicRegistrationStats, getSiswaList, importSiswaFromExcel } from '../../api/academic/siswa.api';
 import { getSemesterByTahunPelajaranForDropdown, getTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
@@ -48,11 +49,6 @@ const SiswaPage: React.FC = () => {
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [activeSiswaCount, setActiveSiswaCount] = useState<number>(0);
-  const [calonSiswaCount, setCalonSiswaCount] = useState<number>(0);
-  const [registeredCount, setRegisteredCount] = useState<number | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [importConfig, setImportConfig] = useState<ImportConfig>({ yearId: '', semesterId: '', useDefault: true, scenario: 'REGULAR' });
   const [availableYears, setAvailableYears] = useState<{ label: string; value: string }[]>([]);
@@ -68,43 +64,49 @@ const SiswaPage: React.FC = () => {
   const canView = can('academic.students.read') || can('academic.students.create') || true;
   const isIsolatedScope = !can('system.platform.full_access') && user?.role?.name !== 'SUPERADMIN';
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setIsLoadingStats(true);
-        const [statsData, activeSiswaRes, calonRes, activeYear, activeSemester] = await Promise.all([
-          getAcademicStats(),
-          getSiswaList(1, 1, '', '', 'AKTIF').catch(() => null),
-          getSiswaList(1, 1, '', '', 'CALON').catch(() => null),
-          getActiveTahunPelajaran().catch(() => null),
-          getActiveSemester().catch(() => null)
-        ]);
+  // ── useQuery: Stats parallel ─────────────────────────────────────────────
+  const { data: statsData, isLoading: isLoadingAcStats } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: getAcademicStats,
+    staleTime: 5 * 60 * 1000,
+  });
+  const stats = statsData?.data || null;
 
-        setStats(statsData);
-        if (activeSiswaRes?.pagination?.total !== undefined) {
-          setActiveSiswaCount(activeSiswaRes.pagination.total);
-        } else if (statsData?.total_siswa !== undefined) {
-          setActiveSiswaCount(statsData.total_siswa);
-        }
+  const { data: activeSiswaRes, isLoading: isLoadingActive } = useQuery({
+    queryKey: ['siswa', 'list', { status: 'AKTIF', page: 1, limit: 1 }],
+    queryFn: () => getSiswaList(1, 1, '', '', 'AKTIF'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const activeSiswaCount = activeSiswaRes?.pagination?.total ?? stats?.total_siswa ?? 0;
 
-        if (calonRes?.pagination?.total !== undefined) {
-          setCalonSiswaCount(calonRes.pagination.total);
-        }
+  const { data: calonRes, isLoading: isLoadingCalon } = useQuery({
+    queryKey: ['siswa', 'list', { status: 'CALON', page: 1, limit: 1 }],
+    queryFn: () => getSiswaList(1, 1, '', '', 'CALON'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const calonSiswaCount = calonRes?.pagination?.total ?? 0;
 
-        if (activeYear?.id && activeSemester?.id) {
-          const regStats = await getAcademicRegistrationStats(activeYear.id, activeSemester.id).catch(() => null);
-          if (regStats?.registered !== undefined) {
-            setRegisteredCount(regStats.registered);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load academic stats", e);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, [refreshTrigger]);
+  const { data: activeYearData } = useQuery({
+    queryKey: ['active-tahun-pelajaran'],
+    queryFn: () => getActiveTahunPelajaran().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const { data: activeSemesterData } = useQuery({
+    queryKey: ['active-semester'],
+    queryFn: () => getActiveSemester().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const activeYearId = activeYearData?.id;
+  const activeSemesterId = activeSemesterData?.id;
+
+  const { data: regStatsData, isLoading: isLoadingReg } = useQuery({
+    queryKey: ['academic-registration-stats', activeYearId, activeSemesterId],
+    queryFn: () => getAcademicRegistrationStats(activeYearId!, activeSemesterId!).catch(() => null),
+    enabled: !!activeYearId && !!activeSemesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const registeredCount = regStatsData?.registered ?? null;
+  const isLoadingStats = isLoadingAcStats || isLoadingActive || isLoadingCalon || isLoadingReg;
 
   const statCards = useMemo(() => {
     if (!stats) return [];

@@ -34,6 +34,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BackupPage.tsx",
     "relativePath": "src\\pages\\academic\\BackupPage.tsx"
   },
@@ -72,6 +73,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasPage.tsx",
     "relativePath": "src\\pages\\academic\\CetakBerkasPage.tsx"
   },
@@ -110,6 +112,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "GuruPage.tsx",
     "relativePath": "src\\pages\\academic\\GuruPage.tsx"
   },
@@ -148,6 +151,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JenisKegiatanMasterPage.tsx",
     "relativePath": "src\\pages\\academic\\JenisKegiatanMasterPage.tsx"
   },
@@ -186,6 +190,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JurusanPage.tsx",
     "relativePath": "src\\pages\\academic\\JurusanPage.tsx"
   },
@@ -224,6 +229,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "KelasPage.tsx",
     "relativePath": "src\\pages\\academic\\KelasPage.tsx"
   },
@@ -262,6 +268,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MapelPage.tsx",
     "relativePath": "src\\pages\\academic\\MapelPage.tsx"
   },
@@ -300,6 +307,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "PpdbMappingPage.tsx",
     "relativePath": "src\\pages\\academic\\ppdb\\PpdbMappingPage.tsx"
   },
@@ -338,6 +346,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SemesterPage.tsx",
     "relativePath": "src\\pages\\academic\\SemesterPage.tsx"
   },
@@ -375,7 +384,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SiswaPage.tsx",
     "relativePath": "src\\pages\\academic\\SiswaPage.tsx"
   },
@@ -414,6 +424,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "StaffActivityLogPage.tsx",
     "relativePath": "src\\pages\\academic\\StaffActivityLogPage.tsx"
   },
@@ -452,6 +463,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "StrukturOrganisasiPage.tsx",
     "relativePath": "src\\pages\\academic\\struktur-organisasi\\StrukturOrganisasiPage.tsx"
   },
@@ -490,6 +502,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "StudentCardPage.tsx",
     "relativePath": "src\\pages\\academic\\StudentCardPage.tsx"
   },
@@ -528,6 +541,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TahunPelajaranPage.tsx",
     "relativePath": "src\\pages\\academic\\TahunPelajaranPage.tsx"
   },
@@ -566,6 +580,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "AcademicTransitionPage.tsx",
     "relativePath": "src\\pages\\academic\\transition\\AcademicTransitionPage.tsx"
   },
@@ -603,7 +618,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ProfilePage.tsx",
     "relativePath": "src\\pages\\account\\ProfilePage.tsx"
   },
@@ -642,6 +658,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "AnggotaKegiatanEskulPage.tsx",
     "relativePath": "src\\pages\\attendance\\AnggotaKegiatanEskulPage.tsx"
   },
@@ -679,7 +696,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "AttendanceDashboardPage.tsx",
     "relativePath": "src\\pages\\attendance\\AttendanceDashboardPage.tsx"
   },
@@ -718,6 +736,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AttendanceSettingsPage.tsx",
     "relativePath": "src\\pages\\attendance\\AttendanceSettingsPage.tsx"
   },
@@ -752,10 +771,11 @@
     "zodValidationGuard": true,
     "standardTabSwitcher": true,
     "layoutFlowConsistency": true,
-    "dateFormatTimezoneGuard": false,
+    "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasAbsensiPage.tsx",
     "relativePath": "src\\pages\\attendance\\CetakBerkasAbsensiPage.tsx"
   },
@@ -794,6 +814,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AttendanceDashboardComponents.tsx",
     "relativePath": "src\\pages\\attendance\\components\\AttendanceDashboardComponents.tsx"
   },
@@ -832,6 +853,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AttendanceTvModeLayout.tsx",
     "relativePath": "src\\pages\\attendance\\components\\AttendanceTvModeLayout.tsx"
   },
@@ -870,6 +892,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "DeviceManagementPage.tsx",
     "relativePath": "src\\pages\\attendance\\DeviceManagementPage.tsx"
   },
@@ -908,6 +931,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "FaceTemplatePage.tsx",
     "relativePath": "src\\pages\\attendance\\FaceTemplatePage.tsx"
   },
@@ -946,6 +970,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "GuruMonitoringPage.tsx",
     "relativePath": "src\\pages\\attendance\\GuruMonitoringPage.tsx"
   },
@@ -984,6 +1009,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JadwalKegiatanFormModal.tsx",
     "relativePath": "src\\pages\\attendance\\JadwalKegiatanFormModal.tsx"
   },
@@ -1022,6 +1048,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JadwalKegiatanPage.tsx",
     "relativePath": "src\\pages\\attendance\\JadwalKegiatanPage.tsx"
   },
@@ -1060,6 +1087,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MonitoringKbmPage.tsx",
     "relativePath": "src\\pages\\attendance\\monitoring\\MonitoringKbmPage.tsx"
   },
@@ -1098,6 +1126,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MyAttendancePage.tsx",
     "relativePath": "src\\pages\\attendance\\MyAttendancePage.tsx"
   },
@@ -1136,6 +1165,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AttendanceOpsPage.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\AttendanceOpsPage.tsx"
   },
@@ -1174,6 +1204,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "GateInputModule.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\components\\GateInputModule.tsx"
   },
@@ -1183,7 +1214,7 @@
     "usesAcademicLayout": false,
     "usesUiComponents": true,
     "usesMemo": false,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -1212,6 +1243,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ModeMultiSesiView.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\components\\ModeMultiSesiView.tsx"
   },
@@ -1250,6 +1282,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "ModeSimpleView.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\components\\ModeSimpleView.tsx"
   },
@@ -1288,6 +1321,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PendingSiswaModule.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\components\\PendingSiswaModule.tsx"
   },
@@ -1326,6 +1360,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SessionManagerModule.tsx",
     "relativePath": "src\\pages\\attendance\\ops\\components\\SessionManagerModule.tsx"
   },
@@ -1364,6 +1399,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PetugasPage.tsx",
     "relativePath": "src\\pages\\attendance\\PetugasPage.tsx"
   },
@@ -1402,6 +1438,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapBulananKelasPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapBulananKelasPage.tsx"
   },
@@ -1440,6 +1477,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapBulananMapelPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapBulananMapelPage.tsx"
   },
@@ -1477,7 +1515,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapBulananSiswaPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapBulananSiswaPage.tsx"
   },
@@ -1515,7 +1554,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapHarianKelasPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapHarianKelasPage.tsx"
   },
@@ -1554,6 +1594,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapHarianSiswaPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapHarianSiswaPage.tsx"
   },
@@ -1592,6 +1633,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RekapPage.tsx",
     "relativePath": "src\\pages\\attendance\\rekap\\RekapPage.tsx"
   },
@@ -1602,7 +1644,7 @@
     "usesUiComponents": true,
     "usesMemo": true,
     "noAnyType": false,
-    "safeMapping": true,
+    "safeMapping": false,
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,
@@ -1630,6 +1672,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RiwayatAjarPage.tsx",
     "relativePath": "src\\pages\\attendance\\RiwayatAjarPage.tsx"
   },
@@ -1668,6 +1711,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TrackingSiswaPage.tsx",
     "relativePath": "src\\pages\\attendance\\TrackingSiswaPage.tsx"
   },
@@ -1705,7 +1749,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ForgotPasswordPage.tsx",
     "relativePath": "src\\pages\\auth\\ForgotPasswordPage.tsx"
   },
@@ -1744,6 +1789,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "LoginPage.tsx",
     "relativePath": "src\\pages\\auth\\LoginPage.tsx"
   },
@@ -1781,7 +1827,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ResetPasswordConfirmPage.tsx",
     "relativePath": "src\\pages\\auth\\ResetPasswordConfirmPage.tsx"
   },
@@ -1820,6 +1867,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "ApprovalsPage.tsx",
     "relativePath": "src\\pages\\billing\\ApprovalsPage.tsx"
   },
@@ -1858,6 +1906,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "BillingDashboardPage.tsx",
     "relativePath": "src\\pages\\billing\\BillingDashboardPage.tsx"
   },
@@ -1896,6 +1945,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "BillingReportsPage.tsx",
     "relativePath": "src\\pages\\billing\\BillingReportsPage.tsx"
   },
@@ -1934,6 +1984,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "BillingSettingsPage.tsx",
     "relativePath": "src\\pages\\billing\\BillingSettingsPage.tsx"
   },
@@ -1972,6 +2023,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BillingsPage.tsx",
     "relativePath": "src\\pages\\billing\\BillingsPage.tsx"
   },
@@ -2009,7 +2061,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CheckoutPage.tsx",
     "relativePath": "src\\pages\\billing\\CheckoutPage.tsx"
   },
@@ -2048,6 +2101,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "MonitoringPage.tsx",
     "relativePath": "src\\pages\\billing\\MonitoringPage.tsx"
   },
@@ -2086,6 +2140,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "MySubscriptionPage.tsx",
     "relativePath": "src\\pages\\billing\\MySubscriptionPage.tsx"
   },
@@ -2124,6 +2179,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "PaymentsPage.tsx",
     "relativePath": "src\\pages\\billing\\PaymentsPage.tsx"
   },
@@ -2162,6 +2218,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "PlansPage.tsx",
     "relativePath": "src\\pages\\billing\\PlansPage.tsx"
   },
@@ -2200,6 +2257,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": false,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RABCalculatorPage.tsx",
     "relativePath": "src\\pages\\billing\\RABCalculatorPage.tsx"
   },
@@ -2238,6 +2296,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ServiceCenterPage.tsx",
     "relativePath": "src\\pages\\billing\\ServiceCenterPage.tsx"
   },
@@ -2275,7 +2334,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SubscriptionsPage.tsx",
     "relativePath": "src\\pages\\billing\\SubscriptionsPage.tsx"
   },
@@ -2314,6 +2374,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": false,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TripayHealthPage.tsx",
     "relativePath": "src\\pages\\billing\\TripayHealthPage.tsx"
   },
@@ -2352,6 +2413,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TripaySimulatorPage.tsx",
     "relativePath": "src\\pages\\billing\\TripaySimulatorPage.tsx"
   },
@@ -2390,6 +2452,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AsesmenPage.tsx",
     "relativePath": "src\\pages\\bpbk\\AsesmenPage.tsx"
   },
@@ -2428,6 +2491,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AuditPage.tsx",
     "relativePath": "src\\pages\\bpbk\\AuditPage.tsx"
   },
@@ -2466,6 +2530,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BpbkWorkspacePage.tsx",
     "relativePath": "src\\pages\\bpbk\\BpbkWorkspacePage.tsx"
   },
@@ -2504,6 +2569,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CasesPage.tsx",
     "relativePath": "src\\pages\\bpbk\\CasesPage.tsx"
   },
@@ -2542,6 +2608,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasBkPage.tsx",
     "relativePath": "src\\pages\\bpbk\\CetakBerkasBkPage.tsx"
   },
@@ -2580,6 +2647,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "DashboardPage.tsx",
     "relativePath": "src\\pages\\bpbk\\DashboardPage.tsx"
   },
@@ -2618,6 +2686,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "HomeVisitPage.tsx",
     "relativePath": "src\\pages\\bpbk\\HomeVisitPage.tsx"
   },
@@ -2655,7 +2724,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "KonselingPage.tsx",
     "relativePath": "src\\pages\\bpbk\\KonselingPage.tsx"
   },
@@ -2675,11 +2745,11 @@
     "performanceOptimization": true,
     "userGuidance": true,
     "tablePagination": true,
-    "standardToolbar": false,
+    "standardToolbar": true,
     "standardFeedback": true,
     "standardContainer": true,
     "advancedSelect": true,
-    "tableToolbar": false,
+    "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
     "godFileGuard": false,
@@ -2694,6 +2764,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PemanggilanPage.tsx",
     "relativePath": "src\\pages\\bpbk\\PemanggilanPage.tsx"
   },
@@ -2731,7 +2802,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ReportsPage.tsx",
     "relativePath": "src\\pages\\bpbk\\ReportsPage.tsx"
   },
@@ -2769,7 +2841,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RujukanPage.tsx",
     "relativePath": "src\\pages\\bpbk\\RujukanPage.tsx"
   },
@@ -2808,6 +2881,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SiswaKasusPage.tsx",
     "relativePath": "src\\pages\\bpbk\\SiswaKasusPage.tsx"
   },
@@ -2846,6 +2920,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Accounting.tsx",
     "relativePath": "src\\pages\\cooperative\\Accounting.tsx"
   },
@@ -2884,6 +2959,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Announcements.tsx",
     "relativePath": "src\\pages\\cooperative\\Announcements.tsx"
   },
@@ -2922,6 +2998,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Dashboard.tsx",
     "relativePath": "src\\pages\\cooperative\\Dashboard.tsx"
   },
@@ -2960,6 +3037,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "OpnameDetail.tsx",
     "relativePath": "src\\pages\\cooperative\\components\\OpnameDetail.tsx"
   },
@@ -2998,6 +3076,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "OpnameFormModal.tsx",
     "relativePath": "src\\pages\\cooperative\\components\\OpnameFormModal.tsx"
   },
@@ -3036,6 +3115,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ProductFormModal.tsx",
     "relativePath": "src\\pages\\cooperative\\components\\ProductFormModal.tsx"
   },
@@ -3074,6 +3154,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ReceiptModal.tsx",
     "relativePath": "src\\pages\\cooperative\\components\\ReceiptModal.tsx"
   },
@@ -3111,7 +3192,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "LaporanInventori.tsx",
     "relativePath": "src\\pages\\cooperative\\LaporanInventori.tsx"
   },
@@ -3150,6 +3232,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "LoanDetail.tsx",
     "relativePath": "src\\pages\\cooperative\\LoanDetail.tsx"
   },
@@ -3187,7 +3270,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Loans.tsx",
     "relativePath": "src\\pages\\cooperative\\Loans.tsx"
   },
@@ -3226,6 +3310,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "Members.tsx",
     "relativePath": "src\\pages\\cooperative\\Members.tsx"
   },
@@ -3264,6 +3349,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "POS.tsx",
     "relativePath": "src\\pages\\cooperative\\POS.tsx"
   },
@@ -3301,7 +3387,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "PPOB.tsx",
     "relativePath": "src\\pages\\cooperative\\PPOB.tsx"
   },
@@ -3340,6 +3427,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Products.tsx",
     "relativePath": "src\\pages\\cooperative\\Products.tsx"
   },
@@ -3377,7 +3465,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "Savings.tsx",
     "relativePath": "src\\pages\\cooperative\\Savings.tsx"
   },
@@ -3416,6 +3505,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Settings.tsx",
     "relativePath": "src\\pages\\cooperative\\Settings.tsx"
   },
@@ -3454,6 +3544,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SHU.tsx",
     "relativePath": "src\\pages\\cooperative\\SHU.tsx"
   },
@@ -3492,6 +3583,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "TicketDetail.tsx",
     "relativePath": "src\\pages\\cooperative\\TicketDetail.tsx"
   },
@@ -3530,6 +3622,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Tickets.tsx",
     "relativePath": "src\\pages\\cooperative\\Tickets.tsx"
   },
@@ -3568,6 +3661,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Vouchers.tsx",
     "relativePath": "src\\pages\\cooperative\\Vouchers.tsx"
   },
@@ -3605,7 +3699,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SuratKeluarPage.tsx",
     "relativePath": "src\\pages\\correspondence\\SuratKeluarPage.tsx"
   },
@@ -3643,7 +3738,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SuratMasukPage.tsx",
     "relativePath": "src\\pages\\correspondence\\SuratMasukPage.tsx"
   },
@@ -3682,6 +3778,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "DashboardPage.tsx",
     "relativePath": "src\\pages\\dashboard\\DashboardPage.tsx"
   },
@@ -3720,6 +3817,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "DocumentActivityPage.tsx",
     "relativePath": "src\\pages\\documents\\DocumentActivityPage.tsx"
   },
@@ -3757,7 +3855,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "DocumentCenterPage.tsx",
     "relativePath": "src\\pages\\documents\\DocumentCenterPage.tsx"
   },
@@ -3796,6 +3895,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MemberDocsPage.tsx",
     "relativePath": "src\\pages\\documents\\MemberDocsPage.tsx"
   },
@@ -3833,7 +3933,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ForbiddenPage.tsx",
     "relativePath": "src\\pages\\error\\ForbiddenPage.tsx"
   },
@@ -3871,7 +3972,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "NotFoundPage.tsx",
     "relativePath": "src\\pages\\error\\NotFoundPage.tsx"
   },
@@ -3909,7 +4011,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ServerErrorPage.tsx",
     "relativePath": "src\\pages\\error\\ServerErrorPage.tsx"
   },
@@ -3948,6 +4051,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AbsensiPklPage.tsx",
     "relativePath": "src\\pages\\hubin\\AbsensiPklPage.tsx"
   },
@@ -3985,7 +4089,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BkkPage.tsx",
     "relativePath": "src\\pages\\hubin\\BkkPage.tsx"
   },
@@ -4024,6 +4129,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasHubinPage.tsx",
     "relativePath": "src\\pages\\hubin\\CetakBerkasHubinPage.tsx"
   },
@@ -4062,6 +4168,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BkkModals.tsx",
     "relativePath": "src\\pages\\hubin\\components\\bkk\\BkkModals.tsx"
   },
@@ -4100,6 +4207,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BkkPelamarTab.tsx",
     "relativePath": "src\\pages\\hubin\\components\\bkk\\BkkPelamarTab.tsx"
   },
@@ -4138,6 +4246,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JobCard.tsx",
     "relativePath": "src\\pages\\hubin\\components\\bkk\\JobCard.tsx"
   },
@@ -4176,6 +4285,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "BkkSection.tsx",
     "relativePath": "src\\pages\\hubin\\components\\BkkSection.tsx"
   },
@@ -4214,6 +4324,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "HubinDashboardComponents.tsx",
     "relativePath": "src\\pages\\hubin\\components\\HubinDashboardComponents.tsx"
   },
@@ -4252,6 +4363,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "HubinDashboardSection.tsx",
     "relativePath": "src\\pages\\hubin\\components\\HubinDashboardSection.tsx"
   },
@@ -4290,6 +4402,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "HubinTvModeLayout.tsx",
     "relativePath": "src\\pages\\hubin\\components\\HubinTvModeLayout.tsx"
   },
@@ -4328,6 +4441,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TefaSection.tsx",
     "relativePath": "src\\pages\\hubin\\components\\TefaSection.tsx"
   },
@@ -4366,6 +4480,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TracerFormSubfields.tsx",
     "relativePath": "src\\pages\\hubin\\components\\tracer\\TracerFormSubfields.tsx"
   },
@@ -4404,6 +4519,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TracerStudySection.tsx",
     "relativePath": "src\\pages\\hubin\\components\\TracerStudySection.tsx"
   },
@@ -4442,6 +4558,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "HubinDashboardPage.tsx",
     "relativePath": "src\\pages\\hubin\\HubinDashboardPage.tsx"
   },
@@ -4480,8 +4597,48 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "HubinWorkspacePage.tsx",
     "relativePath": "src\\pages\\hubin\\HubinWorkspacePage.tsx"
+  },
+  "inputnilaipklpage": {
+    "usesLayout": true,
+    "usesOperationalLayout": false,
+    "usesAcademicLayout": true,
+    "usesUiComponents": true,
+    "usesMemo": false,
+    "noAnyType": false,
+    "safeMapping": false,
+    "strictColors": true,
+    "tableSorting": true,
+    "emptyState": true,
+    "loadingGuard": true,
+    "formA11y": false,
+    "performanceOptimization": true,
+    "userGuidance": false,
+    "tablePagination": true,
+    "standardToolbar": true,
+    "standardFeedback": true,
+    "standardContainer": true,
+    "advancedSelect": false,
+    "tableToolbar": true,
+    "breadcrumbNavigation": true,
+    "premiumFeatureGate": false,
+    "godFileGuard": true,
+    "hardcodedConfig": true,
+    "analyticsCardGuard": true,
+    "importExportGuard": true,
+    "standardPdfPrint": true,
+    "zodValidationGuard": false,
+    "standardTabSwitcher": false,
+    "layoutFlowConsistency": true,
+    "dateFormatTimezoneGuard": true,
+    "toolbarButtonAffordanceGuard": true,
+    "whitelabelBrandingGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
+    "filename": "InputNilaiPklPage.tsx",
+    "relativePath": "src\\pages\\hubin\\InputNilaiPklPage.tsx"
   },
   "mitraindustripage": {
     "usesLayout": true,
@@ -4518,6 +4675,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MitraIndustriPage.tsx",
     "relativePath": "src\\pages\\hubin\\MitraIndustriPage.tsx"
   },
@@ -4556,6 +4714,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MonitoringPklPage.tsx",
     "relativePath": "src\\pages\\hubin\\MonitoringPklPage.tsx"
   },
@@ -4594,6 +4753,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PenempatanPklPage.tsx",
     "relativePath": "src\\pages\\hubin\\PenempatanPklPage.tsx"
   },
@@ -4631,7 +4791,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TefaPage.tsx",
     "relativePath": "src\\pages\\hubin\\TefaPage.tsx"
   },
@@ -4669,7 +4830,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TracerStudyPage.tsx",
     "relativePath": "src\\pages\\hubin\\TracerStudyPage.tsx"
   },
@@ -4684,7 +4846,7 @@
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,
-    "loadingGuard": true,
+    "loadingGuard": false,
     "formA11y": true,
     "performanceOptimization": true,
     "userGuidance": true,
@@ -4708,6 +4870,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasKesiswaanPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\CetakBerkasKesiswaanPage.tsx"
   },
@@ -4746,6 +4909,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JenisPelanggaranPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\JenisPelanggaranPage.tsx"
   },
@@ -4755,8 +4919,8 @@
     "usesAcademicLayout": false,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
-    "safeMapping": true,
+    "noAnyType": false,
+    "safeMapping": false,
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,
@@ -4784,6 +4948,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MonitoringKesiswaanPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\MonitoringKesiswaanPage.tsx"
   },
@@ -4793,7 +4958,7 @@
     "usesAcademicLayout": true,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -4821,7 +4986,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PelanggaranPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\PelanggaranPage.tsx"
   },
@@ -4831,7 +4997,7 @@
     "usesAcademicLayout": false,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -4859,9 +5025,49 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PiketPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\PiketPage.tsx"
+  },
+  "kesiswaan_pos_keamanan": {
+    "usesLayout": true,
+    "usesOperationalLayout": false,
+    "usesAcademicLayout": true,
+    "usesUiComponents": false,
+    "usesMemo": false,
+    "noAnyType": true,
+    "safeMapping": true,
+    "strictColors": true,
+    "tableSorting": true,
+    "emptyState": true,
+    "loadingGuard": false,
+    "formA11y": true,
+    "performanceOptimization": true,
+    "userGuidance": true,
+    "tablePagination": true,
+    "standardToolbar": true,
+    "standardFeedback": true,
+    "standardContainer": false,
+    "advancedSelect": true,
+    "tableToolbar": true,
+    "breadcrumbNavigation": true,
+    "premiumFeatureGate": null,
+    "godFileGuard": true,
+    "hardcodedConfig": true,
+    "analyticsCardGuard": true,
+    "importExportGuard": true,
+    "standardPdfPrint": true,
+    "zodValidationGuard": true,
+    "standardTabSwitcher": true,
+    "layoutFlowConsistency": true,
+    "dateFormatTimezoneGuard": true,
+    "toolbarButtonAffordanceGuard": true,
+    "whitelabelBrandingGuard": true,
+    "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
+    "filename": "PiketSecurityStandalonePage.tsx",
+    "relativePath": "src\\pages\\kesiswaan\\PiketSecurityStandalonePage.tsx"
   },
   "kesiswaan_prestasi": {
     "usesLayout": true,
@@ -4897,7 +5103,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PrestasiPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\PrestasiPage.tsx"
   },
@@ -4936,6 +5143,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SettingsPage.tsx",
     "relativePath": "src\\pages\\kesiswaan\\SettingsPage.tsx"
   },
@@ -4945,7 +5153,7 @@
     "usesAcademicLayout": false,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -4974,6 +5182,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasKurikulumPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\CetakBerkasKurikulumPage.tsx"
   },
@@ -4983,7 +5192,7 @@
     "usesAcademicLayout": true,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -5000,7 +5209,7 @@
     "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
-    "godFileGuard": true,
+    "godFileGuard": false,
     "hardcodedConfig": true,
     "analyticsCardGuard": true,
     "importExportGuard": true,
@@ -5012,6 +5221,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "Dashboard.tsx",
     "relativePath": "src\\pages\\kurikulum\\Dashboard.tsx"
   },
@@ -5050,6 +5260,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "GuruMapelPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\GuruMapelPage.tsx"
   },
@@ -5088,6 +5299,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JadwalPelajaranPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JadwalPelajaranPage.tsx"
   },
@@ -5106,7 +5318,7 @@
     "formA11y": false,
     "performanceOptimization": true,
     "userGuidance": true,
-    "tablePagination": true,
+    "tablePagination": false,
     "standardToolbar": true,
     "standardFeedback": true,
     "standardContainer": true,
@@ -5125,7 +5337,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JadwalPiketGuruPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JadwalPiketGuruPage.tsx"
   },
@@ -5145,7 +5358,7 @@
     "performanceOptimization": true,
     "userGuidance": true,
     "tablePagination": true,
-    "standardToolbar": true,
+    "standardToolbar": false,
     "standardFeedback": true,
     "standardContainer": true,
     "advancedSelect": true,
@@ -5164,6 +5377,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "JamKBMPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\JamKBMPage.tsx"
   },
@@ -5202,6 +5416,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "KalenderAkademikPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\KalenderAkademikPage.tsx"
   },
@@ -5239,7 +5454,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MasterStrukturPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\MasterStrukturPage.tsx"
   },
@@ -5250,7 +5466,7 @@
     "usesUiComponents": true,
     "usesMemo": true,
     "noAnyType": false,
-    "safeMapping": true,
+    "safeMapping": false,
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,
@@ -5278,6 +5494,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PerangkatAjarPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\PerangkatAjarPage.tsx"
   },
@@ -5316,6 +5533,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RekapKBMPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\RekapKBMPage.tsx"
   },
@@ -5354,6 +5572,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "StrukturKurikulumPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\StrukturKurikulumPage.tsx"
   },
@@ -5363,7 +5582,7 @@
     "usesAcademicLayout": true,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": false,
     "strictColors": true,
     "tableSorting": true,
@@ -5391,7 +5610,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SupervisiPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\SupervisiPage.tsx"
   },
@@ -5430,6 +5650,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "WaliKelasPage.tsx",
     "relativePath": "src\\pages\\kurikulum\\WaliKelasPage.tsx"
   },
@@ -5468,6 +5689,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "Login.tsx",
     "relativePath": "src\\pages\\Login.tsx"
   },
@@ -5506,6 +5728,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MenuAuditPage.tsx",
     "relativePath": "src\\pages\\management\\MenuAuditPage.tsx"
   },
@@ -5544,6 +5767,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "MenuManagementPage.tsx",
     "relativePath": "src\\pages\\management\\MenuManagementPage.tsx"
   },
@@ -5582,6 +5806,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "RoleManagementPage.tsx",
     "relativePath": "src\\pages\\management\\RoleManagementPage.tsx"
   },
@@ -5620,6 +5845,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "NotificationsPage.tsx",
     "relativePath": "src\\pages\\notifications\\NotificationsPage.tsx"
   },
@@ -5658,6 +5884,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TrialEmailSequencePage.tsx",
     "relativePath": "src\\pages\\notifications\\TrialEmailSequencePage.tsx"
   },
@@ -5695,7 +5922,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "WhatsAppChatLogPage.tsx",
     "relativePath": "src\\pages\\notifications\\WhatsAppChatLogPage.tsx"
   },
@@ -5733,7 +5961,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "WhatsAppHealthPage.tsx",
     "relativePath": "src\\pages\\notifications\\WhatsAppHealthPage.tsx"
   },
@@ -5772,6 +6001,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "AboutUsPage.tsx",
     "relativePath": "src\\pages\\public\\AboutUsPage.tsx"
   },
@@ -5810,6 +6040,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "DataProcessingAgreementPage.tsx",
     "relativePath": "src\\pages\\public\\DataProcessingAgreementPage.tsx"
   },
@@ -5847,7 +6078,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "EmailVerificationStatusPage.tsx",
     "relativePath": "src\\pages\\public\\EmailVerificationStatusPage.tsx"
   },
@@ -5886,6 +6118,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "HomePage.tsx",
     "relativePath": "src\\pages\\public\\HomePage.tsx"
   },
@@ -5924,6 +6157,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "LearnMorePage.tsx",
     "relativePath": "src\\pages\\public\\LearnMorePage.tsx"
   },
@@ -5962,6 +6196,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "PricingPage.tsx",
     "relativePath": "src\\pages\\public\\PricingPage.tsx"
   },
@@ -6000,6 +6235,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PrivacyPolicyPage.tsx",
     "relativePath": "src\\pages\\public\\PrivacyPolicyPage.tsx"
   },
@@ -6037,7 +6273,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ServiceDetailPage.tsx",
     "relativePath": "src\\pages\\public\\ServiceDetailPage.tsx"
   },
@@ -6076,6 +6313,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ServicesCatalogPage.tsx",
     "relativePath": "src\\pages\\public\\ServicesCatalogPage.tsx"
   },
@@ -6114,6 +6352,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SIPLaHAuditVerifyPage.tsx",
     "relativePath": "src\\pages\\public\\SIPLaHAuditVerifyPage.tsx"
   },
@@ -6151,7 +6390,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SuratKeluarPublicViewPage.tsx",
     "relativePath": "src\\pages\\public\\SuratKeluarPublicViewPage.tsx"
   },
@@ -6189,7 +6429,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SuratKeluarQuickApprovePage.tsx",
     "relativePath": "src\\pages\\public\\SuratKeluarQuickApprovePage.tsx"
   },
@@ -6228,6 +6469,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TermsOfServicePage.tsx",
     "relativePath": "src\\pages\\public\\TermsOfServicePage.tsx"
   },
@@ -6236,21 +6478,21 @@
     "usesOperationalLayout": false,
     "usesAcademicLayout": true,
     "usesUiComponents": true,
-    "usesMemo": false,
+    "usesMemo": true,
     "noAnyType": false,
     "safeMapping": false,
-    "strictColors": false,
+    "strictColors": true,
     "tableSorting": true,
     "emptyState": true,
     "loadingGuard": true,
-    "formA11y": false,
+    "formA11y": true,
     "performanceOptimization": true,
     "userGuidance": false,
     "tablePagination": true,
     "standardToolbar": true,
     "standardFeedback": true,
     "standardContainer": true,
-    "advancedSelect": false,
+    "advancedSelect": true,
     "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
@@ -6259,23 +6501,24 @@
     "analyticsCardGuard": true,
     "importExportGuard": true,
     "standardPdfPrint": true,
-    "zodValidationGuard": false,
+    "zodValidationGuard": true,
     "standardTabSwitcher": true,
     "layoutFlowConsistency": true,
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": false,
+    "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakRaporPage.tsx",
     "relativePath": "src\\pages\\rapor\\CetakRaporPage.tsx"
   },
-  "inputnilaipage": {
+  "InputNilaiPage": {
     "usesLayout": true,
     "usesOperationalLayout": true,
     "usesAcademicLayout": false,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -6304,6 +6547,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "InputNilaiPage.tsx",
     "relativePath": "src\\pages\\rapor\\InputNilaiPage.tsx"
   },
@@ -6342,6 +6586,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "P5Page.tsx",
     "relativePath": "src\\pages\\rapor\\P5Page.tsx"
   },
@@ -6380,6 +6625,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "ReportsPage.tsx",
     "relativePath": "src\\pages\\reports\\ReportsPage.tsx"
   },
@@ -6418,6 +6664,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CetakBerkasSarprasPage.tsx",
     "relativePath": "src\\pages\\sarpras\\CetakBerkasSarprasPage.tsx"
   },
@@ -6456,6 +6703,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasDashboardComponents.tsx",
     "relativePath": "src\\pages\\sarpras\\components\\SarprasDashboardComponents.tsx"
   },
@@ -6494,6 +6742,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasTvModeLayout.tsx",
     "relativePath": "src\\pages\\sarpras\\components\\SarprasTvModeLayout.tsx"
   },
@@ -6532,6 +6781,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasCatalogPage.tsx",
     "relativePath": "src\\pages\\sarpras\\SarprasCatalogPage.tsx"
   },
@@ -6570,6 +6820,7 @@
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SarprasDashboard.tsx",
     "relativePath": "src\\pages\\sarpras\\SarprasDashboard.tsx"
   },
@@ -6608,6 +6859,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasInventoryPage.tsx",
     "relativePath": "src\\pages\\sarpras\\SarprasInventoryPage.tsx"
   },
@@ -6646,6 +6898,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasLoansPage.tsx",
     "relativePath": "src\\pages\\sarpras\\SarprasLoansPage.tsx"
   },
@@ -6683,7 +6936,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": false,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SarprasMaintenancePage.tsx",
     "relativePath": "src\\pages\\sarpras\\SarprasMaintenancePage.tsx"
   },
@@ -6722,6 +6976,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SettingsPage.tsx",
     "relativePath": "src\\pages\\settings\\SettingsPage.tsx"
   },
@@ -6760,6 +7015,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SystemUpdatePage.tsx",
     "relativePath": "src\\pages\\settings\\SystemUpdatePage.tsx"
   },
@@ -6769,7 +7025,7 @@
     "usesAcademicLayout": true,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
@@ -6798,6 +7054,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "WhatsappSettingsPage.tsx",
     "relativePath": "src\\pages\\settings\\WhatsappSettingsPage.tsx"
   },
@@ -6836,6 +7093,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "BackupsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\BackupsPage.tsx"
   },
@@ -6874,6 +7132,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "CalendarPresetsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\CalendarPresetsPage.tsx"
   },
@@ -6912,6 +7171,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": false,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "InfraControlCenterPage.tsx",
     "relativePath": "src\\pages\\superadmin\\infra\\InfraControlCenterPage.tsx"
   },
@@ -6950,6 +7210,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RevenueIntelligencePage.tsx",
     "relativePath": "src\\pages\\superadmin\\intelligence\\RevenueIntelligencePage.tsx"
   },
@@ -6988,6 +7249,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "UpgradeIntelligencePage.tsx",
     "relativePath": "src\\pages\\superadmin\\intelligence\\UpgradeIntelligencePage.tsx"
   },
@@ -7025,7 +7287,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "JurusanPresetsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\JurusanPresetsPage.tsx"
   },
@@ -7063,7 +7326,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "KurikulumStandardsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\KurikulumStandardsPage.tsx"
   },
@@ -7102,6 +7366,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "LibraryTemplatesPage.tsx",
     "relativePath": "src\\pages\\superadmin\\LibraryTemplatesPage.tsx"
   },
@@ -7110,7 +7375,7 @@
     "usesOperationalLayout": false,
     "usesAcademicLayout": false,
     "usesUiComponents": true,
-    "usesMemo": false,
+    "usesMemo": true,
     "noAnyType": false,
     "safeMapping": false,
     "strictColors": true,
@@ -7140,6 +7405,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "MapelPresetsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\MapelPresetsPage.tsx"
   },
@@ -7178,6 +7444,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "PlatformIntelligencePage.tsx",
     "relativePath": "src\\pages\\superadmin\\PlatformIntelligencePage.tsx"
   },
@@ -7216,6 +7483,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": false,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "RevenueDashboardPage.tsx",
     "relativePath": "src\\pages\\superadmin\\revenue\\RevenueDashboardPage.tsx"
   },
@@ -7254,6 +7522,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "AdminSupportTicketPage.tsx",
     "relativePath": "src\\pages\\superadmin\\support\\AdminSupportTicketPage.tsx"
   },
@@ -7292,6 +7561,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "TenantDetailPage.tsx",
     "relativePath": "src\\pages\\superadmin\\TenantDetailPage.tsx"
   },
@@ -7329,7 +7599,8 @@
     "dateFormatTimezoneGuard": true,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TopikPresetsPage.tsx",
     "relativePath": "src\\pages\\superadmin\\TopikPresetsPage.tsx"
   },
@@ -7367,7 +7638,8 @@
     "dateFormatTimezoneGuard": false,
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
-    "responsiveLayoutAdaptationGuard": true,
+    "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "SupportTicketPage.tsx",
     "relativePath": "src\\pages\\support\\SupportTicketPage.tsx"
   },
@@ -7406,6 +7678,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "CancelledPage.tsx",
     "relativePath": "src\\pages\\system\\CancelledPage.tsx"
   },
@@ -7444,6 +7717,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": false,
     "responsiveLayoutAdaptationGuard": false,
+    "dataFetchingOptimizationGuard": false,
     "filename": "EasyTunnelPage.tsx",
     "relativePath": "src\\pages\\system\\EasyTunnelPage.tsx"
   },
@@ -7482,6 +7756,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "SuspendedPage.tsx",
     "relativePath": "src\\pages\\system\\SuspendedPage.tsx"
   },
@@ -7520,6 +7795,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "TenantsPage.tsx",
     "relativePath": "src\\pages\\tenants\\TenantsPage.tsx"
   },
@@ -7558,6 +7834,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": true,
     "filename": "TestLogin.tsx",
     "relativePath": "src\\pages\\TestLogin.tsx"
   },
@@ -7596,6 +7873,7 @@
     "toolbarButtonAffordanceGuard": true,
     "whitelabelBrandingGuard": true,
     "responsiveLayoutAdaptationGuard": true,
+    "dataFetchingOptimizationGuard": false,
     "filename": "UsersPage.tsx",
     "relativePath": "src\\pages\\users\\UsersPage.tsx"
   }

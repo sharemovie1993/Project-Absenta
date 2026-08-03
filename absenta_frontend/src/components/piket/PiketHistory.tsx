@@ -6,6 +6,7 @@ import { Timeline, TimelineItem } from '../ui/Timeline';
 import { Loader } from '../ui/Loader';
 import { Search, History, CheckCircle, LogIn, LogOut } from 'lucide-react';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import { getTipeIzinBadgeConfig } from '../../utils/piketStatusHelper';
 
 interface PiketHistoryProps {
   dailyPermits: IzinKeluarSiswa[];
@@ -54,7 +55,14 @@ export const PiketHistory: React.FC<PiketHistoryProps> = React.memo(({
                     icon={p.status === 'KEMBALI' ? <LogIn size={10} /> : <LogOut size={10} />}
                     subtitle={
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-[8px] font-black tracking-widest text-indigo-500 border-none px-0 uppercase">{p.tipe_izin === 'PULANG_AWAL' ? 'PULANG CEPAT' : 'IZIN SEMENTARA'}</Badge>
+                        {(() => {
+                          const cfg = getTipeIzinBadgeConfig(p.tipe_izin);
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${cfg.badgeClass}`}>
+                              {cfg.icon} {cfg.label}
+                            </span>
+                          );
+                        })()}
                         <span className="text-gray-300">•</span>
                         <Badge size="sm" variant={p.status === 'KEMBALI' ? 'success' : 'warning'} className="text-[8px] font-black tracking-widest uppercase">
                           {statusLabels[p.status] || p.status}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTenant } from '../../../hooks/useTenant';
 import { Loader, Activity, ShieldCheck, Zap, User, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
@@ -17,6 +18,7 @@ const CatatPelanggaranModal = lazy(() => import('../../../components/kesiswaan/m
 const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
 export default function AttendanceOpsPage() {
+  const navigate = useNavigate();
   const { subscription } = useAuthStore();
   const { user } = useAuth();
   const { tenantId } = useTenant();
@@ -80,6 +82,13 @@ interface AuthUserCaps {
       backLabel="Kembali ke Dashboard"
       actions={
         <div className="flex gap-2 items-center">
+          <Button 
+            onClick={() => navigate('/kesiswaan/pos-keamanan')}
+            variant="outline"
+            className="rounded-lg h-8 px-3 font-bold text-xs border-indigo-600/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hidden sm:inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <ShieldCheck size={14} /> Pos Satpam Gerbang
+          </Button>
           <Button 
             onClick={() => setTindakMasalModalOpen(true)}
             variant="outline"

@@ -1501,6 +1501,19 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
           : 'Gagal: Terdeteksi isu responsivitas antarmuka. Petunjuk Perbaikan: (1) Sembunyikan badge status redundan di HP (hidden sm:block) agar judul dapat 100% ruang lebar. (2) Gunakan touch-scroll overflow-x-auto pada TabSwitcher. (3) Berikan varian Mobile-Mini/Compact Premium (mobileCompact={true}) pada kartu statistik HP. (4) Pastikan min-w-0 pada form & input.'
       });
     }
+
+    // 31. Audit Kriteria: Optimasi Data Fetching & Anti-useEffect Guard (Data Fetching Optimization Guard)
+    if (auditData.dataFetchingOptimizationGuard !== undefined && auditData.dataFetchingOptimizationGuard !== null) {
+      config.standards.push({
+        id: 'architectural_data_fetching_optimization',
+        name: 'Optimasi Data Fetching & Anti-useEffect Guard (Data Fetching Optimization Guard)',
+        description: 'Memverifikasi bahwa halaman/komponen bebas dari penggunaan raw useEffect data fetching mentah dan terintegrasi dengan React Query (useQuery / useMutation) atau Custom Options Hook terstandar untuk mendukung caching, auto-refetch, dan performa data terpusat.',
+        status: auditData.dataFetchingOptimizationGuard ? 'VERIFIED' : 'FAILED',
+        details: auditData.dataFetchingOptimizationGuard
+          ? 'Tervalidasi: Pengambilan data terintegrasi penuh dengan React Query / Custom Options Hook terstandar tanpa raw useEffect data fetching.'
+          : 'Gagal: Terdeteksi penggunaan raw useEffect untuk pengambilan data. Wajib dilindungi/migrasi ke React Query (useQuery / useMutation) atau Custom Options Hook terstandar.'
+      });
+    }
   }
 
   // Append any specific hand-written functional standards from original registry

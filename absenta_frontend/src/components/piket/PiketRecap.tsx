@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { FileText, Printer, Calendar, RefreshCw } from 'lucide-react';
-import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions';
 import { Table } from '../ui/Table';
 
 interface PiketRecapProps {
@@ -33,69 +33,76 @@ export const PiketRecap: React.FC<PiketRecapProps> = React.memo(({
   const [filterOption, setFilterOption] = useState<'today' | 'yesterday' | 'range' | 'month'>('today');
   const [startDate, setStartDate] = useState(getLocalISODate(new Date()));
   const [endDate, setEndDate] = useState(getLocalISODate(new Date()));
-  const [recapPermits, setRecapPermits] = useState<IzinKeluarSiswa[]>([]);
-  const [recapDateLabel, setRecapDateLabel] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [appliedRange, setAppliedRange] = useState<{ start: string; end: string } | null>(null);
 
-  const fetchRecapData = async (option: string, start?: string, end?: string) => {
-    setLoading(true);
-    try {
-      let params: { date?: string; startDate?: string; endDate?: string } = {};
-      const today = new Date();
-      let label = '';
-      let sigDateStr = '';
-
-      if (option === 'today') {
-        const todayStr = getLocalISODate(today);
-        params = { date: todayStr };
-        label = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        sigDateStr = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      } else if (option === 'yesterday') {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = getLocalISODate(yesterday);
-        params = { date: yesterdayStr };
-        label = yesterday.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        sigDateStr = yesterday.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      } else if (option === 'month') {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-        const startStr = getLocalISODate(oneMonthAgo);
-        const endStr = getLocalISODate(today);
-        params = { startDate: startStr, endDate: endStr };
-        label = `${oneMonthAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-        sigDateStr = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      } else if (option === 'range' && start && end) {
-        params = { startDate: start, endDate: end };
-        const dStart = new Date(start);
-        const dEnd = new Date(end);
-        label = `${dStart.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${dEnd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-        sigDateStr = dEnd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      }
-
-      const res = await piketApi.getDailyPermits(params);
-      if (res.success) {
-        setRecapPermits(res.data);
-        setRecapDateLabel(label);
-        // Sync with parent for printing portal
-        onUpdatePrintData(res.data, label, sigDateStr);
-      }
-    } catch (err) {
-      console.error('Failed to fetch recap:', err);
-    } finally {
-      setLoading(false);
+  const queryParams = useMemo(() => {
+    const today = new Date();
+    if (filterOption === 'today') {
+      return { date: getLocalISODate(today) };
+    } else if (filterOption === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return { date: getLocalISODate(yesterday) };
+    } else if (filterOption === 'month') {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      return { startDate: getLocalISODate(oneMonthAgo), endDate: getLocalISODate(today) };
+    } else if (filterOption === 'range' && appliedRange) {
+      return { startDate: appliedRange.start, endDate: appliedRange.end };
     }
-  };
+    return { date: getLocalISODate(today) };
+  }, [filterOption, appliedRange]);
 
-  // Fetch on mount or when filter changes (auto-apply for today, yesterday, month)
-  useEffect(() => {
-    if (filterOption !== 'range') {
-      fetchRecapData(filterOption);
+  const { rawList: recapPermits, isLoading: loading } = usePiketIzinKeluarOptions(queryParams);
+
+  const { recapDateLabel, sigDateStr } = useMemo(() => {
+    const today = new Date();
+    if (filterOption === 'today') {
+      return {
+        recapDateLabel: today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+        sigDateStr: today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      };
+    } else if (filterOption === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return {
+        recapDateLabel: yesterday.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+        sigDateStr: yesterday.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      };
+    } else if (filterOption === 'month') {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      return {
+        recapDateLabel: `${oneMonthAgo.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        sigDateStr: today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      };
+    } else if (appliedRange) {
+      const dStart = new Date(appliedRange.start);
+      const dEnd = new Date(appliedRange.end);
+      return {
+        recapDateLabel: `${dStart.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${dEnd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        sigDateStr: dEnd.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      };
     }
-  }, [filterOption]);
+    return {
+      recapDateLabel: today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+      sigDateStr: today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
+  }, [filterOption, appliedRange]);
 
   const handleApplyRange = () => {
-    fetchRecapData('range', startDate, endDate);
+    setAppliedRange({ start: startDate, end: endDate });
+  };
+
+  const handlePrintClick = () => {
+    onUpdatePrintData(recapPermits, recapDateLabel, sigDateStr);
+    setPrintPaperSize('a4');
+    setIsPrintingRekap(true);
+    setPrintedPermit(null);
+    setTimeout(() => {
+      window.print();
+      setIsPrintingRekap(false);
+    }, 300);
   };
 
   const columns = React.useMemo(() => [
@@ -187,15 +194,7 @@ export const PiketRecap: React.FC<PiketRecapProps> = React.memo(({
           {/* Printing Action Button */}
           <div className="flex items-center gap-3">
             <Button 
-              onClick={() => {
-                setPrintPaperSize('a4');
-                setIsPrintingRekap(true);
-                setPrintedPermit(null);
-                setTimeout(() => {
-                  window.print();
-                  setIsPrintingRekap(false);
-                }, 300);
-              }}
+              onClick={handlePrintClick}
               disabled={(recapPermits?.length || 0) === 0 || loading}
               className="rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-indigo-950 font-black text-xs uppercase tracking-widest px-6 py-3 flex items-center gap-2 shadow-lg shadow-emerald-500/10 border-none transition-all duration-300 transform hover:scale-[1.02]"
             >

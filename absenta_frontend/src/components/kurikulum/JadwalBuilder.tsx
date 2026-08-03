@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Badge, SearchableSelect, ConfirmDialog } from '../ui';
 import { 
   Calendar, 
@@ -26,14 +26,13 @@ import {
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
 import { getMapelColor } from '../../utils/mapelColorHelper';
-import { getGuruList } from '../../api/academic/guru.api';
-import { getMapelList } from '../../api/academic/mapel.api';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
-import { getKelasForDropdown, type DropdownOption } from '../../api/dropdown.api';
+import { type DropdownOption } from '../../api/dropdown.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { kurikulumApi } from '../../api/kurikulum.api';
+import { useGuruOptions, useMapelOptions, useKelasOptions } from '../common';
 import { ViewMode, ToolMode, JadwalBuilderProps } from './jadwal-builder/types';
 import { JadwalBuilderHeader } from './jadwal-builder/JadwalBuilderHeader';
 import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
@@ -116,13 +115,49 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [paintMapelId, setPaintMapelId] = useState<string>('');
   const [paintGuruId, setPaintGuruId] = useState<string>('');
 
-  // Data lists
-  const [kelasList, setKelasList] = useState<DropdownOption[]>([]);
-  const [guruList, setGuruList] = useState<any[]>([]);
-  const [mapelList, setMapelList] = useState<any[]>([]);
-  
-  // All schedules in system for conflict detection
-  const [allJadwal, setAllJadwal] = useState<JadwalKBM[]>([]);
+  // ── Reference Options Hooks ──────────────────────────────────────────────
+  const { options: kelasSelectOptions, rawList: kelasRawList } = useKelasOptions();
+  const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { rawList: mapelRawList } = useMapelOptions();
+
+  const kelasList = useMemo<DropdownOption[]>(() => {
+    return (kelasRawList || [])
+      .map(k => ({ value: k.id, label: k.nama_kelas }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [kelasRawList]);
+
+  const guruList = useMemo(() => {
+    return (guruRawList || []).slice().sort((a, b) => (a.nama_guru || '').localeCompare(b.nama_guru || ''));
+  }, [guruRawList]);
+
+  const mapelList = useMemo(() => {
+    return (mapelRawList || []).slice().sort((a, b) => (a.nama_mapel || '').localeCompare(b.nama_mapel || ''));
+  }, [mapelRawList]);
+
+  useEffect(() => {
+    if (kelasList.length > 0 && !selectedKelasId) {
+      setSelectedKelasId(kelasList[0].value);
+    }
+  }, [kelasList, selectedKelasId]);
+
+  useEffect(() => {
+    if (guruList.length > 0 && !selectedGuruId) {
+      setSelectedGuruId(guruList[0].id);
+    }
+  }, [guruList, selectedGuruId]);
+
+  // ── useQuery: All Schedules for real-time conflict checking ───────────────
+  const { data: schedulesRes, isLoading: loadingData, refetch: fetchSchedules } = useQuery({
+    queryKey: ['jadwal-kbm-all-builder', tahunPelajaranId, semesterId],
+    queryFn: () => (tahunPelajaranId && semesterId) ? getJadwalKBM({
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId
+    }).catch(() => null) : null,
+    enabled: !!tahunPelajaranId && !!semesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allJadwal = useMemo(() => schedulesRes?.data || [], [schedulesRes]);
 
   // Confirmation Dialog State
   const [confirmState, setConfirmState] = useState<{
@@ -156,42 +191,51 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       });
     });
   };
-  const [loadingData, setLoadingData] = useState<boolean>(true);
+
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
-  const [mappedMapelIds, setMappedMapelIds] = useState<string[] | null>(null);
-  const [loadingMappedMapels, setLoadingMappedMapels] = useState<boolean>(false);
+
+  // ── useQuery: Mapped Mapel for Selected Guru ──────────────────────────────
+  const { data: mappedMapelsRes, isLoading: loadingMappedMapels } = useQuery({
+    queryKey: ['guru-mapped-mapels', selectedGuruId],
+    queryFn: () => (selectedGuruId && viewMode === 'GURU') ? listGuruMapel({ guru_id: selectedGuruId }).catch(() => null) : null,
+    enabled: viewMode === 'GURU' && !!selectedGuruId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const mappedMapelIds = useMemo(() => {
+    if (viewMode !== 'GURU') return null;
+    if (!selectedGuruId) return [];
+    if (mappedMapelsRes?.success && mappedMapelsRes.data) {
+      return mappedMapelsRes.data.map(gm => gm.mapel_id);
+    }
+    return null;
+  }, [viewMode, selectedGuruId, mappedMapelsRes]);
+
+  useEffect(() => {
+    if (mappedMapelIds && mappedMapelIds.length > 0) {
+      if (!mappedMapelIds.includes(paintMapelId)) {
+        setPaintMapelId(mappedMapelIds[0]);
+      }
+    } else if (mappedMapelIds && mappedMapelIds.length === 0) {
+      setPaintMapelId('');
+    }
+  }, [mappedMapelIds, paintMapelId]);
 
   // Beban guru states
   const [bebanModalOpen, setBebanModalOpen] = useState(false);
-  const [bebanGuruList, setBebanGuruList] = useState<any[]>([]);
-  const [loadingBeban, setLoadingBeban] = useState(false);
   const [searchBebanGuru, setSearchBebanGuru] = useState('');
 
-  const fetchBebanGuru = async () => {
-    try {
-      setLoadingBeban(true);
-      const res = await kurikulumApi.getBebanMengajar({
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId
-      });
-      if (res.success) {
-        setBebanGuruList(res.data || []);
-      } else {
-        toast.error('Gagal mengambil data beban guru');
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast.error('Terjadi kesalahan saat memuat beban guru');
-    } finally {
-      setLoadingBeban(false);
-    }
-  };
-
-  useEffect(() => {
-    if (bebanModalOpen) {
-      fetchBebanGuru();
-    }
-  }, [bebanModalOpen, tahunPelajaranId, semesterId]);
+  // ── useQuery: Beban Guru List ─────────────────────────────────────────────
+  const { data: bebanGuruRes, isLoading: loadingBeban, refetch: fetchBebanGuru } = useQuery({
+    queryKey: ['beban-guru-list', tahunPelajaranId, semesterId],
+    queryFn: () => (tahunPelajaranId && semesterId) ? kurikulumApi.getBebanMengajar({
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId
+    }).catch(() => null) : null,
+    enabled: bebanModalOpen && !!tahunPelajaranId && !!semesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const bebanGuruList = useMemo(() => bebanGuruRes?.data || [], [bebanGuruRes]);
 
   // Shift config states
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
@@ -237,102 +281,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [searchGuru, setSearchGuru] = useState<string>('');
   const [searchMapel, setSearchMapel] = useState<string>('');
 
-  // Fetch reference lists
-  useEffect(() => {
-    const fetchReferences = async () => {
-      try {
-        const [kelasData, guruData, mapelData] = await Promise.all([
-          getKelasForDropdown(),
-          getGuruList(1, 200, '', ''),
-          getMapelList(1, 200, '')
-        ]);
-        
-        const sortedKelas = (kelasData || []).sort((a: any, b: any) => a.label.localeCompare(b.label));
-        const sortedGuru = (guruData?.data || []).sort((a: any, b: any) => a.nama_guru.localeCompare(b.nama_guru));
-        const sortedMapel = (mapelData?.data || []).sort((a: any, b: any) => a.nama_mapel.localeCompare(b.nama_mapel));
-
-        setKelasList(sortedKelas);
-        setGuruList(sortedGuru);
-        setMapelList(sortedMapel);
-        
-        if (sortedKelas.length > 0) {
-          setSelectedKelasId(sortedKelas[0].value);
-        }
-        if (sortedGuru.length > 0) {
-          setSelectedGuruId(sortedGuru[0].id);
-        }
-      } catch (err) {
-        console.error('Failed to load references:', err);
-        toast.error('Gagal memuat daftar referensi');
-      }
-    };
-    fetchReferences();
-  }, []);
-
-  // Fetch all schedules for real-time conflict checking
-  const fetchSchedules = async () => {
-    if (!tahunPelajaranId || !semesterId) {
-      setLoadingData(false);
-      return;
-    }
-    setLoadingData(true);
-    try {
-      const res = await getJadwalKBM({
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId
-      });
-      setAllJadwal(res?.data || []);
-    } catch (err) {
-      console.error('Failed to load schedules:', err);
-      toast.error('Gagal mengambil data jadwal');
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSchedules();
-  }, [tahunPelajaranId, semesterId]);
-
   useEffect(() => {
     if (viewMode === 'GURU' && selectedGuruId) {
       setPaintGuruId(selectedGuruId);
     }
-  }, [viewMode, selectedGuruId]);
-
-  useEffect(() => {
-    if (viewMode !== 'GURU') {
-      setMappedMapelIds(null);
-      return;
-    }
-    if (!selectedGuruId) {
-      setMappedMapelIds([]);
-      return;
-    }
-
-    const fetchMappedMapels = async () => {
-      setLoadingMappedMapels(true);
-      try {
-        const res = await listGuruMapel({ guru_id: selectedGuruId });
-        if (res?.success && res.data) {
-          const ids = res.data.map(gm => gm.mapel_id);
-          setMappedMapelIds(ids);
-          if (ids.length > 0) {
-            if (!ids.includes(paintMapelId)) {
-              setPaintMapelId(ids[0]);
-            }
-          } else {
-            setPaintMapelId('');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch mapped mapels:', err);
-      } finally {
-        setLoadingMappedMapels(false);
-      }
-    };
-
-    fetchMappedMapels();
   }, [viewMode, selectedGuruId]);
 
   // Filters

@@ -21,6 +21,8 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { kesiswaanApi, type JenisPelanggaran } from '../../../api/kesiswaan.api';
 import { Loader } from '../../ui/Loader';
 
+import { useJenisPelanggaranOptions } from '../../../hooks/useJenisPelanggaranOptions';
+
 const Modal = lazy(() => import('../../ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
@@ -57,8 +59,7 @@ export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = ({
   const queryClient = useQueryClient();
   const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
   const [submitting, setSubmitting] = useState(false);
-  const [jenisList, setJenisList] = useState<JenisPelanggaran[]>([]);
-  const [loadingJenis, setLoadingJenis] = useState(false);
+  const { rawList: jenisList, isLoading: loadingJenis } = useJenisPelanggaranOptions();
 
   // Single Mode State
   const [selectedSingleSiswa, setSelectedSingleSiswa] = useState<StudentItem | null>(null);
@@ -73,29 +74,6 @@ export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = ({
     tanggal: new Date().toISOString().split('T')[0],
     status: 'BARU'
   });
-
-  // Fetch jenis pelanggaran list
-  useEffect(() => {
-    if (!isOpen) return;
-    setLoadingJenis(true);
-    kesiswaanApi.getJenisPelanggaran()
-      .then((res) => {
-        const list = res?.data || res || [];
-        if (Array.isArray(list)) {
-          setJenisList(list);
-        }
-      })
-      .catch(() => {
-        setJenisList([
-          { id: '1', kategori: 'Ringan', nama_pelanggaran: 'Terlambat Masuk Sekolah', poin: 5 },
-          { id: '2', kategori: 'Ringan', nama_pelanggaran: 'Seragam Tidak Rapi / Tidak Sesuai', poin: 5 },
-          { id: '3', kategori: 'Sedang', nama_pelanggaran: 'Menggunakan HP saat KBM', poin: 15 },
-          { id: '4', kategori: 'Sedang', nama_pelanggaran: 'Keluar Kelas Tanpa Izin', poin: 10 },
-          { id: '5', kategori: 'Berat', nama_pelanggaran: 'Merokok di Lingkungan Sekolah', poin: 50 },
-        ]);
-      })
-      .finally(() => setLoadingJenis(false));
-  }, [isOpen]);
 
   const handleSelectJenis = useCallback((nama: string) => {
     const matched = jenisList.find(j => j.nama_pelanggaran === nama);

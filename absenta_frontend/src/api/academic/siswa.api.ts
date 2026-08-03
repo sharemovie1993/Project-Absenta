@@ -4,6 +4,15 @@ import type { Siswa, CreateSiswaData, UpdateSiswaData } from '../../types/academ
 // Re-export types used by components
 export type { Siswa, CreateSiswaData as CreateSiswaPayload, UpdateSiswaData as UpdateSiswaPayload };
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const siswaQueryKeys = {
+  all: ['siswa'] as const,
+  lists: () => [...siswaQueryKeys.all, 'list'] as const,
+  list: (filters: Record<string, any>) => [...siswaQueryKeys.lists(), filters] as const,
+  detail: (id: string) => [...siswaQueryKeys.all, 'detail', id] as const,
+};
+
+
 // Define local types if missing in academic.ts
 export interface SiswaResponse {
   success: boolean;

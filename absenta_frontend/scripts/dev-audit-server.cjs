@@ -561,10 +561,17 @@ const server = http.createServer((req, res) => {
     const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('OperationalPageLayout') || content.includes('AcademicPageLayout');
     const missingWhitelabelBranding = hasHardcodedStaticAppBranding && !usesDynamicBranding;
 
-    // ─── Pilar 30: Adaptabilitas Responsif Multi-Perangkat (Responsive Multi-Device Adaptation Guard) ───
-    const hasUnresponsiveGrid = /(?<!(?:sm|md|lg|xl|2xl):)grid-cols-(?:[3-9]|12)\b/.test(content);
-    const hasUnresponsiveTopbarText = /Kembali ke Dashboard/.test(content) && !content.includes('hidden sm:inline') && !content.includes('OperationalPageLayout') && !content.includes('AcademicPageLayout');
-    const missingResponsiveAdaptation = !isComponentFile && (hasUnresponsiveGrid || hasUnresponsiveTopbarText);
+    // ─── Pilar 30: Adaptabilitas Responsif Multi-Perangkat ───
+    const hasUnresponsiveGrid = /(?<!(?:sm|md|lg|xl|2xl):)grid-cols-(?:[2-9]|12)\b/.test(content);
+    const hasUnresponsiveFixedWidth = /(?:w|min-w)-\[\d{3,4}px\]/.test(content) && !content.includes('overflow-x-auto') && !content.includes('max-w-full');
+    const hasUnresponsiveTopbarText = /Kembali ke Dashboard/.test(content) && !content.includes('hidden sm:inline') && !content.includes('hidden sm:block') && !content.includes('truncate');
+    const missingResponsiveAdaptation = !isComponentFile && (hasUnresponsiveGrid || hasUnresponsiveFixedWidth || hasUnresponsiveTopbarText);
+
+    // ─── Pilar 31: Data Fetching Optimization & Anti-useEffect Guard ───
+    const hasRawEffectDataFetching = /useEffect\s*\(\s*(?:async\s*)?\(\)\s*=>\s*\{[^}]*?\b(fetch\(|axios\.|api\.|get\w+Api|\.get\(|load\w+|fetch\w+)/s.test(content) ||
+      /useEffect\s*\(\s*\(\)\s*=>\s*\{[^}]*?\b(fetch\w+|load\w+)\s*\(/s.test(content);
+    const usesReactQueryOrHook = content.includes('useQuery') || content.includes('useMutation') || /use[A-Z]\w*Options/.test(content);
+    const missingDataFetchingOptimization = hasRawEffectDataFetching && !usesReactQueryOrHook;
 
     const issues = [];
     if (!isComponentFile && !usesLayout) {
@@ -672,6 +679,9 @@ const server = http.createServer((req, res) => {
     if (missingResponsiveAdaptation) {
       issues.push("❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant=\"compact-premium\"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).");
     }
+    if (missingDataFetchingOptimization) {
+      issues.push("❌ Terdeteksi penggunaan raw useEffect untuk pengambilan data (Pelanggaran Pilar 31 Optimasi Data Fetching). Wajib dilindungi/migrasi ke React Query (useQuery / useMutation) atau Custom Options Hook terstandar untuk mendukung caching, auto-refetch, dan performa data terpusat.");
+    }
 
     // Buat laporan perintah refaktor instan (Copy-Pasteable Prompt)
     let prompt = `Tolong lakukan refaktor hardening penuh pada halaman ${relativePath} berdasarkan temuan audit arsitektur terbaru:\n\n`;
@@ -718,6 +728,7 @@ const server = http.createServer((req, res) => {
       layoutFlowConsistency: !missingLayoutFlowConsistency,
       whitelabelBrandingGuard: isComponentFile ? true : !missingWhitelabelBranding,
       responsiveLayoutAdaptationGuard: isComponentFile ? true : !missingResponsiveAdaptation,
+      dataFetchingOptimizationGuard: !missingDataFetchingOptimization,
       usesUiComponents,
       issues,
       refactorPrompt: prompt,

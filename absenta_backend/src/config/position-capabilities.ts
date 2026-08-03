@@ -109,7 +109,27 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'kesiswaan.schedules.view.list',
     'kesiswaan.schedules.create',
     'kesiswaan.schedules.update',
-    'kesiswaan.schedules.delete'
+    'kesiswaan.schedules.delete',
+    // ─── CRUD Jadwal Piket Guru ───
+    'kurikulum.jadwal-piket.view',
+    'kurikulum.jadwal-piket.create',
+    'kurikulum.jadwal-piket.update',
+    'kurikulum.jadwal-piket.delete',
+    'kurikulum.jadwal-piket.manage',
+    'kurikulum:jadwal-piket:view',
+    'kurikulum:jadwal-piket:create',
+    'kurikulum:jadwal-piket:update',
+    'kurikulum:jadwal-piket:delete',
+    'kurikulum:jadwal-piket:manage',
+    'curriculum.piket.schedules.view',
+    'curriculum.piket.schedules.create',
+    'curriculum.piket.schedules.update',
+    'curriculum.piket.schedules.delete',
+    'curriculum.piket.schedules.manage',
+    'attendance.piket.view',
+    'attendance.piket.manage',
+    'kesiswaan.piket.view',
+    'kesiswaan.piket.manage'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',

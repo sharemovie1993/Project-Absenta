@@ -19,7 +19,7 @@ import type { Siswa } from '@/types/academic';
 import { Trash2, Plus, Search, User, Briefcase, GraduationCap, CheckCircle2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGuruOptions, useKelasOptions, useJurusanOptions, KelasSelect, JurusanSelect } from '@/components/common';
+import { useGuruOptions, useKelasOptions, useJurusanOptions, useSiswaOptions, KelasSelect, JurusanSelect } from '@/components/common';
 import { SimpleFormField } from '@/components/ui/SimpleFormField';
 
 interface AssignmentModalProps {
@@ -43,12 +43,16 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 }) => {
   const [tab, setTab] = useState<'GURU' | 'SISWA'>('GURU');
   const [struktur, setStruktur] = useState<StrukturOrganisasi | null>(null);
-  const [siswaOptions, setSiswaOptions] = useState<Siswa[]>([]);
   const [guruAssignments, setGuruAssignments] = useState<GuruStrukturOrganisasi[]>([]);
   const [siswaAssignments, setSiswaAssignments] = useState<SiswaStrukturOrganisasi[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+  const [selectedKelasIdAssignment, setSelectedKelasIdAssignment] = useState<string>('');
 
   // Shared reference hooks
   // PENDIDIK-only untuk jabatan akademik yang memerlukan guru pengajar
@@ -58,10 +62,8 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const { rawList: guruOptions } = useGuruOptions({ jenisPtk: guruJenisPtk });
   const { rawList: jurusanList } = useJurusanOptions();
 
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [selectedUnitId, setSelectedUnitId] = useState<string>('');
-  const [selectedKelasIdAssignment, setSelectedKelasIdAssignment] = useState<string>('');
+  const targetKelasId = selectedKelasIdAssignment || selectedKelasId;
+  const { rawList: siswaOptions } = useSiswaOptions({ kelasId: targetKelasId, onlyActive: true });
   const [isContextDialogOpen, setIsContextDialogOpen] = useState(false);
   const [pendingGuruId, setPendingGuruId] = useState<string | null>(null);
   const [pendingSiswaId, setPendingSiswaId] = useState<string | null>(null);
@@ -95,33 +97,12 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         
         if (res.data.kelas_id) {
           setSelectedKelasId(res.data.kelas_id);
-          loadSiswaOptions(res.data.kelas_id);
         }
       }
     } catch (error) {
       toast.error('Gagal memuat detail struktur');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // loadOptions removed — guru, kelas & jurusan data now sourced from shared hooks
-
-  useEffect(() => {
-    const kId = selectedKelasIdAssignment || selectedKelasId;
-    if (kId && tab === 'SISWA') {
-      loadSiswaOptions(kId);
-    } else if (tab === 'SISWA' && !kId) {
-      setSiswaOptions([]); // Clear if no class selected
-    }
-  }, [selectedKelasId, selectedKelasIdAssignment, tab]);
-
-  const loadSiswaOptions = async (kelasId: string) => {
-    try {
-      const res = await getSiswaList(1, 200, '', kelasId, 'AKTIF');
-      setSiswaOptions(res.data || []);
-    } catch (error) {
-      console.error(error);
     }
   };
 

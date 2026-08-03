@@ -11,10 +11,10 @@ import { Label } from '../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useDebounce } from '../../hooks/useDebounce';
-import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { kesiswaanApi, kesiswaanQueryKeys } from '../../api/kesiswaan.api';
 import type { Pelanggaran, JenisPelanggaran } from '../../api/kesiswaan.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   Clock,
@@ -76,8 +76,6 @@ const pelanggaranSchema = z.object({
 export default function PelanggaranPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [data, setData] = useState<Pelanggaran[]>([]);
-  const [loading, setLoading] = useState(true); // Skeleton loading guard
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
@@ -159,8 +157,6 @@ export default function PelanggaranPage() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
@@ -176,51 +172,36 @@ export default function PelanggaranPage() {
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      const params: any = {
-        page,
-        limit: itemsPerPage,
-        search: debouncedSearch,
-        elevated_context: 'true'
-      };
-
-      // Konteks Wali Kelas: Otomatis memfilter kasus khusus siswa rombel bimbingan
-      if (isWaliKelas && effectiveWaliKelasId) {
-        params.kelas_id = effectiveWaliKelasId;
-      }
-
-      const result = await kesiswaanApi.getPelanggaran(params);
-      const list = result.data?.list || result.list || [];
-      setData(list);
-      
-      // Update pagination info
-      if (result.pagination) {
-        setTotalPages(result.pagination.totalPages || 1);
-        setTotalItems(result.pagination.total || list.length);
-        setCurrentPage(result.pagination.page || page);
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      toast.error('Gagal mengambil data catatan');
-    } finally {
-      setLoading(false);
+  // ── useQuery: Fetch pelanggaran list ─────────────────────────────────────
+  const queryParams = useMemo(() => {
+    const params: any = {
+      page: currentPage,
+      limit: itemsPerPage,
+      search: debouncedSearch,
+      elevated_context: 'true'
+    };
+    if (isWaliKelas && effectiveWaliKelasId) {
+      params.kelas_id = effectiveWaliKelasId;
     }
-  }, [debouncedSearch, itemsPerPage, isWaliKelas, effectiveWaliKelasId]);
+    return params;
+  }, [currentPage, itemsPerPage, debouncedSearch, isWaliKelas, effectiveWaliKelasId]);
+
+  const { data: pelanggaranRes, isLoading: loading, refetch } = useQuery({
+    queryKey: kesiswaanQueryKeys.pelanggaranList(queryParams),
+    queryFn: () => kesiswaanApi.getPelanggaran(queryParams),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = useMemo(() => pelanggaranRes?.data?.list || pelanggaranRes?.list || [], [pelanggaranRes]);
+  const totalPages = pelanggaranRes?.pagination?.totalPages || 1;
+  const totalItems = pelanggaranRes?.pagination?.total || data.length;
 
   // Hook Kanonikal Jenis Pelanggaran (Query Caching & Auto-sync)
   const { rawList: jenisPelanggaranList, options: jenisPelanggaranSelectOptions } = useJenisPelanggaranOptions();
 
-  useEffect(() => {
-    fetchData(1);
-    setCurrentPage(1);
-  }, [fetchData]);
-
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    fetchData(page);
-  }, [fetchData]);
+  }, []);
 
   // Comprehensive Cache Invalidation Helper (Pilar Cache Hardening)
   const invalidateAllPelanggaranCaches = useCallback(() => {
@@ -265,14 +246,15 @@ export default function PelanggaranPage() {
         toast.success('Catatan perkembangan berhasil disimpan');
       }
       invalidateAllPelanggaranCaches();
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       setModalOpen(false);
-      fetchData();
+      refetch();
       resetForm();
     } catch (err: unknown) {
       console.error(err);
       toast.error('Gagal menyimpan catatan');
     }
-  }, [selectedId, formData, fetchData, invalidateAllPelanggaranCaches, resetForm]);
+  }, [selectedId, formData, refetch, queryClient, invalidateAllPelanggaranCaches, resetForm]);
 
   const handleEdit = useCallback((item: Pelanggaran) => {
     setFormData({
@@ -411,7 +393,8 @@ export default function PelanggaranPage() {
                 kesiswaanApi.deletePelanggaran(item.id).then(() => {
                   toast.success('Catatan perkembangan berhasil dihapus');
                   invalidateAllPelanggaranCaches();
-                  fetchData();
+                  queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
+                  refetch();
                 }).catch(() => toast.error('Gagal menghapus catatan perkembangan'));
               }
             }}
@@ -423,7 +406,7 @@ export default function PelanggaranPage() {
         </div>
       )
     }
-  ], [getStatusDisplay, handleEdit, fetchData, invalidateAllPelanggaranCaches]);
+  ], [getStatusDisplay, handleEdit, queryClient, refetch, invalidateAllPelanggaranCaches]);
 
   const pageStats = useMemo(() => {
     const total = data?.length || 0;

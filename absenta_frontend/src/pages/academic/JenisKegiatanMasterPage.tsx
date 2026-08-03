@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   SectionCard
 } from '../../components/ui';
@@ -34,27 +34,18 @@ export default function JenisKegiatanMasterPage() {
   const showConfirm = useConfirm();
   
   const canManage = can('academic.activities.types.manage');
-  const [items, setItems] = useState<JenisKegiatanMaster[]>([]);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
-  const fetchList = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await jenisKegiatanMasterApi.getAll({ limit: 100, search: debouncedSearch });
-      setItems(res.data || []);
-    } catch (error: unknown) {
-      console.error(error);
-      toast.error('Gagal memuat data kategori kegiatan');
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch]);
+  const { data: jenisKegiatanRes, isLoading: loading, refetch: fetchList } = useQuery({
+    queryKey: ['jenis-kegiatan-list', debouncedSearch],
+    queryFn: () => jenisKegiatanMasterApi.getAll({ limit: 100, search: debouncedSearch }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchList(); }, [fetchList]);
+  const items = jenisKegiatanRes?.data || [];
 
   const openCreate = () => { setSelectedId(undefined); setModalMode('create'); };
   const openEdit = (item: JenisKegiatanMaster) => { setSelectedId(item.id); setModalMode('edit'); };

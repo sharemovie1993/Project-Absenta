@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
@@ -49,6 +50,7 @@ const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilde
 const hardeningModuleKey = 'jadwal_pelajaran_page';
 
 export default function JadwalPelajaranPage() {
+  const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const { user, isLoading, can } = useAuth();
   const [searchParams] = useSearchParams();
@@ -69,8 +71,6 @@ export default function JadwalPelajaranPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder'>(isGuru ? 'grid' : 'list');
 
   // ── 3. Shared Data State (for Grid View) ────────────────────────────────────
-  const [jadwal, setJadwal] = useState<JadwalKBM[]>([]);
-  const [loadingJadwal, setLoadingJadwal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedKelasId, setSelectedKelasId] = useState<string>(searchParams.get('kelas_id') || '');
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
@@ -79,7 +79,7 @@ export default function JadwalPelajaranPage() {
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
 
   // Logic: Auto-switch filters based on View Mode for Dual-Role (Guru + Walas)
-  React.useEffect(() => {
+  useEffect(() => {
     if (isGuru && isWaliKelas) {
       if (viewMode === 'grid') {
         setSelectedGuruId(myGuruId || '');
@@ -107,104 +107,96 @@ export default function JadwalPelajaranPage() {
   const features = (subscription as { features?: string[] })?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = false; // Completely unlocked - free under Kurikulum module
 
-  // Pillar 4: AbortController for useEffect cleanup
-  React.useEffect(() => {
-    const controller = new AbortController();
+  // ── useQuery: Academic Context (Active Tahun & Semester) ──────────────────
+  const { data: activeTpRes } = useQuery({
+    queryKey: ['active-tahun-pelajaran'],
+    queryFn: () => getTahunPelajaranList(1, 10, '', 'ACTIVE').catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const activeTp = activeTpRes?.data?.[0];
 
-    const loadContext = async () => {
-      try {
-        const tpRes = await getTahunPelajaranList(1, 10, '', 'ACTIVE');
-        const activeTp = tpRes.data?.[0];
-        if (activeTp) {
-          setSelectedTahunId(activeTp.id);
-          const semRes = await getSemesterList(1, 10, '', activeTp.id);
-          const activeSem = semRes.data?.find((s: { is_active?: boolean }) => s.is_active) || semRes.data?.[0];
-          if (activeSem) setSelectedSemesterId(activeSem.id);
-        }
+  useEffect(() => {
+    if (activeTp?.id && !selectedTahunId) {
+      setSelectedTahunId(activeTp.id);
+    }
+  }, [activeTp, selectedTahunId]);
 
-        if (user?.role?.name === 'GURU' && !selectedGuruId) {
-            const mId = user?.guru_profile?.id;
-            if (mId) setSelectedGuruId(mId);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          LogService.error('Failed to load grid context', err);
-        }
-      }
-    };
-    loadContext();
+  const { data: activeSemRes } = useQuery({
+    queryKey: ['active-semester', selectedTahunId],
+    queryFn: () => selectedTahunId ? getSemesterList(1, 10, '', selectedTahunId).catch(() => null) : null,
+    enabled: !!selectedTahunId,
+    staleTime: 10 * 60 * 1000,
+  });
 
-    return () => controller.abort();
+  useEffect(() => {
+    if (activeSemRes?.data && !selectedSemesterId) {
+      const activeSem = activeSemRes.data.find((s: { is_active?: boolean }) => s.is_active) || activeSemRes.data[0];
+      if (activeSem) setSelectedSemesterId(activeSem.id);
+    }
+  }, [activeSemRes, selectedSemesterId]);
+
+  useEffect(() => {
+    if (user?.role?.name === 'GURU' && !selectedGuruId) {
+      const mId = user?.guru_profile?.id;
+      if (mId) setSelectedGuruId(mId);
+    }
   }, [user, selectedGuruId]);
 
-  React.useEffect(() => {
-    if (viewMode !== 'grid' || !selectedTahunId || !selectedSemesterId) return;
-    
-    const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
+  // ── useQuery: Grid View Schedule & Duty Items ──────────────────────────────
+  const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
 
-    const controller = new AbortController();
+  const { data: kbmResData, isLoading: loadingJadwal, refetch: refetchJadwal } = useQuery({
+    queryKey: ['jadwal-pelajaran-grid', targetKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey],
+    queryFn: async () => {
+      if (!selectedTahunId || !selectedSemesterId) return [];
+      const [res, piketRes] = await Promise.all([
+        getJadwalKBM({
+          kelas_id: targetKelasId || undefined,
+          guru_id: selectedGuruId || undefined,
+          tahun_pelajaran_id: selectedTahunId,
+          semester_id: selectedSemesterId
+        }).catch(() => ({ data: [] })),
+        selectedGuruId
+          ? piketGuruApi.getList({
+              guru_id: selectedGuruId,
+              tahun_pelajaran_id: selectedTahunId,
+              semester_id: selectedSemesterId
+            }).catch(() => ({ success: false, data: [] }))
+          : Promise.resolve({ success: false, data: [] })
+      ]);
 
-    const fetchData = async () => {
-      setLoadingJadwal(true);
-      try {
-        const [res, piketRes] = await Promise.all([
-          getJadwalKBM({
-            kelas_id: targetKelasId || undefined,
-            guru_id: selectedGuruId || undefined,
-            tahun_pelajaran_id: selectedTahunId,
-            semester_id: selectedSemesterId
-          }),
-          selectedGuruId
-            ? piketGuruApi.getList({
-                guru_id: selectedGuruId,
-                tahun_pelajaran_id: selectedTahunId,
-                semester_id: selectedSemesterId
-              }).catch(() => ({ success: false, data: [] }))
-            : Promise.resolve({ success: false, data: [] })
-        ]);
+      const kbmItems = res.data || [];
+      const piketItems: any[] = [];
 
-        if (!controller.signal.aborted) {
-          const kbmItems = res.data || [];
-          const piketItems: any[] = [];
-
-          if (piketRes?.success && Array.isArray(piketRes.data)) {
-            piketRes.data.forEach((p: any) => {
-              const startSlot = p.slot_mulai || 1;
-              const endSlot = p.slot_selesai || 10;
-              for (let slot = startSlot; slot <= endSlot; slot++) {
-                piketItems.push({
-                  id: `piket-${p.id}-${slot}`,
-                  hari: p.hari,
-                  slot_index: slot,
-                  jam_mulai: p.jam_mulai || '06:30',
-                  jam_selesai: p.jam_selesai || '15:30',
-                  is_piket: true,
-                  pos_piket: p.pos_piket || 'Piket Umum',
-                  jenis_kegiatan: 'DUTY_PIKET',
-                  Mapel: { nama_mapel: 'TUGAS PIKET GURU', kode_mapel: 'PIKET' },
-                  Kelas: { id: `piket-${p.id}`, nama_kelas: p.pos_piket || 'Piket Umum' },
-                  Guru: p.Guru
-                });
-              }
+      if (piketRes?.success && Array.isArray(piketRes.data)) {
+        piketRes.data.forEach((p: any) => {
+          const startSlot = p.slot_mulai || 1;
+          const endSlot = p.slot_selesai || 10;
+          for (let slot = startSlot; slot <= endSlot; slot++) {
+            piketItems.push({
+              id: `piket-${p.id}-${slot}`,
+              hari: p.hari,
+              slot_index: slot,
+              jam_mulai: p.jam_mulai || '06:30',
+              jam_selesai: p.jam_selesai || '15:30',
+              is_piket: true,
+              pos_piket: p.pos_piket || 'Piket Umum',
+              jenis_kegiatan: 'DUTY_PIKET',
+              Mapel: { nama_mapel: 'TUGAS PIKET GURU', kode_mapel: 'PIKET' },
+              Kelas: { id: `piket-${p.id}`, nama_kelas: p.pos_piket || 'Piket Umum' },
+              Guru: p.Guru
             });
           }
-
-          setJadwal([...kbmItems, ...piketItems]);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          LogService.error('Failed to fetch schedules', err);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoadingJadwal(false);
-        }
+        });
       }
-    };
-    fetchData();
 
-    return () => controller.abort();
-  }, [viewMode, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa]);
+      return [...kbmItems, ...piketItems] as JadwalKBM[];
+    },
+    enabled: viewMode === 'grid' && !!selectedTahunId && !!selectedSemesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const jadwal = kbmResData || [];
 
   // Pillar 2: Memoize callbacks
   const handleEditSlot = useCallback(() => {

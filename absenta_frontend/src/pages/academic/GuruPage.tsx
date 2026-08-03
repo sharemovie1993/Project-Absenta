@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import GuruList from '../../components/academic/guru/GuruList';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import type { Guru } from '../../types/academic';
-import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { Users, UserCheck, School, Download } from 'lucide-react';
+import { getAcademicStats } from '../../api/academic-stats.api';
+import { Users, UserCheck } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, SectionCard, Loader } from '../../components/ui';
-import { 
-  getGuruList, 
+import { useQuery } from '@tanstack/react-query';
+import { getGuruList, 
   importGuruFromExcel, 
   downloadGuruImportTemplate 
 } from '../../api/academic/guru.api';
@@ -36,34 +36,26 @@ export const GuruPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-
-  // Check permissions
+  // Check permissions — harus di atas useQuery
   const canCreate = can('academic.teachers.create');
   const canEdit = can('academic.teachers.update');
   const canView = can('academic.teachers.view.list');
 
-  // Load academic stats
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!canView) return;
-      try {
-        setIsLoadingStats(true);
-        const response = await getAcademicStats();
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error loading academic stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, [canView, refreshTrigger]);
+  // Queries using React Query
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats'],
+    queryFn: getAcademicStats,
+    enabled: canView,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stats = statsRes?.data || null;
+
+  // Local UI state
+  const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const academicStats = useMemo(() => [
     {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { kesiswaanApi, type JenisPelanggaran, type JenisPrestasi } from '../../../api/kesiswaan.api';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { kesiswaanApi, type JenisPelanggaran, type JenisPrestasi, kesiswaanQueryKeys } from '../../../api/kesiswaan.api';
 import { bpbkApi } from '../../../api/bpbk.api';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
@@ -22,11 +22,6 @@ export const SettingsSection: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
   
-  const [violations, setViolations] = useState<JenisPelanggaran[]>([]);
-  const [achievements, setAchievements] = useState<JenisPrestasi[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-
   const confirm = useConfirm();
 
   // Modal forms
@@ -46,33 +41,22 @@ export const SettingsSection: React.FC = () => {
     poin: 0
   });
 
-  const fetchViolations = useCallback(async () => {
-    try {
-      const res = await kesiswaanApi.getJenisPelanggaran();
-      setViolations(res.data || res || []);
-    } catch (err: unknown) {
-      console.error(err);
-    }
-  }, []);
+  // ── useQuery: Jenis Pelanggaran & Jenis Prestasi ─────────────────────────
+  const { data: vRes, isLoading: loadingV, refetch: refetchV } = useQuery({
+    queryKey: kesiswaanQueryKeys.jenisPelanggaran(),
+    queryFn: () => kesiswaanApi.getJenisPelanggaran(),
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const fetchAchievements = useCallback(async () => {
-    try {
-      const res = await kesiswaanApi.getJenisPrestasi();
-      setAchievements(res.data || []);
-    } catch (err: unknown) {
-      console.error(err);
-    }
-  }, []);
+  const { data: aRes, isLoading: loadingA, refetch: refetchA } = useQuery({
+    queryKey: kesiswaanQueryKeys.jenisPrestasi(),
+    queryFn: () => kesiswaanApi.getJenisPrestasi(),
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    await Promise.all([fetchViolations(), fetchAchievements()]);
-    setLoading(false);
-  }, [fetchViolations, fetchAchievements]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const violations = useMemo(() => vRes?.data || vRes || [], [vRes]);
+  const achievements = useMemo(() => aRes?.data || [], [aRes]);
+  const loading = loadingV || loadingA;
 
   // === VIOLATION ACTIONS ===
   const handleVSubmit = useCallback(async (e: React.FormEvent) => {
@@ -90,16 +74,17 @@ export const SettingsSection: React.FC = () => {
         toast.success('Kategori pelanggaran baru berhasil ditambahkan');
       }
       setViolationModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-      fetchViolations();
+      refetchV();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
       toast.error(errorMsg);
     }
-  }, [vId, vForm, fetchViolations]);
+  }, [vId, vForm, queryClient, refetchV]);
 
   const handleVDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -113,16 +98,17 @@ export const SettingsSection: React.FC = () => {
     try {
       await kesiswaanApi.deleteJenisPelanggaran(id);
       toast.success('Kategori pelanggaran berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-      fetchViolations();
+      refetchV();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchViolations]);
+  }, [confirm, queryClient, refetchV]);
 
   // === ACHIEVEMENT ACTIONS ===
   const handleASubmit = useCallback(async (e: React.FormEvent) => {
@@ -140,15 +126,16 @@ export const SettingsSection: React.FC = () => {
         toast.success('Kategori prestasi baru berhasil ditambahkan');
       }
       setAchievementModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
       queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-      fetchAchievements();
+      refetchA();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
       toast.error(errorMsg);
     }
-  }, [aId, aForm, fetchAchievements]);
+  }, [aId, aForm, queryClient, refetchA]);
 
   const handleADelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -162,15 +149,16 @@ export const SettingsSection: React.FC = () => {
     try {
       await kesiswaanApi.deleteJenisPrestasi(id);
       toast.success('Kategori prestasi berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
       queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-      fetchAchievements();
+      refetchA();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchAchievements]);
+  }, [confirm, queryClient, refetchA]);
 
   const violationColumns: Column[] = useMemo(() => [
     {

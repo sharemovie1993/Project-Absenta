@@ -18,7 +18,8 @@ import {
   Package,
   GraduationCap,
   UserCog,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react';
 
 // Components
@@ -453,6 +454,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
       const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
 
+      if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.scan')) {
+        actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
+      }
+
       if (isPiketOrKesiswaanOrIndustrial) {
         actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
       }
@@ -474,6 +479,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
     // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
     const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
     
+    if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.scan')) {
+      actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
+    }
+
     if (isPiketOrKesiswaanOrIndustrial) {
       actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
     }

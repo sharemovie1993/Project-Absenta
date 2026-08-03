@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
@@ -66,6 +67,8 @@ interface PdfGeneratorProps {
 }
 
 export const CetakBerkasKurikulumPage: React.FC = () => {
+  const queryClient = useQueryClient();
+
   // Memoize breadcrumbs & instruction untuk mencegah re-creation
   const breadcrumbs = useMemo(() => [
     { label: 'Kurikulum', path: '/kurikulum/struktur' },
@@ -138,27 +141,46 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
     includeSchoolLogo,
     checklistData
   }: PdfGeneratorProps) => {
-    let jadwalList = [];
-    let jenisKegiatanList = [];
+    let jadwalList: any[] = [];
+    let jenisKegiatanList: any[] = [];
     
     if (['roster', 'roster_teacher'].includes(selectedPrintType)) {
+      const kelasId = selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId);
+      const guruId = selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined;
+      const tpId = checklistData?.current_year?.id;
+      const semId = checklistData?.current_semester?.id;
+
+      const jadwalKey = ['jadwal-kbm-options', kelasId, guruId, tpId, semId];
+      const jenisKey = ['jenis-kegiatan-master-all'];
+
       try {
-        const [jadwalRes, jenisRes] = await Promise.all([
-          getJadwalKBM({
-            kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
-            guru_id: selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined,
-            tahun_pelajaran_id: checklistData?.current_year?.id,
-            semester_id: checklistData?.current_semester?.id
-          }),
-          jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
+        const [jadwalData, jenisData] = await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: jadwalKey,
+            queryFn: async () => {
+              const res = await getJadwalKBM({
+                kelas_id: kelasId,
+                guru_id: guruId,
+                tahun_pelajaran_id: tpId,
+                semester_id: semId
+              });
+              return res?.success && res?.data ? res.data : [];
+            },
+            staleTime: 10 * 60 * 1000
+          }).catch(() => (queryClient.getQueryData(jadwalKey) as any[]) || []),
+
+          queryClient.fetchQuery({
+            queryKey: jenisKey,
+            queryFn: async () => {
+              const res = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
+              return res?.success && res?.data ? res.data : [];
+            },
+            staleTime: 10 * 60 * 1000
+          }).catch(() => (queryClient.getQueryData(jenisKey) as any[]) || [])
         ]);
-        
-        if (jadwalRes.success && jadwalRes.data) {
-          jadwalList = jadwalRes.data;
-        }
-        if (jenisRes.success && jenisRes.data) {
-          jenisKegiatanList = jenisRes.data;
-        }
+
+        jadwalList = Array.isArray(jadwalData) ? jadwalData : [];
+        jenisKegiatanList = Array.isArray(jenisData) ? jenisData : [];
       } catch (e) {
         console.error('Gagal mengambil data untuk PDF:', e);
       }
@@ -177,7 +199,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
       includeSchoolLogo,
       filterData: { jadwalList, classes, gurus, jenisKegiatanList }
     });
-  }, []);
+  }, [queryClient]);
 
   return (
     <InfraErrorBoundary>

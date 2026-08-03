@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '../../../lib/utils';
 import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
@@ -12,7 +12,7 @@ import { Alert } from '../../ui/Alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/Tabs';
 import { ModalFooter } from '../../ui/Modal';
 import { Save, X, RefreshCw, Printer, Users } from 'lucide-react';
-import { createSiswa, updateSiswa, getSiswaDetail, type CreateSiswaPayload, type UpdateSiswaPayload, type Siswa } from '../../../api/academic/siswa.api';
+import { createSiswa, updateSiswa, getSiswaDetail, type CreateSiswaPayload, type UpdateSiswaPayload, type Siswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { DEFAULT_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
@@ -56,7 +56,6 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 
 
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   const [siswaData, setSiswaData] = useState<Siswa | null>(null);
 
@@ -223,11 +222,6 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
     }
   };
   
-  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
-  const [tahunPelajaranOptions, setTahunPelajaranOptions] = useState<DropdownOption[]>([]);
-  const [semesterOptions, setSemesterOptions] = useState<DropdownOption[]>([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
-
   const {
     register,
     control,
@@ -249,105 +243,84 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 
   const watchTahunPelajaran = watch('tahun_pelajaran_id');
 
-  // Load Initial Dropdowns
+  // ── useQuery: Dropdown Options ───────────────────────────────────────────
+  const { data: kelasData, isLoading: loadingKelas } = useQuery({
+    queryKey: ['kelas-dropdown'],
+    queryFn: getKelasForDropdown,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: tahunData, isLoading: loadingTahun } = useQuery({
+    queryKey: ['tahun-pelajaran-dropdown'],
+    queryFn: getTahunPelajaranForDropdown,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: semesterData } = useQuery({
+    queryKey: ['semester-dropdown', watchTahunPelajaran],
+    queryFn: () => getSemesterByTahunPelajaranForDropdown(watchTahunPelajaran!),
+    enabled: !!watchTahunPelajaran,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const kelasOptions = kelasData || [];
+  const tahunPelajaranOptions = tahunData || [];
+  const semesterOptions = semesterData || [];
+  const loadingDropdowns = loadingKelas || loadingTahun;
+
+  // ── useQuery: Fetch detail data ──────────────────────────────────────────
+  const { data: fetchedSiswa, isLoading: loadingData } = useQuery({
+    queryKey: siswaQueryKeys.detail(siswaId || ''),
+    queryFn: () => getSiswaDetail(siswaId!),
+    enabled: !!siswaId && mode !== 'create',
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
-    const loadDropdownData = async () => {
-      try {
-        setLoadingDropdowns(true);
-        const [kelasData, tahunPelajaranData] = await Promise.all([
-          getKelasForDropdown(),
-          getTahunPelajaranForDropdown()
-        ]);
-        setKelasOptions(kelasData || []);
-        setTahunPelajaranOptions(tahunPelajaranData || []);
-      } catch (error) {
-        console.error('Error loading dropdown data:', error);
-      } finally {
-        setLoadingDropdowns(false);
-      }
-    };
-    loadDropdownData();
-  }, []);
-
-  // Load Semesters when Tahun Pelajaran changes
-  useEffect(() => {
-    const loadSemesters = async () => {
-      if (!watchTahunPelajaran) {
-        setSemesterOptions([]);
-        return;
-      }
-      try {
-        const semesters = await getSemesterByTahunPelajaranForDropdown(watchTahunPelajaran);
-        setSemesterOptions(semesters || []);
-      } catch (error) {
-        console.error('Error loading semesters:', error);
-      }
-    };
-    loadSemesters();
-  }, [watchTahunPelajaran]);
-
-  // Load Siswa Data for Edit/View
-  useEffect(() => {
-    const loadSiswaData = async () => {
-      if (!siswaId || mode === 'create') return;
-
-      try {
-        setLoadingData(true);
-        const siswa = await getSiswaDetail(siswaId);
-        
-        if (!siswa) return;
-        setSiswaData(siswa);
-
-        reset({
-          nis: siswa.nis || '',
-          nama_siswa: siswa.nama_siswa || '',
-          email: siswa.User?.email || '',
-          no_hp: siswa.no_hp || '',
-          alamat: siswa.alamat || '',
-          tanggal_lahir: siswa.tanggal_lahir ? siswa.tanggal_lahir.split('T')[0] : '',
-          tempat_lahir: siswa.tempat_lahir || '',
-          jenis_kelamin: (siswa.jenis_kelamin as 'L' | 'P') || 'L',
-          kelas_id: siswa.kelas_id || '',
-          tahun_pelajaran_id: siswa.tahun_pelajaran_id || '',
-          semester_id: siswa.semester_id || '',
-          status: (siswa.status as any) || 'AKTIF',
-          tanggal_keluar: siswa.tanggal_keluar ? siswa.tanggal_keluar.split('T')[0] : '',
-          alasan_keluar: siswa.alasan_keluar || '',
-          transportasi: siswa.transportasi || '',
-          no_rfid: siswa.no_rfid || '',
-          nisn: siswa.nisn || '',
-          foto: siswa.foto || '',
-          nama_ayah: siswa.nama_ayah || '',
-          pekerjaan_ayah: siswa.pekerjaan_ayah || '',
-          pendidikan_ayah: siswa.pendidikan_ayah || '',
-          penghasilan_ayah: siswa.penghasilan_ayah || '',
-          nama_ibu: siswa.nama_ibu || '',
-          pekerjaan_ibu: siswa.pekerjaan_ibu || '',
-          pendidikan_ibu: siswa.pendidikan_ibu || '',
-          penghasilan_ibu: siswa.penghasilan_ibu || '',
-          nama_wali: siswa.nama_wali || '',
-          hubungan_wali: siswa.hubungan_wali || '',
-          pekerjaan_wali: siswa.pekerjaan_wali || '',
-          penghasilan_wali: siswa.penghasilan_wali || '',
-          orang_tua: ((siswa as any).OrangTua || []).map((o: any) => ({
-            id: o.id,
-            nama: o.nama || '',
-            hubungan: o.hubungan || '',
-            no_hp: o.no_hp || '',
-            email: o.email || '',
-            nik: o.nik || ''
-          })) || []
-        });
-      } catch (error) {
-        console.error('Error loading siswa data:', error);
-        setSubmitError('Gagal memuat data siswa');
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    loadSiswaData();
-  }, [siswaId, mode, reset]);
+    if (fetchedSiswa) {
+      setSiswaData(fetchedSiswa);
+      reset({
+        nis: fetchedSiswa.nis || '',
+        nama_siswa: fetchedSiswa.nama_siswa || '',
+        email: fetchedSiswa.User?.email || '',
+        no_hp: fetchedSiswa.no_hp || '',
+        alamat: fetchedSiswa.alamat || '',
+        tanggal_lahir: fetchedSiswa.tanggal_lahir ? fetchedSiswa.tanggal_lahir.split('T')[0] : '',
+        tempat_lahir: fetchedSiswa.tempat_lahir || '',
+        jenis_kelamin: (fetchedSiswa.jenis_kelamin as 'L' | 'P') || 'L',
+        kelas_id: fetchedSiswa.kelas_id || '',
+        tahun_pelajaran_id: fetchedSiswa.tahun_pelajaran_id || '',
+        semester_id: fetchedSiswa.semester_id || '',
+        status: (fetchedSiswa.status as any) || 'AKTIF',
+        tanggal_keluar: fetchedSiswa.tanggal_keluar ? fetchedSiswa.tanggal_keluar.split('T')[0] : '',
+        alasan_keluar: fetchedSiswa.alasan_keluar || '',
+        transportasi: fetchedSiswa.transportasi || '',
+        no_rfid: fetchedSiswa.no_rfid || '',
+        nisn: fetchedSiswa.nisn || '',
+        foto: fetchedSiswa.foto || '',
+        nama_ayah: fetchedSiswa.nama_ayah || '',
+        pekerjaan_ayah: fetchedSiswa.pekerjaan_ayah || '',
+        pendidikan_ayah: fetchedSiswa.pendidikan_ayah || '',
+        penghasilan_ayah: fetchedSiswa.penghasilan_ayah || '',
+        nama_ibu: fetchedSiswa.nama_ibu || '',
+        pekerjaan_ibu: fetchedSiswa.pekerjaan_ibu || '',
+        pendidikan_ibu: fetchedSiswa.pendidikan_ibu || '',
+        penghasilan_ibu: fetchedSiswa.penghasilan_ibu || '',
+        nama_wali: fetchedSiswa.nama_wali || '',
+        hubungan_wali: fetchedSiswa.hubungan_wali || '',
+        pekerjaan_wali: fetchedSiswa.pekerjaan_wali || '',
+        penghasilan_wali: fetchedSiswa.penghasilan_wali || '',
+        orang_tua: ((fetchedSiswa as any).OrangTua || []).map((o: any) => ({
+          id: o.id,
+          nama: o.nama || '',
+          hubungan: o.hubungan || '',
+          no_hp: o.no_hp || '',
+          email: o.email || '',
+          nik: o.nik || ''
+        })) || []
+      });
+    }
+  }, [fetchedSiswa, reset]);
 
   const onFormSubmit = useCallback(async (data: SiswaFormValues) => {
     if (isViewMode) return;
@@ -375,6 +348,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       }
 
       // Client-side cache invalidation for dropdowns, stats, and roster lists
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });

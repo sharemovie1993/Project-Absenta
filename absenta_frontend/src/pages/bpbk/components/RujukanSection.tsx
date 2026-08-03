@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { bpbkApi, type RujukanKasus } from '../../../api/bpbk.api';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type RujukanKasus, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import type { Column } from '../../../components/ui/Table';
@@ -17,11 +18,7 @@ const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ def
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
 export const RujukanSection: React.FC = () => {
-  const [data, setData] = useState<RujukanKasus[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -32,8 +29,8 @@ export const RujukanSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
 
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
@@ -47,25 +44,15 @@ export const RujukanSection: React.FC = () => {
     status: 'DIUSULKAN'
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getRujukan({
-        page,
-        limit
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-    } catch (err: unknown) {
-      console.error('Error fetching referrals:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit]);
+  // ── useQuery: Rujukan List ────────────────────────────────────────────────
+  const { data: rujukanRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.rujukanList({ page, limit }),
+    queryFn: () => bpbkApi.getRujukan({ page, limit }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const data = useMemo(() => rujukanRes?.data?.list || [], [rujukanRes]);
+  const totalPages = rujukanRes?.data?.pagination?.totalPages || 1;
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -106,7 +93,8 @@ export const RujukanSection: React.FC = () => {
       const res = await bpbkApi.deleteRujukan(id);
       if (res.success) {
         toast.success('Catatan rujukan berhasil dihapus');
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus');
       }
@@ -114,7 +102,7 @@ export const RujukanSection: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetch]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,12 +130,13 @@ export const RujukanSection: React.FC = () => {
 
       setModalOpen(false);
       resetForm();
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+      refetch();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan rujukan kasus';
       toast.error(errorMsg);
     }
-  }, [selectedId, formData, resetForm, fetchData]);
+  }, [selectedId, formData, resetForm, queryClient, refetch]);
 
   const columns: Column[] = useMemo(() => [
     {

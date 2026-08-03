@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { bpbkApi, type AsesmenSiswa } from '../../../api/bpbk.api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type AsesmenSiswa, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import type { Column } from '../../../components/ui/Table';
@@ -40,12 +41,7 @@ interface KelasItem {
 }
 
 export const AsesmenSection: React.FC = () => {
-  const [data, setData] = useState<AsesmenSiswa[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -54,19 +50,14 @@ export const AsesmenSection: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedTipe, setSelectedTipe] = useState('');
-  const [classes, setClasses] = useState<KelasItem[]>([]);
-
   const debouncedSearch = useDebounce(search, 500);
 
   const { user } = useAuthStore();
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [printPreset, setPrintPreset] = useState('');
-  const [schoolName, setSchoolName] = useState('SMA NEGERI NUSANTARA');
   const [printKelas, setPrintKelas] = useState('');
   const [printSiswa, setPrintSiswa] = useState<Student | null>(null);
 
@@ -75,31 +66,31 @@ export const AsesmenSection: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<AsesmenSiswa | null>(null);
 
-  useEffect(() => {
-    getKelasList(1, 100).then(res => {
-      if (res?.success) {
-        setClasses((res.data || []) as KelasItem[]);
-      }
-    }).catch(err => console.error(err));
+  // ── useQuery for Print Modal Dropdowns & School Profile ──────────────────
+  const { data: classListRes } = useQuery({
+    queryKey: ['kelas-list-options'],
+    queryFn: () => getKelasList(1, 100).catch(() => ({ success: false, message: '', data: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 1 } })),
+    staleTime: 10 * 60 * 1000,
+  });
+  const classes = useMemo(() => (classListRes?.data || []) as KelasItem[], [classListRes]);
 
-    sekolahApi.getProfile().then(res => {
-      if (res?.success && res.data) {
-        setSekolah(res.data);
-        if (res.data?.nama) {
-          setSchoolName(res.data.nama);
-        }
-      }
-    }).catch(err => console.error(err));
+  const { data: sekolahRes } = useQuery({
+    queryKey: ['sekolah-profile'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const sekolah = sekolahRes?.success ? sekolahRes.data : null;
 
-    getMyTenant().then(res => {
-      if (res?.success) {
-        setTenantInfo(res.data);
-        if (res.data?.name) {
-          setSchoolName(res.data.name);
-        }
-      }
-    }).catch(err => console.error(err));
-  }, []);
+  const { data: tenantRes } = useQuery({
+    queryKey: ['my-tenant'],
+    queryFn: () => getMyTenant().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const tenantInfo = tenantRes?.success ? tenantRes.data : null;
+
+  const schoolName = useMemo(() => {
+    return sekolah?.nama || tenantInfo?.name || 'SMA NEGERI NUSANTARA';
+  }, [sekolah, tenantInfo]);
 
   useEffect(() => {
     const leftLogo = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url;
@@ -144,34 +135,34 @@ export const AsesmenSection: React.FC = () => {
   }, [tenantInfo, sekolah, logoDaerahBase64, logoSekolahBase64, user]);
 
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getAsesmen({
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-        kelas_name: selectedKelas || undefined,
-        nama_asesmen: selectedTipe || undefined
-      });
-      setData((res.data?.list || []) as AsesmenSiswa[]);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-      setTotalItems(res.data?.pagination?.totalItems || res.data?.pagination?.total || 0);
-    } catch (err) {
-      console.error('Error fetching assessments:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch, selectedKelas, selectedTipe]);
+  // ── useQuery: Asesmen List ────────────────────────────────────────────────
+  const { data: asesmenRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.asesmenList({
+      page,
+      limit,
+      search: debouncedSearch || undefined,
+      kelas_name: selectedKelas || undefined,
+      nama_asesmen: selectedTipe || undefined
+    }),
+    queryFn: () => bpbkApi.getAsesmen({
+      page,
+      limit,
+      search: debouncedSearch || undefined,
+      kelas_name: selectedKelas || undefined,
+      nama_asesmen: selectedTipe || undefined
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = useMemo(() => (asesmenRes?.data?.list || []) as AsesmenSiswa[], [asesmenRes]);
+  const totalPages = asesmenRes?.data?.pagination?.totalPages || 1;
+  const totalItems = asesmenRes?.data?.pagination?.totalItems || asesmenRes?.data?.pagination?.total || 0;
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, selectedKelas, selectedTipe]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const handleEdit = useCallback((item: AsesmenSiswa) => {
     setSelectedId(item.id);
@@ -193,14 +184,15 @@ export const AsesmenSection: React.FC = () => {
       const res = await bpbkApi.deleteAsesmen(id);
       if (res.success) {
         toast.success('Hasil asesmen berhasil dihapus');
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus');
       }
     } catch (err: any) {
       toast.error(err.message || 'Koneksi bermasalah');
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetch]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);
@@ -447,7 +439,10 @@ export const AsesmenSection: React.FC = () => {
           <AsesmenFormModal
             isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
-            onSuccess={fetchData}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+              refetch();
+            }}
             selectedId={selectedId}
             editingItem={editingItem}
           />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Printer,
@@ -113,17 +114,6 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     bulanRekap: new Date().toISOString().substring(0, 7)
   });
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
-
-  // Common metadata
-  const [classes, setClasses] = useState<Kelas[]>([]);
-  const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
-  const [gurus, setGurus] = useState<Guru[]>([]);
-  const [loadingGurus, setLoadingGurus] = useState<boolean>(false);
-  const [students, setStudents] = useState<Siswa[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
-  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 
@@ -133,39 +123,122 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
 
   const { user } = useAuth();
 
-  // Load static resources
+  // ── useQuery Hooks with Offline Cache ─────────────────────────────────────
+  const { data: sekolahData } = useQuery({
+    queryKey: ['sekolah-profile'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const sekolah = sekolahData || null;
+
+  const { data: tenantData } = useQuery({
+    queryKey: ['tenant-info', user?.tenant_id],
+    queryFn: async () => {
+      if (!user?.tenant_id) return null;
+      const res = await getTenantById(user.tenant_id).catch(() => null);
+      return res?.success ? res.data : null;
+    },
+    enabled: !!user?.tenant_id,
+    staleTime: 10 * 60 * 1000,
+  });
+  const tenantInfo = tenantData || null;
+
+  const { data: strukturData } = useQuery({
+    queryKey: ['struktur-organisasi-active'],
+    queryFn: async () => {
+      const res = await getStrukturList({ is_active: true }).catch(() => null);
+      return (res?.success && res.data) ? res.data : [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const strukturList = strukturData || [];
+
+  const { data: kelasQueryData, isLoading: loadingClasses } = useQuery({
+    queryKey: ['cetak-berkas-kelas-list', module],
+    queryFn: async () => {
+      try {
+        if (module === 'sarpras') {
+          const res = await sarprasApi.getLocations();
+          return (res.data || []).map((l: any) => ({
+            id: l.id,
+            nama_kelas: l.nama,
+            tingkat: 1,
+            is_active: true
+          })) as Kelas[];
+        } else {
+          const res = await kelasApi.getAll({ limit: 150 });
+          return ((res.data || []).filter((c: any) => c.is_active === true)) as Kelas[];
+        }
+      } catch {
+        return [] as Kelas[];
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const classes = kelasQueryData || [];
+
+  const { data: guruQueryData, isLoading: loadingGurus } = useQuery({
+    queryKey: ['cetak-berkas-gurus-list'],
+    queryFn: async () => {
+      try {
+        const res = await getGuruList(1, 200);
+        return (res.data || []) as Guru[];
+      } catch {
+        return [] as Guru[];
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const gurus = guruQueryData || [];
+
+  const { data: studentQueryData, isLoading: loadingStudents } = useQuery({
+    queryKey: ['cetak-berkas-students-list', selectedClassId],
+    queryFn: async () => {
+      if (!selectedClassId || selectedClassId === 'all') return [] as Siswa[];
+      try {
+        const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
+        return (res.data || []) as Siswa[];
+      } catch {
+        return [] as Siswa[];
+      }
+    },
+    enabled: !!selectedClassId && selectedClassId !== 'all',
+    staleTime: 10 * 60 * 1000,
+  });
+  const students = studentQueryData || [];
+
+  // Synchronize default selectedClassId, selectedGuruId, selectedStudentId
   useEffect(() => {
-    const loadCommonData = async () => {
-      try {
-        const sek = await sekolahApi.getProfile();
-        setSekolah(sek);
-      } catch (e) {
-        console.error('Gagal memuat profil sekolah:', e);
+    if (classes.length > 0 && !selectedClassId) {
+      const params = new URLSearchParams(window.location.search);
+      const qClassId = params.get('classId');
+      if (qClassId && classes.some(c => c.id === qClassId)) {
+        setSelectedClassId(qClassId);
+      } else {
+        setSelectedClassId(classes[0].id);
       }
+    }
+  }, [classes, selectedClassId]);
 
-      if (user?.tenant_id) {
-        try {
-          const res = await getTenantById(user.tenant_id);
-          if (res.success && res.data) {
-            setTenantInfo(res.data);
-          }
-        } catch (e) {
-          console.error('Gagal memuat info tenant:', e);
-        }
+  useEffect(() => {
+    if (gurus.length > 0 && !selectedGuruId) {
+      setSelectedGuruId(gurus[0].id);
+    }
+  }, [gurus, selectedGuruId]);
+
+  useEffect(() => {
+    if (students.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const qStudentId = params.get('studentId');
+      if (qStudentId && students.some(s => s.id === qStudentId)) {
+        setSelectedStudentId(qStudentId);
+      } else if (!selectedStudentId || !students.some(s => s.id === selectedStudentId)) {
+        setSelectedStudentId(students[0].id);
       }
-
-      try {
-        const res = await getStrukturList({ is_active: true });
-        if (res.success && res.data) {
-          setStrukturList(res.data);
-        }
-      } catch (e) {
-        console.error('Gagal memuat struktur organisasi:', e);
-      }
-    };
-
-    loadCommonData();
-  }, [user?.tenant_id]);
+    } else {
+      setSelectedStudentId('');
+    }
+  }, [students, selectedStudentId]);
 
   // Load logos
   useEffect(() => {
@@ -222,87 +295,6 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
       });
     };
   }, []);
-
-  // Load classes or locations list
-  const loadClasses = useCallback(async () => {
-    try {
-      setLoadingClasses(true);
-      let list = [];
-      if (module === 'sarpras') {
-        const res = await sarprasApi.getLocations();
-        list = (res.data || []).map((l: any) => ({
-          id: l.id,
-          nama_kelas: l.nama,
-          tingkat: 1,
-          is_active: true
-        }));
-      } else {
-        const res = await kelasApi.getAll({ limit: 150 });
-        list = (res.data || []).filter((c: any) => c.is_active === true);
-      }
-      setClasses(list);
-      const params = new URLSearchParams(window.location.search);
-      const qClassId = params.get('classId');
-      if (list.length > 0 && !qClassId) {
-        setSelectedClassId(list[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error(module === 'sarpras' ? 'Gagal memuat daftar ruangan' : 'Gagal memuat daftar kelas');
-    } finally {
-      setLoadingClasses(false);
-    }
-  }, [module]);
-
-  const loadGurus = useCallback(async () => {
-    try {
-      setLoadingGurus(true);
-      const res = await getGuruList(1, 200);
-      const activeGurus = (res.data || []);
-      setGurus(activeGurus);
-      if (activeGurus.length > 0) {
-        setSelectedGuruId(activeGurus[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memuat daftar guru');
-    } finally {
-      setLoadingGurus(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadClasses();
-    loadGurus();
-  }, [loadClasses, loadGurus]);
-
-  useEffect(() => {
-    if (selectedClassId && selectedClassId !== 'all') {
-      const loadStudents = async () => {
-        try {
-          setLoadingStudents(true);
-          const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
-          const list = res.data || [];
-          setStudents(list);
-          const params = new URLSearchParams(window.location.search);
-          const qStudentId = params.get('studentId');
-          if (list.length > 0) {
-            setSelectedStudentId(qStudentId && list.some((s: any) => s.id === qStudentId) ? qStudentId : list[0].id);
-          } else {
-            setSelectedStudentId('');
-          }
-        } catch (e) {
-          console.error('Gagal memuat siswa kelas:', e);
-        } finally {
-          setLoadingStudents(false);
-        }
-      };
-      loadStudents();
-    } else {
-      setStudents([]);
-      setSelectedStudentId('');
-    }
-  }, [selectedClassId]);
 
   // Load Checklist System Data
   const loadChecklist = useCallback(async () => {

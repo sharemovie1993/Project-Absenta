@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
-
+import React, { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../hooks/useAuth';
 import { 
   getSiswaTimeline, 
   deleteSiswaDocument, 
   downloadSiswaDocumentFile, 
   downloadSiswaExitBundle,
-  type SiswaTimelineItem 
+  type SiswaTimelineItem,
+  siswaQueryKeys 
 } from '../../../api/academic/siswa.api';
 import toast from 'react-hot-toast';
 import { Button } from '../../ui/Button';
@@ -23,12 +24,8 @@ interface SiswaTimelineAndExitTabProps {
 
 export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = React.memo(({ siswa }) => {
   const { can, user } = useAuth();
+  const queryClient = useQueryClient();
 
-  
-  const [timeline, setTimeline] = useState<SiswaTimelineItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [exitModalOpen, setExitModalOpen] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
@@ -38,24 +35,16 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
   const canManage = can('academic.students.manage') || user?.role?.name === 'SUPERADMIN';
   const canUpload = can('academic.students.manage') || can('affairs.violations.report') || user?.role?.name === 'SUPERADMIN';
 
-  const fetchTimeline = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getSiswaTimeline(siswa.id);
-      setTimeline(data || []);
-    } catch (err: any) {
-      setError(err.message || 'Gagal memuat linimasa');
-    } finally {
-      setLoading(false);
-    }
-  }, [siswa.id]);
+  // ── useQuery: Fetch Timeline ─────────────────────────────────────────────
+  const { data: rawTimeline, isLoading: loading, error: queryError, refetch: fetchTimeline } = useQuery({
+    queryKey: [...siswaQueryKeys.detail(siswa.id), 'timeline'],
+    queryFn: () => getSiswaTimeline(siswa.id),
+    enabled: !!siswa.id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (siswa.id) {
-      fetchTimeline();
-    }
-  }, [siswa.id, fetchTimeline]);
+  const timeline = rawTimeline || [];
+  const error = queryError ? (queryError as Error).message || 'Gagal memuat linimasa' : null;
 
   const handleDownloadZip = useCallback(async () => {
     try {
@@ -100,20 +89,18 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
   const handleDeleteDoc = useCallback(async (docId: string, judul: string) => {
     if (!window.confirm(`Apakah Anda yakin ingin menghapus lampiran '${judul}'?`)) return;
     try {
-      setLoading(true);
       const res = await deleteSiswaDocument(siswa.id, docId);
       if (res.success) {
         toast.success('Dokumen berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
         fetchTimeline();
       } else {
         toast.error(res.message || 'Gagal menghapus dokumen');
       }
     } catch (err: any) {
       toast.error(err.message || 'Koneksi bermasalah');
-    } finally {
-      setLoading(false);
     }
-  }, [siswa.id, fetchTimeline]);
+  }, [siswa.id, fetchTimeline, queryClient]);
 
   if (loading && timeline.length === 0) return (
     <div className="py-20 flex flex-col items-center justify-center">

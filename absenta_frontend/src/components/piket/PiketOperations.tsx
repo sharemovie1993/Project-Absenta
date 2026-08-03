@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
@@ -7,10 +7,21 @@ import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { SimpleFormField } from '../ui/SimpleFormField';
-import { Scan, Clock, Printer, ShieldCheck } from 'lucide-react';
+import { Scan, Clock, Printer, ShieldCheck, RefreshCw, CheckCircle2, Search } from 'lucide-react';
 import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
-import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
+import type { JadwalPiketGuru } from '../../api/piketGuru.api';
+import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
+import { usePiketGateStore } from '../../hooks/usePiketGateStore';
+import {
+  QUICK_REASONS_IZIN_KELUAR,
+  QUICK_REASONS_PULANG_AWAL,
+  QUICK_REASONS_JURUSAN,
+  getPiketPersonaConfig,
+  getTipeIzinBadgeConfig,
+  type PiketPersonaMode,
+  calculatePiketAnalytics
+} from '../../utils/piketStatusHelper';
 import QRCode from 'qrcode';
 
 interface PiketOperationsProps {
@@ -21,6 +32,8 @@ interface PiketOperationsProps {
   setPrintedPermit: React.Dispatch<React.SetStateAction<(IzinKeluarSiswa & { qrCodeUrl?: string }) | null>>;
   printPaperSize: string;
   setPrintPaperSize: React.Dispatch<React.SetStateAction<string>>;
+  personaMode?: PiketPersonaMode;
+  namaJurusan?: string;
 }
 
 export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
@@ -30,45 +43,95 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
   user,
   setPrintedPermit,
   printPaperSize,
-  setPrintPaperSize
+  setPrintPaperSize,
+  personaMode = 'UTAMA',
+  namaJurusan
 }) => {
   const queryClient = useQueryClient();
 
   const scannerInputRef = useRef<any>(null);
 
+  const personaConfig = useMemo(() => {
+    return getPiketPersonaConfig(personaMode, namaJurusan);
+  }, [personaMode, namaJurusan]);
+
   // Form states
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [alasan, setAlasan] = useState('Sakit / Tidak Enak Badan');
-  const [tipeIzin, setTipeIzin] = useState('IZIN_KELUAR');
+  const [tipeIzin, setTipeIzin] = useState(
+    personaMode === 'JURUSAN' ? 'IZIN_JURUSAN' : 'IZIN_KELUAR'
+  );
+  const [alasan, setAlasan] = useState(
+    personaMode === 'JURUSAN' ? QUICK_REASONS_JURUSAN[0] : QUICK_REASONS_IZIN_KELUAR[0]
+  );
   const [savingPermit, setSavingPermit] = useState(false);
 
-  // Guru Piket On Duty state
-  const [guruPiketOnDuty, setGuruPiketOnDuty] = useState<JadwalPiketGuru[]>([]);
-  const [loadingGuruPiket, setLoadingGuruPiket] = useState(true);
+  // Scan & Re-print states (UTAMA persona only)
+  const [reprintScanCode, setReprintScanCode] = useState('');
+  const [reprintPermit, setReprintPermit] = useState<IzinKeluarSiswa | null>(null);
+  const [reprintResult, setReprintResult] = useState<'idle' | 'found' | 'notfound'>('idle');
+  const reprintInputRef = useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    const loadGuruPiket = async () => {
-      try {
-        const res = await piketGuruApi.getHariIni();
-        if (res.success && res.data) {
-          setGuruPiketOnDuty(res.data.guru_piket || []);
-        }
-      } catch (err) {
-        console.error('Failed to load guru piket on duty:', err);
-      } finally {
-        setLoadingGuruPiket(false);
-      }
-    };
-    loadGuruPiket();
-  }, []);
+  // Reactive gate store & canonical analytics calculation
+  const { exitedGateIds } = usePiketGateStore();
+  const { countSedangDiLuar, countSudahKembali } = useMemo(() => {
+    return calculatePiketAnalytics(dailyPermits, exitedGateIds);
+  }, [dailyPermits, exitedGateIds]);
 
-  const quickReasons = [
-    'Sakit / Tidak Enak Badan',
-    'Kepentingan Keluarga (Penting)',
-    'Mewakili Sekolah / Lomba / Dinas luar',
-    'Panggilan Orang Tua / Pulang Cepat',
-    'Lainnya (Ketik Manual)'
-  ];
+  // Guru Piket On Duty state using explicit custom hook (Jadwal Piket Guru)
+  const { guruPiketHariIni: guruPiketOnDuty, isLoading: loadingGuruPiket } = usePiketGuruOptions();
+
+  const quickReasons = useMemo(() => {
+    if (tipeIzin === 'PULANG_AWAL') return QUICK_REASONS_PULANG_AWAL;
+    if (personaMode === 'JURUSAN' || tipeIzin === 'IZIN_JURUSAN') return QUICK_REASONS_JURUSAN;
+    return QUICK_REASONS_IZIN_KELUAR;
+  }, [tipeIzin, personaMode]);
+
+  const handleTipeIzinChange = (newTipe: string) => {
+    setTipeIzin(newTipe);
+    if (newTipe === 'PULANG_AWAL') {
+      setAlasan(QUICK_REASONS_PULANG_AWAL[0]);
+    } else if (newTipe === 'IZIN_JURUSAN' || personaMode === 'JURUSAN') {
+      setAlasan(QUICK_REASONS_JURUSAN[0]);
+    } else {
+      setAlasan(QUICK_REASONS_IZIN_KELUAR[0]);
+    }
+  };
+
+  // Scan & Re-print handler for UTAMA persona
+  const handleReprintScan = useCallback((code?: string) => {
+    const query = (code ?? reprintScanCode).trim().toLowerCase();
+    if (!query) return;
+
+    const match = (dailyPermits || []).find(
+      p =>
+        p.id.toLowerCase() === query ||
+        String(p.SiswaAkademik?.siswa.nis || '').toLowerCase() === query ||
+        String(p.SiswaAkademik?.siswa.no_rfid || '').toLowerCase() === query ||
+        String((p.SiswaAkademik?.siswa as Record<string, unknown>)?.id || '').toLowerCase() === query
+    );
+
+    if (match) {
+      setReprintPermit(match);
+      setReprintResult('found');
+      toast.success(`Izin ditemukan: ${match.SiswaAkademik?.siswa.nama_siswa}`);
+    } else {
+      setReprintPermit(null);
+      setReprintResult('notfound');
+      toast.error(`Tidak ada izin aktif untuk: "${query}"`);
+    }
+  }, [dailyPermits, reprintScanCode]);
+
+  const handleReprintExecute = useCallback(async (permit: IzinKeluarSiswa) => {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(permit.id, { margin: 1, width: 150 });
+      setPrintedPermit({ ...permit, qrCodeUrl: qrDataUrl });
+      setTimeout(() => { window.print(); setPrintedPermit(null); }, 300);
+      toast.success(`Mencetak ulang slip ${permit.SiswaAkademik?.siswa.nama_siswa}`);
+    } catch {
+      setPrintedPermit(permit);
+      setTimeout(() => { window.print(); setPrintedPermit(null); }, 300);
+    }
+  }, [setPrintedPermit]);
 
   // Active out-students count local memo
   const activeOutStudentsCount = useMemo(() => {
@@ -144,12 +207,102 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
 
   return (
     <>
+      {/* ─── UTAMA: SCAN & RE-PRINT SECTION ─────────────────────────────── */}
+      {personaMode === 'UTAMA' && (
+        <Card className="mb-6 p-5 border-none shadow-lg bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <h3 className="text-xs font-black uppercase tracking-widest text-indigo-300 flex items-center gap-2 mb-4">
+            <RefreshCw size={14} className="text-indigo-400" /> Scan & Cetak Ulang Slip — Dari Pos Jurusan
+          </h3>
+          <p className="text-[10px] text-white/50 mb-4 leading-relaxed">
+            Scan QR Code, RFID, atau ketik NIS siswa yang sudah memiliki izin dari Pos Jurusan untuk mencetak ulang slip resmi.
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={14} />
+              <input
+                ref={reprintInputRef}
+                type="text"
+                value={reprintScanCode}
+                onChange={e => setReprintScanCode(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleReprintScan(); } }}
+                placeholder="Scan QR / RFID / Ketik NIS…"
+                className="w-full h-10 pl-9 pr-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-400"
+                autoComplete="off"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={() => handleReprintScan()}
+              className="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest shrink-0"
+            >
+              Cari
+            </Button>
+          </div>
+
+          {reprintResult === 'notfound' && (
+            <div className="mt-3 p-3 bg-rose-900/30 border border-rose-700/40 rounded-xl text-[10px] text-rose-300 font-bold">
+              ❌ Tidak ada izin aktif hari ini untuk kode tersebut.
+            </div>
+          )}
+
+          {reprintResult === 'found' && reprintPermit && (() => {
+            const badgeCfg = getTipeIzinBadgeConfig(reprintPermit.tipe_izin);
+            return (
+              <div className="mt-3 p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-md ${badgeCfg.badgeClass}`}>
+                        {badgeCfg.icon} {badgeCfg.label}
+                      </span>
+                      <span className={`inline-flex text-[9px] font-black px-2 py-0.5 rounded-md ${
+                        reprintPermit.status === 'KEMBALI'
+                          ? 'bg-emerald-900/40 text-emerald-300'
+                          : 'bg-amber-900/40 text-amber-300'
+                      }`}>
+                        {reprintPermit.status === 'KEMBALI' ? '✅ Sudah Kembali' : '🟡 Masih di Luar'}
+                      </span>
+                    </div>
+                    <p className="font-black text-white text-sm uppercase tracking-tight">
+                      {reprintPermit.SiswaAkademik?.siswa.nama_siswa}
+                    </p>
+                    <p className="text-[10px] text-white/50">
+                      NIS: {reprintPermit.SiswaAkademik?.siswa.nis} &nbsp;|&nbsp;
+                      Kelas: {reprintPermit.SiswaAkademik?.kelas?.nama_kelas || '-'}
+                    </p>
+                    <p className="text-[10px] text-indigo-300 mt-1 italic">"{reprintPermit.alasan}"</p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => handleReprintExecute(reprintPermit)}
+                    className="shrink-0 h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-1.5"
+                  >
+                    <Printer size={13} /> Cetak Ulang
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setReprintPermit(null); setReprintResult('idle'); setReprintScanCode(''); }}
+                  className="text-[9px] text-white/30 hover:text-white/60 font-bold uppercase tracking-widest"
+                >
+                  ✕ Tutup
+                </button>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
       {/* Scan input side */}
       <div className="lg:col-span-5 space-y-4 sm:space-y-6">
-        <Card className="p-4 sm:p-6 border-none shadow-xl bg-white dark:bg-slate-900 relative rounded-xl border-t-4 border-indigo-600 overflow-visible">
+        <Card className={`p-4 sm:p-6 border-none shadow-xl bg-white dark:bg-slate-900 relative rounded-xl overflow-visible border-t-4 ${
+          personaMode === 'JURUSAN' ? 'border-emerald-500' : 'border-indigo-600'
+        }`}>
           <h3 className="text-md font-black uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center gap-2 mb-6">
-            <Scan className="text-indigo-600" size={18} /> Pencarian & Pemindaian Siswa
+            <Scan className={personaMode === 'JURUSAN' ? 'text-emerald-600' : 'text-indigo-600'} size={18} />
+            {personaMode === 'JURUSAN' ? 'Pencarian Siswa Jurusan' : 'Pencarian Siswa'}
           </h3>
           
           <div className="space-y-4">
@@ -157,7 +310,9 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
               <SmartStudentPicker
                 ref={scannerInputRef}
                 scope="global"
-                placeholder="Scan RFID / QR / Cari Nama & NIS..."
+                filterJurusan={personaMode === 'JURUSAN' ? namaJurusan : undefined}
+                personaMode={personaMode}
+                placeholder={personaMode === 'JURUSAN' && namaJurusan ? `Pencarian Siswa Jurusan ${namaJurusan} (Scan/Nama/NIS)...` : "Scan RFID / QR / Cari Nama & NIS..."}
                 onSelect={(siswa: Student) => {
                   setSelectedStudent(siswa);
                   toast.success(`Siswa ditemukan: ${siswa.nama_siswa}`);
@@ -197,12 +352,12 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
           <div className="grid grid-cols-2 gap-4">
             <Card className="bg-white/5 p-4 rounded-xl border border-white/10 shadow-none">
               <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Sedang di Luar</span>
-              <span className="text-3xl font-black text-indigo-400 mt-1 block">{activeOutStudentsCount} <span className="text-xs font-medium text-white/50">siswa</span></span>
+              <span className="text-3xl font-black text-indigo-400 mt-1 block">{countSedangDiLuar} <span className="text-xs font-medium text-white/50">siswa</span></span>
             </Card>
             <Card className="bg-white/5 p-4 rounded-xl border border-white/10 shadow-none">
-              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Total Izin Selesai</span>
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Siswa Sudah Kembali</span>
               <span className="text-3xl font-black text-emerald-400 mt-1 block">
-                {(dailyPermits || []).filter(p => p.status === 'KEMBALI').length} <span className="text-xs font-medium text-white/50">siswa</span>
+                {countSudahKembali} <span className="text-xs font-medium text-white/50">siswa</span>
               </span>
             </Card>
           </div>
@@ -293,17 +448,29 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
                   <select
                     id="tipe-izin-select"
                     value={tipeIzin}
-                    onChange={(e) => setTipeIzin(e.target.value)}
+                    onChange={(e) => handleTipeIzinChange(e.target.value)}
                     className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800 text-sm font-bold text-gray-700 dark:text-gray-300 focus:border-indigo-500 outline-none"
                   >
-                    <option value="IZIN_KELUAR">IZIN KELUAR SEMENTARA (KEMBALI)</option>
-                    <option value="PULANG_AWAL">PULANG AWAL (TIDAK KEMBALI)</option>
+                    {personaMode === 'JURUSAN' ? (
+                      <>
+                        <option value="IZIN_JURUSAN">IZIN JURUSAN (KELUAR DARI AREA JURUSAN)</option>
+                        <option value="IZIN_KELUAR">IZIN KELUAR SEMENTARA (WAJIB KEMBALI)</option>
+                        <option value="PULANG_AWAL">PULANG AWAL (TIDAK KEMBALI)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="IZIN_KELUAR">IZIN KELUAR SEMENTARA (WAJIB KEMBALI)</option>
+                        <option value="IZIN_JURUSAN">IZIN JURUSAN (DARI AREA LAB/BENGKEL)</option>
+                        <option value="PULANG_AWAL">PULANG AWAL (TIDAK KEMBALI)</option>
+                      </>
+                    )}
                   </select>
                 </SimpleFormField>
                 
                 <SimpleFormField label="Alasan Cepat" htmlFor="alasan-cepat-select">
                   <select
                     id="alasan-cepat-select"
+                    value={quickReasons.includes(alasan) ? alasan : 'Lainnya (Ketik Manual)'}
                     onChange={(e) => {
                       if (e.target.value !== 'Lainnya (Ketik Manual)') {
                         setAlasan(e.target.value);

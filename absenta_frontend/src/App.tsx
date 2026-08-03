@@ -188,6 +188,7 @@ const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringK
 const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
 const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
+const PiketSecurityStandalonePage = lazy(() => import('./pages/kesiswaan/PiketSecurityStandalonePage'));
 const PrestasiPage = lazy(() => import('./pages/kesiswaan/PrestasiPage'));
 const KesiswaanSettingsPage = lazy(() => import('./pages/kesiswaan/SettingsPage'));
 const BpbkWorkspacePage = lazy(() => import('./pages/bpbk/BpbkWorkspacePage'));
@@ -1447,6 +1448,17 @@ function App() {
                       </div>
                     }>
                       <PiketPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/kesiswaan/pos-keamanan" element={
+                  <ProtectedRoute requiredCapability={['attendance.gate.scan', 'attendance.scan', 'kesiswaan.piket.view', 'attendance.piket.view', 'kesiswaan.schedules.view.list']}>
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <PiketSecurityStandalonePage />
                     </Suspense>
                   </ProtectedRoute>
                 } />

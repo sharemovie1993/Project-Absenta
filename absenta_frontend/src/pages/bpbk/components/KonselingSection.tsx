@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { bpbkApi, type KonselingSiswa, type KasusBK } from '../../../api/bpbk.api';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type KonselingSiswa, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
 import type { Column } from '../../../components/ui/Table';
@@ -20,8 +20,6 @@ const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ def
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
 export const KonselingSection: React.FC = () => {
-  const [data, setData] = useState<KonselingSiswa[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -30,7 +28,6 @@ export const KonselingSection: React.FC = () => {
   const [showDeleted, setShowDeleted] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -46,6 +43,7 @@ export const KonselingSection: React.FC = () => {
   const { can } = useAuth();
   const queryClient = useQueryClient();
   const invalidateBpbkCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
     queryClient.invalidateQueries({ queryKey: ['bpbk-cases-list'] });
     queryClient.invalidateQueries({ queryKey: ['konseling-history'] });
     queryClient.invalidateQueries({ queryKey: ['ews-risk-students'] });
@@ -56,7 +54,6 @@ export const KonselingSection: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
-  const [cases, setCases] = useState<KasusBK[]>([]);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -68,41 +65,31 @@ export const KonselingSection: React.FC = () => {
     visibility: 'SENSITIVE'
   });
 
-  useEffect(() => {
-    if (formData.siswa_id) {
-      bpbkApi.getKasusBK({ siswa_id: formData.siswa_id, limit: 100 }).then(res => {
-        setCases(res.data?.list || []);
-      }).catch((err: unknown) => {
-        console.error('Error fetching cases for student:', err);
-      });
-    } else {
-      setCases([]);
-    }
-  }, [formData.siswa_id]);
+  // ── useQuery: Konseling List ─────────────────────────────────────────────
+  const { data: konselingRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.konselingList({ page, limit, search: debouncedSearch, tipe: selectedTipe, status: selectedStatus, show_deleted: showDeleted }),
+    queryFn: () => bpbkApi.getKonseling({
+      page,
+      limit,
+      search: debouncedSearch,
+      tipe: selectedTipe,
+      status: selectedStatus,
+      show_deleted: showDeleted ? 'true' : 'false'
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getKonseling({
-        page,
-        limit,
-        search: debouncedSearch,
-        tipe: selectedTipe,
-        status: selectedStatus,
-        show_deleted: showDeleted ? 'true' : 'false'
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-    } catch (err: unknown) {
-      console.error('Error fetching counselings:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch, selectedTipe, selectedStatus, showDeleted]);
+  // ── useQuery: Cases for Student ──────────────────────────────────────────
+  const { data: studentCasesRes } = useQuery({
+    queryKey: ['bpbk-cases-by-student', formData.siswa_id],
+    queryFn: () => bpbkApi.getKasusBK({ siswa_id: formData.siswa_id, limit: 100 }),
+    enabled: !!formData.siswa_id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const data = useMemo(() => konselingRes?.data?.list || [], [konselingRes]);
+  const totalPages = konselingRes?.data?.pagination?.totalPages || 1;
+  const cases = useMemo(() => studentCasesRes?.data?.list || [], [studentCasesRes]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -150,7 +137,7 @@ export const KonselingSection: React.FC = () => {
       if (res.success) {
         toast.success('Catatan konseling berhasil dihapus');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
       }
@@ -158,7 +145,7 @@ export const KonselingSection: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchData]);
+  }, [confirm, invalidateBpbkCache, refetch]);
 
   const handleRestore = useCallback(async (id: string) => {
     try {
@@ -166,7 +153,7 @@ export const KonselingSection: React.FC = () => {
       if (res.success) {
         toast.success('Catatan konseling berhasil dipulihkan');
         invalidateBpbkCache();
-        fetchData();
+        refetch();
       } else {
         toast.error('Gagal memulihkan catatan');
       }
@@ -174,7 +161,7 @@ export const KonselingSection: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
       toast.error(errorMsg);
     }
-  }, [fetchData]);
+  }, [invalidateBpbkCache, refetch]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,12 +185,12 @@ export const KonselingSection: React.FC = () => {
       setModalOpen(false);
       resetForm();
       invalidateBpbkCache();
-      fetchData();
+      refetch();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan catatan konseling';
       toast.error(errorMsg);
     }
-  }, [selectedId, formData, resetForm, fetchData]);
+  }, [selectedId, formData, resetForm, invalidateBpbkCache, refetch]);
 
   const columns: Column[] = useMemo(() => [
     {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Modal, Button, Badge } from '../../ui';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { getTenantById } from '../../../api/tenants.api';
@@ -21,9 +22,7 @@ interface Props {
 
 export default function SKWaliKelasBulkGenerateModal({ isOpen, onClose }: Props) {
   const { user } = useAuth();
-  const [list, setList] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number; statusText: string }>({
     current: 0,
@@ -31,29 +30,45 @@ export default function SKWaliKelasBulkGenerateModal({ isOpen, onClose }: Props)
     statusText: '',
   });
 
-  const [sekolahInfo, setSekolahInfo] = useState<any>(null);
-  const [tenantInfo, setTenantInfo] = useState<any>(null);
-  const [activeTa, setActiveTa] = useState<string>('');
+  // ── useQuery: Data fetching ───────────────────────────────────────────────
+  const { data: waliRes, isLoading: loading } = useQuery({
+    queryKey: ['wali-kelas-bulk-list', isOpen],
+    queryFn: () => getWaliKelasStrukturList(1, 200, '', { include_inactive: false }).catch(() => ({ data: [] })),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  const list = waliRes?.data || [];
 
-  // ── Load list wali kelas & profil sekolah ──
+  const { data: sekRes } = useQuery({
+    queryKey: ['sekolah-profile'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+  const sekolahInfo = sekRes?.data || null;
+
+  const { data: tenRes } = useQuery({
+    queryKey: ['tenant-info', user?.tenant_id],
+    queryFn: () => user?.tenant_id ? getTenantById(user.tenant_id).catch(() => null) : null,
+    enabled: isOpen && !!user?.tenant_id,
+    staleTime: 10 * 60 * 1000,
+  });
+  const tenantInfo = tenRes?.data || null;
+
+  const { data: taRes } = useQuery({
+    queryKey: ['active-tahun-pelajaran'],
+    queryFn: () => tahunPelajaranApi.getActive().catch(() => null),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+  const activeTa = taRes?.data?.tahun || '';
+
+  // Default select all when list is loaded
   useEffect(() => {
-    if (!isOpen) return;
-    setLoading(true);
-
-    Promise.all([
-      getWaliKelasStrukturList(1, 200, '', { include_inactive: false }).catch(() => ({ data: [] })),
-      sekolahApi.getProfile().catch(() => null),
-      user?.tenant_id ? getTenantById(user.tenant_id).catch(() => null) : Promise.resolve(null),
-      tahunPelajaranApi.getActive().catch(() => null),
-    ]).then(([waliRes, sekRes, tenRes, taRes]) => {
-      const items = waliRes?.data || [];
-      setList(items);
-      setSelectedIds(new Set(items.map((i: any) => i.id))); // default select all
-      if (sekRes?.data) setSekolahInfo(sekRes.data);
-      if (tenRes?.data) setTenantInfo(tenRes.data);
-      if (taRes?.data?.tahun) setActiveTa(taRes.data.tahun);
-    }).finally(() => setLoading(false));
-  }, [isOpen, user?.tenant_id]);
+    if (list.length > 0 && selectedIds.size === 0) {
+      setSelectedIds(new Set(list.map((i: any) => i.id)));
+    }
+  }, [list]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === list.length) {

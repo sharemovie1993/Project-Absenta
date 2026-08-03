@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { bpbkApi } from '../../../api/bpbk.api';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { bpbkApi, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card, CardContent } from '../../../components/ui/Card';
 import { Loader } from '../../../components/ui/Loader';
 import { Button } from '../../../components/ui/Button';
@@ -88,60 +89,44 @@ interface RiskTrendData {
 }
 
 export const ReportsSection: React.FC = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Student trend selection states
   const [selectedStudent, setSelectedStudent] = useState<AtRiskStudent | null>(null);
-  const [trendData, setTrendData] = useState<RiskTrendData | null>(null);
-  const [trendLoading, setTrendLoading] = useState(false);
-  const [trendError, setTrendError] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        setLoading(true);
-        const res = await bpbkApi.getReports();
-        if (res.success) {
-          setData(res.data);
-        } else {
-          setError('Gagal memuat laporan analitik');
-        }
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data';
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReports();
-  }, []);
+  // ── useQuery: Reports Data ────────────────────────────────────────────────
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: bpbkQueryKeys.reports(),
+    queryFn: async () => {
+      const res = await bpbkApi.getReports();
+      if (!res.success) throw new Error(res.message || 'Gagal memuat laporan analitik');
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const handleSelectStudent = async (student: any) => {
+  // ── useQuery: Student Risk Trend ──────────────────────────────────────────
+  const { data: trendData, isLoading: trendLoading, error: trendQueryError } = useQuery({
+    queryKey: bpbkQueryKeys.studentRiskTrend(selectedStudent?.id || ''),
+    queryFn: async () => {
+      if (!selectedStudent?.id) return null;
+      const res = await bpbkApi.getStudentRiskTrend(selectedStudent.id);
+      if (!res.success) throw new Error(res.message || 'Gagal memuat tren risiko');
+      return res.data as RiskTrendData;
+    },
+    enabled: !!selectedStudent?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const trendError = trendQueryError ? (trendQueryError instanceof Error ? trendQueryError.message : 'Terjadi kesalahan') : null;
+
+  const handleSelectStudent = (student: any) => {
     setSelectedStudent(student);
-    setTrendLoading(true);
-    setTrendError(null);
-    try {
-      const res = await bpbkApi.getStudentRiskTrend(student.id);
-      if (res.success) {
-        setTrendData(res.data);
-      } else {
-        setTrendError('Gagal memuat tren risiko');
+    setTimeout(() => {
+      const element = document.getElementById('student-trend-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
       }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan';
-      setTrendError(errorMsg);
-    } finally {
-      setTrendLoading(false);
-    }
-
-    // Scroll to trend section smoothly
-    const element = document.getElementById('student-trend-section');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    }, 100);
   };
 
   if (loading) {

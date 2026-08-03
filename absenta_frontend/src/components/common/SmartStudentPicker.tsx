@@ -32,6 +32,8 @@ interface SmartStudentPickerProps {
   placeholder?: string;
   scope?: 'teaching' | 'global' | 'piket';
   mode?: 'siswa' | 'guru' | 'universal';
+  filterJurusan?: string;
+  personaMode?: 'UTAMA' | 'JURUSAN';
   className?: string;
   allowCamera?: boolean;
   allowHID?: boolean;
@@ -42,12 +44,48 @@ interface SmartStudentPickerProps {
   onEnter?: (val: string) => void;
 }
 
+function matchesJurusan(s: any, filterJurusan: string): boolean {
+  if (!filterJurusan) return true;
+  const fj = filterJurusan.toUpperCase().trim();
+  if (!fj) return true;
+
+  const targets: string[] = [
+    s.Kelas?.Jurusan?.nama_jurusan,
+    s.Kelas?.Jurusan?.singkatan,
+    s.Kelas?.Jurusan?.kode,
+    s.Kelas?.nama_kelas,
+    s.kelas?.jurusan?.nama_jurusan,
+    s.kelas?.jurusan?.singkatan,
+    s.kelas?.jurusan?.kode,
+    s.kelas?.nama_kelas,
+    s.Jurusan?.nama_jurusan,
+    s.Jurusan?.singkatan,
+    s.Jurusan?.kode,
+    s.jurusan?.nama_jurusan,
+    s.jurusan?.singkatan,
+    s.jurusan?.kode,
+    s.nama_jurusan,
+    s.kode_jurusan,
+    s.singkatan_jurusan,
+    s.nama_kelas,
+    s.kelas_nama,
+  ]
+    .filter(Boolean)
+    .map((val) => String(val).toUpperCase());
+
+  if (targets.length === 0) return false;
+
+  return targets.some((target) => target.includes(fj) || fj.includes(target));
+}
+
 export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStudentPickerProps>(({
   id,
   onSelect,
   placeholder,
   scope = 'global',
   mode = 'siswa',
+  filterJurusan,
+  personaMode,
   className = "",
   allowCamera = true,
   allowHID = true,
@@ -105,7 +143,7 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
       return;
     }
 
-    console.log(`[SmartStudentPicker] Searching for: "${term}" (HID: ${isHID}, Scope: ${scope}, Mode: ${mode})`);
+    console.log(`[SmartStudentPicker] Searching for: "${term}" (HID: ${isHID}, Scope: ${scope}, Mode: ${mode}, Jurusan: ${filterJurusan || 'ALL'})`);
     setIsLoading(true);
     try {
       let list: Student[] = [];
@@ -122,6 +160,10 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
           nama_siswa: item.type === 'siswa' ? item.name : undefined,
           nama_guru: item.type === 'guru' ? item.name : undefined,
         }));
+
+        if (filterJurusan) {
+          list = list.filter((s: any) => matchesJurusan(s, filterJurusan));
+        }
       } else if (mode === 'guru') {
         const res = await guruApi.getAll({
           search: term,
@@ -130,21 +172,30 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
         } as any);
         list = res.data || [];
       } else {
-        const queryParams = {
+        const queryParams: Record<string, unknown> = {
           search: term,
-          limit: 10,
+          limit: 15,
           search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
-          // elevated_context: 'true' for middleware authorization elevation
-          // context: 'elevated' for backend query logic
           elevated_context: 'true',
           context: 'elevated',
         };
 
+        if (filterJurusan) {
+          queryParams.jurusan = filterJurusan;
+          queryParams.nama_jurusan = filterJurusan;
+          queryParams.jurusan_id = filterJurusan;
+        }
+
         const res = await siswaApi.getAll(queryParams as any);
         list = (res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status);
+
+        // Strict Jurusan Filtering & Scoping
+        if (filterJurusan) {
+          list = list.filter((s: any) => matchesJurusan(s, filterJurusan));
+        }
       }
 
-      console.log(`[SmartStudentPicker] Found ${list.length} items`);
+      console.log(`[SmartStudentPicker] Found ${list.length} items (Strictly Filtered by Jurusan: ${filterJurusan || 'ALL'})`);
       setResults(list);
 
       // HID Logic: If it's a fast input (HID) and we found an exact unique match, auto-select it
@@ -273,6 +324,16 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
+      {filterJurusan && (
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            🎯 Scope Smart Search: Jurusan {filterJurusan}
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium italic">
+            Prioritas {filterJurusan}
+          </span>
+        </div>
+      )}
       <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           {isLoading ? (

@@ -1,7 +1,6 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { getGuruList } from '@/api/academic/guru.api';
-import { getSiswaList } from '@/api/academic/siswa.api';
+import { useGuruOptions, useSiswaOptions } from '@/components/common';
 import { Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TopologyNodeData } from './types';
@@ -14,16 +13,31 @@ interface LiveNodeEditorProps {
 }
 
 export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node, onSave, onClose, anchorEl }) => {
-  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
-  const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
-  
-  const isSearchingRef = useRef(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const isSiswa = node?.data?.roleCode === 'PETUGAS_KELAS';
+  const PENDIDIK_ONLY_ROLES = ['WALIKELAS', 'KAPROG', 'KABENG', 'PEMBINA_ESKUL'];
+  const jenisPtk = PENDIDIK_ONLY_ROLES.includes(node?.data?.roleCode || '') ? 'PENDIDIK' : 'ALL';
+
+  const { options: guruOptions, isLoading: searchingGuru } = useGuruOptions({ jenisPtk });
+  const { options: siswaOptions, isLoading: searchingSiswa } = useSiswaOptions({ 
+    kelasId: isSiswa ? node?.data?.kelas_id : undefined, 
+    onlyActive: true 
+  });
+
+  const rawOptions = isSiswa ? siswaOptions : guruOptions;
+  const searching = isSiswa ? searchingSiswa : searchingGuru;
+
+  const options = useMemo(() => {
+    if (!query.trim()) return rawOptions;
+    const q = query.toLowerCase();
+    return rawOptions.filter(o => o.label.toLowerCase().includes(q));
+  }, [rawOptions, query]);
 
   useEffect(() => {
     if (anchorEl) {
@@ -38,9 +52,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
 
       updatePosition();
 
-      // Jika ada scroll di manapun, kita perbarui posisinya agar mengikuti pergerakan layar
       const handleScroll = (e: Event) => {
-        // Jika scroll terjadi di dalam dropdown sendiri, abaikan
         if (containerRef.current?.contains(e.target as Node)) return;
         updatePosition();
       };
@@ -66,51 +78,13 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose, anchorEl]);
 
-  const performSearch = useCallback(async (searchQuery: string) => {
-    if (isSearchingRef.current) return;
-    
-    isSearchingRef.current = true;
-    setSearching(true);
-    
-    try {
-      const isSiswa = node.data?.roleCode === 'PETUGAS_KELAS';
-      if (isSiswa) {
-        const res = await getSiswaList(1, 50, searchQuery, node.data.kelas_id, 'AKTIF');
-        setOptions((res.data || []).map(s => ({ 
-            label: s.nama_siswa, 
-            value: s.id
-        })));
-      } else {
-        // Filter jenis_ptk berdasarkan jabatan:
-        // PENDIDIK saja untuk jabatan akademik (wali kelas, kaprog, kabeng, pembina eskul)
-        // ALL untuk jabatan struktural (pimpinan, TU, toolman, gerbang, dll.)
-        const PENDIDIK_ONLY_ROLES = ['WALIKELAS', 'KAPROG', 'KABENG', 'PEMBINA_ESKUL'];
-        const jenisPtk = PENDIDIK_ONLY_ROLES.includes(node.data?.roleCode || '') ? 'PENDIDIK' : '';
-        const res = await getGuruList(1, 50, searchQuery, '', '', jenisPtk);
-        setOptions((res.data || []).map(g => ({ 
-            label: g.nama_guru, 
-            value: g.id
-        })));
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      isSearchingRef.current = false;
-      setSearching(false);
-    }
-  }, [node.data?.roleCode, node.data?.kelas_id]);
-
   useEffect(() => {
-    performSearch('');
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, [performSearch]);
+  }, []);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setQuery(val);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => performSearch(val), 300);
-  }, [performSearch]);
+    setQuery(e.target.value);
+  }, []);
 
   const handleSelect = useCallback(async (val: string, label: string) => {
     if (saving || !node) return; // Defensive check

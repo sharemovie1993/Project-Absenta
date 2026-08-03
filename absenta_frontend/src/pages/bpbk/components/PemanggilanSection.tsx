@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { bpbkApi, type PemanggilanOrangTua } from '../../../api/bpbk.api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type PemanggilanOrangTua, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { uploadSiswaDocument, deleteSiswaDocument, downloadSiswaDocumentFile } from '../../../api/academic/siswa.api';
 import { correspondenceApi } from '../../../api/correspondence.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
@@ -180,24 +181,20 @@ export const PemanggilanSection: React.FC = () => {
     }
   }, []);
 
-  const [data, setData] = useState<PemanggilanOrangTua[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
+  
+  const { data: strukturRes } = useQuery({
+    queryKey: ['struktur-organisasi-active'],
+    queryFn: () => getStrukturList({ is_active: true }).catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+  const strukturList = useMemo(() => (strukturRes?.success && strukturRes.data) ? strukturRes.data : [], [strukturRes]);
 
-  useEffect(() => {
-    getStrukturList({ is_active: true }).then(res => {
-      if (res.success && res.data) {
-        setStrukturList(res.data);
-      }
-    }).catch(err => console.error(err));
-  }, []);
   const debouncedSearch = useDebounce(search, 500);
 
   const [selectedStatus, setSelectedStatus] = useState('');
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -208,8 +205,8 @@ export const PemanggilanSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
 
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
@@ -240,36 +237,26 @@ export const PemanggilanSection: React.FC = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<PemanggilanOrangTua | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getPemanggilan({
-        page,
-        limit,
-        status: selectedStatus
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-    } catch (err: unknown) {
-      console.error('Error fetching summons:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, selectedStatus]);
+  // ── useQuery: Pemanggilan List ───────────────────────────────────────────
+  const { data: pemanggilanRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.pemanggilanList({ page, limit, status: selectedStatus }),
+    queryFn: () => bpbkApi.getPemanggilan({ page, limit, status: selectedStatus }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = useMemo(() => pemanggilanRes?.data?.list || [], [pemanggilanRes]);
+  const totalPages = pemanggilanRes?.data?.pagination?.totalPages || 1;
 
   const handleMarkSent = useCallback(async (id: string) => {
     try {
       await bpbkApi.updatePemanggilan(id, { status: 'DIKIRIM' });
       toast.success('Surat ditandai sebagai terkirim!');
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+      refetch();
     } catch (err: any) {
       toast.error(err?.message || 'Gagal menandai surat terkirim');
     }
-  }, [fetchData]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  }, [queryClient, refetch]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -383,7 +370,8 @@ export const PemanggilanSection: React.FC = () => {
       const res = await bpbkApi.deletePemanggilan(id);
       if (res.success) {
         toast.success('Surat pemanggilan berhasil dihapus');
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus');
       }
@@ -391,7 +379,7 @@ export const PemanggilanSection: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetch]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,13 +399,14 @@ export const PemanggilanSection: React.FC = () => {
         
         setModalOpen(false);
         resetForm();
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+        refetch();
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan pemanggilan';
       toast.error(errorMsg);
     }
-  }, [formData, resetForm, fetchData]);
+  }, [formData, resetForm, queryClient, refetch]);
 
   const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -556,14 +545,15 @@ export const PemanggilanSection: React.FC = () => {
 
       toast.success('Hasil pemanggilan berhasil diperbarui');
       setEditModalOpen(false);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+      refetch();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal memperbarui pemanggilan';
       toast.error(errorMsg);
     } finally {
       setUploadingDoc(false);
     }
-  }, [selectedId, selectedSiswa, editFormData, parentSig, studentSig, user, data, strukturList, fetchData]);
+  }, [selectedId, selectedSiswa, editFormData, parentSig, studentSig, user, data, strukturList, queryClient, refetch]);
 
 
   const columns: Column[] = useMemo(() => [

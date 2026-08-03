@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Input, Badge, Loader, SectionCard } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 import { SupervisiSelfAssessmentModal } from '../../components/kurikulum/SupervisiSelfAssessmentModal';
 import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../../components/kurikulum/SupervisiFormModal';
+import { useGuruOptions, useKelasOptions, useMapelOptions } from '../../components/common';
 
 // ─── Lazy-loaded heavy subcomponents (Pilar 11 – Lazy Loading) ────────────────
 const Table          = lazy(() => import('../../components/ui/Table').then(m => ({ default: m.Table })));
@@ -74,25 +75,38 @@ export default function SupervisiPage() {
   const [selfAssessmentSupervisiId, setSelfAssessmentSupervisiId] = useState<string | null>(null);
 
   // ── Data state ─────────────────────────────────────────────────────────────
-  const [data,         setData]         = useState<Supervisi[]>([]);
-  const [loading,      setLoading]      = useState(true);
   const [modalOpen,    setModalOpen]    = useState(false);
   const [searchTerm,   setSearchTerm]   = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [formData,     setFormData]     = useState<SupervisiFormState>(DEFAULT_FORM);
-  const [guruItems,    setGuruItems]    = useState<Guru[]>([]);
-  const [kelasItems,   setKelasItems]   = useState<Kelas[]>([]);
-  const [mapelItems,   setMapelItems]   = useState<Mapel[]>([]);
   const [currentPage,  setCurrentPage]  = useState(1);
   const [pageLimit,    setPageLimit]    = useState(10);
-  const [totalData,    setTotalData]    = useState(0);
   const [selectedSupervisiId, setSelectedSupervisiId] = useState<string | null>(null);
   const [selectedId,   setSelectedId]   = useState<string | null>(null);
 
-  // ── Scheduling recommendation state ───────────────────────────────────────
+  // ── Recommendation state ───────────────────────────────────────
   const [recommendations, setRecommendations] = useState<RecommendationSlot[]>([]);
   const [loadingRecs,     setLoadingRecs]     = useState(false);
   const [selectedRecId,   setSelectedRecId]   = useState<string | null>(null);
+
+  // ── Canonical Reference Options Hooks ─────────────────────────────────────
+  const { options: guruOptions, rawList: guruItems } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: kelasSelectOptions, rawList: kelasItems } = useKelasOptions();
+  const { options: mapelSelectOptions, rawList: mapelItems } = useMapelOptions();
+
+  // ── useQuery: Supervisi List ──────────────────────────────────────────────
+  const { data: supervisiRes, isLoading: loading, refetch: fetchData } = useQuery({
+    queryKey: ['supervisi-list', currentPage, pageLimit, debouncedSearch],
+    queryFn: () => kurikulumApi.getSupervisi({
+      limit: pageLimit,
+      page: currentPage,
+      search: debouncedSearch,
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = useMemo(() => supervisiRes?.data?.list ?? [], [supervisiRes]);
+  const totalData = supervisiRes?.data?.total ?? 0;
 
   // ── Derived permissions ────────────────────────────────────────────────────
   const canViewAnalytics = useMemo(() =>
@@ -118,8 +132,6 @@ export default function SupervisiPage() {
     [recommendations, selectedRecId],
   );
 
-  // ── Options – MUST be defined before filteredSupervisorOptions ───────────
-  const guruOptions  = useMemo(() => (guruItems  ?? []).map(g => ({ label: g.nama_guru,  value: g.id })),       [guruItems]);
   const kelasOptions = useMemo(() => (kelasItems ?? []).map(k => ({ label: k.nama_kelas, value: k.nama_kelas })), [kelasItems]);
   const mapelOptions = useMemo(() => (mapelItems ?? []).map(m => ({ label: m.nama_mapel, value: m.nama_mapel })), [mapelItems]);
 
@@ -148,40 +160,6 @@ export default function SupervisiPage() {
     setSelectedRecId(null);
   }, [formData.guru_id, formData.tanggal]);
 
-  // ── Fetch data ────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await kurikulumApi.getSupervisi({
-        limit: pageLimit,
-        page: currentPage,
-        search: debouncedSearch,
-      });
-      setData(result.data?.list ?? []);
-      setTotalData(result.data?.total ?? 0);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mengambil data supervisi');
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, currentPage, pageLimit]);
-
-  const fetchReferenceData = useCallback(async () => {
-    try {
-      const [guruRes, kelasRes, mapelRes] = await Promise.all([
-        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
-        kelasApi.getAll({ limit: 1000 }),
-        mapelApi.getAll({ limit: 1000 }),
-      ]);
-      setGuruItems(guruRes.data ?? []);
-      setKelasItems(kelasRes.data ?? []);
-      setMapelItems(mapelRes.data ?? []);
-    } catch (err) {
-      console.error('Gagal mengambil data referensi', err);
-    }
-  }, []);
-
   const fetchRecommendations = useCallback(async () => {
     if (!formData.guru_id || !formData.tanggal) {
       toast.error('Pilih Guru dan Tanggal terlebih dahulu.');
@@ -189,24 +167,28 @@ export default function SupervisiPage() {
     }
     setLoadingRecs(true);
     try {
-      const res = await kurikulumApi.getSupervisiRecommendations(formData.guru_id, formData.tanggal);
-      const slots: RecommendationSlot[] = res.data ?? [];
+      const res: any = await queryClient.fetchQuery({
+        queryKey: ['supervisi-recommendations', formData.guru_id, formData.tanggal],
+        queryFn: () => kurikulumApi.getSupervisiRecommendations(formData.guru_id, formData.tanggal).catch(() => null),
+        staleTime: 10 * 60 * 1000,
+      });
+
+      const slots: RecommendationSlot[] = res?.data ?? [];
       setRecommendations(slots);
       if (slots.length === 0) {
         toast.error('Tidak ada jadwal mengajar untuk guru ini pada tanggal tersebut.');
       } else {
         toast.success(`Ditemukan ${slots.length} slot jadwal mengajar.`);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal memuat rekomendasi.';
-      toast.error(msg);
+    } catch {
+      const cached = queryClient.getQueryData(['supervisi-recommendations', formData.guru_id, formData.tanggal]) as any;
+      if (cached?.data) {
+        setRecommendations(cached.data);
+      }
     } finally {
       setLoadingRecs(false);
     }
-  }, [formData.guru_id, formData.tanggal]);
-
-  useEffect(() => { fetchData(); },          [fetchData]);
-  useEffect(() => { fetchReferenceData(); }, [fetchReferenceData]);
+  }, [formData.guru_id, formData.tanggal, queryClient]);
 
   // ── Form handlers ─────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (e: React.FormEvent) => {

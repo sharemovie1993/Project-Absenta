@@ -1,41 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Badge, Timeline, TimelineItem, Loader, Alert } from '../../ui';
-import { getSiswaHistory, type SiswaHistory as SiswaHistoryType } from '../../../api/academic/siswa.api';
-import { Calendar, GraduationCap, School, Info } from 'lucide-react';
+import { getSiswaHistory, siswaQueryKeys } from '../../../api/academic/siswa.api';
+import { GraduationCap, School, Info } from 'lucide-react';
 
 interface SiswaHistoryProps {
   siswaId: string;
 }
 
 export const SiswaHistory: React.FC<SiswaHistoryProps> = React.memo(({ siswaId }) => {
-  const [history, setHistory] = useState<SiswaHistoryType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: rawHistory, isLoading: loading, error } = useQuery({
+    queryKey: [...siswaQueryKeys.detail(siswaId), 'history'],
+    queryFn: () => getSiswaHistory(siswaId),
+    enabled: !!siswaId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        const data = await getSiswaHistory(siswaId);
-        // Sort history by year and semester descending
-        const sortedData = [...(data || [])].sort((a, b) => {
-          const yearA = a.tahunPelajaran?.tahun || '';
-          const yearB = b.tahunPelajaran?.tahun || '';
-          if (yearA !== yearB) return yearB.localeCompare(yearA);
-          return (b.semester?.nama_semester || '').localeCompare(a.semester?.nama_semester || '');
-        });
-        setHistory(sortedData);
-      } catch (err: any) {
-        setError(err.message || 'Gagal memuat riwayat');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (siswaId) {
-      fetchHistory();
-    }
-  }, [siswaId]);
+  const history = useMemo(() => {
+    return [...(rawHistory || [])].sort((a, b) => {
+      const yearA = a.tahunPelajaran?.tahun || '';
+      const yearB = b.tahunPelajaran?.tahun || '';
+      if (yearA !== yearB) return yearB.localeCompare(yearA);
+      return (b.semester?.nama_semester || '').localeCompare(a.semester?.nama_semester || '');
+    });
+  }, [rawHistory]);
 
   if (loading) return (
     <div className="py-20 flex flex-col items-center justify-center">
@@ -44,7 +32,7 @@ export const SiswaHistory: React.FC<SiswaHistoryProps> = React.memo(({ siswaId }
     </div>
   );
   
-  if (error) return <Alert variant="destructive" className="rounded-xl border-dashed">{error}</Alert>;
+  if (error) return <Alert variant="destructive" className="rounded-xl border-dashed">{(error as Error)?.message || 'Gagal memuat riwayat'}</Alert>;
 
   if (!history.length) return (
     <div className="py-20 flex flex-col items-center justify-center opacity-50">

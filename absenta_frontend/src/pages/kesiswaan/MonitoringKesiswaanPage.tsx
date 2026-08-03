@@ -62,17 +62,20 @@ const MonitoringKesiswaanPage: React.FC = () => {
 
   const { data: violations, isLoading } = useQuery({
     queryKey: ['kesiswaan-monitoring-violations'],
-    queryFn: () => kesiswaanApi.getPelanggaran({ limit: 100 })
+    queryFn: () => kesiswaanApi.getPelanggaran({ limit: 100 }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: leaderboard, isLoading: isLoadingLeaderboard } = useQuery({
     queryKey: ['kesiswaan-leaderboard'],
-    queryFn: () => kesiswaanApi.getPrestasiLeaderboard({ limit: 5 })
+    queryFn: () => kesiswaanApi.getPrestasiLeaderboard({ limit: 5 }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: analytics, isLoading: isLoadingAnalytics } = useQuery({
     queryKey: ['kesiswaan-analytics'],
-    queryFn: () => kesiswaanApi.getPelanggaranAnalytics({ year: new Date().getFullYear() })
+    queryFn: () => kesiswaanApi.getPelanggaranAnalytics({ year: new Date().getFullYear() }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
   });
 
   const stats = useMemo(() => {

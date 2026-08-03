@@ -1,5 +1,17 @@
 import api from '../lib/axiosInstance';
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const kurikulumQueryKeys = {
+  all: ['kurikulum'] as const,
+  struktur: (params?: Record<string, any>) => [...kurikulumQueryKeys.all, 'struktur', params] as const,
+  supervisi: (params?: Record<string, any>) => [...kurikulumQueryKeys.all, 'supervisi', params] as const,
+  progressSupervisi: () => [...kurikulumQueryKeys.all, 'supervisi-progress'] as const,
+  monitoringGlobal: (tanggal?: string) => [...kurikulumQueryKeys.all, 'monitoring-global', tanggal] as const,
+  dashboardStats: () => [...kurikulumQueryKeys.all, 'dashboard-stats'] as const,
+  bebanMengajar: (params?: Record<string, any>) => [...kurikulumQueryKeys.all, 'beban-mengajar', params] as const,
+  standards: (params?: Record<string, any>) => [...kurikulumQueryKeys.all, 'standards', params] as const,
+};
+
 export interface GlobalKurikulumStandard {
   id: string;
   jenjang: string;

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SectionCard } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
@@ -29,8 +30,6 @@ const GuruMapelPage: React.FC = () => {
   const [timeOffGuruId, setTimeOffGuruId] = useState<string | null>(null);
   const [timeOffGuruName, setTimeOffGuruName] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [stats, setStats] = useState<AcademicStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -58,17 +57,13 @@ const GuruMapelPage: React.FC = () => {
   const canView = useMemo(() => can('academic.teaching.view'), [can]);
   const canManage = useMemo(() => can('academic.teaching.manage'), [can]);
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setIsLoadingStats(true);
-        const res = await getAcademicStats();
-        setStats(res.data);
-      } catch (e) { console.error(e); }
-      finally { setIsLoadingStats(false); }
-    };
-    if (canView) loadStats();
-  }, [canView, refreshTrigger]);
+  const { data: statsRes, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['academic-stats', canView, refreshTrigger],
+    queryFn: () => getAcademicStats(),
+    enabled: canView,
+    staleTime: 10 * 60 * 1000,
+  });
+  const stats = statsRes?.data || null;
 
   const academicStats = useMemo(() => [
     { title: "Total Guru", value: stats?.total_guru || 0, icon: <Users size={14} />, gradient: "from-blue-500 to-indigo-600" },

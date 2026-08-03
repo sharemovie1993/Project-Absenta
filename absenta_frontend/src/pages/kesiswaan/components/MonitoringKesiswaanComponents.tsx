@@ -1,8 +1,11 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Users, ShieldAlert, Award, CheckCircle2 } from 'lucide-react';
+import { Calendar, Users, ShieldAlert, Award, CheckCircle2, Clock, LogOut, FileText } from 'lucide-react';
 import { piketGuruApi } from '../../../api/piketGuru.api';
 import { kurikulumApi } from '../../../api/kurikulum.api';
+import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
+import { usePiketGateStore } from '../../../hooks/usePiketGateStore';
+import { calculatePiketAnalytics, getPermitGateStage, getPermitStatusBadge } from '../../../utils/piketStatusHelper';
 
 interface PelanggaranItem {
   id: string;
@@ -64,14 +67,18 @@ const safeArr = <T,>(v: unknown): T[] => {
 export function PiketAgendaPanel() {
   const { data: piketRes, isLoading: isLoadingPiket } = useQuery({
     queryKey: ['piket-guru-hari-ini'],
-    queryFn: () => piketGuruApi.getHariIni(),
+    queryFn: () => piketGuruApi.getHariIni().catch(() => null),
     staleTime: 5 * 60 * 1000
   });
 
   const { data: kalenderRes, isLoading: isLoadingKalender } = useQuery({
     queryKey: ['kalender-akademik-upcoming'],
-    queryFn: () => kurikulumApi.getKalenderAkademik()
+    queryFn: () => kurikulumApi.getKalenderAkademik().catch(() => null),
+    staleTime: 5 * 60 * 1000
   });
+
+  // Custom hook untuk data Siswa Izin Keluar dari Meja Piket dengan sinkronisasi 3-detik real-time
+  const { activeOutList, rawList: dailyPermits, isLoading: isLoadingPermits } = usePiketIzinKeluarOptions({ refetchInterval: 3000 });
 
   const guruPiketList: GuruPiketItem[] = piketRes?.data?.guru_piket || [];
 
@@ -85,15 +92,15 @@ export function PiketAgendaPanel() {
     : [];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-      {/* Guru Piket */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+      {/* 1. Guru Piket */}
       <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Users size={16} className="text-indigo-500" />
             <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Guru Piket Aktif Hari Ini</h4>
           </div>
-          <p className="text-[10px] text-slate-400 leading-normal mb-4">Guru yang bertugas melaksanakan piket ketertiban gerbang & lingkungan sekolah hari ini.</p>
+          <p className="text-[10px] text-slate-400 leading-normal mb-4">Guru bertugas piket ketertiban gerbang & lingkungan sekolah hari ini.</p>
           <div className="space-y-2">
             {isLoadingPiket ? (
               <div className="text-xs text-slate-400 font-medium py-2">Memuat data guru piket...</div>
@@ -126,7 +133,72 @@ export function PiketAgendaPanel() {
         </div>
       </div>
 
-      {/* Agenda Kesiswaan */}
+      {/* 2. Siswa Izin Keluar Hari Ini (Meja Piket) */}
+      {(() => {
+        const { exitedGateIds } = usePiketGateStore();
+        const { countSedangDiLuar, countPulangAwal, totalPermitsToday } = calculatePiketAnalytics(dailyPermits, exitedGateIds);
+
+        return (
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <LogOut size={16} className="text-rose-500" />
+                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Siswa Izin Keluar (Meja Piket)</h4>
+                </div>
+                {countSedangDiLuar > 0 && (
+                  <span className="text-[9px] font-black bg-rose-500 text-white px-2 py-0.5 rounded-full animate-pulse">
+                    {countSedangDiLuar} Di Luar
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400 leading-normal mb-4">Pantauan live status perizinan siswa dari Meja Piket & Pos Satpam Gerbang.</p>
+
+              <div className="space-y-2">
+                {isLoadingPermits ? (
+                  <div className="text-xs text-slate-400 font-medium py-2">Memuat data izin siswa...</div>
+                ) : dailyPermits.length > 0 ? (
+                  dailyPermits.slice(0, 3).map((p) => {
+                    const namaSiswa = p.SiswaAkademik?.siswa?.nama_siswa || (p as any).Siswa?.nama_siswa || (p as any).siswa?.nama_siswa || (p as any).nama_siswa || 'Siswa';
+                    const namaKelas = p.SiswaAkademik?.kelas?.nama_kelas || (p as any).Siswa?.Kelas?.nama_kelas || (p as any).kelas?.nama_kelas || (p as any).nama_kelas || '-';
+                    const stage = getPermitGateStage(p, exitedGateIds);
+                    const badgeConfig = getPermitStatusBadge(stage);
+
+                    return (
+                      <div key={p.id} className="p-2 px-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                        <div className="min-w-0 pr-2">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight block truncate">
+                            {namaSiswa}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block truncate">
+                            {namaKelas} • {p.alasan}
+                          </span>
+                        </div>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase shrink-0 ${badgeConfig.badgeClass}`}>
+                          {badgeConfig.label}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-center text-xs text-slate-400 font-medium">
+                    Tidak ada siswa yang diterbitkan izin hari ini.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 p-2 px-3 bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-800 rounded-xl flex items-center justify-between text-[9px] font-bold text-slate-500">
+              <span>{countSedangDiLuar} Di Luar</span>
+              <span>•</span>
+              <span>{countPulangAwal} Pulang Awal</span>
+              <span>•</span>
+              <span className="font-black text-slate-700 dark:text-slate-300">{totalPermitsToday} Total Izin</span>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 3. Agenda Kesiswaan */}
       <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-2 mb-3">

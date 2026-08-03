@@ -19,6 +19,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { Label } from '../../components/ui/Label';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { tahunPelajaranApi, semesterApi } from '../../api/academic.api';
+import { useTahunPelajaranOptions, useSemesterOptions, useGuruOptions } from '../../components/common';
 import { z } from 'zod';
 
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
@@ -98,24 +99,39 @@ function getInitials(name: string) {
 }
 
 export default function RekapKBMPage() {
-  const [semesterId, setSemesterId] = useState<string>('');
   const [tahunPelajaranId, setTahunPelajaranId] = useState<string>('');
-  const [search, setSearch] = useState('');
+  const [semesterId, setSemesterId] = useState<string>('');
+  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const { data: tahunData = [] } = useQuery({
-    queryKey: ['tahun-pelajaran'],
-    queryFn: () => tahunPelajaranApi.getAll().then(r => r.data ?? []),
-  });
+  const { options: tahunOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
+  const { options: semesterOptions, activeSemester } = useSemesterOptions({ tahunPelajaranId: tahunPelajaranId || activeTahunPelajaran?.id });
+  const { options: guruOptions } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
-  const { data: semesterData = [] } = useQuery({
-    queryKey: ['semester-list', tahunPelajaranId],
-    queryFn: () => semesterApi.getAll({ tahun_pelajaran_id: tahunPelajaranId || undefined }).then(r => r.data ?? []),
-  });
+  const guruSelectOptions = useMemo(() => [
+    { value: '', label: 'Semua Guru' },
+    ...guruOptions
+  ], [guruOptions]);
+
+  React.useEffect(() => {
+    if (activeTahunPelajaran?.id && !tahunPelajaranId) {
+      setTahunPelajaranId(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, tahunPelajaranId]);
+
+  React.useEffect(() => {
+    if (activeSemester?.id && !semesterId) {
+      setSemesterId(activeSemester.id);
+    }
+  }, [activeSemester, semesterId]);
 
   const { data: rekapData, isLoading } = useQuery({
     queryKey: ['rekap-kbm-guru', semesterId, tahunPelajaranId],
-    queryFn: () => kurikulumApi.getRekapKBM({ semester_id: semesterId || undefined, tahun_pelajaran_id: tahunPelajaranId || undefined }),
+    queryFn: () => kurikulumApi.getRekapKBM({ 
+      semester_id: semesterId || undefined, 
+      tahun_pelajaran_id: tahunPelajaranId || undefined 
+    }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
   });
 
   const guruDataList = useMemo(() => {
@@ -127,19 +143,9 @@ export default function RekapKBMPage() {
   }, [rekapData]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return guruDataList;
-    const q = search.toLowerCase();
-    return guruDataList.filter((g: RekapKBMRecord) => g.nama_guru?.toLowerCase().includes(q) || g.nip?.toLowerCase().includes(q));
-  }, [guruDataList, search]);
-
-  const tahunOptions = useMemo(() => tahunData?.map(t => {
-    const item = t as unknown as { id: string; tahun: string; nama?: string };
-    return { value: item.id, label: item.nama ?? item.tahun };
-  }), [tahunData]);
-  const semesterOptions = useMemo(() => semesterData?.map(s => {
-    const item = s as unknown as { id: string; nama_semester: string; nama?: string };
-    return { value: item.id, label: item.nama_semester ?? item.nama };
-  }), [semesterData]);
+    if (!selectedGuruId) return guruDataList;
+    return guruDataList.filter((g: RekapKBMRecord) => g.guru_id === selectedGuruId);
+  }, [guruDataList, selectedGuruId]);
 
   const avgPct = useMemo(() => {
     if (filtered.length === 0) return 0;
@@ -206,18 +212,17 @@ export default function RekapKBMPage() {
             </Suspense>
           </div>
           <div>
-            <Label>Cari Guru / NIP</Label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, color: 'var(--text-secondary, #9ca3af)' }} />
-              <input
-                type="text"
-                aria-label="Cari nama guru"
-                value={search}
-                onChange={handleSearchChange}
-                placeholder="Cari nama guru atau NIP..."
-                style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid var(--border-color, #e5e7eb)', background: 'var(--bg-secondary, #f9fafb)', color: 'var(--text-primary)', fontSize: 13, boxSizing: 'border-box' }}
+            <Label>Pilih / Cari Guru</Label>
+            <Suspense fallback={null}>
+              <SearchableSelect
+                options={guruSelectOptions}
+                value={selectedGuruId}
+                onValueChange={v => setSelectedGuruId(v)}
+                placeholder="Semua Guru"
+                clearable
+                aria-label="Filter guru"
               />
-            </div>
+            </Suspense>
           </div>
         </div>
       </SectionCard>

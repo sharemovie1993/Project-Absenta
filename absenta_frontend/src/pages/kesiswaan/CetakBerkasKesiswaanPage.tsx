@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
@@ -19,6 +20,8 @@ const CetakFormGeneric = lazy(() => import('../../components/academic/CetakFormG
 const hardeningModuleKey = 'cetak_berkas_kesiswaan';
 
 export const CetakBerkasKesiswaanPage: React.FC = () => {
+  const queryClient = useQueryClient();
+
   // Move static doc options outside of component scope to avoid DOM churn (Pillar 3)
   const docOptions: DocOption[] = useMemo(() => [
     { value: 'letter_summons', label: '1. SURAT PANGGILAN ORANG TUA / WALI SISWA', requireClass: true },
@@ -107,8 +110,13 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
       if (selectedPrintType === 'letter_summons' && selectedStudentId) {
         selectedStudent = students?.find(s => s.id === selectedStudentId) ?? null;
 
-        const res = await kesiswaanApi.getPelanggaran({ siswa_id: selectedStudentId, limit: 100 });
-        if (res.success && res.data) {
+        const res = await queryClient.fetchQuery({
+          queryKey: ['pelanggaran-student', selectedStudentId],
+          queryFn: () => kesiswaanApi.getPelanggaran({ siswa_id: selectedStudentId, limit: 100 }),
+          staleTime: 10 * 60 * 1000
+        }).catch(() => null);
+
+        if (res?.success && res?.data) {
           const list = res.data.list || [];
           const kelasId = (selectedStudent as Siswa & { kelas_id?: string })?.kelas_id;
           if (kelasId) {
@@ -119,8 +127,13 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         await Promise.all(
           classesToPrint.map(async (c) => {
             if (!c) return;
-            const res = await kesiswaanApi.getPelanggaran({ kelas_id: c.id, limit: 200 });
-            if (res.success && res.data) {
+            const res = await queryClient.fetchQuery({
+              queryKey: ['pelanggaran-kelas', c.id],
+              queryFn: () => kesiswaanApi.getPelanggaran({ kelas_id: c.id, limit: 200 }),
+              staleTime: 10 * 60 * 1000
+            }).catch(() => null);
+
+            if (res?.success && res?.data) {
               violationsMap[c.id] = res.data.list || [];
             }
           })
@@ -129,8 +142,13 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         await Promise.all(
           classesToPrint.map(async (c) => {
             if (!c) return;
-            const res = await kesiswaanApi.getPrestasiSiswa({ kelas_id: c.id, limit: 200 });
-            if (res.success && res.data) {
+            const res = await queryClient.fetchQuery({
+              queryKey: ['prestasi-kelas', c.id],
+              queryFn: () => kesiswaanApi.getPrestasiSiswa({ kelas_id: c.id, limit: 200 }),
+              staleTime: 10 * 60 * 1000
+            }).catch(() => null);
+
+            if (res?.success && res?.data) {
               achievementsMap[c.id] = res.data.list || [];
             }
           })
@@ -155,7 +173,7 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
       checklistData,
       filterData: { violationsMap, achievementsMap, selectedStudent, classes, students }
     });
-  }, []);
+  }, [queryClient]);
 
   return (
     <InfraErrorBoundary>

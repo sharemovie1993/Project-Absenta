@@ -1,5 +1,18 @@
 import api from '../lib/axiosInstance';
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const kesiswaanQueryKeys = {
+  all: ['kesiswaan'] as const,
+  pelanggaran: () => [...kesiswaanQueryKeys.all, 'pelanggaran'] as const,
+  pelanggaranList: (filters: Record<string, any>) => [...kesiswaanQueryKeys.pelanggaran(), 'list', filters] as const,
+  jenisPelanggaran: () => [...kesiswaanQueryKeys.all, 'jenis-pelanggaran'] as const,
+  prestasi: () => [...kesiswaanQueryKeys.all, 'prestasi'] as const,
+  prestasiList: (filters: Record<string, any>) => [...kesiswaanQueryKeys.prestasi(), 'list', filters] as const,
+  jenisPrestasi: () => [...kesiswaanQueryKeys.all, 'jenis-prestasi'] as const,
+  leaderboard: (params?: Record<string, any>) => [...kesiswaanQueryKeys.all, 'leaderboard', params] as const,
+};
+
+
 export interface JenisPrestasi {
   id: string;
   kategori: string;

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Table } from '../../ui/Table';
 import { Button } from '../../ui/Button';
 import { Loader } from '../../ui/Loader';
@@ -21,6 +21,8 @@ import useConfirm from '../../../hooks/useConfirm';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { getMapelColor } from '../../../utils/mapelColorHelper';
+import { useGuruOptions } from '../../../hooks/useGuruOptions';
+import { useMapelOptions } from '../../../hooks/useMapelOptions';
 
 interface Props {
   refreshTrigger?: number;
@@ -39,6 +41,11 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
 
   const { user } = useAuthStore();
   const confirm = useConfirm();
+
+  // Canonical Option Hooks for Filters
+  const { options: guruSelectOptions, isLoading: isLoadingGuru } = useGuruOptions({ jenisPtk: 'ALL' });
+  const { options: mapelSelectOptions, isLoading: isLoadingMapel } = useMapelOptions();
+
   const [items, setItems] = useState<GuruMapel[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -46,13 +53,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const debouncedSearch = useDebounce(search, 500);
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
-  const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
-  const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
-  const [isLoadingGuru, setIsLoadingGuru] = useState(false);
-  const [isLoadingMapel, setIsLoadingMapel] = useState(false);
 
   const canManage = useMemo(() => {
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
@@ -515,10 +518,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
           <SearchableSelect
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
-            options={[{ label: 'Semua Guru', value: '' }, ...(guruOptions || [])?.map(g => ({ label: g.nama_guru, value: g.id }))]}
+            options={[{ label: 'Semua Guru', value: '' }, ...guruSelectOptions]}
             placeholder="Filter Guru"
             searchPlaceholder="Cari Guru..."
-            onSearch={handleSearchGuru}
             isLoading={isLoadingGuru}
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
@@ -527,10 +529,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
           <SearchableSelect
             value={selectedMapelId}
             onValueChange={setSelectedMapelId}
-            options={[{ label: 'Semua Mapel', value: '' }, ...(mapelOptions || [])?.map(m => ({ label: m.nama_mapel, value: m.id }))]}
+            options={[{ label: 'Semua Mapel', value: '' }, ...mapelSelectOptions]}
             placeholder="Filter Mapel"
             searchPlaceholder="Cari Mapel..."
-            onSearch={handleSearchMapel}
             isLoading={isLoadingMapel}
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />

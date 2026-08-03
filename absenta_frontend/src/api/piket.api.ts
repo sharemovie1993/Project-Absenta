@@ -1,5 +1,12 @@
 import api from '../lib/axiosInstance';
 
+// ── Query Key Factory ──────────────────────────────────────────────────────
+export const piketQueryKeys = {
+  all: ['piket'] as const,
+  dailyPermits: (params?: Record<string, any>) => [...piketQueryKeys.all, 'permits', params] as const,
+};
+
+
 export interface IzinKeluarSiswa {
   id: string;
   tenant_id: string;
@@ -32,7 +39,11 @@ export interface IzinKeluarSiswa {
 export const piketApi = {
   getDailyPermits: async (params?: { date?: string; startDate?: string; endDate?: string }): Promise<{ success: boolean; data: IzinKeluarSiswa[] }> => {
     const response = await api.get('/kesiswaan/piket', {
-      params
+      params: {
+        ...params,
+        elevated_context: 'true',
+        context: 'elevated'
+      }
     });
     return response.data;
   },
@@ -44,17 +55,32 @@ export const piketApi = {
     tipe_izin: string;
     jam_keluar: string; // ISO date string
   }): Promise<{ success: boolean; data: IzinKeluarSiswa }> => {
-    const response = await api.post('/kesiswaan/piket', data);
+    const response = await api.post('/kesiswaan/piket', data, {
+      params: {
+        elevated_context: 'true',
+        context: 'elevated'
+      }
+    });
     return response.data;
   },
 
   markReturned: async (id: string): Promise<{ success: boolean; data: IzinKeluarSiswa }> => {
-    const response = await api.patch(`/kesiswaan/piket/${id}/kembali`);
+    const response = await api.patch(`/kesiswaan/piket/${id}/kembali`, {}, {
+      params: {
+        elevated_context: 'true',
+        context: 'elevated'
+      }
+    });
     return response.data;
   },
 
   deletePermit: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/kesiswaan/piket/${id}`);
+    const response = await api.delete(`/kesiswaan/piket/${id}`, {
+      params: {
+        elevated_context: 'true',
+        context: 'elevated'
+      }
+    });
     return response.data;
   }
 };

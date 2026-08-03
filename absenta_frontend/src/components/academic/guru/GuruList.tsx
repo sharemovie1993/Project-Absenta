@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -41,7 +41,7 @@ import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
-import { getGuruList, deleteGuru, updateGuru } from '../../../api/academic/guru.api';
+import { getGuruList, deleteGuru, updateGuru, guruQueryKeys } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -69,16 +69,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
-  const [gurus, setGurus] = useState<Guru[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // hanya untuk operasi delete/toggle
   const [searchTerm, setSearchTerm] = useState('');
   const queryClient = useQueryClient();
   const [filterStatusKepegawaian, setFilterStatusKepegawaian] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<string>('ALL');
   const [filterJenisPtk, setFilterJenisPtk] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [pageInput, setPageInput] = useState('1');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   
@@ -183,6 +180,17 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   };
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // ── useQuery: Fetch guru list ────────────────────────────────────────────
+  const { data: listRes, isLoading: isListLoading, refetch } = useQuery({
+    queryKey: guruQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, status: filterStatusKepegawaian, gender: filterGender, jenis_ptk: filterJenisPtk }),
+    queryFn: () => getGuruList(currentPage, itemsPerPage, debouncedSearchTerm, filterStatusKepegawaian, filterGender, filterJenisPtk),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const gurus = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -194,59 +202,19 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     return gurus.every(g => selectedIds.has(g.id));
   }, [gurus, selectedIds]);
 
-  // Fetch gurus with debounced search
-  const fetchGurus = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getGuruList(page, itemsPerPage, search, filterStatusKepegawaian, filterGender, filterJenisPtk);
-      
-      if (response.success) {
-        setGurus(response.data);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.total);
-        setCurrentPage(response.pagination.page);
-      } else {
-        toast.error('Gagal memuat data guru');
-      }
-    } catch (error) {
-      console.error('Error fetching gurus:', error);
-      toast.error('Terjadi kesalahan saat memuat data guru');
-    } finally {
-      setLoading(false);
-    }
-  }, [itemsPerPage, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
-  // Debounced search effect
-  useEffect(() => {
-    fetchGurus(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, fetchGurus, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
-  useEffect(() => {
-    setPageInput(String(currentPage));
-  }, [currentPage]);
-
-  // Refresh when refreshTrigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchGurus(currentPage, debouncedSearchTerm);
-    }
-  }, [refreshTrigger, fetchGurus, currentPage, debouncedSearchTerm]);
-
-  // Initial load
-  useEffect(() => {
-    fetchGurus();
-  }, [fetchGurus]);
-
-  // Handle page change
+  // Reset page input saat currentPage berubah
   const handlePageChange = useCallback((page: number) => {
-    fetchGurus(page, debouncedSearchTerm);
-  }, [fetchGurus, debouncedSearchTerm]);
+    setCurrentPage(page);
+    setPageInput(String(page));
+  }, []);
 
   const handleItemsPerPageChange = useCallback((value: string) => {
     const n = parseInt(value, 10) || 10;
     setItemsPerPage(n);
-    fetchGurus(1, debouncedSearchTerm);
-  }, [fetchGurus, debouncedSearchTerm]);
+    setCurrentPage(1);
+  }, []);
 
   const handlePageJump = useCallback(() => {
     let p = parseInt(pageInput, 10) || 1;
@@ -254,6 +222,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     if (p > totalPages) p = totalPages;
     handlePageChange(p);
   }, [pageInput, totalPages, handlePageChange]);
+
+  const invalidateGuruCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
+    queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+  }, [queryClient]);
 
   // Handle delete
   const handleDelete = useCallback(async (guru: Guru) => {
@@ -301,7 +276,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Guru berhasil dihapus');
         invalidateGuruCache();
-        fetchGurus(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus guru');
@@ -314,16 +290,10 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       setDeleting(false);
       confirm.setLoading(false);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, confirm, onRefresh]);
+  }, [confirm, invalidateGuruCache, queryClient, refetch, onRefresh]);
 
   const [togglingJenisPtkId, setTogglingJenisPtkId] = useState<string | null>(null);
 
-  const invalidateGuruCache = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
-    queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
-    queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });
-    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-  }, [queryClient]);
 
   const handleToggleActive = useCallback(async (guru: Guru) => {
     try {
@@ -334,7 +304,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       if (response.success) {
         toast.success(`Status ${guru.nama_guru} berhasil diubah.`);
         invalidateGuruCache();
-        fetchGurus(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal mengubah status');
@@ -346,7 +317,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     } finally {
       setTogglingId(null);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh, invalidateGuruCache]);
+  }, [onRefresh, invalidateGuruCache, queryClient, refetch]);
 
   const handleToggleJenisPtk = useCallback(async (guru: Guru) => {
     try {
@@ -357,7 +328,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       if (response.success) {
         toast.success(`Fungsi kerja ${guru.nama_guru} berhasil diubah.`);
         invalidateGuruCache();
-        fetchGurus(currentPage, debouncedSearchTerm);
+        queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal mengubah jenis PTK');
@@ -369,7 +341,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     } finally {
       setTogglingJenisPtkId(null);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh, invalidateGuruCache]);
+  }, [onRefresh, invalidateGuruCache, queryClient, refetch]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -398,7 +370,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             const res = await updateGuru(guru.id, { nip: newVal || null });
             if (res.success) {
               toast.success(`NIP ${guru.nama_guru} berhasil diperbarui`);
-              fetchGurus(currentPage, debouncedSearchTerm);
+              queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+              refetch();
               onRefresh?.();
             } else {
               toast.error(res.message || 'Gagal memperbarui NIP');
@@ -422,7 +395,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             const res = await updateGuru(guru.id, { no_hp: newVal || null });
             if (res.success) {
               toast.success(`No. HP ${guru.nama_guru} berhasil diperbarui`);
-              fetchGurus(currentPage, debouncedSearchTerm);
+              queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+              refetch();
               onRefresh?.();
             } else {
               toast.error(res.message || 'Gagal memperbarui No. HP');
@@ -584,7 +558,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const next = new Set<string>(selectedIds);
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
-      fetchGurus(currentPage, searchTerm);
+      queryClient.invalidateQueries({ queryKey: guruQueryKeys.all });
+      refetch();
       onRefresh?.();
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
@@ -593,7 +568,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, gurus, fetchGurus, currentPage, searchTerm, confirm, onRefresh]);
+  }, [selectedIds, gurus, queryClient, refetch, confirm, onRefresh]);
 
   return (
     <div className="flex flex-col">
@@ -658,9 +633,9 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           <MobileAcademicList
             title="Direktori Guru"
             data={gurus}
-            loading={loading}
+            loading={isListLoading || loading}
             totalItems={totalItems}
-            onRefresh={() => fetchGurus(currentPage, debouncedSearchTerm)}
+            onRefresh={() => refetch()}
             onAdd={onAdd}
             canManage={canManage}
             pagination={{
@@ -724,7 +699,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
               <Table
             columns={columns}
             data={gurus}
-            loading={loading}
+            loading={isListLoading || loading}
             emptyMessage="Tidak ada data guru ditemukan"
             compact={true}
             pagination={{

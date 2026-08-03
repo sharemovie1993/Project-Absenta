@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { bpbkApi } from '../../../api/bpbk.api';
+import { useQuery } from '@tanstack/react-query';
+import { bpbkApi, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
 import { Table, type Column } from '../../../components/ui/Table';
 import { Input } from '../../../components/ui/Input';
@@ -32,43 +33,26 @@ interface DiffMetadata {
 type BadgeVariant = 'error' | 'warning' | 'success' | 'outline' | 'default' | 'info';
 
 export const AuditSection: React.FC = () => {
-  const [logs, setLogs] = useState<BkAuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
 
   // Expanded row ID for showing diffs
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getBkAuditLogs({
-        page,
-        limit,
-        search: debouncedSearch,
-      });
-      if (res.success && res.data) {
-        setLogs(res.data.list || []);
-        setTotalPages(res.data.pagination?.totalPages || 1);
-        setTotalItems(res.data.pagination?.total || 0);
-      }
-    } catch (err) {
-      console.error('Error fetching BK audit logs:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch]);
+  // ── useQuery: BK Audit Logs ───────────────────────────────────────────────
+  const { data: auditLogsRes, isLoading: loading } = useQuery({
+    queryKey: bpbkQueryKeys.auditLogs({ page, limit, search: debouncedSearch }),
+    queryFn: () => bpbkApi.getBkAuditLogs({ page, limit, search: debouncedSearch }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  const logs = useMemo(() => (auditLogsRes?.data?.list || []) as BkAuditLog[], [auditLogsRes]);
+  const totalPages = auditLogsRes?.data?.pagination?.totalPages || 1;
+  const totalItems = auditLogsRes?.data?.pagination?.total || 0;
 
   // Reset page when search term changes
   useEffect(() => {

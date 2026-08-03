@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera } from 'lucide-react';
 import { 
@@ -27,7 +27,7 @@ import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa } from '../../../api/academic/siswa.api';
+import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
@@ -68,12 +68,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
-  const [siswas, setSiswas] = useState<Siswa[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Operasi aksi saja
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [pageInput, setPageInput] = useState('1');
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -292,10 +289,6 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   // Check if user can send parent access
   const canSendAccess = can('academic.students.send.access_token');
 
-  const allVisibleSelected = useMemo(() => {
-    if (siswas.length === 0) return false;
-    return siswas.every(s => selectedIds.has(s.id));
-  }, [siswas, selectedIds]);
 
   // Fetch kelas list for filter
   useEffect(() => {
@@ -354,27 +347,29 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     }
   }, [isWaliKelasMode, waliKelasData?.id, urlContext]);
 
-  // Fetch siswas with debounced search
-  const fetchSiswas = useCallback(async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getSiswaList(page, itemsPerPage, search, filterKelas, filterStatus, filterGender, '', filterTingkat);
-      
-      if (response.success) {
-        setSiswas(response.data);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.total);
-        setCurrentPage(response.pagination.page);
-      } else {
-        toast.error('Gagal memuat data siswa');
-      }
-    } catch (error) {
-      console.error('Error fetching siswas:', error);
-      toast.error('Terjadi kesalahan saat memuat data siswa');
-    } finally {
-      setLoading(false);
-    }
-  }, [itemsPerPage, filterKelas, filterStatus, filterGender, filterTingkat]);
+  // ── useQuery: Fetch siswa list ────────────────────────────────────────────
+  const { data: listRes, isLoading: isListLoading, refetch } = useQuery({
+    queryKey: siswaQueryKeys.list({ 
+      page: currentPage, 
+      limit: itemsPerPage, 
+      search: debouncedSearchTerm, 
+      kelas_id: filterKelas, 
+      status: filterStatus, 
+      gender: filterGender, 
+      tingkat: filterTingkat 
+    }),
+    queryFn: () => getSiswaList(currentPage, itemsPerPage, debouncedSearchTerm, filterKelas, filterStatus, filterGender, '', filterTingkat),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const siswas = useMemo(() => listRes?.data || [], [listRes]);
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
+
+  const allVisibleSelected = useMemo(() => {
+    if (siswas.length === 0) return false;
+    return siswas.every(s => selectedIds.has(s.id));
+  }, [siswas, selectedIds]);
 
   // Bulk Class Change Handler
   const handleBulkClassUpdate = useCallback(async () => {
@@ -417,13 +412,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
       setIsBulkClassModalOpen(false);
       setSelectedIds(new Set());
-      fetchSiswas(currentPage, searchTerm);
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      refetch();
     } catch (err: any) {
       toast.error(err?.message || 'Gagal memproses pemindahan kelas');
     } finally {
       setBulkClassUpdating(false);
     }
-  }, [selectedBulkClassId, selectedIds, kelasList, confirm, currentPage, searchTerm, fetchSiswas]);
+  }, [selectedBulkClassId, selectedIds, kelasList, confirm, queryClient, refetch, invalidateSiswaCache]);
 
   const handleDeleteAll = useCallback(async () => {
     const ok = await confirm({
@@ -471,7 +467,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         // Reset pagination and selection
         setCurrentPage(1);
         setSelectedIds(new Set());
-        fetchSiswas(1, '');
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(res.message || 'Gagal menghapus data');
@@ -483,7 +480,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setLoading(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSiswas, totalItems, onRefresh]);
+  }, [confirm, totalItems, queryClient, refetch, invalidateSiswaCache, onRefresh]);
 
   const handleSendParentAccess = useCallback(async (siswa: Siswa) => {
     // Check local data if available
@@ -590,13 +587,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setResetModalOpen(false);
       setNewPassword('');
       setConfirmPassword('');
-      fetchSiswas(currentPage, searchTerm);
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat memperbarui kredensial');
     } finally {
       setResettingPassword(false);
     }
-  }, [selectedSiswaForReset, emailForReset, newPassword, confirmPassword, currentPage, searchTerm, fetchSiswas]);
+  }, [selectedSiswaForReset, emailForReset, newPassword, confirmPassword, queryClient, refetch]);
 
   // Reset selected class if it does not belong to the selected tingkat
   useEffect(() => {
@@ -608,37 +606,17 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     }
   }, [filterTingkat, filterKelas, kelasList]);
 
-  // Effect for search and filters
-  useEffect(() => {
-    fetchSiswas(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, fetchSiswas]);
-
-  useEffect(() => {
-    setPageInput(String(currentPage));
-  }, [currentPage]);
-
-  // Refresh when refreshTrigger changes
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchSiswas(currentPage, debouncedSearchTerm);
-    }
-  }, [refreshTrigger, fetchSiswas, currentPage, debouncedSearchTerm]);
-
-  // Initial load
-  useEffect(() => {
-    fetchSiswas();
-  }, [fetchSiswas]);
-
-  // Handle page change
+  // Reset page input saat currentPage berubah
   const handlePageChange = useCallback((page: number) => {
-    fetchSiswas(page, searchTerm);
-  }, [fetchSiswas, searchTerm]);
+    setCurrentPage(page);
+    setPageInput(String(page));
+  }, []);
 
   const handleItemsPerPageChange = useCallback((value: string) => {
     const n = parseInt(value, 10) || 10;
     setItemsPerPage(n);
-    fetchSiswas(1, searchTerm);
-  }, [fetchSiswas, searchTerm]);
+    setCurrentPage(1);
+  }, []);
 
   const handlePageJump = useCallback(() => {
     let p = parseInt(pageInput, 10) || 1;
@@ -711,7 +689,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Siswa berhasil dihapus');
         invalidateSiswaCache();
-        fetchSiswas(currentPage, searchTerm);
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        refetch();
         onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus siswa');
@@ -724,7 +703,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setLoading(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSiswas, currentPage, searchTerm, onRefresh]);
+  }, [confirm, invalidateSiswaCache, queryClient, refetch, onRefresh]);
 
   const handleExecuteBulk = useCallback(async (type: 'MUTATION' | 'GRADUATION') => {
     if (!mutationDate) { toast.error('Tanggal wajib diisi.'); return; }
@@ -743,7 +722,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setSelectedIds(new Set()); 
       setIsMutationModalOpen(false); 
       setIsGraduationModalOpen(false);
-      fetchSiswas(1, searchTerm);
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      refetch();
       onRefresh?.();
     } catch (e: any) {
       console.error('Error executing bulk status update:', e);
@@ -751,7 +731,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     } finally {
       setExecuting(false);
     }
-  }, [mutationDate, mutationReason, mutationStatus, selectedIds, fetchSiswas, searchTerm, onRefresh]);
+  }, [mutationDate, mutationReason, mutationStatus, selectedIds, queryClient, refetch, onRefresh]);
 
 
   // Format status badge
@@ -788,7 +768,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             const res = await updateSiswa(siswa.id, { nis: newVal || null });
             if (res.success) {
               toast.success(`NIS ${siswa.nama_siswa} berhasil diperbarui`);
-              fetchSiswas(currentPage, searchTerm);
+              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              refetch();
               onRefresh?.();
             } else {
               toast.error(res.message || 'Gagal memperbarui NIS');
@@ -812,7 +793,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             const res = await updateSiswa(siswa.id, { nisn: newVal || null });
             if (res.success) {
               toast.success(`NISN ${siswa.nama_siswa} berhasil diperbarui`);
-              fetchSiswas(currentPage, searchTerm);
+              queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+              refetch();
               onRefresh?.();
             } else {
               toast.error(res.message || 'Gagal memperbarui NISN');
@@ -977,7 +959,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       const next = new Set<string>(selectedIds);
       (succeeded || []).forEach(id => next.delete(id));
       setSelectedIds(next);
-      fetchSiswas(currentPage, searchTerm);
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+      refetch();
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
       toast.error(msg);
@@ -985,7 +968,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, siswas, confirm, fetchSiswas, currentPage, searchTerm]);
+  }, [selectedIds, siswas, confirm, queryClient, refetch]);
 
   // Don't render if user doesn't have permission to view
   if (!canView) {
@@ -1011,9 +994,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           <MobileAcademicList
             title="Direktori Siswa"
             data={siswas}
-            loading={loading}
+            loading={isListLoading || loading}
             totalItems={totalItems}
-            onRefresh={() => fetchSiswas(currentPage, searchTerm)}
+            onRefresh={() => refetch()}
             onAdd={onAdd}
             canManage={canManage}
             pagination={{
@@ -1088,7 +1071,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               <Table 
               columns={columns} 
               data={siswas} 
-              loading={loading}
+              loading={isListLoading || loading}
               emptyMessage="Tidak ada data siswa"
               compact={true}
               pagination={{

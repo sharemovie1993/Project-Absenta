@@ -113,8 +113,6 @@ export class OrganizationalAuthorizationEngine {
 
   async resolveOrganizationalCapabilities(userId: string): Promise<string[]> {
     const ctx = await this.resolveOrganizationalContext(userId);
-    if (ctx.positions.length === 0) return [];
-
     const capSet = new Set<string>();
 
     // 1. Smart Otorisasi: Inject default capabilities based on position codes
@@ -126,15 +124,42 @@ export class OrganizationalAuthorizationEngine {
     }
 
     // 2. Hybrid Otorisasi: Fetch additional / override capabilities from database
-    const positionIds = ctx.positions.map((p) => p.id);
-    const dbCaps = await prisma.organizationalCapability.findMany({
-      where: { position_id: { in: positionIds } },
-      select: { permission_id: true },
+    if (ctx.positions.length > 0) {
+      const positionIds = ctx.positions.map((p) => p.id);
+      const dbCaps = await prisma.organizationalCapability.findMany({
+        where: { position_id: { in: positionIds } },
+        select: { permission_id: true },
+      });
+
+      dbCaps.forEach((c: any) => {
+        if (c.permission_id) capSet.add(String(c.permission_id));
+      });
+    }
+
+    // 3. Dynamic Piket Otorisasi: Auto-grant piket capabilities if teacher is assigned in JadwalPiketGuru today
+    const guru = await prisma.guru.findFirst({
+      where: { user_id: userId },
+      select: { id: true }
     });
 
-    dbCaps.forEach((c: any) => {
-      if (c.permission_id) capSet.add(String(c.permission_id));
-    });
+    if (guru) {
+      const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+      const now = new Date();
+      const hariIni = todayDays[now.getDay()];
+
+      const isGuruPiketToday = await prisma.jadwalPiketGuru.findFirst({
+        where: {
+          guru_id: guru.id,
+          hari: hariIni as any,
+        },
+        select: { id: true }
+      });
+
+      if (isGuruPiketToday) {
+        capSet.add('kesiswaan.piket.view');
+        capSet.add('kesiswaan.piket.manage');
+      }
+    }
 
     return Array.from(capSet).filter(Boolean);
   }

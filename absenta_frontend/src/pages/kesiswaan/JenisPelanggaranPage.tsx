@@ -9,10 +9,11 @@ import { Label } from '../../components/ui/Label';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
-import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { kesiswaanApi, kesiswaanQueryKeys } from '../../api/kesiswaan.api';
 import type { JenisPelanggaran } from '../../api/kesiswaan.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 
@@ -28,14 +29,11 @@ const jenisPelanggaranSchema = z.object({
 
 export default function JenisPelanggaranPage() {
   const queryClient = useQueryClient();
-  const [data, setData] = useState<JenisPelanggaran[]>([]);
-  const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
+
   const [modalOpen, setModalOpen] = useState(false);
-  
-  // Pagination & Sorting states
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -46,38 +44,25 @@ export default function JenisPelanggaranPage() {
     poin: 5
   });
 
-  const confirm = useConfirm();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // ── useQuery: Jenis Pelanggaran List ─────────────────────────────────────
+  const { data: rawRes, isLoading: loading, refetch } = useQuery({
+    queryKey: kesiswaanQueryKeys.jenisPelanggaran(),
+    queryFn: () => kesiswaanApi.getJenisPelanggaran(),
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const fetchData = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      // API currently doesn't support pagination/sorting for JenisPelanggaran, 
-      // but we implement the UI pattern and can simulate/prepare for it.
-      const result = await kesiswaanApi.getJenisPelanggaran();
-      const list = result.data || [];
-      setData(list);
-      
-      // Simulate pagination info if API doesn't provide it yet
-      setTotalPages(Math.ceil(list.length / itemsPerPage) || 1);
-      setTotalItems(list.length);
-      setCurrentPage(page);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mengambil data referensi');
-    } finally {
-      setLoading(false);
-    }
-  }, [itemsPerPage]);
+  const listData = useMemo(() => rawRes?.data || [], [rawRes]);
+  const totalItems = listData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-  useEffect(() => {
-    fetchData(1);
-  }, [fetchData]);
+  const data = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return listData.slice(start, start + itemsPerPage);
+  }, [listData, currentPage, itemsPerPage]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    fetchData(page);
-  }, [fetchData]);
+  }, []);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);
@@ -111,17 +96,18 @@ export default function JenisPelanggaranPage() {
         toast.success('Data berhasil disimpan');
       }
       setModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-      fetchData(currentPage);
+      refetch();
       resetForm();
     } catch (err) {
       console.error(err);
       toast.error('Gagal menyimpan data');
     }
-  }, [selectedId, formData, fetchData, currentPage, resetForm]);
+  }, [selectedId, formData, queryClient, refetch, resetForm]);
 
   const handleEdit = useCallback((item: JenisPelanggaran) => {
     setFormData({
@@ -145,16 +131,17 @@ export default function JenisPelanggaranPage() {
       try {
         await kesiswaanApi.deleteJenisPelanggaran(id);
         toast.success('Data berhasil dihapus');
+        queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
         queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
         queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
         queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-        fetchData(currentPage);
+        refetch();
       } catch (err) {
         toast.error('Gagal menghapus data');
       }
     }
-  }, [fetchData, currentPage, confirm]);
+  }, [queryClient, refetch, confirm]);
 
   const columns: Column[] = useMemo(() => [
     { 

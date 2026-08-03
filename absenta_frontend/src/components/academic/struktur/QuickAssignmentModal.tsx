@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import Modal from '@/components/ui/Modal';
-import { getGuruList } from '@/api/academic/guru.api';
-import { getSiswaList } from '@/api/academic/siswa.api';
 import { assignGuruToStruktur, assignSiswaToStruktur } from '@/api/academic/strukturOrganisasi.api';
+import { useGuruOptions, useSiswaOptions } from '@/components/common';
 import toast from 'react-hot-toast';
 import { User, Search, Loader2 } from 'lucide-react';
 
@@ -26,41 +25,17 @@ export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = ({
   roleCode,
   onSuccess
 }) => {
-  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-
   const isSiswaRole = roleCode === 'PETUGAS_KELAS';
 
-  useEffect(() => {
-    if (isOpen) {
-      loadOptions();
-    }
-  }, [isOpen, contextId]);
+  const { options: guruOptions, isLoading: loadingGuru } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: siswaOptions, isLoading: loadingSiswa } = useSiswaOptions({ 
+    kelasId: isSiswaRole ? contextId : undefined, 
+    onlyActive: true 
+  });
 
-  const loadOptions = async (search = '') => {
-    setIsLoading(true);
-    try {
-      if (isSiswaRole) {
-        const res = await getSiswaList(1, 100, search, contextId, 'AKTIF');
-        setOptions((res.data || []).map(s => ({ 
-          label: `${s.nama_siswa} (${s.nis || 'No NIS'})`, 
-          value: s.id 
-        })));
-      } else {
-        const res = await getGuruList(1, 100, search);
-        setOptions((res.data || []).map(g => ({ 
-          label: `${g.nama_guru} (${g.nip || 'No NIP'})`, 
-          value: g.id 
-        })));
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const options = isSiswaRole ? siswaOptions : guruOptions;
+  const isLoading = isSiswaRole ? loadingSiswa : loadingGuru;
 
   const handleSelect = async (id: string) => {
     if (isSubmitting) return;

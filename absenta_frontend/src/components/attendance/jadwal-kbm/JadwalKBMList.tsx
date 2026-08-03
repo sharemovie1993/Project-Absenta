@@ -1,28 +1,30 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Label, Input, Modal, Loader } from '../../ui';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { 
   getJadwalKBM, 
-  createJadwalKBM,
+  createJadwalKBM, 
   deleteJadwalKBM, 
   type JadwalKBM 
 } from '../../../api/attendance/jadwalKBM.api';
 import { getJadwalKegiatan, type JadwalKegiatanItem } from '../../../api/attendance/jadwalKegiatan.api';
 import { formatErrorMessage } from '../../../api/apiUtils';
-import { kelasApi } from '../../../api/academic.api';
-import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
-import { getSemesterList } from '../../../api/academic/semester.api';
 import { LogService } from '../../../utils/LogService';
 import { Plus, Trash2, Calendar, Clock, BookOpen, User, Edit2 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
-import { mapelApi, guruApi } from '../../../api/academic.api';
-import type { Mapel, Guru, Kelas } from '../../../types/academic';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
 import { WORKDAYS_HARI_KEYS } from '../../../constants/day.constants';
+import { 
+  useGuruOptions, 
+  useMapelOptions, 
+  useKelasOptions, 
+  useTahunPelajaranOptions, 
+  useSemesterOptions 
+} from '../../common';
 
 // Pillar 5: Lazy Loading
 const JadwalKBMForm = lazy(() => import('./JadwalKBMForm').then(m => ({ default: m.JadwalKBMForm })));
@@ -39,25 +41,94 @@ interface PendingRow {
 
 export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
   const queryClient = useQueryClient();
-  const [jadwal, setJadwal] = useState<JadwalKBM[]>([]);
-  const [jadwalKegiatan, setJadwalKegiatan] = useState<JadwalKegiatanItem[]>([]);
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'KBM' | 'KEGIATAN'>('ALL');
-  const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { user, can } = useAuth();
 
+  // ── Canonical Reference Options Hooks ─────────────────────────────────────
+  const { options: kelasOptions, rawList: kelasRawList } = useKelasOptions();
+  const { options: guruOptions } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: mapelOptions } = useMapelOptions();
+  const { activeTahunPelajaran } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions({ tahunPelajaranId: activeTahunPelajaran?.id });
 
-  // Context State
-  const [kelasOptions, setKelasOptions] = useState<{value: string, label: string}[]>([]);
   const [selectedKelasId, setSelectedKelasId] = useState<string>(kelasId || '');
   const [activeTahunId, setActiveTahunId] = useState<string>('');
   const [activeSemesterId, setActiveSemesterId] = useState<string>('');
-  const [kelasLabel, setKelasLabel] = useState<string>('');
   const [petugasLabel, setPetugasLabel] = useState<string>('');
-  const [mapelOptions, setMapelOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [guruOptions, setGuruOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [jenisOptions, setJenisOptions] = useState<Array<{ value: string; label: string; tipe: string }>>([]);
-  
+
+  useEffect(() => {
+    if (kelasId) {
+      setSelectedKelasId(kelasId);
+    }
+  }, [kelasId]);
+
+  useEffect(() => {
+    if (kelasOptions.length > 0 && !selectedKelasId && !kelasId) {
+      setSelectedKelasId(kelasOptions[0].value);
+    }
+  }, [kelasOptions, selectedKelasId, kelasId]);
+
+  useEffect(() => {
+    if (activeTahunPelajaran?.id && !activeTahunId) {
+      setActiveTahunId(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, activeTahunId]);
+
+  useEffect(() => {
+    if (activeSemester?.id && !activeSemesterId) {
+      setActiveSemesterId(activeSemester.id);
+    }
+  }, [activeSemester, activeSemesterId]);
+
+  const { data: jenisResData } = useQuery({
+    queryKey: ['jenis-kegiatan-list-options'],
+    queryFn: () => jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 }).catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const jenisOptions = useMemo(() => {
+    const jenisMaster = (jenisResData?.data || [])
+      .filter((j: JenisKegiatanMaster) => j.aktif)
+      .filter((j: JenisKegiatanMaster) => String(j.tipe).toUpperCase() !== 'GERBANG');
+    return jenisMaster.map((j: JenisKegiatanMaster) => ({ value: j.id, label: j.nama, tipe: String(j.tipe) }));
+  }, [jenisResData]);
+
+  // ── Query: Jadwal KBM & Kegiatan ──────────────────────────────────────────
+  const { data: fetchJadwalData, isLoading: loading, refetch: fetchJadwal } = useQuery({
+    queryKey: ['jadwal-kbm-list', selectedKelasId, activeTahunId, activeSemesterId, refreshKey],
+    queryFn: async () => {
+      const [res, kegiatanRes] = await Promise.all([
+        getJadwalKBM({
+          kelas_id: selectedKelasId || undefined,
+          tahun_pelajaran_id: activeTahunId || undefined,
+          semester_id: activeSemesterId || undefined
+        }).catch(() => null),
+        getJadwalKegiatan({ aktif: true }).catch(() => ({ data: [] }))
+      ]);
+      return {
+        jadwal: res?.data || [],
+        meta: res?.meta || null,
+        kegiatan: kegiatanRes?.data || []
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const jadwal = fetchJadwalData?.jadwal || [];
+  const jadwalKegiatan = fetchJadwalData?.kegiatan || [];
+
+  const kelasLabel = useMemo(() => {
+    const metaLabel = fetchJadwalData?.meta?.nama_kelas;
+    if (metaLabel) return metaLabel;
+    const found = kelasOptions.find(k => k.value === selectedKelasId);
+    return found?.label || '';
+  }, [fetchJadwalData, kelasOptions, selectedKelasId]);
+
+  useEffect(() => {
+    setPetugasLabel(user?.full_name || user?.email || 'Siswa');
+  }, [user]);
+
   // Edit State
   const [editingItem, setEditingItem] = useState<JadwalKBM | undefined>(undefined);
   const [pendingNewRows, setPendingNewRows] = useState<Record<string, Array<PendingRow>>>({});
@@ -71,118 +142,6 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
     if (!value) return undefined;
     return options.find((opt) => opt.value === value)?.label;
   }, []);
-
-  // Sync selectedKelasId state with kelasId prop when it changes (essential for async default load)
-  useEffect(() => {
-    if (kelasId) {
-      setSelectedKelasId(kelasId);
-    }
-  }, [kelasId]);
-
-  // 1. Load Context (Kelas, TP, Semester)
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadContext = async () => {
-      try {
-        const [tpRes, mapelRes, guruRes, jenisRes] = await Promise.all([
-          getTahunPelajaranList(1, 10, '', 'ACTIVE'),
-          mapelApi.getAll({ limit: 100 }),
-          guruApi.getAll({ limit: 100, jenis_ptk: 'PENDIDIK' }),
-          jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
-        ]);
-
-        if (controller.signal.aborted) return;
-
-        setMapelOptions((mapelRes.data || []).map((m: any) => ({ value: m.id, label: `${m.nama_mapel} (${m.kode_mapel || m.kode || ''})` })));
-        setGuruOptions((guruRes.data || []).map((g: Guru) => ({ value: g.id, label: g.nama_guru || g.User?.full_name || 'Guru' })));
-        const jenisMaster = (jenisRes.data || []).filter((j: JenisKegiatanMaster) => j.aktif).filter((j: JenisKegiatanMaster) => String(j.tipe).toUpperCase() !== 'GERBANG');
-        setJenisOptions(jenisMaster.map((j: JenisKegiatanMaster) => ({ value: j.id, label: j.nama, tipe: String(j.tipe) })));
-
-        const canSelectKelas = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('academic.schedules.view.list') || can('attendance.schedules.view.list');
-        if (canSelectKelas) {
-          const kelasRes = await kelasApi.getAll({ limit: 100 });
-          if (controller.signal.aborted) return;
-          const kOptions = (kelasRes.data || []).map((k: Kelas) => ({
-            value: k.id,
-            label: `${k.nama_kelas} (${k.tingkat})`
-          }));
-          setKelasOptions(kOptions);
-          if (kOptions.length > 0 && !kelasId) {
-            setSelectedKelasId(kOptions[0].value);
-          }
-        }
-        
-        const activeTp = tpRes.data?.[0];
-        if (activeTp) {
-          setActiveTahunId(activeTp.id);
-          const semRes = await getSemesterList(1, 10, '', activeTp.id);
-          if (controller.signal.aborted) return;
-          const activeSem = semRes.data?.find((s: any) => s.is_active);
-          if (activeSem) {
-            setActiveSemesterId(activeSem.id);
-          }
-        }
-
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          LogService.error('Failed to load context', err);
-        }
-      }
-    };
-    loadContext();
-    return () => controller.abort();
-  }, [user?.role?.name, kelasId]);
-
-  // 2. Fetch Jadwal when Kelas changes
-  useEffect(() => {
-    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '') || can('academic.schedules.view.list') || can('attendance.schedules.view.list');
-    if (isAdmin && (!selectedKelasId || !activeTahunId || !activeSemesterId)) return;
-    // SISWA also needs a kelas_id to fetch (PETUGAS_KELAS has it injected from parent)
-    if (!isAdmin && user?.role?.name === 'SISWA' && !selectedKelasId) return;
-    if (!isAdmin && user?.role?.name !== 'SISWA' && user?.role?.name !== 'GURU') return;
-
-    const controller = new AbortController();
-    const fetchJadwal = async () => {
-      setLoading(true);
-      try {
-        const [res, kegiatanRes] = await Promise.all([
-          getJadwalKBM({
-            kelas_id: selectedKelasId,
-            tahun_pelajaran_id: activeTahunId,
-            semester_id: activeSemesterId
-          }),
-          getJadwalKegiatan({ aktif: true }).catch(() => ({ data: [] }))
-        ]);
-        
-        if (controller.signal.aborted) return;
-        setJadwal(res.data || []);
-        setJadwalKegiatan(kegiatanRes.data || []);
-        
-        if (res.meta) {
-          if (res.meta.kelas_id) setSelectedKelasId(res.meta.kelas_id);
-          if (res.meta.nama_kelas) setKelasLabel(res.meta.nama_kelas);
-          if (res.meta.tahun_pelajaran_id) setActiveTahunId(res.meta.tahun_pelajaran_id);
-          if (res.meta.semester_id) setActiveSemesterId(res.meta.semester_id);
-          setPetugasLabel(user?.full_name || user?.email || 'Siswa');
-        } else {
-          const kelasDetail = (res.data?.[0]?.Kelas?.nama_kelas) ? res.data[0].Kelas?.nama_kelas : (kelasOptions.find(k => k.value === selectedKelasId)?.label || '');
-          setKelasLabel(kelasDetail || '');
-          setPetugasLabel(user?.full_name || user?.email || '');
-        }
-
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          LogService.error('Failed to fetch jadwal KBM', err);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    };
-    fetchJadwal();
-    return () => controller.abort();
-  }, [selectedKelasId, activeTahunId, activeSemesterId, refreshKey, user?.role?.name, user?.full_name, user?.email, kelasOptions]);
 
   const handleDelete = useCallback((id: string) => {
     setDeletingId(id);

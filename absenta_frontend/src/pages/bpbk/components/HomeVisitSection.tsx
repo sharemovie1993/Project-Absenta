@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { bpbkApi, type HomeVisit } from '../../../api/bpbk.api';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { bpbkApi, type HomeVisit, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
@@ -17,11 +17,7 @@ const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ def
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
 export const HomeVisitSection: React.FC = () => {
-  const [data, setData] = useState<HomeVisit[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
@@ -32,13 +28,13 @@ export const HomeVisitSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-
   const confirm = useConfirm();
 
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     siswa_id: '',
     tanggal: new Date().toISOString().split('T')[0],
@@ -47,27 +43,17 @@ export const HomeVisitSection: React.FC = () => {
     file: null as File | null
   });
 
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await bpbkApi.getHomeVisits({
-        page,
-        limit
-      });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error('Error fetching home visits:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit]);
+  // ── useQuery: Home Visit List ─────────────────────────────────────────────
+  const { data: homeVisitRes, isLoading: loading, refetch } = useQuery({
+    queryKey: bpbkQueryKeys.homeVisitList({ page, limit }),
+    queryFn: () => bpbkApi.getHomeVisits({ page, limit }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const data = useMemo(() => homeVisitRes?.data?.list || [], [homeVisitRes]);
+  const totalPages = homeVisitRes?.data?.pagination?.totalPages || 1;
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -108,9 +94,8 @@ export const HomeVisitSection: React.FC = () => {
       const res = await bpbkApi.deleteHomeVisit(id);
       if (res.success) {
         toast.success('Log kunjungan rumah berhasil dihapus');
-        queryClient.invalidateQueries({ queryKey: ['bpbk-homevisit-list'] });
-        queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+        refetch();
       } else {
         toast.error(res.message || 'Gagal menghapus');
       }
@@ -118,7 +103,7 @@ export const HomeVisitSection: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
       toast.error(errorMsg);
     }
-  }, [confirm, fetchData]);
+  }, [confirm, queryClient, refetch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +149,8 @@ export const HomeVisitSection: React.FC = () => {
 
       setModalOpen(false);
       resetForm();
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
+      refetch();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan kunjungan rumah';
       toast.error(errorMsg);
