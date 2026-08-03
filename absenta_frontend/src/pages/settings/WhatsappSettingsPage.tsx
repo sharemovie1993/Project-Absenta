@@ -94,15 +94,9 @@ const WhatsappSettingsPage: React.FC = () => {
             setQrCode(qrRes.qr);
           }
         } else {
-          const qrRes = (await getLocalWhatsappQR()) as WaQrResponse;
-          if (qrRes.success && qrRes.qr) {
-            setLocalStatus('connecting');
-            setQrCode(qrRes.qr);
-          } else {
-            setLocalStatus('disconnected');
-            setConnectedNumber(null);
-            setQrCode(null);
-          }
+          setLocalStatus('disconnected');
+          setConnectedNumber(null);
+          setQrCode(null);
         }
       }
     } catch (err) {
