@@ -131,6 +131,11 @@ async function connectTenant(tenantId: string): Promise<void> {
 
   const entry = pool.get(tenantId)!;
 
+  // Jika belum ada creds.json, set status ke 'connecting' secara eksplisit
+  if (!hasCreds) {
+    entry.status = 'connecting';
+  }
+
   // Jika status sudah terhubung, jangan re-koneksi untuk menghindari konflik sesi
   if (entry.status === 'connected' && entry.sock) {
     console.log(`[WA-Pool:${tenantId}] Sesi sudah terhubung. Mengabaikan connect.`);
