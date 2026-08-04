@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Loader2,
   Settings2,
-  Users
+  Users,
+  RotateCcw
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -21,11 +22,13 @@ import { Loader } from '../../components/ui/Loader';
 import { TahunPelajaranSelect } from '../../components/common';
 import { useKospBuilderState } from '../../hooks/kurikulum/useKospBuilderState';
 import { KospMetaConfigModal } from '../../components/kurikulum/kosp/KospMetaConfigModal';
+import useConfirm from '../../hooks/useConfirm';
 
 const KospWordEditorModal = lazy(() => import('../../components/kurikulum/kosp/KospWordEditorModal'));
 
 export const KospBuilderPage: React.FC = () => {
   const [selectedPageIndex, setSelectedPageIndex] = React.useState<number>(0);
+  const confirm = useConfirm();
 
   const {
     selectedTahunId,
@@ -44,6 +47,7 @@ export const KospBuilderPage: React.FC = () => {
     isSaving,
     handleSaveKospPages,
     handleSaveMetaConfig,
+    handleResetToMasterTemplate,
     namaKepalaSekolah,
     wakasekKurikulum,
     mappingAllDataCount,
@@ -60,6 +64,20 @@ export const KospBuilderPage: React.FC = () => {
     setIsEditorOpen(true);
   };
 
+  const handleConfirmResetTemplate = async () => {
+    const isOk = await confirm({
+      title: `Reset KOSP TP ${selectedTahunNama} ke Template Master Baru`,
+      description: `Apakah Anda yakin ingin memuat ulang naskah dokumen KOSP TP ${selectedTahunNama} ke susunan Template Master resmi terbaru?\n\nCatatan: Suntingan manual sebelumnya pada draf dokumen ini akan digantikan dengan susunan bab master resmi terbaru (Bab IV, Bab V, Daftar Isi & Pemisah Halaman Per-Jurusan).`,
+      confirmText: 'Ya, Reset ke Template Master',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+
+    if (isOk) {
+      await handleResetToMasterTemplate();
+    }
+  };
+
   return (
     <AcademicPageLayout
       title="Generator KOSP (Kurikulum Operasional Satuan Pendidikan)"
@@ -72,6 +90,7 @@ export const KospBuilderPage: React.FC = () => {
         items: [
           { text: 'Pilih Tahun Pelajaran yang ingin disusun dokumen KOSP-nya.' },
           { text: 'Atur Legalitas SK & Tim Penyusun melalui tombol "Pengaturan Legalitas SK & Tim".' },
+          { text: 'Jika membuka draf lama, gunakan tombol "Reset ke Template Master Baru" untuk memperbarui struktur halaman resmi KOSP.' },
           { text: 'Klik pada kartu Bab/Halaman untuk langsung menuju dan menyunting naskah Bab tersebut.' },
           { text: 'Data Struktur Kurikulum semua jurusan otomatis disuntikkan dari database Absenta sesuai regulasi Kemendikbud.' },
           { text: 'Simpan atau langsung cetak dokumen ke format PDF/Word.' }
@@ -110,6 +129,17 @@ export const KospBuilderPage: React.FC = () => {
             >
               <Settings2 size={16} className="text-blue-600 dark:text-blue-400" />
               Pengaturan SK & Tim Penyusun
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleConfirmResetTemplate}
+              disabled={isSaving}
+              className="rounded-xl flex items-center gap-2 border-amber-300 hover:bg-amber-50 dark:border-amber-900/60 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-bold h-11"
+              title="Reset susunan dokumen ke Template Master Resmi Terbaru"
+            >
+              <RotateCcw size={15} className="text-amber-600 dark:text-amber-400" />
+              Reset ke Template Master Baru
             </Button>
 
             <Button

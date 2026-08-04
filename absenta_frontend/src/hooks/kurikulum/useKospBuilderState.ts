@@ -351,6 +351,14 @@ export const useKospBuilderState = () => {
     });
   }, [parsedConfigObj, upsertMutation]);
 
+  const handleResetToMasterTemplate = useCallback(async () => {
+    const defaultMaster = getDefaultKospMasterPages();
+    await upsertMutation.mutateAsync({
+      halaman_html: JSON.stringify(defaultMaster)
+    });
+    toast.success(`Naskah KOSP TP ${selectedTahunNama} berhasil direset ke versi Template Master terbaru!`);
+  }, [selectedTahunNama, upsertMutation]);
+
   return {
     selectedTahunId,
     setSelectedTahunId,
@@ -370,6 +378,7 @@ export const useKospBuilderState = () => {
     isSaving: upsertMutation.isPending,
     handleSaveKospPages,
     handleSaveMetaConfig,
+    handleResetToMasterTemplate,
     namaKepalaSekolah,
     wakasekKurikulum,
     mappingAllDataCount: mappingAllData.length,
