@@ -142,12 +142,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   }, [mapelRawList]);
 
   useEffect(() => {
-    if (kelasList.length > 0 && !selectedKelasId) {
-      setSelectedKelasId(kelasList[0].value);
-    }
-  }, [kelasList, selectedKelasId]);
-
-  useEffect(() => {
     if (guruList.length > 0 && !selectedGuruId) {
       setSelectedGuruId(guruList[0].id);
     }
@@ -301,6 +295,12 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         };
       });
   }, [kelasRawList, allJadwal, targetClassJpMap]);
+
+  useEffect(() => {
+    if (kelasList.length > 0 && !selectedKelasId) {
+      setSelectedKelasId(kelasList[0].value);
+    }
+  }, [kelasList, selectedKelasId]);
 
   const guruMapelSelectOptions = useMemo(() => {
     let baseList = [];
