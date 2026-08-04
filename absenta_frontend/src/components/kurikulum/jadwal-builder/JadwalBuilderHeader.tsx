@@ -119,7 +119,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             options={guruSelectOptions}
             placeholder="Pilih Guru..."
             searchPlaceholder="Cari Guru..."
-            className="w-[220px] md:w-[280px]"
+            className="w-[260px] md:w-[340px] lg:w-[380px]"
           />
         )}
         {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (

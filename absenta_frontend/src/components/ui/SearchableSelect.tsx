@@ -133,7 +133,9 @@ export function SearchableSelect({
       setDropdownStyle({
         position: 'fixed',
         left: rect.left,
-        width: Math.max(rect.width, 180),
+        minWidth: Math.max(rect.width, 320),
+        width: 'max-content',
+        maxWidth: Math.min(window.innerWidth - rect.left - 16, 520),
         zIndex: 99999,
         ...(openUpward
           ? { bottom: window.innerHeight - rect.top + 4 }
