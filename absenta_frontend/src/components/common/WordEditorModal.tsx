@@ -257,20 +257,64 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
     const pw = orientation === 'landscape' ? paper.heightMm : paper.widthMm;
     const ph = orientation === 'landscape' ? paper.widthMm : paper.heightMm;
     const pageSize = `${pw}mm ${ph}mm`;
-    const pad = `${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm`;
 
     const pagesHtml = pagesArray
-      .map((p) => `<div style="page-break-after:always;width:${pw}mm;min-height:${ph}mm;padding:${pad};background:white;margin:0 auto;">${p.html}</div>`)
+      .map((p, idx) => `
+        <div class="kosp-print-page" style="page-break-after:${idx === pagesArray.length - 1 ? 'auto' : 'always'}; page-break-inside:avoid; width:100%; box-sizing:border-box;">
+          ${p.html}
+        </div>
+      `)
       .join('');
 
     printWin.document.write(`<!DOCTYPE html><html><head>
       <title>${printTitle}</title>
       <style>
-        @page{size:${pageSize};margin:0;}
-        body{margin:0;padding:0;background:#fff;}
-        *{box-sizing:border-box;}
-        @media print{
-          body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        @page {
+          size: ${pageSize};
+          margin: ${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm;
+        }
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #fff;
+          font-family: 'Book Antiqua', 'Bookman Old Style', 'Palatino Linotype', serif;
+          font-size: 11pt;
+          line-height: 1.5;
+          color: #000;
+        }
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+        .kosp-print-page {
+          width: 100%;
+          box-sizing: border-box;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse;
+          margin: 12pt 0;
+        }
+        th, td {
+          border: 1pt solid #000;
+          padding: 4pt 6pt;
+        }
+        th {
+          background-color: #f8fafc;
+          font-weight: bold;
+        }
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        #kop-surat-shared img {
+          max-height: 85px !important;
+          max-width: 120px !important;
         }
       </style>
     </head><body>
@@ -279,6 +323,7 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
     </body></html>`);
     printWin.document.close();
   };
+
 
   const handleSaveTrigger = () => {
     const pagesArray = getPagesArray();
