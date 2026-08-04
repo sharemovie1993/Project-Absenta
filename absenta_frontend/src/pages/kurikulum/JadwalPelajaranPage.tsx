@@ -383,63 +383,63 @@ export default function JadwalPelajaranPage() {
 
   // Pillar 2: Memoize complex JSX
   const pageContent = useMemo(() => (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      <SectionCard fullWidth>
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
             {viewMode === 'grid' && (
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="rounded-xl px-4 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-600 dark:text-slate-300"
-                    onClick={handlePrint}
-                    disabled={jadwal.length === 0}
-                >
-                    <Printer className="w-4 h-4 mr-2 text-indigo-500" />
-                    Cetak PDF
-                </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-xl px-3 py-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-600 dark:text-slate-300 text-xs font-bold"
+                onClick={handlePrint}
+                disabled={jadwal.length === 0}
+              >
+                <Printer className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                Cetak PDF
+              </Button>
             )}
 
             {canManage && (
-                <>
-                  <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="rounded-xl px-4 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5"
-                      onClick={() => setAutoWizardOpen(true)}
-                  >
-                      <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                      Generate Otomatis
-                  </Button>
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-xl px-3 py-1.5 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5 text-xs"
+                  onClick={() => setAutoWizardOpen(true)}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                  Generate Otomatis
+                </Button>
 
-                  {viewMode !== 'builder' && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl px-4 border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 shadow-sm hover:bg-rose-100/50 hover:shadow-md transition-all text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5"
-                        onClick={handleClearSchedule}
-                    >
-                        <Trash2 className="w-4 h-4 text-rose-500" />
-                        Kosongkan Jadwal
-                    </Button>
-                  )}
-                </>
+                {viewMode !== 'builder' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl px-3 py-1.5 border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 shadow-sm hover:bg-rose-100/50 hover:shadow-md transition-all text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 text-xs"
+                    onClick={handleClearSchedule}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                    Kosongkan Jadwal
+                  </Button>
+                )}
+              </>
             )}
+          </div>
+
+          {canManage && (
+            <TabSwitcher
+              options={[
+                { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+                { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
+                { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' }
+              ]}
+              activeTab={viewMode}
+              onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder')}
+            />
+          )}
         </div>
 
-        {canManage && (
-          <TabSwitcher
-            options={[
-              { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
-              { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
-              { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' }
-            ]}
-            activeTab={viewMode}
-            onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder')}
-          />
-        )}
-      </div>
-
-      <SectionCard fullWidth>
         <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
           {viewMode === 'list' ? (
             <JadwalTplList kelasId={isSiswa ? defaultKelasId : selectedKelasId} />
