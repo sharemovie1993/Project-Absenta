@@ -37,7 +37,7 @@ export class WhatsappController {
       const result = await whatsappService.testConnection(tenant_id, test_number);
       return reply.send({ success: true, message: 'Pesan tes berhasil dikirim', data: result });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message || 'Gagal mengirim pesan tes WA' });
     }
   }
 

@@ -38,9 +38,17 @@ export class WhatsappService {
   }
 
   async testConnection(tenantId: string, testNumber: string) {
-    const config = await this.getConfig(tenantId);
-    if (!config || !config.is_active) {
-      throw new Error('WhatsApp configuration not found or inactive');
+    let config = await this.getConfig(tenantId);
+    if (!config) {
+      config = await this.saveConfig(tenantId, {
+        provider_name: 'LOCAL',
+        is_active: true
+      });
+    } else if (!config.is_active) {
+      config = await this.saveConfig(tenantId, {
+        provider_name: config.provider_name || 'LOCAL',
+        is_active: true
+      });
     }
 
     return this.sendMessage(config, testNumber, 'Tes koneksi WhatsApp dari Absenta. Jika Anda menerima pesan ini, konfigurasi Anda sudah benar.');
@@ -48,8 +56,9 @@ export class WhatsappService {
 
   async sendMessage(config: any, to: string, message: string) {
     const normalizedTo = normalizeToWaNumber(to);
+    const providerName = String(config?.provider_name || 'LOCAL').trim().toUpperCase();
 
-    if (config.provider_name === 'LOCAL') {
+    if (providerName === 'LOCAL' || !config?.provider_name) {
       const { waGatewayService } = await import('../../../services/wa-gateway.service');
       return waGatewayService.sendMessage(config.tenant_id, normalizedTo, message);
     }
