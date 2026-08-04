@@ -215,14 +215,14 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           </div>
         )}
 
-        {/* BARIS 2 (ENTER): MATA PELAJARAN PENGAMPU (DITAMPILKAN TERBUKA) */}
+        {/* BARIS 2 (ENTER): MATA PELAJARAN PENGAMPU (DITAMPILKAN TERBUKA DENGAN HASIL KALKULASI JP) */}
         {viewMode === 'GURU' && guruMapelSelectOptions.length > 0 && setPaintMapelId && (
           <div className="flex items-start gap-2.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800 flex-wrap">
             <span className="text-xs font-black text-slate-700 dark:text-slate-300 w-24 shrink-0 uppercase tracking-wider pt-1">
               MAPEL:
             </span>
             <div className="flex items-center gap-1.5 flex-wrap flex-1">
-              {guruMapelSelectOptions.map((m) => {
+              {guruMapelSelectOptions.map((m: any) => {
                 const isSelected = paintMapelId === m.value;
                 const colorStyle = getMapelColor(m.label);
                 return (
@@ -236,13 +236,25 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800 scale-105"
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                     )}
-                    title={`Pilih Mata Pelajaran: ${m.label}`}
+                    title={`Pilih ${m.label} ${m.rightBadge ? `(${m.rightBadge})` : ''}`}
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
                       style={{ backgroundColor: colorStyle.dotHex }}
                     />
                     <span>{m.label}</span>
+                    {m.rightBadge && (
+                      <span
+                        className={cn(
+                          "text-[9.5px] px-1.5 py-0.5 rounded-md font-black shrink-0 ml-0.5 leading-none",
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : (m.rightBadgeClass || "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300")
+                        )}
+                      >
+                        {m.rightBadge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
