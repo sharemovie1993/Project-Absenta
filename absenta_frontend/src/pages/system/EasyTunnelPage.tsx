@@ -125,7 +125,7 @@ export default function EasyTunnelPage() {
   const [cloudLicenses, setCloudLicenses] = useState<any[]>([]);
   const [loadingLicenses, setLoadingLicenses] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const res = await easyTunnelApi.list();
@@ -137,7 +137,7 @@ export default function EasyTunnelPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadCloudLicenses = useCallback(async (slug: string) => {
     if (!slug) return;
@@ -171,16 +171,24 @@ export default function EasyTunnelPage() {
     } catch { /* silent */ }
   }, []);
 
+  // Main data polling (setiap 15 detik)
   useEffect(() => {
     loadData();
     loadCustomDomainStatus();
-    const interval = setInterval(loadData, 10000);
-    // Poll status domain setiap 30 detik jika PENDING
+    const interval = setInterval(() => {
+      loadData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loadData, loadCustomDomainStatus]);
+
+  // Poll status domain (setiap 30 detik HANYA jika status PENDING)
+  useEffect(() => {
+    if (customDomainData?.custom_domain_status !== 'PENDING') return;
     const domainInterval = setInterval(() => {
-      if (customDomainData?.custom_domain_status === 'PENDING') loadCustomDomainStatus();
+      loadCustomDomainStatus();
     }, 30000);
-    return () => { clearInterval(interval); clearInterval(domainInterval); };
-  }, [loadCustomDomainStatus, customDomainData?.custom_domain_status]);
+    return () => clearInterval(domainInterval);
+  }, [customDomainData?.custom_domain_status, loadCustomDomainStatus]);
 
   const handleSetCustomDomain = async (e: React.FormEvent) => {
     e.preventDefault();
