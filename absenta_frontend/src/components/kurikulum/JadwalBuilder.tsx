@@ -854,85 +854,60 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       {showLeftPanel && (
         <div className="lg:col-span-4 flex flex-col space-y-4">
         
-        {/* Toggle Mode Builder */}
+        {/* Panduan & Status Penempelan Jadwal */}
         <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-            <Paintbrush className="w-4 h-4 text-purple-500" />
-            Mode Peralatan Builder
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={toolMode === 'PAINT' ? 'primary' : 'outline'}
-              className={cn("w-full py-2.5 rounded-xl font-medium", toolMode === 'PAINT' && "bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-md shadow-blue-500/20 text-white")}
-              onClick={() => setToolMode('PAINT')}
-            >
-              <Paintbrush className="w-4 h-4 mr-2" />
-              Penempel Kartu
-            </Button>
-            <Button
-              variant={toolMode === 'ERASER' ? 'primary' : 'outline'}
-              className={cn("w-full py-2.5 rounded-xl font-medium", toolMode === 'ERASER' && "bg-gradient-to-r from-red-600 to-rose-600 border-none shadow-md shadow-red-500/20 text-white")}
-              onClick={() => setToolMode('ERASER')}
-            >
-              <Eraser className="w-4 h-4 mr-2" />
-              Penghapus Slot
-            </Button>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Paintbrush className="w-4 h-4 text-purple-500" />
+              Alat Penempel Jadwal
+            </h3>
+            <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[10px] font-black border-none">
+              Mode Efisien
+            </Badge>
           </div>
 
-          {toolMode === 'PAINT' && (
-            <div className="mt-4 p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
-              <span className="text-[10px] font-black text-slate-450 uppercase tracking-widest block">Panduan Langkah Demi Langkah:</span>
-              <div className="space-y-2">
-                {/* Step 1 */}
-                <div className="flex items-center gap-2 text-[11px] font-semibold">
-                  {paintMapelId ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-slate-350 dark:border-slate-750 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">1</div>
-                  )}
-                  <span className={paintMapelId ? "text-slate-500 line-through font-normal" : "text-slate-700 dark:text-slate-300 font-bold"}>
-                    Pilih Mata Pelajaran di daftar bawah
-                  </span>
-                </div>
-                {/* Step 2 */}
-                <div className="flex items-center gap-2 text-[11px] font-semibold">
-                  {paintGuruId ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-slate-350 dark:border-slate-750 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">2</div>
-                  )}
-                  <span className={paintGuruId ? "text-slate-500 line-through font-normal" : "text-slate-750 dark:text-slate-300 font-bold"}>
-                    Pilih Guru Pengampu di daftar bawah
-                  </span>
-                </div>
-                {/* Step 3 */}
-                <div className="flex items-center gap-2 text-[11px] font-semibold">
-                  {paintMapelId && paintGuruId ? (
-                    <div className="w-4 h-4 rounded-full bg-indigo-650 text-white shrink-0 flex items-center justify-center text-[9px] font-black animate-bounce">3</div>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">3</div>
-                  )}
-                  <span className={paintMapelId && paintGuruId ? "text-indigo-600 dark:text-indigo-400 font-extrabold animate-pulse" : "text-slate-400"}>
-                    Klik kotak jam pelajaran pada tabel kanan untuk menempelkan
-                  </span>
-                </div>
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
+            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Panduan Langkah Demi Langkah:</span>
+            <div className="space-y-2">
+              {/* Step 1 */}
+              <div className="flex items-center gap-2 text-[11px] font-semibold">
+                {paintMapelId ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-350 dark:border-slate-750 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">1</div>
+                )}
+                <span className={paintMapelId ? "text-slate-500 line-through font-normal" : "text-slate-700 dark:text-slate-300 font-bold"}>
+                  Pilih Mata Pelajaran di daftar bawah
+                </span>
+              </div>
+              {/* Step 2 */}
+              <div className="flex items-center gap-2 text-[11px] font-semibold">
+                {paintGuruId ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-350 dark:border-slate-750 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">2</div>
+                )}
+                <span className={paintGuruId ? "text-slate-500 line-through font-normal" : "text-slate-750 dark:text-slate-300 font-bold"}>
+                  Pilih Guru Pengampu di daftar bawah
+                </span>
+              </div>
+              {/* Step 3 */}
+              <div className="flex items-center gap-2 text-[11px] font-semibold">
+                {paintMapelId && paintGuruId ? (
+                  <div className="w-4 h-4 rounded-full bg-indigo-600 text-white shrink-0 flex items-center justify-center text-[9px] font-black animate-bounce">3</div>
+                ) : (
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center text-[9px] font-black text-slate-400">3</div>
+                )}
+                <span className={paintMapelId && paintGuruId ? "text-indigo-600 dark:text-indigo-400 font-extrabold animate-pulse" : "text-slate-400"}>
+                  Klik kotak jam pelajaran pada tabel kanan untuk menempelkan
+                </span>
               </div>
             </div>
-          )}
-
-          {toolMode === 'ERASER' && (
-            <div className="mt-4 p-3 bg-red-50/50 dark:bg-red-950/20 border border-red-100/60 dark:border-red-900/30 rounded-xl animate-pulse">
-              <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed flex gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
-                <span>Mode Penghapus aktif. Klik kotak grid berisi jadwal untuk mengosongkannya seketika.</span>
-              </p>
-            </div>
-          )}
+          </div>
         </Card>
 
-        {/* Lesson Cards Chooser (Only in PAINT mode) */}
-        {toolMode === 'PAINT' && (
-          <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col space-y-4">
+        {/* Lesson Cards Chooser */}
+        <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col space-y-4">
             
             {/* Active Card Preview */}
             <div>
@@ -1071,7 +1046,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             )}
 
           </Card>
-        )}
 
       </div>
       )}
