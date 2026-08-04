@@ -2,12 +2,14 @@ import { WordEditorPage } from '../../components/common/WordEditorModal';
 
 export const DEFAULT_KOSP_CHAPTER_LABELS: string[] = [
   'Sampul Depan (Cover Resmi)',
-  'Kata Pengantar & Daftar Isi',
+  'Kata Pengantar',
+  'Daftar Isi Naskah KOSP',
   'Halaman Pengesahan Resmi',
   'Bab I: Karakteristik Satuan Pendidikan',
   'Bab II: Visi, Misi, & Tujuan Sekolah',
   'Bab III: Pengorganisasian Pembelajaran & PKL',
-  'Bab IV & V: Rencana & Evaluasi',
+  'Bab IV: Rencana Pembelajaran & Asesmen',
+  'Bab V: Pendampingan, Evaluasi, & Pengembangan Profesional',
   'Lampiran 1: SK Tim Penyusun KOSP',
   'Lampiran 2: Struktur Kurikulum Live Semua Jurusan',
   'Lampiran 3: Kalender Pendidikan Sekolah',
@@ -61,7 +63,7 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Kata Pengantar & Daftar Isi',
+      label: 'Kata Pengantar',
       html: `
         <div style="font-family:Arial, sans-serif;">
           <h3 style="text-align:center; font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:0;">KATA PENGANTAR</h3>
@@ -82,10 +84,14 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
             <strong><u>{{NAMAKEPALASEKOLAH}}</u></strong><br/>
             NIP. {{NIPKEPALASEKOLAH}}
           </div>
-
-          <hr style="margin:30px 0; border:0; border-top:1px solid #cbd5e1;" />
-
-          <h3 style="text-align:center; font-size:14pt; font-weight:bold; text-transform:uppercase;">DAFTAR ISI NASKAH KOSP</h3>
+        </div>
+      `
+    },
+    {
+      label: 'Daftar Isi Naskah KOSP',
+      html: `
+        <div style="font-family:Arial, sans-serif;">
+          <h3 style="text-align:center; font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:0;">DAFTAR ISI NASKAH KOSP</h3>
           <table style="width:100%; font-size:11pt; border-collapse:collapse; line-height:1.8;">
             <tr><td style="font-weight:bold;">HALAMAN COVER / SAMPUL DEPAN</td><td style="text-align:right;">i</td></tr>
             <tr><td style="font-weight:bold;">LEMBAR PENGESAHAN KURIKULUM</td><td style="text-align:right;">ii</td></tr>
@@ -93,12 +99,13 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
             <tr><td style="font-weight:bold;">BAB I: KARAKTERISTIK SATUAN PENDIDIKAN</td><td style="text-align:right;">1</td></tr>
             <tr><td style="font-weight:bold;">BAB II: VISI, MISI, DAN TUJUAN SEKOLAH</td><td style="text-align:right;">3</td></tr>
             <tr><td style="font-weight:bold;">BAB III: PENGORGANISASIAN PEMBELAJARAN & PKL</td><td style="text-align:right;">5</td></tr>
-            <tr><td style="font-weight:bold;">BAB IV & V: RENCANA PEMBELAJARAN, ASESMEN, & EVALUASI</td><td style="text-align:right;">8</td></tr>
-            <tr><td style="font-weight:bold;">LAMPIRAN 1: SK TIM PENYUSUN KOSP</td><td style="text-align:right;">10</td></tr>
-            <tr><td style="font-weight:bold;">LAMPIRAN 2: TABEL STRUKTUR KURIKULUM LIVE SEMUA JURUSAN</td><td style="text-align:right;">12</td></tr>
-            <tr><td style="font-weight:bold;">LAMPIRAN 3: KALENDER PENDIDIKAN & HARI EFEKTIF</td><td style="text-align:right;">15</td></tr>
-            <tr><td style="font-weight:bold;">LAMPIRAN 4: PENGATURAN JAM KBM & ROSTER</td><td style="text-align:right;">17</td></tr>
-            <tr><td style="font-weight:bold;">LAMPIRAN 5: DAFTAR INDUSTRI PASANGAN (DUDI MITRA PKL)</td><td style="text-align:right;">19</td></tr>
+            <tr><td style="font-weight:bold;">BAB IV: RENCANA PEMBELAJARAN DAN ASESMEN</td><td style="text-align:right;">8</td></tr>
+            <tr><td style="font-weight:bold;">BAB V: PENDAMPINGAN, EVALUASI, & PENGEMBANGAN PROFESIONAL</td><td style="text-align:right;">10</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 1: SK TIM PENYUSUN KOSP</td><td style="text-align:right;">12</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 2: TABEL STRUKTUR KURIKULUM LIVE SEMUA JURUSAN</td><td style="text-align:right;">14</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 3: KALENDER PENDIDIKAN & HARI EFEKTIF</td><td style="text-align:right;">17</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 4: PENGATURAN JAM KBM & ROSTER</td><td style="text-align:right;">19</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 5: DAFTAR INDUSTRI PASANGAN (DUDI MITRA PKL)</td><td style="text-align:right;">21</td></tr>
           </table>
         </div>
       `
@@ -213,7 +220,7 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Bab IV & V: Rencana & Evaluasi',
+      label: 'Bab IV: Rencana Pembelajaran & Asesmen',
       html: `
         <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB IV: RENCANA PEMBELAJARAN DAN ASESMEN</h3>
 
@@ -234,8 +241,12 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
           <li><strong>Uji Kompetensi Keahlian (UKK):</strong> Penilaian praktik keahlian bersertifikat Kelas XII bersama DUDI/LSP.</li>
           <li><strong>Portofolio Projek:</strong> Dokumentasi karya dan hasil P5/PKL peserta didik.</li>
         </ul>
-
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:24px;">BAB V: PENDAMPINGAN, EVALUASI, & PENGEMBANGAN PROFESIONAL</h3>
+      `
+    },
+    {
+      label: 'Bab V: Pendampingan, Evaluasi, & Pengembangan Profesional',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB V: PENDAMPINGAN, EVALUASI, & PENGEMBANGAN PROFESIONAL</h3>
 
         <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Evaluasi KOSP</h4>
         <p style="text-align:justify; font-size:11pt; line-height:1.6;">
