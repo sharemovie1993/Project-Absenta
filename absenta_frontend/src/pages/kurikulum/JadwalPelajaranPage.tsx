@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
 import { BebanGuruSummaryModal } from '../../components/kurikulum/jadwal-builder/BebanGuruSummaryModal';
+import { JadwalPrintPreviewModal } from '../../components/kurikulum/jadwal-builder/JadwalPrintPreviewModal';
+import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../components/common';
 
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -79,7 +81,18 @@ export default function JadwalPelajaranPage() {
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
   const [autoWizardOpen, setAutoWizardOpen] = useState(false);
   const [bebanModalOpen, setBebanModalOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
+
+  // Reference options for print preview & filters
+  const { rawList: kelasRawList } = useKelasOptions();
+  const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { rawList: mapelRawList } = useMapelOptions();
+  const { data: sekolahProfileRes } = useQuery({
+    queryKey: ['sekolah-profile-preview'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
 
   // Logic: Auto-switch filters based on View Mode for Dual-Role (Guru + Walas)
   useEffect(() => {
@@ -397,18 +410,15 @@ export default function JadwalPelajaranPage() {
       <SectionCard fullWidth>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            {viewMode === 'grid' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-xl px-3 py-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-600 dark:text-slate-300 text-xs font-bold"
-                onClick={handlePrint}
-                disabled={jadwal.length === 0}
-              >
-                <Printer className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
-                Cetak PDF
-              </Button>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="rounded-xl px-3 py-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-700 dark:text-slate-300 text-xs font-extrabold flex items-center gap-1.5"
+              onClick={() => setPrintPreviewOpen(true)}
+            >
+              <Printer className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Cetak PDF</span>
+            </Button>
 
             {canManage && (
               <>
@@ -573,6 +583,21 @@ export default function JadwalPelajaranPage() {
         onClose={() => setBebanModalOpen(false)}
         tahunPelajaranId={selectedTahunId}
         semesterId={selectedSemesterId}
+      />
+
+      <JadwalPrintPreviewModal
+        isOpen={printPreviewOpen}
+        onClose={() => setPrintPreviewOpen(false)}
+        jadwalList={jadwal}
+        kelasList={kelasRawList || []}
+        guruList={guruRawList || []}
+        mapelList={mapelRawList || []}
+        initialMode={selectedGuruId ? 'GURU' : 'KELAS'}
+        initialKelasId={selectedKelasId}
+        initialGuruId={selectedGuruId}
+        tahunPelajaranName={activeTp?.nama_tahun || '2026/2027'}
+        semesterName={activeSemRes?.data?.find((s: any) => s.id === selectedSemesterId)?.nama_semester || 'Ganjil'}
+        sekolahInfo={sekolahProfileRes}
       />
     </OperationalPageLayout>
   );
