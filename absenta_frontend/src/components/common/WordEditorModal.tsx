@@ -29,6 +29,7 @@ export interface WordEditorModalProps {
   title?: string;
   printTitle?: string;
   initialPages?: WordEditorPage[];
+  initialPageIndex?: number;
   initialConfig?: WordEditorConfig;
   allowExtraPages?: boolean;
   printButtonLabel?: string;
@@ -81,7 +82,7 @@ const buildKopHtml = (tenantInfo: any, includeLogoKanan: boolean = true): string
 const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
   if (!pagesList || pagesList.length === 0) return '<p>Mulai mengetik...</p>';
   return pagesList
-    .map((p) => p.html)
+    .map((p, idx) => `<div id="kosp-section-page-${idx}" class="kosp-document-page-block">${p.html}</div>`)
     .join('<p style="page-break-before: always;"><!-- pagebreak --></p>');
 };
 
@@ -91,6 +92,7 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
   title = 'Word Editor',
   printTitle = 'Dokumen',
   initialPages = [{ label: 'Halaman 1', html: '<p>Mulai mengetik di sini...</p>' }],
+  initialPageIndex = 0,
   initialConfig,
   printButtonLabel = 'Cetak / Ekspor PDF',
   orientation: initialOrientation = 'portrait',
@@ -102,6 +104,7 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
 }) => {
   const { user } = useAuth();
   const editorRef = useRef<any>(null);
+
 
   const [documentHtml,        setDocumentHtml]        = useState<string>('');
   const [orientation,         setOrientation]         = useState(initialOrientation);
@@ -173,6 +176,25 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
     }
     prevOpenRef.current = true;
   }, [isOpen, initialPages, initialConfig]);
+
+  // Smooth scroll to specific chapter/page if initialPageIndex is provided
+  useEffect(() => {
+    if (isOpen && initialPageIndex !== undefined && initialPageIndex > 0) {
+      const timer = setTimeout(() => {
+        try {
+          if (editorRef.current) {
+            const doc = editorRef.current.getDoc();
+            const targetEl = doc?.getElementById(`kosp-section-page-${initialPageIndex}`);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        } catch (e) {}
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initialPageIndex]);
+
 
   // Toggle Kop Surat
   const handleToggleKop = () => {

@@ -6,6 +6,7 @@ interface KospWordEditorModalProps {
   onClose: () => void;
   documentTitle?: string;
   pages: WordEditorPage[];
+  initialPageIndex?: number;
   initialConfig?: WordEditorConfig;
   onSavePages: (pages: WordEditorPage[], config?: WordEditorConfig) => Promise<void>;
   isSaving?: boolean;
@@ -16,6 +17,7 @@ export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
   onClose,
   documentTitle = 'Dokumen KOSP',
   pages,
+  initialPageIndex = 0,
   initialConfig,
   onSavePages,
   isSaving
@@ -29,6 +31,7 @@ export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
       printButtonLabel="🖨️ Cetak KOSP (PDF)"
       saveButtonLabel={isSaving ? 'Menyimpan KOSP...' : '💾 Simpan Dokumen KOSP'}
       initialPages={pages}
+      initialPageIndex={initialPageIndex}
       initialConfig={initialConfig}
       allowExtraPages={true}
       orientation="portrait"
@@ -37,5 +40,6 @@ export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
     />
   );
 };
+
 
 export default KospWordEditorModal;

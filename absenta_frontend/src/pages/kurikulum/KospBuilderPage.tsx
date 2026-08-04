@@ -25,6 +25,8 @@ import { KospMetaConfigModal } from '../../components/kurikulum/kosp/KospMetaCon
 const KospWordEditorModal = lazy(() => import('../../components/kurikulum/kosp/KospWordEditorModal'));
 
 export const KospBuilderPage: React.FC = () => {
+  const [selectedPageIndex, setSelectedPageIndex] = React.useState<number>(0);
+
   const {
     selectedTahunId,
     setSelectedTahunId,
@@ -53,6 +55,11 @@ export const KospBuilderPage: React.FC = () => {
     { label: 'Generator KOSP' }
   ], []);
 
+  const handleOpenEditorAtPage = (pageIndex: number = 0) => {
+    setSelectedPageIndex(pageIndex);
+    setIsEditorOpen(true);
+  };
+
   return (
     <AcademicPageLayout
       title="Generator KOSP (Kurikulum Operasional Satuan Pendidikan)"
@@ -65,7 +72,7 @@ export const KospBuilderPage: React.FC = () => {
         items: [
           { text: 'Pilih Tahun Pelajaran yang ingin disusun dokumen KOSP-nya.' },
           { text: 'Atur Legalitas SK & Tim Penyusun melalui tombol "Pengaturan Legalitas SK & Tim".' },
-          { text: 'Klik "Buka Live Word Editor KOSP" untuk pratinjau dan penyuntingan dalam tampilan Microsoft Word.' },
+          { text: 'Klik pada kartu Bab/Halaman untuk langsung menuju dan menyunting naskah Bab tersebut.' },
           { text: 'Data Struktur Kurikulum semua jurusan otomatis disuntikkan dari database Absenta sesuai regulasi Kemendikbud.' },
           { text: 'Simpan atau langsung cetak dokumen ke format PDF/Word.' }
         ]
@@ -106,7 +113,7 @@ export const KospBuilderPage: React.FC = () => {
             </Button>
 
             <Button
-              onClick={() => setIsEditorOpen(true)}
+              onClick={() => handleOpenEditorAtPage(0)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2 px-4 h-11"
             >
               <Sparkles size={16} />
@@ -166,7 +173,7 @@ export const KospBuilderPage: React.FC = () => {
                 <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Personel Tim Penyusun</span>
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                SK Kepsek: <strong>{metaConfigData?.nomor_sk || '421.5/089/SK-KOSP/2025'}</strong>
+                SK Kepsek: <strong>{metaConfigData?.nomor_sk || '[BELUM DIISI]'}</strong>
               </p>
             </div>
           </Card>
@@ -177,17 +184,17 @@ export const KospBuilderPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Layers size={18} className="text-indigo-600" />
-              Struktur Halaman Dokumen KOSP ({compiledPages.length} Halaman / Bab)
+              Struktur Bab & Halaman Naskah KOSP ({compiledPages.length} Halaman / Bab)
             </h3>
-            <span className="text-xs text-gray-500 font-medium">Klik "Buka Live Word Editor KOSP" untuk mengedit naskah secara utuh.</span>
+            <span className="text-xs text-gray-500 font-medium">Klik pada kartu bab untuk langsung menuju &amp; menyunting bab tersebut.</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {compiledPages.map((page, idx) => (
               <div 
                 key={page.label || `kosp-page-${idx}`}
-                onClick={() => setIsEditorOpen(true)}
-                className="group p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between h-40"
+                onClick={() => handleOpenEditorAtPage(idx)}
+                className="group p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-500 dark:hover:border-indigo-500 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between h-40"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -201,9 +208,9 @@ export const KospBuilderPage: React.FC = () => {
                   </h4>
                 </div>
 
-                <div className="text-[11px] text-gray-400 font-medium flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-                  <span>Pratinjau Word Ready</span>
-                  <span className="group-hover:translate-x-1 transition-transform">Edit &rarr;</span>
+                <div className="text-[11px] text-gray-500 font-medium flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-semibold group-hover:underline">Sunting Bab Ini</span>
+                  <span className="group-hover:translate-x-1 transition-transform text-indigo-600 dark:text-indigo-400 font-bold">&rarr;</span>
                 </div>
               </div>
             ))}
@@ -222,7 +229,6 @@ export const KospBuilderPage: React.FC = () => {
           isSaving={isSaving}
         />
 
-
         {/* Modal Word Editor KOSP */}
         {isEditorOpen && (
           <Suspense fallback={<Loader text="Memuat Word Editor KOSP..." />}>
@@ -231,6 +237,7 @@ export const KospBuilderPage: React.FC = () => {
               onClose={() => setIsEditorOpen(false)}
               documentTitle={`Dokumen KOSP ${sekolahInfo?.nama || ''} TP ${selectedTahunNama}`}
               pages={compiledPages}
+              initialPageIndex={selectedPageIndex}
               initialConfig={initialConfig}
               onSavePages={handleSaveKospPages}
               isSaving={isSaving}
@@ -238,6 +245,7 @@ export const KospBuilderPage: React.FC = () => {
           </Suspense>
         )}
       </div>
+
     </AcademicPageLayout>
   );
 };
