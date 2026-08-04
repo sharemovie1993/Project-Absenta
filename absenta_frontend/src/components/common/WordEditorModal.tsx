@@ -119,7 +119,7 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
       const idAttr = b.id ? `id="${b.id}" ` : '';
       return `<div ${idAttr}class="kosp-document-page-block">${b.html}</div>`;
     })
-    .join('\n');
+    .join('\n<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n');
 };
 
 export const WordEditorModal: React.FC<WordEditorModalProps> = ({
@@ -719,7 +719,6 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
                   margin: 0 auto 32px auto !important;
                   box-sizing: border-box !important;
                   position: relative;
-                  page-break-after: always;
                   page-break-inside: avoid;
                 }
                 .mce-pagebreak, div.mce-pagebreak, p.mce-pagebreak, img.mce-pagebreak {
