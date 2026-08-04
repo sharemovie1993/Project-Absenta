@@ -327,7 +327,7 @@ export const getJpValueForSemester = (mapelName: string, mapelKode: string, ting
     nama.includes('konsentrasi keahlian') ||
     nama.includes('konsentrasi')
   );
-  const isPilihan = !isPkk && !isKk && (kode.includes('PILIHAN') || kode.includes('MAPEL-PILIHAN') || kode.includes('MPP') || nama.includes('pilihan'));
+  const isPilihan = !isPkk && !isKk && (kode.includes('PILIHAN') || kode.includes('MAPEL-PILIHAN') || nama.includes('pilihan'));
 
   // PKL: hanya Kelas 12 Semester Ganjil (Sem 1)
   if (tingkat === 12 && isPkl) {
