@@ -294,35 +294,12 @@ export class WireguardManager {
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
 
-      // Fix 2: Presisi tinggi — Hanya matikan interface berpola 'et-*' (Easy Tunnel) yang TIDAK berstatus 'active' di DB.
+      // Pembersihan aman khusus untuk terowongan yang sedang di-start ini saja
       try {
         execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe' });
       } catch {}
       try {
         execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' });
-      } catch {}
-
-      try {
-        // Ambil daftar terowongan yang memang sah berstatus 'active' di database
-        const activeTunnels = await prisma.easyTunnel.findMany({
-          where: { status: 'active' },
-          select: { slug: true }
-        });
-        const activeSlugs = new Set(activeTunnels.map(t => t.slug));
-        activeSlugs.add(slug); // Sertakan slug terowongan yang sedang di-start ini
-
-        // 1. Pola khusus et-* memastikan interface WG lain (misal wg0, wg-office) TIDAK TERSENTUH (100% Aman)
-        const wgInterfaces = execSync("ip link show type wireguard 2>/dev/null | grep -oE 'et-[a-zA-Z0-9_-]+' || true", { stdio: 'pipe' })
-          .toString().split('\n').map(s => s.trim()).filter(Boolean);
-
-        for (const ifc of wgInterfaces) {
-          const ifcSlug = ifc.replace(/^et-/, '');
-          // 2. Hanya matikan jika slug et-* tersebut TIDAK aktif di DB (bekas/stale)
-          if (!activeSlugs.has(ifcSlug)) {
-            console.log(`[WG-Cleanup] Presisi: Mematikan interface EasyTunnel non-aktif/stale: ${ifc}`);
-            try { execSync(`sudo wg-quick down "${ifc}"`, { stdio: 'pipe' }); } catch {}
-          }
-        }
       } catch {}
 
       // Fix 3: Execute wg-quick up with error recovery
