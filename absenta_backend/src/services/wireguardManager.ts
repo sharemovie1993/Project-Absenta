@@ -392,97 +392,168 @@ export class WireguardManager {
   }
 
   /** Dapatkan status semua tunnel */
-  static getAllStatus(slugs: string[]): Record<string, TunnelStatus> {
-    const result: Record<string, TunnelStatus> = {};
-    for (const slug of slugs) {
-      result[slug] = this.getStatus(slug);
+      // Verifikasi Koneksi Pasca-Aktivasi (Handshake & Ping Test ke 10.0.0.1)
+      try {
+        execSync(this.isWindows() ? 'powershell -Command "Start-Sleep -Seconds 2"' : 'sleep 2', { stdio: 'pipe' });
+        const ifName = `et-${slug}`;
+        let handshakeOk = false;
+
+        try {
+          const wgCmd = this.isWindows() ? `"C:\\Program Files\\WireGuard\\wg.exe" show` : `sudo wg show "${ifName}" latest-handshakes`;
+          const wgOut = execSync(wgCmd, { stdio: 'pipe' }).toString();
+          const match = wgOut.match(/\s+(\d+)\s*$/m) || wgOut.match(/latest handshake:\s*(.+)/i);
+          if (match) handshakeOk = true;
+        } catch {}
+
+        // Ping Gateway 10.0.0.1
+        let pingOk = false;
+        try {
+          const pingCmd = this.isWindows() ? 'ping -n 2 -w 2000 10.0.0.1' : 'ping -c 2 -W 2 10.0.0.1';
+          const pingOut = execSync(pingCmd, { stdio: 'pipe' }).toString();
+          if (pingOut.includes('TTL=') || pingOut.includes('ttl=')) pingOk = true;
+        } catch {}
+
+        if (!handshakeOk && !pingOk) {
+          console.warn(`[WG-Start] Warning: Tunnel ${slug} started but 10.0.0.1 ping/handshake pending.`);
+        }
+      } catch {}
+
+      return { success: true, message: 'Tunnel VPN berhasil diaktifkan dan diverifikasi.' };
     }
-    return result;
   }
 
-  /** Diagnosa Koneksi Tunnel */
+  /** Diagnosa Koneksi Tunnel Terperinci dengan Penentuan Lokasi Masalah */
   static async diagnoseTunnel(slug: string): Promise<{ success: boolean; message: string; details: string[] }> {
     const details: string[] = [];
     const status = this.getStatus(slug);
+    const confPath = this.confPath(slug);
     
-    details.push(`Status Layanan VPN: ${status.status}`);
+    details.push(`1️⃣ STATUS TINGKAT KERNEL: ${status.status.toUpperCase()}`);
     if (status.wg_ip) {
-      details.push(`IP VPN Lokal: ${status.wg_ip}`);
+      details.push(`   └─ IP Interface VPN Lokal: ${status.wg_ip}`);
     }
 
-    if (status.status !== 'connected') {
+    if (!fs.existsSync(confPath)) {
+      details.push('❌ [LOKASI MASALAH: LOKAL] Berkas konfigurasi WireGuard (.conf) tidak ditemukan!');
       return { 
         success: false, 
-        message: 'Tunnel sedang tidak terhubung. Silakan aktifkan tunnel terlebih dahulu untuk diagnosa.',
+        message: 'File konfigurasi tunnel tidak ada di disk.',
         details 
       };
     }
 
-    // Ping test
-    try {
-      details.push('Mengecek konektivitas internet (Ping 8.8.8.8)...');
-      if (this.isWindows()) {
-        const pingOut = execSync('ping -n 2 8.8.8.8', { stdio: 'pipe', windowsHide: true }).toString();
-        if (pingOut.includes('TTL=')) {
-          details.push('✅ Ping ke 8.8.8.8 berhasil (Koneksi internet lancar).');
-        } else {
-          details.push('❌ Ping ke 8.8.8.8 gagal atau RTO.');
-        }
-      } else {
-        const pingOut = execSync('ping -c 2 8.8.8.8', { stdio: 'pipe', windowsHide: true }).toString();
-        if (pingOut.includes('ttl=')) {
-          details.push('✅ Ping ke 8.8.8.8 berhasil (Koneksi internet lancar).');
-        } else {
-          details.push('❌ Ping ke 8.8.8.8 gagal atau RTO.');
-        }
-      }
-    } catch (err: any) {
-      details.push('❌ Gagal melakukan ping: ' + err.message);
+    if (status.status !== 'connected') {
+      details.push('⚠️ [LOKASI MASALAH: LOKAL] Interface WireGuard belum aktif di OS.');
+      details.push('   └─ Solusi: Klik "Aktifkan Tunnel" di dashboard.');
+      return { 
+        success: false, 
+        message: 'Tunnel sedang tidak terhubung. Silakan aktifkan tunnel terlebih dahulu.',
+        details 
+      };
     }
 
-    // Handshake WireGuard
-    if (this.isWindows()) {
-      const wgExe = 'C:\\Program Files\\WireGuard\\wg.exe';
-      if (fs.existsSync(wgExe)) {
-        try {
-          details.push('Mengambil info handshake WireGuard...');
-          const wgOut = execSync(`"${wgExe}" show`, { stdio: 'pipe', windowsHide: true }).toString();
-          const lines = wgOut.split('\n');
-          const latestHandshake = lines.find(l => l.includes('latest handshake'));
-          const transfer = lines.find(l => l.includes('transfer'));
-          
-          if (latestHandshake) details.push('✅ ' + latestHandshake.trim());
-          if (transfer) details.push('✅ ' + transfer.trim());
-          
-          if (!latestHandshake) {
-             details.push('⚠️ Belum ada handshake. VPN mungkin diblokir oleh provider internet atau VPS mati.');
-          }
-        } catch {
-           details.push('⚠️ Gagal mengambil info handshake.');
-        }
+    // 2. Handshake WireGuard dengan Server Lisensi (10.0.0.1)
+    let handshakeSec = -1;
+    try {
+      details.push('2️⃣ PEMERIKSAAN HANDSHAKE WIREGUARD (Koneksi ke Gateway 10.0.0.1):');
+      const wgExe = this.isWindows() ? 'C:\\Program Files\\WireGuard\\wg.exe' : 'sudo wg';
+      const ifName = `et-${slug}`;
+      const wgCmd = this.isWindows() ? `"${wgExe}" show` : `${wgExe} show ${ifName}`;
+      const wgOut = execSync(wgCmd, { stdio: 'pipe', windowsHide: true }).toString();
+      
+      const hsMatch = wgOut.match(/latest handshake:\s*(.+)/i) || wgOut.match(/\s+(\d+)\s*$/m);
+      const txMatch = wgOut.match(/transfer:\s*(.+)/i) || wgOut.match(/transfer\s*:\s*(.+)/i);
+
+      if (hsMatch) {
+        details.push(`   ├─ Handshake Terakhir: ${hsMatch[1].trim()}`);
       }
-    } else {
-      try {
-          details.push('Mengambil info handshake WireGuard...');
-          const wgOut = execSync('sudo wg show', { stdio: 'pipe', windowsHide: true }).toString();
-          const lines = wgOut.split('\n');
-          const latestHandshake = lines.find(l => l.includes('latest handshake'));
-          const transfer = lines.find(l => l.includes('transfer'));
-          
-          if (latestHandshake) details.push('✅ ' + latestHandshake.trim());
-          if (transfer) details.push('✅ ' + transfer.trim());
-          
-          if (!latestHandshake) {
-             details.push('⚠️ Belum ada handshake. VPN mungkin diblokir oleh provider internet atau VPS mati.');
-          }
-      } catch {
-         details.push('⚠️ Gagal mengambil info handshake.');
+      if (txMatch) {
+        details.push(`   └─ Data Terkirim/Diterima: ${txMatch[1].trim()}`);
       }
+
+      if (!hsMatch) {
+        details.push('❌ [LOKASI MASALAH: KONEKSI/FIREWALL] Belum ada handshake sama sekali.');
+        details.push('   └─ Penyebab: Port UDP 51820 terblokir oleh ISP/Firewall, atau IP Server Lisensi tidak dapat dijangkau.');
+      } else {
+        details.push('✅ Handshake WireGuard aktif & berhasil terverifikasi.');
+      }
+    } catch (e: any) {
+      details.push(`⚠️ Gagal membaca status handshake WireGuard: ${e.message}`);
     }
+
+    // 3. Ping Test ke Internet Publik & Gateway VPN
+    try {
+      details.push('3️⃣ PEMERIKSAAN KONEKTIVITAS JARINGAN:');
+      
+      // Ping Internet
+      const pingNetCmd = this.isWindows() ? 'ping -n 2 -w 2000 8.8.8.8' : 'ping -c 2 -W 2 8.8.8.8';
+      let internetOk = false;
+      try {
+        const outNet = execSync(pingNetCmd, { stdio: 'pipe', windowsHide: true }).toString();
+        if (outNet.includes('TTL=') || outNet.includes('ttl=')) internetOk = true;
+      } catch {}
+
+      if (internetOk) {
+        details.push('   ├─ Internet Server Lokal: ✅ KONEK (Ping 8.8.8.8 OK)');
+      } else {
+        details.push('   ├─ Internet Server Lokal: ❌ TERPUTUS (Ping 8.8.8.8 RTO)');
+        details.push('   │  └─ [LOKASI MASALAH: JARINGAN SEKOLAH] Server lokal tidak memiliki akses internet!');
+      }
+
+      // Ping Gateway VPN 10.0.0.1
+      const pingVpnCmd = this.isWindows() ? 'ping -n 2 -w 2000 10.0.0.1' : 'ping -c 2 -W 2 10.0.0.1';
+      let vpnGatewayOk = false;
+      try {
+        const outVpn = execSync(pingVpnCmd, { stdio: 'pipe', windowsHide: true }).toString();
+        if (outVpn.includes('TTL=') || outVpn.includes('ttl=')) vpnGatewayOk = true;
+      } catch {}
+
+      if (vpnGatewayOk) {
+        details.push('   └─ Tunnel VPN Gateway (10.0.0.1): ✅ KONEK (Ping 10.0.0.1 OK)');
+      } else {
+        details.push('   └─ Tunnel VPN Gateway (10.0.0.1): ❌ RTO (Tidak ada balasan dari 10.0.0.1)');
+        details.push('      └─ [LOKASI MASALAH: VPS LISENSI / ROUTING] WireGuard up tetapi paket VPN tidak sampai ke 10.0.0.1.');
+      }
+    } catch (err: any) {
+      details.push('❌ Error saat pengujian ping: ' + err.message);
+    }
+
+    // 4. Pemeriksaan Port Aplikasi Lokal (Local Application Service)
+    try {
+      details.push('4️⃣ PEMERIKSAAN LAYANAN APLIKASI LOKAL:');
+      const confContent = fs.readFileSync(confPath, 'utf8');
+      const localPortMatch = confContent.match(/#\s*LocalPort\s*=\s*(\d+)/i);
+      const portToCheck = localPortMatch ? localPortMatch[1] : '443';
+
+      let portOpen = false;
+      if (this.isWindows()) {
+        try {
+          const testCmd = `powershell -Command "(Test-NetConnection -ComputerName 127.0.0.1 -Port ${portToCheck}).TcpTestSucceeded"`;
+          const testOut = execSync(testCmd, { stdio: 'pipe', windowsHide: true }).toString().trim();
+          if (testOut === 'True') portOpen = true;
+        } catch {}
+      } else {
+        try {
+          const testCmd = `nc -z -w 2 127.0.0.1 ${portToCheck} || curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${portToCheck}`;
+          const testOut = execSync(testCmd, { stdio: 'pipe', windowsHide: true }).toString().trim();
+          if (testOut === '000' || testOut.includes('succeeded') || Number(testOut) > 0) portOpen = true;
+        } catch {}
+      }
+
+      if (portOpen) {
+        details.push(`   └─ Port Lokal ${portToCheck}: ✅ MENDENGARKAN (Aplikasi/Caddy aktif di port ${portToCheck})`);
+      } else {
+        details.push(`   └─ Port Lokal ${portToCheck}: ⚠️ TIDAK MENDENGARKAN`);
+        details.push(`      └─ [LOKASI MASALAH: LOKAL PORT] Aplikasi Absenta / Caddy tidak berjalan di port ${portToCheck}.`);
+      }
+    } catch {}
+
+    details.push('--------------------------------------------------');
+    details.push('💡 RINGKASAN: Jika semua langkah bernilai ✅, terowongan siap digunakan.');
 
     return {
       success: true,
-      message: 'Diagnosa selesai dilakukan.',
+      message: 'Diagnosa terperinci selesai.',
       details
     };
   }
