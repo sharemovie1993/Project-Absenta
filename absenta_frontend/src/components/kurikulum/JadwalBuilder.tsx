@@ -467,8 +467,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   const keKelasSelectOptions = useMemo(() => {
     return kelasList.map(k => ({
-      label: k.label.split(' - ')[0],
-      value: k.value
+      ...k,
+      label: k.label.split(' - ')[0]
     }));
   }, [kelasList]);
 

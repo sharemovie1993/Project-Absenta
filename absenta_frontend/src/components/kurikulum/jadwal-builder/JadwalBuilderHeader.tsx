@@ -185,7 +185,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               options={keKelasSelectOptions}
               placeholder="Pilih Kelas..."
               searchPlaceholder="Cari Kelas..."
-              className="w-[140px] md:w-[170px]"
+              className="w-[180px] md:w-[240px]"
             />
           </div>
         )}
