@@ -97,6 +97,7 @@ model Tenant {
   HubinTracerStudy   HubinTracerStudy[]
   HubinTefaOrder     HubinTefaOrder[]
   WaTenantConnection WaTenantConnection?
+  WaAuthSession      WaAuthSession[]
 
   // BK & Prestasi
   JenisPrestasi       JenisPrestasi[]
@@ -4297,4 +4298,20 @@ model WaChatLog {
   @@index([tenant_id, phone])
   @@index([tenant_id, created_at(sort: Desc)])
   @@index([created_at])
+}
+
+// ── WhatsApp Auth Session (Database Auth Store) ────────────────────────────────
+// Menyimpan berkas otentikasi Baileys per-tenant secara terisolasi penuh di Database.
+model WaAuthSession {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  key_id     String
+  value      String   @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, key_id], name: "tenant_id_key_id")
+  @@index([tenant_id])
 }

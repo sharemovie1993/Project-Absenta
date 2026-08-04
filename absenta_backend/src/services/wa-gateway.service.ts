@@ -158,7 +158,6 @@ async function connectTenant(tenantId: string): Promise<void> {
   // Dynamic import Baileys (ESM)
   const {
     default: makeWASocket,
-    useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
@@ -167,10 +166,11 @@ async function connectTenant(tenantId: string): Promise<void> {
   const pino = (await import('pino')).default;
   const logger = pino({ level: 'silent' });
 
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  const { usePrismaAuthState } = await import('./wa-prisma-auth.service');
+  const { state, saveCreds } = await usePrismaAuthState(tenantId);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015970961] as any }));
 
-  // Hardened state: if creds.json has authenticated user ID, set status to 'connected' immediately
+  // Hardened state: if creds has authenticated user ID, set status to 'connected' immediately
   if (state.creds?.me?.id) {
     entry.status = 'connected';
     entry.connectedNumber = state.creds.me.id.split(':')[0] || null;
@@ -626,6 +626,7 @@ const waGatewayServiceLocal = {
       };
     }
 
+    const now = Date.now();
     const recentDecryptFail =
       entry.lastDecryptFailAt &&
       now - entry.lastDecryptFailAt.getTime() < 5 * 60 * 1000 &&
@@ -670,7 +671,21 @@ const waGatewayServiceLocal = {
     return pool.get(tenantId)?.qrBase64 ?? null;
   },
 
-  clearTenantAuth,
+  async clearTenantAuth(tenantId: string): Promise<void> {
+    try {
+      const { usePrismaAuthState } = await import('./wa-prisma-auth.service');
+      const authState = await usePrismaAuthState(tenantId);
+      await authState.clearAuth();
+    } catch (e: any) {
+      console.error(`[WA-Pool:${tenantId}] Gagal clear database auth:`, e.message);
+    }
+    const dir = getTenantAuthDir(tenantId);
+    if (fs.existsSync(dir)) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch (_) {}
+    }
+  },
   async disconnectTenant(tenantId: string): Promise<void> {
     const entry = pool.get(tenantId);
     if (entry?.sock) {
@@ -681,7 +696,7 @@ const waGatewayServiceLocal = {
       } catch (_) {}
       entry.sock = null;
     }
-    clearTenantAuth(tenantId);
+    await this.clearTenantAuth(tenantId);
     if (entry) {
       entry.status = 'disconnected';
       entry.qrBase64 = null;
