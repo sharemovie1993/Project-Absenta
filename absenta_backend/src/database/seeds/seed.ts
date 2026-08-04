@@ -272,6 +272,7 @@ async function main() {
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Audit Realisasi JP Mengajar', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
+        { label: 'Generator KOSP', icon: 'Sparkles', path: '/kurikulum/kosp-builder', required_capability: 'academic.manage.academic, academic.structures.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.manage.academic' },
       ]
     },
