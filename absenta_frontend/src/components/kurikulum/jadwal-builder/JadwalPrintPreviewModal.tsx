@@ -405,7 +405,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
               <table className="w-full text-center border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-900 font-black text-[10px] uppercase">
-                    <th className="p-2 border-r border-slate-900 w-16">JAM</th>
+                    <th className="p-2 border-r border-slate-900 w-28">JAM & WAKTU</th>
                     {HARI_LIST.map(h => (
                       <th key={h} className="p-2 border-r last:border-r-0 border-slate-900">
                         {h}
@@ -414,46 +414,59 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {SLOTS.map((slotIndex) => (
-                    <tr key={slotIndex} className="hover:bg-slate-50">
-                      <td className="p-1.5 border-r border-slate-900 font-black text-[10px] bg-slate-50">
-                        {slotIndex}
-                      </td>
-                      {HARI_LIST.map((h) => {
-                        const item = previewJadwalMap.get(`${h}-${slotIndex}`);
-                        const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
+                  {SLOTS.map((slotIndex) => {
+                    const slotTime = SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
 
-                        if (!item) {
+                    return (
+                      <tr key={slotIndex} className="hover:bg-slate-50">
+                        <td className="p-1.5 border-r border-slate-900 font-black text-[10px] bg-slate-50 leading-tight">
+                          <div className="text-indigo-700 font-black text-[10.5px]">Jam {slotIndex}</div>
+                          <div className="text-[8.5px] font-bold text-slate-500">{slotTime.start} - {slotTime.end}</div>
+                        </td>
+                        {HARI_LIST.map((h) => {
+                          const item = previewJadwalMap.get(`${h}-${slotIndex}`);
+                          const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
+
+                          if (!item) {
+                            return (
+                              <td key={h} className="p-1.5 border-r last:border-r-0 border-slate-300 text-slate-300 text-[9px]">
+                                -
+                              </td>
+                            );
+                          }
+
                           return (
-                            <td key={h} className="p-1.5 border-r last:border-r-0 border-slate-300 text-slate-300 text-[9px]">
-                              -
+                            <td
+                              key={h}
+                              className={cn(
+                                'p-1.5 border-r last:border-r-0 border-slate-400 transition-all',
+                                isFocused ? 'bg-indigo-50/50 font-bold' : 'opacity-30 bg-slate-100/50'
+                              )}
+                            >
+                              <div className="space-y-0.5">
+                                <div className="font-black text-[10.5px] text-slate-900 leading-tight flex items-center justify-center gap-1 flex-wrap">
+                                  <span>{item.Mapel?.nama_mapel || item.jenis_kegiatan}</span>
+                                  {item.Mapel?.kode_mapel && (
+                                    <span className="text-[8px] font-extrabold text-indigo-700 bg-indigo-50 px-1 rounded border border-indigo-200">
+                                      [{item.Mapel.kode_mapel}]
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[9px] text-slate-700 font-bold leading-none">
+                                  {mode === 'KELAS'
+                                    ? `👤 ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru KBM'}`
+                                    : `🏫 ${item.Kelas?.nama_kelas || 'Kelas KBM'}`}
+                                </div>
+                                <div className="text-[8px] text-slate-500 font-semibold">
+                                  ⏰ {item.jam_mulai || slotTime.start} - {item.jam_selesai || slotTime.end}
+                                </div>
+                              </div>
                             </td>
                           );
-                        }
-
-                        return (
-                          <td
-                            key={h}
-                            className={cn(
-                              'p-1.5 border-r last:border-r-0 border-slate-400 transition-all',
-                              isFocused ? 'bg-indigo-50/50 font-bold' : 'opacity-30 bg-slate-100/50'
-                            )}
-                          >
-                            <div className="space-y-0.5">
-                              <div className="font-black text-[10.5px] text-slate-900 leading-tight">
-                                {item.Mapel?.nama_mapel || item.jenis_kegiatan}
-                              </div>
-                              <div className="text-[9px] text-slate-600 font-semibold leading-none">
-                                {mode === 'KELAS'
-                                  ? (item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru KBM')
-                                  : (item.Kelas?.nama_kelas || 'Kelas KBM')}
-                              </div>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

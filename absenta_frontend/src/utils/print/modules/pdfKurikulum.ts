@@ -439,11 +439,9 @@ export const renderKurikulumRosterPdf = (
     ];
 
     const getSlotData = (dayStr: string, slotNum: number) => {
-      const timeRange = SLOT_TIME_FALLBACK[slotNum] || '';
-      const startTime = timeRange.split('-')[0];
       return groupJadwal.find(j => 
         j.hari === dayStr && 
-        j.jam_mulai && j.jam_mulai.startsWith(startTime)
+        (Number(j.slot_index) === slotNum || (j.jam_mulai && j.jam_mulai.startsWith(SLOT_TIME_FALLBACK[slotNum]?.split('-')[0] || '')))
       );
     };
 
@@ -495,15 +493,15 @@ export const renderKurikulumRosterPdf = (
           String(item.jenis_kegiatan).toUpperCase() === 'KBM' || 
           (act && act.tipe?.toUpperCase() === 'KBM');
         const subjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
+        const kodeMapel = item.Mapel?.kode_mapel ? ` [${item.Mapel.kode_mapel}]` : '';
 
         let cellText = '';
         if (printType === 'roster_teacher') {
           const targetClass = item.Kelas?.nama_kelas || 'Kelas';
-          cellText = `${subjectName.toUpperCase()}\n(${targetClass})`;
+          cellText = `${subjectName.toUpperCase()}${kodeMapel}\n(Ruang: ${targetClass})`;
         } else {
-          const teacher = item.Guru?.User?.full_name || 'Guru';
-          const teacherShort = teacher.split(' ')[0];
-          cellText = `${subjectName.toUpperCase()}\n(${teacherShort})`;
+          const teacher = item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru';
+          cellText = `${subjectName.toUpperCase()}${kodeMapel}\n(${teacher})`;
         }
 
         if (colSpan > 1) {
