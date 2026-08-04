@@ -532,32 +532,37 @@ export const renderKurikulumRosterPdf = (
     });
 
     autoTable(doc, {
-      startY: headerEndY + 17,
+      startY: headerEndY + 15,
+      margin: { left: 15, right: 15 },
       head,
       body,
       theme: 'grid',
       styles: { 
-        fontSize: 7, 
+        fontSize: 6, 
         font: 'Helvetica', 
-        cellPadding: 3, 
+        cellPadding: 1.5, 
         halign: 'center', 
         valign: 'middle',
         lineColor: [148, 163, 184],
-        lineWidth: 0.15
+        lineWidth: 0.15,
+        overflow: 'linebreak'
       },
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.2 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 6, cellPadding: 1.5, lineWidth: 0.2 },
       columnStyles: {
-        0: { cellWidth: 22, fontStyle: 'bold', fillColor: [248, 250, 252] },
-        1: { cellWidth: 24.5 },
-        2: { cellWidth: 24.5 },
-        3: { cellWidth: 24.5 },
-        4: { cellWidth: 24.5 },
-        5: { cellWidth: 24.5 },
-        6: { cellWidth: 24.5 },
-        7: { cellWidth: 24.5 },
-        8: { cellWidth: 24.5 },
-        9: { cellWidth: 24.5 },
-        10: { cellWidth: 24.5 }
+        0: { cellWidth: 20, fontStyle: 'bold', fillColor: [248, 250, 252] },
+        1: { cellWidth: 20, fillColor: [254, 243, 199] },
+        2: { cellWidth: 18.8 },
+        3: { cellWidth: 18.8 },
+        4: { cellWidth: 18.8 },
+        5: { cellWidth: 18.8 },
+        6: { cellWidth: 18.8 },
+        7: { cellWidth: 18.8 },
+        8: { cellWidth: 18.8 },
+        9: { cellWidth: 18.8 },
+        10: { cellWidth: 18.8 },
+        11: { cellWidth: 18.8 },
+        12: { cellWidth: 18.8 },
+        13: { cellWidth: 18.8 }
       }
     });
 
