@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Label, Button } from '@/components/ui';
 import type { SystemConfigPayload } from '@/services/systemConfig';
 import axiosInstance from '@/lib/axiosInstance';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface BrandingSettingsFormProps {
   config: SystemConfigPayload;
@@ -16,12 +17,15 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
   
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [logoPreviewError, setLogoPreviewError] = useState(false);
+  const [faviconPreviewError, setFaviconPreviewError] = useState(false);
 
   const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingLogo(true);
+    setLogoPreviewError(false);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -45,6 +49,7 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
     if (!file) return;
 
     setIsUploadingFavicon(true);
+    setFaviconPreviewError(false);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -62,6 +67,9 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
       setIsUploadingFavicon(false);
     }
   };
+
+  const resolvedLogo = config.logo_url ? resolveProfilePhotoUrl(config.logo_url) : '';
+  const resolvedFavicon = config.favicon_url ? resolveProfilePhotoUrl(config.favicon_url) : '';
 
   return (
     <Card>
@@ -147,13 +155,16 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="logo_url">URL Logo</Label>
+            <Label htmlFor="logo_url">URL Logo Aplikasi</Label>
             <div className="flex gap-2">
               <Input
                 id="logo_url"
                 value={config.logo_url || ''}
-                onChange={(e) => onChange('logo_url', e.target.value)}
-                placeholder="https://..."
+                onChange={(e) => {
+                  setLogoPreviewError(false);
+                  onChange('logo_url', e.target.value);
+                }}
+                placeholder="https://... atau /uploads/..."
                 disabled={!canEdit}
                 className="flex-1"
               />
@@ -180,15 +191,41 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
                 Unggah
               </Button>
             </div>
+
+            {/* Live Preview Box */}
+            <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                {resolvedLogo && !logoPreviewError ? (
+                  <img
+                    src={resolvedLogo}
+                    alt="Preview Logo"
+                    className="w-full h-full object-contain p-1"
+                    onError={() => setLogoPreviewError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs">
+                    AB
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Pratinjau Logo Utama</p>
+                <p className="text-[10px] text-slate-500">Logo ini akan tampil di Topbar, Sidebar, dan Halaman Login.</p>
+              </div>
+            </div>
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="favicon_url">URL Favicon</Label>
             <div className="flex gap-2">
               <Input
                 id="favicon_url"
                 value={config.favicon_url || ''}
-                onChange={(e) => onChange('favicon_url', e.target.value)}
-                placeholder="https://..."
+                onChange={(e) => {
+                  setFaviconPreviewError(false);
+                  onChange('favicon_url', e.target.value);
+                }}
+                placeholder="https://... atau /uploads/..."
                 disabled={!canEdit}
                 className="flex-1"
               />
@@ -214,6 +251,28 @@ export const BrandingSettingsForm: React.FC<BrandingSettingsFormProps> = ({ conf
                 )}
                 Unggah
               </Button>
+            </div>
+
+            {/* Live Preview Box */}
+            <div className="mt-1 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                {resolvedFavicon && !faviconPreviewError ? (
+                  <img
+                    src={resolvedFavicon}
+                    alt="Preview Favicon"
+                    className="w-full h-full object-contain p-1"
+                    onError={() => setFaviconPreviewError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs">
+                    AB
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Pratinjau Favicon</p>
+                <p className="text-[10px] text-slate-500">Ikon kecil yang tampil pada tab browser.</p>
+              </div>
             </div>
           </div>
         </div>
