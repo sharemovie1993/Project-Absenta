@@ -311,25 +311,47 @@ export const isMapelRelevantForTingkat = (
 export const getJpValueForSemester = (mapelName: string, mapelKode: string, tingkat: number, semesterNum: 1 | 2, baseJp: number): string => {
   const nama = mapelName.toLowerCase();
   const kode = (mapelKode || '').toUpperCase();
-  
-  if (tingkat === 12 && (nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || kode.includes('PKL'))) {
+
+  // --- Helper deteksi sesuai pola detectKelompokForMapel ---
+  const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+  const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+  // KK: bukan PKK/PKL, tapi nama/kode mengandung unsur KK (KK AKL, KK-RPL, KKAKL, konsentrasi keahlian)
+  const isKk = !isPkk && !isPkl && (
+    kode === 'KK' ||
+    kode.startsWith('KK-') ||
+    kode.startsWith('KK ') ||
+    kode.includes('KK-') ||
+    kode.includes('KK ') ||
+    (kode.startsWith('KK') && kode.length > 2) || // KK diikuti karakter apapun (KKAKL, dll)
+    nama.startsWith('kk ') ||                      // "kk akl", "kk rpl", dll
+    nama.includes('konsentrasi keahlian') ||
+    nama.includes('konsentrasi')
+  );
+  const isPilihan = !isPkk && !isKk && (kode.includes('PILIHAN') || kode.includes('MAPEL-PILIHAN') || kode.includes('MPP') || nama.includes('pilihan'));
+
+  // PKL: hanya Kelas 12 Semester Ganjil (Sem 1)
+  if (tingkat === 12 && isPkl) {
     return semesterNum === 1 ? `${baseJp}` : '-';
   }
-  
-  if (tingkat === 12 && (nama.includes('konsentrasi keahlian') || kode === 'KK' || kode.startsWith('KK-'))) {
+
+  // KK: hanya Kelas 12 Semester Genap (Sem 2) — digantikan PKL di Sem 1
+  if (tingkat === 12 && isKk) {
     return semesterNum === 2 ? `${baseJp}` : '-';
   }
-  
-  if (tingkat === 12 && (nama.includes('projek kreatif') || nama.includes('project kreatif') || kode.includes('PKK'))) {
+
+  // PKK (Projek Kreatif): hanya Kelas 12 Semester Genap (Sem 2)
+  if (tingkat === 12 && isPkk) {
     return semesterNum === 2 ? `${baseJp}` : '-';
   }
-  
-  if (tingkat === 12 && (nama.includes('pilihan') || kode.includes('PILIHAN') || kode.includes('MAPEL-PILIHAN'))) {
+
+  // Mapel Pilihan: hanya Kelas 12 Semester Genap (Sem 2)
+  if (tingkat === 12 && isPilihan) {
     return semesterNum === 2 ? `${baseJp}` : '-';
   }
-  
+
   return `${baseJp}`;
 };
+
 
 export const getKelompokTotal = (kelompokList: StrukturPrintRow[], tingkat: number, semesterNum: 1 | 2) => {
   let sum = 0;
