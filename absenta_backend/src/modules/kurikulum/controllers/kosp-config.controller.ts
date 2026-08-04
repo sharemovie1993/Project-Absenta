@@ -1,10 +1,9 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
 import { KospConfigService } from '../services/kosp-config.service';
 
 export class KospConfigController {
-  static async getByTahun(req: FastifyRequest, reply: FastifyReply) {
+  static async getByTahun(req: any, reply: any) {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const { tahun_pelajaran_id } = req.query as { tahun_pelajaran_id?: string };
 
       if (!user?.tenant_id) {
@@ -23,9 +22,9 @@ export class KospConfigController {
     }
   }
 
-  static async upsert(req: FastifyRequest, reply: FastifyReply) {
+  static async upsert(req: any, reply: any) {
     try {
-      const user = (req as any).user;
+      const user = req.user;
       const body = req.body as {
         tahun_pelajaran_id: string;
         visi?: string;
