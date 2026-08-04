@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 
+import { resolveProfilePhotoUrl } from '@/lib/utils';
+
 export const Navbar: React.FC = () => {
   const { data: systemConfig } = useQuery({
     queryKey: ['system-config','active','public'],
@@ -18,8 +20,11 @@ export const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSingleTenant, setIsSingleTenant] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const appName = systemConfig?.app_name || 'Absenta';
+  const rawLogoUrl = (systemConfig as any)?.logo_url;
+  const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
 
   useEffect(() => {
     const checkPreset = async () => {
@@ -70,10 +75,19 @@ export const Navbar: React.FC = () => {
              onClick={() => navigate(isSingleTenant ? '/login' : '/home')}
           >
             <div className="relative">
-               {(systemConfig as any)?.logo_url ? (
-                 <img src={(systemConfig as any).logo_url} alt={appName} className="h-10 w-auto group-hover:scale-110 transition-transform duration-300" />
+               {resolvedLogoUrl && !logoError ? (
+                 <img 
+                   src={resolvedLogoUrl} 
+                   alt={appName} 
+                   className="h-10 w-auto group-hover:scale-110 transition-transform duration-300 object-contain" 
+                   onError={() => setLogoError(true)}
+                 />
                ) : (
-                 <img src="/logo.png" alt={appName} className="h-10 w-auto group-hover:scale-110 transition-transform duration-300" />
+                 <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md border border-blue-400/30 group-hover:scale-110 transition-transform duration-300">
+                   <span className="text-white font-black text-sm tracking-wider">
+                     {appName.slice(0, 2).toUpperCase()}
+                   </span>
+                 </div>
                )}
                <div className="absolute -inset-2 bg-blue-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
-import { cn } from '../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../lib/utils';
 import { getSidebarMenu, MENU_QUERY_KEY } from '@/api/menu.api';
 import type { SidebarMenuItem as BackendMenuItem } from '@/api/menu.api';
 import iconForName from '@/lib/iconForName';
@@ -189,6 +189,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+  const [logoError, setLogoError] = useState<boolean>(false);
   const { activeHub, setActiveHub, activeWorkspaceId, setActiveWorkspaceId, detectHubFromPath } = useNavStore();
 
   const userWorkspaces = React.useMemo(() => {
@@ -229,6 +230,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     queryFn: async () => fetchActiveSystemConfig(),
   });
   const systemConfig = configQuery.data || null;
+  const rawSidebarLogoUrl = (systemConfig as any)?.logo_url;
+  const resolvedSidebarLogoUrl = rawSidebarLogoUrl ? resolveProfilePhotoUrl(rawSidebarLogoUrl) : null;
 
   const treeQuery = useQuery({
     queryKey: MENU_QUERY_KEY,
@@ -1074,10 +1077,19 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         {!isInline && (
           <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center space-x-3 overflow-hidden">
-              {(systemConfig as any)?.logo_url ? (
-                <img src={(systemConfig as any).logo_url} alt={systemConfig?.app_name || 'Absenta Logo'} className="w-8 h-8 rounded-md object-contain" />
+              {resolvedSidebarLogoUrl && !logoError ? (
+                <img 
+                  src={resolvedSidebarLogoUrl} 
+                  alt={systemConfig?.app_name || 'Absenta Logo'} 
+                  className="w-8 h-8 rounded-md object-contain"
+                  onError={() => setLogoError(true)} 
+                />
               ) : (
-                <img src="/logo.png" alt={systemConfig?.app_name || 'Absenta Logo'} className="w-8 h-8 rounded-md object-contain" />
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md flex items-center justify-center shadow-md border border-blue-400/30 shrink-0">
+                  <span className="text-white font-black text-xs tracking-wider">
+                    {(systemConfig?.app_name || 'Absenta').slice(0,2).toUpperCase()}
+                  </span>
+                </div>
               )}
               <span className="font-bold text-slate-900 dark:text-slate-100 truncate">
                 {systemConfig?.app_name || 'School App'}

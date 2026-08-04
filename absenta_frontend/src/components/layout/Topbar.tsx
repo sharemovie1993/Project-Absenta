@@ -14,7 +14,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { mapSubscriptionToUI } from '../../utils/subscriptionMapper';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 
@@ -29,8 +29,12 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
   const [sesiDetail, setSesiDetail] = useState<any | null>(null);
   const [sesiLoading, setSesiLoading] = useState<boolean>(false);
+  const [logoError, setLogoError] = useState<boolean>(false);
   const configQuery = useQuery({ queryKey: ['system-config','active'], queryFn: fetchActiveSystemConfig });
   const systemConfig = configQuery.data || null;
+
+  const rawLogoUrl = (systemConfig as any)?.logo_url;
+  const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
   const { user, subscription, tenantMode } = useAuthStore();
   
   // Use Mapper for consistent UI state
@@ -139,11 +143,16 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
             {/* Logo & Info Sekolah */}
             <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                 {(systemConfig as any)?.logo_url ? (
-                  <img src={(systemConfig as any).logo_url} alt={systemConfig?.app_name || 'Logo App'} className="w-8 h-8 rounded-lg object-contain" />
+                 {resolvedLogoUrl && !logoError ? (
+                  <img 
+                    src={resolvedLogoUrl} 
+                    alt={systemConfig?.app_name || 'Logo App'} 
+                    className="w-8 h-8 rounded-lg object-contain" 
+                    onError={() => setLogoError(true)}
+                  />
                 ) : (
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-xs">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md border border-blue-400/30">
+                    <span className="text-white font-black text-xs tracking-wider">
                       {(systemConfig?.app_name || 'Absenta').slice(0,2).toUpperCase()}
                     </span>
                   </div>
