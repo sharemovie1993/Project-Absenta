@@ -60,8 +60,10 @@ async function getTenantDbCredsInfo(tenantId: string): Promise<{ hasCreds: boole
     });
     if (credsRow?.value) {
       const credsData = JSON.parse(credsRow.value);
-      const savedNumber = credsData?.me?.id ? (credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null) : null;
-      return { hasCreds: true, savedNumber };
+      if (credsData?.me?.id) {
+        const savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
+        return { hasCreds: true, savedNumber };
+      }
     }
   } catch (e) {}
   return { hasCreds: false, savedNumber: null };
