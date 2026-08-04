@@ -465,23 +465,6 @@ export default function JadwalPelajaranPage() {
     </div>
   ), [viewMode, canManage, handlePrint, handleClearSchedule, jadwal, loadingJadwal, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa, handleEditSlot, handleDeleteSlot]);
 
-  const operationalStats = useMemo(() => [
-    {
-      title: 'Total Slot Terisi',
-      value: jadwal.length,
-      icon: <Clock size={16} className="text-indigo-500" />,
-      gradient: 'from-indigo-500 to-blue-600',
-      subtitle: 'KBM & Tugas Piket'
-    },
-    {
-      title: 'Tahun Pelajaran',
-      value: activeTp?.nama_tahun || 'Tahun Aktif',
-      icon: <FileStack size={16} className="text-emerald-500" />,
-      gradient: 'from-emerald-500 to-teal-600',
-      subtitle: activeSemRes?.data?.find((s: any) => s.id === selectedSemesterId)?.nama_semester || 'Semester Aktif'
-    }
-  ], [jadwal.length, activeTp?.nama_tahun, activeSemRes, selectedSemesterId]);
-
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader /></div>;
   }
@@ -541,7 +524,6 @@ export default function JadwalPelajaranPage() {
       subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
       backPath="/kurikulum/dashboard"
       backLabel="Kembali ke Dashboard Kurikulum"
-      stats={operationalStats}
       instruction={{
         title: 'Panduan Penyusunan Jadwal (Jalur B - Full Screen Workspace)',
         description: 'Jadwal pelajaran bertindak sebagai blueprint KBM harian yang menggerakkan generator absensi otomatis.',
