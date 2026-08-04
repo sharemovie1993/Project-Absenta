@@ -2,6 +2,7 @@ import { execSync, exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { prisma } from '../utils/prisma';
 
 // Letakkan folder tunnels di root project absenta_backend
 const TUNNELS_DIR = path.join(__dirname, '../../../tunnels');
@@ -293,7 +294,7 @@ export class WireguardManager {
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
 
-      // Fix 2: Tear down existing stale interface & conflicting inactive interfaces with duplicate 10.0.0.0/24 routes
+      // Fix 2: Presisi tinggi — Hanya matikan interface berpola 'et-*' (Easy Tunnel) yang TIDAK berstatus 'active' di DB.
       try {
         execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe' });
       } catch {}
@@ -302,11 +303,23 @@ export class WireguardManager {
       } catch {}
 
       try {
+        // Ambil daftar terowongan yang memang sah berstatus 'active' di database
+        const activeTunnels = await prisma.easyTunnel.findMany({
+          where: { status: 'active' },
+          select: { slug: true }
+        });
+        const activeSlugs = new Set(activeTunnels.map(t => t.slug));
+        activeSlugs.add(slug); // Sertakan slug terowongan yang sedang di-start ini
+
+        // 1. Pola khusus et-* memastikan interface WG lain (misal wg0, wg-office) TIDAK TERSENTUH (100% Aman)
         const wgInterfaces = execSync("ip link show type wireguard 2>/dev/null | grep -oE 'et-[a-zA-Z0-9_-]+' || true", { stdio: 'pipe' })
           .toString().split('\n').map(s => s.trim()).filter(Boolean);
+
         for (const ifc of wgInterfaces) {
-          if (ifc !== ifName) {
-            console.log(`[WG-Cleanup] Matikan interface konflik lama: ${ifc}`);
+          const ifcSlug = ifc.replace(/^et-/, '');
+          // 2. Hanya matikan jika slug et-* tersebut TIDAK aktif di DB (bekas/stale)
+          if (!activeSlugs.has(ifcSlug)) {
+            console.log(`[WG-Cleanup] Presisi: Mematikan interface EasyTunnel non-aktif/stale: ${ifc}`);
             try { execSync(`sudo wg-quick down "${ifc}"`, { stdio: 'pipe' }); } catch {}
           }
         }
