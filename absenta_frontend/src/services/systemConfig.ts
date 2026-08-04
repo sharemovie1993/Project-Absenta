@@ -100,6 +100,7 @@ export const saveSystemConfig = async (payload: SystemConfigPayload): Promise<Sy
 
 // Apply branding styles based on active system config
 import absentaLogo from '@/assets/absenta-logo.svg';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 export function applyBrandingFromConfig(cfg: SystemConfig | null) {
   const root = document.documentElement;
