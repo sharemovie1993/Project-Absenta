@@ -122,7 +122,7 @@ export function applyBrandingFromConfig(cfg: SystemConfig | null) {
     root.style.removeProperty('--color-accent');
   }
 
-  const favicon = cfg?.favicon_url || '/favicon.png';
+  const favicon = cfg?.favicon_url ? resolveProfilePhotoUrl(cfg.favicon_url) : '/favicon.png';
   if (favicon) {
     let link: HTMLLinkElement | null = document.querySelector("link[rel='icon']");
     if (!link) {
