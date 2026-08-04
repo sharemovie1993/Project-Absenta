@@ -1,8 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../useAuth';
-import { useTenant } from '../useTenant';
-import { useJenjang } from '../useJenjang';
 import { useTahunPelajaranOptions } from '../useTahunPelajaranOptions';
 import { useJurusanOptions } from '../useJurusanOptions';
 import { hubinApi, type MitraIndustri } from '../../api/hubin.api';
@@ -29,9 +26,8 @@ import type { Jurusan, StrukturKurikulum } from '../../types/academic';
 
 export const useKospBuilderState = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const { tenantId } = useTenant();
-  const { jenjang, kurikulum } = useJenjang();
+  // NOTE: useAuth/useTenant/useJenjang dipakai hanya jika data mereka dibutuhkan secara eksplisit
+  // di masa depan (role-based KOSP filtering). Saat ini data datang dari sekolahApi & strukturApi.
 
   // ── 1. ALL REACT STATES AT THE VERY TOP (React Rules of Hooks Best Practice) ──
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
@@ -59,7 +55,8 @@ export const useKospBuilderState = () => {
     } else if (tahunList.length > 0 && !selectedTahunId) {
       setSelectedTahunId(tahunList[0].id);
     }
-  }, [activeYear, tahunList, selectedTahunId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeYear?.id, tahunList.length]); // tanpa selectedTahunId agar tidak double-trigger
 
   // ── 4. TANSTACK QUERY DATA FETCHING ──
   const { data: dudiData, isLoading: isLoadingDudi } = useQuery({
@@ -81,6 +78,7 @@ export const useKospBuilderState = () => {
   const { data: sekolahRes } = useQuery({
     queryKey: ['sekolah-profile'],
     queryFn: () => sekolahApi.getProfile(),
+    staleTime: 30 * 60 * 1000, // profil sekolah sangat jarang berubah
   });
 
   const { data: kospConfigRes, isLoading: isLoadingKospConfig } = useQuery({
@@ -98,6 +96,7 @@ export const useKospBuilderState = () => {
   const { data: treeRes } = useQuery({
     queryKey: ['struktur-organisasi-tree-kosp'],
     queryFn: () => getStrukturTree(),
+    staleTime: 30 * 60 * 1000, // struktur org jarang berubah
   });
 
   const { data: kalenderRes } = useQuery({
@@ -277,11 +276,10 @@ export const useKospBuilderState = () => {
     tabelEskulHtml,
     daftarJurusanSummaryHtml,
     tabelStrukturSemuaJurusanHtml,
-    tabelKalenderPendidikanHtml,
+    tabelKalenderPendidikanHtml, // sudah derive dari kalenderRes — tidak perlu kalenderRes lagi
     tabelJamKbmHtml,
     tabelDudiMitraHtml,
     metaConfigData,
-    kalenderRes,
   ]);
 
   // ── 8. INITIAL CONFIG ──
