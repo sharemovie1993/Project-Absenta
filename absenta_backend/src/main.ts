@@ -262,6 +262,9 @@ async function start() {
           const { waGatewayService } = await import('./services/wa-gateway.service');
           await waGatewayService.restoreConnections();
         });
+
+        // ─── Cetak Tabel Lengkap (Semua 22 Service Online) ───
+        printStartupTable(port, host);
       } catch (err: any) {
         console.warn('[Background Services Startup Warning]:', err.message);
       }
