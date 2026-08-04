@@ -56,7 +56,7 @@ export class WhatsappController {
         }
       }
 
-      const health = waGatewayService.getHealthStatus(tenant_id);
+      const health = await waGatewayService.getHealthStatus(tenant_id);
       return reply.send({ success: true, message: 'Menghubungkan ke WhatsApp...', qr, data: health });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -77,7 +77,7 @@ export class WhatsappController {
     const { tenant_id } = request.user as any;
     try {
       // Gunakan getHealthStatus untuk verifikasi kualitas koneksi yang sebenarnya
-      const health = waGatewayService.getHealthStatus(tenant_id);
+      const health = await waGatewayService.getHealthStatus(tenant_id);
       return reply.send({ success: true, data: health });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
