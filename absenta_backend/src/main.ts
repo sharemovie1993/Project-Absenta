@@ -1,6 +1,4 @@
-import './infra/env'; // MUST BE THE FIRST LINE
 import dotenv from 'dotenv';
-import path from 'path';
 
 // Silence routine BullMQ/ioredis version recommendation warnings on Redis 6.0.16
 const filterRedisWarn = () => {
@@ -91,6 +89,14 @@ async function start() {
   }
 
   try {
+    const isMasterInstance = () => {
+      const instanceId = process.env.NODE_APP_INSTANCE;
+      if (instanceId !== undefined && instanceId !== '' && instanceId !== '0') {
+        return false;
+      }
+      return true;
+    };
+
     const isHybridMode = (process.env.EMBEDDED_WORKERS === 'true') || (isDev && !isWorkerOnly);
 
     // Hulu ke Hilir: Luruskan kabel untuk background workers utama
