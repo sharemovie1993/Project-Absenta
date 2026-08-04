@@ -71,37 +71,30 @@ export const SingleGridTimetable: React.FC<Props> = ({
                   borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex,
                 }}
               >
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1">
-                    <span
-                      className={cn(
-                        'text-[9.5px] font-black uppercase tracking-wide truncate leading-tight',
-                        item.isForeign ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
-                      )}
-                      title={item.Mapel?.nama_mapel || item.jenis_kegiatan}
-                    >
-                      {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                    </span>
-                    {item.isForeign ? (
-                      <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[7.5px] font-black shrink-0 px-1 py-0 border-none leading-none">
-                        TERISI
-                      </Badge>
-                    ) : (
-                      viewMode === 'GURU' &&
-                      item.Kelas && (
-                        <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[7.5px] font-black shrink-0 px-1 py-0 border-none leading-none">
-                          {item.Kelas.nama_kelas}
-                        </Badge>
-                      )
-                    )}
-                  </div>
-                  <div className="text-[8.5px] font-bold text-slate-500 dark:text-slate-400 leading-tight truncate">
-                    {item.isForeign
-                      ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
-                      : item.Guru?.nama_guru ||
-                        item.Guru?.User?.full_name ||
-                        (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
-                  </div>
+                <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
+                  {viewMode === 'GURU' ? (
+                    <>
+                      <div className="text-[9.5px] font-black uppercase text-indigo-700 dark:text-indigo-300 leading-tight truncate">
+                        {item.isForeign ? 'TERISI' : (item.Kelas?.nama_kelas || 'KELAS')}
+                      </div>
+                      <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                      </div>
+                      <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
+                        {item.isForeign
+                          ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
+                          : item.Guru?.nama_guru ||
+                            item.Guru?.User?.full_name ||
+                            (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Delete Hover Action */}
