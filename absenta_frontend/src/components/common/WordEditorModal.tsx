@@ -529,6 +529,12 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
               {printButtonLabel}
             </Button>
           </div>
+        {/* Helper Hint Banner */}
+        <div className="bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200/80 dark:border-amber-900/80 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2 font-medium shrink-0">
+          <div className="flex items-center gap-2">
+            <span>💡 <strong>Tips Editor KOSP:</strong> Bagian naskah bertanda <span className="text-red-600 dark:text-red-400 font-bold">⚠️ [BELUM DIISI]</span> dapat <strong>langsung Anda ketik/ganti di dalam editor ini</strong> (seperti di MS Word) ATAU diisi otomatis via tombol <strong>"Pengaturan SK & Tim"</strong>.</span>
+          </div>
+          <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold italic">Tekan "Simpan Dokumen KOSP" setelah selesai.</span>
         </div>
 
         {/* TinyMCE Single Continuous Document Editor Canvas (Persis Microsoft Word) */}

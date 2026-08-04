@@ -225,7 +225,7 @@ export const useKospBuilderState = () => {
       if (val && val.trim() && val !== '-' && val !== 'Kepala Sekolah' && val !== 'Wakasek Kurikulum') {
         return safeString(val);
       }
-      return `<span style="color:#dc2626; font-style:italic; font-weight:bold;">[⚠️ ${fieldLabel} BELUM DIISI - SILAKAN ATUR DI PENGATURAN SK]</span>`;
+      return `<span style="color:#dc2626; font-style:italic; font-weight:bold;">[⚠️ ${fieldLabel}: Ketik langsung di sini ATAU atur via Pengaturan SK]</span>`;
     };
 
     const replacements: Record<string, string> = {
@@ -243,12 +243,12 @@ export const useKospBuilderState = () => {
       '{{NIPKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nip || '[NIP KEPALA CABDIN]'),
       '{{KARAKTERISTIK_SEKOLAH}}': safeString(kospDbConfig?.karakteristik || `
         <p style="text-align:justify; font-size:11pt; line-height:1.6; color:#475569;">
-          <em><span style="color:#dc2626; font-weight:bold;">[⚠️ BELUM DITETAPKAN]</span> Deskripsi Karakteristik Satuan Pendidikan belum diisi di database kustomisasi KOSP.</em>
+          <em><span style="color:#dc2626; font-weight:bold;">[⚠️ KARAKTERISTIK SEKOLAH: Ketik langsung di sini ATAU atur via Database]</span> Deskripsi Karakteristik Satuan Pendidikan belum diisi. Anda dapat langsung mengetikkan paragraf gambaran umum sekolah Anda di sini persis seperti di Word.</em>
         </p>
       `),
       '{{DAFTAR_JURUSAN_SUMMARY}}': safeString(daftarJurusanSummaryHtml),
-      '{{VISI_SEKOLAH}}': safeString(kospDbConfig?.visi || '<span style="color:#dc2626; font-weight:bold;">[⚠️ VISI SEKOLAH BELUM DIISI DI DATABASE]</span>'),
-      '{{MISI_SEKOLAH}}': safeString(kospDbConfig?.misi || '<p style="color:#dc2626; font-weight:bold;">[⚠️ MISI SEKOLAH BELUM DIISI DI DATABASE]</p>'),
+      '{{VISI_SEKOLAH}}': safeString(kospDbConfig?.visi || '<span style="color:#dc2626; font-style:italic; font-weight:bold;">[⚠️ VISI SEKOLAH: Ketik langsung teks visi sekolah Anda di sini ATAU atur via Database KOSP]</span>'),
+      '{{MISI_SEKOLAH}}': safeString(kospDbConfig?.misi || '<p style="color:#dc2626; font-style:italic; font-weight:bold;">[⚠️ MISI SEKOLAH: Ketik langsung poin-poin misi sekolah Anda di sini ATAU atur via Database KOSP]</p>'),
       '{{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}': safeString(tabelStrukturSemuaJurusanHtml),
       '{{TABEL_KALENDER_PENDIDIKAN}}': safeString(tabelKalenderPendidikanHtml),
       '{{TABEL_JAM_KBM}}': safeString(tabelJamKbmHtml),
@@ -261,6 +261,7 @@ export const useKospBuilderState = () => {
       '{{NAMA_DINAS_PROVINSI}}': safeString(metaConfigData?.nama_dinas_provinsi || '[DINAS PENDIDIKAN PROVINSI BELUM DIISI]'),
       '{{NAMA_CABDIN}}': safeString(metaConfigData?.nama_cabdin || '[CABANG DINAS PENDIDIKAN BELUM DIISI]'),
     };
+
 
 
     return basePages.map(page => {
