@@ -13,7 +13,7 @@ import { WaChatLogService } from './wa-chat-log.service';
  */
 export const lidToPhoneGlobalMap = new Map<string, string>();
 
-export async function persistLidMapping(key: string, value: string) {
+export async function persistLidMapping(key: string, value: string, tenantId?: string) {
   try {
     lidToPhoneGlobalMap.set(key, value);
 
@@ -24,11 +24,20 @@ export async function persistLidMapping(key: string, value: string) {
       } catch (_) {}
     }
 
-    await prisma.waLidMapping.upsert({
-      where: { lid_key: key },
-      create: { lid_key: key, phone: value },
-      update: { phone: value },
-    });
+    if (tenantId) {
+      await prisma.waLidMapping.upsert({
+        where: { tenant_id_lid_key: { tenant_id: tenantId, lid_key: key } },
+        create: { tenant_id: tenantId, lid_key: key, phone: value },
+        update: { phone: value },
+      });
+    } else {
+      const existing = await prisma.waLidMapping.findFirst({ where: { lid_key: key } });
+      if (existing) {
+        await prisma.waLidMapping.update({ where: { id: existing.id }, data: { phone: value } });
+      } else {
+        await prisma.waLidMapping.create({ data: { lid_key: key, phone: value } });
+      }
+    }
   } catch (err: any) {
     console.warn('[Chatbot] Failed to persist LID mapping to Database:', err.message);
   }

@@ -98,6 +98,7 @@ model Tenant {
   HubinTefaOrder     HubinTefaOrder[]
   WaTenantConnection WaTenantConnection?
   WaAuthSession      WaAuthSession[]
+  WaLidMapping        WaLidMapping[]
 
   // BK & Prestasi
   JenisPrestasi       JenisPrestasi[]
@@ -4317,13 +4318,18 @@ model WaAuthSession {
 }
 
 // ── WhatsApp LID Mapping (Redis + Database Store) ─────────────────────────────
-// Menyimpan pemetaan LID WA (2024+) -> Nomor HP asli secara terisolasi penuh di Database.
+// Menyimpan pemetaan LID WA (2024+) -> Nomor HP asli secara terisolasi penuh per tenant di Database.
 model WaLidMapping {
   id         String   @id @default(uuid())
-  lid_key    String   @unique
+  tenant_id  String?
+  lid_key    String
   phone      String
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  Tenant Tenant? @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, lid_key], name: "tenant_id_lid_key")
+  @@index([tenant_id])
   @@index([phone])
 }
