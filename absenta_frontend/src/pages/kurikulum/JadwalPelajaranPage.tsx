@@ -449,7 +449,7 @@ export default function JadwalPelajaranPage() {
               onClick={() => triggerPrintPreview()}
             >
               <Printer className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Cetak Berkas PDF (1:1)</span>
+              <span>Cetak Berkas PDF</span>
             </Button>
 
             {canManage && (

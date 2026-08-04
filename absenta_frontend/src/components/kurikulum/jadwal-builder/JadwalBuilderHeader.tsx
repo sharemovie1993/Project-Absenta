@@ -230,20 +230,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {onOpenPrintPreview && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const isTeacher = ['GURU', 'MASTER_GURU'].includes(viewMode);
-              onOpenPrintPreview(isTeacher ? 'roster_teacher' : 'roster', isTeacher ? selectedGuruId : selectedKelasId);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-black border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-all shadow-sm"
-            title="Buka Pratinjau Cetak & Dokumen PDF Jadwal Pelajaran"
-          >
-            <span>🖨️ Pratinjau & Cetak PDF</span>
-          </Button>
-        )}
 
         {onToggleLeftPanel && (
           <Button
