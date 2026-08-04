@@ -264,6 +264,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     const params = new URLSearchParams(window.location.search);
     const qPrintType = params.get('printType');
     const qClassId = params.get('classId');
+    const qGuruId = params.get('guruId');
     const qStudentId = params.get('studentId');
     const qAgenda = params.get('agenda');
     const qNomor = params.get('nomor');
@@ -273,6 +274,9 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     }
     if (qClassId) {
       setSelectedClassId(qClassId);
+    }
+    if (qGuruId && setSelectedGuruId) {
+      setSelectedGuruId(qGuruId);
     }
     if (qStudentId) {
       setSelectedStudentId(qStudentId);

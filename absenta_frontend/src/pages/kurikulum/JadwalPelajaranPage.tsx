@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
 import { 
   Loader,
@@ -58,6 +58,7 @@ export default function JadwalPelajaranPage() {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const { user, isLoading, can } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
   
@@ -414,11 +415,15 @@ export default function JadwalPelajaranPage() {
             <Button 
               variant="outline" 
               size="sm" 
-              className="rounded-xl px-3 py-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-700 dark:text-slate-300 text-xs font-extrabold flex items-center gap-1.5"
-              onClick={() => setViewMode('preview')}
+              className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 shadow-sm transition-all text-indigo-700 dark:text-indigo-300 text-xs font-extrabold flex items-center gap-1.5"
+              onClick={() => {
+                const cId = selectedKelasId ? `&classId=${selectedKelasId}` : '';
+                const gId = selectedGuruId ? `&guruId=${selectedGuruId}` : '';
+                navigate(`/kurikulum/cetak-berkas?printType=roster${cId}${gId}`);
+              }}
             >
-              <Printer className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Cetak PDF (Built-in)</span>
+              <Printer className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Cetak Berkas PDF</span>
             </Button>
 
             {canManage && (
@@ -483,7 +488,11 @@ export default function JadwalPelajaranPage() {
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
               onRefresh={() => setRefreshKey(k => k + 1)}
-              onOpenPrintPreview={() => setViewMode('preview')}
+              onOpenPrintPreview={() => {
+                const cId = selectedKelasId ? `&classId=${selectedKelasId}` : '';
+                const gId = selectedGuruId ? `&guruId=${selectedGuruId}` : '';
+                navigate(`/kurikulum/cetak-berkas?printType=roster${cId}${gId}`);
+              }}
             />
           ) : viewMode === 'preview' ? (
             <JadwalBuiltInPdfPreview initialKelasId={selectedKelasId} initialGuruId={selectedGuruId} />
