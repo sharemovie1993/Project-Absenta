@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
 
-// Silence routine BullMQ/ioredis version recommendation warnings on Redis 6.0.16
+// Silence routine noise: BullMQ/ioredis Redis version warnings, node-cron missed execution, Fastify deprecations
 const filterRedisWarn = () => {
   const origWarn = console.warn;
   console.warn = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
+    if (msg.includes('[NODE-CRON] [WARN] missed execution')) return;
     origWarn.apply(console, args);
   };
   const origErr = console.error;
@@ -13,6 +14,13 @@ const filterRedisWarn = () => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
     origErr.apply(console, args);
+  };
+  const origLog = console.log;
+  console.log = (...args: any[]) => {
+    const msg = args.map(a => String(a || '')).join(' ');
+    if (msg.includes('[FSTDEP017]') || msg.includes('request.routerPath')) return;
+    if (msg.includes('allowUnionTypes') || msg.includes('strictTypes')) return;
+    origLog.apply(console, args);
   };
 };
 filterRedisWarn();

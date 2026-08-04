@@ -266,7 +266,7 @@ export const initNotificationWorker = () => {
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`[NotificationWorker] Job ${job?.id} failed with ${err.message}`);
+    appLogger.error({ jobId: job?.id, error: err.message }, 'notification_worker.job_failed');
   });
   worker.on('failed', async (job: any, err: any) => {
     try {
@@ -300,7 +300,7 @@ export const initNotificationWorker = () => {
 
   void startDomainEventSubscriber();
 
-  console.log('✅ Notification Worker Started');
+  appLogger.info({}, 'notification_worker.started');
 };
 
 export const closeNotificationWorker = async () => {

@@ -152,6 +152,7 @@ export async function authMiddleware(
       if (pathStr.startsWith('/uploads/') || pathStr.startsWith('/api/uploads/')) return false;
       if (pathStr === '/api/system/config' || pathStr === '/system/config') return false;
       if (pathStr === '/api/whatsapp/status' || pathStr === '/whatsapp/status') return false;
+      if (pathStr === '/api/notifications/my' || pathStr === '/notifications/my') return false;
       return true;
     };
 

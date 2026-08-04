@@ -1,15 +1,16 @@
 import { createClient } from 'redis';
 import { Server } from 'socket.io';
 import { getRedisUrl } from '../../config/redis.config';
+import { appLogger } from '../../utils/app-logger';
 
 export function setupSocketEvents(io: Server, _ioApi: Server) {
   const redisUrl = getRedisUrl();
   const sub = createClient({ url: redisUrl });
   
-  sub.on('error', (err) => console.error('[WS EVENTS] Redis Sub Error:', err));
+  sub.on('error', (err) => appLogger.error({ error: err.message }, 'ws_events.redis_sub_error'));
   
   sub.connect().then(() => {
-    console.log('[WS EVENTS] Redis Subscriber Connected');
+    appLogger.info({}, 'ws_events.redis_subscriber_connected');
     
     // Subscribe to Session Attendance Updates
     sub.subscribe('events:session_attendance_update', (message) => {
@@ -32,7 +33,7 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
            // io.to(`tenant:${payload.tenant_id}`).emit('attendance_update', eventData);
         }
       } catch (e) {
-        console.error('[WS EVENTS] Error processing session update:', e);
+        appLogger.error({ error: (e as any)?.message }, 'ws_events.session_update_error');
       }
     });
 
@@ -52,10 +53,10 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
            io.to(`user:${payload.recipient}`).emit('notification', eventData);
            // ioApi.to(`user:${payload.recipient}`).emit('notification', eventData); // Redundant via Redis Adapter
            
-           console.log(`[WS EVENTS] Forwarded NOTIFICATION for ${payload.recipient}`);
+           appLogger.info({ recipient: payload.recipient }, 'ws_events.notification_forwarded');
         }
       } catch (e) {
-        console.error('[WS EVENTS] Error processing parent notification:', e);
+        appLogger.error({ error: (e as any)?.message }, 'ws_events.parent_notification_error');
       }
     });
 
@@ -81,9 +82,9 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
              });
            }
          }
-       } catch (e) {
-         console.error('[WS EVENTS] Error processing gerbang tap update:', e);
-       }
+        } catch (e) {
+          appLogger.error({ error: (e as any)?.message }, 'ws_events.gerbang_tap_error');
+        }
     });
 
     // Subscribe to HUBIN updates
@@ -94,9 +95,9 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
            const tenantRoom = `tenant:${payload.tenant_id}`;
            io.to(tenantRoom).emit('hubin_activity_update', payload);
          }
-       } catch (e) {
-         console.error('[WS EVENTS] Error processing hubin activity update:', e);
-       }
+        } catch (e) {
+          appLogger.error({ error: (e as any)?.message }, 'ws_events.hubin_activity_error');
+        }
     });
 
     // Subscribe to SARPRAS updates
@@ -107,9 +108,9 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
            const tenantRoom = `tenant:${payload.tenant_id}`;
            io.to(tenantRoom).emit('sarpras_dashboard_update', payload);
          }
-       } catch (e) {
-         console.error('[WS EVENTS] Error processing sarpras dashboard update:', e);
-       }
+        } catch (e) {
+          appLogger.error({ error: (e as any)?.message }, 'ws_events.sarpras_update_error');
+        }
     });
 
   });
