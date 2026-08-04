@@ -45,36 +45,48 @@ async function scanWorkerRegistryKeys(redis: any): Promise<string[]> {
 export function startAutoHealScheduler(): void {
   const redis = getRedisConnection();
   const nodeId = getNodeId();
+  const verbose = String(process.env.AUTOHEAL_VERBOSE || '').toLowerCase() === 'true';
+
   const run = async () => {
     try {
       const lockKey = 'infra:autoheal:lock';
       const got = await (redis as any).set(lockKey, nodeId, 'NX', 'EX', 5);
       if (got !== 'OK') return;
-      console.log(`[AutoHeal][scan] lock_acquired_by=${nodeId}`);
 
-      const keys: string[] = await scanWorkerRegistryKeys(redis);
-      console.log(`[AutoHeal][scan] registry_keys=${keys.length} sample=${keys.slice(0, 5).join(',')}`);
+      if (verbose) console.log(`[AutoHeal][scan] lock_acquired_by=${nodeId}`);
+
+      const keys: string[] = await scanPattern(redis, 'worker:*:*');
+      const validKeys = keys.filter(k => parseRegKey(k) !== null);
+
+      if (verbose) console.log(`[AutoHeal][scan] registry_keys=${validKeys.length}`);
+
       const now = Date.now();
-      for (const k of keys) {
+      for (const k of validKeys) {
         const meta = parseRegKey(k);
         if (!meta) continue;
         const hbKey = `worker:${meta.nodeId}:${meta.workerType}:heartbeat`;
         const v = await redis.get(hbKey);
         const ts = v ? Number(v) : 0;
         const age = ts ? now - ts : Number.MAX_SAFE_INTEGER;
-        console.log(`[AutoHeal][scan] key=${k} ts=${ts || 'null'} age_ms=${Number.isFinite(age) ? age : 'INF'}`);
+
+        if (verbose) {
+          console.log(`[AutoHeal][scan] key=${k} ts=${ts || 'null'} age_ms=${Number.isFinite(age) ? age : 'INF'}`);
+        }
+
         if (age > 30000) {
           const cdKey = `infra:autoheal:${meta.nodeId}:${meta.workerType}:cooldown`;
           const setCd = await (redis as any).set(cdKey, '1', 'NX', 'EX', 30);
           if (setCd !== 'OK') continue;
+
           const countKey = `worker:${meta.nodeId}:${meta.workerType}:restart_count`;
           const cnt = await (redis as any).incr(countKey);
           if (cnt === 1) {
             await (redis as any).expire(countKey, 300); // 5 menit
           }
+
           if (cnt > 5) {
             await (redis as any).set(`worker:${meta.nodeId}:${meta.workerType}:critical`, '1', 'EX', 600);
-            console.error(`[AutoHeal] CRITICAL restart limit exceeded ${meta.nodeId} ${meta.workerType}`);
+            console.error(`[AutoHeal] 🚨 CRITICAL restart limit exceeded for ${meta.nodeId}:${meta.workerType}`);
             observabilityService.logEvent({
               event_type: 'INFRA_WORKER_RESTART_CRITICAL',
               domain: 'INFRA',
@@ -85,7 +97,8 @@ export function startAutoHealScheduler(): void {
             });
             continue;
           }
-          console.log(`[AutoHeal] worker stalled ${meta.nodeId} ${meta.workerType}`);
+
+          console.warn(`[AutoHeal] ⚠️ Worker stalled (${meta.nodeId}:${meta.workerType}), age=${Math.round(age / 1000)}s. Triggering restart...`);
           observabilityService.logEvent({
             event_type: 'INFRA_WORKER_STALLED',
             domain: 'INFRA',
@@ -94,10 +107,11 @@ export function startAutoHealScheduler(): void {
             entity_id: `${meta.nodeId}:${meta.workerType}`,
             metadata: { node_id: meta.nodeId, worker_type: meta.workerType, age_ms: age },
           });
+
           const msg = JSON.stringify({ action: 'restart', workerType: meta.workerType, nodeId: meta.nodeId });
           await (redis as any).publish('worker-control', msg);
           await (redis as any).set(`worker:${meta.nodeId}:${meta.workerType}:lastRestartAt`, String(Date.now()), 'EX', 86400);
-          console.log(`[AutoHeal] restarting worker ${meta.nodeId} ${meta.workerType}`);
+
           observabilityService.logEvent({
             event_type: 'INFRA_WORKER_RESTART_TRIGGERED',
             domain: 'INFRA',
@@ -108,7 +122,11 @@ export function startAutoHealScheduler(): void {
           });
         }
       }
-    } catch {}
+    } catch (err: any) {
+      if (verbose) console.error('[AutoHeal] Error in scan cycle:', err);
+    }
   };
-  setInterval(() => void run(), 10000);
+
+  const intervalMs = process.env.NODE_ENV === 'development' ? 30000 : 15000;
+  setInterval(() => void run(), intervalMs);
 }
