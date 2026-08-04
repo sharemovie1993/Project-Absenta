@@ -116,8 +116,14 @@ export class WireguardManager {
   static writeConfig(slug: string, configContent: string): string {
     this.ensureTunnelsDir();
     const confPath = this.confPath(slug);
-    fs.writeFileSync(confPath, configContent, 'utf8');
-    console.log(`[WG] Config written: ${confPath}`);
+    fs.writeFileSync(confPath, configContent, { encoding: 'utf8', mode: 0o600 });
+    if (!this.isWindows()) {
+      try {
+        fs.chmodSync(confPath, 0o600);
+        execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
+      } catch {}
+    }
+    console.log(`[WG] Config written with 0600 perms: ${confPath}`);
     return confPath;
   }
 
@@ -256,7 +262,34 @@ export class WireguardManager {
       }
       return { success: true, message: 'Tunnel VPN berhasil diaktifkan.' };
     } else {
-      execSync(`sudo wg-quick up "${confPath}"`, { stdio: 'pipe', windowsHide: true });
+      const ifName = `et-${slug}`;
+
+      // Fix 1: Ensure permission 600 so WireGuard doesn't warn "world accessible"
+      try {
+        fs.chmodSync(confPath, 0o600);
+        execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
+      } catch {}
+
+      // Fix 2: Tear down existing stale interface if any to avoid "already exists" error
+      try {
+        execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe' });
+      } catch {}
+      try {
+        execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' });
+      } catch {}
+
+      // Fix 3: Execute wg-quick up with error recovery
+      try {
+        execSync(`sudo wg-quick up "${confPath}"`, { stdio: 'pipe' });
+      } catch (err: any) {
+        const errMsg = err.stderr ? err.stderr.toString() : err.message;
+        if (errMsg.includes('already exists')) {
+          try { execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' }); } catch {}
+          execSync(`sudo wg-quick up "${confPath}"`, { stdio: 'pipe' });
+        } else {
+          throw new Error(`Gagal mengaktifkan WireGuard: ${errMsg}`);
+        }
+      }
       return { success: true, message: 'Tunnel VPN berhasil diaktifkan.' };
     }
   }
