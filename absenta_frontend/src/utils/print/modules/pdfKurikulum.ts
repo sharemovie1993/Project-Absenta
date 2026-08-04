@@ -411,9 +411,19 @@ export const renderKurikulumRosterPdf = (
       'SABTU': 'SABTU',
     };
 
-    const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
+    const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    const DEFAULT_KESISWAAN_SLOT_0: Record<string, string> = {
+      'SENIN': 'Upacara Bendera',
+      'SELASA': 'Pembiasaan & Literasi',
+      'RABU': 'Sholat Duha / Keagamaan',
+      'KAMIS': 'Kultum & Literasi',
+      'JUMAT': 'Yasinan / Jumat Bersih',
+      'SABTU': 'Senam & Ekstrakurikuler',
+    };
 
     const SLOT_TIME_FALLBACK: Record<number, string> = {
+      0: "06:30-07:00",
       1: "07:00-07:45",
       2: "07:45-08:30",
       3: "08:30-09:15",
@@ -433,7 +443,7 @@ export const renderKurikulumRosterPdf = (
         'HARI',
         ...SLOTS.map(slot => {
           const time = SLOT_TIME_FALLBACK[slot] || '';
-          return `JAM ${slot}\n(${time})`;
+          return slot === 0 ? `JAM 0\n(KESISWAAN)` : `JAM ${slot}\n(${time})`;
         })
       ]
     ];
@@ -460,7 +470,11 @@ export const renderKurikulumRosterPdf = (
         const item = getSlotData(day, slot);
 
         if (!item) {
-          row.push('');
+          if (slot === 0) {
+            row.push(`[KESISWAAN]\n${DEFAULT_KESISWAAN_SLOT_0[day] || 'Kegiatan Kesiswaan'}`);
+          } else {
+            row.push('');
+          }
           continue;
         }
 

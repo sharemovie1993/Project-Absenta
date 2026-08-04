@@ -21,7 +21,17 @@ interface Props {
   initialGuruId?: string;
 }
 
+const DEFAULT_KESISWAAN_SLOT_0: Record<string, string> = {
+  'SENIN': 'Upacara Bendera',
+  'SELASA': 'Pembiasaan & Literasi',
+  'RABU': 'Sholat Duha / Keagamaan',
+  'KAMIS': 'Kultum & Literasi',
+  'JUMAT': 'Yasinan / Jumat Bersih',
+  'SABTU': 'Senam & Ekstrakurikuler',
+};
+
 const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
+  0: { start: "06:30", end: "07:00" },
   1: { start: "07:00", end: "07:45" },
   2: { start: "07:45", end: "08:30" },
   3: { start: "08:30", end: "09:15" },
@@ -83,12 +93,14 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
     return WORKDAYS_HARI_KEYS;
   }, [tenant]);
 
-  // Dynamic Slots Array from Tenant Shift Config
+  // Dynamic Slots Array: Always Includes Slot 0 (Kesiswaan) + 12 KBM Slots
   const activeSlots = useMemo(() => {
+    const kbmSlots = Array.from({ length: 12 }, (_, i) => i + 1);
     if (tenant?.shift_jam_pelajaran?.shifts?.[0]?.slots?.length) {
-      return tenant.shift_jam_pelajaran.shifts[0].slots.map(s => Number(s.slot)).sort((a, b) => a - b);
+      const tenantSlots = tenant.shift_jam_pelajaran.shifts[0].slots.map(s => Number(s.slot));
+      return Array.from(new Set([0, ...tenantSlots, ...kbmSlots])).sort((a, b) => a - b);
     }
-    return Array.from({ length: 12 }, (_, i) => i + 1);
+    return [0, ...kbmSlots];
   }, [tenant]);
 
   // Auto Select Defaults if Empty
@@ -431,9 +443,18 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                     <th className="p-2 border-r border-slate-900 w-24 bg-slate-200/80">HARI / WAKTU</th>
                     {activeSlots.map((slotIndex) => {
                       const slotTime = getSlotTime(slotIndex);
+                      const isSlotZero = slotIndex === 0;
                       return (
-                        <th key={slotIndex} className="p-1.5 border-r last:border-r-0 border-slate-900 min-w-[110px]">
-                          <div className="text-indigo-700 font-black text-[10.5px]">JAM {slotIndex}</div>
+                        <th
+                          key={slotIndex}
+                          className={cn(
+                            "p-1.5 border-r last:border-r-0 border-slate-900 min-w-[115px]",
+                            isSlotZero ? "bg-amber-100/90 text-amber-900" : ""
+                          )}
+                        >
+                          <div className={cn("font-black text-[10.5px]", isSlotZero ? "text-amber-900 uppercase" : "text-indigo-700")}>
+                            {isSlotZero ? 'JAM 0 (KESISWAAN)' : `JAM ${slotIndex}`}
+                          </div>
                           <div className="text-[8.5px] font-bold text-slate-600 font-mono">{slotTime.start} - {slotTime.end}</div>
                         </th>
                       );
@@ -455,6 +476,21 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                         const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
 
                         if (!item) {
+                          if (slotIndex === 0) {
+                            return (
+                              <td key={`${h}-0`} className="p-1.5 border-r last:border-r-0 border-slate-400 bg-amber-50/60 text-center align-middle">
+                                <div className="space-y-0.5">
+                                  <div className="font-black text-[10px] text-amber-900 uppercase leading-tight">
+                                    {DEFAULT_KESISWAAN_SLOT_0[h] || 'Kegiatan Kesiswaan'}
+                                  </div>
+                                  <div className="text-[8.5px] font-bold text-amber-700/80">
+                                    [Kesiswaan]
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          }
+
                           return (
                             <td key={`${h}-${slotIndex}`} className="p-1.5 border-r last:border-r-0 border-slate-300 text-slate-300 text-[9px]">
                               -

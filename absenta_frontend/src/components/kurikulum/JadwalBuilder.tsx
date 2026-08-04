@@ -42,10 +42,11 @@ import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
-const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
+const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // Standard slot times
 const SLOT_TIME: Record<number, { start: string; end: string }> = {
+  0: { start: "06:30", end: "07:00" },
   1: { start: "07:00", end: "07:45" },
   2: { start: "07:45", end: "08:30" },
   3: { start: "08:30", end: "09:15" },
