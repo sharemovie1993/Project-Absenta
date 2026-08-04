@@ -11,6 +11,7 @@ import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../../api/academic/semester.api';
 import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../common';
+import { WORKDAYS_HARI_KEYS, getDayLabel } from '../../../constants/day.constants';
 import { toast } from 'react-hot-toast';
 
 interface Props {
@@ -20,9 +21,6 @@ interface Props {
   initialKelasId?: string;
   initialGuruId?: string;
 }
-
-const HARI_LIST = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
   1: { start: "07:00", end: "07:45" },
@@ -100,6 +98,27 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
     }
     return SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
   };
+
+  // Dynamic Hari Sekolah List from Tenant Config or Centralized Constants
+  const activeHariSekolah = useMemo(() => {
+    if (tenantRes?.success && Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+      const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+      return [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    }
+    return WORKDAYS_HARI_KEYS;
+  }, [tenantRes]);
+
+  // Dynamic Slots Array from Tenant Shift Config
+  const activeSlots = useMemo(() => {
+    if (tenantConfig && Array.isArray(tenantConfig.shifts) && tenantConfig.shifts.length > 0) {
+      const shiftId = mode === 'KELAS' && selectedKelasId ? tenantConfig.class_assignments?.[selectedKelasId] : undefined;
+      const targetShift = tenantConfig.shifts.find(s => s.id === shiftId) || tenantConfig.shifts[0];
+      if (targetShift && Array.isArray(targetShift.slots) && targetShift.slots.length > 0) {
+        return targetShift.slots.map(s => Number(s.slot)).sort((a, b) => a - b);
+      }
+    }
+    return Array.from({ length: 12 }, (_, i) => i + 1);
+  }, [tenantConfig, mode, selectedKelasId]);
 
   // Auto Select Defaults if Empty
   React.useEffect(() => {
@@ -439,7 +458,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-900 font-black text-[10px] uppercase">
                     <th className="p-2 border-r border-slate-900 w-24 bg-slate-200/80">HARI / WAKTU</th>
-                    {SLOTS.map((slotIndex) => {
+                    {activeSlots.map((slotIndex) => {
                       const slotTime = getSlotTime(slotIndex);
                       return (
                         <th key={slotIndex} className="p-1.5 border-r last:border-r-0 border-slate-900 min-w-[110px]">
@@ -451,15 +470,15 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {HARI_LIST.map((h) => (
+                  {activeHariSekolah.map((h) => (
                     <tr key={h} className="hover:bg-slate-50">
                       {/* Left Vertical Column: Day Name */}
                       <td className="p-2 border-r border-slate-900 font-black text-xs bg-slate-100/70 text-slate-900 tracking-wider uppercase">
-                        {h}
+                        {getDayLabel(h, h)}
                       </td>
 
                       {/* Horizontal Slot Cells for this Day */}
-                      {SLOTS.map((slotIndex) => {
+                      {activeSlots.map((slotIndex) => {
                         const slotTime = getSlotTime(slotIndex);
                         const item = previewJadwalMap.get(`${h}-${slotIndex}`);
                         const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
