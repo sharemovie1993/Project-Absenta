@@ -170,24 +170,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap ml-auto">
-          {onToggleLeftPanel && (
-            <Button
-              variant={showLeftPanel ? "outline" : "primary"}
-              size="sm"
-              onClick={onToggleLeftPanel}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-black transition-all rounded-xl shadow-xs",
-                !showLeftPanel 
-                  ? "bg-indigo-600 text-white shadow-indigo-500/20 border-none" 
-                  : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-              )}
-              title={showLeftPanel ? "Sembunyikan Panel Kiri (Toolbox & Kartu) untuk Melebarkan Tabel ke 100%" : "Tampilkan kembali Panel Kiri (Toolbox & Kartu)"}
-            >
-              {showLeftPanel ? <PanelLeftClose className="w-3.5 h-3.5 text-slate-400" /> : <PanelLeft className="w-3.5 h-3.5" />}
-              <span>{showLeftPanel ? "Sembunyikan Toolbox" : "🛠️ Toolbox"}</span>
-            </Button>
-          )}
-
           <Button
             variant="outline"
             size="sm"
