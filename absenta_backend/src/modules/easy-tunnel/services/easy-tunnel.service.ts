@@ -450,17 +450,40 @@ export class EasyTunnelService {
   /**
    * Ambil status custom domain tenant saat ini.
    */
-  static async getCustomDomainStatus(tenantId: string): Promise<any> {
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        custom_domain: true,
-        custom_domain_status: true,
-        custom_domain_verified_at: true,
-        subdomain: true
-      }
-    });
-    if (!tenant) throw new Error('Tenant tidak ditemukan.');
+  static async getCustomDomainStatus(tenantId?: string): Promise<any> {
+    let tenant: any = null;
+    if (tenantId) {
+      tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          custom_domain: true,
+          custom_domain_status: true,
+          custom_domain_verified_at: true,
+          subdomain: true
+        }
+      });
+    }
+
+    if (!tenant) {
+      tenant = await prisma.tenant.findFirst({
+        select: {
+          custom_domain: true,
+          custom_domain_status: true,
+          custom_domain_verified_at: true,
+          subdomain: true
+        }
+      });
+    }
+
+    if (!tenant) {
+      return {
+        custom_domain: null,
+        custom_domain_status: 'NONE',
+        custom_domain_verified_at: null,
+        platform_subdomain: null,
+        platform_url: null
+      };
+    }
 
     return {
       custom_domain: tenant.custom_domain,
