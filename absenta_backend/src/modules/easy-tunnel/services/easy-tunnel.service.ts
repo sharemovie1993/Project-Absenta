@@ -224,24 +224,43 @@ export class EasyTunnelService {
     if (!tunnel) throw new Error('Tunnel tidak ditemukan.');
     await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
-    // Validasi kedaluwarsa secara berkala ke server lisensi
+    // Validasi kedaluwarsa ke server lisensi — STRICT MODE:
+    // Jika server lisensi tidak dapat dijangkau (internet mati, timeout, dsb),
+    // aktivasi tunnel tetap diblokir. Tunnel tidak akan bermanfaat pula
+    // jika internet memang tidak tersedia.
+    let remoteInfo: any;
     try {
-      const remoteInfo = await validateLicenseKey(tunnel.license_key);
-      if (remoteInfo.expired) {
-        await prisma.easyTunnel.update({
-          where: { id },
-          data: { status: 'expired' }
-        });
-        throw new Error('Lisensi terowongan ini telah kedaluwarsa.');
-      }
+      remoteInfo = await validateLicenseKey(tunnel.license_key);
     } catch (e: any) {
-      if (e.message && (e.message.toLowerCase().includes('kedaluwarsa') || e.message.toLowerCase().includes('expired'))) {
+      // Semua error (network, timeout, invalid, expired) → blokir aktivasi
+      const msg = (e.message || '').toLowerCase();
+      const isExpired =
+        msg.includes('kedaluwarsa') || msg.includes('expired') ||
+        msg.includes('tidak ditemukan') || msg.includes('not found') ||
+        msg.includes('tidak valid') || msg.includes('invalid');
+
+      if (isExpired) {
         await prisma.easyTunnel.update({
           where: { id },
           data: { status: 'expired' }
         });
-        throw new Error('Lisensi terowongan ini telah kedaluwarsa.');
+        throw new Error('Lisensi terowongan ini telah kedaluwarsa. Silakan perpanjang lisensi Anda.');
       }
+
+      // Error koneksi / timeout → blokir dengan pesan yang jelas
+      throw new Error(
+        `Tidak dapat memverifikasi lisensi: server lisensi tidak dapat dijangkau. ` +
+        `Periksa koneksi internet server dan coba lagi. (${e.message})`
+      );
+    }
+
+    // Cek expired dari response server lisensi
+    if (remoteInfo.expired) {
+      await prisma.easyTunnel.update({
+        where: { id },
+        data: { status: 'expired' }
+      });
+      throw new Error('Lisensi terowongan ini telah kedaluwarsa. Silakan perpanjang lisensi Anda.');
     }
 
     if (!WireguardManager.isWireGuardInstalled()) {
