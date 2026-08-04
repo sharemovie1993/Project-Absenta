@@ -23,6 +23,21 @@ interface Props {
 const HARI_LIST = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
 const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
+const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
+  1: { start: "07:00", end: "07:45" },
+  2: { start: "07:45", end: "08:30" },
+  3: { start: "08:30", end: "09:15" },
+  4: { start: "09:35", end: "10:20" },
+  5: { start: "10:20", end: "11:05" },
+  6: { start: "11:05", end: "11:50" },
+  7: { start: "12:30", end: "13:15" },
+  8: { start: "13:15", end: "14:00" },
+  9: { start: "14:00", end: "14:45" },
+  10: { start: "14:45", end: "15:30" },
+  11: { start: "15:30", end: "16:15" },
+  12: { start: "16:15", end: "17:00" },
+};
+
 export const JadwalPrintPreviewModal: React.FC<Props> = ({
   isOpen,
   onClose,
