@@ -339,14 +339,21 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId, selectedKelasId, targetJpMap]);
 
   useEffect(() => {
-    if (mappedMapelIds && mappedMapelIds.length > 0) {
-      if (!mappedMapelIds.includes(paintMapelId)) {
-        setPaintMapelId(mappedMapelIds[0]);
+    if (guruMapelSelectOptions && guruMapelSelectOptions.length > 0) {
+      const availableOptions = guruMapelSelectOptions.filter((m: any) => m.status !== 'PAS');
+      const currentSelected = guruMapelSelectOptions.find((m: any) => m.value === paintMapelId);
+
+      if (!currentSelected || currentSelected.status === 'PAS') {
+        if (availableOptions.length > 0) {
+          setPaintMapelId(availableOptions[0].value);
+        } else {
+          setPaintMapelId(guruMapelSelectOptions[0].value);
+        }
       }
     } else if (mappedMapelIds && mappedMapelIds.length === 0) {
       setPaintMapelId('');
     }
-  }, [mappedMapelIds, paintMapelId]);
+  }, [guruMapelSelectOptions, mappedMapelIds, paintMapelId]);
 
   // Beban guru states
   const [bebanModalOpen, setBebanModalOpen] = useState(false);

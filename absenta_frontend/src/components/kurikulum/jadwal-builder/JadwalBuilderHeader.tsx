@@ -276,18 +276,23 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                   );
                 }
 
+                const isPas = status === 'PAS';
+
                 return (
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => setPaintMapelId(m.value)}
+                    disabled={isPas}
+                    onClick={() => !isPas && setPaintMapelId(m.value)}
                     className={cn(
                       "px-3.5 py-1.5 text-xs font-extrabold rounded-2xl transition-all duration-200 border flex items-center gap-2 shadow-xs group/chip",
-                      isSelected
+                      isPas
+                        ? "opacity-60 cursor-not-allowed bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-800/50"
+                        : isSelected
                         ? "bg-slate-900 text-white dark:bg-indigo-600 dark:text-white border-slate-900 dark:border-indigo-600 shadow-md ring-2 ring-indigo-500/20 scale-[1.03]"
                         : "bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300"
                     )}
-                    title={`Pilih Mata Pelajaran: ${m.label}`}
+                    title={isPas ? `Alokasi ${m.label} sudah PAS (${m.rightBadge}). Sudah selesai.` : `Pilih Mata Pelajaran: ${m.label}`}
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs ring-2 ring-white/50 dark:ring-slate-900/50"
