@@ -598,14 +598,6 @@ export default function JadwalPelajaranPage() {
         tahunPelajaranId={selectedTahunId}
         semesterId={selectedSemesterId}
       />
-
-      <JadwalPrintPreviewModal
-        isOpen={printPreviewOpen}
-        onClose={() => setPrintPreviewOpen(false)}
-        initialMode={selectedGuruId ? 'GURU' : 'KELAS'}
-        initialKelasId={selectedKelasId}
-        initialGuruId={selectedGuruId}
-      />
     </OperationalPageLayout>
   );
 }
