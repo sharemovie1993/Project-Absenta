@@ -1,41 +1,40 @@
-import path from 'path';
-import fs from 'fs';
 import { prisma } from '@/utils/prisma';
+import { getRedisConnection } from '../../../queue/redis';
 import { formatMultiRoleMenu } from './wa-chatbot-commands';
 import { ChatbotRouter } from '../chatbot/core/chatbot-router';
 import { ChatbotContext } from '../chatbot/core/chatbot-context';
 import { WaChatLogService } from './wa-chat-log.service';
 
 /**
- * Peta persistent LID → nomor HP asli (persisted to disk wa_auth/lid_mappings.json).
+ * Peta persistent LID → nomor HP asli (terisolasi aman di Database PostgreSQL + Redis Store).
  * Diisi dari dua sumber:
  *  1. contacts.upsert event di wa-gateway.service.ts (otomatis)
  *  2. Self-identification flow (user ketik nomor HP saat LID tidak dikenal)
  */
 export const lidToPhoneGlobalMap = new Map<string, string>();
 
-const LID_FILE_PATH = path.join(process.cwd(), 'wa_auth', 'lid_mappings.json');
-
-export function persistLidMapping(key: string, value: string) {
+export async function persistLidMapping(key: string, value: string) {
   try {
     lidToPhoneGlobalMap.set(key, value);
-    const authDir = path.join(process.cwd(), 'wa_auth');
-    if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
-    let obj: Record<string, string> = {};
-    if (fs.existsSync(LID_FILE_PATH)) {
+    const redis = getRedisConnection();
+    if (redis) {
       try {
-        obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
+        await redis.hset('wa:lid:mappings', key, value);
       } catch (_) {}
     }
-    obj[key] = value;
-    fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+
+    await prisma.waLidMapping.upsert({
+      where: { lid_key: key },
+      create: { lid_key: key, phone: value },
+      update: { phone: value },
+    });
   } catch (err: any) {
-    console.warn('[Chatbot] Failed to persist LID mapping:', err.message);
+    console.warn('[Chatbot] Failed to persist LID mapping to Database:', err.message);
   }
 }
 
-export function removeLidMappingByPhone(phone: string) {
+export async function removeLidMappingByPhone(phone: string) {
   try {
     const rawDigits = phone.replace(/\D/g, '');
     if (!rawDigits) return;
@@ -46,44 +45,39 @@ export function removeLidMappingByPhone(phone: string) {
       }
     }
 
-    if (fs.existsSync(LID_FILE_PATH)) {
-      let obj: Record<string, string> = {};
+    const redis = getRedisConnection();
+    if (redis) {
       try {
-        obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
-      } catch (_) {}
-      
-      let modified = false;
-      for (const [k, v] of Object.entries(obj)) {
-        if (typeof v === 'string' && (v.includes(rawDigits) || rawDigits.includes(v))) {
-          delete obj[k];
-          modified = true;
+        const keys = await redis.hkeys('wa:lid:mappings');
+        for (const k of keys) {
+          const val = await redis.hget('wa:lid:mappings', k);
+          if (val && (val.includes(rawDigits) || rawDigits.includes(val))) {
+            await redis.hdel('wa:lid:mappings', k);
+          }
         }
-      }
-      if (modified) {
-        fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
-      }
+      } catch (_) {}
     }
+
+    await prisma.waLidMapping.deleteMany({
+      where: { phone: { contains: rawDigits } },
+    });
   } catch (err: any) {
-    console.warn('[Chatbot] Failed to remove LID mapping:', err.message);
+    console.warn('[Chatbot] Failed to remove LID mapping from Database:', err.message);
   }
 }
 
-// Load persisted LID mappings on module start
-(function loadLidMappingsFromDisk() {
+// Load persisted LID mappings from Database on module start
+(async function loadLidMappingsFromDb() {
   try {
-    if (fs.existsSync(LID_FILE_PATH)) {
-      const data = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
-      let count = 0;
-      for (const [k, v] of Object.entries(data)) {
-        if (typeof v === 'string') {
-          lidToPhoneGlobalMap.set(k, v);
-          count++;
-        }
-      }
-      console.log(`[Chatbot] Restored ${count} LID mappings from disk.`);
+    const rows = await prisma.waLidMapping.findMany({ select: { lid_key: true, phone: true } });
+    let count = 0;
+    for (const r of rows) {
+      lidToPhoneGlobalMap.set(r.lid_key, r.phone);
+      count++;
     }
+    console.log(`[Chatbot] Restored ${count} LID mappings from Database.`);
   } catch (err: any) {
-    console.warn('[Chatbot] Failed to load LID mappings from disk:', err.message);
+    console.warn('[Chatbot] Failed to load LID mappings from Database:', err.message);
   }
 })();
 
@@ -282,11 +276,14 @@ export class WaChatbotResolverService {
       pendingIdentification.set(fullJid, true);
 
       try {
-        if (fs.existsSync(LID_FILE_PATH)) {
-          const obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
-          delete obj[cleanJid];
-          delete obj[fullJid];
-          fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+        await prisma.waLidMapping.deleteMany({
+          where: { lid_key: { in: [cleanJid, fullJid] } },
+        });
+        const redis = getRedisConnection();
+        if (redis) {
+          try {
+            await redis.hdel('wa:lid:mappings', cleanJid, fullJid);
+          } catch (_) {}
         }
       } catch (_) {}
 

@@ -4315,3 +4315,15 @@ model WaAuthSession {
   @@unique([tenant_id, key_id], name: "tenant_id_key_id")
   @@index([tenant_id])
 }
+
+// ── WhatsApp LID Mapping (Redis + Database Store) ─────────────────────────────
+// Menyimpan pemetaan LID WA (2024+) -> Nomor HP asli secara terisolasi penuh di Database.
+model WaLidMapping {
+  id         String   @id @default(uuid())
+  lid_key    String   @unique
+  phone      String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([phone])
+}
