@@ -225,6 +225,28 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               {guruMapelSelectOptions.map((m: any) => {
                 const isSelected = paintMapelId === m.value;
                 const colorStyle = getMapelColor(m.label);
+                const status = m.status || 'KOSONG';
+
+                // Status Theme styling for button container when NOT selected
+                let statusButtonTheme = "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700";
+                if (status === 'PAS') {
+                  statusButtonTheme = "bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800/80 hover:bg-emerald-100/80";
+                } else if (status === 'SISA') {
+                  statusButtonTheme = "bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800/80 hover:bg-amber-100/80";
+                } else if (status === 'OVER') {
+                  statusButtonTheme = "bg-rose-50/70 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800/80 hover:bg-rose-100/80";
+                }
+
+                // Status Theme styling for badge when NOT selected
+                let statusBadgeTheme = m.rightBadgeClass || "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+                if (status === 'PAS') {
+                  statusBadgeTheme = "bg-emerald-500 text-white shadow-xs font-black";
+                } else if (status === 'SISA') {
+                  statusBadgeTheme = "bg-amber-500 text-white shadow-xs font-black";
+                } else if (status === 'OVER') {
+                  statusBadgeTheme = "bg-rose-500 text-white shadow-xs font-black";
+                }
+
                 return (
                   <button
                     key={m.value}
@@ -234,7 +256,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                       "px-3 py-1 text-xs font-extrabold rounded-xl transition-all border flex items-center gap-1.5 shadow-sm",
                       isSelected
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800 scale-105"
-                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        : statusButtonTheme
                     )}
                     title={`Pilih ${m.label} ${m.rightBadge ? `(${m.rightBadge})` : ''}`}
                   >
@@ -246,10 +268,10 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                     {m.rightBadge && (
                       <span
                         className={cn(
-                          "text-[9.5px] px-1.5 py-0.5 rounded-md font-black shrink-0 ml-0.5 leading-none",
+                          "text-[9.5px] px-1.5 py-0.5 rounded-md shrink-0 ml-0.5 leading-none transition-colors",
                           isSelected
-                            ? "bg-white/20 text-white"
-                            : (m.rightBadgeClass || "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300")
+                            ? "bg-white/20 text-white font-black"
+                            : statusBadgeTheme
                         )}
                       >
                         {m.rightBadge}

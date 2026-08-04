@@ -330,6 +330,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       return {
         label: m.nama_mapel,
         value: m.id,
+        status: smartStatus.status,
         statusDotClass: smartStatus.statusDotClass,
         rightBadge: smartStatus.rightBadge,
         rightBadgeClass: smartStatus.rightBadgeClass,
