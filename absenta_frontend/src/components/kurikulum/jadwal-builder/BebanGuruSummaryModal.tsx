@@ -1,30 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Modal, Button } from '../../ui';
 import { Badge } from '../../ui/Badge';
 import { Search, RefreshCw } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { ViewMode, TeacherBebanItem } from './types';
+import { TeacherBebanItem } from './types';
+import { kurikulumApi } from '../../../api/kurikulum.api';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  loadingBeban: boolean;
-  bebanGuruList: TeacherBebanItem[];
-  onSelectTeacherForSchedule: (guruId: string) => void;
+  loadingBeban?: boolean;
+  bebanGuruList?: TeacherBebanItem[];
+  onSelectTeacherForSchedule?: (guruId: string) => void;
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 export const BebanGuruSummaryModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  loadingBeban,
-  bebanGuruList,
+  loadingBeban: externalLoading,
+  bebanGuruList: externalList,
   onSelectTeacherForSchedule,
+  tahunPelajaranId,
+  semesterId,
 }) => {
   const [searchBebanGuru, setSearchBebanGuru] = useState('');
 
-  const filteredList = bebanGuruList.filter((b) =>
-    b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())
-  );
+  // Internal query if external list is not provided
+  const { data: internalRes, isLoading: internalLoading } = useQuery({
+    queryKey: ['beban-guru-modal-list', tahunPelajaranId, semesterId],
+    queryFn: () => (tahunPelajaranId && semesterId) ? kurikulumApi.getBebanMengajar({
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId
+    }).catch(() => null) : null,
+    enabled: isOpen && !externalList && !!tahunPelajaranId && !!semesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const listToUse = useMemo(() => {
+    if (Array.isArray(externalList)) return externalList;
+    if (Array.isArray(internalRes?.data)) return internalRes.data;
+    return [];
+  }, [externalList, internalRes]);
+
+  const isLoading = externalLoading ?? internalLoading;
+
+  const filteredList = useMemo(() => {
+    return listToUse.filter((b) =>
+      (b.nama_guru || '').toLowerCase().includes(searchBebanGuru.toLowerCase())
+    );
+  }, [listToUse, searchBebanGuru]);
 
   return (
     <Modal
@@ -46,7 +73,7 @@ export const BebanGuruSummaryModal: React.FC<Props> = ({
         </div>
 
         <div className="max-h-[400px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-          {loadingBeban ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-12 text-xs text-slate-500">
               <RefreshCw className="w-4 h-4 mr-2 animate-spin text-indigo-500" />
               Memuat data beban mengajar...
@@ -111,14 +138,16 @@ export const BebanGuruSummaryModal: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-3 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-                      onClick={() => onSelectTeacherForSchedule(b.id)}
-                    >
-                      Lihat Jadwal
-                    </Button>
+                    {onSelectTeacherForSchedule && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
+                        onClick={() => onSelectTeacherForSchedule(b.id)}
+                      >
+                        Lihat Jadwal
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
