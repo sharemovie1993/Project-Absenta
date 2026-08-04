@@ -1,5 +1,5 @@
 import { useAuth } from '../useAuth';
-import { getTenantById } from '../../api/tenants.api';
+import { useJamKbmConfig } from '../useJamKbmConfig';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTahunPelajaranOptions } from '../useTahunPelajaranOptions';
@@ -29,6 +29,7 @@ import type { Jurusan, StrukturKurikulum } from '../../types/academic';
 export const useKospBuilderState = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { shiftJamPelajaran } = useJamKbmConfig();
 
   // ── 1. ALL REACT STATES AT THE VERY TOP (React Rules of Hooks Best Practice) ──
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
@@ -82,13 +83,6 @@ export const useKospBuilderState = () => {
     staleTime: 30 * 60 * 1000, // profil sekolah sangat jarang berubah
   });
 
-  const { data: tenantRes } = useQuery({
-    queryKey: ['my-tenant-jam-kbm-kosp', user?.tenant_id],
-    queryFn: () => user?.tenant_id ? getTenantById(user.tenant_id).catch(() => null) : null,
-    enabled: !!user?.tenant_id,
-    staleTime: 10 * 60 * 1000,
-  });
-
   const { data: kospConfigRes, isLoading: isLoadingKospConfig } = useQuery({
     queryKey: ['kosp-config', selectedTahunId],
     queryFn: () => kospApi.getConfigByTahun(selectedTahunId),
@@ -117,7 +111,6 @@ export const useKospBuilderState = () => {
   // ── 5. DERIVED DATA & USEMEMOS ──
   const dudiList = useMemo(() => dudiData || [], [dudiData]);
   const sekolahInfo = sekolahRes?.data || null;
-  const shiftJamPelajaran = tenantRes?.data?.shift_jam_pelajaran || null;
   const kospDbConfig = kospConfigRes?.data || null;
 
   // Parsed Config JSON (Margin, Meta SK, Tim Penyusun)
