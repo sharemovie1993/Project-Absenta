@@ -814,10 +814,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   return (
     <>
-      <div className={cn(
-        "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start transition-all duration-300",
-        isFocusMode && "fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto w-screen h-screen m-0"
-      )}>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start transition-all duration-300">
 
       {/* 🛠️ LEFT PANEL: Toolbox & Cards */}
       {showLeftPanel && (
