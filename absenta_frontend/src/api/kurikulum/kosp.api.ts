@@ -1,4 +1,4 @@
-import { apiUtils } from '../apiUtils';
+import api from '../../lib/axiosInstance';
 
 export interface KospConfigData {
   id?: string;
@@ -18,9 +18,10 @@ export const kospApi = {
    * Mengambil kustomisasi KOSP per tahun pelajaran
    */
   getConfigByTahun: async (tahunPelajaranId: string) => {
-    return apiUtils.get<{ success: boolean; data: KospConfigData | null }>(
+    const res = await api.get<{ success: boolean; data: KospConfigData | null }>(
       `/kurikulum/kosp-config?tahun_pelajaran_id=${tahunPelajaranId}`
     );
+    return res.data;
   },
 
   /**
@@ -34,9 +35,10 @@ export const kospApi = {
     halaman_html?: string;
     config?: string;
   }) => {
-    return apiUtils.put<{ success: boolean; data: KospConfigData }>(
+    const res = await api.put<{ success: boolean; data: KospConfigData }>(
       '/kurikulum/kosp-config',
       payload
     );
+    return res.data;
   },
 };
