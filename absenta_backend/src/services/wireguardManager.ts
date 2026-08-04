@@ -431,7 +431,6 @@ export class WireguardManager {
     }
 
     // 2. Handshake WireGuard dengan Server Lisensi (10.0.0.1)
-    let handshakeSec = -1;
     try {
       details.push('2️⃣ PEMERIKSAAN HANDSHAKE WIREGUARD (Koneksi ke Gateway 10.0.0.1):');
       const wgExe = this.isWindows() ? 'C:\\Program Files\\WireGuard\\wg.exe' : 'sudo wg';
