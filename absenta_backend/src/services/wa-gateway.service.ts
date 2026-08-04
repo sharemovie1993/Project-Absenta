@@ -549,20 +549,18 @@ const waGatewayServiceLocal = {
       entry = pool.get(tenantId);
     }
 
-    if (hasCreds) {
+    if (!entry || !entry.sock) {
       return {
-        status: 'connected' as const,
-        number: entry?.connectedNumber ?? savedNumber,
+        status: hasCreds ? ('connecting' as const) : ('disconnected' as const),
+        number: savedNumber,
         has_qr: false,
       };
     }
 
-    const currentStatus = entry?.status ?? 'disconnected';
-
     return {
-      status: currentStatus,
-      number: entry?.connectedNumber ?? null,
-      has_qr: !!(entry?.qrBase64),
+      status: entry.status,
+      number: entry.connectedNumber ?? savedNumber,
+      has_qr: !!(entry.qrBase64),
     };
   },
 
