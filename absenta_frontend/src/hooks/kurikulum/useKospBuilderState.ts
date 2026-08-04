@@ -10,7 +10,7 @@ import { kurikulumApi } from '../../api/kurikulum.api';
 import { kospApi } from '../../api/kurikulum/kosp.api';
 import { getStrukturTree } from '../../api/academic/strukturOrganisasi.api';
 import { toast } from 'react-hot-toast';
-import { getDefaultKospMasterPages } from '../../utils/kurikulum/kospTemplateMaster';
+import { getDefaultKospMasterPages, DEFAULT_KOSP_CHAPTER_LABELS } from '../../utils/kurikulum/kospTemplateMaster';
 import { 
   buildKospStrukturTableHtml,
   buildKospKalenderPendidikanHtml,
@@ -196,7 +196,7 @@ export const useKospBuilderState = () => {
   const daftarJurusanSummaryHtml = useMemo(() => {
     if (!jurusanList || jurusanList.length === 0) return '';
     return `
-      <ul style="font-size:11pt; line-height:1.6; margin-top:6px;">
+      <ul style="margin:8px 0; padding-left:20px; font-size:11pt; line-height:1.6;">
         ${jurusanList.map((j: Jurusan) => `
           <li><strong>${j.nama}</strong> (${j.singkatan || j.kode || 'JUR'})</li>
         `).join('')}
@@ -262,14 +262,17 @@ export const useKospBuilderState = () => {
       '{{NAMA_CABDIN}}': safeString(metaConfigData?.nama_cabdin || '[CABANG DINAS PENDIDIKAN BELUM DIISI]'),
     };
 
-
-
-    return basePages.map(page => {
+    return basePages.map((page, idx) => {
       let html = safeString(page.html);
       Object.entries(replacements).forEach(([key, val]) => {
         html = html.replaceAll(key, val);
       });
-      return { ...page, html };
+
+      const label = (page.label && !/^Halaman\s+\d+$/i.test(page.label.trim()))
+        ? page.label
+        : (DEFAULT_KOSP_CHAPTER_LABELS[idx] || page.label || `Halaman ${idx + 1}`);
+
+      return { ...page, label, html };
     });
   }, [
     kospDbConfig,

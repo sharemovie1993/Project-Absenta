@@ -1,12 +1,27 @@
 import { WordEditorPage } from '../../components/common/WordEditorModal';
 
+export const DEFAULT_KOSP_CHAPTER_LABELS: string[] = [
+  'Sampul Depan (Cover Resmi)',
+  'Kata Pengantar & Daftar Isi',
+  'Halaman Pengesahan Resmi',
+  'Bab I: Karakteristik Satuan Pendidikan',
+  'Bab II: Visi, Misi, & Tujuan Sekolah',
+  'Bab III: Pengorganisasian Pembelajaran & PKL',
+  'Bab IV & V: Rencana & Evaluasi',
+  'Lampiran 1: SK Tim Penyusun KOSP',
+  'Lampiran 2: Struktur Kurikulum Live Semua Jurusan',
+  'Lampiran 3: Kalender Pendidikan Sekolah',
+  'Lampiran 4: Alokasi Jam KBM Harian',
+  'Lampiran 5: Mitra Industri & DUDI PKL',
+];
+
 /**
  * Returns default master Word-style HTML pages for KOSP (Kurikulum Operasional Satuan Pendidikan)
  */
 export const getDefaultKospMasterPages = (): WordEditorPage[] => {
   return [
     {
-      label: 'Sampul Depan (Cover Resmi)',
+      label: DEFAULT_KOSP_CHAPTER_LABELS[0],
       html: `
         <div style="text-align:center; padding:20px 10px; font-family:Arial, sans-serif;">
           <!-- Top Border Accent -->
