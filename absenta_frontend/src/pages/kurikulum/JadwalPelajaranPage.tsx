@@ -62,8 +62,6 @@ export default function JadwalPelajaranPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
-  
-  const queryClient = useQueryClient();
 
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
   const roleName = user?.role?.name || '';
