@@ -23,24 +23,7 @@ async function scanPattern(redis: any, pattern: string): Promise<string[]> {
   return out;
 }
 
-async function scanWorkerRegistryKeys(redis: any): Promise<string[]> {
-  const patterns = [
-    'worker:*:email',
-    'worker:*:recurring',
-    'worker:*:billing',
-    'worker:*:notification',
-    'worker:*:attendance',
-    'worker:*:analytics',
-    'worker:*:maintenance',
-    'worker:*:infra',
-  ];
-  const out: string[] = [];
-  for (const p of patterns) {
-    const keys = await scanPattern(redis, p);
-    for (const k of keys) out.push(k);
-  }
-  return out;
-}
+
 
 export function startAutoHealScheduler(): void {
   const redis = getRedisConnection();
