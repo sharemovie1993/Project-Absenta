@@ -2,12 +2,14 @@ import React from 'react';
 import { Button, SearchableSelect } from '../../ui';
 import { RefreshCw, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { ViewMode, ToolMode, ColorByMode } from './types';
+import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
 
 interface Props {
   viewMode: ViewMode;
   setViewMode: (m: ViewMode) => void;
+  gridOrientation?: GridOrientation;
+  setGridOrientation?: (g: GridOrientation) => void;
   toolMode: ToolMode;
   colorByMode: ColorByMode;
   setColorByMode: (m: ColorByMode) => void;
@@ -34,6 +36,8 @@ interface Props {
 export const JadwalBuilderHeader: React.FC<Props> = ({
   viewMode,
   setViewMode,
+  gridOrientation = 'VERTICAL_HARI',
+  setGridOrientation,
   toolMode,
   colorByMode,
   setColorByMode,
@@ -108,6 +112,38 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             📊 Master Grid Kelas
           </button>
         </div>
+
+        {/* Orientation Switcher for Single Grid View (Per Guru / Per Kelas) */}
+        {['KELAS', 'GURU'].includes(viewMode) && setGridOrientation && (
+          <div className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setGridOrientation('VERTICAL_HARI')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                gridOrientation === 'VERTICAL_HARI'
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+              title="Layout Hari Vertikal (Hari di Kolom Kiri, Jam Pelajaran di Baris Atas)"
+            >
+              📅 Hari Vertikal
+            </button>
+            <button
+              type="button"
+              onClick={() => setGridOrientation('HORIZONTAL_HARI')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                gridOrientation === 'HORIZONTAL_HARI'
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+              title="Layout Hari Horizontal (Hari di Baris Atas, Jam Pelajaran di Kolom Kiri)"
+            >
+              🗓️ Hari Horizontal
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Filter Dropdown / Day Selector */}
         {viewMode === 'KELAS' && (

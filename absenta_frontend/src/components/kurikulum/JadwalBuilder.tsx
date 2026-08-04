@@ -85,6 +85,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   // Mode state
   const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
+  const [gridOrientation, setGridOrientation] = useState<GridOrientation>('VERTICAL_HARI');
   const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
   const [showLeftPanel, setShowLeftPanel] = useState<boolean>(false);
@@ -1107,6 +1108,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         <JadwalBuilderHeader
           viewMode={viewMode}
           setViewMode={setViewMode}
+          gridOrientation={gridOrientation}
+          setGridOrientation={setGridOrientation}
           toolMode={toolMode}
           colorByMode={colorByMode}
           setColorByMode={setColorByMode}
@@ -1136,6 +1139,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             viewMode={viewMode}
             toolMode={toolMode}
             colorByMode={colorByMode}
+            gridOrientation={gridOrientation}
             selectedKelasId={selectedKelasId}
             hariSekolah={hariSekolah}
             slots={SLOTS}

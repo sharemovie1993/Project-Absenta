@@ -3,12 +3,13 @@ import { RefreshCw, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { cn } from '../../../lib/utils';
 import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
-import { ViewMode, ToolMode, ColorByMode } from './types';
+import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
 
 interface Props {
   viewMode: ViewMode;
   toolMode: ToolMode;
   colorByMode?: ColorByMode;
+  gridOrientation?: GridOrientation;
   selectedKelasId: string;
   hariSekolah: string[];
   slots: number[];
@@ -25,6 +26,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
   viewMode,
   toolMode,
   colorByMode = 'MAPEL',
+  gridOrientation = 'VERTICAL_HARI',
   selectedKelasId,
   hariSekolah,
   slots,
@@ -153,7 +155,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
               Menghubungkan ke mesin jadwal...
             </p>
           </div>
-        ) : viewMode === 'KELAS' ? (
+        ) : gridOrientation === 'VERTICAL_HARI' ? (
           /* ── KONFIGURASI B: Hari di Kiri (Vertikal), Jam Pelajaran ke Kanan (Horizontal) ── */
           <div>
             {/* Header Row: Jam Slots across top */}

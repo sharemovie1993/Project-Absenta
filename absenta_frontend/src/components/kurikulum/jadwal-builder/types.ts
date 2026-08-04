@@ -4,6 +4,7 @@ import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 export type ViewMode = 'KELAS' | 'GURU' | 'MASTER_GURU' | 'MASTER_KELAS';
 export type ToolMode = 'PAINT' | 'ERASER';
 export type ColorByMode = 'MAPEL' | 'GURU';
+export type GridOrientation = 'VERTICAL_HARI' | 'HORIZONTAL_HARI';
 
 export interface JadwalBuilderProps {
   tahunPelajaranId?: string;
