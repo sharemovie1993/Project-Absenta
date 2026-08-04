@@ -230,6 +230,19 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     return null;
   }, [viewMode, selectedGuruId, mappedMapelsRes]);
 
+  const guruMapelSelectOptions = useMemo(() => {
+    if (mappedMapelsRes?.success && Array.isArray(mappedMapelsRes.data) && mappedMapelsRes.data.length > 0) {
+      return mappedMapelsRes.data.map((gm: any) => ({
+        label: gm.Mapel?.nama_mapel || 'Mata Pelajaran',
+        value: gm.mapel_id
+      }));
+    }
+    return mapelList.map(m => ({
+      label: m.nama_mapel,
+      value: m.id
+    }));
+  }, [mappedMapelsRes, mapelList]);
+
   useEffect(() => {
     if (mappedMapelIds && mappedMapelIds.length > 0) {
       if (!mappedMapelIds.includes(paintMapelId)) {
@@ -995,6 +1008,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           setSelectedKelasId={setSelectedKelasId}
           selectedGuruId={selectedGuruId}
           setSelectedGuruId={setSelectedGuruId}
+          paintMapelId={paintMapelId}
+          setPaintMapelId={setPaintMapelId}
+          guruMapelSelectOptions={guruMapelSelectOptions}
           masterGridHari={masterGridHari}
           setMasterGridHari={setMasterGridHari}
           kelasList={kelasList}

@@ -15,6 +15,9 @@ interface Props {
   setSelectedKelasId: (id: string) => void;
   selectedGuruId: string;
   setSelectedGuruId: (id: string) => void;
+  paintMapelId?: string;
+  setPaintMapelId?: (id: string) => void;
+  guruMapelSelectOptions?: DropdownOption[];
   masterGridHari: string;
   setMasterGridHari: (day: string) => void;
   kelasList: DropdownOption[];
@@ -37,6 +40,9 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   setSelectedKelasId,
   selectedGuruId,
   setSelectedGuruId,
+  paintMapelId,
+  setPaintMapelId,
+  guruMapelSelectOptions = [],
   masterGridHari,
   setMasterGridHari,
   kelasList,
@@ -113,14 +119,29 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           />
         )}
         {viewMode === 'GURU' && (
-          <SearchableSelect
-            value={selectedGuruId}
-            onValueChange={setSelectedGuruId}
-            options={guruSelectOptions}
-            placeholder="Pilih Guru..."
-            searchPlaceholder="Cari Guru..."
-            className="w-[260px] md:w-[340px] lg:w-[380px]"
-          />
+          <>
+            <SearchableSelect
+              value={selectedGuruId}
+              onValueChange={setSelectedGuruId}
+              options={guruSelectOptions}
+              placeholder="Pilih Guru..."
+              searchPlaceholder="Cari Guru..."
+              className="w-[240px] md:w-[320px]"
+            />
+            {guruMapelSelectOptions.length > 0 && setPaintMapelId && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-450 font-bold shrink-0">Mapel:</span>
+                <SearchableSelect
+                  value={paintMapelId || ''}
+                  onValueChange={setPaintMapelId}
+                  options={guruMapelSelectOptions}
+                  placeholder="Pilih Mapel..."
+                  searchPlaceholder="Cari Mapel..."
+                  className="w-[160px] md:w-[220px]"
+                />
+              </div>
+            )}
+          </>
         )}
         {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
