@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Readable, PassThrough, Transform } from 'stream';
+import { Readable, PassThrough } from 'stream';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -113,20 +113,7 @@ function buildPublicObjectUrl(publicBaseUrl: string, key: string): string {
   return `${base}/${encoded}`;
 }
 
-function withByteCounter(input: Readable, onBytes: (n: number) => void): Readable {
-  const counter = new Transform({
-    transform(chunk, _enc, cb) {
-      try {
-        const len = Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(String(chunk));
-        onBytes(len);
-      } catch {}
-      this.push(chunk);
-      cb();
-    },
-  });
-  input.pipe(counter);
-  return counter;
-}
+
 
 export class StorageService {
   private cachedS3: { cfg: S3Config; client: S3Client } | null = null;
@@ -169,43 +156,12 @@ export class StorageService {
 
   async uploadStream(key: string, stream: Readable, opts?: UploadOptions): Promise<UploadResult> {
     const safeKey = ensureSafeRelativeKey(key);
-    let sizeBytes = 0;
-    const tracked = withByteCounter(stream, (n) => {
-      sizeBytes += n;
-    });
-
-    const s3 = this.getS3();
-    if (s3) {
-      const pass = new PassThrough();
-      const upload = s3.client.send(
-        new PutObjectCommand({
-          Bucket: s3.cfg.bucket,
-          Key: safeKey,
-          Body: pass,
-          ...(opts?.contentType ? { ContentType: opts.contentType } : {}),
-          ...(opts?.cacheControl ? { CacheControl: opts.cacheControl } : {}),
-        })
-      );
-      const done = new Promise<void>((resolve, reject) => {
-        tracked.on('error', reject);
-        pass.on('error', reject);
-        pass.on('finish', () => resolve());
-      });
-      tracked.pipe(pass);
-      await Promise.all([upload, done]);
-      return { key: safeKey, sizeBytes };
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
-
-    const { absolutePath, absoluteDir } = resolveLocalPath(safeKey);
-    await fs.promises.mkdir(absoluteDir, { recursive: true });
-    const write = fs.createWriteStream(absolutePath);
-    await new Promise<void>((resolve, reject) => {
-      tracked.on('error', reject);
-      write.on('error', reject);
-      write.on('finish', () => resolve());
-      tracked.pipe(write);
-    });
-    return { key: safeKey, sizeBytes };
+    const buffer = Buffer.concat(chunks);
+    return this.uploadBuffer(safeKey, buffer, opts);
   }
 
   createReadStream(key: string): Readable {
@@ -215,16 +171,22 @@ export class StorageService {
       const pass = new PassThrough();
       s3.client
         .send(new GetObjectCommand({ Bucket: s3.cfg.bucket, Key: safeKey }))
-        .then((res: any) => {
+        .then(async (res: any) => {
           const body = res?.Body;
           if (body && typeof body.pipe === 'function') {
             body.pipe(pass);
             return;
           }
+          if (body && typeof body.transformToByteArray === 'function') {
+            const arr = await body.transformToByteArray();
+            pass.write(Buffer.from(arr));
+            pass.end();
+            return;
+          }
           pass.end();
         })
-        .catch(() => {
-          pass.destroy(new Error('Storage read failed'));
+        .catch((err: any) => {
+          pass.destroy(err);
         });
       return pass;
     }
