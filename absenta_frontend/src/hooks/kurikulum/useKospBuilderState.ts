@@ -100,6 +100,13 @@ export const useKospBuilderState = () => {
     queryFn: () => getStrukturTree(),
   });
 
+  const { data: kalenderRes } = useQuery({
+    queryKey: ['kosp-kalender-akademik', selectedTahunId],
+    queryFn: () => kurikulumApi.getKalenderAkademik(selectedTahunId),
+    enabled: !!selectedTahunId,
+    staleTime: 10 * 60 * 1000,
+  });
+
   // ── 5. DERIVED DATA & USEMEMOS ──
   const dudiList = useMemo(() => dudiData || [], [dudiData]);
   const sekolahInfo = sekolahRes?.data || null;
@@ -151,8 +158,9 @@ export const useKospBuilderState = () => {
   }, [jurusanList, mappingAllData]);
 
   const tabelKalenderPendidikanHtml = useMemo(() => {
-    return buildKospKalenderPendidikanHtml([]);
-  }, []);
+    const kalenderItems = Array.isArray(kalenderRes?.data) ? kalenderRes.data : [];
+    return buildKospKalenderPendidikanHtml(kalenderItems);
+  }, [kalenderRes]);
 
   const tabelJamKbmHtml = useMemo(() => {
     return buildKospJamKbmHtml([]);
@@ -244,6 +252,10 @@ export const useKospBuilderState = () => {
       '{{TABEL_SK_TIM_PENYUSUN}}': safeString(tabelSkTimHtml),
       '{{TABEL_P5_MATRIKS}}': safeString(tabelP5Html),
       '{{TABEL_ESKUL_MATRIKS}}': safeString(tabelEskulHtml),
+      // ── Meta SK & Legalitas ──
+      '{{NOMOR_SK}}': safeString(metaConfigData?.nomor_sk || '421.5/089/SK-KOSP'),
+      '{{NAMA_DINAS_PROVINSI}}': safeString(metaConfigData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat'),
+      '{{NAMA_CABDIN}}': safeString(metaConfigData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII'),
     };
 
     return basePages.map(page => {
@@ -268,7 +280,8 @@ export const useKospBuilderState = () => {
     tabelKalenderPendidikanHtml,
     tabelJamKbmHtml,
     tabelDudiMitraHtml,
-    metaConfigData
+    metaConfigData,
+    kalenderRes,
   ]);
 
   // ── 8. INITIAL CONFIG ──

@@ -8,6 +8,8 @@ import type { TimPenyusunItem } from '../../../utils/kurikulum/kospDataHelper';
 export interface KospMetaConfigData {
   nomor_sk?: string;
   tanggal_sk?: string;
+  nama_dinas_provinsi?: string;
+  nama_cabdin?: string;
   kcd_nama?: string;
   kcd_nip?: string;
   komite_nama?: string;
@@ -35,6 +37,8 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
 }) => {
   const [nomorSk, setNomorSk] = useState<string>('');
   const [tanggalSk, setTanggalSk] = useState<string>('');
+  const [namadinasProvinsi, setNamaDinasProvinsi] = useState<string>('');
+  const [namaCabdin, setNamaCabdin] = useState<string>('');
   const [kcdNama, setKcdNama] = useState<string>('');
   const [kcdNip, setKcdNip] = useState<string>('');
   const [komiteNama, setKomiteNama] = useState<string>('');
@@ -44,6 +48,8 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
     if (isOpen) {
       setNomorSk(initialData?.nomor_sk || '421.5/089/SK-KOSP/2025');
       setTanggalSk(initialData?.tanggal_sk || new Date().toISOString().split('T')[0]);
+      setNamaDinasProvinsi(initialData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat');
+      setNamaCabdin(initialData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII');
       setKcdNama(initialData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.');
       setKcdNip(initialData?.kcd_nip || '19680315 199303 1 008');
       setKomiteNama(initialData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.');
@@ -100,6 +106,8 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
     await onSave({
       nomor_sk: nomorSk,
       tanggal_sk: tanggalSk,
+      nama_dinas_provinsi: namadinasProvinsi,
+      nama_cabdin: namaCabdin,
       kcd_nama: kcdNama,
       kcd_nip: kcdNip,
       komite_nama: komiteNama,
@@ -145,6 +153,28 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
                 value={tanggalSk}
                 onChange={(e) => setTanggalSk(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                Nama Dinas Pendidikan Provinsi
+              </label>
+              <Input
+                value={namadinasProvinsi}
+                onChange={(e) => setNamaDinasProvinsi(e.target.value)}
+                placeholder="Dinas Pendidikan Provinsi Jawa Barat"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                Nama Cabang Dinas Pendidikan (Cabdin)
+              </label>
+              <Input
+                value={namaCabdin}
+                onChange={(e) => setNamaCabdin(e.target.value)}
+                placeholder="Cabang Dinas Pendidikan Wilayah VII"
               />
             </div>
 

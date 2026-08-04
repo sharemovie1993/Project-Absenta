@@ -10,7 +10,7 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       html: `
         <div style="text-align:center; padding:20px 10px; font-family:Arial, sans-serif;">
           <!-- Top Border Accent -->
-          <div style="width:100%; height:5px; background:linear-gradient(to right, #1e3a8a, #3b82f6, #1e3a8a); margin-bottom:24px;"></div>
+          <div style="width:100%; height:6px; background:linear-gradient(to right, #1e3a8a, #3b82f6, #1e3a8a); margin-bottom:24px;"></div>
 
           <h1 style="margin:0; font-size:20pt; font-weight:bold; color:#0f172a; letter-spacing:1px; text-transform:uppercase;">
             KURIKULUM OPERASIONAL<br/>SATUAN PENDIDIKAN (KOSP)
@@ -22,21 +22,26 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
             TAHUN AJARAN {{TAHUNPELAJARAN}}
           </p>
 
-          <!-- Dynamic Logo Placeholder -->
+          <!-- Dynamic Logo -->
           <div style="margin:36px auto;">
             {{LOGOSEKOLAH_HTML}}
           </div>
 
           <div style="margin-top:20px; font-size:11pt; color:#334155;">
             <p style="margin:2px 0; font-weight:bold; font-size:12pt; text-transform:uppercase;">DISUSUN OLEH:</p>
-            <p style="margin:2px 0; font-weight:bold; color:#1e293b;">TIM PENGEMBANG KURIKULUM {{NAMASEKOLAH}}</p>
+            <p style="margin:2px 0; font-weight:bold; color:#1e293b;">TIM PENGEMBANG KURIKULUM</p>
+            <p style="margin:2px 0; font-weight:bold; color:#1e40af;">{{NAMASEKOLAH}}</p>
+            <p style="margin:6px 0 0 0; font-size:10pt; color:#64748b;">SK Kepala Sekolah Nomor: <strong>{{NOMOR_SK}}</strong></p>
           </div>
 
-          <div style="margin-top:48px; border-top:2px solid #e2e8f0; padding-top:16px; font-size:10.5pt; color:#64748b; line-height:1.5;">
-            <strong>PEMERINTAH PROVINSI / DINAS PENDIDIKAN</strong><br/>
-            <strong>CABANG DINAS PENDIDIKAN WILAYAH SELEMPANG</strong><br/>
-            <span>Alamat: {{ALAMATSEKOLAH}} | {{KOTASEKOLAH}}</span>
+          <div style="margin-top:48px; border-top:2px solid #e2e8f0; padding-top:16px; font-size:10.5pt; color:#64748b; line-height:1.6;">
+            <strong style="color:#334155;">{{NAMA_DINAS_PROVINSI}}</strong><br/>
+            <strong style="color:#334155;">{{NAMA_CABDIN}}</strong><br/>
+            <span>Alamat: {{ALAMATSEKOLAH}} &bull; {{KOTASEKOLAH}}</span>
           </div>
+
+          <!-- Bottom Border Accent -->
+          <div style="width:100%; height:6px; background:linear-gradient(to right, #1e3a8a, #3b82f6, #1e3a8a); margin-top:24px;"></div>
         </div>
       `
     },
@@ -195,25 +200,54 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
     {
       label: 'Bab IV & V: Rencana & Evaluasi',
       html: `
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB IV & V: RENCANA PEMBELAJARAN, ASESMEN, & EVALUASI</h3>
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB IV: RENCANA PEMBELAJARAN DAN ASESMEN</h3>
 
-        <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Rencana Pembelajaran & Asesmen</h4>
-        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
-          Perencanaan pembelajaran disusun dalam bentuk Alur Tujuan Pembelajaran (ATP) dan Modul Ajar oleh masing-masing Guru Mata Pelajaran. Penilaian dilakukan melalui Asesmen Formatif (berkelanjutan) dan Asesmen Sumatif (Tengah/Akhir Semester dan Uji Kompetensi Keahlian / UKK).
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Prinsip Pembelajaran Berbasis Kurikulum Merdeka</h4>
+        <p style="text-align:justify; font-size:11pt; line-height:1.6;">
+          Pembelajaran di {{NAMASEKOLAH}} dirancang berdasarkan prinsip <strong>student-centered learning</strong>, berpusat pada kebutuhan, potensi, dan perkembangan peserta didik. Pendekatan yang digunakan mengintegrasikan pengetahuan, keterampilan, dan sikap secara holistik melalui:<br/>
+          (1) Alur Tujuan Pembelajaran (ATP) sebagai panduan urutan belajar, (2) Modul Ajar berbasis konteks industri lokal, (3) Pembelajaran Berbasis Proyek (PBL), dan (4) Asesmen Autentik berbasis kinerja.
         </p>
 
-        <h4 style="font-size:12pt; font-weight:bold; margin-top:16px; color:#1e293b;">B. Evaluasi dan Pendampingan Profesional</h4>
-        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
-          Evaluasi KOSP dilakukan berkala setiap akhir semester oleh Tim Penjaminan Mutu Sekolah, Kepala Sekolah, dan Pengawas Pembina. Pendampingan profesional guru dilaksanakan melalui Supervisi Akademik, In-House Training (IHT), dan Magang Industri Guru.
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:16px; color:#1e293b;">B. Sistem Penilaian & Asesmen</h4>
+        <p style="text-align:justify; font-size:11pt; line-height:1.6;">
+          Penilaian dilaksanakan secara berkesinambungan dan menyeluruh:
         </p>
+        <ul style="font-size:11pt; line-height:1.8; padding-left:20px;">
+          <li><strong>Asesmen Formatif:</strong> Penilaian harian, observasi, diskusi kelas, dan refleksi diri.</li>
+          <li><strong>Asesmen Sumatif Tengah Semester (ASTS):</strong> Penilaian tertulis/praktik di tengah semester.</li>
+          <li><strong>Asesmen Sumatif Akhir Semester (ASAS):</strong> Penilaian komprehensif akhir semester.</li>
+          <li><strong>Uji Kompetensi Keahlian (UKK):</strong> Penilaian praktik keahlian bersertifikat Kelas XII bersama DUDI/LSP.</li>
+          <li><strong>Portofolio Projek:</strong> Dokumentasi karya dan hasil P5/PKL peserta didik.</li>
+        </ul>
+
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:24px;">BAB V: PENDAMPINGAN, EVALUASI, & PENGEMBANGAN PROFESIONAL</h3>
+
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Evaluasi KOSP</h4>
+        <p style="text-align:justify; font-size:11pt; line-height:1.6;">
+          Evaluasi KOSP dilakukan secara berkala setiap akhir semester dan akhir tahun pelajaran oleh <strong>Tim Penjaminan Mutu Internal Sekolah (TPMIS)</strong> bersama Kepala Sekolah, Pengawas Pembina, dan representasi Komite Sekolah. Evaluasi mencakup ketercapaian target kurikulum, efektivitas pembelajaran, dan relevansi dengan kebutuhan DUDI.
+        </p>
+
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:16px; color:#1e293b;">B. Pendampingan Profesional Guru</h4>
+        <ul style="font-size:11pt; line-height:1.8; padding-left:20px;">
+          <li><strong>Supervisi Akademik:</strong> Dilaksanakan oleh Kepala Sekolah dan Pengawas Pembina minimal 2x per semester.</li>
+          <li><strong>In-House Training (IHT):</strong> Pelatihan internal peningkatan kompetensi pedagogis dan vokasional guru.</li>
+          <li><strong>Magang Industri Guru (Teacher Industrial Attachment):</strong> Program magang guru di DUDI mitra 1-2 minggu per tahun.</li>
+          <li><strong>Komunitas Belajar (KomBel):</strong> Forum berbagi praktik baik antar guru mapel sejenis setiap bulan.</li>
+        </ul>
       `
     },
     {
       label: 'Lampiran 1: SK Tim Penyusun KOSP',
       html: `
         <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 1: SK TIM PENYUSUN KOSP</h3>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #1e40af; padding:10px 14px; font-size:11pt; margin-bottom:16px; border-radius:4px;">
+          <strong>Nomor SK:</strong> {{NOMOR_SK}}<br/>
+          <strong>Tanggal Penetapan:</strong> {{TANGGALPENGESAHAN}}
+        </div>
+
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
-          Susunan Tim Pengembang & Penyusun Kurikulum Operasional Satuan Pendidikan (KOSP) {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}}:
+          Berdasarkan SK Kepala Sekolah Nomor: <strong>{{NOMOR_SK}}</strong>, susunan Tim Pengembang &amp; Penyusun Kurikulum Operasional Satuan Pendidikan (KOSP) <strong>{{NAMASEKOLAH}}</strong> Tahun Ajaran <strong>{{TAHUNPELAJARAN}}</strong> adalah sebagai berikut:
         </p>
 
         {{TABEL_SK_TIM_PENYUSUN}}
