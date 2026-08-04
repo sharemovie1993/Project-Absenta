@@ -145,6 +145,7 @@ model Tenant {
   GuruDocument             GuruDocument[]
   WaChatLog                WaChatLog[]
   SettingDeskripsiPkl      SettingDeskripsiPkl[]
+  KospConfig               KospConfig[]
 }
 
 enum BackupStatus {
@@ -886,6 +887,7 @@ model TahunPelajaran {
   NilaiSiswa        NilaiSiswa[]
   RaporSiswa        RaporSiswa[]
   P5Projek          P5Projek[]
+  KospConfig        KospConfig[]
   PerangkatAjar     PerangkatAjar[]
   KalenderAkademik  KalenderAkademik[]
   GuruMapel         GuruMapel[]
@@ -4332,4 +4334,26 @@ model WaLidMapping {
   @@unique([tenant_id, lid_key], name: "tenant_id_lid_key")
   @@index([tenant_id])
   @@index([phone])
+}
+
+// ── KOSP Config (Kurikulum Operasional Satuan Pendidikan) ─────────────────────
+// Menyimpan kustomisasi KOSP per tenant & per Tahun Pelajaran.
+model KospConfig {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  tahun_pelajaran_id String
+  visi               String?  @db.Text
+  misi               String?  @db.Text
+  karakteristik      String?  @db.Text
+  halaman_html       String?  @db.Text
+  config             String?  @db.Text
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, tahun_pelajaran_id])
+  @@index([tenant_id])
+  @@index([tahun_pelajaran_id])
 }

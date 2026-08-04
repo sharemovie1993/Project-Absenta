@@ -463,6 +463,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { default: strukturKurikulumRoutes } = await import('../modules/kurikulum/routes/struktur-kurikulum.routes');
       await fastify.register(strukturKurikulumRoutes, { prefix: '/kurikulum/struktur' });
 
+      const { default: kospConfigRoutes } = await import('../modules/kurikulum/routes/kosp-config.routes');
+      await fastify.register(kospConfigRoutes, { prefix: '/kurikulum' });
+
+
       // Jadwal Module
       const { default: jadwalValidationRoutes } = await import('../modules/jadwal/routes/jadwal-validation.routes');
       await fastify.register(jadwalValidationRoutes, { prefix: '/jadwal' });

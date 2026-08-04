@@ -2,6 +2,7 @@
 
 ## High Priority
 - [x] **Validation Layer (Zod)**: Implementasi skema validasi Zod pada seluruh endpoint Struktur Kurikulum dan Supervisi untuk mencegah inkonsistensi data.
+- [x] **Live KOSP Builder API**: Menyediakan backend service, Prisma schema `KospConfig`, dan REST API `/api/kurikulum/kosp-config` untuk pengarsipan dokumen KOSP per Tahun Pelajaran.
 - [ ] **Manajemen Perangkat Ajar (RPP/Modul Ajar)**: Membangun sistem repositori unggah dan verifikasi perangkat ajar guru.
 - [ ] **Automasi Penjadwalan Supervisi**: Membuat sistem rekomendasi jadwal supervisi berdasarkan beban mengajar guru yang terekam di modul Academic.
 - [ ] **Dashboard Monitoring Supervisi**: Membangun visualisasi statistik penyelesaian supervisi guru per semester bagi Kepala Sekolah.

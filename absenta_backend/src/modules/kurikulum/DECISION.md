@@ -39,3 +39,16 @@ Pengguna mengalami kebingungan dan kelelahan visual jika mengklik tombol "Buka P
 
 ### Decision
 Tombol "Buka PDF" pada daftar tabel/kartu Perangkat Ajar langsung memicu perolehan Blob PDF Stream dan mengeksekusi `window.open(blobUrl, '_blank')` dalam **1-Klik Murni**.
+
+---
+
+## ADR-004: Isolasi Dokumen KOSP Per Tahun Pelajaran & Shared Word Style Engine
+
+### Context & Problem
+Dokumen KOSP (Kurikulum Operasional Satuan Pendidikan) harus bersifat resmi dan terarsip per tahun ajaran. Menggunakan skema penyuntingan tanpa konteks tahun ajaran akan menyebabkan naskah KOSP tahun ajaran sebelumnya terhapus / tertimpa saat disunting pada tahun ajaran baru.
+
+### Decision
+1. **Model Prisma `KospConfig`**: Data kustomisasi KOSP terikat secara unik pada pasangan `(tenant_id, tahun_pelajaran_id)`.
+2. **Re-use Existing Shared Word Engine**: Menggunakan kembali komponen `<WordEditorModal>` (TinyMCE continuous Word-style preview) tanpa membangun editor rich-text baru dari nol.
+3. **Dynamic Multi-Major Live Data Ingestion**: Seluruh tabel Struktur Kurikulum gabungan semua jurusan (AKL, RPL, TKJ, dll) disuntikkan secara otomatis dari data live DB dengan mematuhi aturan 2-semester Kepmendikbudristek No. 262/M/2022.
+
