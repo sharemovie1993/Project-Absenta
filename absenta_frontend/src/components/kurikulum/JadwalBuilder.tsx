@@ -39,7 +39,7 @@ import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
 import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
-import { calculateSmartJpStatus } from './jadwal-builder/jpCalculationHelper';
+import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
 const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -110,11 +110,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
   const { rawList: mapelRawList } = useMapelOptions();
 
-  const kelasList = useMemo<DropdownOption[]>(() => {
-    return (kelasRawList || [])
-      .map(k => ({ value: k.id, label: k.nama_kelas }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [kelasRawList]);
+
 
   const { data: allGuruMapelRes } = useQuery({
     queryKey: ['guru-mapel-all-builder', tahunPelajaranId, semesterId],
@@ -250,6 +246,61 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
     return map;
   }, [strukturRes]);
+
+  const targetClassJpMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (strukturRes?.data && Array.isArray(strukturRes.data)) {
+      const sumByTingkat = new Map<string, number>();
+      let grandTotal = 0;
+
+      strukturRes.data.forEach((s: any) => {
+        const jp = s.jp_per_minggu || 0;
+        grandTotal += jp;
+        if (s.tingkat) {
+          sumByTingkat.set(String(s.tingkat), (sumByTingkat.get(String(s.tingkat)) || 0) + jp);
+        }
+        if (s.jurusan_id) {
+          sumByTingkat.set(`jurusan_${s.jurusan_id}`, (sumByTingkat.get(`jurusan_${s.jurusan_id}`) || 0) + jp);
+        }
+      });
+
+      (kelasRawList || []).forEach((k: any) => {
+        const tingkatStr = String(k.tingkat || '');
+        let target = 0;
+        if (k.jurusan_id && sumByTingkat.has(`jurusan_${k.jurusan_id}`)) {
+          target = sumByTingkat.get(`jurusan_${k.jurusan_id}`) || 0;
+        } else if (tingkatStr && sumByTingkat.has(tingkatStr)) {
+          target = sumByTingkat.get(tingkatStr) || 0;
+        } else {
+          target = grandTotal > 0 ? grandTotal : 40;
+        }
+        map.set(k.id, target);
+      });
+    }
+    return map;
+  }, [strukturRes, kelasRawList]);
+
+  const kelasList = useMemo<DropdownOption[]>(() => {
+    return (kelasRawList || [])
+      .slice()
+      .sort((a, b) => (a.nama_kelas || '').localeCompare(b.nama_kelas || ''))
+      .map(k => {
+        const smartStatus = calculateClassJpStatus({
+          kelasId: k.id,
+          allJadwal,
+          targetClassJpMap,
+          defaultTarget: 40
+        });
+
+        return {
+          value: k.id,
+          label: k.nama_kelas,
+          statusDotClass: smartStatus.statusDotClass,
+          rightBadge: smartStatus.rightBadge,
+          rightBadgeClass: smartStatus.rightBadgeClass,
+        };
+      });
+  }, [kelasRawList, allJadwal, targetClassJpMap]);
 
   const guruMapelSelectOptions = useMemo(() => {
     let baseList = [];
