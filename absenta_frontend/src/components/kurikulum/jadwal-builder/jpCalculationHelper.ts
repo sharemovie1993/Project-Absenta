@@ -40,7 +40,7 @@ export function calculateSmartJpStatus(params: {
       target,
       status: 'OVER',
       statusDotClass: 'bg-rose-500 shadow-sm shadow-rose-500/50',
-      rightBadge: `⚠️ ${actual}/${target} JP (Over +${actual - target})`,
+      rightBadge: `⚠️ ${actual}/${target} JP`,
       rightBadgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-extrabold',
     };
   }
@@ -51,7 +51,7 @@ export function calculateSmartJpStatus(params: {
       target,
       status: 'PAS',
       statusDotClass: 'bg-emerald-500 shadow-sm shadow-emerald-500/50',
-      rightBadge: `✓ ${actual}/${target} JP (Pas)`,
+      rightBadge: `✓ ${actual}/${target} JP`,
       rightBadgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-extrabold',
     };
   }
@@ -62,7 +62,7 @@ export function calculateSmartJpStatus(params: {
       target,
       status: 'SISA',
       statusDotClass: 'bg-amber-500 shadow-sm shadow-amber-500/50',
-      rightBadge: `${actual}/${target} JP (Sisa ${target - actual} JP)`,
+      rightBadge: `${actual}/${target} JP`,
       rightBadgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-extrabold',
     };
   }
@@ -72,7 +72,7 @@ export function calculateSmartJpStatus(params: {
     target,
     status: 'KOSONG',
     statusDotClass: 'bg-slate-300 dark:bg-slate-600',
-    rightBadge: `0/${target} JP (Belum)`,
+    rightBadge: `0/${target} JP`,
     rightBadgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
   };
 }
@@ -94,7 +94,7 @@ export function calculateClassJpStatus(params: {
       target,
       status: 'OVER',
       statusDotClass: 'bg-rose-500 shadow-sm shadow-rose-500/50',
-      rightBadge: `⚠️ ${actual}/${target} JP (Over +${actual - target})`,
+      rightBadge: `⚠️ ${actual}/${target} JP`,
       rightBadgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-extrabold',
     };
   }
@@ -105,7 +105,7 @@ export function calculateClassJpStatus(params: {
       target,
       status: 'PAS',
       statusDotClass: 'bg-emerald-500 shadow-sm shadow-emerald-500/50',
-      rightBadge: `✓ ${actual}/${target} JP (Pas)`,
+      rightBadge: `✓ ${actual}/${target} JP`,
       rightBadgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-extrabold',
     };
   }
@@ -116,7 +116,7 @@ export function calculateClassJpStatus(params: {
       target,
       status: 'SISA',
       statusDotClass: 'bg-amber-500 shadow-sm shadow-amber-500/50',
-      rightBadge: `${actual}/${target} JP (Sisa ${target - actual} JP)`,
+      rightBadge: `${actual}/${target} JP`,
       rightBadgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-extrabold',
     };
   }
@@ -126,7 +126,7 @@ export function calculateClassJpStatus(params: {
     target,
     status: 'KOSONG',
     statusDotClass: 'bg-slate-300 dark:bg-slate-600',
-    rightBadge: `0/${target} JP (Belum)`,
+    rightBadge: `0/${target} JP`,
     rightBadgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
   };
 }

@@ -230,21 +230,21 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                 // Status Theme styling for button container when NOT selected
                 let statusButtonTheme = "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700";
                 if (status === 'PAS') {
-                  statusButtonTheme = "bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800/80 hover:bg-emerald-100/80";
-                } else if (status === 'SISA') {
-                  statusButtonTheme = "bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800/80 hover:bg-amber-100/80";
+                  statusButtonTheme = "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100/70";
+                } else if (status === 'SISA' || status === 'KOSONG') {
+                  statusButtonTheme = "bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700 shadow-xs hover:bg-amber-100";
                 } else if (status === 'OVER') {
-                  statusButtonTheme = "bg-rose-50/70 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800/80 hover:bg-rose-100/80";
+                  statusButtonTheme = "bg-rose-50/80 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 border-rose-300 dark:border-rose-700 hover:bg-rose-100";
                 }
 
                 // Status Theme styling for badge when NOT selected
-                let statusBadgeTheme = m.rightBadgeClass || "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+                let statusBadgeTheme = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold";
                 if (status === 'PAS') {
-                  statusBadgeTheme = "bg-emerald-500 text-white shadow-xs font-black";
-                } else if (status === 'SISA') {
-                  statusBadgeTheme = "bg-amber-500 text-white shadow-xs font-black";
+                  statusBadgeTheme = "bg-emerald-600 text-white font-extrabold shadow-xs";
+                } else if (status === 'SISA' || status === 'KOSONG') {
+                  statusBadgeTheme = "bg-amber-500 text-white font-black shadow-sm ring-1 ring-amber-300 dark:ring-amber-600";
                 } else if (status === 'OVER') {
-                  statusBadgeTheme = "bg-rose-500 text-white shadow-xs font-black";
+                  statusBadgeTheme = "bg-rose-600 text-white font-black shadow-sm ring-1 ring-rose-300 dark:ring-rose-600";
                 }
 
                 return (
