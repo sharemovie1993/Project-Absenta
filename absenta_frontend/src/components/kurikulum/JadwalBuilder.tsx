@@ -972,8 +972,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           hariSekolah={hariSekolah}
           loadingData={loadingData}
           onRefreshSchedules={fetchSchedules}
-          showLeftPanel={showLeftPanel}
-          onToggleLeftPanel={() => setShowLeftPanel(prev => !prev)}
           onOpenPrintPreview={onOpenPrintPreview}
         />
 
@@ -1044,9 +1042,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           }}
         />
       </div>
-    </div>
-  </>
-);
+    </>
+  );
 };
 
 export default JadwalBuilder;
