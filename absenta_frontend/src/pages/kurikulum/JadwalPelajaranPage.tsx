@@ -94,6 +94,13 @@ export default function JadwalPelajaranPage() {
     }
   }, [viewMode, isGuru, isWaliKelas, myGuruId, myKelasId]);
 
+  // Security Lock: Ensure non-canManage users cannot access builder mode
+  useEffect(() => {
+    if (!canManage && viewMode === 'builder') {
+      setViewMode('grid');
+    }
+  }, [canManage, viewMode]);
+
   const { absensiMode, managedKelasIds } = useGerbangModeAndRole({
     user,
     tenantId: user?.tenant_id,
@@ -439,7 +446,7 @@ export default function JadwalPelajaranPage() {
             )}
           </div>
 
-          {canManage && (
+          {canManage ? (
             <TabSwitcher
               options={[
                 { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
@@ -449,6 +456,10 @@ export default function JadwalPelajaranPage() {
               activeTab={viewMode}
               onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder')}
             />
+          ) : (
+            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-extrabold text-xs px-3 py-1 border-indigo-200">
+              👁️ Pratinjau Jadwal KBM
+            </Badge>
           )}
         </div>
 
