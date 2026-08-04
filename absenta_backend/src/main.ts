@@ -37,8 +37,13 @@ const filterRedisWarn = () => {
   const origWarn = console.warn;
   console.warn = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
+    // Silence known harmless infra warnings
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
-    if (msg.includes('[NODE-CRON] [WARN] missed execution')) return;
+    if (msg.includes('missed execution') && msg.includes('NODE-CRON')) return;  // node-cron startup noise
+    if (msg.includes('missed execution') && msg.includes('node-cron')) return;  // lowercase variant
+    if (msg.includes('allowUnionTypes') || msg.includes('strictTypes')) return;  // AJV schema warning
+    if (msg.includes('Optional env missing: PUBLIC_API_URL')) return;            // known optional env
+    if (msg.includes('Optional env missing: WORKER_ROLE')) return;               // known optional env
     origWarn(`${time()} ${C.bold}${C.yellow}WARN ${C.reset} ${C.yellow}${msg}${C.reset}`);
   };
   const origErr = console.error;
