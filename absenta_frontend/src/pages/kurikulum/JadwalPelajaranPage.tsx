@@ -23,7 +23,7 @@ import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWiza
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { getJadwalKBM, deleteJadwalKBM, clearJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
@@ -465,6 +465,23 @@ export default function JadwalPelajaranPage() {
     </div>
   ), [viewMode, canManage, handlePrint, handleClearSchedule, jadwal, loadingJadwal, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa, handleEditSlot, handleDeleteSlot]);
 
+  const operationalStats = useMemo(() => [
+    {
+      title: 'Total Slot Terisi',
+      value: jadwal.length,
+      icon: <Clock size={16} className="text-indigo-500" />,
+      gradient: 'from-indigo-500 to-blue-600',
+      subtitle: 'KBM & Tugas Piket'
+    },
+    {
+      title: 'Tahun Pelajaran',
+      value: activeTp?.nama_tahun || 'Tahun Aktif',
+      icon: <FileStack size={16} className="text-emerald-500" />,
+      gradient: 'from-emerald-500 to-teal-600',
+      subtitle: activeSemRes?.data?.find((s: any) => s.id === selectedSemesterId)?.nama_semester || 'Semester Aktif'
+    }
+  ], [jadwal.length, activeTp?.nama_tahun, activeSemRes, selectedSemesterId]);
+
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader /></div>;
   }
@@ -472,9 +489,12 @@ export default function JadwalPelajaranPage() {
   // 🛡️ Premium Lock Check
   if (isLocked) {
     return (
-      <AcademicPageLayout
-        title="Jadwal KBM"
-        description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
+      <OperationalPageLayout
+        title="Jadwal KBM & Visual Builder"
+        shortTitle="Jadwal KBM"
+        subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
+        backPath="/kurikulum/dashboard"
+        backLabel="Kembali ke Dashboard Kurikulum"
         hardeningModuleKey={hardeningModuleKey}
       >
         <PremiumFeatureGate 
@@ -485,15 +505,18 @@ export default function JadwalPelajaranPage() {
         >
           <div />
         </PremiumFeatureGate>
-      </AcademicPageLayout>
+      </OperationalPageLayout>
     );
   }
 
   if (!isAllowed) {
     return (
-      <AcademicPageLayout
-        title="Jadwal KBM"
-        description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
+      <OperationalPageLayout
+        title="Jadwal KBM & Visual Builder"
+        shortTitle="Jadwal KBM"
+        subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
+        backPath="/kurikulum/dashboard"
+        backLabel="Kembali ke Dashboard Kurikulum"
         hardeningModuleKey={hardeningModuleKey}
       >
         <SectionCard>
@@ -507,24 +530,24 @@ export default function JadwalPelajaranPage() {
             </p>
           </div>
         </SectionCard>
-      </AcademicPageLayout>
+      </OperationalPageLayout>
     );
   }
 
   return (
-    <AcademicPageLayout
-      title="Jadwal KBM"
-      description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
-      breadcrumbs={[
-        { label: 'Kurikulum', path: '/kurikulum/dashboard' },
-        { label: 'Jadwal KBM' }
-      ]}
+    <OperationalPageLayout
+      title="Jadwal KBM & Visual Builder"
+      shortTitle="Jadwal KBM"
+      subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
+      backPath="/kurikulum/dashboard"
+      backLabel="Kembali ke Dashboard Kurikulum"
+      stats={operationalStats}
       instruction={{
-        title: 'Panduan Penyusunan Jadwal',
+        title: 'Panduan Penyusunan Jadwal (Jalur B - Full Screen Workspace)',
         description: 'Jadwal pelajaran bertindak sebagai blueprint KBM harian yang menggerakkan generator absensi otomatis.',
         items: [
           { text: 'Visual Grid menampilkan pratinjau jadwal mingguan per kelas atau per guru secara ringkas.' },
-          { text: 'Daftar Kelola memungkinkan Wakasek Kurikulum melakukan aksi CRUD (Tambah/Edit/Hapus) per slot jadwal.' },
+          { text: 'Visual Builder & Daftar Kelola memungkinkan Wakasek Kurikulum melakukan penyusunan interaktif (Drag-and-Drop & CRUD).' },
           { text: 'Anda juga dapat melakukan import data jadwal sekaligus menggunakan template spreadsheet excel.' }
         ]
       }}
@@ -539,6 +562,6 @@ export default function JadwalPelajaranPage() {
         semesterId={selectedSemesterId}
         onSuccess={() => setRefreshKey(k => k + 1)}
       />
-    </AcademicPageLayout>
+    </OperationalPageLayout>
   );
 }

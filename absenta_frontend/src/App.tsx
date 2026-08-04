@@ -795,11 +795,6 @@ function App() {
                         <MasterStrukturPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/kurikulum/jadwal" element={
-                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
-                        <JadwalPelajaranPage />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/kurikulum/jadwal-piket" element={
                       <ProtectedRoute requiredCapability="academic.schedules.view.list">
                         <JadwalPiketGuruPage />
@@ -1415,6 +1410,18 @@ function App() {
                 </Route>
 
                 {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout - JALUR B) ── */}
+                {/* Kurikulum Jadwal Builder — Jalur B: OperationalPageLayout, 100% layar penuh */}
+                <Route path="/kurikulum/jadwal" element={
+                  <ProtectedRoute requiredCapability="academic.schedules.view.list">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <JadwalPelajaranPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
                 {/* WhatsApp Chat Log — Jalur B: OperationalPageLayout, 100% layar */}
                 <Route path="/notifications/wa-chat-logs" element={
                   <ProtectedRoute requiredCapability="whatsapp.manage.config">
