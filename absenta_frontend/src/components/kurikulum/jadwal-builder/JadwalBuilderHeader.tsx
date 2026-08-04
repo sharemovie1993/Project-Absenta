@@ -12,7 +12,8 @@ import {
   Rows, 
   CheckCircle2, 
   AlertTriangle, 
-  Clock 
+  Clock,
+  Printer
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
@@ -200,6 +201,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               searchPlaceholder="Cari Nama Guru..."
               className="w-[280px] md:w-[380px]"
             />
+            {onOpenPrintPreview && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenPrintPreview('roster_teacher', selectedGuruId)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all rounded-xl shadow-xs"
+                title="Cetak Berkas Jadwal Mengajar Guru Ini ke PDF"
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-500" />
+                <span>🖨️ Cetak Berkas PDF</span>
+              </Button>
+            )}
           </div>
         )}
 
@@ -217,6 +230,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               searchPlaceholder="Cari Nama Kelas..."
               className="w-[240px] md:w-[320px]"
             />
+            {onOpenPrintPreview && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenPrintPreview('roster', selectedKelasId)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-purple-50 dark:hover:bg-purple-950/50 hover:text-purple-600 dark:hover:text-purple-300 transition-all rounded-xl shadow-xs"
+                title="Cetak Berkas Jadwal Kelas Ini ke PDF"
+              >
+                <Printer className="w-3.5 h-3.5 text-purple-500" />
+                <span>🖨️ Cetak Berkas PDF</span>
+              </Button>
+            )}
           </div>
         )}
 
