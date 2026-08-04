@@ -69,6 +69,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   initialViewMode = 'GURU',
   initialKelasId,
   initialGuruId,
+  selectedGuruId: propSelectedGuruId,
+  setSelectedGuruId: propSetSelectedGuruId,
+  selectedKelasId: propSelectedKelasId,
+  setSelectedKelasId: propSetSelectedKelasId,
   onOpenPrintPreview,
 }) => {
   const queryClient = useQueryClient();
@@ -97,8 +101,14 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   };
   
   // Selections
-  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
+  const [internalSelectedKelasId, setInternalSelectedKelasId] = useState<string>(initialKelasId || '');
+  const [internalSelectedGuruId, setInternalSelectedGuruId] = useState<string>(initialGuruId || '');
+
+  const selectedKelasId = propSelectedKelasId !== undefined ? propSelectedKelasId : internalSelectedKelasId;
+  const setSelectedKelasId = propSetSelectedKelasId || setInternalSelectedKelasId;
+
+  const selectedGuruId = propSelectedGuruId !== undefined ? propSelectedGuruId : internalSelectedGuruId;
+  const setSelectedGuruId = propSetSelectedGuruId || setInternalSelectedGuruId;
   
   // Paint payload
   const [paintMapelId, setPaintMapelId] = useState<string>('');

@@ -9,6 +9,10 @@ export type GridOrientation = 'VERTICAL_HARI' | 'HORIZONTAL_HARI';
 export interface JadwalBuilderProps {
   tahunPelajaranId?: string;
   semesterId?: string;
+  selectedGuruId?: string;
+  setSelectedGuruId?: (id: string) => void;
+  selectedKelasId?: string;
+  setSelectedKelasId?: (id: string) => void;
   onRefresh?: () => void;
   onOpenPrintPreview?: (printType: 'roster' | 'roster_teacher', targetId?: string) => void;
 }

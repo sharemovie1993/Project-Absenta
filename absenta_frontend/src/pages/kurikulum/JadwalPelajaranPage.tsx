@@ -95,22 +95,25 @@ export default function JadwalPelajaranPage() {
   const triggerPrintPreview = useCallback((printType?: 'roster' | 'roster_teacher', targetId?: string) => {
     let type: 'roster' | 'roster_teacher' = printType || 'roster';
     
+    const activeGuruId = (printType === 'roster_teacher' && targetId) ? targetId : selectedGuruId;
+    const activeKelasId = (printType === 'roster' && targetId) ? targetId : selectedKelasId;
+
     if (!printType) {
-      if (selectedGuruId && !selectedKelasId) {
+      if (activeGuruId && !selectedKelasId) {
         type = 'roster_teacher';
-      } else if (selectedKelasId && !selectedGuruId) {
+      } else if (selectedKelasId && !activeGuruId) {
         type = 'roster';
       } else {
-        type = selectedGuruId ? 'roster_teacher' : 'roster';
+        type = activeGuruId ? 'roster_teacher' : 'roster';
       }
     }
 
     setPreviewPrintType(type);
     if (type === 'roster_teacher') {
-      setPreviewTargetGuruId(targetId || selectedGuruId || '');
+      setPreviewTargetGuruId(activeGuruId || '');
       setPreviewTargetClassId(''); // Strips class context strictly
     } else {
-      setPreviewTargetClassId(targetId || selectedKelasId || '');
+      setPreviewTargetClassId(activeKelasId || '');
       setPreviewTargetGuruId(''); // Strips teacher context strictly
     }
     setViewMode('preview');
@@ -513,6 +516,10 @@ export default function JadwalPelajaranPage() {
             <JadwalBuilder 
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
+              selectedGuruId={selectedGuruId}
+              setSelectedGuruId={setSelectedGuruId}
+              selectedKelasId={selectedKelasId}
+              setSelectedKelasId={setSelectedKelasId}
               onRefresh={() => setRefreshKey(k => k + 1)}
               onOpenPrintPreview={(pType, targetId) => triggerPrintPreview(pType, targetId)}
             />

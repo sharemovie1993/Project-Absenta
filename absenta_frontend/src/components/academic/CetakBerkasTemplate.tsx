@@ -475,97 +475,91 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     }
   };
 
-  return (
-    <AcademicPageLayout
-      title={hideHeaderAndBreadcrumbs ? undefined : title}
-      description={hideHeaderAndBreadcrumbs ? undefined : description}
-      breadcrumbs={hideHeaderAndBreadcrumbs ? [] : breadcrumbs}
-      instruction={hideHeaderAndBreadcrumbs ? undefined : instruction}
-      hardeningModuleKey={`cetak_berkas_${module}`}
-    >
-      <div className={hideHeaderAndBreadcrumbs ? "p-0 space-y-4 print:p-0" : "p-6 lg:p-8 space-y-6 print:p-0"}>
-        {/* Navigation Tabs - only visible if showChecklist is true */}
-        {showChecklist && (
-          <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 mb-6 print:hidden">
-            <button
-              onClick={() => setActiveTab('system')}
-              className={`pb-4 text-sm font-bold uppercase tracking-wider relative transition-colors ${
-                activeTab === 'system'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              {activeTab === 'system' && (
-                <motion.div
-                  layoutId="activeTabUnderline"
-                  className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400"
-                />
-              )}
-              <div className="flex items-center gap-2">
-                <Settings size={16} />
-                Checklist Sistem
-              </div>
-            </button>
+  const mainContent = (
+    <div className={hideHeaderAndBreadcrumbs ? "p-0 space-y-4 print:p-0" : "p-6 lg:p-8 space-y-6 print:p-0"}>
+      {/* Navigation Tabs - only visible if showChecklist is true */}
+      {showChecklist && (
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 mb-6 print:hidden">
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`pb-4 text-sm font-bold uppercase tracking-wider relative transition-colors ${
+              activeTab === 'system'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {activeTab === 'system' && (
+              <motion.div
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400"
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <Settings size={16} />
+              Checklist Sistem
+            </div>
+          </button>
 
-            <button
-              onClick={() => setActiveTab('print')}
-              className={`pb-4 text-sm font-bold uppercase tracking-wider relative transition-colors ${
-                activeTab === 'print'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              {activeTab === 'print' && (
-                <motion.div
-                  layoutId="activeTabUnderline"
-                  className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400"
-                />
-              )}
-              <div className="flex items-center gap-2">
-                <Printer size={16} />
-                Cetak Dokumen Fisik
-              </div>
-            </button>
-          </div>
-        )}
+          <button
+            onClick={() => setActiveTab('print')}
+            className={`pb-4 text-sm font-bold uppercase tracking-wider relative transition-colors ${
+              activeTab === 'print'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {activeTab === 'print' && (
+              <motion.div
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400"
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <Printer size={16} />
+              Cetak Dokumen Fisik
+            </div>
+          </button>
+        </div>
+      )}
 
-        {/* Tab 1: System Checklist */}
-        {showChecklist && activeTab === 'system' && checklistData && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="lg:col-span-2 space-y-4">
-              {loadingChecklist ? (
-                <div className="flex justify-center items-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                </div>
-              ) : (
-                checklistData.checklist.map((item, index) => (
-                  <Card
-                    key={item.key}
-                    className={`border transition-all duration-300 ${
-                      item.completed
-                        ? 'border-emerald-100 dark:border-emerald-950 bg-emerald-50/10 dark:bg-emerald-950/5'
-                        : 'border-amber-100 dark:border-amber-950 bg-amber-50/10 dark:bg-amber-950/5'
-                    }`}
-                  >
-                    <CardContent className="p-4 flex gap-4 items-center">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+      {/* Tab 1: System Checklist */}
+      {showChecklist && activeTab === 'system' && checklistData && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-4">
+            {loadingChecklist ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              checklistData.checklist.map((item, index) => (
+                <Card
+                  key={item.key}
+                  className={`border transition-all duration-300 ${
+                    item.completed
+                      ? 'border-emerald-100 dark:border-emerald-950 bg-emerald-50/10 dark:bg-emerald-950/5'
+                      : 'border-amber-100 dark:border-amber-950 bg-amber-50/10 dark:bg-amber-950/5'
+                  }`}
+                >
+                  <CardContent className="p-4 flex gap-4 items-center">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        item.completed
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {getChecklistItemIcon(item.key)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{item.label}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold mt-2 px-2 py-0.5 rounded-full ${
                           item.completed
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400'
+                            ? 'bg-emerald-100/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-amber-100/50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
                         }`}
                       >
-                        {getChecklistItemIcon(item.key)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">{item.label}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-bold mt-2 px-2 py-0.5 rounded-full ${
-                            item.completed
-                              ? 'bg-emerald-100/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
-                              : 'bg-amber-100/50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
-                          }`}
                         >
                           {item.status_text}
                         </span>
