@@ -57,33 +57,14 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onToggleLeftPanel,
 }) => {
   return (
-    <Card className="p-2.5 sm:p-3 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-2.5 relative z-20 !overflow-visible">
-      <div className="flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-purple-600" />
-        <div>
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">Visual Grid Timetable</h3>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {onClearSchedule && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearSchedule}
-            className="border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 hover:bg-rose-100/50 text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 px-3 py-2 text-xs"
-            title="Kosongkan / Reset Jadwal KBM berdasarkan konteks aktif"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>Kosongkan Jadwal</span>
-          </Button>
-        )}
+    <div className="pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-20">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* View Switcher with all 4 aSC TimeTables view modes */}
         <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
           <button
             onClick={() => setViewMode('GURU')}
             className={cn(
-              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
               viewMode === 'GURU' 
                 ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -94,7 +75,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           <button
             onClick={() => setViewMode('KELAS')}
             className={cn(
-              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
               viewMode === 'KELAS' 
                 ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -105,7 +86,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           <button
             onClick={() => setViewMode('MASTER_GURU')}
             className={cn(
-              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
               viewMode === 'MASTER_GURU' 
                 ? "bg-purple-600 text-white shadow-sm font-extrabold" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -117,7 +98,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           <button
             onClick={() => setViewMode('MASTER_KELAS')}
             className={cn(
-              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
               viewMode === 'MASTER_KELAS' 
                 ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -136,7 +117,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             options={kelasList}
             placeholder="Pilih Kelas..."
             searchPlaceholder="Cari Kelas..."
-            className="w-[180px] md:w-[240px]"
+            className="w-[180px] md:w-[220px]"
           />
         )}
         {viewMode === 'GURU' && (
@@ -146,7 +127,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             options={guruSelectOptions}
             placeholder="Pilih Guru..."
             searchPlaceholder="Cari Guru..."
-            className="w-[240px] md:w-[320px]"
+            className="w-[220px] md:w-[280px]"
           />
         )}
         {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
@@ -155,7 +136,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             <button
               onClick={() => setMasterGridHari('SEMUA')}
               className={cn(
-                "px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all flex items-center gap-1",
+                "px-2 py-0.5 text-[11px] font-extrabold rounded-lg transition-all flex items-center gap-1",
                 masterGridHari === 'SEMUA' 
                   ? "bg-purple-600 text-white shadow-sm font-extrabold" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -169,7 +150,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                 key={d}
                 onClick={() => setMasterGridHari(d)}
                 className={cn(
-                  "px-2 py-1 text-[11px] font-extrabold rounded-lg transition-all",
+                  "px-2 py-0.5 text-[11px] font-extrabold rounded-lg transition-all",
                   masterGridHari === d 
                     ? "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm" 
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -191,16 +172,31 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               options={keKelasSelectOptions}
               placeholder="Pilih Kelas..."
               searchPlaceholder="Cari Kelas..."
-              className="w-[150px] md:w-[180px]"
+              className="w-[140px] md:w-[170px]"
             />
           </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap ml-auto">
+        {onClearSchedule && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearSchedule}
+            className="border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 hover:bg-rose-100/50 text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 px-2.5 py-1 text-xs"
+            title="Kosongkan / Reset Jadwal KBM berdasarkan konteks aktif"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span>Kosongkan Jadwal</span>
+          </Button>
         )}
 
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenBebanModal}
-          className="flex items-center gap-1.5 px-3 py-2 border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-350"
+          className="flex items-center gap-1.5 px-2.5 py-1 border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-350"
           title="Statistik Beban Mengajar Guru"
         >
           <Users className="w-3.5 h-3.5 text-indigo-500" />
@@ -213,7 +209,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             size="sm"
             onClick={onToggleFocusMode}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all",
+              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all",
               isFocusMode
                 ? "bg-purple-600 text-white shadow-md border-none font-extrabold"
                 : "border-purple-200 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
@@ -231,7 +227,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             size="sm"
             onClick={onToggleLeftPanel}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all",
+              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all",
               !showLeftPanel 
                 ? "bg-indigo-600 text-white shadow-md border-none font-extrabold" 
                 : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
@@ -248,11 +244,11 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           size="sm"
           onClick={onRefreshSchedules}
           disabled={loadingData}
-          className="p-2 border-slate-200 dark:border-slate-800"
+          className="p-1.5 border-slate-200 dark:border-slate-800"
         >
           <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", loadingData && "animate-spin")} />
         </Button>
       </div>
-    </Card>
+    </div>
   );
 };
