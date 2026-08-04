@@ -148,7 +148,14 @@ export async function authMiddleware(
     };
     request.user = normalizedUser;
     
-    if (request.log) {
+    const shouldLog = (pathStr: string) => {
+      if (pathStr.startsWith('/uploads/') || pathStr.startsWith('/api/uploads/')) return false;
+      if (pathStr === '/api/system/config' || pathStr === '/system/config') return false;
+      if (pathStr === '/api/whatsapp/status' || pathStr === '/whatsapp/status') return false;
+      return true;
+    };
+
+    if (request.log && shouldLog(urlPath)) {
       request.log.info({
         event: 'AUTH_USER_SET',
         user: normalizedUser.email,

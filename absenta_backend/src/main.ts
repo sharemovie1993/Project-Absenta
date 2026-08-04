@@ -51,6 +51,7 @@ const pretty =
   (process.env.NODE_ENV || '').toLowerCase() !== 'production' &&
   (String(process.env.PINO_PRETTY || 'true').trim().toLowerCase() !== 'false');
 const fastify = Fastify({
+  disableRequestLogging: true,
   logger: pretty
     ? {
         level: 'info',
