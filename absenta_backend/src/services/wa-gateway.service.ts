@@ -10,8 +10,6 @@
  *  3. Status socket = 'connected'
  */
 
-import path from 'path';
-import fs from 'fs';
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { prisma } from '../utils/prisma';
@@ -54,19 +52,24 @@ export interface WaConnectionState {
   lidToPhone: Map<string, string>;
 }
 
+async function getTenantDbCredsInfo(tenantId: string): Promise<{ hasCreds: boolean; savedNumber: string | null }> {
+  try {
+    const credsRow = await prisma.waAuthSession.findUnique({
+      where: { tenant_id_key_id: { tenant_id: tenantId, key_id: 'creds' } },
+      select: { value: true },
+    });
+    if (credsRow?.value) {
+      const credsData = JSON.parse(credsRow.value);
+      const savedNumber = credsData?.me?.id ? (credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null) : null;
+      return { hasCreds: true, savedNumber };
+    }
+  } catch (e) {}
+  return { hasCreds: false, savedNumber: null };
+}
+
 // ─── Pool ────────────────────────────────────────────────────────────────────
 
 const pool = new Map<string, WaConnectionState>();
-
-const BASE_AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, '../../wa_auth');
-
-function getTenantAuthDir(tenantId: string): string {
-  return path.join(BASE_AUTH_DIR, tenantId);
-}
-
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
 
 // ─── Connect (per-tenant) ────────────────────────────────────────────────────
 
@@ -89,28 +92,15 @@ function isMasterInstance(): boolean {
 }
 
 async function connectTenant(tenantId: string): Promise<void> {
-  const authDir = getTenantAuthDir(tenantId);
-  ensureDir(authDir);
-
   // In PM2 Cluster Mode, prevent non-primary instances from opening duplicate sockets (prevents Error 440)
   if (!isMasterInstance()) {
     console.log(`[WA-Pool:${tenantId}] [PM2 Instance ${process.env.NODE_APP_INSTANCE}] WA Socket connection delegated to Instance 0.`);
     return;
   }
 
-  const credsFile = path.join(authDir, 'creds.json');
-  const hasCreds = fs.existsSync(credsFile);
-  let savedNumber: string | null = null;
-  if (hasCreds) {
-    try {
-      const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
-      if (credsData?.me?.id) {
-        savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
-      }
-    } catch (_) {}
-  }
+  const { hasCreds, savedNumber } = await getTenantDbCredsInfo(tenantId);
 
-  // Pastikan slot ada di pool dengan status awal 'connected' jika creds.json sudah ada di disk
+  // Pastikan slot ada di pool dengan status awal 'connected' jika creds sudah ada di DB
   if (!pool.has(tenantId)) {
     pool.set(tenantId, {
       tenantId,
@@ -120,7 +110,7 @@ async function connectTenant(tenantId: string): Promise<void> {
       retryCount: 0,
       sock: null,
       emitter: new EventEmitter(),
-      authDir,
+      authDir: '',
       lastMessageReceivedAt: null,
       lastMessageSentAt: null,
       decryptFailCount: 0,
@@ -131,7 +121,7 @@ async function connectTenant(tenantId: string): Promise<void> {
 
   const entry = pool.get(tenantId)!;
 
-  // Jika belum ada creds.json, set status ke 'connecting' secara eksplisit
+  // Jika belum ada creds, set status ke 'connecting' secara eksplisit
   if (!hasCreds) {
     entry.status = 'connecting';
   }
@@ -202,19 +192,12 @@ async function connectTenant(tenantId: string): Promise<void> {
   sock.ev.on('connection.update', async (update: any) => {
     const { connection, lastDisconnect, qr } = update;
 
-    const isAuthenticated = Boolean(state.creds?.me?.id);
-
     if (qr) {
-      // HANYA proses & kirim QR code jika akun BELUM terotentikasi di disk
-      if (!isAuthenticated) {
-        const b64 = await generateQRBase64(qr);
-        entry.qrBase64 = b64;
-        entry.status = 'connecting';
-        entry.emitter.emit('qr', b64);
-        console.log(`[WA-Pool:${tenantId}] QR tersedia — silakan scan di Admin Panel.`);
-      } else {
-        console.log(`[WA-Pool:${tenantId}] Abaikan transient QR karena akun sudah terotentikasi (${state.creds?.me?.id}).`);
-      }
+      const b64 = await generateQRBase64(qr);
+      entry.qrBase64 = b64;
+      entry.status = 'connecting';
+      entry.emitter.emit('qr', b64);
+      console.log(`[WA-Pool:${tenantId}] QR tersedia — silakan scan di Admin Panel.`);
     }
 
     if (connection === 'open') {
@@ -230,9 +213,9 @@ async function connectTenant(tenantId: string): Promise<void> {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode ?? lastDisconnect?.error?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
 
-      console.log(`[WA-Pool:${tenantId}] Koneksi terputus (kode: ${statusCode}). Reconnect: ${shouldReconnect}`);
+      console.log(`[WA-Pool:${tenantId}] Koneksi terputus (kode: ${statusCode}).`);
       
       // Bersihkan listener dari socket yang sudah ditutup
       try {
@@ -242,9 +225,9 @@ async function connectTenant(tenantId: string): Promise<void> {
 
       entry.emitter.emit('disconnected', statusCode);
 
-      if (shouldReconnect) {
-        // Jika akun sudah terotentikasi di disk, pertahankan status 'connected' selama reconnect otomatis
-        if (isAuthenticated) {
+      if (!isLoggedOut) {
+        const { hasCreds: stillHasCreds } = await getTenantDbCredsInfo(tenantId);
+        if (stillHasCreds) {
           entry.status = 'connected';
           if (sock.user?.id) {
             entry.connectedNumber = sock.user.id.split(':')[0];
@@ -267,7 +250,8 @@ async function connectTenant(tenantId: string): Promise<void> {
           setTimeout(() => connectTenant(tenantId), delay);
         } else {
           console.log(`[WA-Pool:${tenantId}] Batas maksimum retry tercapai.`);
-          if (!isAuthenticated) {
+          const { hasCreds: authenticated } = await getTenantDbCredsInfo(tenantId);
+          if (!authenticated) {
             entry.status = 'disconnected';
             await syncStatusToDB(tenantId, 'disconnected', null);
           }
@@ -277,7 +261,7 @@ async function connectTenant(tenantId: string): Promise<void> {
         entry.status = 'disconnected';
         entry.connectedNumber = null;
         await syncStatusToDB(tenantId, 'disconnected', null);
-        clearTenantAuth(tenantId);
+        await waGatewayServiceLocal.clearTenantAuth(tenantId);
       }
     }
   });
@@ -285,9 +269,6 @@ async function connectTenant(tenantId: string): Promise<void> {
   sock.ev.on('creds.update', saveCreds);
 
   // ── Contacts LID → Phone Resolver ────────────────────────────────────────
-  // WA versi 2024+ mengirim JID berupa LID (angka besar bukan nomor HP).
-  // Event contacts.upsert membawa mapping id (LID) ↔ notify/verifiedName
-  // dan field `lid` yang menyimpan nomor HP aslinya.
   sock.ev.on('contacts.upsert', (contacts: any[]) => {
     for (const contact of contacts) {
       if (contact.id && contact.lid) {
@@ -360,8 +341,6 @@ async function connectTenant(tenantId: string): Promise<void> {
         const rawJidPart = fromJid.split('@')[0] || '';
 
         // Resolve LID → nomor HP asli.
-        // WA 2024+ mengirim LID (angka panjang non-628xx) sebagai JID.
-        // Kita cari dari lidToPhone map yang diisi contacts.upsert.
         const senderPhone = entry.lidToPhone.get(rawJidPart) || rawJidPart;
 
         if (!senderPhone || !text.trim()) continue;
@@ -402,7 +381,7 @@ async function syncStatusToDB(tenantId: string, status: string, number: string |
     await prisma.waTenantConnection.upsert({
       where: { tenant_id: tenantId },
       update: { status, connected_number: number, updated_at: new Date() },
-      create: { tenant_id: tenantId, status, connected_number: number, auth_dir: getTenantAuthDir(tenantId) },
+      create: { tenant_id: tenantId, status, connected_number: number, auth_dir: '' },
     });
   } catch (e: any) {
     console.error(`[WA-Pool:${tenantId}] Gagal sync status ke DB:`, e.message);
@@ -451,8 +430,6 @@ const waGatewayServiceLocal = {
       if (err.message === 'TIMEOUT_SEND') {
         console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout (5 detik). Koneksi mati (zombie). Memulai reconnect otomatis...`);
         try {
-          entry.sock.ev.removeAllListeners('connection.update');
-          entry.sock.ev.removeAllListeners('creds.update');
           entry.sock.end();
         } catch (_) {}
         entry.sock = null;
@@ -475,27 +452,18 @@ const waGatewayServiceLocal = {
       throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
     }
 
-    let finalJid = jidTarget.trim();
-    if (!finalJid.includes('@')) {
-      let formattedNumber = finalJid.replace(/[^0-9]/g, '');
-      if (formattedNumber.startsWith('0')) {
-        formattedNumber = '62' + formattedNumber.substring(1);
-      }
-      finalJid = formattedNumber + '@s.whatsapp.net';
-    }
-
-    const sendPromise = entry.sock.sendMessage(finalJid, { text: pesan });
+    const sendPromise = entry.sock.sendMessage(jidTarget, { text: pesan });
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('TIMEOUT_SEND')), 8000)
     );
 
     try {
       await Promise.race([sendPromise, timeoutPromise]);
-      console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke JID ${finalJid}`);
+      console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke JID ${jidTarget}`);
       return true;
     } catch (err: any) {
       if (err.message === 'TIMEOUT_SEND') {
-        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout ke JID ${finalJid}`);
+        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout ke JID ${jidTarget}`);
         throw new Error('Pengiriman pesan ke Grup WA timeout (8 detik). Pastikan koneksi WA aktif.');
       }
       throw err;
@@ -527,24 +495,12 @@ const waGatewayServiceLocal = {
     }
   },
 
-  getStatus(tenantId: string) {
+  async getStatus(tenantId: string) {
     let entry = pool.get(tenantId);
-    const authDir = getTenantAuthDir(tenantId);
-    const credsFile = path.join(authDir, 'creds.json');
-    const hasCreds = fs.existsSync(credsFile);
-
-    let savedNumber: string | null = null;
-    if (hasCreds) {
-      try {
-        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
-        if (credsData?.me?.id) {
-          savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
-        }
-      } catch (_) {}
-    }
+    const { hasCreds, savedNumber } = await getTenantDbCredsInfo(tenantId);
 
     if (!entry && hasCreds && isMasterInstance()) {
-      console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
+      console.log(`[WA-Pool:${tenantId}] Restoring session from DB...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
@@ -564,24 +520,12 @@ const waGatewayServiceLocal = {
     };
   },
 
-  getHealthStatus(tenantId: string) {
+  async getHealthStatus(tenantId: string) {
     let entry = pool.get(tenantId);
-    const authDir = getTenantAuthDir(tenantId);
-    const credsFile = path.join(authDir, 'creds.json');
-    const hasCreds = fs.existsSync(credsFile);
-
-    let savedNumber: string | null = null;
-    if (hasCreds) {
-      try {
-        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
-        if (credsData?.me?.id) {
-          savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
-        }
-      } catch (_) {}
-    }
+    const { hasCreds, savedNumber } = await getTenantDbCredsInfo(tenantId);
 
     if (!entry && hasCreds && isMasterInstance()) {
-      console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
+      console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from Database...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
@@ -657,16 +601,10 @@ const waGatewayServiceLocal = {
     };
   },
 
-  getQRBase64(tenantId: string): string | null {
-    const authDir = getTenantAuthDir(tenantId);
-    const credsFile = path.join(authDir, 'creds.json');
-    if (fs.existsSync(credsFile)) {
-      try {
-        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
-        if (credsData?.me?.id) {
-          return null; // Akun terotentikasi di disk — JANGAN PERNAH kembalikan QR code!
-        }
-      } catch (_) {}
+  async getQRBase64(tenantId: string): Promise<string | null> {
+    const { hasCreds } = await getTenantDbCredsInfo(tenantId);
+    if (hasCreds) {
+      return null;
     }
     return pool.get(tenantId)?.qrBase64 ?? null;
   },
@@ -679,13 +617,8 @@ const waGatewayServiceLocal = {
     } catch (e: any) {
       console.error(`[WA-Pool:${tenantId}] Gagal clear database auth:`, e.message);
     }
-    const dir = getTenantAuthDir(tenantId);
-    if (fs.existsSync(dir)) {
-      try {
-        fs.rmSync(dir, { recursive: true, force: true });
-      } catch (_) {}
-    }
   },
+
   async disconnectTenant(tenantId: string): Promise<void> {
     const entry = pool.get(tenantId);
     if (entry?.sock) {
@@ -796,19 +729,17 @@ const waGatewayServiceLocal = {
         );
       }
 
-      // Restore active LOCAL configs with disk creds even if status was disconnected
       const activeConfigs = await prisma.whatsappConfig.findMany({
         where: { provider_name: 'LOCAL', is_active: true },
       });
 
       for (const cfg of activeConfigs) {
         if (!restoredTenantIds.has(cfg.tenant_id)) {
-          const authDir = getTenantAuthDir(cfg.tenant_id);
-          const credsFile = path.join(authDir, 'creds.json');
-          if (fs.existsSync(credsFile)) {
-            console.log(`[WA-Pool] Restoring active LOCAL WA session with disk creds for tenant: ${cfg.tenant_id}`);
+          const { hasCreds } = await getTenantDbCredsInfo(cfg.tenant_id);
+          if (hasCreds) {
+            console.log(`[WA-Pool] Restoring active LOCAL WA session from DB for tenant: ${cfg.tenant_id}`);
             connectTenant(cfg.tenant_id).catch((e: any) =>
-              console.error(`[WA-Pool] Gagal restore creds disk ${cfg.tenant_id}:`, e.message)
+              console.error(`[WA-Pool] Gagal restore creds DB ${cfg.tenant_id}:`, e.message)
             );
           }
         }
@@ -996,13 +927,3 @@ export const waGatewayService = {
     }
   },
 };
-
-function clearTenantAuth(tenantId: string) {
-  const authDir = getTenantAuthDir(tenantId);
-  if (fs.existsSync(authDir)) {
-    fs.readdirSync(authDir).forEach((f) => {
-      fs.unlinkSync(path.join(authDir, f));
-    });
-    console.log(`[WA-Pool:${tenantId}] Auth state dihapus.`);
-  }
-}
