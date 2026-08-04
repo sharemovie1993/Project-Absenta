@@ -62,221 +62,247 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onOpenPrintPreview,
 }) => {
   return (
-    <div className="pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-20">
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* View Switcher with all 4 aSC TimeTables view modes */}
-        <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
-          <button
-            onClick={() => setViewMode('GURU')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-              viewMode === 'GURU' 
-                ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-          >
-            👨‍🏫 Per Guru
-          </button>
-          <button
-            onClick={() => setViewMode('KELAS')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-              viewMode === 'KELAS' 
-                ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-          >
-            🏫 Per Kelas
-          </button>
-          <button
-            onClick={() => setViewMode('MASTER_GURU')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-              viewMode === 'MASTER_GURU' 
-                ? "bg-purple-600 text-white shadow-sm font-extrabold" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-            title="Tabel Raksasa 2D: Semua Guru vs Jam Pelajaran"
-          >
-            🗺️ Master Grid Guru
-          </button>
-          <button
-            onClick={() => setViewMode('MASTER_KELAS')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-              viewMode === 'MASTER_KELAS' 
-                ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-            title="Tabel Raksasa 2D: Semua Kelas vs Jam Pelajaran"
-          >
-            📊 Master Grid Kelas
-          </button>
-        </div>
-
-        {/* Orientation Switcher for Single Grid View (Per Guru / Per Kelas) */}
-        {['KELAS', 'GURU'].includes(viewMode) && setGridOrientation && (
-          <div className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1">
+    <div className="pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 space-y-3 relative z-20">
+      {/* ── BARIS 1: TOOLBAR & SWITCHER ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* View Switcher */}
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
             <button
-              type="button"
-              onClick={() => setGridOrientation('VERTICAL_HARI')}
+              onClick={() => setViewMode('GURU')}
               className={cn(
                 "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                gridOrientation === 'VERTICAL_HARI'
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                viewMode === 'GURU' 
+                  ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
-              title="Layout Hari Vertikal (Hari di Kolom Kiri, Jam Pelajaran di Baris Atas)"
             >
-              📅 Hari Vertikal
+              👨‍🏫 Per Guru
             </button>
             <button
-              type="button"
-              onClick={() => setGridOrientation('HORIZONTAL_HARI')}
+              onClick={() => setViewMode('KELAS')}
               className={cn(
                 "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                gridOrientation === 'HORIZONTAL_HARI'
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                viewMode === 'KELAS' 
+                  ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
-              title="Layout Hari Horizontal (Hari di Baris Atas, Jam Pelajaran di Kolom Kiri)"
             >
-              🗓️ Hari Horizontal
+              🏫 Per Kelas
+            </button>
+            <button
+              onClick={() => setViewMode('MASTER_GURU')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                viewMode === 'MASTER_GURU' 
+                  ? "bg-purple-600 text-white shadow-sm font-extrabold" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+              title="Tabel Raksasa 2D: Semua Guru vs Jam Pelajaran"
+            >
+              🗺️ Master Grid Guru
+            </button>
+            <button
+              onClick={() => setViewMode('MASTER_KELAS')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                viewMode === 'MASTER_KELAS' 
+                  ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+              title="Tabel Raksasa 2D: Semua Kelas vs Jam Pelajaran"
+            >
+              📊 Master Grid Kelas
             </button>
           </div>
-        )}
 
-        {/* Dynamic Filter Dropdown / Day Selector */}
-        {viewMode === 'KELAS' && (
-          <SearchableSelect
-            value={selectedKelasId}
-            onValueChange={setSelectedKelasId}
-            options={kelasList}
-            placeholder="Pilih Kelas..."
-            searchPlaceholder="Cari Kelas..."
-            className="w-[180px] md:w-[220px]"
-          />
-        )}
+          {/* Orientation Switcher */}
+          {['KELAS', 'GURU'].includes(viewMode) && setGridOrientation && (
+            <div className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setGridOrientation('VERTICAL_HARI')}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                  gridOrientation === 'VERTICAL_HARI'
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+                title="Layout Hari Vertikal (Hari di Kolom Kiri, Jam Pelajaran di Baris Atas)"
+              >
+                📅 Hari Vertikal
+              </button>
+              <button
+                type="button"
+                onClick={() => setGridOrientation('HORIZONTAL_HARI')}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                  gridOrientation === 'HORIZONTAL_HARI'
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-extrabold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+                title="Layout Hari Horizontal (Hari di Baris Atas, Jam Pelajaran di Kolom Kiri)"
+              >
+                🗓️ Hari Horizontal
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap ml-auto">
+          {onToggleLeftPanel && (
+            <Button
+              variant={showLeftPanel ? "outline" : "primary"}
+              size="sm"
+              onClick={onToggleLeftPanel}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all",
+                !showLeftPanel 
+                  ? "bg-indigo-600 text-white shadow-md border-none font-extrabold" 
+                  : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+              )}
+              title={showLeftPanel ? "Sembunyikan Panel Kiri (Toolbox & Kartu) untuk Melebarkan Tabel ke 100%" : "Tampilkan kembali Panel Kiri (Toolbox & Kartu)"}
+            >
+              {showLeftPanel ? <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelLeft className="w-3.5 h-3.5" />}
+              <span>{showLeftPanel ? "Sembunyikan Toolbox" : "🛠️ Toolbox"}</span>
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefreshSchedules}
+            disabled={loadingData}
+            className="p-1.5 border-slate-200 dark:border-slate-800"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", loadingData && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+
+      {/* ── BARIS 2: KONTROL FILTER (NAMA, MAPEL, KELAS TERPISAH PER BARIS) ── */}
+      <div className="bg-slate-50/70 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2.5">
+        {/* BARIS 1 (ENTER): NAMA GURU ATAU NAMA KELAS */}
         {viewMode === 'GURU' && (
-          <>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 w-24 shrink-0 uppercase tracking-wider">
+              NAMA GURU:
+            </span>
             <SearchableSelect
               value={selectedGuruId}
               onValueChange={setSelectedGuruId}
               options={guruSelectOptions}
               placeholder="Pilih Guru..."
               searchPlaceholder="Cari Guru..."
-              className="w-[240px] md:w-[320px]"
+              className="w-[280px] md:w-[360px]"
             />
-            {guruMapelSelectOptions.length > 0 && setPaintMapelId && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Mapel:</span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  {guruMapelSelectOptions.map((m) => {
-                    const isSelected = paintMapelId === m.value;
-                    const colorStyle = getMapelColor(m.label);
-                    return (
-                      <button
-                        key={m.value}
-                        type="button"
-                        onClick={() => setPaintMapelId(m.value)}
-                        className={cn(
-                          "px-2.5 py-1 text-xs font-extrabold rounded-xl transition-all border flex items-center gap-1.5 shadow-sm",
-                          isSelected
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800 scale-105"
-                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-                        )}
-                        title={`Pilih ${m.label}`}
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: colorStyle.dotHex }}
-                        />
-                        <span>{m.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
-            <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Hari:</span>
-            <button
-              onClick={() => setMasterGridHari('SEMUA')}
-              className={cn(
-                "px-2 py-0.5 text-[11px] font-extrabold rounded-lg transition-all flex items-center gap-1",
-                masterGridHari === 'SEMUA' 
-                  ? "bg-purple-600 text-white shadow-sm font-extrabold" 
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-              )}
-              title="Tampilkan Seluruh Hari (Senin - Sabtu) Mingguan Kontinu"
-            >
-              📅 SEMUA HARI
-            </button>
-            {hariSekolah.map(d => (
-              <button
-                key={d}
-                onClick={() => setMasterGridHari(d)}
-                className={cn(
-                  "px-2 py-0.5 text-[11px] font-extrabold rounded-lg transition-all",
-                  masterGridHari === d 
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm" 
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                )}
-              >
-                {d}
-              </button>
-            ))}
           </div>
         )}
 
-        {/* Extra Kelas filter for Guru View to direct painting */}
+        {viewMode === 'KELAS' && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 w-24 shrink-0 uppercase tracking-wider">
+              NAMA KELAS:
+            </span>
+            <SearchableSelect
+              value={selectedKelasId}
+              onValueChange={setSelectedKelasId}
+              options={kelasList}
+              placeholder="Pilih Kelas..."
+              searchPlaceholder="Cari Kelas..."
+              className="w-[220px] md:w-[280px]"
+            />
+          </div>
+        )}
+
+        {/* BARIS 2 (ENTER): MATA PELAJARAN PENGAMPU (DITAMPILKAN TERBUKA) */}
+        {viewMode === 'GURU' && guruMapelSelectOptions.length > 0 && setPaintMapelId && (
+          <div className="flex items-start gap-2.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800 flex-wrap">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 w-24 shrink-0 uppercase tracking-wider pt-1">
+              MAPEL:
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap flex-1">
+              {guruMapelSelectOptions.map((m) => {
+                const isSelected = paintMapelId === m.value;
+                const colorStyle = getMapelColor(m.label);
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setPaintMapelId(m.value)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-extrabold rounded-xl transition-all border flex items-center gap-1.5 shadow-sm",
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800 scale-105"
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    )}
+                    title={`Pilih Mata Pelajaran: ${m.label}`}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                      style={{ backgroundColor: colorStyle.dotHex }}
+                    />
+                    <span>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* BARIS 3 (ENTER): KELAS TUJUAN (UNTUK PROSES PAINTING) */}
         {viewMode === 'GURU' && toolMode === 'PAINT' && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-450 font-bold shrink-0">Ke Kelas:</span>
+          <div className="flex items-center gap-2.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800 flex-wrap">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 w-24 shrink-0 uppercase tracking-wider">
+              KE KELAS:
+            </span>
             <SearchableSelect
               value={selectedKelasId}
               onValueChange={setSelectedKelasId}
               options={keKelasSelectOptions}
-              placeholder="Pilih Kelas..."
-              searchPlaceholder="Cari Kelas..."
-              className="w-[180px] md:w-[240px]"
+              placeholder="Pilih Kelas Tujuan..."
+              searchPlaceholder="Cari Kelas Tujuan..."
+              className="w-[220px] md:w-[280px]"
             />
           </div>
         )}
-      </div>
 
-      <div className="flex items-center gap-2 flex-wrap ml-auto">
-
-        {onToggleLeftPanel && (
-          <Button
-            variant={showLeftPanel ? "outline" : "primary"}
-            size="sm"
-            onClick={onToggleLeftPanel}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all",
-              !showLeftPanel 
-                ? "bg-indigo-600 text-white shadow-md border-none font-extrabold" 
-                : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-            )}
-            title={showLeftPanel ? "Sembunyikan Panel Kiri (Toolbox & Kartu) untuk Melebarkan Tabel ke 100%" : "Tampilkan kembali Panel Kiri (Toolbox & Kartu)"}
-          >
-            {showLeftPanel ? <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelLeft className="w-3.5 h-3.5" />}
-            <span>{showLeftPanel ? "Sembunyikan Toolbox" : "🛠️ Toolbox"}</span>
-          </Button>
+        {/* MASTER GRID HARI FILTER */}
+        {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              FILTER HARI:
+            </span>
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex-wrap">
+              <button
+                onClick={() => setMasterGridHari('SEMUA')}
+                className={cn(
+                  "px-2.5 py-0.5 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1",
+                  masterGridHari === 'SEMUA' 
+                    ? "bg-purple-600 text-white shadow-sm font-extrabold" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+                title="Tampilkan Seluruh Hari (Senin - Sabtu) Mingguan Kontinu"
+              >
+                📅 SEMUA HARI
+              </button>
+              {hariSekolah.map(d => (
+                <button
+                  key={d}
+                  onClick={() => setMasterGridHari(d)}
+                  className={cn(
+                    "px-2.5 py-0.5 text-xs font-extrabold rounded-lg transition-all",
+                    masterGridHari === d 
+                      ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  )}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefreshSchedules}
-          disabled={loadingData}
-          className="p-1.5 border-slate-200 dark:border-slate-800"
-        >
-          <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", loadingData && "animate-spin")} />
-        </Button>
       </div>
     </div>
   );
