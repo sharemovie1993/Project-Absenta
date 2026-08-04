@@ -108,9 +108,16 @@ export const useAuth = () => {
   };
 
   /**
+   * Cek apakah user adalah super admin
+   */
+  const isSuperAdmin = useCallback((): boolean => {
+    return isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
+  }, [user]);
+
+  /**
    * Cek apakah user memiliki capability tertentu
    */
-  const can = (capability: string): boolean => {
+  const can = useCallback((capability: string): boolean => {
     if (isSuperAdmin()) return true;
     if (user?.capabilities?.includes(capability)) return true;
 
@@ -130,37 +137,29 @@ export const useAuth = () => {
 
     if (list.length === 0) return false;
     return list.includes(capability);
-  };
+  }, [user, isSuperAdmin]);
 
   /**
    * Cek apakah user memiliki salah satu dari beberapa capability
    */
-  const canAny = (capabilities: string[]): boolean => {
+  const canAny = useCallback((capabilities: string[]): boolean => {
     if (!Array.isArray(capabilities) || capabilities.length === 0) return false;
     return capabilities.some((cap) => can(cap));
-  };
+  }, [can]);
 
   /**
    * Cek apakah user memiliki role tertentu
    */
-  const hasRole = (role: string): boolean => {
+  const hasRole = useCallback((role: string): boolean => {
     return user?.role?.name === role;
-  };
+  }, [user]);
 
   /**
    * Cek apakah user adalah admin
    */
-  const isAdmin = (): boolean => {
-    // SUPERADMIN global dianggap memiliki hak administrasi
-    return user?.role?.name === 'ADMIN' || isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  };
-
-  /**
-   * Cek apakah user adalah super admin
-   */
-  const isSuperAdmin = (): boolean => {
-    return isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  };
+  const isAdmin = useCallback((): boolean => {
+    return user?.role?.name === 'ADMIN' || isSuperAdmin();
+  }, [user, isSuperAdmin]);
 
   /**
    * Cek apakah user adalah staf platform finansial
