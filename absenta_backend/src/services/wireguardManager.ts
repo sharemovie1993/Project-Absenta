@@ -293,12 +293,23 @@ export class WireguardManager {
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
 
-      // Fix 2: Tear down existing stale interface if any to avoid "already exists" error
+      // Fix 2: Tear down existing stale interface & conflicting inactive interfaces with duplicate 10.0.0.0/24 routes
       try {
         execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe' });
       } catch {}
       try {
         execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' });
+      } catch {}
+
+      try {
+        const wgInterfaces = execSync("ip link show type wireguard 2>/dev/null | grep -oE 'et-[a-zA-Z0-9_-]+' || true", { stdio: 'pipe' })
+          .toString().split('\n').map(s => s.trim()).filter(Boolean);
+        for (const ifc of wgInterfaces) {
+          if (ifc !== ifName) {
+            console.log(`[WG-Cleanup] Matikan interface konflik lama: ${ifc}`);
+            try { execSync(`sudo wg-quick down "${ifc}"`, { stdio: 'pipe' }); } catch {}
+          }
+        }
       } catch {}
 
       // Fix 3: Execute wg-quick up with error recovery
