@@ -226,7 +226,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           </Button>
         )}
 
-        {onToggleLeftPanel && (
+        {viewMode === 'KELAS' && onToggleLeftPanel && (
           <Button
             variant={showLeftPanel ? "outline" : "primary"}
             size="sm"
@@ -234,7 +234,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all",
               !showLeftPanel 
-                ? "bg-indigo-650 text-white shadow-md border-none font-extrabold animate-pulse" 
+                ? "bg-indigo-600 text-white shadow-md border-none font-extrabold" 
                 : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
             )}
             title={showLeftPanel ? "Sembunyikan Panel Kiri (Toolbox & Kartu) untuk Melebarkan Tabel ke 100%" : "Tampilkan kembali Panel Kiri (Toolbox & Kartu)"}
