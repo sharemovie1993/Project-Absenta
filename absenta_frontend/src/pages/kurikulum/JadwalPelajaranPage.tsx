@@ -445,16 +445,6 @@ export default function JadwalPelajaranPage() {
       <SectionCard fullWidth>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 shadow-sm transition-all text-indigo-700 dark:text-indigo-300 text-xs font-extrabold flex items-center gap-1.5"
-              onClick={() => triggerPrintPreview()}
-            >
-              <Printer className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Cetak Berkas PDF</span>
-            </Button>
-
             {canManage && (
               <>
                 <Button 
