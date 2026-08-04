@@ -81,6 +81,8 @@ interface CetakBerkasTemplateProps {
     checklistData: PrepChecklistData | null;
   }) => Promise<Blob>;
   defaultPrintType: string;
+  initialClassId?: string;
+  initialGuruId?: string;
   hardeningModuleKey?: string;
 }
 
@@ -94,6 +96,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   docFormRenderer,
   pdfGenerator,
   defaultPrintType,
+  initialClassId,
+  initialGuruId,
   hardeningModuleKey: _hardeningModuleKey  // accepted but unused in template directly
 }) => {
   const [activeTab, setActiveTab] = useState<'system' | 'print'>(showChecklist ? 'system' : 'print');
@@ -102,9 +106,15 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
 
   // Filter & selections
   const [selectedPrintType, setSelectedPrintType] = useState<string>(defaultPrintType);
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState<string>(initialClassId || '');
+  const [selectedGuruId, setSelectedGuruId] = useState<string>(initialGuruId || '');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+
+  useEffect(() => {
+    if (defaultPrintType) setSelectedPrintType(defaultPrintType);
+    if (initialClassId) setSelectedClassId(initialClassId);
+    if (initialGuruId) setSelectedGuruId(initialGuruId);
+  }, [defaultPrintType, initialClassId, initialGuruId]);
   const [eventDetails, setEventDetails] = useState<Record<string, string>>({
     nomorSurat: '',
     tanggalPertemuan: '',

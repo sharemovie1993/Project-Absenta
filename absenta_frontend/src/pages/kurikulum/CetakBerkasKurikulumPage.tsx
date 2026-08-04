@@ -66,7 +66,17 @@ interface PdfGeneratorProps {
   checklistData: PrepChecklistData | null;
 }
 
-export const CetakBerkasKurikulumPage: React.FC = () => {
+interface CetakBerkasKurikulumPageProps {
+  initialPrintType?: string;
+  initialClassId?: string;
+  initialGuruId?: string;
+}
+
+export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> = ({
+  initialPrintType,
+  initialClassId,
+  initialGuruId,
+}) => {
   const queryClient = useQueryClient();
 
   // Memoize breadcrumbs & instruction untuk mencegah re-creation
@@ -211,7 +221,9 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           breadcrumbs={breadcrumbs}
           instruction={instruction}
           showChecklist={false}
-          defaultPrintType="roster"
+          defaultPrintType={initialPrintType || "roster"}
+          initialClassId={initialClassId}
+          initialGuruId={initialGuruId}
           docFormRenderer={renderDocForm}
           pdfGenerator={generatePdf}
           hardeningModuleKey={hardeningModuleKey}

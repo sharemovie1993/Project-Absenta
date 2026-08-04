@@ -488,7 +488,11 @@ export default function JadwalPelajaranPage() {
               onOpenPrintPreview={() => setViewMode('preview')}
             />
           ) : viewMode === 'preview' ? (
-            <CetakBerkasKurikulumPage />
+            <CetakBerkasKurikulumPage 
+              initialPrintType={selectedGuruId ? 'roster_teacher' : 'roster'}
+              initialClassId={selectedKelasId}
+              initialGuruId={selectedGuruId}
+            />
           ) : (
             <JadwalGrid 
               jadwal={jadwal} 
