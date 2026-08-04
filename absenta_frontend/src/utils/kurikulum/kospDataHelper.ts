@@ -570,9 +570,9 @@ export const buildKospStrukturTableHtml = (
   const grandTotalXii2 = calculateGroupTotal(sortedList, 12, 2);
 
   return `
-    <div style="margin-top:14px; margin-bottom:24px;">
-      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
-        Konsentrasi Keahlian: ${namaJurusan} (${kodeJurusan})
+    <div class="kosp-document-page-block" style="margin-top:8px; margin-bottom:20px; page-break-inside:avoid;">
+      <h4 style="margin:0 0 10px 0; font-size:11.5pt; font-weight:bold; color:#0f172a; text-transform:uppercase; border-bottom:2px solid #1e40af; padding-bottom:4px;">
+        Struktur Kurikulum Konsentrasi Keahlian: ${namaJurusan} (${kodeJurusan})
       </h4>
       <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
         <thead>
