@@ -238,3 +238,5 @@ export const KospBuilderPage: React.FC = () => {
     </AcademicPageLayout>
   );
 };
+
+export default KospBuilderPage;
