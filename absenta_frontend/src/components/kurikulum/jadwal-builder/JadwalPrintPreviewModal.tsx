@@ -466,28 +466,29 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                           <td
                             key={`${h}-${slotIndex}`}
                             className={cn(
-                              'p-1.5 border-r last:border-r-0 border-slate-400 transition-all',
-                              isFocused ? 'bg-indigo-50/50 font-bold' : 'opacity-30 bg-slate-100/50'
+                              'p-2 border-r last:border-r-0 border-slate-400 transition-all text-center align-middle',
+                              isFocused ? 'bg-indigo-50/50' : 'opacity-30 bg-slate-100/50'
                             )}
                           >
-                            <div className="space-y-0.5">
-                              <div className="font-black text-[10.5px] text-slate-900 leading-tight flex items-center justify-center gap-1 flex-wrap">
-                                <span>{item.Mapel?.nama_mapel || item.jenis_kegiatan}</span>
-                                {item.Mapel?.kode_mapel && (
-                                  <span className="text-[8px] font-extrabold text-indigo-700 bg-indigo-50 px-1 rounded border border-indigo-200">
-                                    [{item.Mapel.kode_mapel}]
-                                  </span>
-                                )}
+                            {mode === 'KELAS' ? (
+                              <div className="space-y-1">
+                                <div className="font-black text-[11px] text-slate-900 leading-tight">
+                                  {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                                </div>
+                                <div className="text-[9.5px] text-slate-700 font-bold leading-tight">
+                                  {item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru KBM'}
+                                </div>
                               </div>
-                              <div className="text-[9px] text-slate-700 font-bold leading-none">
-                                {mode === 'KELAS'
-                                  ? `👤 ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru KBM'}`
-                                  : `🏫 ${item.Kelas?.nama_kelas || 'Kelas KBM'}`}
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="font-black text-[11px] text-indigo-700 leading-tight">
+                                  {item.Kelas?.nama_kelas || 'Kelas KBM'}
+                                </div>
+                                <div className="text-[9.5px] text-slate-800 font-bold leading-tight">
+                                  {item.Mapel?.nama_mapel || item.Guru?.nama_guru || item.Guru?.User?.full_name || item.jenis_kegiatan}
+                                </div>
                               </div>
-                              <div className="text-[8px] text-slate-500 font-semibold font-mono">
-                                ⏰ {item.jam_mulai || slotTime.start} - {item.jam_selesai || slotTime.end}
-                              </div>
-                            </div>
+                            )}
                           </td>
                         );
                       })}
