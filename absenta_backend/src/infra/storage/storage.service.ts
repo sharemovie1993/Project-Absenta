@@ -194,6 +194,26 @@ export class StorageService {
     return fs.createReadStream(absolutePath);
   }
 
+  async readFileBuffer(key: string): Promise<Buffer> {
+    const safeKey = ensureSafeRelativeKey(key);
+    const s3 = this.getS3();
+    if (s3) {
+      const res: any = await s3.client.send(new GetObjectCommand({ Bucket: s3.cfg.bucket, Key: safeKey }));
+      const body = res?.Body;
+      if (body && typeof body.transformToByteArray === 'function') {
+        const arr = await body.transformToByteArray();
+        return Buffer.from(arr);
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
+    const { absolutePath } = resolveLocalPath(safeKey);
+    return fs.promises.readFile(absolutePath);
+  }
+
   async delete(key: string): Promise<void> {
     const safeKey = ensureSafeRelativeKey(key);
     const s3 = this.getS3();

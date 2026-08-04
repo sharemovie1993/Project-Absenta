@@ -672,7 +672,7 @@ export default function ProfilePage() {
                                 nama_siswa: isSiswa 
                                   ? (siswaProfile?.nama_siswa || user?.full_name) 
                                   : (guruProfile?.nama_guru || user?.full_name),
-                                foto: fotoUrl || user?.avatar || (isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
+                                foto: fotoUrl || resolveProfilePhotoUrl(user?.avatar) || resolveProfilePhotoUrl(isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
                               } as any}
                               config={resolvedConfig}
                               sekolah={sekolahProfile as any}
@@ -695,7 +695,7 @@ export default function ProfilePage() {
                             nama_siswa: isSiswa 
                               ? (siswaProfile?.nama_siswa || user?.full_name) 
                               : (guruProfile?.nama_guru || user?.full_name),
-                            foto: fotoUrl || user?.avatar || (isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
+                            foto: fotoUrl || resolveProfilePhotoUrl(user?.avatar) || resolveProfilePhotoUrl(isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
                           } as any}
                           config={resolvedConfig}
                           sekolah={sekolahProfile as any}

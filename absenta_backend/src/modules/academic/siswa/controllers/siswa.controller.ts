@@ -1295,18 +1295,31 @@ export const siswaController = {
       const { id: siswaId, docId } = request.params;
       const tenantId = request.tenantId;
 
-      const doc = await prisma.siswaDocument.findFirst({
-        where: { id: docId, siswa_id: siswaId, tenant_id: tenantId }
-      });
+      let doc = tenantId
+        ? await prisma.siswaDocument.findFirst({
+            where: { id: docId, siswa_id: siswaId, tenant_id: tenantId }
+          })
+        : null;
+
+      if (!doc) {
+        doc = await prisma.siswaDocument.findFirst({
+          where: { id: docId, siswa_id: siswaId }
+        });
+      }
 
       if (!doc) {
         return reply.status(404).send({ success: false, message: 'Dokumen tidak ditemukan' });
       }
 
-      const stream = storageService.createReadStream(doc.file_storage_path);
-      reply.header('Content-Type', doc.mime_type);
-      reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.file_original_name)}"`);
-      return reply.send(stream);
+      const fileExists = await storageService.exists(doc.file_storage_path);
+      if (!fileExists) {
+        return reply.status(404).send({ success: false, message: 'Berkas fisik dokumen tidak ditemukan pada storage' });
+      }
+
+      const buffer = await storageService.readFileBuffer(doc.file_storage_path);
+      reply.header('Content-Type', doc.mime_type || 'image/png');
+      reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.file_original_name || 'document')}"`);
+      return reply.send(buffer);
     } catch (error: any) {
       console.error('Download document error:', error);
       return reply.status(500).send({ success: false, message: error.message || 'Failed to download file' });
