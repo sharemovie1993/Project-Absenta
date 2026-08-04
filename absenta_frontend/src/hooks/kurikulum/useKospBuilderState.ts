@@ -218,33 +218,34 @@ export const useKospBuilderState = () => {
       return '';
     };
 
+    const renderFieldOrWarning = (val: string | undefined, fieldLabel: string) => {
+      if (val && val.trim() && val !== '-' && val !== 'Kepala Sekolah' && val !== 'Wakasek Kurikulum') {
+        return safeString(val);
+      }
+      return `<span style="color:#dc2626; font-style:italic; font-weight:bold;">[⚠️ ${fieldLabel} BELUM DIISI - SILAKAN ATUR DI PENGATURAN SK]</span>`;
+    };
+
     const replacements: Record<string, string> = {
-      '{{NAMASEKOLAH}}': safeString(sekolahInfo?.nama || 'SMK NEGERI 1 PLERED'),
+      '{{NAMASEKOLAH}}': safeString(sekolahInfo?.nama || '[NAMA SEKOLAH BELUM DIISI]'),
       '{{TAHUNPELAJARAN}}': safeString(selectedTahunNama),
-      '{{KOTASEKOLAH}}': safeString(sekolahInfo?.kota || sekolahInfo?.kecamatan || 'Purwakarta'),
-      '{{ALAMATSEKOLAH}}': safeString(sekolahInfo?.alamat || 'Jl. Raya Cibogo Girang, Plered, Purwakarta'),
-      '{{NPSNSEKOLAH}}': safeString((sekolahInfo as any)?.npsn || '20217088'),
+      '{{KOTASEKOLAH}}': safeString(sekolahInfo?.kota || sekolahInfo?.kecamatan || '[KOTA SEKOLAH]'),
+      '{{ALAMATSEKOLAH}}': safeString(sekolahInfo?.alamat || '[ALAMAT SEKOLAH]'),
+      '{{NPSNSEKOLAH}}': safeString((sekolahInfo as any)?.npsn || '[NPSN SEKOLAH]'),
       '{{LOGOSEKOLAH_HTML}}': safeString(coverLogoHtml),
       '{{TANGGALPENGESAHAN}}': safeString(tglPengesahanFormatted),
-      '{{NAMAKETUAKOMITE}}': safeString(metaConfigData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.'),
-      '{{NAMAKEPALASEKOLAH}}': safeString(namaKepalaSekolah),
-      '{{NIPKEPALASEKOLAH}}': safeString(nipKepalaSekolah),
-      '{{NAMAKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.'),
-      '{{NIPKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nip || '19680315 199303 1 008'),
+      '{{NAMAKETUAKOMITE}}': renderFieldOrWarning(metaConfigData?.komite_nama, 'NAMA KETUA KOMITE'),
+      '{{NAMAKEPALASEKOLAH}}': renderFieldOrWarning(namaKepalaSekolah, 'NAMA KEPALA SEKOLAH'),
+      '{{NIPKEPALASEKOLAH}}': safeString(nipKepalaSekolah !== '-' ? nipKepalaSekolah : '[NIP KEPALA SEKOLAH]'),
+      '{{NAMAKEPAKACABDIN}}': renderFieldOrWarning(metaConfigData?.kcd_nama, 'NAMA KEPALA CABDIN'),
+      '{{NIPKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nip || '[NIP KEPALA CABDIN]'),
       '{{KARAKTERISTIK_SEKOLAH}}': safeString(kospDbConfig?.karakteristik || `
-        <p style="text-align:justify; font-size:11pt; line-height:1.6;">
-          <strong>${sekolahInfo?.nama || 'Sekolah'}</strong> terletak di wilayah ${sekolahInfo?.kota || 'Daerah'} dengan potensi industri dan lingkungan masyarakat yang dinamis. Sekolah berkomitmen menyelenggarakan pendidikan kejuruan berkualitas yang berorientasi pada kesiapan kerja, wirausaha, dan karakter Pancasila.
+        <p style="text-align:justify; font-size:11pt; line-height:1.6; color:#475569;">
+          <em><span style="color:#dc2626; font-weight:bold;">[⚠️ BELUM DITETAPKAN]</span> Deskripsi Karakteristik Satuan Pendidikan belum diisi di database kustomisasi KOSP.</em>
         </p>
       `),
       '{{DAFTAR_JURUSAN_SUMMARY}}': safeString(daftarJurusanSummaryHtml),
-      '{{VISI_SEKOLAH}}': safeString(kospDbConfig?.visi || 'Mewujudkan lulusan SMK yang Unggul, Berkarakter Pancasila, Kompeten, dan Siap Kerja di Era Global.'),
-      '{{MISI_SEKOLAH}}': safeString(kospDbConfig?.misi || `
-        <ol style="margin-top:4px; padding-left:20px;">
-          <li>Menyelenggarakan pembelajaran berbasis Industri dan Kurikulum Merdeka.</li>
-          <li>Mengembangkan sikap disiplin, kerja keras, dan akhlak mulia.</li>
-          <li>Memperkuat kemitraan dengan Dunia Usaha / Dunia Kerja (DUDI).</li>
-        </ol>
-      `),
+      '{{VISI_SEKOLAH}}': safeString(kospDbConfig?.visi || '<span style="color:#dc2626; font-weight:bold;">[⚠️ VISI SEKOLAH BELUM DIISI DI DATABASE]</span>'),
+      '{{MISI_SEKOLAH}}': safeString(kospDbConfig?.misi || '<p style="color:#dc2626; font-weight:bold;">[⚠️ MISI SEKOLAH BELUM DIISI DI DATABASE]</p>'),
       '{{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}': safeString(tabelStrukturSemuaJurusanHtml),
       '{{TABEL_KALENDER_PENDIDIKAN}}': safeString(tabelKalenderPendidikanHtml),
       '{{TABEL_JAM_KBM}}': safeString(tabelJamKbmHtml),
@@ -253,10 +254,11 @@ export const useKospBuilderState = () => {
       '{{TABEL_P5_MATRIKS}}': safeString(tabelP5Html),
       '{{TABEL_ESKUL_MATRIKS}}': safeString(tabelEskulHtml),
       // ── Meta SK & Legalitas ──
-      '{{NOMOR_SK}}': safeString(metaConfigData?.nomor_sk || '421.5/089/SK-KOSP'),
-      '{{NAMA_DINAS_PROVINSI}}': safeString(metaConfigData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat'),
-      '{{NAMA_CABDIN}}': safeString(metaConfigData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII'),
+      '{{NOMOR_SK}}': renderFieldOrWarning(metaConfigData?.nomor_sk, 'NOMOR SK KEPSEK'),
+      '{{NAMA_DINAS_PROVINSI}}': safeString(metaConfigData?.nama_dinas_provinsi || '[DINAS PENDIDIKAN PROVINSI BELUM DIISI]'),
+      '{{NAMA_CABDIN}}': safeString(metaConfigData?.nama_cabdin || '[CABANG DINAS PENDIDIKAN BELUM DIISI]'),
     };
+
 
     return basePages.map(page => {
       let html = safeString(page.html);

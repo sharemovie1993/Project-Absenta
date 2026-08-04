@@ -54,8 +54,8 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
     return [
       { no: 1, nama: resolveMemberNameFromTree(treeData, 'KEPALA_SEKOLAH', defaultKepsek || 'Kepala Sekolah'), jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
       { no: 2, nama: resolveMemberNameFromTree(treeData, 'KURIKULUM', defaultWakasek || 'Wakasek Kurikulum'), jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
-      { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
-      { no: 4, nama: komiteNama || 'H. Dudung Abdurrahman, M.Pd.', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
+      { no: 3, nama: 'Pengawas Pembina Sekolah', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
+      { no: 4, nama: komiteNama || 'Ketua Komite Sekolah', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
       { no: 5, nama: resolveMemberNameFromTree(treeData, 'KESISWAAN', 'Wakasek Bidang Kesiswaan'), jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
       { no: 6, nama: resolveMemberNameFromTree(treeData, 'HUBIN', 'Wakasek Bidang Humas & Hubin'), jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
       { no: 7, nama: resolveMemberNameFromTree(treeData, 'SARPRAS', 'Wakasek Bidang Sarana Prasarana'), jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
@@ -68,13 +68,14 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    setNomorSk(initialData?.nomor_sk || '421.5/089/SK-KOSP/2025');
+    setNomorSk(initialData?.nomor_sk || '');
     setTanggalSk(initialData?.tanggal_sk || new Date().toISOString().split('T')[0]);
-    setNamaDinasProvinsi(initialData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat');
-    setNamaCabdin(initialData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII');
-    setKcdNama(initialData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.');
-    setKcdNip(initialData?.kcd_nip || '19680315 199303 1 008');
-    setKomiteNama(initialData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.');
+    setNamaDinasProvinsi(initialData?.nama_dinas_provinsi || '');
+    setNamaCabdin(initialData?.nama_cabdin || '');
+    setKcdNama(initialData?.kcd_nama || '');
+    setKcdNip(initialData?.kcd_nip || '');
+    setKomiteNama(initialData?.komite_nama || '');
+
 
     let baseList: TimPenyusunItem[] = [];
     if (initialData?.tim_penyusun && initialData.tim_penyusun.length > 0) {
@@ -183,7 +184,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={nomorSk}
                 onChange={(e) => setNomorSk(e.target.value)}
-                placeholder="421.5/089/SK-KOSP/2025"
+                placeholder="Contoh: 421.5/089/SK-KOSP/2025"
                 required
               />
             </div>
@@ -207,7 +208,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={namadinasProvinsi}
                 onChange={(e) => setNamaDinasProvinsi(e.target.value)}
-                placeholder="Dinas Pendidikan Provinsi Jawa Barat"
+                placeholder="Contoh: Dinas Pendidikan Provinsi Jawa Barat"
               />
             </div>
 
@@ -218,7 +219,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={namaCabdin}
                 onChange={(e) => setNamaCabdin(e.target.value)}
-                placeholder="Cabang Dinas Pendidikan Wilayah VII"
+                placeholder="Contoh: Cabang Dinas Pendidikan Wilayah VII"
               />
             </div>
 
@@ -229,7 +230,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={kcdNama}
                 onChange={(e) => setKcdNama(e.target.value)}
-                placeholder="Drs. H. Mamat Rahmat, M.Si."
+                placeholder="Contoh: Drs. H. Mamat Rahmat, M.Si."
               />
             </div>
 
@@ -240,7 +241,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={kcdNip}
                 onChange={(e) => setKcdNip(e.target.value)}
-                placeholder="19680315 199303 1 008"
+                placeholder="Contoh: 19680315 199303 1 008"
               />
             </div>
 
@@ -251,9 +252,10 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               <Input
                 value={komiteNama}
                 onChange={(e) => setKomiteNama(e.target.value)}
-                placeholder="H. Dudung Abdurrahman, M.Pd."
+                placeholder="Contoh: H. Dudung Abdurrahman, M.Pd."
               />
             </div>
+
           </div>
         </div>
 
