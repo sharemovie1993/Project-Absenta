@@ -708,7 +708,6 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
           </div>
         )}
       </div>
-    </div>
   );
 
   if (hideHeaderAndBreadcrumbs) {
