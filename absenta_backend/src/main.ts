@@ -50,6 +50,8 @@ const filterRedisWarn = () => {
   console.error = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
+    if (msg.includes('[FSTDEP017]') || msg.includes('request.routerPath')) return;  // Fastify deprecation
+    if (msg.includes('Use `node --trace-deprecation')) return;                       // Node deprecation hint
     origErr(`${time()} ${C.bold}${C.red}ERROR${C.reset} ${C.red}${msg}${C.reset}`);
   };
   const origLog = console.log;

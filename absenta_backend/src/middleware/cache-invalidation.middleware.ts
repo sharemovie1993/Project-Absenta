@@ -65,7 +65,7 @@ export function createCacheInvalidationMiddleware() {
       return;
     }
 
-    const routeKey = `${request.method}:${request.routerPath}`;
+    const routeKey = `${request.method}:${request.routeOptions?.url ?? request.url?.split('?')[0]}`;
     const rule = INVALIDATION_RULES[routeKey];
 
     if (!rule) {
@@ -141,7 +141,7 @@ function extractTenantId(request: any): string | null {
     return String(userTenantId);
   }
 
-  const routerPath = String((request as any).routerPath || '');
+  const routerPath = String(request.routeOptions?.url || (request as any).routerPath || '');
   if (routerPath.startsWith('/api/superadmin/')) {
     const params = request.params as any;
     if (params?.tenantId) return String(params.tenantId);
