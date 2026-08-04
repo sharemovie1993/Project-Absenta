@@ -627,23 +627,35 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
                   object-fit: contain !important;
                   display: block !important;
                 }
+                .kosp-document-page-block {
+                  min-height: calc(${paper.heightMm}mm - ${margin.top + margin.bottom}mm);
+                  box-sizing: border-box;
+                }
                 .mce-pagebreak, div.mce-pagebreak, p.mce-pagebreak, img.mce-pagebreak {
-                  display: block !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  justify-content: center !important;
                   clear: both !important;
                   width: calc(100% + ${margin.left + margin.right}mm) !important;
                   margin-left: -${margin.left}mm !important;
                   margin-right: -${margin.right}mm !important;
-                  margin-top: 36px !important;
-                  margin-bottom: 36px !important;
+                  margin-top: 28px !important;
+                  margin-bottom: 28px !important;
                   height: 32px !important;
-                  background-color: #94a3b8 !important;
-                  border-top: 2px dashed #475569 !important;
-                  border-bottom: 2px dashed #475569 !important;
-                  box-shadow: inset 0 3px 6px rgba(0,0,0,0.2) !important;
+                  background-color: #cbd5e1 !important;
+                  border-top: 2px dashed #64748b !important;
+                  border-bottom: 2px dashed #64748b !important;
+                  box-shadow: inset 0 3px 6px rgba(0,0,0,0.12) !important;
                   position: relative !important;
                   cursor: pointer !important;
                   box-sizing: border-box !important;
+                  color: #475569 !important;
+                  font-size: 9pt !important;
+                  font-weight: bold !important;
+                  font-family: Arial, sans-serif !important;
+                  letter-spacing: 0.5px !important;
                 }
+
               `,
               table_default_attributes: {
                 border: '1',
