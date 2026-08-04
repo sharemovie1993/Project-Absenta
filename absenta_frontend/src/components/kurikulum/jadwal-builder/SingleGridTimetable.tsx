@@ -37,20 +37,20 @@ export const SingleGridTimetable: React.FC<Props> = ({
   onDeleteSlot,
 }) => {
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <div className="w-full overflow-x-auto max-h-[764px] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className="min-w-[1000px]">
         {/* Header Days */}
         <div
-          className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30"
+          className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 sticky top-0 z-20"
           style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}
         >
-          <div className="p-3.5 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
+          <div className="p-2 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
             JAM / WAKTU
           </div>
           {hariSekolah.map((day) => (
             <div
               key={day}
-              className="p-3.5 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
+              className="p-2 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
             >
               {day}
             </div>
@@ -59,8 +59,8 @@ export const SingleGridTimetable: React.FC<Props> = ({
 
         {/* Grid Body */}
         {loadingData ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
+          <div className="flex flex-col items-center justify-center py-20 space-y-3">
+            <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Menghubungkan ke mesin jadwal...
             </p>
@@ -91,16 +91,16 @@ export const SingleGridTimetable: React.FC<Props> = ({
                       className="grid border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5"
                       style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}
                     >
-                      <div className="p-2 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
-                        <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">
+                      <div className="p-1 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
+                        <span className="text-[8px] font-black text-amber-600 dark:text-amber-400 tracking-wider">
                           BREAK
                         </span>
                       </div>
                       <div
-                        className="p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85"
+                        className="p-1 flex items-center justify-center text-[9.5px] font-bold text-amber-600 dark:text-amber-400/85"
                         style={{ gridColumn: `span ${hariSekolah.length}` }}
                       >
-                        <span className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1">
                           ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {slot.start})
                         </span>
                       </div>
@@ -111,11 +111,11 @@ export const SingleGridTimetable: React.FC<Props> = ({
                     style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}
                   >
                     {/* Time Column */}
-                    <div className="p-3 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 shrink-0">
-                      <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">
+                    <div className="p-1.5 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-0.5 shrink-0">
+                      <span className="text-[9.5px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">
                         JAM {slotIndex}
                       </span>
-                      <span className="text-[9px] text-slate-450 dark:text-slate-550 font-bold">
+                      <span className="text-[8.5px] text-slate-450 dark:text-slate-550 font-bold">
                         {slot.start} - {slot.end}
                       </span>
                     </div>
@@ -131,7 +131,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
                           key={`${day}-${slotIndex}`}
                           onClick={() => onSlotClick(day, slotIndex)}
                           className={cn(
-                            'p-2 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[90px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none',
+                            'p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[46px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none',
                             active && 'bg-indigo-50/30 dark:bg-indigo-950/10 ring-1 ring-indigo-500/20 z-10',
                             !active && 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
                           )}
@@ -144,7 +144,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
                               return (
                                 <div
                                   className={cn(
-                                    'h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4',
+                                    'h-full w-full rounded-xl p-1.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4 min-h-[40px]',
                                     item.isForeign
                                       ? 'bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed'
                                       : `${mapelStyle.bg} ${mapelStyle.border}`
@@ -157,7 +157,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
                                     <div className="flex items-center justify-between gap-1">
                                       <span
                                         className={cn(
-                                          'text-[10px] font-black uppercase tracking-wide truncate',
+                                          'text-[9.5px] font-black uppercase tracking-wide truncate leading-tight',
                                           item.isForeign ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
                                         )}
                                         title={item.Mapel?.nama_mapel || item.jenis_kegiatan}
@@ -165,19 +165,19 @@ export const SingleGridTimetable: React.FC<Props> = ({
                                         {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                                       </span>
                                       {item.isForeign ? (
-                                        <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">
+                                        <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[7.5px] font-black shrink-0 px-1 py-0 border-none leading-none">
                                           TERISI
                                         </Badge>
                                       ) : (
                                         viewMode === 'GURU' &&
                                         item.Kelas && (
-                                          <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[8px] font-black shrink-0 px-1 border-none">
+                                          <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[7.5px] font-black shrink-0 px-1 py-0 border-none leading-none">
                                             {item.Kelas.nama_kelas}
                                           </Badge>
                                         )
                                       )}
                                     </div>
-                                    <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-normal truncate">
+                                    <div className="text-[8.5px] font-bold text-slate-500 dark:text-slate-400 leading-tight truncate">
                                       {item.isForeign
                                         ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
                                         : item.Guru?.nama_guru ||
@@ -192,33 +192,33 @@ export const SingleGridTimetable: React.FC<Props> = ({
                                       e.stopPropagation();
                                       onDeleteSlot(day, slotIndex, item.id);
                                     }}
-                                    className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                     title="Hapus jadwal"
                                   >
-                                    <Trash2 size={10} />
+                                    <Trash2 size={9} />
                                   </button>
                                 </div>
                               );
                             })()
                           ) : (
-                            <div className="h-full w-full flex items-center justify-center">
+                            <div className="h-full w-full flex items-center justify-center min-h-[38px]">
                               {toolMode === 'PAINT' && conflict ? (
                                 <div
                                   className={cn(
-                                    'flex flex-col items-center justify-center p-2 rounded-2xl border text-center transition-all w-full h-full',
+                                    'flex flex-col items-center justify-center p-1 rounded-xl border text-center transition-all w-full h-full',
                                     conflict.type === 'TEACHER'
                                       ? 'bg-rose-50/30 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-900/20 text-rose-600 dark:text-rose-450'
                                       : 'bg-amber-50/30 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/20 text-amber-600 dark:text-amber-450'
                                   )}
                                 >
-                                  <AlertTriangle className="w-4 h-4" />
-                                  <span className="text-[8px] font-black uppercase tracking-wider mt-0.5 leading-tight">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  <span className="text-[7.5px] font-black uppercase tracking-wider mt-0.5 leading-none">
                                     {conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA KBM'}
                                   </span>
                                 </div>
                               ) : (
                                 <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
-                                  <Plus size={12} className="stroke-[2.5]" />
+                                  <Plus size={11} className="stroke-[2.5]" />
                                 </span>
                               )}
                             </div>

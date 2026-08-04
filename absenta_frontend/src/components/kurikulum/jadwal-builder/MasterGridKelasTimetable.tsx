@@ -39,7 +39,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
   }, [allJadwal]);
 
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <div className="w-full overflow-x-auto max-h-[764px] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className={isSemuaHari ? "min-w-[2800px]" : "min-w-[1200px]"}>
         {/* Tier 1 Header: Days Header */}
         {isSemuaHari ? (

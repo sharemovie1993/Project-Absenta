@@ -204,11 +204,11 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
   };
 
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm">
+    <div className="w-full overflow-x-auto max-h-[764px] overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className="min-w-[1000px]">
         {/* Header Days */}
-        <div className="grid border-b border-gray-200 dark:border-gray-800" style={{ gridTemplateColumns: `120px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
-          <div className="p-4 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-gray-800 font-bold text-gray-500 dark:text-gray-400 text-xs text-center flex items-center justify-center">
+        <div className="grid border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20" style={{ gridTemplateColumns: `120px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+          <div className="p-2 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-gray-800 font-bold text-gray-500 dark:text-gray-400 text-xs text-center flex items-center justify-center">
             HARI / WAKTU
           </div>
           {SLOTS.map(slot => {
@@ -216,10 +216,10 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
             return (
               <div 
                 key={slot} 
-                className="p-3 bg-gray-50 dark:bg-slate-800/50 font-bold text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800 flex flex-col justify-center items-center"
+                className="p-1.5 bg-gray-50 dark:bg-slate-800/50 font-bold text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800 flex flex-col justify-center items-center"
               >
-                <div className="text-xs text-gray-900 dark:text-white uppercase font-black">JAM {slot}</div>
-                <div className="text-[9px] text-gray-400 font-mono mt-0.5">{time.start} - {time.end}</div>
+                <div className="text-[10px] text-gray-900 dark:text-white uppercase font-black">JAM {slot}</div>
+                <div className="text-[8.5px] text-gray-400 font-mono mt-0.5">{time.start} - {time.end}</div>
               </div>
             );
           })}
@@ -237,7 +237,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                 style={{ gridTemplateColumns: `120px repeat(${SLOTS.length}, minmax(0, 1fr))` }}
               >
                 {/* Day name column */}
-                <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center font-black text-sm text-gray-700 dark:text-gray-300">
+                <div className="p-2 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center font-black text-xs text-gray-700 dark:text-gray-300">
                   {day}
                 </div>
 
@@ -247,7 +247,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                     <div 
                       key={`${day}-${slot}`} 
                       className={cn(
-                        "p-2 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[105px] transition-colors relative flex"
+                        "p-1 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[54px] transition-colors relative flex"
                       )}
                       style={{ gridColumn: `span ${colSpan}` }}
                     >
