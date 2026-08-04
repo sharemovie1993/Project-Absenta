@@ -43,6 +43,7 @@ interface CetakBerkasTemplateProps {
     items: { text: string }[];
   };
   showChecklist?: boolean;
+  hideHeaderAndBreadcrumbs?: boolean;
   docFormRenderer: (props: {
     selectedPrintType: string;
     setSelectedPrintType: (val: string) => void;
@@ -93,6 +94,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   breadcrumbs,
   instruction,
   showChecklist = false,
+  hideHeaderAndBreadcrumbs = false,
   docFormRenderer,
   pdfGenerator,
   defaultPrintType,
@@ -475,13 +477,13 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
 
   return (
     <AcademicPageLayout
-      title={title}
-      description={description}
-      breadcrumbs={breadcrumbs}
-      instruction={instruction}
+      title={hideHeaderAndBreadcrumbs ? undefined : title}
+      description={hideHeaderAndBreadcrumbs ? undefined : description}
+      breadcrumbs={hideHeaderAndBreadcrumbs ? [] : breadcrumbs}
+      instruction={hideHeaderAndBreadcrumbs ? undefined : instruction}
       hardeningModuleKey={`cetak_berkas_${module}`}
     >
-      <div className="p-6 lg:p-8 space-y-6 print:p-0">
+      <div className={hideHeaderAndBreadcrumbs ? "p-0 space-y-4 print:p-0" : "p-6 lg:p-8 space-y-6 print:p-0"}>
         {/* Navigation Tabs - only visible if showChecklist is true */}
         {showChecklist && (
           <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 mb-6 print:hidden">

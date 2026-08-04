@@ -70,12 +70,14 @@ interface CetakBerkasKurikulumPageProps {
   initialPrintType?: string;
   initialClassId?: string;
   initialGuruId?: string;
+  hideHeader?: boolean;
 }
 
 export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> = ({
   initialPrintType,
   initialClassId,
   initialGuruId,
+  hideHeader = false,
 }) => {
   const queryClient = useQueryClient();
 

@@ -522,6 +522,7 @@ export default function JadwalPelajaranPage() {
               initialPrintType={previewPrintType}
               initialClassId={previewPrintType === 'roster' ? previewTargetClassId : ''}
               initialGuruId={previewPrintType === 'roster_teacher' ? previewTargetGuruId : ''}
+              hideHeader={true}
             />
           ) : (
             <JadwalGrid 
