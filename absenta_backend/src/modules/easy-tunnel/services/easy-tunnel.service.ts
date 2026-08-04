@@ -57,7 +57,8 @@ export class EasyTunnelService {
 
       // 2. Deteksi status kedaluwarsa dari server lisensi
       if (remoteInfo.expired) {
-        console.warn(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" terdeteksi kedaluwarsa.`);
+        console.warn(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" (${tunnel.slug}) terdeteksi kedaluwarsa. Otomatis mematikan interface & mematikan systemd service...`);
+        try { await WireguardManager.stopTunnel(tunnel.slug); } catch {}
         return await prisma.easyTunnel.update({
           where: { id: tunnel.id },
           data: { status: 'expired' }
@@ -81,6 +82,8 @@ export class EasyTunnelService {
         msg.includes('tidak valid') || msg.includes('invalid');
 
       if (isExpired) {
+        console.warn(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" (${tunnel.slug}) tidak valid/terhapus di server lisensi. Otomatis mematikan interface...`);
+        try { await WireguardManager.stopTunnel(tunnel.slug); } catch {}
         return await prisma.easyTunnel.update({
           where: { id: tunnel.id },
           data: { status: 'expired' }
