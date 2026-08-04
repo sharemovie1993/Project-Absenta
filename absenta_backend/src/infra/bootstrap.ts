@@ -276,6 +276,7 @@ export async function registerMiddlewares(fastify: any, appendLog: (entry: any) 
   const shouldLog = (urlPath: string) => {
     if (urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) return false;
     if (urlPath === '/api/system/config' || urlPath === '/system/config') return false;
+    if (urlPath === '/api/whatsapp/status' || urlPath === '/whatsapp/status') return false;
 
     return true;
   };

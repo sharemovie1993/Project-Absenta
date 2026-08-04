@@ -81,7 +81,6 @@ export class WhatsappController {
     const { tenant_id } = request.user as any;
     try {
       const health = await waGatewayService.getHealthStatus(tenant_id);
-      console.log(`[WA-Controller] getLocalStatus for ${tenant_id}: health=${health.health}, status=${health.status}, number=${health.number}`);
       return reply.send({ success: true, data: health });
     } catch (error: any) {
       console.error(`[WA-Controller] getLocalStatus ERROR for ${tenant_id}:`, error.message);

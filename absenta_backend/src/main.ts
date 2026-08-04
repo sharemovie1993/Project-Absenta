@@ -118,6 +118,7 @@ async function start() {
       const shouldLog = (kind: 'request' | 'response', method: string, urlPath: string) => {
         if (urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) return false;
         if (urlPath === '/api/system/config' || urlPath === '/system/config') return false;
+        if (urlPath === '/api/whatsapp/status' || urlPath === '/whatsapp/status') return false;
 
         const now = Date.now();
         const key = `${kind}:${method}:${urlPath}`;
