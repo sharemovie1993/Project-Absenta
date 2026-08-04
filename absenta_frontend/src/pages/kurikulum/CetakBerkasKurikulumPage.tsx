@@ -223,6 +223,7 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
           breadcrumbs={breadcrumbs}
           instruction={instruction}
           showChecklist={false}
+          hideHeaderAndBreadcrumbs={hideHeader}
           defaultPrintType={initialPrintType || "roster"}
           initialClassId={initialClassId}
           initialGuruId={initialGuruId}
