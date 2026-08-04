@@ -265,9 +265,31 @@ function App() {
           localStorage.setItem('support_auth_state', currentStorage);
         }
       }
+
+      // Decode JWT to extract tenant_id immediately
+      let jwtTenantId = '';
+      try {
+        const payload = JSON.parse(atob(activeToken.split('.')[1]));
+        jwtTenantId = payload?.tenantId ?? payload?.tenant_id ?? '';
+      } catch (e) {
+        console.error('Failed to decode quick login token payload:', e);
+      }
       
-      // Set token into local storage
+      // Set token and tenant_id into local storage synchronously
       localStorage.setItem('access_token', activeToken);
+      if (jwtTenantId) {
+        localStorage.setItem('tenant_id', jwtTenantId);
+      }
+
+      // Synchronize Zustand authStore state immediately
+      useAuthStore.setState({
+        token: activeToken,
+        tenantId: jwtTenantId || null,
+        isAuthenticated: true,
+      });
+
+      // Clear previous query cache so all page components refetch fresh with new token
+      queryClient.clear();
       
       // Clear query parameters from URL cleanly
       const newUrl = window.location.pathname;

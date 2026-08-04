@@ -214,8 +214,14 @@ export const useAuthStore = create<AuthState>()(
             }
             // ─────────────────────────────────────────────────────────────────
 
+            const activeToken = token || localStorage.getItem('access_token');
+            if (response.data.tenant_id) {
+              localStorage.setItem('tenant_id', response.data.tenant_id);
+            }
+
             set({
               user: response.data,
+              token: activeToken,
               isAuthenticated: true,
               tenantId: response.data.tenant_id || null,
               tenantMode: (response.data as any)?.tenant?.absensi_mode ?? null,
