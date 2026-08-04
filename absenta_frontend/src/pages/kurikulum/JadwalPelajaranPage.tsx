@@ -383,9 +383,9 @@ export default function JadwalPelajaranPage() {
 
   // Pillar 2: Memoize complex JSX
   const pageContent = useMemo(() => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionCard fullWidth>
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             {viewMode === 'grid' && (
               <Button 

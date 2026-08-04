@@ -57,12 +57,11 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onToggleLeftPanel,
 }) => {
   return (
-    <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20 !overflow-visible">
+    <Card className="p-2.5 sm:p-3 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-2.5 relative z-20 !overflow-visible">
       <div className="flex items-center gap-2">
-        <Calendar className="w-5 h-5 text-purple-600" />
+        <Calendar className="w-4 h-4 text-purple-600" />
         <div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Visual Grid Timetable</h3>
-          <p className="text-xs text-slate-500">Tampilkan jadwal KBM aktif untuk penempatan.</p>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">Visual Grid Timetable</h3>
         </div>
       </div>
 
