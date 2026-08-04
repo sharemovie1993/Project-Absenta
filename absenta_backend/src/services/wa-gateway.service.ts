@@ -601,45 +601,29 @@ const waGatewayServiceLocal = {
       };
     }
 
-    if (!entry && hasCreds) {
+    if (!entry || !entry.sock) {
       return {
-        health: 'connected' as const,
-        status: 'connected' as const,
+        health: hasCreds ? ('connecting' as const) : ('disconnected' as const),
+        status: hasCreds ? ('connecting' as const) : ('disconnected' as const),
         number: savedNumber,
-        has_qr: false,
-        decrypt_fail_count: 0,
-        last_message_received_at: null,
-        last_message_sent_at: null,
-        warning: null,
-      };
-    }
-
-    const effectiveStatus = (entry?.status === 'connected' || hasCreds) ? 'connected' : (entry?.status ?? 'connecting');
-
-    if (effectiveStatus === 'connecting' && !hasCreds) {
-      return {
-        health: 'connecting' as const,
-        status: 'connecting' as const,
-        number: null,
-        has_qr: !!(entry?.qrBase64),
-        decrypt_fail_count: 0,
-        last_message_received_at: null,
-        last_message_sent_at: null,
-        warning: null,
-      };
-    }
-
-    const now = Date.now();
-
-    if (!entry?.sock) {
-      return {
-        health: hasCreds ? ('connected' as const) : ('ghost' as const),
-        status: 'connected' as const,
-        number: entry?.connectedNumber ?? savedNumber,
         has_qr: false,
         decrypt_fail_count: entry?.decryptFailCount ?? 0,
         last_message_received_at: entry?.lastMessageReceivedAt ?? null,
         last_message_sent_at: entry?.lastMessageSentAt ?? null,
+        warning: hasCreds ? 'Menghubungkan ulang sesi ke server WhatsApp...' : null,
+      };
+    }
+
+    const currentStatus = entry.status;
+    if (currentStatus !== 'connected') {
+      return {
+        health: currentStatus as any,
+        status: currentStatus as any,
+        number: entry.connectedNumber ?? savedNumber,
+        has_qr: !!(entry.qrBase64),
+        decrypt_fail_count: entry.decryptFailCount,
+        last_message_received_at: entry.lastMessageReceivedAt,
+        last_message_sent_at: entry.lastMessageSentAt,
         warning: null,
       };
     }
