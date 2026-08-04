@@ -16,7 +16,11 @@ import {
   buildKospStrukturTableHtml,
   buildKospKalenderPendidikanHtml,
   buildKospJamKbmHtml,
-  buildKospDudiMitraHtml
+  buildKospDudiMitraHtml,
+  buildKospCoverLogoHtml,
+  buildKospSkTimTableHtml,
+  buildKospP5TableHtml,
+  buildKospEskulTableHtml
 } from '../../utils/kurikulum/kospDataHelper';
 import { WordEditorPage, WordEditorConfig } from '../../components/common/WordEditorModal';
 import type { Jurusan, StrukturKurikulum } from '../../types/academic';
@@ -145,7 +149,27 @@ export const useKospBuilderState = () => {
     return buildKospDudiMitraHtml(dudiList || []);
   }, [dudiList]);
 
-  // 14. Daftar Jurusan Summary
+  // 14. Build Cover Logo HTML
+  const coverLogoHtml = useMemo(() => {
+    return buildKospCoverLogoHtml(sekolahInfo?.logo_url, sekolahInfo?.nama || 'SMK');
+  }, [sekolahInfo?.logo_url, sekolahInfo?.nama]);
+
+  // 15. Build SK Tim Table HTML
+  const tabelSkTimHtml = useMemo(() => {
+    return buildKospSkTimTableHtml(namaKepalaSekolah, wakasekKurikulum);
+  }, [namaKepalaSekolah, wakasekKurikulum]);
+
+  // 16. Build P5 Matriks HTML
+  const tabelP5Html = useMemo(() => {
+    return buildKospP5TableHtml();
+  }, []);
+
+  // 17. Build Eskul Matriks HTML
+  const tabelEskulHtml = useMemo(() => {
+    return buildKospEskulTableHtml();
+  }, []);
+
+  // 18. Daftar Jurusan Summary
   const daftarJurusanSummaryHtml = useMemo(() => {
     if (!jurusanList || jurusanList.length === 0) return '';
     return `
@@ -157,10 +181,10 @@ export const useKospBuilderState = () => {
     `;
   }, [jurusanList]);
 
-  // 15. Editor Modal State
+  // 19. Editor Modal State
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-  // 16. Compile Pages with Live Variable Substitutions
+  // 20. Compile Pages with Live Variable Substitutions
   const compiledPages = useMemo<WordEditorPage[]>(() => {
     const basePages: WordEditorPage[] = kospDbConfig?.halaman_html
       ? (typeof kospDbConfig.halaman_html === 'string' ? JSON.parse(kospDbConfig.halaman_html) : kospDbConfig.halaman_html)
@@ -170,6 +194,9 @@ export const useKospBuilderState = () => {
       '{{NAMASEKOLAH}}': sekolahInfo?.nama || 'SMK NEGERI 1 PLERED',
       '{{TAHUNPELAJARAN}}': selectedTahunNama,
       '{{KOTASEKOLAH}}': sekolahInfo?.kota || sekolahInfo?.kecamatan || 'Purwakarta',
+      '{{ALAMATSEKOLAH}}': sekolahInfo?.alamat || 'Jl. Raya Cibogo Girang, Plered, Purwakarta',
+      '{{NPSNSEKOLAH}}': (sekolahInfo as any)?.npsn || '20217088',
+      '{{LOGOSEKOLAH_HTML}}': coverLogoHtml,
       '{{TANGGALPENGESAHAN}}': new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
       '{{NAMAKETUAKOMITE}}': 'H. Dudung Abdurrahman, M.Pd.',
       '{{NAMAKEPALASEKOLAH}}': namaKepalaSekolah,
@@ -194,6 +221,9 @@ export const useKospBuilderState = () => {
       '{{TABEL_KALENDER_PENDIDIKAN}}': tabelKalenderPendidikanHtml,
       '{{TABEL_JAM_KBM}}': tabelJamKbmHtml,
       '{{TABEL_DUDI_MITRA}}': tabelDudiMitraHtml,
+      '{{TABEL_SK_TIM_PENYUSUN}}': tabelSkTimHtml,
+      '{{TABEL_P5_MATRIKS}}': tabelP5Html,
+      '{{TABEL_ESKUL_MATRIKS}}': tabelEskulHtml,
     };
 
     return basePages.map(page => {
@@ -209,6 +239,10 @@ export const useKospBuilderState = () => {
     selectedTahunNama,
     namaKepalaSekolah,
     nipKepalaSekolah,
+    coverLogoHtml,
+    tabelSkTimHtml,
+    tabelP5Html,
+    tabelEskulHtml,
     daftarJurusanSummaryHtml,
     tabelStrukturSemuaJurusanHtml,
     tabelKalenderPendidikanHtml,
@@ -216,7 +250,7 @@ export const useKospBuilderState = () => {
     tabelDudiMitraHtml
   ]);
 
-  // 17. Initial Configuration (Margin, Paper)
+  // 21. Initial Configuration (Margin, Paper)
   const initialConfig = useMemo<WordEditorConfig>(() => {
     if (kospDbConfig?.config) {
       try {
@@ -226,7 +260,7 @@ export const useKospBuilderState = () => {
     return { paperKey: 'A4', orientation: 'portrait' };
   }, [kospDbConfig]);
 
-  // 18. Upsert Mutation
+  // 22. Upsert Mutation
   const upsertMutation = useMutation({
     mutationFn: (payload: { halaman_html: string; config?: string }) => {
       return kospApi.upsertConfig({

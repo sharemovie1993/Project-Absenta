@@ -2,6 +2,154 @@ import { StrukturKurikulum, getJpValueForSemester, getSubjectSortRank, detectKel
 import type { Jurusan } from '../../types/academic';
 
 /**
+ * Generates Word-style HTML for Cover Logo
+ */
+export const buildKospCoverLogoHtml = (logoUrl?: string, defaultName: string = 'Sekolah'): string => {
+  if (logoUrl) {
+    return `<img src="${logoUrl}" alt="Logo Sekolah" style="max-height:160px; width:auto; margin:24px auto; display:block; object-fit:contain;" />`;
+  }
+  return `
+    <div style="width:140px; height:140px; margin:28px auto; border-radius:50%; background-color:#eff6ff; border:3px double #2563eb; display:flex; align-items:center; justify-content:center; text-align:center; color:#1e40af; font-weight:bold; font-size:12px; padding:12px; box-sizing:border-box;">
+      LOGO RESMI<br/>${defaultName.toUpperCase()}
+    </div>
+  `;
+};
+
+/**
+ * Generates Word-style HTML Table for SK Tim Penyusun KOSP
+ */
+export const buildKospSkTimTableHtml = (namaKepsek: string, wakasekKurikulum: string): string => {
+  const list = [
+    { no: 1, nama: namaKepsek, jabatanKedinasan: 'Kepala Sekolah', jabatanTim: 'Penanggung Jawab' },
+    { no: 2, nama: wakasekKurikulum, jabatanKedinasan: 'Wakasek Bidang Kurikulum', jabatanTim: 'Ketua Tim Penyusun' },
+    { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatanKedinasan: 'Pengawas Pembina Sekolah', jabatanTim: 'Narasumber / Pendamping' },
+    { no: 4, nama: 'H. Dudung Abdurrahman, M.Pd.', jabatanKedinasan: 'Ketua Komite Sekolah', jabatanTim: 'Narasumber Komite' },
+    { no: 5, nama: 'Wakasek Bidang Kesiswaan', jabatanKedinasan: 'Wakasek Kesiswaan', jabatanTim: 'Anggota / Tim Pengembang' },
+    { no: 6, nama: 'Wakasek Bidang Humas & Hubin', jabatanKedinasan: 'Wakasek Humas/DUDI', jabatanTim: 'Anggota / Tim Penyelaras DUDI' },
+    { no: 7, nama: 'Wakasek Bidang Sarana Prasarana', jabatanKedinasan: 'Wakasek Sarpras', jabatanTim: 'Anggota / Tim Fasilitas' },
+    { no: 8, nama: 'Para Ketua Program Keahlian (Kaprog)', jabatanKedinasan: 'Kaprog Keahlian', jabatanTim: 'Anggota / Tim Kurikulum Jurusan' },
+    { no: 9, nama: 'Koor. Bimbingan Konseling (BK)', jabatanKedinasan: 'Guru BK', jabatanTim: 'Anggota / Tim Asesmen & Karakter' },
+  ];
+
+  const rows = list.map(item => `
+    <tr>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.no}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.jabatanKedinasan}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; font-weight:bold; color:#1e3a8a;">${item.jabatanTim}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Susunan Tim Pengembang & Penyusun KOSP
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:7%;">NO</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:33%;">NAMA PERSONAL</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:30%;">JABATAN KEDINASAN</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:30%;">TUGAS DALAM TIM</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
+ * Generates Word-style HTML Table for Tema P5 (Projek Penguatan Profil Pelajar Pancasila)
+ */
+export const buildKospP5TableHtml = (): string => {
+  const temaList = [
+    { no: 1, tema: 'Gaya Hidup Berkelanjutan', alokasi: 'Kelas X (Sem 1)', target: 'Kesadaran Pengelolaan Sampah & Lingkungan Sekolah' },
+    { no: 2, tema: 'Kearifan Lokal', alokasi: 'Kelas X (Sem 2)', target: 'Pelestarian Seni Budaya & Tradisi Daerah' },
+    { no: 3, tema: 'Bhinneka Tunggal Ika', alokasi: 'Kelas XI (Sem 1)', target: 'Toleransi & Moderasi Beragama dalam Kebinekaan' },
+    { no: 4, tema: 'Kebekerjaan (Tema Wajib SMK)', alokasi: 'Kelas XI (Sem 2) & XII', target: 'Budaya Kerja Industri (5R/5S), K3LH, & Soft Skills' },
+  ];
+
+  const rows = temaList.map(item => `
+    <tr>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.no}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold; color:#0f172a;">${item.tema}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.alokasi}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.target}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Matriks Tema Projek Penguatan Profil Pelajar Pancasila (P5) & Budaya Kerja
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:7%;">NO</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:33%;">TEMA P5</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:22%;">SASARAN & WAKTU</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:38%;">FOCUS CAPAIAN PROJECT</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
+ * Generates Word-style HTML Table for Ekstrakurikuler
+ */
+export const buildKospEskulTableHtml = (): string => {
+  const eskulList = [
+    { no: 1, jenis: 'Wajib', nama: 'Pramuka (Kepramukaan)', sasaran: 'Seluruh Siswa Kelas X', pembina: 'Tim Pembina Kepramukaan' },
+    { no: 2, jenis: 'Pilihan (Bela Negara)', nama: 'Paskibra & PMR', sasaran: 'Siswa Minat Kelas X & XI', pembina: 'Pembina Paskibra & PMR' },
+    { no: 3, jenis: 'Pilihan (Olahraga)', nama: 'Futsal, Bola Voli, Basket, Pencak Silat', sasaran: 'Siswa Minat Kelas X, XI, XII', pembina: 'Guru Olahraga & Pelatih Eksternal' },
+    { no: 4, jenis: 'Pilihan (Seni & Komputer)', nama: 'Seni Musik, Marawis, IT Club & Design', sasaran: 'Siswa Minat Kelas X & XI', pembina: 'Pembina Seni & Komputer' },
+    { no: 5, jenis: 'Pilihan (Kerohanian)', nama: 'ROHIS / Ikatan Remaja Masjid', sasaran: 'Seluruh Siswa Muslim', pembina: 'Guru Agama Islam' },
+  ];
+
+  const rows = eskulList.map(item => `
+    <tr>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.no}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; font-weight:bold; color:${item.jenis === 'Wajib' ? '#b91c1c' : '#0369a1'};">${item.jenis}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.sasaran}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.pembina}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Program Pengembangan Diri & Ekstrakurikuler Sekolah
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:6%;">NO</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:15%;">SIFAT</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:30%;">NAMA EKSTRAKURIKULER</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:24%;">TARGET PESERTA</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:25%;">PEMBINA / PELATIH</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
  * Generates Word-style HTML Table for Kalender Pendidikan
  */
 export const buildKospKalenderPendidikanHtml = (kalenderItems: any[] = []): string => {
@@ -114,7 +262,7 @@ export const buildKospDudiMitraHtml = (dudiItems: any[] = []): string => {
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama || item.nama_mitra || item.nama_perusahaan || '-'}</td>
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.bidang_usaha || item.bidang || 'Industri / Jasa'}</td>
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.alamat || item.kota || '-'}</td>
-      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; color:#166534; font-weight:bold;">AKTIFF (MoU)</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; color:#166534; font-weight:bold;">AKTIF (MoU)</td>
     </tr>
   `).join('');
 

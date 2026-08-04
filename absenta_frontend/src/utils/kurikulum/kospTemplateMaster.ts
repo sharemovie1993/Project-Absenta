@@ -6,7 +6,85 @@ import { WordEditorPage } from '../../components/common/WordEditorModal';
 export const getDefaultKospMasterPages = (): WordEditorPage[] => {
   return [
     {
-      label: 'Halaman Pengesahan',
+      label: 'Sampul Depan (Cover Resmi)',
+      html: `
+        <div style="text-align:center; padding:20px 10px; font-family:Arial, sans-serif;">
+          <!-- Top Border Accent -->
+          <div style="width:100%; height:5px; background:linear-gradient(to right, #1e3a8a, #3b82f6, #1e3a8a); margin-bottom:24px;"></div>
+
+          <h1 style="margin:0; font-size:20pt; font-weight:bold; color:#0f172a; letter-spacing:1px; text-transform:uppercase;">
+            KURIKULUM OPERASIONAL<br/>SATUAN PENDIDIKAN (KOSP)
+          </h1>
+          <h2 style="margin:8px 0 0 0; font-size:14pt; font-weight:bold; color:#1e40af; text-transform:uppercase;">
+            {{NAMASEKOLAH}}
+          </h2>
+          <p style="margin:6px 0 0 0; font-size:12pt; font-weight:bold; color:#475569;">
+            TAHUN AJARAN {{TAHUNPELAJARAN}}
+          </p>
+
+          <!-- Dynamic Logo Placeholder -->
+          <div style="margin:36px auto;">
+            {{LOGOSEKOLAH_HTML}}
+          </div>
+
+          <div style="margin-top:20px; font-size:11pt; color:#334155;">
+            <p style="margin:2px 0; font-weight:bold; font-size:12pt; text-transform:uppercase;">DISUSUN OLEH:</p>
+            <p style="margin:2px 0; font-weight:bold; color:#1e293b;">TIM PENGEMBANG KURIKULUM {{NAMASEKOLAH}}</p>
+          </div>
+
+          <div style="margin-top:48px; border-top:2px solid #e2e8f0; padding-top:16px; font-size:10.5pt; color:#64748b; line-height:1.5;">
+            <strong>PEMERINTAH PROVINSI / DINAS PENDIDIKAN</strong><br/>
+            <strong>CABANG DINAS PENDIDIKAN WILAYAH SELEMPANG</strong><br/>
+            <span>Alamat: {{ALAMATSEKOLAH}} | {{KOTASEKOLAH}}</span>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: 'Kata Pengantar & Daftar Isi',
+      html: `
+        <div style="font-family:Arial, sans-serif;">
+          <h3 style="text-align:center; font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:0;">KATA PENGANTAR</h3>
+          
+          <p style="text-align:justify; font-size:11pt; line-height:1.6; text-indent:30px;">
+            Puji dan syukur kami panjatkan ke hadirat Allah SWT Tuhan Yang Maha Esa, karena atas rahmat dan karunia-Nya naskah Dokumen <strong>Kurikulum Operasional Satuan Pendidikan (KOSP) {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}}</strong> ini telah berhasil disusun dan diselesaikan dengan baik.
+          </p>
+          <p style="text-align:justify; font-size:11pt; line-height:1.6; text-indent:30px;">
+            Kurikulum ini disusun berbasis Kurikulum Merdeka (Kepmendikbudristek No. 262/M/2022) serta mengacu pada karakteristik sosial-kultural sekolah, potensi daerah, dan kebutuhan Industri / Dunia Usaha dan Dunia Kerja (DUDI) mitra. KOSP ini menjadi pedoman utama dalam penyelenggaraan intrakurikuler, kokurikuler (P5), serta Praktik Kerja Lapangan (PKL).
+          </p>
+          <p style="text-align:justify; font-size:11pt; line-height:1.6; text-indent:30px;">
+            Ucapan terima kasih dan penghargaan kami sampaikan kepada Tim Penyusun Kurikulum, Komite Sekolah, Pengawas Pembina, serta DUDI Pasangan yang telah memberikan kontribusi pemikiran dan masukan berharga.
+          </p>
+
+          <div style="margin-top:30px; text-align:right; font-size:11pt;">
+            {{KOTASEKOLAH}}, {{TANGGALPENGESAHAN}}<br/>
+            Kepala Sekolah,<br/><br/><br/><br/>
+            <strong><u>{{NAMAKEPALASEKOLAH}}</u></strong><br/>
+            NIP. {{NIPKEPALASEKOLAH}}
+          </div>
+
+          <hr style="margin:30px 0; border:0; border-top:1px solid #cbd5e1;" />
+
+          <h3 style="text-align:center; font-size:14pt; font-weight:bold; text-transform:uppercase;">DAFTAR ISI NASKAH KOSP</h3>
+          <table style="width:100%; font-size:11pt; border-collapse:collapse; line-height:1.8;">
+            <tr><td style="font-weight:bold;">HALAMAN COVER / SAMPUL DEPAN</td><td style="text-align:right;">i</td></tr>
+            <tr><td style="font-weight:bold;">LEMBAR PENGESAHAN KURIKULUM</td><td style="text-align:right;">ii</td></tr>
+            <tr><td style="font-weight:bold;">KATA PENGANTAR & DAFTAR ISI</td><td style="text-align:right;">iii</td></tr>
+            <tr><td style="font-weight:bold;">BAB I: KARAKTERISTIK SATUAN PENDIDIKAN</td><td style="text-align:right;">1</td></tr>
+            <tr><td style="font-weight:bold;">BAB II: VISI, MISI, DAN TUJUAN SEKOLAH</td><td style="text-align:right;">3</td></tr>
+            <tr><td style="font-weight:bold;">BAB III: PENGORGANISASIAN PEMBELAJARAN & PKL</td><td style="text-align:right;">5</td></tr>
+            <tr><td style="font-weight:bold;">BAB IV & V: RENCANA PEMBELAJARAN, ASESMEN, & EVALUASI</td><td style="text-align:right;">8</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 1: SK TIM PENYUSUN KOSP</td><td style="text-align:right;">10</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 2: TABEL STRUKTUR KURIKULUM LIVE SEMUA JURUSAN</td><td style="text-align:right;">12</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 3: KALENDER PENDIDIKAN & HARI EFEKTIF</td><td style="text-align:right;">15</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 4: PENGATURAN JAM KBM & ROSTER</td><td style="text-align:right;">17</td></tr>
+            <tr><td style="font-weight:bold;">LAMPIRAN 5: DAFTAR INDUSTRI PASANGAN (DUDI MITRA PKL)</td><td style="text-align:right;">19</td></tr>
+          </table>
+        </div>
+      `
+    },
+    {
+      label: 'Halaman Pengesahan Resmi',
       html: `
         <div style="text-align:center; margin-bottom:20px;">
           <h2 style="margin:0; font-size:16pt; font-weight:bold; text-transform:uppercase;">LEMBAR PENGESAHAN</h2>
@@ -59,12 +137,12 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       html: `
         <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB I: KARAKTERISTIK SATUAN PENDIDIKAN</h3>
 
-        <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Gambaran Umum Sekolah</h4>
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Gambaran Umum & Context Sekolah</h4>
         <div class="kosp-section-karakteristik">
           {{KARAKTERISTIK_SEKOLAH}}
         </div>
 
-        <h4 style="font-size:12pt; font-weight:bold; margin-top:16px; color:#1e293b;">B. Karakteristik Konsentrasi Keahlian (Jurusan)</h4>
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:16px; color:#1e293b;">B. Karakteristik Konsentrasi Keahlian (Jurusan-Jurusan)</h4>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           {{NAMASEKOLAH}} menyelenggarakan program pendidikan keahlian berbasis Kurikulum Merdeka yang disesuaikan dengan kebutuhan Industri, Dunia Usaha, dan Dunia Kerja (DUDI) mitra, meliputi:
         </p>
@@ -93,7 +171,7 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Bab III: Pengorganisasian Pembelajaran',
+      label: 'Bab III: Pengorganisasian Pembelajaran & PKL',
       html: `
         <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB III: PENGORGANISASIAN PEMBELAJARAN</h3>
 
@@ -102,10 +180,16 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
           Struktur kurikulum intrakurikuler pada {{NAMASEKOLAH}} disusun berdasarkan Kepmendikbudristek No. 262/M/2022 tentang Perubahan atas Kepmendikbudristek No. 56/M/2022 tentang Pedoman Penerapan Kurikulum dalam Rangka Pemulihan Pembelajaran.
         </p>
 
-        <h4 style="font-size:12pt; font-weight:bold; margin-top:18px; color:#1e293b;">B. Skema Praktik Kerja Lapangan (PKL)</h4>
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:18px; color:#1e293b;">B. Projek Penguatan Profil Pelajar Pancasila (P5) & Budaya Kerja</h4>
+        {{TABEL_P5_MATRIKS}}
+
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:18px; color:#1e293b;">C. Skema Praktik Kerja Lapangan (PKL)</h4>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           PKL dilaksanakan selama 1 (satu) semester penuh di Kelas XII (Semester Ganjil) dengan bobot 44-46 JP/minggu di Dunia Usaha/Dunia Kerja (DUDI) mitra. Pada semester ini, mata pelajaran Konsentrasi Keahlian (KK) dan Projek Kreatif (PKK) digantikan secara utuh oleh kegiatan PKL di Industri.
         </p>
+
+        <h4 style="font-size:12pt; font-weight:bold; margin-top:18px; color:#1e293b;">D. Ekstrakurikuler & Pengembangan Diri</h4>
+        {{TABEL_ESKUL_MATRIKS}}
       `
     },
     {
@@ -125,9 +209,20 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Lampiran 1: Struktur Kurikulum Live Semua Jurusan',
+      label: 'Lampiran 1: SK Tim Penyusun KOSP',
       html: `
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 1: TABEL STRUKTUR KURIKULUM RESMI</h3>
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 1: SK TIM PENYUSUN KOSP</h3>
+        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
+          Susunan Tim Pengembang & Penyusun Kurikulum Operasional Satuan Pendidikan (KOSP) {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}}:
+        </p>
+
+        {{TABEL_SK_TIM_PENYUSUN}}
+      `
+    },
+    {
+      label: 'Lampiran 2: Struktur Kurikulum Live Semua Jurusan',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 2: TABEL STRUKTUR KURIKULUM RESMI</h3>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           Tabel Alokasi Jam Pelajaran (JP) per minggu/semester untuk setiap konsentrasi keahlian pada {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}}:
         </p>
@@ -136,9 +231,9 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Lampiran 2: Kalender Pendidikan Sekolah',
+      label: 'Lampiran 3: Kalender Pendidikan Sekolah',
       html: `
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 2: KALENDER PENDIDIKAN SEKOLAH</h3>
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 3: KALENDER PENDIDIKAN SEKOLAH</h3>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           Kalender Pendidikan {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}} beserta rincian minggu efektif dan agenda kegiatan akademik:
         </p>
@@ -147,9 +242,9 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Lampiran 3: Pengaturan Jam KBM & Roster',
+      label: 'Lampiran 4: Pengaturan Jam KBM & Roster',
       html: `
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 3: ALOKASI WAKTU JAM KBM</h3>
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 4: ALOKASI WAKTU JAM KBM</h3>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           Struktur rentang waktu Kegiatan Belajar Mengajar (KBM) harian {{NAMASEKOLAH}}:
         </p>
@@ -158,9 +253,9 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Lampiran 4: Mitra Industri / DUDI Pasangan',
+      label: 'Lampiran 5: Mitra Industri / DUDI Pasangan',
       html: `
-        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 4: DAFTAR INDUSTRI PASANGAN (DUDI MITRA)</h3>
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 5: DAFTAR INDUSTRI PASANGAN (DUDI MITRA)</h3>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           Daftar Dunia Usaha, Dunia Industri, dan Dunia Kerja (DUDI) mitra kerja sama {{NAMASEKOLAH}} dalam pelaksanaan Praktik Kerja Lapangan (PKL), sinkronisasi kurikulum, dan rekrutmen lulusan:
         </p>
