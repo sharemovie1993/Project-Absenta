@@ -220,11 +220,10 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   const tabs = useMemo(() => {
-    const showEasyTunnel = import.meta.env.VITE_DEPLOY_SCENARIO === 'hybrid';
-
     const list = (isTenantAdmin || !can('core.system.config.view'))
       ? [
-          { id: 'tenant_profile', label: 'Profil Sekolah' }
+          { id: 'tenant_profile', label: 'Profil Sekolah' },
+          { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
         ]
       : [
           { id: 'general', label: 'Umum' },
@@ -234,18 +233,15 @@ const SettingsPage: React.FC = () => {
           { id: 'security', label: 'Keamanan' },
           { id: 'notifications', label: 'Notifikasi' },
           { id: 'attendance', label: 'Absensi' },
-          { id: 'parent_app', label: 'Parent App' }
+          { id: 'parent_app', label: 'Parent App' },
+          { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
         ];
 
-    if (showEasyTunnel) {
-      list.push({ id: 'easy_tunnel', label: 'Akses Online' });
-    }
-
-    if (can('core.system.config.update')) {
+    if (can('core.system.config.update') || isSuperAdminUser) {
       list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
     }
     return list;
-  }, [isTenantAdmin, can]);
+  }, [isTenantAdmin, can, isSuperAdminUser]);
 
   const toolbar = useMemo(() => (
     <div className="flex items-center gap-2">
