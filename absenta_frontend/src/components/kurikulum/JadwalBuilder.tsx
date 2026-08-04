@@ -39,6 +39,7 @@ import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
 import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
+import { calculateSmartJpStatus } from './jadwal-builder/jpCalculationHelper';
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
 const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -267,42 +268,21 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
 
     return baseList.map(m => {
-      const actualInClass = selectedKelasId 
-        ? allJadwal.filter(j => j.kelas_id === selectedKelasId && (selectedGuruId ? j.guru_id === selectedGuruId : true) && j.mapel_id === m.id).length
-        : 0;
-
-      const actualTotal = allJadwal.filter(j => 
-        (selectedGuruId ? j.guru_id === selectedGuruId : true) && 
-        j.mapel_id === m.id
-      ).length;
-
-      const actual = selectedKelasId ? actualInClass : actualTotal;
-      const target = m.target_jp || 2;
-
-      let statusDotClass = 'bg-slate-300 dark:bg-slate-600';
-      let rightBadge = `0/${target} JP (Belum)`;
-      let rightBadgeClass = 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
-
-      if (actual > target) {
-        statusDotClass = 'bg-rose-500 shadow-sm shadow-rose-500/50';
-        rightBadge = `⚠️ ${actual}/${target} JP (Over +${actual - target})`;
-        rightBadgeClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-extrabold';
-      } else if (actual === target) {
-        statusDotClass = 'bg-emerald-500 shadow-sm shadow-emerald-500/50';
-        rightBadge = `✓ ${actual}/${target} JP (Pas)`;
-        rightBadgeClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-extrabold';
-      } else if (actual > 0) {
-        statusDotClass = 'bg-amber-500 shadow-sm shadow-amber-500/50';
-        rightBadge = `${actual}/${target} JP (Sisa ${target - actual} JP)`;
-        rightBadgeClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-extrabold';
-      }
+      const smartStatus = calculateSmartJpStatus({
+        mapelId: m.id,
+        selectedGuruId,
+        selectedKelasId,
+        allJadwal,
+        targetJpMap,
+        defaultTarget: m.target_jp
+      });
 
       return {
         label: m.nama_mapel,
         value: m.id,
-        statusDotClass,
-        rightBadge,
-        rightBadgeClass,
+        statusDotClass: smartStatus.statusDotClass,
+        rightBadge: smartStatus.rightBadge,
+        rightBadgeClass: smartStatus.rightBadgeClass,
       };
     });
   }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId, selectedKelasId, targetJpMap]);
@@ -969,34 +949,14 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                   </div>
                 ) : filteredMapels.length > 0 ? (
                   filteredMapels.map(m => {
-                    const actual = allJadwal.filter(j => 
-                      (viewMode === 'GURU' && selectedGuruId ? j.guru_id === selectedGuruId : true) &&
-                      (viewMode === 'KELAS' && selectedKelasId ? j.kelas_id === selectedKelasId : true) &&
-                      j.mapel_id === m.id
-                    ).length;
-                    const target = (m as any).alokasi_jam || (m as any).jp_per_minggu || targetJpMap.get(m.id) || 2;
-
-                    let badgeNode = <span className="text-[10px] text-slate-400 font-mono shrink-0">{m.kode_mapel}</span>;
-
-                    if (actual > target) {
-                      badgeNode = (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                          ⚠️ {actual}/{target} JP (Over +{actual - target})
-                        </span>
-                      );
-                    } else if (actual === target) {
-                      badgeNode = (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                          ✓ {actual}/{target} JP (Pas)
-                        </span>
-                      );
-                    } else if (actual > 0) {
-                      badgeNode = (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
-                          {actual}/{target} JP (Sisa {target - actual})
-                        </span>
-                      );
-                    }
+                    const smartStatus = calculateSmartJpStatus({
+                      mapelId: m.id,
+                      selectedGuruId: viewMode === 'GURU' ? selectedGuruId : undefined,
+                      selectedKelasId,
+                      allJadwal,
+                      targetJpMap,
+                      defaultTarget: (m as any).alokasi_jam || (m as any).jp_per_minggu || 2
+                    });
 
                     return (
                       <button
@@ -1010,7 +970,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                         )}
                       >
                         <span className="truncate pr-2">{m.nama_mapel}</span>
-                        {badgeNode}
+                        <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded shrink-0", smartStatus.rightBadgeClass)}>
+                          {smartStatus.rightBadge}
+                        </span>
                       </button>
                     );
                   })
