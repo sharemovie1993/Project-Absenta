@@ -82,7 +82,9 @@ export default function FloatingMessenger() {
         }
       }
     } catch (err) {
-      console.error('Failed to load active messenger ticket:', err);
+      // Modul tiket dikelola secara eksternal di Server Lisensi — tangani error dengan aman
+      setTicket(null);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
