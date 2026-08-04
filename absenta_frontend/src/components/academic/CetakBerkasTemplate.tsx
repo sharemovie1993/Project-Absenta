@@ -560,9 +560,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
                             : 'bg-amber-100/50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
                         }`}
                       >
-                        >
-                          {item.status_text}
-                        </span>
+                        {item.status_text}
+                      </span>
                       </div>
                     </CardContent>
                   </Card>
