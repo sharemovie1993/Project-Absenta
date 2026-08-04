@@ -5,13 +5,19 @@ import { useTenant } from '../useTenant';
 import { useJenjang } from '../useJenjang';
 import { useTahunPelajaranOptions } from '../useTahunPelajaranOptions';
 import { useJurusanOptions } from '../useJurusanOptions';
+import { useDudiOptions } from '../useDudiOptions';
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { kospApi } from '../../api/kurikulum/kosp.api';
 import { getStrukturTree } from '../../api/academic/strukturOrganisasi.api';
 import { toast } from 'react-hot-toast';
 import { getDefaultKospMasterPages } from '../../utils/kurikulum/kospTemplateMaster';
-import { buildKospStrukturTableHtml } from '../../utils/kurikulum/kospDataHelper';
+import { 
+  buildKospStrukturTableHtml,
+  buildKospKalenderPendidikanHtml,
+  buildKospJamKbmHtml,
+  buildKospDudiMitraHtml
+} from '../../utils/kurikulum/kospDataHelper';
 import { WordEditorPage, WordEditorConfig } from '../../components/common/WordEditorModal';
 import type { Jurusan, StrukturKurikulum } from '../../types/academic';
 
@@ -33,6 +39,11 @@ export const useKospBuilderState = () => {
     rawList: jurusanList,
     isLoading: isLoadingJurusan
   } = useJurusanOptions();
+
+  const {
+    rawList: dudiList,
+    isLoading: isLoadingDudi
+  } = useDudiOptions();
 
   // Selected Tahun Pelajaran
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
@@ -104,6 +115,21 @@ export const useKospBuilderState = () => {
       .join('');
   }, [jurusanList, mappingAllData]);
 
+  // Build Table HTML for Kalender Pendidikan
+  const tabelKalenderPendidikanHtml = useMemo(() => {
+    return buildKospKalenderPendidikanHtml([]);
+  }, []);
+
+  // Build Table HTML for Jam KBM / Roster
+  const tabelJamKbmHtml = useMemo(() => {
+    return buildKospJamKbmHtml([]);
+  }, []);
+
+  // Build Table HTML for DUDI Mitra
+  const tabelDudiMitraHtml = useMemo(() => {
+    return buildKospDudiMitraHtml(dudiList || []);
+  }, [dudiList]);
+
   // Daftar Jurusan Summary
   const daftarJurusanSummaryHtml = useMemo(() => {
     if (!jurusanList || jurusanList.length === 0) return '';
@@ -124,8 +150,6 @@ export const useKospBuilderState = () => {
     const basePages: WordEditorPage[] = kospDbConfig?.halaman_html
       ? (typeof kospDbConfig.halaman_html === 'string' ? JSON.parse(kospDbConfig.halaman_html) : kospDbConfig.halaman_html)
       : getDefaultKospMasterPages();
-
-    const UNSET = '<span style="color:#dc2626;font-weight:bold;background-color:#fee2e2;padding:1px 5px;border-radius:3px">[BELUM DIISI]</span>';
 
     const replacements: Record<string, string> = {
       '{{NAMASEKOLAH}}': sekolahInfo?.nama || 'SMK NEGERI 1 PLERED',
@@ -152,6 +176,9 @@ export const useKospBuilderState = () => {
         </ol>
       `,
       '{{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}': tabelStrukturSemuaJurusanHtml,
+      '{{TABEL_KALENDER_PENDIDIKAN}}': tabelKalenderPendidikanHtml,
+      '{{TABEL_JAM_KBM}}': tabelJamKbmHtml,
+      '{{TABEL_DUDI_MITRA}}': tabelDudiMitraHtml,
     };
 
     return basePages.map(page => {
@@ -168,7 +195,10 @@ export const useKospBuilderState = () => {
     namaKepalaSekolah,
     nipKepalaSekolah,
     daftarJurusanSummaryHtml,
-    tabelStrukturSemuaJurusanHtml
+    tabelStrukturSemuaJurusanHtml,
+    tabelKalenderPendidikanHtml,
+    tabelJamKbmHtml,
+    tabelDudiMitraHtml
   ]);
 
   // Initial Configuration (Margin, Paper)
@@ -218,7 +248,7 @@ export const useKospBuilderState = () => {
     setIsEditorOpen,
     compiledPages,
     initialConfig,
-    isLoading: isLoadingTahun || isLoadingJurusan || isLoadingKospConfig || isLoadingMapping,
+    isLoading: isLoadingTahun || isLoadingJurusan || isLoadingKospConfig || isLoadingMapping || isLoadingDudi,
     isSaving: upsertMutation.isPending,
     handleSaveKospPages,
     namaKepalaSekolah,

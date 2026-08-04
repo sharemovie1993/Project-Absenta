@@ -2,6 +2,146 @@ import { StrukturKurikulum, getJpValueForSemester, getSubjectSortRank, detectKel
 import type { Jurusan } from '../../types/academic';
 
 /**
+ * Generates Word-style HTML Table for Kalender Pendidikan
+ */
+export const buildKospKalenderPendidikanHtml = (kalenderItems: any[] = []): string => {
+  if (!kalenderItems || kalenderItems.length === 0) {
+    return `
+      <div style="padding:10px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; font-size:11px; text-align:center; color:#64748b;">
+        <em>Kalender Pendidikan disesuaikan dengan Keputusan Kepala Dinas Pendidikan Provinsi setempat tentang Kalender Pendidikan Tahun Ajaran berjalan.</em>
+      </div>
+    `;
+  }
+
+  const rowsHtml = kalenderItems.map((item, idx) => `
+    <tr>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${idx + 1}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.tanggal || item.tgl || '-'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.kegiatan || item.nama_kegiatan || '-'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.keterangan || item.kat || 'Kegiatan Akademik'}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Agenda Kegiatan Kalender Pendidikan Sekolah
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:7%;">NO</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:28%;">TANGGAL / WAKTU</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:45%;">NAMA KEGIATAN</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:20%;">KATEGORI</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
+ * Generates Word-style HTML Table for Pengaturan Jam KBM / Roster Waktu Belajar
+ */
+export const buildKospJamKbmHtml = (jamKbmItems: any[] = []): string => {
+  const defaultTimes = [
+    { jamKe: 1, waktu: '07.00 - 07.45', durasi: '45 Menit', ket: 'KBM / Upacara' },
+    { jamKe: 2, waktu: '07.45 - 08.30', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 3, waktu: '08.30 - 09.15', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 4, waktu: '09.15 - 10.00', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: '-', waktu: '10.00 - 10.15', durasi: '15 Menit', ket: 'Istirahat I' },
+    { jamKe: 5, waktu: '10.15 - 11.00', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 6, waktu: '11.00 - 11.45', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: '-', waktu: '11.45 - 12.30', durasi: '45 Menit', ket: 'ISHOMA (Istirahat / Sholat)' },
+    { jamKe: 7, waktu: '12.30 - 13.15', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 8, waktu: '13.15 - 14.00', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 9, waktu: '14.00 - 14.45', durasi: '45 Menit', ket: 'KBM' },
+    { jamKe: 10, waktu: '14.45 - 15.30', durasi: '45 Menit', ket: 'KBM / Pembiasaan' },
+  ];
+
+  const listToRender = (jamKbmItems && jamKbmItems.length > 0) ? jamKbmItems : defaultTimes;
+
+  const rows = listToRender.map((item) => `
+    <tr style="${item.jamKe === '-' ? 'background-color:#f1f5f9; font-weight:bold;' : ''}">
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.jamKe || item.jam_ke || '-'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.waktu || `${item.jam_masuk} - ${item.jam_keluar}`}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.durasi || '45 Menit'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.ket || item.keterangan || 'KBM'}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Struktur Alokasi Waktu Belajar Harian (Jam KBM)
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:12%;">JAM KE</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:28%;">RENTANG WAKTU</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:20%;">DURASI</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:40%;">URAIAN KEGIATAN</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
+ * Generates Word-style HTML Table for Industri / DUDI Mitra PKL
+ */
+export const buildKospDudiMitraHtml = (dudiItems: any[] = []): string => {
+  if (!dudiItems || dudiItems.length === 0) {
+    return `
+      <div style="padding:10px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; font-size:11px; text-align:center; color:#64748b;">
+        <em>Mitra Dunia Usaha / Dunia Kerja (DUDI) bekerja sama secara aktif dalam sinkronisasi kurikulum, pengujian kompetensi, dan pelaksanaan Praktik Kerja Lapangan (PKL).</em>
+      </div>
+    `;
+  }
+
+  const rows = dudiItems.slice(0, 15).map((item, idx) => `
+    <tr>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${idx + 1}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama || item.nama_mitra || item.nama_perusahaan || '-'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.bidang_usaha || item.bidang || 'Industri / Jasa'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.alamat || item.kota || '-'}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; color:#166534; font-weight:bold;">AKTIFF (MoU)</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="margin-top:12px; margin-bottom:20px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Daftar Industri Pasangan / DUDI Mitra Pembelajaran
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:7%;">NO</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:33%;">NAMA INDUSTRI / PERUSAHAAN</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:22%;">BIDANG USAHA</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:23%;">ALAMAT / KOTA</th>
+            <th style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:15%;">STATUS KERJA SAMA</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
  * Generates Word-style HTML Table for Struktur Kurikulum of a specific Jurusan
  */
 export const buildKospStrukturTableHtml = (

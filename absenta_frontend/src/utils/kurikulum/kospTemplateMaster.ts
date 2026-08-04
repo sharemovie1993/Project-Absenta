@@ -99,10 +99,8 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
 
         <h4 style="font-size:12pt; font-weight:bold; margin-top:14px; color:#1e293b;">A. Intrakurikuler (Struktur Kurikulum Live)</h4>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
-          Struktur kurikulum intrakurikuler pada {{NAMASEKOLAH}} disusun berdasarkan Kepmendikbudristek No. 262/M/2022 tentang Perubahan atas Kepmendikbudristek No. 56/M/2022 tentang Pedoman Penerapan Kurikulum dalam Rangka Pemulihan Pembelajaran. Berikut adalah tabel alokasi Jam Pelajaran (JP) resmi per minggu/semester untuk setiap konsentrasi keahlian:
+          Struktur kurikulum intrakurikuler pada {{NAMASEKOLAH}} disusun berdasarkan Kepmendikbudristek No. 262/M/2022 tentang Perubahan atas Kepmendikbudristek No. 56/M/2022 tentang Pedoman Penerapan Kurikulum dalam Rangka Pemulihan Pembelajaran.
         </p>
-
-        {{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}
 
         <h4 style="font-size:12pt; font-weight:bold; margin-top:18px; color:#1e293b;">B. Skema Praktik Kerja Lapangan (PKL)</h4>
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
@@ -111,7 +109,7 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
       `
     },
     {
-      label: 'Bab IV & V: Pembelajaran, Asesmen, & Evaluasi',
+      label: 'Bab IV & V: Rencana & Evaluasi',
       html: `
         <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">BAB IV & V: RENCANA PEMBELAJARAN, ASESMEN, & EVALUASI</h3>
 
@@ -124,6 +122,50 @@ export const getDefaultKospMasterPages = (): WordEditorPage[] => {
         <p style="text-align:justify; font-size:11pt; line-height:1.5;">
           Evaluasi KOSP dilakukan berkala setiap akhir semester oleh Tim Penjaminan Mutu Sekolah, Kepala Sekolah, dan Pengawas Pembina. Pendampingan profesional guru dilaksanakan melalui Supervisi Akademik, In-House Training (IHT), dan Magang Industri Guru.
         </p>
+      `
+    },
+    {
+      label: 'Lampiran 1: Struktur Kurikulum Live Semua Jurusan',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 1: TABEL STRUKTUR KURIKULUM RESMI</h3>
+        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
+          Tabel Alokasi Jam Pelajaran (JP) per minggu/semester untuk setiap konsentrasi keahlian pada {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}}:
+        </p>
+
+        {{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}
+      `
+    },
+    {
+      label: 'Lampiran 2: Kalender Pendidikan Sekolah',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 2: KALENDER PENDIDIKAN SEKOLAH</h3>
+        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
+          Kalender Pendidikan {{NAMASEKOLAH}} Tahun Ajaran {{TAHUNPELAJARAN}} beserta rincian minggu efektif dan agenda kegiatan akademik:
+        </p>
+
+        {{TABEL_KALENDER_PENDIDIKAN}}
+      `
+    },
+    {
+      label: 'Lampiran 3: Pengaturan Jam KBM & Roster',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 3: ALOKASI WAKTU JAM KBM</h3>
+        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
+          Struktur rentang waktu Kegiatan Belajar Mengajar (KBM) harian {{NAMASEKOLAH}}:
+        </p>
+
+        {{TABEL_JAM_KBM}}
+      `
+    },
+    {
+      label: 'Lampiran 4: Mitra Industri / DUDI Pasangan',
+      html: `
+        <h3 style="font-size:14pt; font-weight:bold; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:0;">LAMPIRAN 4: DAFTAR INDUSTRI PASANGAN (DUDI MITRA)</h3>
+        <p style="text-align:justify; font-size:11pt; line-height:1.5;">
+          Daftar Dunia Usaha, Dunia Industri, dan Dunia Kerja (DUDI) mitra kerja sama {{NAMASEKOLAH}} dalam pelaksanaan Praktik Kerja Lapangan (PKL), sinkronisasi kurikulum, dan rekrutmen lulusan:
+        </p>
+
+        {{TABEL_DUDI_MITRA}}
       `
     }
   ];
