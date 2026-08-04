@@ -51,6 +51,7 @@ import { piketGuruApi } from '../../api/piketGuru.api';
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
 const JadwalGrid = lazy(() => import('../../components/kurikulum/JadwalGrid').then(m => ({ default: m.JadwalGrid })));
 const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder'));
+const CetakBerkasKurikulumPage = lazy(() => import('./CetakBerkasKurikulumPage').then(m => ({ default: m.CetakBerkasKurikulumPage })));
 
 const hardeningModuleKey = 'jadwal_pelajaran_page';
 
@@ -416,14 +417,10 @@ export default function JadwalPelajaranPage() {
               variant="outline" 
               size="sm" 
               className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 shadow-sm transition-all text-indigo-700 dark:text-indigo-300 text-xs font-extrabold flex items-center gap-1.5"
-              onClick={() => {
-                const cId = selectedKelasId ? `&classId=${selectedKelasId}` : '';
-                const gId = selectedGuruId ? `&guruId=${selectedGuruId}` : '';
-                navigate(`/kurikulum/cetak-berkas?printType=roster${cId}${gId}`);
-              }}
+              onClick={() => setViewMode('preview')}
             >
               <Printer className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Cetak Berkas PDF</span>
+              <span>Cetak Berkas PDF (1:1)</span>
             </Button>
 
             {canManage && (
@@ -488,14 +485,10 @@ export default function JadwalPelajaranPage() {
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
               onRefresh={() => setRefreshKey(k => k + 1)}
-              onOpenPrintPreview={() => {
-                const cId = selectedKelasId ? `&classId=${selectedKelasId}` : '';
-                const gId = selectedGuruId ? `&guruId=${selectedGuruId}` : '';
-                navigate(`/kurikulum/cetak-berkas?printType=roster${cId}${gId}`);
-              }}
+              onOpenPrintPreview={() => setViewMode('preview')}
             />
           ) : viewMode === 'preview' ? (
-            <JadwalBuiltInPdfPreview initialKelasId={selectedKelasId} initialGuruId={selectedGuruId} />
+            <CetakBerkasKurikulumPage />
           ) : (
             <JadwalGrid 
               jadwal={jadwal} 
