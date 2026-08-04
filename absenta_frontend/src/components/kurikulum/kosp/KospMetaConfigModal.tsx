@@ -22,6 +22,7 @@ interface KospMetaConfigModalProps {
   initialData?: KospMetaConfigData;
   defaultKepsek?: string;
   defaultWakasek?: string;
+  treeData?: Record<string, any[]>;
   onSave: (updatedMeta: KospMetaConfigData) => Promise<void>;
   isSaving?: boolean;
 }
@@ -32,6 +33,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
   initialData,
   defaultKepsek,
   defaultWakasek,
+  treeData,
   onSave,
   isSaving = false,
 }) => {
@@ -60,24 +62,38 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
         generateDefaultTim();
       }
     }
-  // PENTING: deps hanya [isOpen] — bukan initialData (object ref) agar tidak
-  // me-reset form setiap kali parent re-render dengan object baru
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const getMemberName = (kode: string, fallback: string) => {
+    if (!treeData) return fallback;
+    const nodes = treeData[kode];
+    if (!nodes || !Array.isArray(nodes)) return fallback;
+    for (const node of nodes) {
+      if (node.members && Array.isArray(node.members) && node.members.length > 0) {
+        const first = node.members[0];
+        if (first.name || first.nama) return first.name || first.nama;
+      }
+    }
+    return fallback;
+  };
 
   const generateDefaultTim = () => {
     const list: TimPenyusunItem[] = [
-      { no: 1, nama: defaultKepsek || 'Kepala Sekolah', jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
-      { no: 2, nama: defaultWakasek || 'Wakasek Kurikulum', jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
+      { no: 1, nama: getMemberName('KEPALA_SEKOLAH', defaultKepsek || 'Kepala Sekolah'), jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
+      { no: 2, nama: getMemberName('KURIKULUM', defaultWakasek || 'Wakasek Kurikulum'), jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
       { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
       { no: 4, nama: komiteNama || 'H. Dudung Abdurrahman, M.Pd.', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
-      { no: 5, nama: 'Wakasek Bidang Kesiswaan', jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
-      { no: 6, nama: 'Wakasek Bidang Humas & Hubin', jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
-      { no: 7, nama: 'Wakasek Bidang Sarana Prasarana', jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
-      { no: 8, nama: 'Para Ketua Program Keahlian (Kaprog)', jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
-      { no: 9, nama: 'Koor. Bimbingan Konseling (BK)', jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
+      { no: 5, nama: getMemberName('KESISWAAN', 'Wakasek Bidang Kesiswaan'), jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
+      { no: 6, nama: getMemberName('HUBIN', 'Wakasek Bidang Humas & Hubin'), jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
+      { no: 7, nama: getMemberName('SARPRAS', 'Wakasek Bidang Sarana Prasarana'), jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
+      { no: 8, nama: getMemberName('KAPROG', 'Para Ketua Program Keahlian (Kaprog)'), jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
+      { no: 9, nama: getMemberName('BPBK', 'Koor. Bimbingan Konseling (BK)'), jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
+      { no: 10, nama: getMemberName('TU_KEPALA', 'Koordinator Tata Usaha'), jabatan_kedinasan: 'Kepala Tata Usaha', jabatan_tim: 'Anggota / Tim Administrasi' },
     ];
     setTimPenyusun(list);
   };
+
 
   const handleAddMember = () => {
     setTimPenyusun((prev) => [

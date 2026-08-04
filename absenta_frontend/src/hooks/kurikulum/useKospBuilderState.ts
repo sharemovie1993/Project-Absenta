@@ -351,6 +351,7 @@ export const useKospBuilderState = () => {
     handleSaveMetaConfig,
     namaKepalaSekolah,
     wakasekKurikulum,
-    mappingAllDataCount: mappingAllData.length
+    mappingAllDataCount: mappingAllData.length,
+    treeData, // expose untuk KospMetaConfigModal agar Tim Penyusun bisa di-populate dari data org live
   };
 };

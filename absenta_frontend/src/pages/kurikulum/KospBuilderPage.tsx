@@ -44,7 +44,8 @@ export const KospBuilderPage: React.FC = () => {
     handleSaveMetaConfig,
     namaKepalaSekolah,
     wakasekKurikulum,
-    mappingAllDataCount
+    mappingAllDataCount,
+    treeData
   } = useKospBuilderState();
 
   const breadcrumbs = React.useMemo(() => [
@@ -216,9 +217,11 @@ export const KospBuilderPage: React.FC = () => {
           initialData={metaConfigData}
           defaultKepsek={namaKepalaSekolah}
           defaultWakasek={wakasekKurikulum}
+          treeData={treeData}
           onSave={handleSaveMetaConfig}
           isSaving={isSaving}
         />
+
 
         {/* Modal Word Editor KOSP */}
         {isEditorOpen && (
