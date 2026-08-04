@@ -8,9 +8,8 @@ import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { getMyTenant } from '../../../api/tenants.api';
 import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
-import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
-import { getSemesterList } from '../../../api/academic/semester.api';
-import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../common';
+import { useGuruOptions, useMapelOptions, useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '../../common';
+import { useTenantSettings } from '../../../hooks/useTenantSettings';
 import { WORKDAYS_HARI_KEYS, getDayLabel } from '../../../constants/day.constants';
 import { toast } from 'react-hot-toast';
 
@@ -53,72 +52,44 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   // ── 1. Reference Data Hooks (Google/Absenta Enterprise Standard) ───────────
+  const { tenant, printHeader, shiftSlots } = useTenantSettings();
   const { options: kelasSelectOptions, rawList: kelasRawList } = useKelasOptions();
   const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
   const { options: mapelSelectOptions, rawList: mapelRawList } = useMapelOptions();
-
-  // Active Academic Context Hooks
-  const { data: activeTpRes } = useQuery({
-    queryKey: ['active-tp-preview-modal'],
-    queryFn: () => getTahunPelajaranList(1, 10, '', 'ACTIVE').catch(() => null),
-    enabled: isOpen,
-    staleTime: 10 * 60 * 1000,
-  });
-  const activeTp = activeTpRes?.data?.[0];
-
-  const { data: activeSemRes } = useQuery({
-    queryKey: ['active-sem-preview-modal', activeTp?.id],
-    queryFn: () => activeTp?.id ? getSemesterList(1, 10, '', activeTp.id).catch(() => null) : null,
-    enabled: isOpen && !!activeTp?.id,
-    staleTime: 10 * 60 * 1000,
-  });
-  const activeSem = activeSemRes?.data?.find((s: any) => s.is_active) || activeSemRes?.data?.[0];
+  const { activeTahunPelajaran, rawList: tpRawList } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList } = useSemesterOptions({ tahunPelajaranId: activeTahunPelajaran?.id });
 
   // School Profile Hook
-  // Tenant Profile Hook (Shift Jam Pelajaran Config)
-  const { data: tenantRes } = useQuery({
-    queryKey: ['tenant-profile-preview-modal'],
-    queryFn: () => getMyTenant().catch(() => null),
+  const { data: sekolahProfileRes } = useQuery({
+    queryKey: ['sekolah-profile-preview-modal'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
     enabled: isOpen,
     staleTime: 10 * 60 * 1000,
   });
 
-  const tenantConfig = tenantRes?.success ? tenantRes.data?.shift_jam_pelajaran : null;
-
   const getSlotTime = (slotIndex: number) => {
-    if (tenantConfig && Array.isArray(tenantConfig.shifts) && tenantConfig.shifts.length > 0) {
-      const shiftId = mode === 'KELAS' && selectedKelasId ? tenantConfig.class_assignments?.[selectedKelasId] : undefined;
-      const targetShift = tenantConfig.shifts.find(s => s.id === shiftId) || tenantConfig.shifts[0];
-      if (targetShift && Array.isArray(targetShift.slots)) {
-        const found = targetShift.slots.find(s => Number(s.slot) === slotIndex);
-        if (found && found.start && found.end) {
-          return { start: found.start, end: found.end };
-        }
-      }
+    if (shiftSlots && shiftSlots[slotIndex]) {
+      return shiftSlots[slotIndex];
     }
     return SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
   };
 
   // Dynamic Hari Sekolah List from Tenant Config or Centralized Constants
   const activeHariSekolah = useMemo(() => {
-    if (tenantRes?.success && Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+    if (tenant && Array.isArray(tenant.hari_sekolah) && tenant.hari_sekolah.length > 0) {
       const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
-      return [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      return [...tenant.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
     }
     return WORKDAYS_HARI_KEYS;
-  }, [tenantRes]);
+  }, [tenant]);
 
   // Dynamic Slots Array from Tenant Shift Config
   const activeSlots = useMemo(() => {
-    if (tenantConfig && Array.isArray(tenantConfig.shifts) && tenantConfig.shifts.length > 0) {
-      const shiftId = mode === 'KELAS' && selectedKelasId ? tenantConfig.class_assignments?.[selectedKelasId] : undefined;
-      const targetShift = tenantConfig.shifts.find(s => s.id === shiftId) || tenantConfig.shifts[0];
-      if (targetShift && Array.isArray(targetShift.slots) && targetShift.slots.length > 0) {
-        return targetShift.slots.map(s => Number(s.slot)).sort((a, b) => a - b);
-      }
+    if (tenant?.shift_jam_pelajaran?.shifts?.[0]?.slots?.length) {
+      return tenant.shift_jam_pelajaran.shifts[0].slots.map(s => Number(s.slot)).sort((a, b) => a - b);
     }
     return Array.from({ length: 12 }, (_, i) => i + 1);
-  }, [tenantConfig, mode, selectedKelasId]);
+  }, [tenant]);
 
   // Auto Select Defaults if Empty
   React.useEffect(() => {
@@ -134,17 +105,17 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
 
   // ── 2. Real-Time Reactive Schedule Fetching Hook ───────────────────────────
   const { data: jadwalRes, isLoading: loadingJadwal } = useQuery({
-    queryKey: ['jadwal-kbm-preview-query', mode, selectedKelasId, selectedGuruId, activeTp?.id, activeSem?.id],
+    queryKey: ['jadwal-kbm-preview-query', mode, selectedKelasId, selectedGuruId, activeTahunPelajaran?.id, activeSemester?.id],
     queryFn: () => {
-      if (!activeTp?.id || !activeSem?.id) return { data: [] };
+      if (!activeTahunPelajaran?.id || !activeSemester?.id) return { data: [] };
       return getJadwalKBM({
         kelas_id: mode === 'KELAS' ? selectedKelasId : undefined,
         guru_id: mode === 'GURU' ? selectedGuruId : undefined,
-        tahun_pelajaran_id: activeTp.id,
-        semester_id: activeSem.id,
+        tahun_pelajaran_id: activeTahunPelajaran.id,
+        semester_id: activeSemester.id,
       }).catch(() => ({ data: [] }));
     },
-    enabled: isOpen && !!activeTp?.id && !!activeSem?.id,
+    enabled: isOpen && !!activeTahunPelajaran?.id && !!activeSemester?.id,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -417,8 +388,8 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
             {/* Kop Sekolah Header */}
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                {sekolahProfileRes?.logo_url ? (
-                  <img src={sekolahProfileRes.logo_url} alt="Logo" className="w-14 h-14 object-contain" />
+                {printHeader.logo || sekolahProfileRes?.logo_url ? (
+                  <img src={printHeader.logo || sekolahProfileRes?.logo_url} alt="Logo" className="w-14 h-14 object-contain" />
                 ) : (
                   <div className="w-12 h-12 bg-indigo-600 text-white font-black text-xl rounded-2xl flex items-center justify-center shadow-md">
                     A
@@ -426,13 +397,13 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 )}
                 <div>
                   <h2 className="text-base font-black uppercase tracking-wider text-slate-900 leading-tight">
-                    {sekolahProfileRes?.nama_sekolah || sekolahProfileRes?.nama || 'SEKOLAH ABSENTA ACADEMY'}
+                    {printHeader.sekolah || sekolahProfileRes?.nama_sekolah || tenant?.name || 'SEKOLAH ABSENTA ACADEMY'}
                   </h2>
                   <p className="text-[11px] text-slate-600 font-semibold leading-tight">
-                    {sekolahProfileRes?.alamat || 'Jl. Pendidikan No. 100, Indonesia'}
+                    {tenant?.address || sekolahProfileRes?.alamat || 'Jl. Pendidikan No. 100, Indonesia'}
                   </p>
                   <p className="text-[10px] text-slate-500 font-medium">
-                    Tahun Pelajaran: {activeTp?.nama_tahun || '2026/2027'} | Semester: {activeSem?.nama_semester || 'Ganjil'}
+                    Tahun Pelajaran: {activeTahunPelajaran?.nama_tahun || '2026/2027'} | Semester: {activeSemester?.nama_semester || 'Ganjil'}
                   </p>
                 </div>
               </div>
