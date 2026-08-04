@@ -708,6 +708,22 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
           </div>
         )}
       </div>
+    </div>
+  );
+
+  if (hideHeaderAndBreadcrumbs) {
+    return mainContent;
+  }
+
+  return (
+    <AcademicPageLayout
+      title={title}
+      description={description}
+      breadcrumbs={breadcrumbs}
+      instruction={instruction}
+      hardeningModuleKey={`cetak_berkas_${module}`}
+    >
+      {mainContent}
     </AcademicPageLayout>
   );
 };
