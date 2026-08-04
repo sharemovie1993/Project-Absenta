@@ -64,7 +64,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   semesterId,
   readOnly = false,
   onRefresh,
-  initialViewMode = 'KELAS',
+  initialViewMode = 'GURU',
   initialKelasId,
   initialGuruId,
 }) => {

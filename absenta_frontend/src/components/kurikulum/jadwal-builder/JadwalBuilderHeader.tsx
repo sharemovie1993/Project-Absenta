@@ -81,17 +81,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
         {/* View Switcher with all 4 aSC TimeTables view modes */}
         <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
           <button
-            onClick={() => setViewMode('KELAS')}
-            className={cn(
-              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-              viewMode === 'KELAS' 
-                ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-          >
-            🏫 Per Kelas
-          </button>
-          <button
             onClick={() => setViewMode('GURU')}
             className={cn(
               "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
@@ -101,6 +90,17 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             )}
           >
             👨‍🏫 Per Guru
+          </button>
+          <button
+            onClick={() => setViewMode('KELAS')}
+            className={cn(
+              "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+              viewMode === 'KELAS' 
+                ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+            )}
+          >
+            🏫 Per Kelas
           </button>
           <button
             onClick={() => setViewMode('MASTER_GURU')}
