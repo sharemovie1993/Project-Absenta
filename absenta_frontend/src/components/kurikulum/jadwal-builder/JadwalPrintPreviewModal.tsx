@@ -1,24 +1,23 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { X, Printer, Download, Filter, BookOpen, User, School, CheckCircle2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, Printer, Download, Filter, BookOpen, User, School, CheckCircle2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { cn } from '../../../lib/utils';
-import { generateGenericPdf } from '../../../utils/pdf/genericPdfGenerator';
+import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
+import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
+import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
+import { getSemesterList } from '../../../api/academic/semester.api';
+import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../common';
 import { toast } from 'react-hot-toast';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  jadwalList: any[];
-  kelasList: any[];
-  guruList: any[];
-  mapelList: any[];
   initialMode?: 'KELAS' | 'GURU';
   initialKelasId?: string;
   initialGuruId?: string;
-  tahunPelajaranName?: string;
-  semesterName?: string;
-  sekolahInfo?: any;
 }
 
 const HARI_LIST = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -27,69 +26,112 @@ const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 export const JadwalPrintPreviewModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  jadwalList = [],
-  kelasList = [],
-  guruList = [],
-  mapelList = [],
   initialMode = 'KELAS',
   initialKelasId = '',
   initialGuruId = '',
-  tahunPelajaranName = '2026/2027',
-  semesterName = 'Ganjil',
-  sekolahInfo,
 }) => {
   const [mode, setMode] = useState<'KELAS' | 'GURU'>(initialMode);
-  const [selectedKelasId, setSelectedKelasId] = useState<string>(initialKelasId || (kelasList[0]?.id || kelasList[0]?.value || ''));
-  const [selectedGuruId, setSelectedGuruId] = useState<string>(initialGuruId || (guruList[0]?.id || guruList[0]?.value || ''));
+  const [selectedKelasId, setSelectedKelasId] = useState<string>(initialKelasId);
+  const [selectedGuruId, setSelectedGuruId] = useState<string>(initialGuruId);
   const [fokusMapelId, setFokusMapelId] = useState<string>('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
-  // Sync default selection if empty
+  // ── 1. Reference Data Hooks (Google/Absenta Enterprise Standard) ───────────
+  const { options: kelasSelectOptions, rawList: kelasRawList } = useKelasOptions();
+  const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: mapelSelectOptions, rawList: mapelRawList } = useMapelOptions();
+
+  // Active Academic Context Hooks
+  const { data: activeTpRes } = useQuery({
+    queryKey: ['active-tp-preview-modal'],
+    queryFn: () => getTahunPelajaranList(1, 10, '', 'ACTIVE').catch(() => null),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+  const activeTp = activeTpRes?.data?.[0];
+
+  const { data: activeSemRes } = useQuery({
+    queryKey: ['active-sem-preview-modal', activeTp?.id],
+    queryFn: () => activeTp?.id ? getSemesterList(1, 10, '', activeTp.id).catch(() => null) : null,
+    enabled: isOpen && !!activeTp?.id,
+    staleTime: 10 * 60 * 1000,
+  });
+  const activeSem = activeSemRes?.data?.find((s: any) => s.is_active) || activeSemRes?.data?.[0];
+
+  // School Profile Hook
+  const { data: sekolahProfileRes } = useQuery({
+    queryKey: ['sekolah-profile-preview-modal'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Auto Select Defaults if Empty
   React.useEffect(() => {
-    if (!selectedKelasId && kelasList.length > 0) {
-      setSelectedKelasId(kelasList[0].id || kelasList[0].value || '');
+    if (isOpen) {
+      if (!selectedKelasId && kelasRawList && kelasRawList.length > 0) {
+        setSelectedKelasId(kelasRawList[0].id);
+      }
+      if (!selectedGuruId && guruRawList && guruRawList.length > 0) {
+        setSelectedGuruId(guruRawList[0].id);
+      }
     }
-    if (!selectedGuruId && guruList.length > 0) {
-      setSelectedGuruId(guruList[0].id || guruList[0].value || '');
-    }
-  }, [kelasList, guruList, selectedKelasId, selectedGuruId]);
+  }, [isOpen, kelasRawList, guruRawList, selectedKelasId, selectedGuruId]);
 
-  // Options
-  const kelasOptions = useMemo(() => {
-    return kelasList.map((k: any) => ({
-      label: k.nama_kelas || k.label || 'Kelas',
-      value: k.id || k.value || '',
+  // ── 2. Real-Time Reactive Schedule Fetching Hook ───────────────────────────
+  const { data: jadwalRes, isLoading: loadingJadwal } = useQuery({
+    queryKey: ['jadwal-kbm-preview-query', mode, selectedKelasId, selectedGuruId, activeTp?.id, activeSem?.id],
+    queryFn: () => {
+      if (!activeTp?.id || !activeSem?.id) return { data: [] };
+      return getJadwalKBM({
+        kelas_id: mode === 'KELAS' ? selectedKelasId : undefined,
+        guru_id: mode === 'GURU' ? selectedGuruId : undefined,
+        tahun_pelajaran_id: activeTp.id,
+        semester_id: activeSem.id,
+      }).catch(() => ({ data: [] }));
+    },
+    enabled: isOpen && !!activeTp?.id && !!activeSem?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const jadwalList = useMemo(() => jadwalRes?.data || [], [jadwalRes]);
+
+  // Dynamic Options Formatting
+  const kelasOptionsFormatted = useMemo(() => {
+    return (kelasRawList || []).map((k: any) => ({
+      label: k.nama_kelas,
+      value: k.id,
     }));
-  }, [kelasList]);
+  }, [kelasRawList]);
 
-  const guruOptions = useMemo(() => {
-    return guruList.map((g: any) => ({
-      label: g.nama_guru || g.label || g.User?.full_name || 'Guru',
-      value: g.id || g.value || '',
+  const guruOptionsFormatted = useMemo(() => {
+    return (guruRawList || []).map((g: any) => ({
+      label: g.nama_guru,
+      value: g.id,
     }));
-  }, [guruList]);
+  }, [guruRawList]);
 
-  const mapelOptions = useMemo(() => {
+  const mapelOptionsFormatted = useMemo(() => {
     const list = [{ label: '✨ Semua Mata Pelajaran', value: '' }];
-    mapelList.forEach((m: any) => {
+    (mapelRawList || []).forEach((m: any) => {
       list.push({
-        label: m.nama_mapel || m.label || 'Mapel',
-        value: m.id || m.value || '',
+        label: m.nama_mapel,
+        value: m.id,
       });
     });
     return list;
-  }, [mapelList]);
+  }, [mapelRawList]);
 
   // Current entity metadata
   const currentKelas = useMemo(() => {
-    return kelasList.find((k: any) => (k.id || k.value) === selectedKelasId);
-  }, [kelasList, selectedKelasId]);
+    return (kelasRawList || []).find((k: any) => k.id === selectedKelasId);
+  }, [kelasRawList, selectedKelasId]);
 
   const currentGuru = useMemo(() => {
-    return guruList.find((g: any) => (g.id || g.value) === selectedGuruId);
-  }, [guruList, selectedGuruId]);
+    return (guruRawList || []).find((g: any) => g.id === selectedGuruId);
+  }, [guruRawList, selectedGuruId]);
 
   // Filtered schedules for grid preview
   const previewJadwalMap = useMemo(() => {
@@ -127,24 +169,21 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
     setIsGeneratingPdf(true);
     const toastId = toast.loading('Menyiapkan file PDF pratinjau...');
     try {
-      const activeJadwal = (jadwalList || []).filter(j => {
-        if (mode === 'KELAS') return j.kelas_id === selectedKelasId;
-        if (mode === 'GURU') return j.guru_id === selectedGuruId;
-        return true;
-      });
-
       const blob = await generateGenericPdf({
         module: 'kurikulum',
         printType: mode === 'GURU' ? 'roster_teacher' : 'roster',
         selectedClassId: mode === 'KELAS' ? selectedKelasId : 'all',
         selectedGuruId: mode === 'GURU' ? selectedGuruId : 'all',
-        sekolah: sekolahInfo,
-        tenantInfo: sekolahInfo,
+        sekolah: sekolahProfileRes,
+        tenantInfo: sekolahProfileRes,
+        strukturList: [],
+        logoDaerahBase64: null,
+        logoSekolahBase64: null,
         includeSchoolLogo: true,
         filterData: {
-          jadwalList: activeJadwal,
-          classes: kelasList,
-          gurus: guruList,
+          jadwalList,
+          classes: kelasRawList || [],
+          gurus: guruRawList || [],
         }
       });
 
@@ -172,18 +211,21 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
         
-        {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850/50 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+        {/* Modal Header (Google Enterprise Style) */}
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-850/60 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold shadow-sm">
               🖨️
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-850 dark:text-slate-100 tracking-wide">
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wide flex items-center gap-2">
                 Pratinjau Cetak & Dokumen PDF Jadwal Pelajaran
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 font-extrabold border border-indigo-200 dark:border-indigo-800">
+                  Google Standard
+                </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
                 Format resmi siap cetak printer & diunduh sebagai dokumen PDF
@@ -193,7 +235,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            className="p-2 rounded-2xl hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
             <X size={18} />
           </button>
@@ -203,11 +245,11 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
         <div className="p-4 bg-slate-100/60 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             {/* Mode Switcher */}
-            <div className="flex items-center bg-slate-200/70 dark:bg-slate-900 p-1 rounded-xl border border-slate-300/60 dark:border-slate-750">
+            <div className="flex items-center bg-slate-200/70 dark:bg-slate-900 p-1 rounded-2xl border border-slate-300/60 dark:border-slate-750">
               <button
                 onClick={() => setMode('KELAS')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 text-xs font-extrabold rounded-lg transition-all',
+                  'flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all',
                   mode === 'KELAS'
                     ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -219,7 +261,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
               <button
                 onClick={() => setMode('GURU')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 text-xs font-extrabold rounded-lg transition-all',
+                  'flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all',
                   mode === 'GURU'
                     ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -236,7 +278,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleDirectPrint}
-                className="flex items-center gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs"
+                className="flex items-center gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs rounded-xl"
               >
                 <Printer size={14} />
                 <span>Cetak Printer</span>
@@ -246,7 +288,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 size="sm"
                 onClick={handleDownloadPdf}
                 disabled={isGeneratingPdf}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md"
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md rounded-xl"
               >
                 <Download size={14} />
                 <span>{isGeneratingPdf ? 'Memproses PDF...' : 'Unduh File PDF'}</span>
@@ -266,7 +308,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 <SearchableSelect
                   value={selectedKelasId}
                   onValueChange={setSelectedKelasId}
-                  options={kelasOptions}
+                  options={kelasOptionsFormatted}
                   placeholder="Pilih Kelas..."
                   className="w-full"
                 />
@@ -280,7 +322,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                 <SearchableSelect
                   value={selectedGuruId}
                   onValueChange={setSelectedGuruId}
-                  options={guruOptions}
+                  options={guruOptionsFormatted}
                   placeholder="Pilih Guru..."
                   className="w-full"
                 />
@@ -296,7 +338,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
               <SearchableSelect
                 value={fokusMapelId}
                 onValueChange={setFokusMapelId}
-                options={mapelOptions}
+                options={mapelOptionsFormatted}
                 placeholder="Semua Mapel..."
                 className="w-full"
               />
@@ -304,7 +346,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
 
             {/* JP Summary Pill */}
             <div className="space-y-1 flex flex-col justify-end">
-              <div className="p-2 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-xl flex items-center justify-between text-xs">
+              <div className="p-2 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-xl flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-600 dark:text-slate-400">Total Alokasi Terpasang:</span>
                 <span className="font-black text-indigo-600 dark:text-indigo-400 text-sm">
                   {totalJpCount} JP / Minggu
@@ -318,27 +360,27 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
         <div className="flex-1 p-4 overflow-y-auto bg-slate-200/50 dark:bg-slate-950/80 flex justify-center">
           <div
             ref={printAreaRef}
-            className="w-full max-w-[800px] bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200 font-sans print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none space-y-5"
+            className="w-full max-w-[800px] bg-white text-slate-900 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 font-sans print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none space-y-5"
           >
             {/* Kop Sekolah Header */}
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                {sekolahInfo?.logo_url ? (
-                  <img src={sekolahInfo.logo_url} alt="Logo" className="w-14 h-14 object-contain" />
+                {sekolahProfileRes?.logo_url ? (
+                  <img src={sekolahProfileRes.logo_url} alt="Logo" className="w-14 h-14 object-contain" />
                 ) : (
-                  <div className="w-12 h-12 bg-indigo-600 text-white font-black text-xl rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-indigo-600 text-white font-black text-xl rounded-2xl flex items-center justify-center shadow-md">
                     A
                   </div>
                 )}
                 <div>
                   <h2 className="text-base font-black uppercase tracking-wider text-slate-900 leading-tight">
-                    {sekolahInfo?.nama_sekolah || sekolahInfo?.nama || 'SEKOLAH ABSENTA ACADEMY'}
+                    {sekolahProfileRes?.nama_sekolah || sekolahProfileRes?.nama || 'SEKOLAH ABSENTA ACADEMY'}
                   </h2>
                   <p className="text-[11px] text-slate-600 font-semibold leading-tight">
-                    {sekolahInfo?.alamat || 'Jl. Pendidikan No. 100, Indonesia'}
+                    {sekolahProfileRes?.alamat || 'Jl. Pendidikan No. 100, Indonesia'}
                   </p>
                   <p className="text-[10px] text-slate-500 font-medium">
-                    Tahun Pelajaran: {tahunPelajaranName} | Semester: {semesterName}
+                    Tahun Pelajaran: {activeTp?.nama_tahun || '2026/2027'} | Semester: {activeSem?.nama_semester || 'Ganjil'}
                   </p>
                 </div>
               </div>
@@ -348,18 +390,18 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
             <div className="text-center space-y-1">
               <h1 className="text-base font-black uppercase tracking-widest text-slate-900">
                 {mode === 'KELAS'
-                  ? `JADWAL PELAJARAN KELAS ${currentKelas?.nama_kelas || currentKelas?.label || '...'}`
-                  : `JADWAL MENGAJAR GURU: ${currentGuru?.nama_guru || currentGuru?.label || '...'}`}
+                  ? `JADWAL PELAJARAN KELAS ${currentKelas?.nama_kelas || '...'}`
+                  : `JADWAL MENGAJAR GURU: ${currentGuru?.nama_guru || '...'}`}
               </h1>
               {fokusMapelId && (
-                <div className="inline-block bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-300">
-                  🎯 FOKUS MAPEL: {mapelList.find(m => (m.id || m.value) === fokusMapelId)?.nama_mapel || 'Mapel Terpilih'}
+                <div className="inline-block bg-amber-100 text-amber-800 text-[10px] font-black px-3 py-0.5 rounded-full border border-amber-300">
+                  🎯 FOKUS MAPEL: {(mapelRawList || []).find((m: any) => m.id === fokusMapelId)?.nama_mapel || 'Mapel Terpilih'}
                 </div>
               )}
             </div>
 
             {/* Main Timetable Grid Table */}
-            <div className="overflow-x-auto border border-slate-900 rounded-lg">
+            <div className="overflow-x-auto border border-slate-900 rounded-xl overflow-hidden">
               <table className="w-full text-center border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-900 font-black text-[10px] uppercase">
@@ -428,7 +470,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
 
               <div>
                 <p className="text-[10px] text-slate-500">
-                  {sekolahInfo?.kota || 'Kabupaten'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {sekolahProfileRes?.kota || 'Kabupaten'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
                 <p className="font-bold">
                   {mode === 'KELAS' ? 'Wali Kelas' : 'Kepala Sekolah'}

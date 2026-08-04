@@ -588,16 +588,9 @@ export default function JadwalPelajaranPage() {
       <JadwalPrintPreviewModal
         isOpen={printPreviewOpen}
         onClose={() => setPrintPreviewOpen(false)}
-        jadwalList={jadwal}
-        kelasList={kelasRawList || []}
-        guruList={guruRawList || []}
-        mapelList={mapelRawList || []}
         initialMode={selectedGuruId ? 'GURU' : 'KELAS'}
         initialKelasId={selectedKelasId}
         initialGuruId={selectedGuruId}
-        tahunPelajaranName={activeTp?.nama_tahun || '2026/2027'}
-        semesterName={activeSemRes?.data?.find((s: any) => s.id === selectedSemesterId)?.nama_semester || 'Ganjil'}
-        sekolahInfo={sekolahProfileRes}
       />
     </OperationalPageLayout>
   );
