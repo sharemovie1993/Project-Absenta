@@ -16,6 +16,7 @@ import { handleParentDomainEvent } from './services/event-handlers/parent-notifi
 import { handleTenantCreatedDomainEvent } from './services/event-handlers/tenant-created-consumer';
 import { initEmailWorker } from './email.worker';
 import { startWorkerRegistryAndHeartbeat } from '@/infra/workerHeartbeat';
+import { appLogger } from '@/utils/app-logger';
 
 let worker: Worker<NotificationJobData> | null = null;
 let domainSubscriberStarted = false;
@@ -200,7 +201,7 @@ async function startDomainEventSubscriber(): Promise<void> {
 export const initNotificationWorker = () => {
   if (worker) return;
 
-  console.log('🚀 Notification Worker Initializing...');
+  appLogger.info({}, 'notification_worker.initializing');
   
   // Register heartbeat & registry for monitoring
   try {
@@ -209,7 +210,7 @@ export const initNotificationWorker = () => {
       version: process.env.WORKER_VERSION || process.env.APP_VERSION,
     });
   } catch (err) {
-    console.error('Failed to start notification worker registry heartbeat:', err);
+    appLogger.error({ error: (err as any)?.message }, 'notification_worker.heartbeat_error');
   }
 
   // Initialize Email Worker to handle the email-queue
@@ -244,9 +245,9 @@ export const initNotificationWorker = () => {
           await parentNotificationService.handleEvent(data.eventType, data.payload);
         }
 
-        console.log(`[NotificationWorker] Job ${job.id} completed: ${eventType} for tenant ${tenantId}`);
+        appLogger.info({ jobId: job.id, eventType, tenant_id: tenantId }, 'notification_worker.job_completed');
       } catch (error) {
-        console.error(`[NotificationWorker] Job ${job.id} failed:`, error);
+        appLogger.error({ jobId: job.id, error: (error as any)?.message }, 'notification_worker.job_failed');
         throw error; // Let BullMQ handle retries
       }
     },

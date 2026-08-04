@@ -4,6 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 import { getRedisUrl } from '../../config/redis.config';
 import { getSmartFrontendBaseUrl, getSmartApiBaseUrl, getDomainBases } from '../../utils/url-helper';
+import { appLogger } from '../../utils/app-logger';
 
 function getCorsOriginOption() {
   const corsDebug = (process.env.CORS_DEBUG || 'false').toLowerCase() === 'true';
@@ -75,13 +76,13 @@ export function createSocketServers(server: Server) {
   const subClient = pubClient.duplicate();
 
   // Handle Redis connection errors to prevent app crash
-  pubClient.on('error', (err) => console.error('Redis Adapter Pub Error:', err));
-  subClient.on('error', (err) => console.error('Redis Adapter Sub Error:', err));
+  pubClient.on('error', (err) => appLogger.error({ error: err.message }, 'redis_adapter.pub_error'));
+  subClient.on('error', (err) => appLogger.error({ error: err.message }, 'redis_adapter.sub_error'));
 
   Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-    console.log('✅ Redis Adapter Connected');
+    appLogger.info({}, 'redis_adapter.connected');
   }).catch(err => {
-    console.error('❌ Redis Adapter Connection Failed:', err);
+    appLogger.error({ error: err.message }, 'redis_adapter.connection_failed');
   });
 
   const corsOption = {

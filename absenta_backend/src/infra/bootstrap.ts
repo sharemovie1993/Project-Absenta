@@ -255,7 +255,7 @@ export async function registerPlugins(fastify: any) {
 }
 
 export async function registerMiddlewares(fastify: any, appendLog: (entry: any) => void) {
-  console.log('⚠️ Middleware registration skipped at global level - will be registered in /api plugin');
+  // Middleware registered in /api plugin
   const getUrlPath = (url: any) => String(url || '').split('?')[0];
   const redactHeaders = (headers: any) => {
     const safe = { ...(headers || {}) } as Record<string, any>;

@@ -3,6 +3,7 @@ import { getRedisConnection } from '@/queue/redis';
 import { EMAIL_QUEUE_NAME } from '@/queue/email.queue';
 import { EmailService } from './services/email.service';
 import { startWorkerRegistryAndHeartbeat } from '@/infra/workerHeartbeat';
+import { appLogger } from '@/utils/app-logger';
 
 let worker: Worker | null = null;
 
@@ -13,7 +14,7 @@ let worker: Worker | null = null;
 export const initEmailWorker = () => {
   if (worker) return;
 
-  console.log('📧 Email Worker Initializing...');
+  appLogger.info({}, 'email_worker.initializing');
 
   const connection: any = getRedisConnection();
   
@@ -24,7 +25,7 @@ export const initEmailWorker = () => {
       version: process.env.WORKER_VERSION || process.env.APP_VERSION,
     });
   } catch (err) {
-    console.error('Failed to start email worker registry heartbeat:', err);
+    appLogger.error({ error: (err as any)?.message }, 'email_worker.heartbeat_error');
   }
 
   const emailService = new EmailService();
@@ -37,14 +38,14 @@ export const initEmailWorker = () => {
       const tenantId = String(job.data?.tenantId || job.data?.tenant_id || 'system');
       const startedAt = Date.now();
 
-      console.log(`[EmailWorker] Processing job ${job.id} for tenant ${tenantId}`);
+      appLogger.info({ jobId: job.id, tenant_id: tenantId }, 'email_worker.job_processing');
 
       try {
         await emailService.sendEmail(job.data);
         const duration = Date.now() - startedAt;
-        console.log(`[EmailWorker] Job ${job.id} completed in ${duration}ms`);
+        appLogger.info({ jobId: job.id, duration_ms: duration }, 'email_worker.job_completed');
       } catch (error) {
-        console.error(`[EmailWorker] Job ${job.id} failed:`, error);
+        appLogger.error({ jobId: job.id, error: (error as any)?.message }, 'email_worker.job_failed');
         throw error; // Biarkan BullMQ menangani retry sesuai konfigurasi antrian
       }
     },
@@ -59,10 +60,10 @@ export const initEmailWorker = () => {
   );
 
   worker.on('failed', (job, err) => {
-    console.error(`[EmailWorker] Job ${job?.id} failed with error: ${err.message}`);
+    appLogger.error({ jobId: job?.id, error: err.message }, 'email_worker.job_failed');
   });
 
-  console.log('✅ Email Worker Started');
+  appLogger.info({}, 'email_worker.started');
 };
 
 /**
@@ -72,6 +73,6 @@ export const closeEmailWorker = async () => {
   if (worker) {
     await worker.close();
     worker = null;
-    console.log('🛑 Email Worker stopped');
+    appLogger.info({}, 'email_worker.stopped');
   }
 };

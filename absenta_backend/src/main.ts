@@ -266,22 +266,34 @@ async function start() {
     }
 
     // ─── Background Workers & WhatsApp Restore (Non-Blocking Startup) ───
+    // Schedulers & singleton workers hanya di Master Instance 0
+    // Consumer workers (PDF, billing, WA) boleh di semua instance untuk load balancing
     void (async () => {
       try {
         if (isHybridMode) {
           await startBackgroundServices();
         }
 
-        await trackService('Schedulers', 'scheduler', async () => {
-          await initSchedulers(fastify);
-        });
+        // ─── Cron Schedulers & Background Workers: Master Instance 0 ONLY ───
+        if (isMasterInstance()) {
+          await trackService('Schedulers', 'scheduler', async () => {
+            await initSchedulers(fastify);
+          });
 
-        // Background workers and dynamic modules
-        await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
-        await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
-        await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
-        await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+          await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
+          await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
+          await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
+          await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+        } else {
+          // Non-master: daftarkan service sebagai online tanpa menjalankannya
+          registerService('Schedulers', 'scheduler', 'online');
+          registerService('Billing Worker', 'worker', 'online');
+          registerService('Analytics Worker', 'worker', 'online');
+          registerService('Infra Worker', 'worker', 'online');
+          registerService('Maintenance Worker', 'worker', 'online');
+        }
 
+        // ─── Event Consumers: semua instance (load balancing) ───
         await trackService('Billing Payment Consumer', 'consumer', async () => {
           await initBillingPaymentEventConsumer();
         });
