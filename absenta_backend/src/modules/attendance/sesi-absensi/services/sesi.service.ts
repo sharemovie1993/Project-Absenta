@@ -1790,8 +1790,7 @@ export class SesiService {
             guru_id: sesiFull.guru_id,
             OR: [
               { status: 'Belum Hadir' },
-              { status: '' },
-              { status: null as any }
+              { status: '' }
             ]
           },
           data: {
