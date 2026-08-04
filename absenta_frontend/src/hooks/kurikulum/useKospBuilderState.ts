@@ -203,46 +203,53 @@ export const useKospBuilderState = () => {
       ? new Date(metaConfigData.tanggal_sk).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
       : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    const safeString = (val: any): string => {
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+      return '';
+    };
+
     const replacements: Record<string, string> = {
-      '{{NAMASEKOLAH}}': sekolahInfo?.nama || 'SMK NEGERI 1 PLERED',
-      '{{TAHUNPELAJARAN}}': selectedTahunNama,
-      '{{KOTASEKOLAH}}': sekolahInfo?.kota || sekolahInfo?.kecamatan || 'Purwakarta',
-      '{{ALAMATSEKOLAH}}': sekolahInfo?.alamat || 'Jl. Raya Cibogo Girang, Plered, Purwakarta',
-      '{{NPSNSEKOLAH}}': (sekolahInfo as any)?.npsn || '20217088',
-      '{{LOGOSEKOLAH_HTML}}': coverLogoHtml,
-      '{{TANGGALPENGESAHAN}}': tglPengesahanFormatted,
-      '{{NAMAKETUAKOMITE}}': metaConfigData.komite_nama || 'H. Dudung Abdurrahman, M.Pd.',
-      '{{NAMAKEPALASEKOLAH}}': namaKepalaSekolah,
-      '{{NIPKEPALASEKOLAH}}': nipKepalaSekolah,
-      '{{NAMAKEPAKACABDIN}}': metaConfigData.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.',
-      '{{NIPKEPAKACABDIN}}': metaConfigData.kcd_nip || '19680315 199303 1 008',
-      '{{KARAKTERISTIK_SEKOLAH}}': kospDbConfig?.karakteristik || `
+      '{{NAMASEKOLAH}}': safeString(sekolahInfo?.nama || 'SMK NEGERI 1 PLERED'),
+      '{{TAHUNPELAJARAN}}': safeString(selectedTahunNama),
+      '{{KOTASEKOLAH}}': safeString(sekolahInfo?.kota || sekolahInfo?.kecamatan || 'Purwakarta'),
+      '{{ALAMATSEKOLAH}}': safeString(sekolahInfo?.alamat || 'Jl. Raya Cibogo Girang, Plered, Purwakarta'),
+      '{{NPSNSEKOLAH}}': safeString((sekolahInfo as any)?.npsn || '20217088'),
+      '{{LOGOSEKOLAH_HTML}}': safeString(coverLogoHtml),
+      '{{TANGGALPENGESAHAN}}': safeString(tglPengesahanFormatted),
+      '{{NAMAKETUAKOMITE}}': safeString(metaConfigData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.'),
+      '{{NAMAKEPALASEKOLAH}}': safeString(namaKepalaSekolah),
+      '{{NIPKEPALASEKOLAH}}': safeString(nipKepalaSekolah),
+      '{{NAMAKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.'),
+      '{{NIPKEPAKACABDIN}}': safeString(metaConfigData?.kcd_nip || '19680315 199303 1 008'),
+      '{{KARAKTERISTIK_SEKOLAH}}': safeString(kospDbConfig?.karakteristik || `
         <p style="text-align:justify; font-size:11pt; line-height:1.6;">
           <strong>${sekolahInfo?.nama || 'Sekolah'}</strong> terletak di wilayah ${sekolahInfo?.kota || 'Daerah'} dengan potensi industri dan lingkungan masyarakat yang dinamis. Sekolah berkomitmen menyelenggarakan pendidikan kejuruan berkualitas yang berorientasi pada kesiapan kerja, wirausaha, dan karakter Pancasila.
         </p>
-      `,
-      '{{DAFTAR_JURUSAN_SUMMARY}}': daftarJurusanSummaryHtml,
-      '{{VISI_SEKOLAH}}': kospDbConfig?.visi || 'Mewujudkan lulusan SMK yang Unggul, Berkarakter Pancasila, Kompeten, dan Siap Kerja di Era Global.',
-      '{{MISI_SEKOLAH}}': kospDbConfig?.misi || `
+      `),
+      '{{DAFTAR_JURUSAN_SUMMARY}}': safeString(daftarJurusanSummaryHtml),
+      '{{VISI_SEKOLAH}}': safeString(kospDbConfig?.visi || 'Mewujudkan lulusan SMK yang Unggul, Berkarakter Pancasila, Kompeten, dan Siap Kerja di Era Global.'),
+      '{{MISI_SEKOLAH}}': safeString(kospDbConfig?.misi || `
         <ol style="margin-top:4px; padding-left:20px;">
           <li>Menyelenggarakan pembelajaran berbasis Industri dan Kurikulum Merdeka.</li>
           <li>Mengembangkan sikap disiplin, kerja keras, dan akhlak mulia.</li>
           <li>Memperkuat kemitraan dengan Dunia Usaha / Dunia Kerja (DUDI).</li>
         </ol>
-      `,
-      '{{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}': tabelStrukturSemuaJurusanHtml,
-      '{{TABEL_KALENDER_PENDIDIKAN}}': tabelKalenderPendidikanHtml,
-      '{{TABEL_JAM_KBM}}': tabelJamKbmHtml,
-      '{{TABEL_DUDI_MITRA}}': tabelDudiMitraHtml,
-      '{{TABEL_SK_TIM_PENYUSUN}}': tabelSkTimHtml,
-      '{{TABEL_P5_MATRIKS}}': tabelP5Html,
-      '{{TABEL_ESKUL_MATRIKS}}': tabelEskulHtml,
+      `),
+      '{{TABEL_STRUKTUR_KURIKULUM_SEMUA_JURUSAN}}': safeString(tabelStrukturSemuaJurusanHtml),
+      '{{TABEL_KALENDER_PENDIDIKAN}}': safeString(tabelKalenderPendidikanHtml),
+      '{{TABEL_JAM_KBM}}': safeString(tabelJamKbmHtml),
+      '{{TABEL_DUDI_MITRA}}': safeString(tabelDudiMitraHtml),
+      '{{TABEL_SK_TIM_PENYUSUN}}': safeString(tabelSkTimHtml),
+      '{{TABEL_P5_MATRIKS}}': safeString(tabelP5Html),
+      '{{TABEL_ESKUL_MATRIKS}}': safeString(tabelEskulHtml),
     };
 
     return basePages.map(page => {
-      let html = page.html;
+      let html = safeString(page.html);
       Object.entries(replacements).forEach(([key, val]) => {
-        html = html.replaceAll(key, val || '');
+        html = html.replaceAll(key, val);
       });
       return { ...page, html };
     });
