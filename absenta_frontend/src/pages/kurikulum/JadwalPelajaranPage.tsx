@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
 import { BebanGuruSummaryModal } from '../../components/kurikulum/jadwal-builder/BebanGuruSummaryModal';
-import { JadwalPrintPreviewModal } from '../../components/kurikulum/jadwal-builder/JadwalPrintPreviewModal';
+import { JadwalBuiltInPdfPreview } from '../../components/kurikulum/jadwal-builder/JadwalBuiltInPdfPreview';
 import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../components/common';
 
 import { useAuthStore } from '../../store/authStore';
@@ -73,7 +73,7 @@ export default function JadwalPelajaranPage() {
                     can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete');
   
   // ── 2. View State Logic ─────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder'>(isGuru ? 'grid' : 'list');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder' | 'preview'>(isGuru ? 'grid' : 'list');
 
   // ── 3. Shared Data State (for Grid View) ────────────────────────────────────
   const [refreshKey, setRefreshKey] = useState(0);
@@ -415,10 +415,10 @@ export default function JadwalPelajaranPage() {
               variant="outline" 
               size="sm" 
               className="rounded-xl px-3 py-1.5 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all text-slate-700 dark:text-slate-300 text-xs font-extrabold flex items-center gap-1.5"
-              onClick={() => setPrintPreviewOpen(true)}
+              onClick={() => setViewMode('preview')}
             >
               <Printer className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Cetak PDF</span>
+              <span>Cetak PDF (Built-in)</span>
             </Button>
 
             {canManage && (
@@ -462,10 +462,11 @@ export default function JadwalPelajaranPage() {
               options={[
                 { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
                 { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
-                { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' }
+                { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' },
+                { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
-              onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder')}
+              onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder' | 'preview')}
             />
           ) : (
             <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-extrabold text-xs px-3 py-1 border-indigo-200">
@@ -482,8 +483,10 @@ export default function JadwalPelajaranPage() {
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
               onRefresh={() => setRefreshKey(k => k + 1)}
-              onOpenPrintPreview={() => setPrintPreviewOpen(true)}
+              onOpenPrintPreview={() => setViewMode('preview')}
             />
+          ) : viewMode === 'preview' ? (
+            <JadwalBuiltInPdfPreview initialKelasId={selectedKelasId} initialGuruId={selectedGuruId} />
           ) : (
             <JadwalGrid 
               jadwal={jadwal} 
