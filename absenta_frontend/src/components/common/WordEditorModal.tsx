@@ -131,7 +131,7 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
       const idAttr = b.id ? `id="${b.id}" ` : '';
       return `<div ${idAttr}class="kosp-document-page-block">${b.html}</div>`;
     })
-    .join('\n<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n');
+    .join('\n');
 };
 
 export const WordEditorModal: React.FC<WordEditorModalProps> = ({

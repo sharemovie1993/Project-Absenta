@@ -155,7 +155,7 @@ export const useKospBuilderState = () => {
     }
     return jurusanList
       .map((j: Jurusan) => buildKospStrukturTableHtml(j, mappingAllData))
-      .join('<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>');
+      .join('\n');
   }, [jurusanList, mappingAllData]);
 
   const tabelKalenderPendidikanHtml = useMemo(() => {
