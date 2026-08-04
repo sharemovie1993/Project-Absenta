@@ -78,7 +78,7 @@ const buildKopHtml = (tenantInfo: any, includeLogoKanan: boolean = true): string
 </div>`;
 };
 
-const PAGEBREAK_REGEX = /(?:<p[^>]*>.*?<!--\s*pagebreak\s*-->.*?<\/p>|<img[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*\/?>|<div[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->|(?=<div[^>]*class="[^"]*kosp-jurusan-table-block[^"]*"))/gi;
+const PAGEBREAK_REGEX = /(?:<p[^>]*>.*?<!--\s*pagebreak\s*-->.*?<\/p>|<img[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*\/?>|<div[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->)/gi;
 
 // Merge multi-pages array into single continuous HTML with Page Breaks
 const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
@@ -89,14 +89,8 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
   pagesList.forEach((p, idx) => {
     let rawHtml = p.html || '';
 
-    // Split by explicit pagebreak comment/tag or kosp-jurusan-table-block boundary
+    // Split by explicit pagebreak comment/tag
     const subParts = rawHtml.split(PAGEBREAK_REGEX);
-
-    // If subParts[0] is just introductory text before the first Jurusan table, merge subParts[0] with subParts[1]
-    if (subParts.length > 1 && !subParts[0].includes('<table') && subParts[1].includes('kosp-jurusan-table-block')) {
-      subParts[1] = subParts[0] + '\n' + subParts[1];
-      subParts.shift();
-    }
 
     let subIdxCount = 0;
 
@@ -126,7 +120,7 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
       const idAttr = b.id ? `id="${b.id}" ` : '';
       return `<div ${idAttr}class="kosp-document-page-block">${b.html}</div>`;
     })
-    .join('\n<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n');
+    .join('\n');
 };
 
 export const WordEditorModal: React.FC<WordEditorModalProps> = ({
@@ -278,26 +272,12 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
   // Helper to split documentHtml back to array if onSave expects array
   const getPagesArray = (): WordEditorPage[] => {
     const html = editorRef.current ? editorRef.current.getContent() : documentHtml;
-    
-    const pbParts = html.split(PAGEBREAK_REGEX).filter(Boolean);
-    const finalParts: string[] = [];
-
-    pbParts.forEach((pbPart) => {
-      const subParts = pbPart.split(/(?=<div[^>]*class="[^"]*kosp-jurusan-table-block[^"]*")/gi);
-      if (subParts.length > 1 && !subParts[0].includes('<table') && subParts[1].includes('kosp-jurusan-table-block')) {
-        subParts[1] = subParts[0] + '\n' + subParts[1];
-        subParts.shift();
-      }
-      subParts.forEach((part) => {
-        const trimmed = part.trim();
-        if (trimmed) finalParts.push(trimmed);
-      });
-    });
-
-    if (finalParts.length <= 1) {
+    // Split by pagebreak if present
+    const parts = html.split(PAGEBREAK_REGEX).filter((p: string) => Boolean(p && p.trim()));
+    if (parts.length <= 1) {
       return [{ label: 'Dokumen', html }];
     }
-    return finalParts.map((part: string, idx: number) => ({
+    return parts.map((part: string, idx: number) => ({
       label: `Halaman ${idx + 1}`,
       html: part.trim(),
     }));
