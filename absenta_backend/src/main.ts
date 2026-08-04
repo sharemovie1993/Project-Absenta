@@ -1,26 +1,58 @@
 import dotenv from 'dotenv';
 
-// Silence routine noise: BullMQ/ioredis Redis version warnings, node-cron missed execution, Fastify deprecations
+// ─── ANSI Color Codes ───────────────────────────────────────────────────────
+const C = {
+  reset:   '\x1b[0m',
+  bold:    '\x1b[1m',
+  dim:     '\x1b[2m',
+  green:   '\x1b[32m',
+  yellow:  '\x1b[33m',
+  red:     '\x1b[31m',
+  cyan:    '\x1b[36m',
+  magenta: '\x1b[35m',
+  blue:    '\x1b[34m',
+  bgRed:   '\x1b[41m',
+};
+
+// ─── Silence routine noise: BullMQ/ioredis Redis version warnings, node-cron missed execution, Fastify deprecations ───
 const filterRedisWarn = () => {
+  const time = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+  };
+
+  const colorizeRaw = (msg: string): string => {
+    // Tentukan warna berdasarkan keyword
+    if (/\[ERROR\]|\[FATAL\]|❌|\bfailed\b|\bcrash\b/i.test(msg))
+      return `${C.bold}${C.red}ERROR${C.reset} ${C.red}${msg}${C.reset}`;
+    if (/\[WARN\]|⚠️|\bwarning\b|\bskipped\b|\bmissed\b/i.test(msg))
+      return `${C.bold}${C.yellow}WARN ${C.reset} ${C.yellow}${msg}${C.reset}`;
+    if (/\[SUCCESS\]|✅|connected|started|online|ready|aktif|berhasil/i.test(msg))
+      return `${C.bold}${C.green}INFO ${C.reset} ${C.green}${msg}${C.reset}`;
+    if (/\[Heartbeat\]|\[JobEngine\]|\[Redis\]|\[License\]|\[Chatbot\]/i.test(msg))
+      return `${C.bold}${C.cyan}INFO ${C.reset} ${C.dim}${msg}${C.reset}`;
+    return `${C.bold}${C.blue}INFO ${C.reset} ${msg}`;
+  };
+
   const origWarn = console.warn;
   console.warn = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
     if (msg.includes('[NODE-CRON] [WARN] missed execution')) return;
-    origWarn.apply(console, args);
+    origWarn(`${time()} ${C.bold}${C.yellow}WARN ${C.reset} ${C.yellow}${msg}${C.reset}`);
   };
   const origErr = console.error;
   console.error = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
-    origErr.apply(console, args);
+    origErr(`${time()} ${C.bold}${C.red}ERROR${C.reset} ${C.red}${msg}${C.reset}`);
   };
   const origLog = console.log;
   console.log = (...args: any[]) => {
     const msg = args.map(a => String(a || '')).join(' ');
     if (msg.includes('[FSTDEP017]') || msg.includes('request.routerPath')) return;
     if (msg.includes('allowUnionTypes') || msg.includes('strictTypes')) return;
-    origLog.apply(console, args);
+    origLog(`${time()} ${colorizeRaw(msg)}`);
   };
 };
 filterRedisWarn();
@@ -55,17 +87,28 @@ validateEnv();
 
 import { appendLog } from './utils/logger';
 
-const pretty =
-  (process.env.NODE_ENV || '').toLowerCase() !== 'production' &&
-  (String(process.env.PINO_PRETTY || 'true').trim().toLowerCase() !== 'false');
+const isDev = (process.env.NODE_ENV || '').toLowerCase() !== 'production';
+
+// ─── Pino-pretty logger config (berlaku di dev & production) ─────────────────
+const pinoTransport = {
+  target: 'pino-pretty',
+  options: {
+    colorize: true,
+    colorizeObjects: false,
+    translateTime: 'HH:MM:ss.l',
+    ignore: 'pid,hostname,reqId',
+    singleLine: !isDev,
+    customColors: 'info:green,warn:yellow,error:red,fatal:bgRed,debug:gray',
+    levelFirst: false,
+  },
+};
+
 const fastify = Fastify({
   disableRequestLogging: true,
-  logger: pretty
-    ? {
-        level: 'info',
-        transport: { target: 'pino-pretty', options: { colorize: true } }
-      }
-    : { level: 'info' },
+  logger: {
+    level: 'info',
+    transport: pinoTransport,
+  },
   bodyLimit: 15728640
 });
 
