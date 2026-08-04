@@ -251,25 +251,25 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                 const colorStyle = getMapelColor(m.label);
                 const status = m.status || 'KOSONG';
 
-                // Modern status-driven badge styling
+                // Modern status-driven badge styling (boxy rounded-md)
                 let badgeJsx = null;
                 if (status === 'PAS') {
                   badgeJsx = (
-                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-emerald-500 text-white shadow-xs">
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-emerald-500 text-white shadow-xs">
                       <CheckCircle2 className="w-2.5 h-2.5" />
                       <span>{m.rightBadge || '✓ Pas'}</span>
                     </span>
                   );
                 } else if (status === 'SISA' || status === 'KOSONG') {
                   badgeJsx = (
-                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-500 text-white shadow-md shadow-amber-500/30 animate-pulse">
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-amber-500 text-white shadow-md shadow-amber-500/30 animate-pulse">
                       <Clock className="w-2.5 h-2.5" />
                       <span>{m.rightBadge || '0/2 JP'}</span>
                     </span>
                   );
                 } else if (status === 'OVER') {
                   badgeJsx = (
-                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-rose-500 text-white shadow-md shadow-rose-500/30">
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-rose-500 text-white shadow-md shadow-rose-500/30">
                       <AlertTriangle className="w-2.5 h-2.5" />
                       <span>{m.rightBadge || '⚠️ Over'}</span>
                     </span>
@@ -285,11 +285,11 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                     disabled={isPas}
                     onClick={() => !isPas && setPaintMapelId(m.value)}
                     className={cn(
-                      "px-3.5 py-1.5 text-xs font-extrabold rounded-2xl transition-all duration-200 border flex items-center gap-2 shadow-xs group/chip",
+                      "px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 border flex items-center gap-2 shadow-xs group/chip",
                       isPas
                         ? "opacity-60 cursor-not-allowed bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-800/50"
                         : isSelected
-                        ? "bg-slate-900 text-white dark:bg-indigo-600 dark:text-white border-slate-900 dark:border-indigo-600 shadow-md ring-2 ring-indigo-500/20 scale-[1.03]"
+                        ? "bg-slate-900 text-white dark:bg-indigo-600 dark:text-white border-slate-900 dark:border-indigo-600 shadow-md ring-2 ring-indigo-500/20 scale-[1.02]"
                         : "bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300"
                     )}
                     title={isPas ? `Alokasi ${m.label} sudah PAS (${m.rightBadge}). Sudah selesai.` : `Pilih Mata Pelajaran: ${m.label}`}
