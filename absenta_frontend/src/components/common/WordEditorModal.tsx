@@ -78,12 +78,37 @@ const buildKopHtml = (tenantInfo: any, includeLogoKanan: boolean = true): string
 </div>`;
 };
 
+const PAGEBREAK_REGEX = /(?:<p[^>]*>\s*<!--\s*pagebreak\s*-->\s*<\/p>|<img[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*\/?>|<div[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->)/gi;
+
 // Merge multi-pages array into single continuous HTML with Page Breaks
 const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
   if (!pagesList || pagesList.length === 0) return '<p>Mulai mengetik...</p>';
-  return pagesList
-    .map((p, idx) => `<div id="kosp-section-page-${idx}" class="kosp-document-page-block">${p.html}</div>`)
-    .join('<p style="page-break-before: always;"><!-- pagebreak --></p>');
+
+  const flattenedBlocks: { id?: string; html: string }[] = [];
+
+  pagesList.forEach((p, idx) => {
+    const subParts = (p.html || '').split(PAGEBREAK_REGEX);
+    let subIdxCount = 0;
+    subParts.forEach((part) => {
+      const trimmed = part.trim();
+      if (trimmed) {
+        flattenedBlocks.push({
+          id: subIdxCount === 0 ? `kosp-section-page-${idx}` : undefined,
+          html: trimmed,
+        });
+        subIdxCount++;
+      }
+    });
+  });
+
+  if (flattenedBlocks.length === 0) return '<p>Mulai mengetik...</p>';
+
+  return flattenedBlocks
+    .map((b) => {
+      const idAttr = b.id ? `id="${b.id}" ` : '';
+      return `<div ${idAttr}class="kosp-document-page-block">${b.html}</div>`;
+    })
+    .join('<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>');
 };
 
 export const WordEditorModal: React.FC<WordEditorModalProps> = ({
@@ -236,7 +261,7 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
   const getPagesArray = (): WordEditorPage[] => {
     const html = editorRef.current ? editorRef.current.getContent() : documentHtml;
     // Split by pagebreak if present
-    const parts = html.split(/(?:<p[^>]*>\s*<!--\s*pagebreak\s*-->\s*<\/p>|<div[^>]*style="[^"]*page-break-after:[^"]*"[^>]*>.*?<\/div>)/gi).filter(Boolean);
+    const parts = html.split(PAGEBREAK_REGEX).filter((p: string) => Boolean(p && p.trim()));
     if (parts.length <= 1) {
       return [{ label: 'Dokumen', html }];
     }
