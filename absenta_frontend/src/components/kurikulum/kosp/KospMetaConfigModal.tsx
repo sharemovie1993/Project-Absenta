@@ -60,7 +60,9 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
         generateDefaultTim();
       }
     }
-  }, [isOpen, initialData, defaultKepsek, defaultWakasek]);
+  // PENTING: deps hanya [isOpen] — bukan initialData (object ref) agar tidak
+  // me-reset form setiap kali parent re-render dengan object baru
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateDefaultTim = () => {
     const list: TimPenyusunItem[] = [
@@ -103,17 +105,22 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave({
-      nomor_sk: nomorSk,
-      tanggal_sk: tanggalSk,
-      nama_dinas_provinsi: namadinasProvinsi,
-      nama_cabdin: namaCabdin,
-      kcd_nama: kcdNama,
-      kcd_nip: kcdNip,
-      komite_nama: komiteNama,
-      tim_penyusun: timPenyusun.map((item, idx) => ({ ...item, no: idx + 1 })),
-    });
-    onClose();
+    try {
+      await onSave({
+        nomor_sk: nomorSk,
+        tanggal_sk: tanggalSk,
+        nama_dinas_provinsi: namadinasProvinsi,
+        nama_cabdin: namaCabdin,
+        kcd_nama: kcdNama,
+        kcd_nip: kcdNip,
+        komite_nama: komiteNama,
+        tim_penyusun: timPenyusun.map((item, idx) => ({ ...item, no: idx + 1 })),
+      });
+      onClose(); // hanya tutup jika save berhasil
+    } catch {
+      // error toast sudah ditangani oleh upsertMutation.onError di parent
+      // modal tetap terbuka agar user bisa coba lagi
+    }
   };
 
   return (
@@ -257,7 +264,7 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {timPenyusun.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <tr key={`tim-${idx}-${item.nama || idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="p-2 text-center font-bold text-slate-500">{idx + 1}</td>
                     <td className="p-2">
                       <Input

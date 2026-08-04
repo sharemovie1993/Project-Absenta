@@ -184,7 +184,7 @@ export const KospBuilderPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {compiledPages.map((page, idx) => (
               <div 
-                key={idx}
+                key={page.label || `kosp-page-${idx}`}
                 onClick={() => setIsEditorOpen(true)}
                 className="group p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between h-40"
               >

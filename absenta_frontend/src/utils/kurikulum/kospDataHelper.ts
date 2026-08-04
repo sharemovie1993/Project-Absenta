@@ -269,7 +269,10 @@ export const buildKospDudiMitraHtml = (dudiItems: any[] = []): string => {
     `;
   }
 
-  const rows = dudiItems.slice(0, 15).map((item, idx) => `
+  const displayItems = dudiItems.slice(0, 15);
+  const isMoreThan15 = dudiItems.length > 15;
+
+  const rows = displayItems.map((item, idx) => `
     <tr>
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${idx + 1}</td>
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama || item.nama_mitra || item.nama_perusahaan || '-'}</td>
@@ -298,6 +301,7 @@ export const buildKospDudiMitraHtml = (dudiItems: any[] = []): string => {
           ${rows}
         </tbody>
       </table>
+      ${isMoreThan15 ? `<p style="font-size:10px; color:#64748b; margin-top:6px; font-style:italic;">* Menampilkan 15 dari ${dudiItems.length} total mitra DUDI. Data lengkap tersedia di modul Hubin.</p>` : ''}
     </div>
   `;
 };
