@@ -177,9 +177,10 @@ export const useKospBuilderState = () => {
     return buildKospSkTimTableHtml(
       namaKepalaSekolah, 
       wakasekKurikulum, 
-      metaConfigData.tim_penyusun
+      metaConfigData.tim_penyusun,
+      treeData
     );
-  }, [namaKepalaSekolah, wakasekKurikulum, metaConfigData.tim_penyusun]);
+  }, [namaKepalaSekolah, wakasekKurikulum, metaConfigData.tim_penyusun, treeData]);
 
   const tabelP5Html = useMemo(() => {
     return buildKospP5TableHtml();

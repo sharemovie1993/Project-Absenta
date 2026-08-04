@@ -22,27 +22,108 @@ export interface TimPenyusunItem {
   jabatan_tim: string;
 }
 
+export const isGenericPlaceholder = (nama: string): boolean => {
+  if (!nama || !nama.trim()) return true;
+  const lower = nama.trim().toLowerCase();
+  return (
+    lower === 'kepala sekolah' ||
+    lower === 'wakasek kurikulum' ||
+    lower === 'wakasek bidang kurikulum' ||
+    lower === 'wakasek bidang kesiswaan' ||
+    lower === 'wakasek kesiswaan' ||
+    lower === 'wakasek bidang humas & hubin' ||
+    lower === 'wakasek humas/dudi' ||
+    lower === 'wakasek bidang sarana prasarana' ||
+    lower === 'wakasek sarpras' ||
+    lower === 'para ketua program keahlian (kaprog)' ||
+    lower === 'kaprog keahlian' ||
+    lower === 'koor. bimbingan konseling (bk)' ||
+    lower === 'guru bk' ||
+    lower === 'koordinator tata usaha' ||
+    lower === 'kepala tata usaha'
+  );
+};
+
+export const resolveMemberNameFromTree = (
+  treeData: Record<string, any[]> | undefined,
+  kode: string,
+  fallback: string
+): string => {
+  if (!treeData) return fallback;
+
+  const possibleKeys = [
+    kode,
+    kode.toUpperCase(),
+    kode.toLowerCase(),
+    kode === 'TU_KEPALA' ? 'TU' : null,
+    kode === 'TU' ? 'TU_KEPALA' : null,
+  ].filter(Boolean) as string[];
+
+  for (const key of possibleKeys) {
+    const nodes = treeData[key];
+    if (nodes && Array.isArray(nodes)) {
+      for (const node of nodes) {
+        if (node.members && Array.isArray(node.members)) {
+          for (const member of node.members) {
+            const memberName = member?.name || member?.nama || member?.User?.Guru?.nama_guru;
+            if (memberName && typeof memberName === 'string' && memberName !== 'Unknown' && memberName.trim()) {
+              return memberName.trim();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return fallback;
+};
+
 /**
  * Generates Word-style HTML Table for SK Tim Penyusun KOSP
  */
 export const buildKospSkTimTableHtml = (
   namaKepsek: string, 
   wakasekKurikulum: string,
-  customTimList?: TimPenyusunItem[]
+  customTimList?: TimPenyusunItem[],
+  treeData?: Record<string, any[]>
 ): string => {
   const defaultList: TimPenyusunItem[] = [
-    { no: 1, nama: namaKepsek, jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
-    { no: 2, nama: wakasekKurikulum, jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
+    { no: 1, nama: resolveMemberNameFromTree(treeData, 'KEPALA_SEKOLAH', namaKepsek || 'Kepala Sekolah'), jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
+    { no: 2, nama: resolveMemberNameFromTree(treeData, 'KURIKULUM', wakasekKurikulum || 'Wakasek Kurikulum'), jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
     { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
     { no: 4, nama: 'H. Dudung Abdurrahman, M.Pd.', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
-    { no: 5, nama: 'Wakasek Bidang Kesiswaan', jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
-    { no: 6, nama: 'Wakasek Bidang Humas & Hubin', jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
-    { no: 7, nama: 'Wakasek Bidang Sarana Prasarana', jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
-    { no: 8, nama: 'Para Ketua Program Keahlian (Kaprog)', jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
-    { no: 9, nama: 'Koor. Bimbingan Konseling (BK)', jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
+    { no: 5, nama: resolveMemberNameFromTree(treeData, 'KESISWAAN', 'Wakasek Bidang Kesiswaan'), jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
+    { no: 6, nama: resolveMemberNameFromTree(treeData, 'HUBIN', 'Wakasek Bidang Humas & Hubin'), jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
+    { no: 7, nama: resolveMemberNameFromTree(treeData, 'SARPRAS', 'Wakasek Bidang Sarana Prasarana'), jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
+    { no: 8, nama: resolveMemberNameFromTree(treeData, 'KAPROG', 'Para Ketua Program Keahlian (Kaprog)'), jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
+    { no: 9, nama: resolveMemberNameFromTree(treeData, 'BPBK', 'Koor. Bimbingan Konseling (BK)'), jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
+    { no: 10, nama: resolveMemberNameFromTree(treeData, 'TU_KEPALA', 'Koordinator Tata Usaha'), jabatan_kedinasan: 'Kepala Tata Usaha', jabatan_tim: 'Anggota / Tim Administrasi' },
   ];
 
-  const listToRender = (customTimList && customTimList.length > 0) ? customTimList : defaultList;
+  let listToRender = (customTimList && customTimList.length > 0) ? customTimList : defaultList;
+
+  if (treeData && Object.keys(treeData).length > 0) {
+    const codeMap: Record<number, string> = {
+      1: 'KEPALA_SEKOLAH',
+      2: 'KURIKULUM',
+      5: 'KESISWAAN',
+      6: 'HUBIN',
+      7: 'SARPRAS',
+      8: 'KAPROG',
+      9: 'BPBK',
+      10: 'TU_KEPALA',
+    };
+    listToRender = listToRender.map((item) => {
+      const code = codeMap[item.no || 0];
+      if (code && isGenericPlaceholder(item.nama)) {
+        const liveName = resolveMemberNameFromTree(treeData, code, item.nama);
+        if (liveName && liveName !== item.nama) {
+          return { ...item, nama: liveName };
+        }
+      }
+      return item;
+    });
+  }
 
   const rows = listToRender.map((item, idx) => `
     <tr>
@@ -52,6 +133,7 @@ export const buildKospSkTimTableHtml = (
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; font-weight:bold; color:#1e3a8a;">${item.jabatan_tim}</td>
     </tr>
   `).join('');
+
 
   return `
     <div style="margin-top:12px; margin-bottom:20px;">

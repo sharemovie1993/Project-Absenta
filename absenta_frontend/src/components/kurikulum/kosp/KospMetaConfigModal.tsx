@@ -3,7 +3,11 @@ import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Plus, Trash2, RefreshCw, FileCheck2, UserCheck } from 'lucide-react';
-import type { TimPenyusunItem } from '../../../utils/kurikulum/kospDataHelper';
+import { 
+  type TimPenyusunItem, 
+  resolveMemberNameFromTree, 
+  isGenericPlaceholder 
+} from '../../../utils/kurikulum/kospDataHelper';
 
 export interface KospMetaConfigData {
   nomor_sk?: string;
@@ -46,53 +50,70 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
   const [komiteNama, setKomiteNama] = useState<string>('');
   const [timPenyusun, setTimPenyusun] = useState<TimPenyusunItem[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setNomorSk(initialData?.nomor_sk || '421.5/089/SK-KOSP/2025');
-      setTanggalSk(initialData?.tanggal_sk || new Date().toISOString().split('T')[0]);
-      setNamaDinasProvinsi(initialData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat');
-      setNamaCabdin(initialData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII');
-      setKcdNama(initialData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.');
-      setKcdNip(initialData?.kcd_nip || '19680315 199303 1 008');
-      setKomiteNama(initialData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.');
-
-      if (initialData?.tim_penyusun && initialData.tim_penyusun.length > 0) {
-        setTimPenyusun(initialData.tim_penyusun);
-      } else {
-        generateDefaultTim();
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  const getMemberName = (kode: string, fallback: string) => {
-    if (!treeData) return fallback;
-    const nodes = treeData[kode];
-    if (!nodes || !Array.isArray(nodes)) return fallback;
-    for (const node of nodes) {
-      if (node.members && Array.isArray(node.members) && node.members.length > 0) {
-        const first = node.members[0];
-        if (first.name || first.nama) return first.name || first.nama;
-      }
-    }
-    return fallback;
-  };
-
-  const generateDefaultTim = () => {
-    const list: TimPenyusunItem[] = [
-      { no: 1, nama: getMemberName('KEPALA_SEKOLAH', defaultKepsek || 'Kepala Sekolah'), jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
-      { no: 2, nama: getMemberName('KURIKULUM', defaultWakasek || 'Wakasek Kurikulum'), jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
+  const buildDefaultTimList = (): TimPenyusunItem[] => {
+    return [
+      { no: 1, nama: resolveMemberNameFromTree(treeData, 'KEPALA_SEKOLAH', defaultKepsek || 'Kepala Sekolah'), jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
+      { no: 2, nama: resolveMemberNameFromTree(treeData, 'KURIKULUM', defaultWakasek || 'Wakasek Kurikulum'), jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
       { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
       { no: 4, nama: komiteNama || 'H. Dudung Abdurrahman, M.Pd.', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
-      { no: 5, nama: getMemberName('KESISWAAN', 'Wakasek Bidang Kesiswaan'), jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
-      { no: 6, nama: getMemberName('HUBIN', 'Wakasek Bidang Humas & Hubin'), jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
-      { no: 7, nama: getMemberName('SARPRAS', 'Wakasek Bidang Sarana Prasarana'), jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
-      { no: 8, nama: getMemberName('KAPROG', 'Para Ketua Program Keahlian (Kaprog)'), jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
-      { no: 9, nama: getMemberName('BPBK', 'Koor. Bimbingan Konseling (BK)'), jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
-      { no: 10, nama: getMemberName('TU_KEPALA', 'Koordinator Tata Usaha'), jabatan_kedinasan: 'Kepala Tata Usaha', jabatan_tim: 'Anggota / Tim Administrasi' },
+      { no: 5, nama: resolveMemberNameFromTree(treeData, 'KESISWAAN', 'Wakasek Bidang Kesiswaan'), jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
+      { no: 6, nama: resolveMemberNameFromTree(treeData, 'HUBIN', 'Wakasek Bidang Humas & Hubin'), jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
+      { no: 7, nama: resolveMemberNameFromTree(treeData, 'SARPRAS', 'Wakasek Bidang Sarana Prasarana'), jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
+      { no: 8, nama: resolveMemberNameFromTree(treeData, 'KAPROG', 'Para Ketua Program Keahlian (Kaprog)'), jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
+      { no: 9, nama: resolveMemberNameFromTree(treeData, 'BPBK', 'Koor. Bimbingan Konseling (BK)'), jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
+      { no: 10, nama: resolveMemberNameFromTree(treeData, 'TU_KEPALA', 'Koordinator Tata Usaha'), jabatan_kedinasan: 'Kepala Tata Usaha', jabatan_tim: 'Anggota / Tim Administrasi' },
     ];
-    setTimPenyusun(list);
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setNomorSk(initialData?.nomor_sk || '421.5/089/SK-KOSP/2025');
+    setTanggalSk(initialData?.tanggal_sk || new Date().toISOString().split('T')[0]);
+    setNamaDinasProvinsi(initialData?.nama_dinas_provinsi || 'Dinas Pendidikan Provinsi Jawa Barat');
+    setNamaCabdin(initialData?.nama_cabdin || 'Cabang Dinas Pendidikan Wilayah VII');
+    setKcdNama(initialData?.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.');
+    setKcdNip(initialData?.kcd_nip || '19680315 199303 1 008');
+    setKomiteNama(initialData?.komite_nama || 'H. Dudung Abdurrahman, M.Pd.');
+
+    let baseList: TimPenyusunItem[] = [];
+    if (initialData?.tim_penyusun && initialData.tim_penyusun.length > 0) {
+      baseList = initialData.tim_penyusun;
+    } else {
+      baseList = buildDefaultTimList();
+    }
+
+    // Auto-enrich any items that still use generic placeholder names with treeData live names
+    if (treeData && Object.keys(treeData).length > 0) {
+      const codeMap: Record<number, string> = {
+        1: 'KEPALA_SEKOLAH',
+        2: 'KURIKULUM',
+        5: 'KESISWAAN',
+        6: 'HUBIN',
+        7: 'SARPRAS',
+        8: 'KAPROG',
+        9: 'BPBK',
+        10: 'TU_KEPALA',
+      };
+      baseList = baseList.map((item) => {
+        const code = codeMap[item.no || 0];
+        if (code && isGenericPlaceholder(item.nama)) {
+          const liveName = resolveMemberNameFromTree(treeData, code, item.nama);
+          if (liveName && liveName !== item.nama && !isGenericPlaceholder(liveName)) {
+            return { ...item, nama: liveName };
+          }
+        }
+        return item;
+      });
+    }
+
+    setTimPenyusun(baseList);
+  }, [isOpen, treeData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const generateDefaultTim = () => {
+    setTimPenyusun(buildDefaultTimList());
+  };
+
 
 
   const handleAddMember = () => {
