@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Button, SearchableSelect } from '../../ui';
-import { Calendar, Users, RefreshCw, Maximize2, Minimize2, PanelLeftClose, PanelLeft, Trash2 } from 'lucide-react';
+import { Button, SearchableSelect } from '../../ui';
+import { RefreshCw, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
@@ -23,10 +23,6 @@ interface Props {
   hariSekolah: string[];
   loadingData: boolean;
   onRefreshSchedules: () => void;
-  onOpenBebanModal?: () => void;
-  onClearSchedule?: () => void;
-  isFocusMode?: boolean;
-  onToggleFocusMode?: () => void;
   showLeftPanel?: boolean;
   onToggleLeftPanel?: () => void;
 }
@@ -49,10 +45,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   hariSekolah,
   loadingData,
   onRefreshSchedules,
-  onOpenBebanModal,
-  onClearSchedule,
-  isFocusMode = false,
-  onToggleFocusMode,
   showLeftPanel = true,
   onToggleLeftPanel,
 }) => {
@@ -179,48 +171,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {onClearSchedule && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearSchedule}
-            className="border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 hover:bg-rose-100/50 text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 px-2.5 py-1 text-xs"
-            title="Kosongkan / Reset Jadwal KBM berdasarkan konteks aktif"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>Kosongkan Jadwal</span>
-          </Button>
-        )}
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onOpenBebanModal}
-          className="flex items-center gap-1.5 px-2.5 py-1 border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-350"
-          title="Statistik Beban Mengajar Guru"
-        >
-          <Users className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Beban JP Guru</span>
-        </Button>
-
-        {onToggleFocusMode && (
-          <Button
-            variant={isFocusMode ? "primary" : "outline"}
-            size="sm"
-            onClick={onToggleFocusMode}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all",
-              isFocusMode
-                ? "bg-purple-600 text-white shadow-md border-none font-extrabold"
-                : "border-purple-200 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-            )}
-            title={isFocusMode ? "Keluar dari Mode Fokus Layar Penuh (Esc)" : "Masuk ke Mode Fokus Layar Penuh Bebas Gangguan"}
-          >
-            {isFocusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            <span>{isFocusMode ? "Keluar Fokus" : "Mode Fokus"}</span>
-          </Button>
-        )}
-
         {viewMode === 'KELAS' && onToggleLeftPanel && (
           <Button
             variant={showLeftPanel ? "outline" : "primary"}

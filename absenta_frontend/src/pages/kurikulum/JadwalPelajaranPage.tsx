@@ -16,9 +16,11 @@ import {
   Printer,
   Paintbrush,
   Sparkles,
-  Trash2
+  Trash2,
+  Users
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
+import { BebanGuruSummaryModal } from '../../components/kurikulum/jadwal-builder/BebanGuruSummaryModal';
 
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -76,6 +78,7 @@ export default function JadwalPelajaranPage() {
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
   const [autoWizardOpen, setAutoWizardOpen] = useState(false);
+  const [bebanModalOpen, setBebanModalOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
 
   // Logic: Auto-switch filters based on View Mode for Dual-Role (Guru + Walas)
@@ -412,17 +415,26 @@ export default function JadwalPelajaranPage() {
                   Generate Otomatis
                 </Button>
 
-                {viewMode !== 'builder' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl px-3 py-1.5 border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 shadow-sm hover:bg-rose-100/50 hover:shadow-md transition-all text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 text-xs"
-                    onClick={handleClearSchedule}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                    Kosongkan Jadwal
-                  </Button>
-                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-sm hover:bg-indigo-100/50 hover:shadow-md transition-all text-indigo-700 dark:text-indigo-300 font-bold flex items-center gap-1.5 text-xs"
+                  onClick={() => setBebanModalOpen(true)}
+                  title="Statistik Beban Mengajar Guru"
+                >
+                  <Users className="w-3.5 h-3.5 text-indigo-500" />
+                  Beban JP Guru
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl px-3 py-1.5 border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 shadow-sm hover:bg-rose-100/50 hover:shadow-md transition-all text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 text-xs"
+                  onClick={handleClearSchedule}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  Kosongkan Jadwal
+                </Button>
               </>
             )}
           </div>
@@ -543,6 +555,13 @@ export default function JadwalPelajaranPage() {
         tahunPelajaranId={selectedTahunId}
         semesterId={selectedSemesterId}
         onSuccess={() => setRefreshKey(k => k + 1)}
+      />
+
+      <BebanGuruSummaryModal
+        isOpen={bebanModalOpen}
+        onClose={() => setBebanModalOpen(false)}
+        tahunPelajaranId={selectedTahunId}
+        semesterId={selectedSemesterId}
       />
     </OperationalPageLayout>
   );

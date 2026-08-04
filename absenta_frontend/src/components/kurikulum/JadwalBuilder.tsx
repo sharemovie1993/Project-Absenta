@@ -84,7 +84,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
   const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
-  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [showLeftPanel, setShowLeftPanel] = useState<boolean>(initialViewMode === 'KELAS');
   const [colorByMode, setColorByMode] = useState<ColorByMode>('MAPEL');
 
@@ -96,17 +95,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       setShowLeftPanel(false);
     }
   };
-
-  // Keyboard shortcut listener for Esc key to exit focus mode
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFocusMode) {
-        setIsFocusMode(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFocusMode]);
   
   // Selections
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
@@ -831,25 +819,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         isFocusMode && "fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto w-screen h-screen m-0"
       )}>
 
-        {/* 🌟 FOCUS MODE HEADER BANNER */}
-        {isFocusMode && (
-          <div className="lg:col-span-12 flex items-center justify-between p-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl shadow-lg border border-purple-700/50 mb-1">
-            <div className="flex items-center gap-3">
-              <span className="p-2 bg-purple-500/30 rounded-xl text-amber-300 animate-pulse font-black text-base">✨</span>
-              <div>
-                <h4 className="text-xs font-black tracking-wider uppercase text-amber-300">Mode Fokus Penjadwalan Aktif</h4>
-                <p className="text-[11px] text-purple-200">Sidebar & menu platform disembunyikan untuk ruang kerja jadwal 100% penuh.</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsFocusMode(false)}
-              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0"
-            >
-              <span>❌ Keluar Mode Fokus (Esc)</span>
-            </button>
-          </div>
-        )}
-      
       {/* 🛠️ LEFT PANEL: Toolbox & Cards */}
       {showLeftPanel && (
         <div className="lg:col-span-4 flex flex-col space-y-4">
@@ -867,7 +836,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                       <BookOpen className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{selectedPaintMapelName}</h4>
+                      <h4 className="text-sm font-bold text-slate-900 dark:bg-white leading-tight">{selectedPaintMapelName}</h4>
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 flex items-center">
                         <User className="w-3 h-3 mr-1 text-green-500" />
                         {selectedPaintTeacherName}
