@@ -41,12 +41,25 @@ export function urlBase64ToUint8Array(base64String: string) {
 
 export function resolveProfilePhotoUrl(url?: string | null): string {
   if (!url) return '';
-  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
+  if (url.startsWith('data:')) return url;
+
+  let targetPath = url;
+  if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
+    try {
+      const u = new URL(targetPath);
+      // If it points to an upload asset or api endpoint, extract relative pathname
+      if (u.pathname.includes('/uploads/') || u.pathname.includes('/academic/') || u.pathname.includes('/api/')) {
+        targetPath = u.pathname;
+      } else {
+        return url;
+      }
+    } catch {
+      return url;
+    }
   }
   
   // Ensure it has /api prefix
-  const cleanUrl = url.startsWith('/api') ? url : `/api${url}`;
+  const cleanUrl = targetPath.startsWith('/api') ? targetPath : `/api${targetPath.startsWith('/') ? '' : '/'}${targetPath}`;
   
   // Prepend backend base host URL (removing trailing /api if necessary to avoid double /api)
   const apiBase = resolvePublicApiBaseUrl() || '';
