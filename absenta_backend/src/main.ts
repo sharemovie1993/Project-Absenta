@@ -171,9 +171,10 @@ async function start() {
       await verifyRedisConnection();
     });
 
-    if (isHybridMode) {
-      await startBackgroundServices();
-    }
+    // Test database connection
+    await trackService('PostgreSQL', 'infra', async () => {
+      await prisma.$connect();
+    });
 
     // Register all plugins, middlewares, and routes
     await trackService('Fastify Plugins', 'infra', async () => {
@@ -183,25 +184,6 @@ async function start() {
 
     await trackService('Route Registry', 'infra', async () => {
       await registerRoutes(fastify, prisma);
-    });
-
-    // Test database connection
-    await trackService('PostgreSQL', 'infra', async () => {
-      await prisma.$connect();
-    });
-
-    await trackService('Schedulers', 'scheduler', async () => {
-      await initSchedulers(fastify);
-    });
-
-    // Background workers and dynamic modules
-    await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
-    await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
-    await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
-    await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
-    await trackService('WhatsApp Gateway Pool', 'infra', async () => {
-      const { waGatewayService } = await import('./services/wa-gateway.service');
-      await waGatewayService.restoreConnections();
     });
 
     const tenantDetailProvider = {
@@ -235,18 +217,7 @@ async function start() {
       await (await import('./infra/event-bus')).initEventBus({ redis, io, ioApi });
     });
 
-
-
-    await trackService('Billing Payment Consumer', 'consumer', async () => {
-      await initBillingPaymentEventConsumer();
-    });
-
-    await trackService('Invoice PDF Consumer', 'consumer', async () => {
-      const { initInvoicePdfDomainConsumer } = await import('./modules/pdf/invoice-pdf.queue');
-      await initInvoicePdfDomainConsumer();
-    });
-
-    // ─── Start Fastify Server ───
+    // ─── Start Fastify Server (INSTANT LISTEN - Non-Blocking) ───
     const host = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
     const port = parseInt(process.env.PORT || '3003');
     
@@ -257,6 +228,44 @@ async function start() {
     if (process.send) {
       process.send('ready');
     }
+
+    // ─── Print PM2-style startup table ───
+    printStartupTable(port, host);
+
+    // ─── Background Workers & WhatsApp Restore (Non-Blocking Startup) ───
+    void (async () => {
+      try {
+        if (isHybridMode) {
+          await startBackgroundServices();
+        }
+
+        await trackService('Schedulers', 'scheduler', async () => {
+          await initSchedulers(fastify);
+        });
+
+        // Background workers and dynamic modules
+        await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
+        await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
+        await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
+        await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+
+        await trackService('Billing Payment Consumer', 'consumer', async () => {
+          await initBillingPaymentEventConsumer();
+        });
+
+        await trackService('Invoice PDF Consumer', 'consumer', async () => {
+          const { initInvoicePdfDomainConsumer } = await import('./modules/pdf/invoice-pdf.queue');
+          await initInvoicePdfDomainConsumer();
+        });
+
+        await trackService('WhatsApp Gateway Pool', 'infra', async () => {
+          const { waGatewayService } = await import('./services/wa-gateway.service');
+          await waGatewayService.restoreConnections();
+        });
+      } catch (err: any) {
+        console.warn('[Background Services Startup Warning]:', err.message);
+      }
+    })();
 
     // Sync license with center licensing server asynchronously
     const { LicenseService } = await import('./infra/license/license.service');
@@ -274,9 +283,6 @@ async function start() {
     } catch (err: any) {
       console.warn('[Heartbeat Startup Warning] Failed to initialize heartbeat service:', err.message);
     }
-
-    // ─── Print PM2-style startup table ───
-    printStartupTable(port, host);
     
   } catch (error) {
     fastify.log.error('Error starting server:');
