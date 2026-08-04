@@ -87,6 +87,35 @@ export default function JadwalPelajaranPage() {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
 
+  // ── Print Preview Isolated Context State ──
+  const [previewPrintType, setPreviewPrintType] = useState<'roster' | 'roster_teacher'>('roster');
+  const [previewTargetClassId, setPreviewTargetClassId] = useState<string>('');
+  const [previewTargetGuruId, setPreviewTargetGuruId] = useState<string>('');
+
+  const triggerPrintPreview = useCallback((printType?: 'roster' | 'roster_teacher', targetId?: string) => {
+    let type: 'roster' | 'roster_teacher' = printType || 'roster';
+    
+    if (!printType) {
+      if (selectedGuruId && !selectedKelasId) {
+        type = 'roster_teacher';
+      } else if (selectedKelasId && !selectedGuruId) {
+        type = 'roster';
+      } else {
+        type = selectedGuruId ? 'roster_teacher' : 'roster';
+      }
+    }
+
+    setPreviewPrintType(type);
+    if (type === 'roster_teacher') {
+      setPreviewTargetGuruId(targetId || selectedGuruId || '');
+      setPreviewTargetClassId(''); // Strips class context strictly
+    } else {
+      setPreviewTargetClassId(targetId || selectedKelasId || '');
+      setPreviewTargetGuruId(''); // Strips teacher context strictly
+    }
+    setViewMode('preview');
+  }, [selectedGuruId, selectedKelasId]);
+
   // Reference options for print preview & filters
   const { rawList: kelasRawList } = useKelasOptions();
   const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
@@ -417,7 +446,7 @@ export default function JadwalPelajaranPage() {
               variant="outline" 
               size="sm" 
               className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 shadow-sm transition-all text-indigo-700 dark:text-indigo-300 text-xs font-extrabold flex items-center gap-1.5"
-              onClick={() => setViewMode('preview')}
+              onClick={() => triggerPrintPreview()}
             >
               <Printer className="w-3.5 h-3.5 text-indigo-600" />
               <span>Cetak Berkas PDF (1:1)</span>
@@ -468,7 +497,7 @@ export default function JadwalPelajaranPage() {
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
-              onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder' | 'preview')}
+              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as any)}
             />
           ) : (
             <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-extrabold text-xs px-3 py-1 border-indigo-200">
@@ -485,13 +514,14 @@ export default function JadwalPelajaranPage() {
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
               onRefresh={() => setRefreshKey(k => k + 1)}
-              onOpenPrintPreview={() => setViewMode('preview')}
+              onOpenPrintPreview={(pType, targetId) => triggerPrintPreview(pType, targetId)}
             />
           ) : viewMode === 'preview' ? (
             <CetakBerkasKurikulumPage 
-              initialPrintType={selectedGuruId ? 'roster_teacher' : 'roster'}
-              initialClassId={selectedKelasId}
-              initialGuruId={selectedGuruId}
+              key={`${previewPrintType}-${previewTargetClassId}-${previewTargetGuruId}`}
+              initialPrintType={previewPrintType}
+              initialClassId={previewPrintType === 'roster' ? previewTargetClassId : ''}
+              initialGuruId={previewPrintType === 'roster_teacher' ? previewTargetGuruId : ''}
             />
           ) : (
             <JadwalGrid 

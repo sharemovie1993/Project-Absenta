@@ -9,7 +9,7 @@ export interface JadwalBuilderProps {
   tahunPelajaranId?: string;
   semesterId?: string;
   onRefresh?: () => void;
-  onOpenPrintPreview?: () => void;
+  onOpenPrintPreview?: (printType: 'roster' | 'roster_teacher', targetId?: string) => void;
 }
 
 export interface TeacherBebanItem {
