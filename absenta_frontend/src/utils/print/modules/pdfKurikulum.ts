@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
 import { drawKopSurat } from '../pdfGeneric';
-import { getMapelAbbreviation } from '../../../mapelColorHelper';
+import { getMapelAbbreviation } from '../../mapelColorHelper';
 
 export interface StrukturPrintRow {
   id: string;
