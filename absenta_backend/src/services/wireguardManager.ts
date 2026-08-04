@@ -392,34 +392,12 @@ export class WireguardManager {
   }
 
   /** Dapatkan status semua tunnel */
-      // Verifikasi Koneksi Pasca-Aktivasi (Handshake & Ping Test ke 10.0.0.1)
-      try {
-        execSync(this.isWindows() ? 'powershell -Command "Start-Sleep -Seconds 2"' : 'sleep 2', { stdio: 'pipe' });
-        const ifName = `et-${slug}`;
-        let handshakeOk = false;
-
-        try {
-          const wgCmd = this.isWindows() ? `"C:\\Program Files\\WireGuard\\wg.exe" show` : `sudo wg show "${ifName}" latest-handshakes`;
-          const wgOut = execSync(wgCmd, { stdio: 'pipe' }).toString();
-          const match = wgOut.match(/\s+(\d+)\s*$/m) || wgOut.match(/latest handshake:\s*(.+)/i);
-          if (match) handshakeOk = true;
-        } catch {}
-
-        // Ping Gateway 10.0.0.1
-        let pingOk = false;
-        try {
-          const pingCmd = this.isWindows() ? 'ping -n 2 -w 2000 10.0.0.1' : 'ping -c 2 -W 2 10.0.0.1';
-          const pingOut = execSync(pingCmd, { stdio: 'pipe' }).toString();
-          if (pingOut.includes('TTL=') || pingOut.includes('ttl=')) pingOk = true;
-        } catch {}
-
-        if (!handshakeOk && !pingOk) {
-          console.warn(`[WG-Start] Warning: Tunnel ${slug} started but 10.0.0.1 ping/handshake pending.`);
-        }
-      } catch {}
-
-      return { success: true, message: 'Tunnel VPN berhasil diaktifkan dan diverifikasi.' };
+  static getAllStatus(slugs: string[]): Record<string, TunnelStatus> {
+    const result: Record<string, TunnelStatus> = {};
+    for (const slug of slugs) {
+      result[slug] = this.getStatus(slug);
     }
+    return result;
   }
 
   /** Diagnosa Koneksi Tunnel Terperinci dengan Penentuan Lokasi Masalah */
