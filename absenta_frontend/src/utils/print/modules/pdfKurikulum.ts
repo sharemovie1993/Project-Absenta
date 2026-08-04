@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
 import { drawKopSurat } from '../pdfGeneric';
+import { getMapelAbbreviation } from '../../../mapelColorHelper';
 
 export interface StrukturPrintRow {
   id: string;
@@ -506,7 +507,8 @@ export const renderKurikulumRosterPdf = (
           !item.jenis_kegiatan || 
           String(item.jenis_kegiatan).toUpperCase() === 'KBM' || 
           (act && act.tipe?.toUpperCase() === 'KBM');
-        const subjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
+        const rawSubjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
+        const subjectName = getMapelAbbreviation(rawSubjectName);
         let cellText = '';
         if (printType === 'roster_teacher') {
           const targetClass = item.Kelas?.nama_kelas || 'Kelas';

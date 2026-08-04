@@ -11,6 +11,7 @@ import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { useGuruOptions, useMapelOptions, useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '../../common';
 import { useTenantSettings } from '../../../hooks/useTenantSettings';
 import { WORKDAYS_HARI_KEYS, getDayLabel } from '../../../constants/day.constants';
+import { getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { toast } from 'react-hot-toast';
 
 interface Props {
@@ -391,11 +392,11 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Printable Document Preview Paper */}
-        <div className="flex-1 p-4 overflow-y-auto bg-slate-200/50 dark:bg-slate-950/80 flex justify-center">
+        {/* Printable Document Preview Paper (Standard A4 Landscape Canvas 297mm x 210mm) */}
+        <div className="flex-1 p-4 sm:p-8 overflow-auto bg-slate-200/70 dark:bg-slate-950 flex justify-center">
           <div
             ref={printAreaRef}
-            className="w-full max-w-[800px] bg-white text-slate-900 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 font-sans print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none space-y-5"
+            className="w-[1123px] min-w-[1123px] min-h-[794px] bg-white text-slate-900 p-8 shadow-2xl border border-slate-300 space-y-5 rounded-none print:w-full print:shadow-none print:border-none print:p-0 print:m-0"
           >
             {/* Kop Sekolah Header */}
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between gap-4">
@@ -509,7 +510,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                             {mode === 'KELAS' ? (
                               <div className="space-y-1">
                                 <div className="font-black text-[11px] text-slate-900 leading-tight">
-                                  {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                                 </div>
                                 <div className="text-[9.5px] text-slate-700 font-bold leading-tight">
                                   {item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru KBM'}
@@ -521,7 +522,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                                   {item.Kelas?.nama_kelas || 'Kelas KBM'}
                                 </div>
                                 <div className="text-[9.5px] text-slate-800 font-bold leading-tight">
-                                  {item.Mapel?.nama_mapel || item.Guru?.nama_guru || item.Guru?.User?.full_name || item.jenis_kegiatan}
+                                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.Guru?.nama_guru || item.Guru?.User?.full_name || item.jenis_kegiatan)}
                                 </div>
                               </div>
                             )}
