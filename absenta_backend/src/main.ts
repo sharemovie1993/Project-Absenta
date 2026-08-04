@@ -1,4 +1,27 @@
 import './infra/env'; // MUST BE THE FIRST LINE
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Silence routine BullMQ/ioredis version recommendation warnings on Redis 6.0.16
+const filterRedisWarn = () => {
+  const origWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const msg = args.map(a => String(a || '')).join(' ');
+    if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
+    origWarn.apply(console, args);
+  };
+  const origErr = console.error;
+  console.error = (...args: any[]) => {
+    const msg = args.map(a => String(a || '')).join(' ');
+    if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
+    origErr.apply(console, args);
+  };
+};
+filterRedisWarn();
+
+// Load environment variables before any imports
+dotenv.config();
+
 import Fastify from 'fastify';
 import { prisma } from './utils/prisma';
 import { closeRedisConnections, getRedisConnection, initRedis, stopRedisConnection, verifyRedisConnection } from './infra/redis/redisClient';
@@ -230,8 +253,10 @@ async function start() {
       process.send('ready');
     }
 
-    // ─── Print PM2-style startup table ───
-    printStartupTable(port, host);
+    // ─── Print PM2-style startup table (Hanya di Master Instance 0) ───
+    if (isMasterInstance()) {
+      printStartupTable(port, host);
+    }
 
     // ─── Background Workers & WhatsApp Restore (Non-Blocking Startup) ───
     void (async () => {
@@ -264,8 +289,10 @@ async function start() {
           await waGatewayService.restoreConnections();
         });
 
-        // ─── Cetak Tabel Lengkap (Semua 22 Service Online) ───
-        printStartupTable(port, host);
+        // ─── Cetak Tabel Lengkap (Semua 22 Service Online - Hanya di Master Instance 0) ───
+        if (isMasterInstance()) {
+          printStartupTable(port, host);
+        }
       } catch (err: any) {
         console.warn('[Background Services Startup Warning]:', err.message);
       }
