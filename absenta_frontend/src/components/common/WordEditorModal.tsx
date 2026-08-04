@@ -78,7 +78,7 @@ const buildKopHtml = (tenantInfo: any, includeLogoKanan: boolean = true): string
 </div>`;
 };
 
-const PAGEBREAK_REGEX = /(?:<p[^>]*>\s*<!--\s*pagebreak\s*-->\s*<\/p>|<img[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*\/?>|<div[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->)/gi;
+const PAGEBREAK_REGEX = /(?:<p[^>]*>.*?<!--\s*pagebreak\s*-->.*?<\/p>|<img[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*\/?>|<div[^>]*class="[^"]*mce-pagebreak[^"]*"[^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->)/gi;
 
 // Merge multi-pages array into single continuous HTML with Page Breaks
 const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
@@ -87,10 +87,19 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
   const flattenedBlocks: { id?: string; html: string }[] = [];
 
   pagesList.forEach((p, idx) => {
-    const subParts = (p.html || '').split(PAGEBREAK_REGEX);
+    let rawHtml = p.html || '';
+    const subParts = rawHtml.split(PAGEBREAK_REGEX);
     let subIdxCount = 0;
+
     subParts.forEach((part) => {
-      const trimmed = part.trim();
+      let trimmed = part.trim();
+
+      // Unwrap any pre-existing top-level kosp-document-page-block div wrappers to prevent double nesting
+      trimmed = trimmed
+        .replace(/^<div[^>]*class="[^"]*kosp-document-page-block[^"]*"[^>]*>/gi, '')
+        .replace(/<\/div>$/gi, '')
+        .trim();
+
       if (trimmed) {
         flattenedBlocks.push({
           id: subIdxCount === 0 ? `kosp-section-page-${idx}` : undefined,
@@ -108,7 +117,7 @@ const combinePagesToSingleHtml = (pagesList: WordEditorPage[]): string => {
       const idAttr = b.id ? `id="${b.id}" ` : '';
       return `<div ${idAttr}class="kosp-document-page-block">${b.html}</div>`;
     })
-    .join('<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>');
+    .join('\n<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n');
 };
 
 export const WordEditorModal: React.FC<WordEditorModalProps> = ({
@@ -641,23 +650,24 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
               toolbar: readOnly ? false : 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | numlist bullist outdent indent | table tableprops tablerowprops tablecellprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablecellbackgroundcolor tablecellbordercolor | removeformat | pagebreak fullscreen code',
               content_style: `
                 html {
-                  background-color: #cbd5e1;
-                  padding: 24px 0;
+                  background-color: #475569 !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
                   min-height: 100%;
                 }
                 body {
-                  width: ${canvasW}mm;
-                  min-height: ${paper.heightMm}mm;
+                  background-color: #475569 !important;
+                  margin: 0 auto !important;
+                  padding: 32px 0 60px 0 !important;
+                  width: 100% !important;
+                  display: flex !important;
+                  flex-direction: column !important;
+                  align-items: center !important;
                   font-family: 'Book Antiqua', 'Bookman Old Style', 'Palatino Linotype', serif;
                   font-size: 11pt;
                   line-height: 14.9pt;
                   color: #000;
-                  padding: ${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm;
-                  margin: 0 auto;
-                  background: #ffffff;
-                  box-shadow: 0 10px 25px rgba(0,0,0,0.18);
-                  border-radius: 2px;
-                  box-sizing: border-box;
+                  box-sizing: border-box !important;
                 }
                 .mceNonEditable {
                   user-select: none;
@@ -698,32 +708,20 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
                   display: block !important;
                 }
                 .kosp-document-page-block {
-                  min-height: calc(${paper.heightMm}mm - ${margin.top + margin.bottom}mm);
-                  box-sizing: border-box;
+                  width: ${canvasW}mm;
+                  min-height: ${paper.heightMm}mm;
+                  background: #ffffff !important;
+                  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+                  border-radius: 2px;
+                  padding: ${margin.top}mm ${margin.right}mm ${margin.bottom}mm ${margin.left}mm;
+                  margin: 0 auto 32px auto !important;
+                  box-sizing: border-box !important;
+                  position: relative;
+                  page-break-after: always;
+                  page-break-inside: avoid;
                 }
                 .mce-pagebreak, div.mce-pagebreak, p.mce-pagebreak, img.mce-pagebreak {
-                  display: flex !important;
-                  align-items: center !important;
-                  justify-content: center !important;
-                  clear: both !important;
-                  width: calc(100% + ${margin.left + margin.right}mm) !important;
-                  margin-left: -${margin.left}mm !important;
-                  margin-right: -${margin.right}mm !important;
-                  margin-top: 28px !important;
-                  margin-bottom: 28px !important;
-                  height: 32px !important;
-                  background-color: #cbd5e1 !important;
-                  border-top: 2px dashed #64748b !important;
-                  border-bottom: 2px dashed #64748b !important;
-                  box-shadow: inset 0 3px 6px rgba(0,0,0,0.12) !important;
-                  position: relative !important;
-                  cursor: pointer !important;
-                  box-sizing: border-box !important;
-                  color: #475569 !important;
-                  font-size: 9pt !important;
-                  font-weight: bold !important;
-                  font-family: Arial, sans-serif !important;
-                  letter-spacing: 0.5px !important;
+                  display: none !important;
                 }
 
               `,
