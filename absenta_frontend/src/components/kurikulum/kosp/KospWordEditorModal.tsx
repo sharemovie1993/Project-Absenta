@@ -4,9 +4,9 @@ import WordEditorModal, { WordEditorPage, WordEditorConfig } from '../../common/
 interface KospWordEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tahunPelajaranNama: string;
+  documentTitle?: string;
   pages: WordEditorPage[];
-  config?: WordEditorConfig;
+  initialConfig?: WordEditorConfig;
   onSavePages: (pages: WordEditorPage[], config?: WordEditorConfig) => Promise<void>;
   isSaving?: boolean;
 }
@@ -14,9 +14,9 @@ interface KospWordEditorModalProps {
 export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
   isOpen,
   onClose,
-  tahunPelajaranNama,
+  documentTitle = 'Dokumen KOSP',
   pages,
-  config,
+  initialConfig,
   onSavePages,
   isSaving
 }) => {
@@ -24,12 +24,12 @@ export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
     <WordEditorModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Live Word Editor — Dokumen KOSP TP ${tahunPelajaranNama}`}
-      printTitle={`Dokumen KOSP TP ${tahunPelajaranNama}`}
+      title={`Live Word Editor — ${documentTitle}`}
+      printTitle={documentTitle}
       printButtonLabel="🖨️ Cetak KOSP (PDF)"
       saveButtonLabel={isSaving ? 'Menyimpan KOSP...' : '💾 Simpan Dokumen KOSP'}
       initialPages={pages}
-      initialConfig={config}
+      initialConfig={initialConfig}
       allowExtraPages={true}
       orientation="portrait"
       readOnly={false}
