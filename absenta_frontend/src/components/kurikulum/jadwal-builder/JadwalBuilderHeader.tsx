@@ -4,6 +4,7 @@ import { RefreshCw, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
+import { getMapelColor } from '../../../utils/mapelColorHelper';
 
 interface Props {
   viewMode: ViewMode;
@@ -167,16 +168,34 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               className="w-[240px] md:w-[320px]"
             />
             {guruMapelSelectOptions.length > 0 && setPaintMapelId && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-450 font-bold shrink-0">Mapel:</span>
-                <SearchableSelect
-                  value={paintMapelId || ''}
-                  onValueChange={setPaintMapelId}
-                  options={guruMapelSelectOptions}
-                  placeholder="Pilih Mapel..."
-                  searchPlaceholder="Cari Mapel..."
-                  className="w-[160px] md:w-[220px]"
-                />
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Mapel:</span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {guruMapelSelectOptions.map((m) => {
+                    const isSelected = paintMapelId === m.value;
+                    const colorStyle = getMapelColor(m.label);
+                    return (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setPaintMapelId(m.value)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-extrabold rounded-xl transition-all border flex items-center gap-1.5 shadow-sm",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-800 scale-105"
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        )}
+                        title={`Pilih ${m.label}`}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: colorStyle.dotHex }}
+                        />
+                        <span>{m.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </>
