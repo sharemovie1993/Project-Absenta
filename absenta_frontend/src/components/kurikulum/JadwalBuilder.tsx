@@ -267,10 +267,16 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
 
     return baseList.map(m => {
-      const actual = allJadwal.filter(j => 
+      const actualInClass = selectedKelasId 
+        ? allJadwal.filter(j => j.kelas_id === selectedKelasId && (selectedGuruId ? j.guru_id === selectedGuruId : true) && j.mapel_id === m.id).length
+        : 0;
+
+      const actualTotal = allJadwal.filter(j => 
         (selectedGuruId ? j.guru_id === selectedGuruId : true) && 
         j.mapel_id === m.id
       ).length;
+
+      const actual = selectedKelasId ? actualInClass : actualTotal;
       const target = m.target_jp || 2;
 
       let statusDotClass = 'bg-slate-300 dark:bg-slate-600';
@@ -299,7 +305,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         rightBadgeClass,
       };
     });
-  }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId, targetJpMap]);
+  }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId, selectedKelasId, targetJpMap]);
 
   useEffect(() => {
     if (mappedMapelIds && mappedMapelIds.length > 0) {
