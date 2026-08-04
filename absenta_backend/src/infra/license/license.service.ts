@@ -193,4 +193,23 @@ export class LicenseService {
   static getSchoolName(): string {
     return this.cachedDecoded?.school_name || 'Absenta Tenant';
   }
+
+  /**
+   * Memuat token lisensi dari cache DB lokal tanpa hit API license server.
+   * Digunakan oleh non-master instance agar tidak duplikasi API call.
+   */
+  static async loadFromCache(): Promise<void> {
+    try {
+      const SYSTEM_TENANT_ID = 'system';
+      const cachedTokenConfig = await prisma.config.findFirst({
+        where: { tenant_id: SYSTEM_TENANT_ID, key: 'license_cached_token' }
+      });
+      if (cachedTokenConfig?.value) {
+        this.cachedToken = cachedTokenConfig.value;
+        this.cachedDecoded = jwt.decode(cachedTokenConfig.value);
+      }
+    } catch {
+      // Gagal load cache — instance akan berjalan tanpa token lokal (master tetap valid)
+    }
+  }
 }

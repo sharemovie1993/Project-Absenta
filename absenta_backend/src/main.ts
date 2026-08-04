@@ -373,19 +373,26 @@ async function start() {
       }
     })();
 
-    // Sync license with center licensing server asynchronously
+    // ─── Sync License: hanya Master Instance 0 yang hit API, instance lain baca cache DB ───
     const { LicenseService } = await import('./infra/license/license.service');
-    LicenseService.syncLicense().catch((err: any) => {
-      console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
-    });
+    if (isMasterInstance()) {
+      LicenseService.syncLicense().catch((err: any) => {
+        console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
+      });
+    } else {
+      // Non-master: load token dari cache DB tanpa hit API
+      LicenseService.loadFromCache().catch(() => {});
+    }
 
-    // Start heartbeat sync service dynamically
+    // ─── Heartbeat: cron hanya di Master Instance 0 ───
     try {
       const { heartbeatService } = await import('./modules/system-config/services/heartbeat.service');
-      // Kirim heartbeat pertama kali saat boot secara background
-      void heartbeatService.collectAndSendMetrics();
-      // Jalankan cron scheduler untuk update berkala
-      heartbeatService.startCronJob();
+      if (isMasterInstance()) {
+        // Master: kirim heartbeat pertama + jalankan cron
+        void heartbeatService.collectAndSendMetrics();
+        heartbeatService.startCronJob();
+      }
+      // Non-master tidak perlu cron — heartbeat sudah dijaga distributed lock di heartbeat.service
     } catch (err: any) {
       console.warn('[Heartbeat Startup Warning] Failed to initialize heartbeat service:', err.message);
     }
