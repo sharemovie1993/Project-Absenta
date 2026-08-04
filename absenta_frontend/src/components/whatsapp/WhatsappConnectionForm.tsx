@@ -76,7 +76,9 @@ const LocalGatewaySection: React.FC<{
       <div className="p-4 bg-green-50 dark:bg-green-950/10 rounded-xl border border-green-100 dark:border-green-900/30 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div>
           <p className="text-xs text-green-800 dark:text-green-400 font-bold">Nomor WhatsApp Terhubung</p>
-          <p className="text-sm font-black text-green-900 dark:text-green-300 mt-1">+{connectedNumber}</p>
+          <p className="text-sm font-black text-green-900 dark:text-green-300 mt-1">
+            {connectedNumber ? (connectedNumber.startsWith('+') ? connectedNumber : `+${connectedNumber}`) : 'Terotentikasi'}
+          </p>
         </div>
         <Button
           variant="outline"

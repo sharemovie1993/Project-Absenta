@@ -81,31 +81,27 @@ const WhatsappSettingsPage: React.FC = () => {
   const fetchLocalStatus = useCallback(async () => {
     try {
       const response = (await getLocalWhatsappStatus()) as WaLocalStatusResponse;
+      console.log('[WA-UI:Status] getLocalWhatsappStatus response:', response);
       if (response.success && response.data) {
         const { status, number } = response.data;
         if (status === 'connected') {
           setLocalStatus('connected');
-          if (number) setConnectedNumber(number);
+          setConnectedNumber(number || null);
           setQrCode(null);
         } else if (status === 'connecting') {
           setLocalStatus('connecting');
           const qrRes = (await getLocalWhatsappQR()) as WaQrResponse;
+          console.log('[WA-UI:QR] getLocalWhatsappQR response:', qrRes);
           if (qrRes.success && qrRes.qr) {
             setQrCode(qrRes.qr);
           }
         } else {
-          // Hanya ubah ke disconnected jika tidak ada QR aktif di state
-          setLocalStatus((prevStatus) => {
-            if (prevStatus === 'connecting') {
-              return 'connecting'; // Pertahankan connecting jika baru diinisialisasi
-            }
-            return 'disconnected';
-          });
+          setLocalStatus('disconnected');
           setConnectedNumber(null);
         }
       }
     } catch (err) {
-      console.warn('[WA] fetchLocalStatus:', extractWaError(err, 'Unknown error'));
+      console.warn('[WA-UI:Status] Error fetching status:', extractWaError(err, 'Unknown error'));
       setLocalStatus('disconnected');
     }
   }, []);
@@ -113,7 +109,9 @@ const WhatsappSettingsPage: React.FC = () => {
   const handleConnectLocal = useCallback(async () => {
     try {
       setLocalStatus('connecting');
+      console.log('[WA-UI:Connect] Triggering connectLocalWhatsapp...');
       const response = (await connectLocalWhatsapp()) as any;
+      console.log('[WA-UI:Connect] connectLocalWhatsapp response:', response);
       if (response.success) {
         if (response.qr) {
           setQrCode(response.qr);
@@ -121,6 +119,7 @@ const WhatsappSettingsPage: React.FC = () => {
         toast.success('Sesi WhatsApp diinisialisasi. Menunggu QR code...');
       }
     } catch (err: unknown) {
+      console.error('[WA-UI:Connect] Error connecting:', err);
       toast.error(extractWaError(err, 'Gagal memulai sesi WhatsApp'));
       setLocalStatus('disconnected');
       setQrCode(null);

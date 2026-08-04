@@ -43,10 +43,10 @@ export class WhatsappController {
 
   async connectLocal(request: any, reply: any) {
     const { tenant_id } = request.user as any;
+    console.log(`[WA-Controller] connectLocal triggered for tenant: ${tenant_id}`);
     try {
       await waGatewayService.initTenant(tenant_id);
 
-      // Wait up to 3 seconds for QR code generation
       let qr = await waGatewayService.getQRBase64(tenant_id);
       if (!qr) {
         for (let i = 0; i < 6; i++) {
@@ -57,30 +57,35 @@ export class WhatsappController {
       }
 
       const health = await waGatewayService.getHealthStatus(tenant_id);
+      console.log(`[WA-Controller] connectLocal result for ${tenant_id}: status=${health.status}, hasQR=${!!qr}`);
       return reply.send({ success: true, message: 'Menghubungkan ke WhatsApp...', qr, data: health });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      console.error(`[WA-Controller] connectLocal ERROR for ${tenant_id}:`, error.message);
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 
   async disconnectLocal(request: any, reply: any) {
     const { tenant_id } = request.user as any;
+    console.log(`[WA-Controller] disconnectLocal triggered for tenant: ${tenant_id}`);
     try {
       await waGatewayService.disconnectTenant(tenant_id);
       return reply.send({ success: true, message: 'Koneksi WhatsApp terputus' });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      console.error(`[WA-Controller] disconnectLocal ERROR for ${tenant_id}:`, error.message);
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 
   async getLocalStatus(request: any, reply: any) {
     const { tenant_id } = request.user as any;
     try {
-      // Gunakan getHealthStatus untuk verifikasi kualitas koneksi yang sebenarnya
       const health = await waGatewayService.getHealthStatus(tenant_id);
+      console.log(`[WA-Controller] getLocalStatus for ${tenant_id}: health=${health.health}, status=${health.status}, number=${health.number}`);
       return reply.send({ success: true, data: health });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      console.error(`[WA-Controller] getLocalStatus ERROR for ${tenant_id}:`, error.message);
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 
@@ -98,19 +103,21 @@ export class WhatsappController {
       }
       return reply.send({ success: true, qr });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 
   async getGroups(request: any, reply: any) {
     const { tenant_id } = request.user as any;
-    // ?refresh=true → paksa bypass cache dan fetch ulang dari WA server
     const forceRefresh = (request.query as any)?.refresh === 'true';
+    console.log(`[WA-Controller] getGroups triggered for tenant: ${tenant_id}, refresh=${forceRefresh}`);
     try {
       const groups = await waGatewayService.getParticipatingGroups(tenant_id, forceRefresh);
+      console.log(`[WA-Controller] getGroups success for ${tenant_id}: found ${groups.length} groups`);
       return reply.send({ success: true, data: groups, cached: !forceRefresh });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message || 'Gagal mengambil daftar grup WA' });
+      console.warn(`[WA-Controller] getGroups WARN for ${tenant_id}:`, error.message);
+      return reply.status(400).send({ success: false, message: error.message || 'Gagal mengambil daftar grup WA' });
     }
   }
 
@@ -120,7 +127,7 @@ export class WhatsappController {
       await waGatewayService.invalidateGroupsCache(tenant_id);
       return reply.send({ success: true, message: 'Cache daftar grup WA berhasil dihapus' });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 }
