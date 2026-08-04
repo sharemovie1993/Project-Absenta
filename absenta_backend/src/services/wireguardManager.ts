@@ -112,18 +112,25 @@ export class WireguardManager {
     return path.join(TUNNELS_DIR, `et-${slug}.conf`);
   }
 
-  /** Tulis file konfigurasi WireGuard ke disk */
+  /** Tulis file konfigurasi WireGuard ke disk dengan PersistentKeepalive = 25 hardening */
   static writeConfig(slug: string, configContent: string): string {
     this.ensureTunnelsDir();
     const confPath = this.confPath(slug);
-    fs.writeFileSync(confPath, configContent, { encoding: 'utf8', mode: 0o600 });
+
+    // Hardening: Ensure PersistentKeepalive = 25 is present in [Peer] section to prevent NAT timeout & auto-reconnect on disconnect
+    let hardenedConfig = configContent;
+    if (/\[Peer\]/i.test(hardenedConfig) && !/PersistentKeepalive/i.test(hardenedConfig)) {
+      hardenedConfig = hardenedConfig.replace(/(\[Peer\][\s\S]*?)(?=\n\[|\s*$)/gi, '$1\nPersistentKeepalive = 25\n');
+    }
+
+    fs.writeFileSync(confPath, hardenedConfig, { encoding: 'utf8', mode: 0o600 });
     if (!this.isWindows()) {
       try {
         fs.chmodSync(confPath, 0o600);
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
     }
-    console.log(`[WG] Config written with 0600 perms: ${confPath}`);
+    console.log(`[WG] Config written with 0600 perms & PersistentKeepalive=25: ${confPath}`);
     return confPath;
   }
 
@@ -158,6 +165,22 @@ export class WireguardManager {
         const ifName = `et-${slug}`;
         try {
           execSync(`ip link show ${ifName}`, { stdio: 'pipe', windowsHide: true });
+
+          // Hardening: Verify handshake staleness on Linux
+          try {
+            const wgOut = execSync(`sudo wg show ${ifName} latest-handshakes`, { stdio: 'pipe' }).toString();
+            const match = wgOut.match(/\s+(\d+)\s*$/);
+            if (match) {
+              const lastHandshakeSec = parseInt(match[1], 10);
+              const nowSec = Math.floor(Date.now() / 1000);
+              // If handshake is > 180 seconds (3 minutes) old and non-zero, treat as stale / disconnected
+              if (lastHandshakeSec > 0 && (nowSec - lastHandshakeSec) > 180) {
+                console.warn(`[WG-Status] Interface ${ifName} handshake stale (${nowSec - lastHandshakeSec}s old).`);
+                return { status: 'disconnected', wg_ip: this.readIpFromConf(confPath), message: 'Koneksi terputus (Handshake Stale)' };
+              }
+            }
+          } catch {}
+
           return { status: 'connected', wg_ip: this.readIpFromConf(confPath) };
         } catch {
           return { status: 'disconnected', wg_ip: this.readIpFromConf(confPath) };
@@ -290,6 +313,12 @@ export class WireguardManager {
           throw new Error(`Gagal mengaktifkan WireGuard: ${errMsg}`);
         }
       }
+
+      // Hardening: Enable systemd service so OS reboot automatically restarts WireGuard interface
+      try {
+        execSync(`sudo systemctl enable wg-quick@${ifName}`, { stdio: 'pipe' });
+      } catch {}
+
       return { success: true, message: 'Tunnel VPN berhasil diaktifkan.' };
     }
   }

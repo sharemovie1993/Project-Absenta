@@ -38,6 +38,7 @@ import './attendanceDigest.job';
 
 // ── Easy Tunnel ───────────────────────────────────────────────────────────────
 import './customDomainVerify.job';
+import './easyTunnelAutoHealing.job';
 
 // ── Sarpras ───────────────────────────────────────────────────────────────────
 import './sarprasOverdueReminder.job';
