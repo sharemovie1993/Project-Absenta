@@ -230,45 +230,76 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     return null;
   }, [viewMode, selectedGuruId, mappedMapelsRes]);
 
+  // ── useQuery: Struktur Kurikulum ───────────────────────────────────────────
+  const { data: strukturRes } = useQuery({
+    queryKey: ['struktur-kurikulum-builder-jp', tahunPelajaranId],
+    queryFn: () => (tahunPelajaranId) ? kurikulumApi.getStruktur({ tahun_pelajaran_id: tahunPelajaranId }).catch(() => null) : null,
+    enabled: !!tahunPelajaranId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const targetJpMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (strukturRes?.data && Array.isArray(strukturRes.data)) {
+      strukturRes.data.forEach((s: any) => {
+        if (s.mapel_id && s.jp_per_minggu) {
+          map.set(s.mapel_id, s.jp_per_minggu);
+        }
+      });
+    }
+    return map;
+  }, [strukturRes]);
+
   const guruMapelSelectOptions = useMemo(() => {
     let baseList = [];
     if (mappedMapelsRes?.success && Array.isArray(mappedMapelsRes.data) && mappedMapelsRes.data.length > 0) {
       baseList = mappedMapelsRes.data.map((gm: any) => ({
         id: gm.mapel_id,
         nama_mapel: gm.Mapel?.nama_mapel || 'Mata Pelajaran',
+        target_jp: gm.alokasi_jam || gm.jp_per_minggu || gm.Mapel?.jp_per_minggu || targetJpMap.get(gm.mapel_id) || 2
       }));
     } else {
-      baseList = mapelList.map(m => ({
+      baseList = mapelList.map((m: any) => ({
         id: m.id,
         nama_mapel: m.nama_mapel,
+        target_jp: m.alokasi_jam || m.jp_per_minggu || targetJpMap.get(m.id) || 2
       }));
     }
 
     return baseList.map(m => {
-      const count = allJadwal.filter(j => 
+      const actual = allJadwal.filter(j => 
         (selectedGuruId ? j.guru_id === selectedGuruId : true) && 
         j.mapel_id === m.id
       ).length;
+      const target = m.target_jp || 2;
 
-      if (count > 0) {
-        return {
-          label: m.nama_mapel,
-          value: m.id,
-          statusDotClass: 'bg-emerald-500 shadow-sm shadow-emerald-500/50',
-          rightBadge: `✓ Terpasang ${count} JP`,
-          rightBadgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-extrabold',
-        };
+      let statusDotClass = 'bg-slate-300 dark:bg-slate-600';
+      let rightBadge = `0/${target} JP (Belum)`;
+      let rightBadgeClass = 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
+
+      if (actual > target) {
+        statusDotClass = 'bg-rose-500 shadow-sm shadow-rose-500/50';
+        rightBadge = `⚠️ ${actual}/${target} JP (Over +${actual - target})`;
+        rightBadgeClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-extrabold';
+      } else if (actual === target) {
+        statusDotClass = 'bg-emerald-500 shadow-sm shadow-emerald-500/50';
+        rightBadge = `✓ ${actual}/${target} JP (Pas)`;
+        rightBadgeClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-extrabold';
+      } else if (actual > 0) {
+        statusDotClass = 'bg-amber-500 shadow-sm shadow-amber-500/50';
+        rightBadge = `${actual}/${target} JP (Sisa ${target - actual} JP)`;
+        rightBadgeClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-extrabold';
       }
 
       return {
         label: m.nama_mapel,
         value: m.id,
-        statusDotClass: 'bg-slate-300 dark:bg-slate-600',
-        rightBadge: '0 JP (Belum)',
-        rightBadgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
+        statusDotClass,
+        rightBadge,
+        rightBadgeClass,
       };
     });
-  }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId]);
+  }, [mappedMapelsRes, mapelList, allJadwal, selectedGuruId, targetJpMap]);
 
   useEffect(() => {
     if (mappedMapelIds && mappedMapelIds.length > 0) {
@@ -932,11 +963,34 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                   </div>
                 ) : filteredMapels.length > 0 ? (
                   filteredMapels.map(m => {
-                    const count = allJadwal.filter(j => 
+                    const actual = allJadwal.filter(j => 
                       (viewMode === 'GURU' && selectedGuruId ? j.guru_id === selectedGuruId : true) &&
                       (viewMode === 'KELAS' && selectedKelasId ? j.kelas_id === selectedKelasId : true) &&
                       j.mapel_id === m.id
                     ).length;
+                    const target = (m as any).alokasi_jam || (m as any).jp_per_minggu || targetJpMap.get(m.id) || 2;
+
+                    let badgeNode = <span className="text-[10px] text-slate-400 font-mono shrink-0">{m.kode_mapel}</span>;
+
+                    if (actual > target) {
+                      badgeNode = (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                          ⚠️ {actual}/{target} JP (Over +{actual - target})
+                        </span>
+                      );
+                    } else if (actual === target) {
+                      badgeNode = (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                          ✓ {actual}/{target} JP (Pas)
+                        </span>
+                      );
+                    } else if (actual > 0) {
+                      badgeNode = (
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                          {actual}/{target} JP (Sisa {target - actual})
+                        </span>
+                      );
+                    }
 
                     return (
                       <button
@@ -950,13 +1004,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                         )}
                       >
                         <span className="truncate pr-2">{m.nama_mapel}</span>
-                        {count > 0 ? (
-                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                            ✓ {count} JP
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0">{m.kode_mapel}</span>
-                        )}
+                        {badgeNode}
                       </button>
                     );
                   })
