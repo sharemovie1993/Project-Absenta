@@ -264,6 +264,17 @@ export const useKospBuilderState = () => {
 
     return basePages.map((page, idx) => {
       let html = safeString(page.html);
+
+      // Auto-inject pagebreak before BAB V if combined in existing DB saved data
+      if (/BAB V:/i.test(html) && !/<p[^>]*>.*?<!--\s*pagebreak\s*-->.*?<\/p>/i.test(html)) {
+        html = html.replace(/(<h[1-6][^>]*>[\s\S]*?BAB V:)/gi, '<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n$1');
+      }
+
+      // Auto-inject pagebreak before DAFTAR ISI if combined in existing DB saved data
+      if (/DAFTAR ISI/i.test(html) && /KATA PENGANTAR/i.test(html) && !/<p[^>]*>.*?<!--\s*pagebreak\s*-->.*?<\/p>/i.test(html)) {
+        html = html.replace(/(<h[1-6][^>]*>[\s\S]*?DAFTAR ISI)/gi, '<p class="mce-pagebreak" style="page-break-before: always;"><!-- pagebreak --></p>\n$1');
+      }
+
       Object.entries(replacements).forEach(([key, val]) => {
         html = html.replaceAll(key, val);
       });
