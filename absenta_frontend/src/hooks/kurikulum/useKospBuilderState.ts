@@ -5,7 +5,7 @@ import { useTenant } from '../useTenant';
 import { useJenjang } from '../useJenjang';
 import { useTahunPelajaranOptions } from '../useTahunPelajaranOptions';
 import { useJurusanOptions } from '../useJurusanOptions';
-import { useDudiOptions } from '../useDudiOptions';
+import { hubinApi, type MitraIndustri } from '../../api/hubin.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { kospApi } from '../../api/kurikulum/kosp.api';
@@ -27,6 +27,7 @@ export const useKospBuilderState = () => {
   const { tenantId } = useTenant();
   const { jenjang, kurikulum } = useJenjang();
 
+  // 1. Tahun Pelajaran Options
   const {
     options: tahunOptions,
     rawList: tahunList,
@@ -34,18 +35,32 @@ export const useKospBuilderState = () => {
     isLoading: isLoadingTahun
   } = useTahunPelajaranOptions();
 
+  // 2. Jurusan Options
   const {
     options: jurusanOptions,
     rawList: jurusanList,
     isLoading: isLoadingJurusan
   } = useJurusanOptions();
 
-  const {
-    rawList: dudiList,
-    isLoading: isLoadingDudi
-  } = useDudiOptions();
+  // 3. DUDI Mitra List (Direct useQuery for 100% strict Hook sequence stability)
+  const { data: dudiData, isLoading: isLoadingDudi } = useQuery({
+    queryKey: ['hubin-dudi-options-kosp-list'],
+    queryFn: async () => {
+      try {
+        const res = await hubinApi.getMitra({ limit: 200 });
+        const list: MitraIndustri[] = Array.isArray(res.data) 
+          ? res.data 
+          : res.data?.list || res.data?.data || (Array.isArray(res) ? res : []);
+        return list;
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const dudiList = useMemo(() => dudiData || [], [dudiData]);
 
-  // Selected Tahun Pelajaran
+  // 4. Selected Tahun Pelajaran State
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
 
   useEffect(() => {
@@ -56,7 +71,7 @@ export const useKospBuilderState = () => {
     }
   }, [activeYear, tahunList, selectedTahunId]);
 
-  // Selected Tahun Object
+  // 5. Selected Tahun Object
   const selectedTahunObj = useMemo(() => {
     return tahunList.find(y => y.id === selectedTahunId) || activeYear || null;
   }, [tahunList, selectedTahunId, activeYear]);
@@ -65,14 +80,14 @@ export const useKospBuilderState = () => {
     return selectedTahunObj?.tahun || (selectedTahunObj as any)?.nama || '2025/2026';
   }, [selectedTahunObj]);
 
-  // Fetch sekolah profile
+  // 6. Fetch Sekolah Profile
   const { data: sekolahRes } = useQuery({
     queryKey: ['sekolah-profile'],
     queryFn: () => sekolahApi.getProfile(),
   });
   const sekolahInfo = sekolahRes?.data || null;
 
-  // Fetch KOSP Config per Tahun Pelajaran from DB
+  // 7. Fetch KOSP Config per Tahun Pelajaran from DB
   const { data: kospConfigRes, isLoading: isLoadingKospConfig } = useQuery({
     queryKey: ['kosp-config', selectedTahunId],
     queryFn: () => kospApi.getConfigByTahun(selectedTahunId),
@@ -80,7 +95,7 @@ export const useKospBuilderState = () => {
   });
   const kospDbConfig = kospConfigRes?.data || null;
 
-  // Fetch Struktur Kurikulum ALL Jurusans for this selected Tahun Pelajaran
+  // 8. Fetch Struktur Kurikulum ALL Jurusans for this selected Tahun Pelajaran
   const { data: mappingRes, isLoading: isLoadingMapping } = useQuery({
     queryKey: ['kurikulum-struktur-all', selectedTahunId],
     queryFn: () => kurikulumApi.getStruktur({ tahun_pelajaran_id: selectedTahunId }),
@@ -90,7 +105,7 @@ export const useKospBuilderState = () => {
     return mappingRes?.data || [];
   }, [mappingRes?.data]);
 
-  // Fetch Struktur Organisasi Tree for Pejabat (Kepsek, Wakasek Kurikulum, Komite)
+  // 9. Fetch Struktur Organisasi Tree for Pejabat (Kepsek, Wakasek Kurikulum, Komite)
   const { data: treeRes } = useQuery({
     queryKey: ['struktur-organisasi-tree-kosp'],
     queryFn: () => getStrukturTree(),
@@ -105,7 +120,7 @@ export const useKospBuilderState = () => {
   const wakasekKurikulum = kurikulumNode?.name || 'Wakasek Kurikulum';
   const nipWakasekKurikulum = (kurikulumNode?.details || '').match(/NIP[:\s.]+([\d\s]+)/i)?.[1]?.trim() || '-';
 
-  // Build Table HTML for ALL Jurusans
+  // 10. Build Table HTML for ALL Jurusans
   const tabelStrukturSemuaJurusanHtml = useMemo(() => {
     if (!jurusanList || jurusanList.length === 0) {
       return '<p style="color:#64748b; font-style:italic;">Belum ada daftar jurusan terdaftar.</p>';
@@ -115,22 +130,22 @@ export const useKospBuilderState = () => {
       .join('');
   }, [jurusanList, mappingAllData]);
 
-  // Build Table HTML for Kalender Pendidikan
+  // 11. Build Table HTML for Kalender Pendidikan
   const tabelKalenderPendidikanHtml = useMemo(() => {
     return buildKospKalenderPendidikanHtml([]);
   }, []);
 
-  // Build Table HTML for Jam KBM / Roster
+  // 12. Build Table HTML for Jam KBM / Roster
   const tabelJamKbmHtml = useMemo(() => {
     return buildKospJamKbmHtml([]);
   }, []);
 
-  // Build Table HTML for DUDI Mitra
+  // 13. Build Table HTML for DUDI Mitra
   const tabelDudiMitraHtml = useMemo(() => {
     return buildKospDudiMitraHtml(dudiList || []);
   }, [dudiList]);
 
-  // Daftar Jurusan Summary
+  // 14. Daftar Jurusan Summary
   const daftarJurusanSummaryHtml = useMemo(() => {
     if (!jurusanList || jurusanList.length === 0) return '';
     return `
@@ -142,10 +157,10 @@ export const useKospBuilderState = () => {
     `;
   }, [jurusanList]);
 
-  // Editor Modal State
+  // 15. Editor Modal State
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-  // Compile Pages with Live Variable Substitutions
+  // 16. Compile Pages with Live Variable Substitutions
   const compiledPages = useMemo<WordEditorPage[]>(() => {
     const basePages: WordEditorPage[] = kospDbConfig?.halaman_html
       ? (typeof kospDbConfig.halaman_html === 'string' ? JSON.parse(kospDbConfig.halaman_html) : kospDbConfig.halaman_html)
@@ -201,7 +216,7 @@ export const useKospBuilderState = () => {
     tabelDudiMitraHtml
   ]);
 
-  // Initial Configuration (Margin, Paper)
+  // 17. Initial Configuration (Margin, Paper)
   const initialConfig = useMemo<WordEditorConfig>(() => {
     if (kospDbConfig?.config) {
       try {
@@ -211,7 +226,7 @@ export const useKospBuilderState = () => {
     return { paperKey: 'A4', orientation: 'portrait' };
   }, [kospDbConfig]);
 
-  // Upsert Mutation
+  // 18. Upsert Mutation
   const upsertMutation = useMutation({
     mutationFn: (payload: { halaman_html: string; config?: string }) => {
       return kospApi.upsertConfig({
