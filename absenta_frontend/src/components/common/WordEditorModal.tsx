@@ -529,6 +529,8 @@ export const WordEditorModal: React.FC<WordEditorModalProps> = ({
               {printButtonLabel}
             </Button>
           </div>
+        </div>
+
         {/* Helper Hint Banner */}
         <div className="bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200/80 dark:border-amber-900/80 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2 font-medium shrink-0">
           <div className="flex items-center gap-2">
