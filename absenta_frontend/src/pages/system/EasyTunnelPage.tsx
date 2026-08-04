@@ -115,6 +115,9 @@ export default function EasyTunnelPage() {
   // General loading states
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
 
+  // Per-tunnel live license check state
+  const [licenseStatus, setLicenseStatus] = useState<Record<string, { loading: boolean; data?: any; error?: string }>>({});
+
   // Custom Domain state
   const [customDomainData, setCustomDomainData] = useState<CustomDomainStatus | null>(null);
   const [customDomainInput, setCustomDomainInput] = useState('');
@@ -385,6 +388,19 @@ export default function EasyTunnelPage() {
     }
   };
 
+  const handleCheckLicense = async (tunnel: Tunnel) => {
+    setLicenseStatus(prev => ({ ...prev, [tunnel.id]: { loading: true } }));
+    try {
+      const res = await easyTunnelApi.validateKey(tunnel.license_key);
+      setLicenseStatus(prev => ({ ...prev, [tunnel.id]: { loading: false, data: res.data } }));
+    } catch (err: any) {
+      setLicenseStatus(prev => ({
+        ...prev,
+        [tunnel.id]: { loading: false, error: getErrorMessage(err) || 'Tidak dapat menjangkau server lisensi.' }
+      }));
+    }
+  };
+
   const handleSetupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSetupLoading(true);
@@ -644,107 +660,232 @@ export default function EasyTunnelPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tunnels.map(t => (
-            <div key={t.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-md transition space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white">{t.app_name}</h3>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{t.slug}.{systemInfo?.tunnel_base_domain || 'absenta.id'}</p>
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  t.status === 'active' 
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                    : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+          {tunnels.map(t => {
+            // Sumber kebenaran status: wg_status dari kernel Linux (bukan DB)
+            const wgConnected = t.wg_status?.status === 'connected';
+            // Status DB (untuk menentukan tombol aksi utama)
+            const dbActive = t.status === 'active';
+            // Jika WG connected tapi DB inactive → inconsistent state (wg_quick up manual)
+            const stateInconsistent = wgConnected && !dbActive;
+            // Expired
+            const isExpired = t.status === 'expired';
+            // Info lisensi dari cek online
+            const licInfo = licenseStatus[t.id];
+            // Masa berlaku
+            const expiresAt = (t as any).expires_at;
+            const expireDate = expiresAt ? new Date(expiresAt) : null;
+            const daysLeft = expireDate ? Math.ceil((expireDate.getTime() - Date.now()) / 86400000) : null;
+            const isExpiringSoon = daysLeft !== null && daysLeft <= 30 && daysLeft > 0;
+
+            return (
+              <div key={t.id} className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition space-y-0 overflow-hidden border ${
+                isExpired ? 'border-red-300 dark:border-red-800' :
+                wgConnected ? 'border-emerald-300 dark:border-emerald-700' :
+                stateInconsistent ? 'border-amber-300 dark:border-amber-700' :
+                'border-slate-200 dark:border-slate-800'
+              }`}>
+
+                {/* ── Header ── */}
+                <div className={`px-5 pt-5 pb-4 ${
+                  isExpired ? 'bg-red-50 dark:bg-red-950/30' :
+                  wgConnected ? 'bg-emerald-50 dark:bg-emerald-950/20' :
+                  'bg-white dark:bg-slate-900'
                 }`}>
-                  {t.status === 'active' ? '● Aktif' : '○ Nonaktif'}
-                </span>
-              </div>
-
-              <div className="text-xs space-y-1.5 text-gray-500 dark:text-gray-400 border-t border-slate-100 dark:border-slate-800 pt-3">
-                <div className="flex justify-between">
-                  <span>Port Lokal:</span>
-                  <span className="font-mono text-gray-900 dark:text-white">{t.local_port}</span>
-                </div>
-                {t.wg_status?.wg_ip && (
-                  <div className="flex justify-between">
-                    <span>IP VPN:</span>
-                    <span className="font-mono text-gray-900 dark:text-white">{t.wg_status.wg_ip}</span>
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 dark:text-white truncate">{t.app_name}</h3>
+                      <a
+                        href={`https://${t.slug}.${systemInfo?.tunnel_base_domain || 'absenta.id'}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                      >
+                        🔗 {t.slug}.{systemInfo?.tunnel_base_domain || 'absenta.id'}
+                      </a>
+                    </div>
+                    {/* Status Badge Gabungan */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {isExpired ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">⛔ Kedaluwarsa</span>
+                      ) : wgConnected ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">● Tunnel Aktif</span>
+                      ) : stateInconsistent ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">⚠️ Tidak Sinkron</span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">○ Nonaktif</span>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Status WireGuard:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{t.wg_status?.status || 'tidak diketahui'}</span>
+                </div>
+
+                {/* ── Info Detail ── */}
+                <div className="px-5 py-3 space-y-2 text-[12px] border-t border-slate-100 dark:border-slate-800">
+
+                  {/* WireGuard status — sekarang informatif */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400">Status WireGuard:</span>
+                    <span className={`font-semibold flex items-center gap-1 ${
+                      t.wg_status?.status === 'connected' ? 'text-emerald-600 dark:text-emerald-400' :
+                      t.wg_status?.status === 'disconnected' ? 'text-slate-500' :
+                      t.wg_status?.status === 'error' ? 'text-red-500' :
+                      'text-gray-400'
+                    }`}>
+                      {t.wg_status?.status === 'connected' && '🟢 Terhubung (wg-quick up)'}
+                      {t.wg_status?.status === 'disconnected' && '⚪ Terputus'}
+                      {t.wg_status?.status === 'error' && '🔴 Error'}
+                      {t.wg_status?.status === 'not_configured' && '⬜ Belum dikonfigurasi'}
+                      {!t.wg_status?.status && '— tidak diketahui'}
+                    </span>
+                  </div>
+
+                  {/* Status DB */}
+                  {stateInconsistent && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-amber-700 dark:text-amber-300 text-[11px] leading-snug">
+                      ⚠️ Kernel Linux mencatat tunnel <strong>aktif</strong>, tapi status database <strong>nonaktif</strong>. Klik <strong>Sinkronkan</strong> untuk menyesuaikan.
+                    </div>
+                  )}
+
+                  {/* Port & IP */}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Port Lokal:</span>
+                    <span className="font-mono font-semibold text-gray-900 dark:text-white">{t.local_port}</span>
+                  </div>
+                  {t.wg_status?.wg_ip && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">IP VPN Lokal:</span>
+                      <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">{t.wg_status.wg_ip}</span>
+                    </div>
+                  )}
+
+                  {/* Masa berlaku */}
+                  {expireDate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Masa Berlaku:</span>
+                      <span className={`font-semibold ${
+                        isExpired ? 'text-red-600 dark:text-red-400' :
+                        isExpiringSoon ? 'text-amber-600 dark:text-amber-400' :
+                        'text-gray-900 dark:text-white'
+                      }`}>
+                        {expireDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {daysLeft !== null && daysLeft > 0 && ` (${daysLeft}h lagi)`}
+                        {daysLeft !== null && daysLeft <= 0 && ' (Kedaluwarsa)'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Kunci lisensi (tersensor) */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400">Lisensi:</span>
+                    <span className="font-mono text-gray-500 dark:text-gray-400 text-[11px]">
+                      {t.license_key.slice(0, 8)}•••{t.license_key.slice(-4)}
+                    </span>
+                  </div>
+
+                  {/* Hasil cek lisensi online */}
+                  {licInfo && (
+                    <div className={`mt-1 rounded-lg px-3 py-2 text-[11px] leading-snug border ${
+                      licInfo.loading ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500' :
+                      licInfo.error ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' :
+                      licInfo.data?.expired ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' :
+                      'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                    }`}>
+                      {licInfo.loading && '⏳ Menghubungi server lisensi...'}
+                      {licInfo.error && `❌ ${licInfo.error}`}
+                      {!licInfo.loading && !licInfo.error && licInfo.data && (
+                        licInfo.data.expired
+                          ? `⛔ Lisensi kedaluwarsa sejak ${licInfo.data.expires_at ? new Date(licInfo.data.expires_at).toLocaleDateString('id-ID') : '–'}`
+                          : `✅ Lisensi valid · Berlaku hingga ${licInfo.data.expires_at ? new Date(licInfo.data.expires_at).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : 'Selamanya'}`
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Tombol Aksi ── */}
+                <div className="px-5 pb-5 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  {/* Baris 1: Aksi Utama */}
+                  <div className="flex gap-2">
+                    {/* Tombol Aktifkan/Nonaktifkan berdasarkan wg_status (kernel), bukan DB saja */}
+                    {wgConnected || dbActive ? (
+                      <button
+                        className="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
+                        onClick={() => handleTunnelAction(t.id, 'stop')}
+                        disabled={actionLoading[t.id] !== undefined}
+                      >
+                        {actionLoading[t.id] === 'stop' ? (
+                          <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Mematikan...</>
+                        ) : '⏹ Nonaktifkan'}
+                      </button>
+                    ) : (
+                      <button
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          isExpired
+                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        }`}
+                        onClick={() => !isExpired && handleTunnelAction(t.id, 'start')}
+                        disabled={actionLoading[t.id] !== undefined || isExpired}
+                        title={isExpired ? 'Lisensi kedaluwarsa. Tidak dapat mengaktifkan tunnel.' : ''}
+                      >
+                        {actionLoading[t.id] === 'start' ? (
+                          <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Mengaktifkan...</>
+                        ) : isExpired ? '⛔ Lisensi Kedaluwarsa' : '▶ Aktifkan Tunnel'}
+                      </button>
+                    )}
+
+                    {/* Sinkronkan jika inconsistent state */}
+                    {stateInconsistent && (
+                      <button
+                        className="px-3 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold transition"
+                        onClick={() => handleTunnelAction(t.id, 'start')}
+                        disabled={actionLoading[t.id] !== undefined}
+                        title="Sinkronkan status DB dengan kernel"
+                      >
+                        🔄 Sinkronkan
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Baris 2: Aksi Sekunder */}
+                  <div className="flex gap-2">
+                    <button
+                      className="flex-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1"
+                      onClick={() => handleCheckLicense(t)}
+                      disabled={licInfo?.loading}
+                      title="Cek status lisensi langsung ke server pusat"
+                    >
+                      {licInfo?.loading ? (
+                        <><span className="w-3 h-3 border-2 border-slate-400/30 border-t-slate-600 rounded-full animate-spin" />Mengecek...</>
+                      ) : '🛡️ Cek Lisensi'}
+                    </button>
+                    <button
+                      className="flex-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1"
+                      onClick={() => handleDiagnose(t.id)}
+                      disabled={actionLoading[t.id] !== undefined}
+                    >
+                      {actionLoading[t.id] === 'diagnose' ? (
+                        <><span className="w-3 h-3 border-2 border-slate-400/30 border-t-slate-600 rounded-full animate-spin" />...</>
+                      ) : '🔍 Diagnosa'}
+                    </button>
+                    <button
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition"
+                      onClick={() => handleEditClick(t)}
+                      disabled={actionLoading[t.id] !== undefined}
+                    >✏️</button>
+                    <button
+                      className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950 dark:hover:bg-red-900 dark:text-red-300 rounded-lg text-xs font-semibold transition flex items-center justify-center"
+                      onClick={() => handleTunnelAction(t.id, 'delete')}
+                      disabled={actionLoading[t.id] !== undefined}
+                      title="Hapus Permanen"
+                    >
+                      {actionLoading[t.id] === 'delete' ? (
+                        <span className="w-3.5 h-3.5 border-2 border-red-500/30 border-t-red-700 rounded-full animate-spin" />
+                      ) : '🗑️'}
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                {t.status === 'active' ? (
-                  <button
-                    className="flex-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 focus:outline-none"
-                    onClick={() => handleTunnelAction(t.id, 'stop')}
-                    disabled={actionLoading[t.id] !== undefined}
-                  >
-                    {actionLoading[t.id] === 'stop' ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Mematikan...
-                      </>
-                    ) : (
-                      'Nonaktifkan'
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 focus:outline-none"
-                    onClick={() => handleTunnelAction(t.id, 'start')}
-                    disabled={actionLoading[t.id] !== undefined}
-                  >
-                    {actionLoading[t.id] === 'start' ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Mengaktifkan...
-                      </>
-                    ) : (
-                      'Aktifkan'
-                    )}
-                  </button>
-                )}
-                <button
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 focus:outline-none"
-                  onClick={() => handleDiagnose(t.id)}
-                  disabled={actionLoading[t.id] !== undefined}
-                >
-                  {actionLoading[t.id] === 'diagnose' ? (
-                    <>
-                      <span className="w-3 h-3 border-2 border-slate-400/30 border-t-slate-600 rounded-full animate-spin"></span>
-                      Proses...
-                    </>
-                  ) : (
-                    '🔍 Diagnosa'
-                  )}
-                </button>
-                <button
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition focus:outline-none"
-                  onClick={() => handleEditClick(t)}
-                  disabled={actionLoading[t.id] !== undefined}
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  className="px-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950 dark:hover:bg-red-900 dark:text-red-300 rounded-lg text-xs font-semibold transition flex items-center justify-center focus:outline-none"
-                  onClick={() => handleTunnelAction(t.id, 'delete')}
-                  disabled={actionLoading[t.id] !== undefined}
-                  title="Hapus Permanen"
-                >
-                  {actionLoading[t.id] === 'delete' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-red-500/30 border-t-red-700 rounded-full animate-spin"></span>
-                  ) : (
-                    '🗑️'
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
