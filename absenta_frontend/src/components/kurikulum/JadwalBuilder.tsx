@@ -985,10 +985,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           hariSekolah={hariSekolah}
           loadingData={loadingData}
           onRefreshSchedules={fetchSchedules}
-          onOpenBebanModal={() => setBebanModalOpen(true)}
-          onClearSchedule={handleClearSchedule}
-          isFocusMode={isFocusMode}
-          onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
           showLeftPanel={showLeftPanel}
           onToggleLeftPanel={() => setShowLeftPanel(prev => !prev)}
         />
