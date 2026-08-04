@@ -16,6 +16,7 @@ import { prisma } from '../utils/prisma';
 import { waChatbotResolverService, persistLidMapping } from '../modules/whatsapp/services/wa-chatbot-resolver.service';
 import { getRedisConnection } from '../queue/redis';
 import { createRedisConnection } from '../infra/redis/redisClient';
+import { appLogger } from '../utils/app-logger';
 
 // ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
 const WA_GROUPS_CACHE_TTL_SECONDS = 300; // 5 menit
@@ -725,9 +726,9 @@ const waGatewayServiceLocal = {
 
       for (const conn of connections) {
         restoredTenantIds.add(conn.tenant_id);
-        console.log(`[WA-Pool] Restoring koneksi tenant: ${conn.tenant_id}`);
+        appLogger.info({ tenant_id: conn.tenant_id }, 'wa_pool.restoring_connection');
         connectTenant(conn.tenant_id).catch((e: any) =>
-          console.error(`[WA-Pool] Gagal restore ${conn.tenant_id}:`, e.message)
+          appLogger.error({ tenant_id: conn.tenant_id, error: e.message }, 'wa_pool.restore_error')
         );
       }
 
@@ -739,9 +740,9 @@ const waGatewayServiceLocal = {
         if (!restoredTenantIds.has(cfg.tenant_id)) {
           const { hasCreds } = await getTenantDbCredsInfo(cfg.tenant_id);
           if (hasCreds) {
-            console.log(`[WA-Pool] Restoring active LOCAL WA session from DB for tenant: ${cfg.tenant_id}`);
+            appLogger.info({ tenant_id: cfg.tenant_id }, 'wa_pool.restoring_session_from_db');
             connectTenant(cfg.tenant_id).catch((e: any) =>
-              console.error(`[WA-Pool] Gagal restore creds DB ${cfg.tenant_id}:`, e.message)
+              appLogger.error({ tenant_id: cfg.tenant_id, error: e.message }, 'wa_pool.restore_creds_error')
             );
           }
         }

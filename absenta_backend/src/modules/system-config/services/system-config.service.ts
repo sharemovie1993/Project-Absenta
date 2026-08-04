@@ -80,6 +80,8 @@ export interface SystemConfigPayload {
   max_izin_sementara_menit?: number;
 }
 
+import { appLogger } from '@/utils/app-logger';
+
 export const systemConfigService = {
   async getActive(tenantId?: string | null) {
     const cacheKey = CACHE_KEYS.SYSTEM_CONFIG.ACTIVE(tenantId || null);
@@ -185,9 +187,7 @@ export const systemConfigService = {
       throw new Error('Hanya SUPERADMIN tenant system yang dapat mengelola toggle payment gateway');
     }
 
-    console.log('[SystemConfigService] Upserting for tenant:', tenantIdToUse);
-    console.log('[SystemConfigService] Payload logo_url:', payload.logo_url);
-    console.log('[SystemConfigService] Payload favicon_url:', payload.favicon_url);
+    appLogger.info({ tenant_id: tenantIdToUse, logo_url: payload.logo_url, favicon_url: payload.favicon_url }, 'system_config.upsert_start');
 
     // HANDLE GLOBAL FIELDS (Logo, Favicon & Company Identity)
     // These fields must always be saved to the GLOBAL config (tenant_id: null),
@@ -208,7 +208,7 @@ export const systemConfigService = {
     }
 
     if (Object.keys(globalUpdateData).length > 0) {
-      console.log('[SystemConfigService] Saving global fields:', Object.keys(globalUpdateData));
+      appLogger.info({ fields: Object.keys(globalUpdateData) }, 'system_config.global_fields_update');
       const globalConfig = await prisma.systemConfig.findFirst({ where: { tenant_id: null } });
       if (globalConfig) {
         await prisma.systemConfig.update({ where: { id: globalConfig.id }, data: globalUpdateData });
