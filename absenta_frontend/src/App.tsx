@@ -210,6 +210,7 @@ const JadwalPiketGuruPage = lazy(() => import('./pages/kurikulum/JadwalPiketGuru
 const KalenderAkademikPage = lazy(() => import('./pages/kurikulum/KalenderAkademikPage'));
 const JamKBMPage = lazy(() => import('./pages/kurikulum/JamKBMPage'));
 const RekapKBMPage = lazy(() => import('./pages/kurikulum/RekapKBMPage'));
+const KospBuilderPage = lazy(() => import('./pages/kurikulum/KospBuilderPage'));
 const SarprasInventoryPage = lazy(() => import('./pages/sarpras/SarprasInventoryPage'));
 const SarprasLoansPage = lazy(() => import('./pages/sarpras/SarprasLoansPage'));
 const SarprasMaintenancePage = lazy(() => import('./pages/sarpras/SarprasMaintenancePage'));
@@ -793,6 +794,11 @@ function App() {
                     <Route path="/kurikulum/plotting" element={
                       <ProtectedRoute requiredCapability="academic.structures.view.list">
                         <MasterStrukturPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/kosp-builder" element={
+                      <ProtectedRoute requiredCapability="academic.structures.view.list">
+                        <KospBuilderPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/jadwal-piket" element={

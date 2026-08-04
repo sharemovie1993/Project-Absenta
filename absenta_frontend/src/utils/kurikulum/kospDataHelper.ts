@@ -1,0 +1,192 @@
+import { StrukturKurikulum, getJpValueForSemester, getSubjectSortRank, detectKelompokForMapel } from './masterStrukturHelper';
+import type { Jurusan } from '../../types/academic';
+
+/**
+ * Generates Word-style HTML Table for Struktur Kurikulum of a specific Jurusan
+ */
+export const buildKospStrukturTableHtml = (
+  jurusan: Jurusan,
+  mappingDataAll: StrukturKurikulum[]
+): string => {
+  const jurusanId = jurusan.id;
+  const namaJurusan = jurusan.nama || (jurusan as any).nama_jurusan || 'Konsentrasi Keahlian';
+  const kodeJurusan = jurusan.singkatan || jurusan.kode || 'KONSENTRASI';
+
+  // Filter mapping items for this jurusan OR general subjects (no jurusan_id)
+  const jurusanItems = mappingDataAll.filter(item => {
+    return !item.jurusan_id || item.jurusan_id === jurusanId;
+  });
+
+  if (jurusanItems.length === 0) {
+    return `
+      <div style="padding:12px; border:1px dashed #cbd5e1; border-radius:6px; background:#f8fafc; text-align:center; color:#64748b; font-size:11px; margin-bottom:16px;">
+        <em>Belum ada pemetaan Struktur Kurikulum untuk <strong>${namaJurusan}</strong> (${kodeJurusan}).</em>
+      </div>
+    `;
+  }
+
+  // Group by Mapel
+  const mapelMap = new Map<string, {
+    id: string;
+    nama: string;
+    kode: string;
+    kelompok: string;
+    jp: Record<number, number>;
+    rawItem: any;
+  }>();
+
+  jurusanItems.forEach(item => {
+    const mapelId = item.mapel_id;
+    const mapelNama = item.Mapel?.nama_mapel || (item as any).nama_mapel || '';
+    const mapelKode = item.Mapel?.kode_mapel || (item as any).kode_mapel || '';
+    const tingkat = item.tingkat;
+    const baseJp = item.jp_per_minggu;
+
+    if (!mapelMap.has(mapelId)) {
+      mapelMap.set(mapelId, {
+        id: mapelId,
+        nama: mapelNama,
+        kode: mapelKode,
+        kelompok: item.kelompok || detectKelompokForMapel(mapelKode, mapelNama),
+        jp: {},
+        rawItem: item
+      });
+    }
+    mapelMap.get(mapelId)!.jp[tingkat] = baseJp;
+  });
+
+  // Sort subjects
+  const sortedList = Array.from(mapelMap.values()).sort((a, b) => {
+    const rankA = getSubjectSortRank(a.rawItem);
+    const rankB = getSubjectSortRank(b.rawItem);
+    if (rankA !== rankB) return rankA - rankB;
+    return a.nama.localeCompare(b.nama);
+  });
+
+  // Categorize
+  const umum = sortedList.filter(m => m.kelompok === 'MATA PELAJARAN UMUM');
+  const kejuruan = sortedList.filter(m => m.kelompok === 'MATA PELAJARAN KEJURUAN');
+  const pilihanMulok = sortedList.filter(m => m.kelompok === 'MATA PELAJARAN PILIHAN' || m.kelompok === 'MUATAN LOKAL');
+
+  const getCellVal = (m: typeof sortedList[0], tingkat: number, sem: 1 | 2) => {
+    const base = m.jp[tingkat] || 0;
+    if (base === 0) return '-';
+    return getJpValueForSemester(m.nama, m.kode, tingkat, sem, base);
+  };
+
+  const calculateGroupTotal = (list: typeof sortedList, tingkat: number, sem: 1 | 2) => {
+    let sum = 0;
+    list.forEach(m => {
+      const val = getCellVal(m, tingkat, sem);
+      if (val !== '-') sum += Number(val);
+    });
+    return sum;
+  };
+
+  const renderRows = (list: typeof sortedList) => {
+    return list.map((m, idx) => {
+      const x1 = getCellVal(m, 10, 1);
+      const x2 = getCellVal(m, 10, 2);
+      const xi1 = getCellVal(m, 11, 1);
+      const xi2 = getCellVal(m, 11, 2);
+      const xii1 = getCellVal(m, 12, 1);
+      const xii2 = getCellVal(m, 12, 2);
+
+      return `
+        <tr>
+          <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${idx + 1}. ${m.nama}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${x1}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${x2}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${xi1}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${xi2}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${xii1}</td>
+          <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${xii2}</td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  const renderSubtotalRow = (label: string, list: typeof sortedList) => {
+    return `
+      <tr style="background-color:#f1f5f9; font-weight:bold;">
+        <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${label}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 10, 1) || '-'}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 10, 2) || '-'}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 11, 1) || '-'}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 11, 2) || '-'}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 12, 1) || '-'}</td>
+        <td style="border:1px solid #94a3b8; padding:5px; text-align:center; font-size:10.5px;">${calculateGroupTotal(list, 12, 2) || '-'}</td>
+      </tr>
+    `;
+  };
+
+  const grandTotalX1 = calculateGroupTotal(sortedList, 10, 1);
+  const grandTotalX2 = calculateGroupTotal(sortedList, 10, 2);
+  const grandTotalXi1 = calculateGroupTotal(sortedList, 11, 1);
+  const grandTotalXi2 = calculateGroupTotal(sortedList, 11, 2);
+  const grandTotalXii1 = calculateGroupTotal(sortedList, 12, 1);
+  const grandTotalXii2 = calculateGroupTotal(sortedList, 12, 2);
+
+  return `
+    <div style="margin-top:14px; margin-bottom:24px;">
+      <h4 style="margin:0 0 6px 0; font-size:12px; font-weight:bold; color:#0f172a; text-transform:uppercase;">
+        Konsentrasi Keahlian: ${namaJurusan} (${kodeJurusan})
+      </h4>
+      <table style="width:100%; border-collapse:collapse; font-family:Arial, sans-serif;">
+        <thead>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th rowspan="3" style="border:1px solid #94a3b8; padding:6px; font-size:11px; width:45%;">MATA PELAJARAN</th>
+            <th colspan="6" style="border:1px solid #94a3b8; padding:4px; font-size:11px;">ALOKASI WAKTU (JP / MINGGU)</th>
+          </tr>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th colspan="2" style="border:1px solid #94a3b8; padding:4px; font-size:10.5px;">KELAS X</th>
+            <th colspan="2" style="border:1px solid #94a3b8; padding:4px; font-size:10.5px;">KELAS XI</th>
+            <th colspan="2" style="border:1px solid #94a3b8; padding:4px; font-size:10.5px;">KELAS XII</th>
+          </tr>
+          <tr style="background-color:#e2e8f0; font-weight:bold; text-align:center;">
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 1</th>
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 2</th>
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 1</th>
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 2</th>
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 1</th>
+            <th style="border:1px solid #94a3b8; padding:4px; font-size:10px; width:9%;">Sem 2</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Kelompok A -->
+          <tr style="background-color:#f8fafc; font-weight:bold;">
+            <td colspan="7" style="border:1px solid #94a3b8; padding:5px 8px; font-size:11px; color:#1e293b;">A. MATA PELAJARAN UMUM</td>
+          </tr>
+          ${renderRows(umum)}
+          ${renderSubtotalRow('Jumlah Jam Kelompok A', umum)}
+
+          <!-- Kelompok B -->
+          <tr style="background-color:#f8fafc; font-weight:bold;">
+            <td colspan="7" style="border:1px solid #94a3b8; padding:5px 8px; font-size:11px; color:#1e293b;">B. MATA PELAJARAN KEJURUAN</td>
+          </tr>
+          ${renderRows(kejuruan)}
+
+          <!-- Kelompok C -->
+          ${pilihanMulok.length > 0 ? `
+            <tr style="background-color:#f8fafc; font-weight:bold;">
+              <td colspan="7" style="border:1px solid #94a3b8; padding:5px 8px; font-size:11px; color:#1e293b;">C. MATA PELAJARAN PILIHAN & MUATAN LOKAL</td>
+            </tr>
+            ${renderRows(pilihanMulok)}
+          ` : ''}
+          ${renderSubtotalRow('Jumlah Jam Kelompok B + C', [...kejuruan, ...pilihanMulok])}
+
+          <!-- Total Beban Belajar -->
+          <tr style="background-color:#dcfce7; color:#14532d; font-weight:bold;">
+            <td style="border:1px solid #86efac; padding:6px 8px; font-size:11px;">TOTAL BEBAN BELAJAR (A + B + C)</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalX1}</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalX2}</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalXi1}</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalXi2}</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalXii1}</td>
+            <td style="border:1px solid #86efac; padding:6px; text-align:center; font-size:11px;">${grandTotalXii2}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+};
