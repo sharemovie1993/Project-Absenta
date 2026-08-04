@@ -192,7 +192,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {viewMode === 'KELAS' && onToggleLeftPanel && (
+        {onToggleLeftPanel && (
           <Button
             variant={showLeftPanel ? "outline" : "primary"}
             size="sm"

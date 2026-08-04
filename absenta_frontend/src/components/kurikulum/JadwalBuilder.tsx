@@ -85,16 +85,12 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
   const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
-  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(initialViewMode === 'KELAS');
+  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(false);
   const [colorByMode, setColorByMode] = useState<ColorByMode>('MAPEL');
 
   const setViewMode = (m: ViewMode) => {
     setViewModeState(m);
-    if (m === 'KELAS') {
-      setShowLeftPanel(true);
-    } else {
-      setShowLeftPanel(false);
-    }
+    setShowLeftPanel(false);
   };
   
   // Selections
