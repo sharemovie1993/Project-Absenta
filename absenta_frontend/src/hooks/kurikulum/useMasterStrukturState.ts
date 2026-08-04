@@ -17,7 +17,8 @@ import {
   isMapelBelongsToOtherJurusan,
   isMapelRelevantForTingkat,
   performStrukturPrint,
-  getSubjectSortRank
+  getSubjectSortRank,
+  getJpValueForSemester
 } from '../../utils/kurikulum/masterStrukturHelper';
 
 import { useSearchParams } from 'react-router-dom';
@@ -567,10 +568,35 @@ export const useMasterStrukturState = () => {
     });
   }, [tenantInfo, selectedTingkat, selectedTahunNama, jurusans?.data, selectedJurusanId, mapping?.data]);
 
+  // ─── JP per semester (Kemendikbud-compliant) ─────────────────────────────
+  // Untuk Kelas 12 SMK: PKL menggantikan KK di Semester Ganjil (Sem 1),
+  // KK aktif di Semester Genap (Sem 2). Keduanya tidak boleh dijumlahkan.
+  // Ref: Kepmendikbudristek No. 262/M/2022 — Struktur Kurikulum Merdeka SMK.
+  const { jpGanjil, jpGenap } = useMemo(() => {
+    if (!mappingFiltered || !isSmkOrMak || selectedTingkat !== 12) {
+      return { jpGanjil: 0, jpGenap: 0 };
+    }
+    let ganjil = 0;
+    let genap = 0;
+    mappingFiltered.forEach(item => {
+      const nama = item.Mapel?.nama_mapel || '';
+      const kode = item.Mapel?.kode_mapel || '';
+      const base = item.jp_per_minggu;
+      const valG = getJpValueForSemester(nama, kode, 12, 1, base);
+      const valGe = getJpValueForSemester(nama, kode, 12, 2, base);
+      if (valG !== '-') ganjil += Number(valG);
+      if (valGe !== '-') genap += Number(valGe);
+    });
+    return { jpGanjil: ganjil, jpGenap: genap };
+  }, [mappingFiltered, isSmkOrMak, selectedTingkat]);
+
   const totalJp = useMemo(() => {
     if (!mappingFiltered) return 0;
+    // Untuk Kelas 12 SMK: gunakan JP Ganjil sebagai referensi utama (semester berjalan)
+    // agar tidak misleading karena PKL dan KK tidak berjalan bersamaan.
+    if (isSmkOrMak && selectedTingkat === 12) return jpGanjil;
     return mappingFiltered.reduce((sum, item) => sum + item.jp_per_minggu, 0);
-  }, [mappingFiltered]);
+  }, [mappingFiltered, isSmkOrMak, selectedTingkat, jpGanjil]);
 
   const targetJp = useMemo(() => {
     const j = (jenjang || '').toUpperCase();
@@ -642,6 +668,8 @@ export const useMasterStrukturState = () => {
     totalJp,
     targetJp,
     gapJp,
+    jpGanjil,
+    jpGenap,
     unmappedSubjects,
     allUnmappedSubjects,
     presetSisaCount,

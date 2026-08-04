@@ -64,6 +64,8 @@ const MasterStrukturPage: React.FC = () => {
         totalJp,
         targetJp,
         gapJp,
+        jpGanjil,
+        jpGenap,
         unmappedSubjects,
         allUnmappedSubjects,
         presetSisaCount,
@@ -87,6 +89,9 @@ const MasterStrukturPage: React.FC = () => {
         jenjang,
         kurikulum
     } = useMasterStrukturState();
+
+    // jpGanjil & jpGenap hanya relevan untuk Kelas 12 SMK (sesuai Kepmendikbudristek 262/M/2022)
+    const isPkl12 = isSmkOrMak && selectedTingkat === 12;
 
     const breadcrumbs = React.useMemo(() => [
         { label: 'Kurikulum' },
@@ -237,10 +242,27 @@ const MasterStrukturPage: React.FC = () => {
                             variant="ghost"
                             value={
                                 <div className="flex flex-col justify-between h-full min-h-[96px] text-white">
-                                    <div className="flex items-baseline gap-1 mt-1">
-                                        <span className="text-3xl font-black">{totalJp}</span>
-                                        <span className="text-xs font-bold opacity-80">JP / Minggu</span>
-                                    </div>
+                                    {isPkl12 ? (
+                                        // Kelas 12 SMK: tampilkan JP per semester sesuai Kemendikbud
+                                        // PKL di Ganjil menggantikan KK, bukan dijumlahkan (Kepmendikbudristek 262/M/2022)
+                                        <div className="mt-1 flex flex-col gap-0.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold opacity-75">Sem. 1 (PKL)</span>
+                                                <span className="text-lg font-black">{jpGanjil} <span className="text-[10px] font-bold opacity-80">JP</span></span>
+                                            </div>
+                                            <div className="w-full h-px bg-white/20 my-0.5" />
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold opacity-75">Sem. 2 (KK)</span>
+                                                <span className="text-lg font-black">{jpGenap} <span className="text-[10px] font-bold opacity-80">JP</span></span>
+                                            </div>
+                                            <span className="text-[8.5px] font-semibold opacity-60 mt-0.5">Kemendikbud No. 262/M/2022</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-baseline gap-1 mt-1">
+                                            <span className="text-3xl font-black">{totalJp}</span>
+                                            <span className="text-xs font-bold opacity-80">JP / Minggu</span>
+                                        </div>
+                                    )}
                                     <div className="flex gap-1.5 pt-1.5 no-print relative">
                                         {canManage && (
                                             <>
@@ -295,7 +317,13 @@ const MasterStrukturPage: React.FC = () => {
                                             style={{ width: `${Math.min(100, (totalJp / targetJp) * 100)}%` }}
                                         ></div>
                                     </div>
-                                    <p className="text-[9px] text-slate-400 mt-1">Beban belajar per minggu tingkat kelas {selectedTingkat}.</p>
+                                    {isPkl12 ? (
+                                        <p className="text-[9px] text-slate-400 mt-1">
+                                            Sem. 1 (PKL): <strong>{jpGanjil}</strong> JP · Sem. 2 (KK): <strong>{jpGenap}</strong> JP
+                                        </p>
+                                    ) : (
+                                        <p className="text-[9px] text-slate-400 mt-1">Beban belajar per minggu tingkat kelas {selectedTingkat}.</p>
+                                    )}
                                 </div>
                             }
                         />
@@ -304,7 +332,9 @@ const MasterStrukturPage: React.FC = () => {
                         <AnalyticsCard
                             title="Analisis Selisih"
                             icon={
-                                gapJp > 0 ? (
+                                isPkl12 ? (
+                                    <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                                ) : gapJp > 0 ? (
                                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                                 ) : gapJp === 0 ? (
                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -317,7 +347,16 @@ const MasterStrukturPage: React.FC = () => {
                             value={
                                 <div className="flex flex-col justify-between h-full min-h-[96px]">
                                     <div className="mt-1">
-                                        {gapJp > 0 ? (
+                                        {isPkl12 ? (
+                                            // Kelas 12 SMK: analisis selisih per semester, bukan total gabungan
+                                            <div>
+                                                <p className="text-base font-black text-sky-600 dark:text-sky-400">Dua Fase Belajar</p>
+                                                <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                                                    Sem. 1: PKL {jpGanjil} JP · Sem. 2: KK+Reguler {jpGenap} JP.
+                                                    Sesuai Kepmendikbudristek No. 262/M/2022.
+                                                </p>
+                                            </div>
+                                        ) : gapJp > 0 ? (
                                             <div>
                                                 <p className="text-lg font-black text-amber-600 dark:text-amber-400">Kurang {gapJp} JP</p>
                                                 <p className="text-[9px] text-slate-400 leading-tight">Struktur jam pelajaran masih berada di bawah alokasi standar nasional.</p>
@@ -335,7 +374,7 @@ const MasterStrukturPage: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-1">
-                                        Status: {gapJp > 0 ? '⚠️ Kurang Pemetaan' : gapJp === 0 ? '✅ Stabil' : 'ℹ️ Jam Tambahan'}
+                                        Status: {isPkl12 ? '📋 PKL Sem.1 / KK Sem.2' : gapJp > 0 ? '⚠️ Kurang Pemetaan' : gapJp === 0 ? '✅ Stabil' : 'ℹ️ Jam Tambahan'}
                                     </div>
                                 </div>
                             }
