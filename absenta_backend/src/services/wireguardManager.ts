@@ -511,9 +511,9 @@ export class WireguardManager {
         } catch {}
       } else {
         try {
-          const testCmd = `nc -z -w 2 127.0.0.1 ${portToCheck} || curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${portToCheck}`;
+          const testCmd = `ss -tulpn | grep -E ":${portToCheck}\\b" || curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:${portToCheck}`;
           const testOut = execSync(testCmd, { stdio: 'pipe', windowsHide: true }).toString().trim();
-          if (testOut === '000' || testOut.includes('succeeded') || Number(testOut) > 0) portOpen = true;
+          if (testOut.length > 0) portOpen = true;
         } catch {}
       }
 

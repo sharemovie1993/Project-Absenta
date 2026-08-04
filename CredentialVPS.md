@@ -8,7 +8,7 @@ user : asepsuryadi
 VPS Lokal (Server Produksi Platfom Absenta/Project Absenta)
 Akun SSH
 IP : 10.10.10.99
-domain : smk6jkt.absenta.id
+domain : smkn1pld.absenta.id
 Key :  nginxonly.pem
 user : asepsuryadi
 password : 1
