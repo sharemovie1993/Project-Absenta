@@ -253,16 +253,25 @@ export function SearchableSelect({
               >
                 <Check
                   className={cn(
-                    'mr-1.5 h-4 w-4 shrink-0',
+                    'mr-2 h-4 w-4 shrink-0',
                     (value && option.value && value === option.value) ? 'opacity-100' : 'opacity-0'
                   )}
                 />
-                {option.badge && (
-                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md mr-1.5 shrink-0 uppercase tracking-wide", option.badgeClass)}>
-                    {option.badge}
-                  </span>
-                )}
-                <span className="truncate whitespace-nowrap" style={{ color: option.warna || undefined, fontWeight: option.warna ? 'bold' : 'normal' }}>{option.label}</span>
+                <div className="flex items-center justify-between w-full min-w-0 gap-2">
+                  <div className="flex items-center gap-2 min-w-0 truncate">
+                    {option.statusDotClass && (
+                      <span className={cn("w-2 h-2 rounded-full shrink-0", option.statusDotClass)} />
+                    )}
+                    <span className="truncate whitespace-nowrap text-slate-800 dark:text-slate-100 font-medium">
+                      {option.label}
+                    </span>
+                  </div>
+                  {option.rightBadge && (
+                    <span className={cn("text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-md shrink-0", option.rightBadgeClass)}>
+                      {option.rightBadge}
+                    </span>
+                  )}
+                </div>
               </div>
             ))
           )}

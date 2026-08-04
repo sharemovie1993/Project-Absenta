@@ -333,34 +333,26 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       const totalJp = bebanInfo ? (bebanInfo.total_calculated_jp ?? bebanInfo.current_jp ?? 0) : 0;
       const maxJp = bebanInfo ? bebanInfo.max_jp : (g.max_jp || 24);
 
-      let statusIcon = '⚪';
-      let warna = '#64748b'; // Slate 500
-      let badge = 'KOSONG';
-      let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
+      let statusDotClass = 'bg-slate-300 dark:bg-slate-600';
+      let rightBadgeClass = 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
 
       if (totalJp > maxJp) {
-        statusIcon = '🔴';
-        warna = '#e11d48'; // Rose 600
-        badge = `OVERLOAD (+${totalJp - maxJp} JP)`;
-        badgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800';
+        statusDotClass = 'bg-rose-500 shadow-sm shadow-rose-500/50';
+        rightBadgeClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
       } else if (totalJp === maxJp && maxJp > 0) {
-        statusIcon = '🟢';
-        warna = '#059669'; // Emerald 600
-        badge = 'FULL 100%';
-        badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800';
+        statusDotClass = 'bg-emerald-500 shadow-sm shadow-emerald-500/50';
+        rightBadgeClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
       } else if (totalJp > 0) {
-        statusIcon = '🔵';
-        warna = '#2563eb'; // Blue 600
-        badge = `${Math.round((totalJp / maxJp) * 100)}%`;
-        badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800';
+        statusDotClass = 'bg-blue-500';
+        rightBadgeClass = 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
       }
 
       return {
-        label: `${statusIcon} ${g.nama_guru} (${totalJp}/${maxJp} JP)`,
+        label: g.nama_guru,
         value: g.id,
-        warna,
-        badge,
-        badgeClass,
+        statusDotClass,
+        rightBadge: `${totalJp}/${maxJp} JP`,
+        rightBadgeClass,
       };
     });
   }, [guruList, bebanGuruMap]);
