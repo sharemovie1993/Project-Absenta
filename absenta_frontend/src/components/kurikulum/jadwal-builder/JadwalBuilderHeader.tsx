@@ -168,20 +168,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             </div>
           )}
         </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 flex-wrap ml-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefreshSchedules}
-            disabled={loadingData}
-            className="p-2 border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-            title="Refresh data jadwal KBM"
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500 dark:text-slate-400", loadingData && "animate-spin")} />
-          </Button>
-        </div>
       </div>
 
       {/* ── BARIS 2: SLEEK FLOATING CONTROL PANEL (FILTER NAMA, MAPEL, KELAS) ── */}

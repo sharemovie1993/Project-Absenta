@@ -63,6 +63,8 @@ export default function JadwalPelajaranPage() {
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
   
+  const queryClient = useQueryClient();
+
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
   const roleName = user?.role?.name || '';
   const isSiswa = roleName === 'SISWA';
@@ -108,6 +110,12 @@ export default function JadwalPelajaranPage() {
       }
     }
 
+    // Invalidate schedule queries so Cetak Berkas preview fetches fresh painted schedule data instantly
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
+
     setPreviewPrintType(type);
     if (type === 'roster_teacher') {
       setPreviewTargetGuruId(activeGuruId || '');
@@ -117,7 +125,7 @@ export default function JadwalPelajaranPage() {
       setPreviewTargetGuruId(''); // Strips teacher context strictly
     }
     setViewMode('preview');
-  }, [selectedGuruId, selectedKelasId]);
+  }, [selectedGuruId, selectedKelasId, queryClient]);
 
   // Reference options for print preview & filters
   const { rawList: kelasRawList } = useKelasOptions();

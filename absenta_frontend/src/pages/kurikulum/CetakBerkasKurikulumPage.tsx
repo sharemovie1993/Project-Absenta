@@ -178,7 +178,7 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
               });
               return res?.success && res?.data ? res.data : [];
             },
-            staleTime: 10 * 60 * 1000
+            staleTime: 0
           }).catch(() => (queryClient.getQueryData(jadwalKey) as any[]) || []),
 
           queryClient.fetchQuery({
