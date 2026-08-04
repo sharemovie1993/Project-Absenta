@@ -6,6 +6,7 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { cn } from '../../../lib/utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { getMyTenant } from '../../../api/tenants.api';
 import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../../api/academic/semester.api';
@@ -76,12 +77,29 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
   const activeSem = activeSemRes?.data?.find((s: any) => s.is_active) || activeSemRes?.data?.[0];
 
   // School Profile Hook
-  const { data: sekolahProfileRes } = useQuery({
-    queryKey: ['sekolah-profile-preview-modal'],
-    queryFn: () => sekolahApi.getProfile().catch(() => null),
+  // Tenant Profile Hook (Shift Jam Pelajaran Config)
+  const { data: tenantRes } = useQuery({
+    queryKey: ['tenant-profile-preview-modal'],
+    queryFn: () => getMyTenant().catch(() => null),
     enabled: isOpen,
     staleTime: 10 * 60 * 1000,
   });
+
+  const tenantConfig = tenantRes?.success ? tenantRes.data?.shift_jam_pelajaran : null;
+
+  const getSlotTime = (slotIndex: number) => {
+    if (tenantConfig && Array.isArray(tenantConfig.shifts) && tenantConfig.shifts.length > 0) {
+      const shiftId = mode === 'KELAS' && selectedKelasId ? tenantConfig.class_assignments?.[selectedKelasId] : undefined;
+      const targetShift = tenantConfig.shifts.find(s => s.id === shiftId) || tenantConfig.shifts[0];
+      if (targetShift && Array.isArray(targetShift.slots)) {
+        const found = targetShift.slots.find(s => Number(s.slot) === slotIndex);
+        if (found && found.start && found.end) {
+          return { start: found.start, end: found.end };
+        }
+      }
+    }
+    return SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
+  };
 
   // Auto Select Defaults if Empty
   React.useEffect(() => {
@@ -422,7 +440,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                   <tr className="bg-slate-100 border-b border-slate-900 font-black text-[10px] uppercase">
                     <th className="p-2 border-r border-slate-900 w-24 bg-slate-200/80">HARI / WAKTU</th>
                     {SLOTS.map((slotIndex) => {
-                      const slotTime = SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
+                      const slotTime = getSlotTime(slotIndex);
                       return (
                         <th key={slotIndex} className="p-1.5 border-r last:border-r-0 border-slate-900 min-w-[110px]">
                           <div className="text-indigo-700 font-black text-[10.5px]">JAM {slotIndex}</div>
@@ -442,7 +460,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
 
                       {/* Horizontal Slot Cells for this Day */}
                       {SLOTS.map((slotIndex) => {
-                        const slotTime = SLOT_TIME_MAP[slotIndex] || { start: "07:00", end: "07:45" };
+                        const slotTime = getSlotTime(slotIndex);
                         const item = previewJadwalMap.get(`${h}-${slotIndex}`);
                         const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
 
