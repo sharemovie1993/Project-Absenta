@@ -15,28 +15,41 @@ export const buildKospCoverLogoHtml = (logoUrl?: string, defaultName: string = '
   `;
 };
 
+export interface TimPenyusunItem {
+  no?: number;
+  nama: string;
+  jabatan_kedinasan: string;
+  jabatan_tim: string;
+}
+
 /**
  * Generates Word-style HTML Table for SK Tim Penyusun KOSP
  */
-export const buildKospSkTimTableHtml = (namaKepsek: string, wakasekKurikulum: string): string => {
-  const list = [
-    { no: 1, nama: namaKepsek, jabatanKedinasan: 'Kepala Sekolah', jabatanTim: 'Penanggung Jawab' },
-    { no: 2, nama: wakasekKurikulum, jabatanKedinasan: 'Wakasek Bidang Kurikulum', jabatanTim: 'Ketua Tim Penyusun' },
-    { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatanKedinasan: 'Pengawas Pembina Sekolah', jabatanTim: 'Narasumber / Pendamping' },
-    { no: 4, nama: 'H. Dudung Abdurrahman, M.Pd.', jabatanKedinasan: 'Ketua Komite Sekolah', jabatanTim: 'Narasumber Komite' },
-    { no: 5, nama: 'Wakasek Bidang Kesiswaan', jabatanKedinasan: 'Wakasek Kesiswaan', jabatanTim: 'Anggota / Tim Pengembang' },
-    { no: 6, nama: 'Wakasek Bidang Humas & Hubin', jabatanKedinasan: 'Wakasek Humas/DUDI', jabatanTim: 'Anggota / Tim Penyelaras DUDI' },
-    { no: 7, nama: 'Wakasek Bidang Sarana Prasarana', jabatanKedinasan: 'Wakasek Sarpras', jabatanTim: 'Anggota / Tim Fasilitas' },
-    { no: 8, nama: 'Para Ketua Program Keahlian (Kaprog)', jabatanKedinasan: 'Kaprog Keahlian', jabatanTim: 'Anggota / Tim Kurikulum Jurusan' },
-    { no: 9, nama: 'Koor. Bimbingan Konseling (BK)', jabatanKedinasan: 'Guru BK', jabatanTim: 'Anggota / Tim Asesmen & Karakter' },
+export const buildKospSkTimTableHtml = (
+  namaKepsek: string, 
+  wakasekKurikulum: string,
+  customTimList?: TimPenyusunItem[]
+): string => {
+  const defaultList: TimPenyusunItem[] = [
+    { no: 1, nama: namaKepsek, jabatan_kedinasan: 'Kepala Sekolah', jabatan_tim: 'Penanggung Jawab' },
+    { no: 2, nama: wakasekKurikulum, jabatan_kedinasan: 'Wakasek Bidang Kurikulum', jabatan_tim: 'Ketua Tim Penyusun' },
+    { no: 3, nama: 'Drs. H. Mulyana, M.Pd.', jabatan_kedinasan: 'Pengawas Pembina Sekolah', jabatan_tim: 'Narasumber / Pendamping' },
+    { no: 4, nama: 'H. Dudung Abdurrahman, M.Pd.', jabatan_kedinasan: 'Ketua Komite Sekolah', jabatan_tim: 'Narasumber Komite' },
+    { no: 5, nama: 'Wakasek Bidang Kesiswaan', jabatan_kedinasan: 'Wakasek Kesiswaan', jabatan_tim: 'Anggota / Tim Pengembang' },
+    { no: 6, nama: 'Wakasek Bidang Humas & Hubin', jabatan_kedinasan: 'Wakasek Humas/DUDI', jabatan_tim: 'Anggota / Tim Penyelaras DUDI' },
+    { no: 7, nama: 'Wakasek Bidang Sarana Prasarana', jabatan_kedinasan: 'Wakasek Sarpras', jabatan_tim: 'Anggota / Tim Fasilitas' },
+    { no: 8, nama: 'Para Ketua Program Keahlian (Kaprog)', jabatan_kedinasan: 'Kaprog Keahlian', jabatan_tim: 'Anggota / Tim Kurikulum Jurusan' },
+    { no: 9, nama: 'Koor. Bimbingan Konseling (BK)', jabatan_kedinasan: 'Guru BK', jabatan_tim: 'Anggota / Tim Asesmen & Karakter' },
   ];
 
-  const rows = list.map(item => `
+  const listToRender = (customTimList && customTimList.length > 0) ? customTimList : defaultList;
+
+  const rows = listToRender.map((item, idx) => `
     <tr>
-      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.no}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center;">${item.no || (idx + 1)}</td>
       <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; font-weight:bold;">${item.nama}</td>
-      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.jabatanKedinasan}</td>
-      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; font-weight:bold; color:#1e3a8a;">${item.jabatanTim}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px;">${item.jabatan_kedinasan}</td>
+      <td style="border:1px solid #94a3b8; padding:5px 8px; font-size:10.5px; text-align:center; font-weight:bold; color:#1e3a8a;">${item.jabatan_tim}</td>
     </tr>
   `).join('');
 

@@ -20,9 +20,11 @@ import {
   buildKospCoverLogoHtml,
   buildKospSkTimTableHtml,
   buildKospP5TableHtml,
-  buildKospEskulTableHtml
+  buildKospEskulTableHtml,
+  type TimPenyusunItem
 } from '../../utils/kurikulum/kospDataHelper';
 import { WordEditorPage, WordEditorConfig } from '../../components/common/WordEditorModal';
+import type { KospMetaConfigData } from '../../components/kurikulum/kosp/KospMetaConfigModal';
 import type { Jurusan, StrukturKurikulum } from '../../types/academic';
 
 export const useKospBuilderState = () => {
@@ -34,6 +36,7 @@ export const useKospBuilderState = () => {
   // ── 1. ALL REACT STATES AT THE VERY TOP (React Rules of Hooks Best Practice) ──
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
   const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
+  const [isMetaModalOpen, setIsMetaModalOpen] = useState<boolean>(false);
 
   // ── 2. HELPER HOOKS ──
   const {
@@ -102,6 +105,20 @@ export const useKospBuilderState = () => {
   const sekolahInfo = sekolahRes?.data || null;
   const kospDbConfig = kospConfigRes?.data || null;
 
+  // Parsed Config JSON (Margin, Meta SK, Tim Penyusun)
+  const parsedConfigObj = useMemo<Record<string, any>>(() => {
+    if (kospDbConfig?.config) {
+      try {
+        return typeof kospDbConfig.config === 'string' ? JSON.parse(kospDbConfig.config) : kospDbConfig.config;
+      } catch (e) {}
+    }
+    return {};
+  }, [kospDbConfig]);
+
+  const metaConfigData: KospMetaConfigData = useMemo(() => {
+    return parsedConfigObj?.meta || {};
+  }, [parsedConfigObj]);
+
   const selectedTahunObj = useMemo(() => {
     return tahunList.find(y => y.id === selectedTahunId) || activeYear || null;
   }, [tahunList, selectedTahunId, activeYear]);
@@ -150,8 +167,12 @@ export const useKospBuilderState = () => {
   }, [sekolahInfo?.logo_url, sekolahInfo?.nama]);
 
   const tabelSkTimHtml = useMemo(() => {
-    return buildKospSkTimTableHtml(namaKepalaSekolah, wakasekKurikulum);
-  }, [namaKepalaSekolah, wakasekKurikulum]);
+    return buildKospSkTimTableHtml(
+      namaKepalaSekolah, 
+      wakasekKurikulum, 
+      metaConfigData.tim_penyusun
+    );
+  }, [namaKepalaSekolah, wakasekKurikulum, metaConfigData.tim_penyusun]);
 
   const tabelP5Html = useMemo(() => {
     return buildKospP5TableHtml();
@@ -178,6 +199,10 @@ export const useKospBuilderState = () => {
       ? (typeof kospDbConfig.halaman_html === 'string' ? JSON.parse(kospDbConfig.halaman_html) : kospDbConfig.halaman_html)
       : getDefaultKospMasterPages();
 
+    const tglPengesahanFormatted = metaConfigData.tanggal_sk
+      ? new Date(metaConfigData.tanggal_sk).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
     const replacements: Record<string, string> = {
       '{{NAMASEKOLAH}}': sekolahInfo?.nama || 'SMK NEGERI 1 PLERED',
       '{{TAHUNPELAJARAN}}': selectedTahunNama,
@@ -185,12 +210,12 @@ export const useKospBuilderState = () => {
       '{{ALAMATSEKOLAH}}': sekolahInfo?.alamat || 'Jl. Raya Cibogo Girang, Plered, Purwakarta',
       '{{NPSNSEKOLAH}}': (sekolahInfo as any)?.npsn || '20217088',
       '{{LOGOSEKOLAH_HTML}}': coverLogoHtml,
-      '{{TANGGALPENGESAHAN}}': new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-      '{{NAMAKETUAKOMITE}}': 'H. Dudung Abdurrahman, M.Pd.',
+      '{{TANGGALPENGESAHAN}}': tglPengesahanFormatted,
+      '{{NAMAKETUAKOMITE}}': metaConfigData.komite_nama || 'H. Dudung Abdurrahman, M.Pd.',
       '{{NAMAKEPALASEKOLAH}}': namaKepalaSekolah,
       '{{NIPKEPALASEKOLAH}}': nipKepalaSekolah,
-      '{{NAMAKEPAKACABDIN}}': 'Drs. H. Mamat Rahmat, M.Si.',
-      '{{NIPKEPAKACABDIN}}': '19680315 199303 1 008',
+      '{{NAMAKEPAKACABDIN}}': metaConfigData.kcd_nama || 'Drs. H. Mamat Rahmat, M.Si.',
+      '{{NIPKEPAKACABDIN}}': metaConfigData.kcd_nip || '19680315 199303 1 008',
       '{{KARAKTERISTIK_SEKOLAH}}': kospDbConfig?.karakteristik || `
         <p style="text-align:justify; font-size:11pt; line-height:1.6;">
           <strong>${sekolahInfo?.nama || 'Sekolah'}</strong> terletak di wilayah ${sekolahInfo?.kota || 'Daerah'} dengan potensi industri dan lingkungan masyarakat yang dinamis. Sekolah berkomitmen menyelenggarakan pendidikan kejuruan berkualitas yang berorientasi pada kesiapan kerja, wirausaha, dan karakter Pancasila.
@@ -235,22 +260,22 @@ export const useKospBuilderState = () => {
     tabelStrukturSemuaJurusanHtml,
     tabelKalenderPendidikanHtml,
     tabelJamKbmHtml,
-    tabelDudiMitraHtml
+    tabelDudiMitraHtml,
+    metaConfigData
   ]);
 
   // ── 8. INITIAL CONFIG ──
   const initialConfig = useMemo<WordEditorConfig>(() => {
-    if (kospDbConfig?.config) {
-      try {
-        return typeof kospDbConfig.config === 'string' ? JSON.parse(kospDbConfig.config) : kospDbConfig.config;
-      } catch (e) {}
-    }
-    return { paperKey: 'A4', orientation: 'portrait' };
-  }, [kospDbConfig]);
+    return {
+      paperKey: parsedConfigObj.paperKey || 'A4',
+      orientation: parsedConfigObj.orientation || 'portrait',
+      margin: parsedConfigObj.margin || { top: '2.5cm', right: '2.5cm', bottom: '2.5cm', left: '2.5cm' }
+    };
+  }, [parsedConfigObj]);
 
   // ── 9. MUTATION FOR UPSERT ──
   const upsertMutation = useMutation({
-    mutationFn: (payload: { halaman_html: string; config?: string }) => {
+    mutationFn: (payload: { halaman_html?: string; config?: string }) => {
       return kospApi.upsertConfig({
         tahun_pelajaran_id: selectedTahunId,
         halaman_html: payload.halaman_html,
@@ -259,19 +284,33 @@ export const useKospBuilderState = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kosp-config', selectedTahunId] });
-      toast.success(`Dokumen KOSP TP ${selectedTahunNama} berhasil disimpan ke database!`);
+      toast.success(`Pengaturan KOSP TP ${selectedTahunNama} berhasil disimpan ke database!`);
     },
     onError: () => {
-      toast.error('Gagal menyimpan dokumen KOSP');
+      toast.error('Gagal menyimpan pengaturan KOSP');
     }
   });
 
   const handleSaveKospPages = useCallback(async (pages: WordEditorPage[], config?: WordEditorConfig) => {
+    const updatedConfigObj = {
+      ...parsedConfigObj,
+      ...(config || initialConfig),
+    };
     await upsertMutation.mutateAsync({
       halaman_html: JSON.stringify(pages),
-      config: JSON.stringify(config || initialConfig)
+      config: JSON.stringify(updatedConfigObj)
     });
-  }, [selectedTahunId, upsertMutation, initialConfig]);
+  }, [selectedTahunId, upsertMutation, initialConfig, parsedConfigObj]);
+
+  const handleSaveMetaConfig = useCallback(async (updatedMeta: KospMetaConfigData) => {
+    const updatedConfigObj = {
+      ...parsedConfigObj,
+      meta: updatedMeta,
+    };
+    await upsertMutation.mutateAsync({
+      config: JSON.stringify(updatedConfigObj)
+    });
+  }, [parsedConfigObj, upsertMutation]);
 
   return {
     selectedTahunId,
@@ -283,11 +322,15 @@ export const useKospBuilderState = () => {
     sekolahInfo,
     isEditorOpen,
     setIsEditorOpen,
+    isMetaModalOpen,
+    setIsMetaModalOpen,
+    metaConfigData,
     compiledPages,
     initialConfig,
     isLoading: isLoadingTahun || isLoadingJurusan || isLoadingKospConfig || isLoadingMapping || isLoadingDudi,
     isSaving: upsertMutation.isPending,
     handleSaveKospPages,
+    handleSaveMetaConfig,
     namaKepalaSekolah,
     wakasekKurikulum,
     mappingAllDataCount: mappingAllData.length
