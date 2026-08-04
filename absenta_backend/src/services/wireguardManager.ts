@@ -2,7 +2,6 @@ import { execSync, exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { prisma } from '../utils/prisma';
 
 // Letakkan folder tunnels di root project absenta_backend
 const TUNNELS_DIR = path.join(__dirname, '../../../tunnels');
