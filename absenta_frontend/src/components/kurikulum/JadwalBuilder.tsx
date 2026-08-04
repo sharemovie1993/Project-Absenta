@@ -68,6 +68,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   initialViewMode = 'GURU',
   initialKelasId,
   initialGuruId,
+  onOpenPrintPreview,
 }) => {
   const queryClient = useQueryClient();
 
@@ -1125,6 +1126,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           onRefreshSchedules={fetchSchedules}
           showLeftPanel={showLeftPanel}
           onToggleLeftPanel={() => setShowLeftPanel(prev => !prev)}
+          onOpenPrintPreview={onOpenPrintPreview}
         />
 
         {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}

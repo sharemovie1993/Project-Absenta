@@ -481,6 +481,7 @@ export default function JadwalPelajaranPage() {
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
               onRefresh={() => setRefreshKey(k => k + 1)}
+              onOpenPrintPreview={() => setPrintPreviewOpen(true)}
             />
           ) : (
             <JadwalGrid 

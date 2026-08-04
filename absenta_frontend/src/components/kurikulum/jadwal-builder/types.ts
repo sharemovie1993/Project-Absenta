@@ -9,6 +9,7 @@ export interface JadwalBuilderProps {
   tahunPelajaranId?: string;
   semesterId?: string;
   onRefresh?: () => void;
+  onOpenPrintPreview?: () => void;
 }
 
 export interface TeacherBebanItem {

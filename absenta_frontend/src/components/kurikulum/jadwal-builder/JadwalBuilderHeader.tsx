@@ -28,6 +28,7 @@ interface Props {
   onRefreshSchedules: () => void;
   showLeftPanel?: boolean;
   onToggleLeftPanel?: () => void;
+  onOpenPrintPreview?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -53,6 +54,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onRefreshSchedules,
   showLeftPanel = true,
   onToggleLeftPanel,
+  onOpenPrintPreview,
 }) => {
   return (
     <div className="pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-20">
@@ -192,6 +194,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap ml-auto">
+        {onOpenPrintPreview && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenPrintPreview}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-black border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-all shadow-sm"
+            title="Buka Pratinjau Cetak & Dokumen PDF Jadwal Pelajaran"
+          >
+            <span>🖨️ Pratinjau & Cetak PDF</span>
+          </Button>
+        )}
+
         {onToggleLeftPanel && (
           <Button
             variant={showLeftPanel ? "outline" : "primary"}
