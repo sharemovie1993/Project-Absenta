@@ -116,41 +116,41 @@ export class AscImporterService {
   }
 
   /**
-   * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 11111 -> SENIN..JUMAT)
+   * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 00001 -> JUMAT, 11111 -> SENIN..JUMAT)
    */
   static resolveDaysFromXml(daysInput: string, daysdefsMap: Map<string, { bitmask: string; name: string }>): string[] {
     const rawInput = String(daysInput || '').trim();
     if (!rawInput) return ['SENIN'];
 
     const foundDef = daysdefsMap.get(rawInput);
+    const dayNames = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
 
-    // 1. Match by day name text (English / Indonesian / Short Code)
-    if (foundDef?.name) {
-      const dayFromText = AscImporterService.getDayFromText(foundDef.name);
-      if (dayFromText) return [dayFromText];
-    }
-
-    // 2. Match by Bitmask string (e.g. "10000" -> SENIN, "01000" -> SELASA, "11111" -> SENIN..JUMAT)
-    const bitmask = foundDef ? foundDef.bitmask : (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
-    const dayNames = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-    const resolvedDays: string[] = [];
+    // 1. FIRST: Check Bitmask string from foundDef or rawInput directly
+    // Bitmask string example: "10000" (Senin), "01000" (Selasa), "00100" (Rabu), "00010" (Kamis), "00001" (Jumat), "11111" (5 Hari)
+    const bitmask = foundDef?.bitmask || (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
 
     if (bitmask) {
+      const resolvedDays: string[] = [];
       for (let i = 0; i < bitmask.length; i++) {
         if (bitmask[i] === '1' && dayNames[i]) {
           resolvedDays.push(dayNames[i]);
         }
       }
+      if (resolvedDays.length > 0) {
+        return resolvedDays;
+      }
     }
 
-    if (resolvedDays.length > 0) {
-      return resolvedDays;
+    // 2. SECOND: Match by day name text from foundDef or rawInput
+    if (foundDef?.name) {
+      const dayFromText = AscImporterService.getDayFromText(foundDef.name);
+      if (dayFromText) return [dayFromText];
     }
 
-    // 3. Fallback direct text check on rawInput
-    const directDay = AscImporterService.getDayFromText(rawInput);
-    if (directDay) return [directDay];
+    const directDayFromText = AscImporterService.getDayFromText(rawInput);
+    if (directDayFromText) return [directDayFromText];
 
+    // Default fallback
     return ['SENIN'];
   }
 
@@ -158,16 +158,16 @@ export class AscImporterService {
    * Smart Day-Pattern Slot Resolver:
    * 1. Checks DB Tenant 'shift_jam_pelajaran' config for day-specific bell schedule
    * 2. Fallback to XML <periods> starttime & endtime (using original XML period number)
-   * 3. Returns null if no time found — caller must skip this slot (NO fallback generation)
+   * 3. Fallback to 45-min time calculation (guarantees NO card dropped)
    */
   static async resolveSlotTimesForDay(
     tenantId: string,
     kelasId: string,
     dayName: string,
-    absSlotIndex: number,     // Absenta slot index (JAM 1-based, for DB config lookup)
-    xmlPeriodNum: number,     // Original XML period number (for XML period-time lookup)
+    absSlotIndex: number,     // Absenta slot index (JAM 1-based)
+    xmlPeriodNum: number,     // Original XML period number
     xmlPeriodTimes: Record<number, { start: string; end: string }>
-  ): Promise<{ start: string; end: string } | null> {
+  ): Promise<{ start: string; end: string }> {
     try {
       const config = await prisma.config.findFirst({
         where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' },
@@ -180,7 +180,7 @@ export class AscImporterService {
 
         const dayPattern = shift?.day_patterns?.[dayName] || shift?.slots;
 
-        if (Array.isArray(dayPattern)) {
+        if (Array.isArray(dayPattern) && dayPattern.length > 0) {
           const matchedSlot = dayPattern.find((sl: any) => Number(sl.slot || sl.slot_index) === absSlotIndex);
           if (matchedSlot?.start && matchedSlot?.end) {
             return { start: matchedSlot.start, end: matchedSlot.end };
@@ -188,16 +188,27 @@ export class AscImporterService {
         }
       }
     } catch (err) {
-      console.warn('[AscImporter] Failed to parse tenant shift_jam_pelajaran config, falling back to XML period times', err);
+      console.warn('[AscImporter] Failed to parse tenant shift_jam_pelajaran config', err);
     }
 
-    // Use the original XML period number for time lookup
+    // Fallback to XML <periods> starttime & endtime using original XML period number
     if (xmlPeriodTimes[xmlPeriodNum]) {
       return xmlPeriodTimes[xmlPeriodNum];
     }
+    if (xmlPeriodTimes[absSlotIndex]) {
+      return xmlPeriodTimes[absSlotIndex];
+    }
 
-    // NO fallback — return null so caller can skip this slot
-    return null;
+    // Dynamic 45-minute fallback slot calculation per slotIndex if missing from DB and XML
+    const startTotalMin = 7 * 60 + 15 + (absSlotIndex - 1) * 45;
+    const endTotalMin = startTotalMin + 45;
+
+    const startH = String(Math.floor(startTotalMin / 60)).padStart(2, '0');
+    const startM = String(startTotalMin % 60).padStart(2, '0');
+    const endH = String(Math.floor(endTotalMin / 60)).padStart(2, '0');
+    const endM = String(endTotalMin % 60).padStart(2, '0');
+
+    return { start: `${startH}:${startM}`, end: `${endH}:${endM}` };
   }
 
   static async analyzeAscXml(tenantId: string, xmlContent: string) {
