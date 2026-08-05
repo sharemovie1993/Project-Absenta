@@ -391,16 +391,6 @@ export const renderKurikulumRosterPdf = (
   const groupNamesList = Array.from(groups.keys());
   const totalGroups = groupNamesList.length > 0 ? groupNamesList.length : 1;
 
-  console.log('[DEBUG pdfKurikulum]', {
-    totalJadwalReceived: jadwalList.length,
-    printType,
-    selectedClassId,
-    selectedGuruId,
-    totalGroups,
-    groupNamesList,
-    pembiasaanItemsInJadwalList: jadwalList.filter(j => j.is_pembiasaan || String(j.jenis_kegiatan).toUpperCase() === 'PEMBIASAAN' || Number(j.slot_index) === 0),
-  });
-
   for (let groupIndex = 0; groupIndex < totalGroups; groupIndex++) {
     const groupName = groupNamesList[groupIndex] || '---';
     const groupJadwal = groups.get(groupName) || [];

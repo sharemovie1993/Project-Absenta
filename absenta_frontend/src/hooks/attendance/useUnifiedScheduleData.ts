@@ -122,12 +122,6 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
 
   // 4. Unified Single Source of Truth List (KBM + Routine Activities)
   const allJadwal = useMemo(() => {
-    console.log('[DEBUG useUnifiedScheduleData]', {
-      kbmListLength: kbmList.length,
-      pembiasaanJadwalItemsLength: pembiasaanJadwalItems.length,
-      pembiasaanJadwalItems,
-      allJadwalLength: kbmList.length + pembiasaanJadwalItems.length,
-    });
     return [...kbmList, ...pembiasaanJadwalItems];
   }, [kbmList, pembiasaanJadwalItems]);
 

@@ -23,13 +23,6 @@ export function useJadwalKegiatan(params?: { aktif?: boolean }) {
 
   const pembiasaanList = rawList.filter(isRoutineKesiswaanActivity);
 
-  console.log('[DEBUG useJadwalKegiatan]', {
-    rawApiData: data,
-    parsedRawListLength: rawList.length,
-    pembiasaanListLength: pembiasaanList.length,
-    pembiasaanList,
-  });
-
   return {
     data,
     rawList,
