@@ -9,6 +9,7 @@ import {
 } from '@/api/attendance/jadwalKegiatan.api';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
 import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { getKelasList } from '@/api/academic/kelas.api';
 import { getActiveTahunPelajaran } from '@/api/academic/tahunPelajaran.api';
 import type { Kelas } from '@/types/academic';
@@ -82,13 +83,7 @@ export default function JadwalKegiatanPage() {
 
   // ── useQuery: Jadwal & Master Data ───────────────────────────────────────
   const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useJadwalKegiatan();
-
-  const { data: kelasRes } = useQuery({
-    queryKey: ['kelas-list-dropdown'],
-    queryFn: () => getKelasList(1, 100).catch(() => ({ data: [] as Kelas[] })),
-    staleTime: 10 * 60 * 1000,
-  });
-
+  const { rawList: classes } = useKelasOptions();
   const { rawList: masterKegiatans } = useJenisKegiatanMaster();
 
   const { data: activeTp } = useQuery({
@@ -104,7 +99,6 @@ export default function JadwalKegiatanPage() {
   });
 
   const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
-  const classes = useMemo(() => kelasRes?.data ?? [], [kelasRes]);
   const activeTpData = (activeTp as any)?.data || activeTp;
   const tpList = (tpListRes as any)?.data || [];
   const activeTpFromList = Array.isArray(tpList) ? (tpList.find((t: any) => t.is_active) || tpList[0]) : null;

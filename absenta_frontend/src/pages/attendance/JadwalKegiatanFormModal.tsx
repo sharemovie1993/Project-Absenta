@@ -52,12 +52,13 @@ interface JadwalKegiatanFormModalProps {
 }
 
 import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function JadwalKegiatanFormModal({
   editingItem,
   masterKegiatans: propMasterKegiatans,
-  classes,
+  classes: propClasses,
   activeTahunPelajaranId,
   activeTahunPelajaranName,
   presetNama = '',
@@ -65,7 +66,9 @@ export default function JadwalKegiatanFormModal({
   onSubmit,
 }: JadwalKegiatanFormModalProps) {
   const { rawList: fallbackMasterKegiatans } = useJenisKegiatanMaster();
+  const { rawList: fallbackClasses } = useKelasOptions();
   const masterKegiatans = propMasterKegiatans && propMasterKegiatans.length > 0 ? propMasterKegiatans : fallbackMasterKegiatans;
+  const classes = propClasses && propClasses.length > 0 ? propClasses : fallbackClasses;
   // ── Form State ──
   const [nama, setNama] = React.useState('');
   const [jenisKegiatan, setJenisKegiatan] = React.useState('');
