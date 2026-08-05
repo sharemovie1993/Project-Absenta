@@ -231,9 +231,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
               jenis_kegiatan: 'PEMBIASAAN',
               is_locked: true,
               is_pembiasaan: true,
-              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
               Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+              Guru: undefined
             } as any);
           });
         } else {

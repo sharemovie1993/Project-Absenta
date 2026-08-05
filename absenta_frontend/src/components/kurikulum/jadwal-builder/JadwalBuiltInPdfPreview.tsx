@@ -89,7 +89,7 @@ export const JadwalBuiltInPdfPreview: React.FC<Props> = ({
             target_semua_kelas: keg.target_semua_kelas,
             Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
             Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-            Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            Guru: undefined
           });
         });
       });
