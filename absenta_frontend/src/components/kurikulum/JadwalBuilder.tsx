@@ -216,7 +216,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         const upperDay = dayStr.toUpperCase();
 
         if (keg.target_semua_kelas) {
-          const activeClassIds = (kelasList && kelasList.length > 0) ? kelasList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
+          const activeClassIds = (kelasRawList && kelasRawList.length > 0) ? kelasRawList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
           activeClassIds.forEach(kId => {
             items.push({
               id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
@@ -261,7 +261,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     });
 
     return items;
-  }, [pembiasaanList, kelasList, tahunPelajaranId, semesterId, selectedKelasId]);
+  }, [pembiasaanList, kelasRawList, tahunPelajaranId, semesterId, selectedKelasId]);
 
   const allJadwal = useMemo(() => {
     return [...localJadwal, ...pembiasaanJadwalItems];
