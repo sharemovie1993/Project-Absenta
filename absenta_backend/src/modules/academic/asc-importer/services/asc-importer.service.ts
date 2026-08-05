@@ -478,6 +478,7 @@ export class AscImporterService {
           classIds: targetClassIds,
           guruId: targetTeacherId,
           mapelId: targetSubjectId,
+          periodsPerCard,
           isPembiasaan,
         });
       }
@@ -504,49 +505,54 @@ export class AscImporterService {
         const lessonMeta = lessonMetaMap.get(ascLessonId);
         if (!lessonMeta || !lessonMeta.classIds || lessonMeta.classIds.length === 0) continue;
 
-        const periodIndex = Number(card.period) || 0;
+        const basePeriodIndex = Number(card.period) || 0;
+        const durasiJp = Number(lessonMeta.periodsPerCard) || 1;
         const daysInput = String(card.days || '');
         const targetDays = AscImporterService.resolveDaysFromXml(daysInput, dynamicDaysdefsMap);
 
         for (const dayName of targetDays) {
           for (const targetClassId of lessonMeta.classIds) {
-            const slotTimes = await AscImporterService.resolveSlotTimesForDay(
-              tenantId,
-              targetClassId,
-              dayName,
-              periodIndex,
-              dynamicPeriodTimes
-            );
+            for (let pOffset = 0; pOffset < durasiJp; pOffset++) {
+              const slotIdx = basePeriodIndex + pOffset;
 
-            const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
-            const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${periodIndex}` : null;
+              const slotTimes = await AscImporterService.resolveSlotTimesForDay(
+                tenantId,
+                targetClassId,
+                dayName,
+                slotIdx,
+                dynamicPeriodTimes
+              );
 
-            if (usedClassSlots.has(classKey)) {
-              continue;
+              const classKey = `${targetClassId}_${dayName}_${slotIdx}`;
+              const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotIdx}` : null;
+
+              if (usedClassSlots.has(classKey)) {
+                continue;
+              }
+              if (guruKey && usedGuruSlots.has(guruKey)) {
+                continue;
+              }
+
+              usedClassSlots.add(classKey);
+              if (guruKey) usedGuruSlots.add(guruKey);
+
+              cardsBatch.push({
+                id: crypto.randomUUID(),
+                tenant_id: tenantId,
+                tahun_pelajaran_id: input.tahun_pelajaran_id,
+                semester_id: input.semester_id,
+                kelas_id: targetClassId,
+                guru_id: lessonMeta.guruId,
+                mapel_id: lessonMeta.mapelId,
+                hari: dayName as any,
+                slot_index: slotIdx,
+                jam_mulai: slotTimes.start,
+                jam_selesai: slotTimes.end,
+                jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
+                asc_id: String(card.id || `${ascLessonId}-${dayName}-${slotIdx}`),
+                created_by_user_id: input.user_id,
+              });
             }
-            if (guruKey && usedGuruSlots.has(guruKey)) {
-              continue;
-            }
-
-            usedClassSlots.add(classKey);
-            if (guruKey) usedGuruSlots.add(guruKey);
-
-            cardsBatch.push({
-              id: crypto.randomUUID(),
-              tenant_id: tenantId,
-              tahun_pelajaran_id: input.tahun_pelajaran_id,
-              semester_id: input.semester_id,
-              kelas_id: targetClassId,
-              guru_id: lessonMeta.guruId,
-              mapel_id: lessonMeta.mapelId,
-              hari: dayName as any,
-              slot_index: periodIndex,
-              jam_mulai: slotTimes.start,
-              jam_selesai: slotTimes.end,
-              jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-              asc_id: String(card.id || `${ascLessonId}-${dayName}-${periodIndex}`),
-              created_by_user_id: input.user_id,
-            });
           }
         }
       }
