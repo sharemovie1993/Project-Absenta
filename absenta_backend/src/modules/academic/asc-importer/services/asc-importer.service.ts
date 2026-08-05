@@ -238,7 +238,7 @@ export class AscImporterService {
 
     // 1. Fetch DB master entities
     const dbGurus = await prisma.guru.findMany({ where: { tenant_id: tenantId } });
-    const dbClasses = await prisma.kelas.findMany({ where: { tenant_id: tenantId } });
+    const dbClasses = await prisma.kelas.findMany({ where: { tenant_id: tenantId }, include: { Jurusan: true } });
     const dbSubjects = await prisma.mapel.findMany({ where: { tenant_id: tenantId } });
 
     // 2. Extract XML entities
@@ -285,19 +285,31 @@ export class AscImporterService {
       const xmlCode = String(c.short || '');
       const normXmlName = this.normalizeName(xmlName);
 
-      const exactMatch = dbClasses.find(
+      const activeClasses = dbClasses.filter((k: any) => k.is_active !== false);
+      const exactMatch = activeClasses.find(
+        (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
+      ) || dbClasses.find(
         (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
       );
+
+      const matchedNameWithJurusan = exactMatch
+        ? `${exactMatch.nama_kelas}${exactMatch.Jurusan ? ` - ${exactMatch.Jurusan.singkatan || exactMatch.Jurusan.nama}` : ''}`
+        : null;
 
       return {
         asc_id: xmlId,
         name: xmlName,
         code: xmlCode,
         matched_db_id: exactMatch?.id || null,
-        matched_db_name: exactMatch?.nama_kelas || null,
+        matched_db_name: matchedNameWithJurusan || exactMatch?.nama_kelas || null,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
       };
     });
+
+    // Natural sort class list so X TE 3 appears between X TE 2 and X TE 4
+    classAnalysis.sort((a: any, b: any) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
 
     // 5. Match Subjects
     const subjectAnalysis = xmlSubjectsArr.map((s: any) => {
@@ -335,7 +347,10 @@ export class AscImporterService {
       classes: classAnalysis,
       subjects: subjectAnalysis,
       db_teachers: dbGurus.map((g: any) => ({ id: g.id, name: g.nama_guru })),
-      db_classes: dbClasses.map((c: any) => ({ id: c.id, name: c.nama_kelas })),
+      db_classes: dbClasses.map((c: any) => ({
+        id: c.id,
+        name: `${c.nama_kelas}${c.Jurusan ? ` (${c.Jurusan.singkatan || c.Jurusan.nama})` : ''}${c.is_active === false ? ' [NONAKTIF]' : ''}`,
+      })),
       db_subjects: dbSubjects.map((m: any) => ({ id: m.id, name: m.nama_mapel, code: m.kode_mapel })),
     };
   }
