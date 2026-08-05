@@ -20,31 +20,6 @@ export interface ExecuteAscImportInput {
   user_id?: string;
 }
 
-const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
-  0: { start: '06:30', end: '07:00' },
-  1: { start: '07:00', end: '07:45' },
-  2: { start: '07:45', end: '08:30' },
-  3: { start: '08:30', end: '09:15' },
-  4: { start: '09:35', end: '10:20' },
-  5: { start: '10:20', end: '11:05' },
-  6: { start: '11:05', end: '11:50' },
-  7: { start: '12:30', end: '13:15' },
-  8: { start: '13:15', end: '14:00' },
-  9: { start: '14:00', end: '14:45' },
-  10: { start: '14:45', end: '15:30' },
-  11: { start: '15:30', end: '16:15' },
-  12: { start: '16:15', end: '17:00' },
-};
-
-const DAY_BITMASK_MAP: Record<string, string> = {
-  '10000': 'SENIN',
-  '01000': 'SELASA',
-  '00100': 'RABU',
-  '00010': 'KAMIS',
-  '00001': 'JUMAT',
-  '000001': 'SABTU',
-};
-
 export class AscImporterService {
   private static normalizeName(str: string): string {
     return String(str || '')
@@ -64,6 +39,67 @@ export class AscImporterService {
       throw new Error('File XML tidak valid. Node <timetable> tidak ditemukan.');
     }
     return parsed.timetable;
+  }
+
+  /**
+   * Dynamically extract period start & end times directly from XML <periods>
+   */
+  static extractPeriodTimes(timetable: any): Record<number, { start: string; end: string }> {
+    const periodMap: Record<number, { start: string; end: string }> = {};
+    const rawPeriods = timetable.periods?.period || [];
+    const periodsArr = Array.isArray(rawPeriods) ? rawPeriods : [rawPeriods];
+
+    periodsArr.forEach((p: any) => {
+      const slotNum = Number(p.period);
+      if (!isNaN(slotNum)) {
+        let start = String(p.starttime || '').trim();
+        let end = String(p.endtime || '').trim();
+
+        if (start && start.includes(':')) {
+          const [h, m] = start.split(':');
+          start = `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+        }
+        if (end && end.includes(':')) {
+          const [h, m] = end.split(':');
+          end = `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+        }
+
+        if (start && end) {
+          periodMap[slotNum] = { start, end };
+        }
+      }
+    });
+
+    // Default Jam 0 if missing in XML
+    if (!periodMap[0]) {
+      periodMap[0] = { start: '06:30', end: '07:00' };
+    }
+
+    return periodMap;
+  }
+
+  /**
+   * Dynamically extract days mapping directly from XML <daysdefs>
+   */
+  static extractDaysdefs(timetable: any): Map<string, string> {
+    const daysMap = new Map<string, string>();
+    const rawDays = timetable.daysdefs?.daysdef || [];
+    const daysArr = Array.isArray(rawDays) ? rawDays : [rawDays];
+
+    daysArr.forEach((d: any) => {
+      const dId = String(d.id);
+      const dName = String(d.name || d.short || '').toUpperCase();
+      const dBit = String(d.days || '');
+
+      if (dName.includes('SENIN') || dBit === '10000') daysMap.set(dId, 'SENIN');
+      else if (dName.includes('SELASA') || dBit === '01000') daysMap.set(dId, 'SELASA');
+      else if (dName.includes('RABU') || dBit === '00100') daysMap.set(dId, 'RABU');
+      else if (dName.includes('KAMIS') || dBit === '00010') daysMap.set(dId, 'KAMIS');
+      else if (dName.includes('JUMAT') || dBit === '00001') daysMap.set(dId, 'JUMAT');
+      else if (dName.includes('SABTU') || dBit === '000001') daysMap.set(dId, 'SABTU');
+    });
+
+    return daysMap;
   }
 
   static async analyzeAscXml(tenantId: string, xmlContent: string) {
@@ -343,22 +379,9 @@ export class AscImporterService {
         });
       }
 
-      // 6. Extract & Import Cards (JadwalKBM)
-      const xmlDaysRaw = timetable.daysdefs?.daysdef || [];
-      const xmlDaysArr = Array.isArray(xmlDaysRaw) ? xmlDaysRaw : [xmlDaysRaw];
-      const daysdefMap = new Map<string, string>(); // daysdef_id -> DAY_NAME
-      xmlDaysArr.forEach((d: any) => {
-        const dId = String(d.id);
-        const dBit = String(d.days || '');
-        const dName = String(d.name || '').toUpperCase();
-        if (dName.includes('SENIN')) daysdefMap.set(dId, 'SENIN');
-        else if (dName.includes('SELASA')) daysdefMap.set(dId, 'SELASA');
-        else if (dName.includes('RABU')) daysdefMap.set(dId, 'RABU');
-        else if (dName.includes('KAMIS')) daysdefMap.set(dId, 'KAMIS');
-        else if (dName.includes('JUMAT')) daysdefMap.set(dId, 'JUMAT');
-        else if (dName.includes('SABTU')) daysdefMap.set(dId, 'SABTU');
-        else if (DAY_BITMASK_MAP[dBit]) daysdefMap.set(dId, DAY_BITMASK_MAP[dBit]);
-      });
+      // 6. Dynamically Extract Period Times & Daysdefs directly from XML
+      const dynamicPeriodTimes = this.extractPeriodTimes(timetable);
+      const dynamicDaysdefsMap = this.extractDaysdefs(timetable);
 
       const xmlCardsRaw = timetable.cards?.card || [];
       const xmlCardsArr = Array.isArray(xmlCardsRaw) ? xmlCardsRaw : [xmlCardsRaw];
@@ -371,17 +394,18 @@ export class AscImporterService {
 
         const periodIndex = Number(card.period) || 0;
         const daysdefId = String(card.days || '');
-        let dayName = daysdefMap.get(daysdefId) || 'SENIN';
+        let dayName = dynamicDaysdefsMap.get(daysdefId);
 
-        if (daysdefId.length === 5) {
+        if (!dayName && daysdefId.length === 5) {
           if (daysdefId === '10000') dayName = 'SENIN';
           else if (daysdefId === '01000') dayName = 'SELASA';
           else if (daysdefId === '00100') dayName = 'RABU';
           else if (daysdefId === '00010') dayName = 'KAMIS';
           else if (daysdefId === '00001') dayName = 'JUMAT';
         }
+        if (!dayName) dayName = 'SENIN';
 
-        const slotTimes = SLOT_TIME_MAP[periodIndex] || { start: '07:00', end: '07:45' };
+        const slotTimes = dynamicPeriodTimes[periodIndex] || { start: '07:00', end: '07:45' };
 
         try {
           await tx.jadwalKBM.create({
