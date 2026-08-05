@@ -386,8 +386,8 @@ export class AscImporterService {
       const xmlLessonsRaw = timetable.lessons?.lesson || [];
       const xmlLessonsArr = Array.isArray(xmlLessonsRaw) ? xmlLessonsRaw : [xmlLessonsRaw];
       const lessonMetaMap = new Map<string, any>(); // asc_lesson_id -> lesson record
+      const kontrakBatch: any[] = [];
 
-      let totalKontrakCreated = 0;
       for (const les of xmlLessonsArr) {
         const ascLessonId = String(les.id);
         const classIdsStr = String(les.classids || '');
@@ -414,31 +414,34 @@ export class AscImporterService {
           subjectIdStr.toUpperCase().includes('PEMBIASAAN') ||
           subjectIdStr.toUpperCase().includes('UPACARA');
 
-        const kontrakRecord = await tx.jadwalKontrakKbm.create({
-          data: {
-            tenant_id: tenantId,
-            tahun_pelajaran_id: input.tahun_pelajaran_id,
-            semester_id: input.semester_id,
-            kelas_id: targetClassId,
-            guru_id: targetTeacherId,
-            mapel_id: targetSubjectId,
-            jumlah_kartu: countCards,
-            durasi_jp: periodsPerCard,
-            total_jp: periodsPerWeek,
-            aturan_blok: blockRule,
-            is_pembiasaan: isPembiasaan,
-            asc_lesson_id: ascLessonId,
-          },
+        const kontrakId = crypto.randomUUID();
+        kontrakBatch.push({
+          id: kontrakId,
+          tenant_id: tenantId,
+          tahun_pelajaran_id: input.tahun_pelajaran_id,
+          semester_id: input.semester_id,
+          kelas_id: targetClassId,
+          guru_id: targetTeacherId,
+          mapel_id: targetSubjectId,
+          jumlah_kartu: countCards,
+          durasi_jp: periodsPerCard,
+          total_jp: periodsPerWeek,
+          aturan_blok: blockRule,
+          is_pembiasaan: isPembiasaan,
+          asc_lesson_id: ascLessonId,
         });
 
-        totalKontrakCreated++;
         lessonMetaMap.set(ascLessonId, {
-          kontrakId: kontrakRecord.id,
+          kontrakId,
           kelasId: targetClassId,
           guruId: targetTeacherId,
           mapelId: targetSubjectId,
           isPembiasaan,
         });
+      }
+
+      if (kontrakBatch.length > 0) {
+        await tx.jadwalKontrakKbm.createMany({ data: kontrakBatch });
       }
 
       // 6. Dynamically Extract Period Times & Daysdefs directly from XML
@@ -447,8 +450,10 @@ export class AscImporterService {
 
       const xmlCardsRaw = timetable.cards?.card || [];
       const xmlCardsArr = Array.isArray(xmlCardsRaw) ? xmlCardsRaw : [xmlCardsRaw];
+      const cardsBatch: any[] = [];
+      const usedClassSlots = new Set<string>();
+      const usedGuruSlots = new Set<string>();
 
-      let totalCardsCreated = 0;
       for (const card of xmlCardsArr) {
         const ascLessonId = String(card.lessonid);
         const lessonMeta = lessonMetaMap.get(ascLessonId);
@@ -475,64 +480,39 @@ export class AscImporterService {
           dynamicPeriodTimes
         );
 
-        const existingClassSlot = await tx.jadwalKBM.findFirst({
-          where: {
-            tenant_id: tenantId,
-            tahun_pelajaran_id: input.tahun_pelajaran_id,
-            semester_id: input.semester_id,
-            kelas_id: lessonMeta.kelasId,
-            hari: dayName as any,
-            slot_index: periodIndex,
-          },
-        });
+        const classKey = `${lessonMeta.kelasId}_${dayName}_${periodIndex}`;
+        const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
 
-        const existingGuruSlot = lessonMeta.guruId ? await tx.jadwalKBM.findFirst({
-          where: {
-            tenant_id: tenantId,
-            tahun_pelajaran_id: input.tahun_pelajaran_id,
-            semester_id: input.semester_id,
-            guru_id: lessonMeta.guruId,
-            hari: dayName as any,
-            jam_mulai: slotTimes.start,
-            jam_selesai: slotTimes.end,
-          },
-        }) : null;
-
-        const targetSlot = existingClassSlot || existingGuruSlot;
-
-        if (targetSlot) {
-          await tx.jadwalKBM.update({
-            where: { id: targetSlot.id },
-            data: {
-              kelas_id: lessonMeta.kelasId,
-              guru_id: lessonMeta.guruId,
-              mapel_id: lessonMeta.mapelId,
-              jam_mulai: slotTimes.start,
-              jam_selesai: slotTimes.end,
-              jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-              asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
-            },
-          });
-        } else {
-          await tx.jadwalKBM.create({
-            data: {
-              tenant_id: tenantId,
-              tahun_pelajaran_id: input.tahun_pelajaran_id,
-              semester_id: input.semester_id,
-              kelas_id: lessonMeta.kelasId,
-              guru_id: lessonMeta.guruId,
-              mapel_id: lessonMeta.mapelId,
-              hari: dayName as any,
-              slot_index: periodIndex,
-              jam_mulai: slotTimes.start,
-              jam_selesai: slotTimes.end,
-              jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-              asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
-              created_by_user_id: input.user_id,
-            },
-          });
+        if (usedClassSlots.has(classKey)) {
+          continue;
         }
-        totalCardsCreated++;
+        if (guruKey && usedGuruSlots.has(guruKey)) {
+          continue;
+        }
+
+        usedClassSlots.add(classKey);
+        if (guruKey) usedGuruSlots.add(guruKey);
+
+        cardsBatch.push({
+          id: crypto.randomUUID(),
+          tenant_id: tenantId,
+          tahun_pelajaran_id: input.tahun_pelajaran_id,
+          semester_id: input.semester_id,
+          kelas_id: lessonMeta.kelasId,
+          guru_id: lessonMeta.guruId,
+          mapel_id: lessonMeta.mapelId,
+          hari: dayName as any,
+          slot_index: periodIndex,
+          jam_mulai: slotTimes.start,
+          jam_selesai: slotTimes.end,
+          jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
+          asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
+          created_by_user_id: input.user_id,
+        });
+      }
+
+      if (cardsBatch.length > 0) {
+        await tx.jadwalKBM.createMany({ data: cardsBatch });
       }
 
       // 7. Log Import Activity
@@ -545,8 +525,8 @@ export class AscImporterService {
           total_guru_imported: teacherIdMap.size,
           total_kelas_imported: classIdMap.size,
           total_mapel_imported: subjectIdMap.size,
-          total_kontrak: totalKontrakCreated,
-          total_jadwal_cards: totalCardsCreated,
+          total_kontrak: kontrakBatch.length,
+          total_jadwal_cards: cardsBatch.length,
           status: 'SUCCESS',
           created_by_user_id: input.user_id,
         },
@@ -558,8 +538,6 @@ export class AscImporterService {
           total_guru: teacherIdMap.size,
           total_kelas: classIdMap.size,
           total_mapel: subjectIdMap.size,
-          total_kontrak: totalKontrakCreated,
-          total_cards: totalCardsCreated,
         },
       };
     });

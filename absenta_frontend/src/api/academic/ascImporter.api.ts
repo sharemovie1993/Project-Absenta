@@ -64,6 +64,7 @@ export async function executeAscImport(payload: ExecuteImportPayload): Promise<{
     '/academic/asc-importer/execute',
     {
       data: payload,
+      timeout: 180000,
     }
   );
 }
