@@ -96,6 +96,8 @@ export const AscImportWizardModal: React.FC<Props> = ({
   // Editable User Mappings
   const [teacherMappings, setTeacherMappings] = useState<Record<string, EntityMapping>>({});
   const [classMappings, setClassMappings] = useState<Record<string, EntityMapping>>({});
+  const [subjectMappings, setSubjectMappings] = useState<Record<string, EntityMapping>>({});
+
   const mappingStats = useMemo(() => {
     const teachersList = Object.values(teacherMappings);
     const classesList = Object.values(classMappings);
