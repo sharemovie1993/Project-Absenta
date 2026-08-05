@@ -20,7 +20,7 @@ export const jadwalKegiatanSchema = z.object({
   target_kelas_ids: z.array(z.string()),
   berlaku_mulai: z.string().min(1, 'Tanggal berlaku mulai wajib diisi'),
   berlaku_sampai: z.string().nullable().optional(),
-  tahun_pelajaran_id: z.string().min(1, 'Tahun pelajaran aktif tidak ditemukan'),
+  tahun_pelajaran_id: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (!data.target_semua_kelas && data.target_kelas_ids.length === 0) {
     ctx.addIssue({

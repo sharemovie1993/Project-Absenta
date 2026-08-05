@@ -103,8 +103,9 @@ export default function JadwalKegiatanPage() {
   const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
   const classes = useMemo(() => kelasRes?.data ?? [], [kelasRes]);
   const masterKegiatans = useMemo(() => masterRes?.data ?? [], [masterRes]);
-  const activeTahunPelajaranId = activeTp?.id ?? '';
-  const activeTahunPelajaranName = activeTp?.tahun ?? '';
+  const activeTpData = (activeTp as any)?.data || activeTp;
+  const activeTahunPelajaranId = activeTpData?.id ?? '';
+  const activeTahunPelajaranName = activeTpData?.tahun ?? '';
   const loading = loadingJadwal;
 
   // ── Modal Handlers ──
