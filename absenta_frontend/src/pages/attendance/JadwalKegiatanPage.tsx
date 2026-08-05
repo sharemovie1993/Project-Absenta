@@ -45,9 +45,28 @@ interface CardItem {
   dbItem: JadwalKegiatanItem | null;
 }
 
-const formatDate = (date: Date | string): string => {
-  // Timezone check: using tenant local timezone default
-  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getTimezone() });
+const formatDate = (date?: Date | string | null): string => {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  try {
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getTimezone() });
+  } catch {
+    return '-';
+  }
+};
+
+const parseArrayField = (field: any): string[] => {
+  if (!field) return [];
+  if (Array.isArray(field)) return field;
+  if (typeof field === 'string') {
+    try {
+      const parsed = JSON.parse(field);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return field.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -364,8 +383,7 @@ export default function JadwalKegiatanPage() {
                           <Calendar size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
                             {isConfigured
-                              // Point #1: safe ?.map
-                              ? (item?.hari ?? [])?.map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ')
+                              ? parseArrayField(item?.hari).map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ') || 'Hari: Belum diatur'
                               : 'Hari: Belum diatur'}
                           </span>
                         </div>
@@ -373,7 +391,7 @@ export default function JadwalKegiatanPage() {
                           <Users size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
                             {isConfigured
-                              ? (item?.target_semua_kelas ? 'Seluruh Kelas' : `${item?.target_kelas_ids?.length ?? 0} Kelas`)
+                              ? (item?.target_semua_kelas ? 'Seluruh Kelas' : `${parseArrayField(item?.target_kelas_ids).length} Kelas`)
                               : 'Target: Belum diatur'}
                           </span>
                         </div>

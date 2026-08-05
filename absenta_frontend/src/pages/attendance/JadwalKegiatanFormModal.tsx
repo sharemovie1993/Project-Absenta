@@ -78,16 +78,29 @@ export default function JadwalKegiatanFormModal({
 
   // ── Init from editingItem or presetNama ──
   useEffect(() => {
+    const parseArray = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return val.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    };
+
     if (editingItem) {
-      setNama(editingItem.nama);
-      setJenisKegiatan(editingItem.jenis_kegiatan);
-      setHari(editingItem.hari ?? []);
-      setWaktuMulai(editingItem.waktu_mulai);
-      setWaktuSelesai(editingItem.waktu_selesai ?? '');
-      setTargetSemuaKelas(editingItem.target_semua_kelas);
-      setTargetKelasIds(editingItem.target_kelas_ids ?? []);
-      setBerlakuMulai(editingItem.berlaku_mulai.split('T')[0]);
-      setBerlakuSampai(editingItem.berlaku_sampai ? editingItem.berlaku_sampai.split('T')[0] : '');
+      setNama(editingItem.nama || '');
+      setJenisKegiatan(editingItem.jenis_kegiatan || '');
+      setHari(parseArray(editingItem.hari));
+      setWaktuMulai(editingItem.waktu_mulai || '07:00');
+      setWaktuSelesai(editingItem.waktu_selesai || '');
+      setTargetSemuaKelas(Boolean(editingItem.target_semua_kelas));
+      setTargetKelasIds(parseArray(editingItem.target_kelas_ids));
+      setBerlakuMulai(editingItem.berlaku_mulai ? String(editingItem.berlaku_mulai).split('T')[0] : toLocalDate());
+      setBerlakuSampai(editingItem.berlaku_sampai ? String(editingItem.berlaku_sampai).split('T')[0] : '');
       setMasaBerlakuOption('MANUAL');
     } else {
       // New form — apply preset from master card if provided
