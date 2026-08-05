@@ -123,11 +123,45 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                   </span>
                 </div>
 
-                {/* Slot Cells */}
+                {/* Slot Cells with Consecutive Aggregation */}
                 {isSemuaHari
-                  ? DAYS.map((day) =>
-                      slots.map((slotIdx) => {
+                  ? DAYS.map((day) => {
+                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; item: JadwalKBM | undefined } )[]>((acc, slotIdx, idx, arr) => {
+                        if (acc.length > 0) {
+                          const last = acc[acc.length - 1];
+                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
+                          if (remainingInLast > 1) return acc;
+                        }
+
                         const item = kelasSlotMap.get(`${kelas.value}_${day}_${slotIdx}`);
+                        if (!item) {
+                          acc.push({ slot: slotIdx, colSpan: 1, item: undefined });
+                          return acc;
+                        }
+
+                        let colSpan = 1;
+                        let nextIdx = idx + 1;
+                        while (nextIdx < arr.length) {
+                          const nextSlot = arr[nextIdx];
+                          const nextItem = kelasSlotMap.get(`${kelas.value}_${day}_${nextSlot}`);
+                          if (
+                            nextItem &&
+                            String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+                            String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+                            String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+                            String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+                          ) {
+                            colSpan++;
+                            nextIdx++;
+                          } else {
+                            break;
+                          }
+                        }
+                        acc.push({ slot: slotIdx, colSpan, item });
+                        return acc;
+                      }, []);
+
+                      return mergedCells.map(({ slot: slotIdx, colSpan, item }) => {
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
@@ -137,17 +171,25 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                         return (
                           <div
                             key={`${day}-${slotIdx}`}
+                            style={{ gridColumn: `span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {item ? (
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
+                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
                               >
-                                <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate leading-none">
-                                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                                </span>
+                                <div className="flex items-center justify-between gap-0.5 px-0.5">
+                                  <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate leading-none">
+                                    {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                  </span>
+                                  {colSpan > 1 && (
+                                    <span className="text-[7.5px] font-black px-1 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                                      {colSpan}JP
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-[7.5px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5 leading-none">
                                   {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}
                                 </span>
@@ -157,40 +199,84 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                             )}
                           </div>
                         );
-                      })
-                    )
-                  : slots.map((slotIdx) => {
+                      });
+                    })
+                  : (() => {
+                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; item: JadwalKBM | undefined } )[]>((acc, slotIdx, idx, arr) => {
+                        if (acc.length > 0) {
+                          const last = acc[acc.length - 1];
+                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
+                          if (remainingInLast > 1) return acc;
+                        }
+
                         const item = kelasSlotMap.get(`${kelas.value}_${masterGridHari}_${slotIdx}`);
+                        if (!item) {
+                          acc.push({ slot: slotIdx, colSpan: 1, item: undefined });
+                          return acc;
+                        }
+
+                        let colSpan = 1;
+                        let nextIdx = idx + 1;
+                        while (nextIdx < arr.length) {
+                          const nextSlot = arr[nextIdx];
+                          const nextItem = kelasSlotMap.get(`${kelas.value}_${masterGridHari}_${nextSlot}`);
+                          if (
+                            nextItem &&
+                            String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+                            String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+                            String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+                            String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+                          ) {
+                            colSpan++;
+                            nextIdx++;
+                          } else {
+                            break;
+                          }
+                        }
+                        acc.push({ slot: slotIdx, colSpan, item });
+                        return acc;
+                      }, []);
+
+                      return mergedCells.map(({ slot: slotIdx, colSpan, item }) => {
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
                             : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
                           : null;
 
-                      return (
-                        <div
-                          key={slotIdx}
-                          className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
-                        >
-                          {item ? (
-                            <div
-                              className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
-                              style={{ borderLeftColor: mapelStyle?.dotHex }}
-                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}`}
-                            >
-                              <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
-                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                              </span>
-                              <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                                {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                        return (
+                          <div
+                            key={slotIdx}
+                            style={{ gridColumn: `span ${colSpan}` }}
+                            className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
+                          >
+                            {item ? (
+                              <div
+                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
+                                style={{ borderLeftColor: mapelStyle?.dotHex }}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
+                                    {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                  </span>
+                                  {colSpan > 1 && (
+                                    <span className="text-[8px] font-black px-1 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                                      {colSpan} JP
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                  {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
               </div>
             );
           })}

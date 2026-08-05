@@ -126,11 +126,50 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                   <span className="text-[9px] text-slate-400 font-medium">NIP: {guru.nip || '-'}</span>
                 </div>
 
-                {/* Slot Cells */}
+                {/* Slot Cells with Consecutive Aggregation */}
                 {isSemuaHari
-                  ? DAYS.map((day) =>
-                      slots.map((slotIdx) => {
+                  ? DAYS.map((day) => {
+                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; items: JadwalKBM[] } )[]>((acc, slotIdx, idx, arr) => {
+                        if (acc.length > 0) {
+                          const last = acc[acc.length - 1];
+                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
+                          if (remainingInLast > 1) return acc;
+                        }
+
                         const teacherSlots = guruSlotMap.get(`${guru.id}_${day}_${slotIdx}`) || [];
+                        if (teacherSlots.length === 0) {
+                          acc.push({ slot: slotIdx, colSpan: 1, items: [] });
+                          return acc;
+                        }
+                        if (teacherSlots.length > 1) {
+                          acc.push({ slot: slotIdx, colSpan: 1, items: teacherSlots });
+                          return acc;
+                        }
+
+                        const firstItem = teacherSlots[0];
+                        let colSpan = 1;
+                        let nextIdx = idx + 1;
+                        while (nextIdx < arr.length) {
+                          const nextSlot = arr[nextIdx];
+                          const nextTeacherSlots = guruSlotMap.get(`${guru.id}_${day}_${nextSlot}`) || [];
+                          if (
+                            nextTeacherSlots.length === 1 &&
+                            String(nextTeacherSlots[0].kelas_id || '') === String(firstItem.kelas_id || '') &&
+                            String(nextTeacherSlots[0].guru_id || '') === String(firstItem.guru_id || '') &&
+                            String(nextTeacherSlots[0].mapel_id || '') === String(firstItem.mapel_id || '') &&
+                            String(nextTeacherSlots[0].jenis_kegiatan || '').toUpperCase() === String(firstItem.jenis_kegiatan || '').toUpperCase()
+                          ) {
+                            colSpan++;
+                            nextIdx++;
+                          } else {
+                            break;
+                          }
+                        }
+                        acc.push({ slot: slotIdx, colSpan, items: teacherSlots });
+                        return acc;
+                      }, []);
+
+                      return mergedCells.map(({ slot: slotIdx, colSpan, items: teacherSlots }) => {
                         const isConflict = teacherSlots.length > 1;
                         const item = teacherSlots[0];
                         const mapelStyle = item
@@ -142,6 +181,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                         return (
                           <div
                             key={`${day}-${slotIdx}`}
+                            style={{ gridColumn: `span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {isConflict ? (
@@ -155,11 +195,18 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
+                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
                               >
-                                <span className="font-black text-[9px] text-indigo-700 dark:text-indigo-300 truncate leading-none">
-                                  {item.Kelas?.nama_kelas}
-                                </span>
+                                <div className="flex items-center justify-between gap-0.5 px-0.5">
+                                  <span className="font-black text-[9px] text-indigo-700 dark:text-indigo-300 truncate leading-none">
+                                    {item.Kelas?.nama_kelas}
+                                  </span>
+                                  {colSpan > 1 && (
+                                    <span className="text-[7.5px] font-black px-1 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                                      {colSpan}JP
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-[8px] font-extrabold text-slate-700 dark:text-slate-200 truncate mt-0.5 leading-none">
                                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                                 </span>
@@ -169,49 +216,98 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             )}
                           </div>
                         );
-                      })
-                    )
-                  : slots.map((slotIdx) => {
-                      const teacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${slotIdx}`) || [];
-                      const isConflict = teacherSlots.length > 1;
-                      const item = teacherSlots[0];
-                      const mapelStyle = item
-                        ? colorByMode === 'GURU'
-                          ? getTeacherColor(guru.nama_guru)
-                          : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
-                        : null;
+                      });
+                    })
+                  : (() => {
+                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; items: JadwalKBM[] } )[]>((acc, slotIdx, idx, arr) => {
+                        if (acc.length > 0) {
+                          const last = acc[acc.length - 1];
+                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
+                          if (remainingInLast > 1) return acc;
+                        }
 
-                      return (
-                        <div
-                          key={slotIdx}
-                          className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
-                        >
-                          {isConflict ? (
-                            <span
-                              className="inline-flex items-center px-1.5 py-1 rounded text-[9px] font-black bg-rose-500 text-white animate-pulse shadow-sm text-center leading-tight"
-                              title={`BENTROK! Guru mengajar di ${teacherSlots.length} kelas sekaligus di Jam ${slotIdx}`}
-                            >
-                              🚨 BENTROK ({teacherSlots.length} Kelas)
-                            </span>
-                          ) : item ? (
-                            <div
-                              className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
-                              style={{ borderLeftColor: mapelStyle?.dotHex }}
-                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}`}
-                            >
-                              <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
-                                {item.Kelas?.nama_kelas}
+                        const teacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${slotIdx}`) || [];
+                        if (teacherSlots.length === 0) {
+                          acc.push({ slot: slotIdx, colSpan: 1, items: [] });
+                          return acc;
+                        }
+                        if (teacherSlots.length > 1) {
+                          acc.push({ slot: slotIdx, colSpan: 1, items: teacherSlots });
+                          return acc;
+                        }
+
+                        const firstItem = teacherSlots[0];
+                        let colSpan = 1;
+                        let nextIdx = idx + 1;
+                        while (nextIdx < arr.length) {
+                          const nextSlot = arr[nextIdx];
+                          const nextTeacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${nextSlot}`) || [];
+                          if (
+                            nextTeacherSlots.length === 1 &&
+                            String(nextTeacherSlots[0].kelas_id || '') === String(firstItem.kelas_id || '') &&
+                            String(nextTeacherSlots[0].guru_id || '') === String(firstItem.guru_id || '') &&
+                            String(nextTeacherSlots[0].mapel_id || '') === String(firstItem.mapel_id || '') &&
+                            String(nextTeacherSlots[0].jenis_kegiatan || '').toUpperCase() === String(firstItem.jenis_kegiatan || '').toUpperCase()
+                          ) {
+                            colSpan++;
+                            nextIdx++;
+                          } else {
+                            break;
+                          }
+                        }
+                        acc.push({ slot: slotIdx, colSpan, items: teacherSlots });
+                        return acc;
+                      }, []);
+
+                      return mergedCells.map(({ slot: slotIdx, colSpan, items: teacherSlots }) => {
+                        const isConflict = teacherSlots.length > 1;
+                        const item = teacherSlots[0];
+                        const mapelStyle = item
+                          ? colorByMode === 'GURU'
+                            ? getTeacherColor(guru.nama_guru)
+                            : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
+                          : null;
+
+                        return (
+                          <div
+                            key={slotIdx}
+                            style={{ gridColumn: `span ${colSpan}` }}
+                            className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
+                          >
+                            {isConflict ? (
+                              <span
+                                className="inline-flex items-center px-1.5 py-1 rounded text-[9px] font-black bg-rose-500 text-white animate-pulse shadow-sm text-center leading-tight"
+                                title={`BENTROK! Guru mengajar di ${teacherSlots.length} kelas sekaligus di Jam ${slotIdx}`}
+                              >
+                                🚨 BENTROK ({teacherSlots.length} Kelas)
                               </span>
-                              <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-200 truncate">
-                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                            ) : item ? (
+                              <div
+                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
+                                style={{ borderLeftColor: mapelStyle?.dotHex }}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
+                                    {item.Kelas?.nama_kelas}
+                                  </span>
+                                  {colSpan > 1 && (
+                                    <span className="text-[8px] font-black px-1 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                                      {colSpan} JP
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-200 truncate mt-0.5">
+                                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
               </div>
             );
           })}
