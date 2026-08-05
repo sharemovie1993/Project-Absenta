@@ -97,11 +97,20 @@ export default function JadwalKegiatanPage() {
     staleTime: 10 * 60 * 1000,
   });
 
+  const { data: tpListRes } = useQuery({
+    queryKey: ['tahun-pelajaran-list-fallback'],
+    queryFn: () => getTahunPelajaranList(1, 50).catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
   const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
   const classes = useMemo(() => kelasRes?.data ?? [], [kelasRes]);
   const activeTpData = (activeTp as any)?.data || activeTp;
-  const activeTahunPelajaranId = activeTpData?.id ?? '';
-  const activeTahunPelajaranName = activeTpData?.tahun ?? '';
+  const tpList = (tpListRes as any)?.data || [];
+  const activeTpFromList = Array.isArray(tpList) ? (tpList.find((t: any) => t.is_active) || tpList[0]) : null;
+
+  const activeTahunPelajaranId = activeTpData?.id || activeTpFromList?.id || '';
+  const activeTahunPelajaranName = activeTpData?.tahun || activeTpFromList?.tahun || '';
   const loading = loadingJadwal;
 
   // ── Modal Handlers ──
@@ -136,28 +145,37 @@ export default function JadwalKegiatanPage() {
   const handleFormSubmit = useCallback(async (formData: JadwalKegiatanFormData) => {
     const payload = {
       ...formData,
-      waktu_selesai: formData.waktu_selesai ?? null,
-      berlaku_sampai: formData.berlaku_sampai ?? null,
+      hari: (formData.hari || []).map(h => h.toUpperCase()),
+      waktu_selesai: formData.waktu_selesai && formData.waktu_selesai.trim() !== '' ? formData.waktu_selesai.trim() : null,
+      berlaku_mulai: formData.berlaku_mulai ? formData.berlaku_mulai.trim().split('T')[0] : toLocalDate(),
+      berlaku_sampai: formData.berlaku_sampai && formData.berlaku_sampai.trim() !== '' ? formData.berlaku_sampai.trim().split('T')[0] : null,
+      tahun_pelajaran_id: (formData.tahun_pelajaran_id || activeTahunPelajaranId || '').trim(),
     };
 
-    if (editingItem) {
-      const res = await updateJadwalKegiatan(editingItem.id, payload);
-      if (res.success) {
-        toast.success('Jadwal Kegiatan berhasil diperbarui');
-        handleCloseModal();
-        invalidateAllJadwalKegiatanCaches();
-        refetchJadwal();
+    try {
+      if (editingItem) {
+        const res = await updateJadwalKegiatan(editingItem.id, payload);
+        if (res.success) {
+          toast.success('Jadwal Kegiatan berhasil diperbarui');
+          handleCloseModal();
+          invalidateAllJadwalKegiatanCaches();
+          refetchJadwal();
+        }
+      } else {
+        const res = await createJadwalKegiatan(payload);
+        if (res.success) {
+          toast.success('Jadwal Kegiatan berhasil dibuat');
+          handleCloseModal();
+          invalidateAllJadwalKegiatanCaches();
+          refetchJadwal();
+        }
       }
-    } else {
-      const res = await createJadwalKegiatan(payload);
-      if (res.success) {
-        toast.success('Jadwal Kegiatan berhasil dibuat');
-        handleCloseModal();
-        invalidateAllJadwalKegiatanCaches();
-        refetchJadwal();
-      }
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.errors?.[0]?.message || err?.message || 'Gagal menyimpan jadwal kegiatan';
+      toast.error(serverMsg);
+      throw err;
     }
-  }, [editingItem, handleCloseModal, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
+  }, [editingItem, activeTahunPelajaranId, handleCloseModal, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
 
   // ── Delete ──
   const handleDelete = useCallback(async (id: string, nama: string) => {

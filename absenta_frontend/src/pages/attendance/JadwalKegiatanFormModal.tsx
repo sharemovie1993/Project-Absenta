@@ -230,17 +230,23 @@ export default function JadwalKegiatanFormModal({
     e.preventDefault();
     setErrors({});
 
+    const cleanWaktuSelesai = waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.trim() : null;
+    const cleanBerlakuMulai = berlakuMulai ? berlakuMulai.trim().split('T')[0] : toLocalDate();
+    const cleanBerlakuSampai = berlakuSampai && berlakuSampai.trim() !== '' ? berlakuSampai.trim().split('T')[0] : null;
+    const cleanHari = (hari || []).map(h => h.toUpperCase());
+    const cleanTpId = (editingItem?.tahun_pelajaran_id || activeTahunPelajaranId || '').trim();
+
     const formData: JadwalKegiatanFormData = {
       nama: nama.trim(),
       jenis_kegiatan: jenisKegiatan,
-      hari,
-      waktu_mulai: waktuMulai,
-      waktu_selesai: waktuSelesai || null,
+      hari: cleanHari,
+      waktu_mulai: waktuMulai ? waktuMulai.trim() : '07:00',
+      waktu_selesai: cleanWaktuSelesai,
       target_semua_kelas: targetSemuaKelas,
       target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
-      berlaku_mulai: berlakuMulai,
-      berlaku_sampai: berlakuSampai || null,
-      tahun_pelajaran_id: editingItem ? editingItem.tahun_pelajaran_id : activeTahunPelajaranId,
+      berlaku_mulai: cleanBerlakuMulai,
+      berlaku_sampai: cleanBerlakuSampai,
+      tahun_pelajaran_id: cleanTpId,
     };
 
     const result = jadwalKegiatanSchema.safeParse(formData);
