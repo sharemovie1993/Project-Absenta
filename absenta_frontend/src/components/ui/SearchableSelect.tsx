@@ -60,20 +60,21 @@ export function SearchableSelect({
   }, [debouncedSearch, onSearch, isOpen]);
 
   // Derived selected option
-  const selectedOption = useMemo(() => 
-    options.find((opt) => opt.value === value) || 
-    (value ? { label: value, value } : null),
-    [options, value]
-  );
+  const selectedOption = useMemo(() => {
+    if (!value) return null;
+    const found = options.find((opt) => opt.value === value);
+    if (found) return found;
+    return { label: value, value };
+  }, [options, value]);
+
+  const selectedLabel = selectedOption ? selectedOption.label : '';
 
   // Sync searchQuery with selection when closed or selection changes
   useEffect(() => {
-    if (!isOpen && selectedOption) {
-      setSearchQuery(selectedOption.label);
-    } else if (!isOpen && !selectedOption) {
-      setSearchQuery('');
+    if (!isOpen) {
+      setSearchQuery(selectedLabel);
     }
-  }, [selectedOption, isOpen]);
+  }, [selectedLabel, isOpen]);
 
   // Filter options internally
   const filteredOptions = useMemo(() => {
