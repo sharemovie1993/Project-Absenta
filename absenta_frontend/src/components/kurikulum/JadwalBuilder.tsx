@@ -84,6 +84,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   const invalidateJadwalBuilderCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
     queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
@@ -93,6 +94,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
     queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kontrak-kbm'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kontrak-kbm-summary'] });
   }, [queryClient]);
 
   // Mode state

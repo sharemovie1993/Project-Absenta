@@ -1076,6 +1076,7 @@ export class JadwalKBMController {
       const forceTotal = forceJadwal.count + forceKegiatan.count;
 
       if (forceTotal > 0) {
+        await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
         return reply.send({
           success: true,
           message: `Berhasil mengosongkan/reset ${forceTotal} jadwal KBM sekolah.`,
