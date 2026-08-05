@@ -1,15 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getJadwalKegiatan, type JadwalKegiatanItem } from '@/api/attendance/jadwalKegiatan.api';
 
-export function useJadwalKegiatan(params?: { aktif?: boolean }) {
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['jadwal-kegiatan-list', params?.aktif],
-    queryFn: () => getJadwalKegiatan(params),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const rawList: JadwalKegiatanItem[] = data?.success && Array.isArray(data.data) ? data.data : [];
-
 export const isRoutineKesiswaanActivity = (keg: any): boolean => {
   if (!keg || keg.aktif === false) return false;
   const jTipe = String(keg.jenis_kegiatan || '').toUpperCase();
