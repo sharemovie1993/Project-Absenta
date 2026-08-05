@@ -268,6 +268,7 @@ export function formatGuruMenu(nama: string): string {
     `[5] 📊 Supervisi Saya\n` +
     `[6] 👤 Profil Saya\n` +
     `[7] 🔑 Quick Login\n` +
+    `[8] 📢 Tarik Guru JP\n` +
     `[0] 🔄 Menu Utama`
   );
 }
