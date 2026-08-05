@@ -65,7 +65,7 @@ export class AscImporterService {
           end = `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
         }
 
-        if (start && end) {
+        if (start && end && start !== '00:00' && end !== '00:00' && start !== end) {
           periodMap[slotNum] = { start, end };
         }
       }

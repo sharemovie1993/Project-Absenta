@@ -79,8 +79,9 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                 <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
                   {(() => {
                     const dynamicSlot = resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day);
-                    const displayStart = item.jam_mulai || dynamicSlot?.start || '';
-                    const displayEnd = item.jam_selesai || dynamicSlot?.end || '';
+                    const isZero = (t?: string) => !t || t === '00:00' || t === '00:00:00';
+                    const displayStart = !isZero(item.jam_mulai) ? item.jam_mulai : dynamicSlot?.start || '';
+                    const displayEnd = !isZero(item.jam_selesai) ? item.jam_selesai : dynamicSlot?.end || '';
                     return (
                       <>
                         {isPembiasaan ? (
