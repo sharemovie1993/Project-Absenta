@@ -49,23 +49,21 @@ export async function analyzeAscXml(file: File): Promise<{ success: boolean; dat
   const formData = new FormData();
   formData.append('file', file);
 
-  return requestWithFallback(
+  return requestWithFallback<{ success: boolean; data: AscAnalysisResult; message?: string }>(
+    'post',
+    '/academic/asc-importer/analyze',
     {
-      url: '/academic/asc-importer/analyze',
-      method: 'POST',
       data: formData,
-    },
-    { success: false, data: null as any }
+    }
   );
 }
 
 export async function executeAscImport(payload: ExecuteImportPayload): Promise<{ success: boolean; message?: string; data?: any }> {
-  return requestWithFallback(
+  return requestWithFallback<{ success: boolean; message?: string; data?: any }>(
+    'post',
+    '/academic/asc-importer/execute',
     {
-      url: '/academic/asc-importer/execute',
-      method: 'POST',
       data: payload,
-    },
-    { success: false, message: 'Gagal mengeksekusi impor' }
+    }
   );
 }
