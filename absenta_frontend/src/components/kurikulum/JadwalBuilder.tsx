@@ -235,7 +235,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     });
 
     return items;
-  }, [kesiswaanKegiatanRes, tahunPelajaranId, semesterId, selectedKelasId]);
+  }, [pembiasaanList, tahunPelajaranId, semesterId, selectedKelasId]);
 
   const allJadwal = useMemo(() => {
     return [...localJadwal, ...pembiasaanJadwalItems];
