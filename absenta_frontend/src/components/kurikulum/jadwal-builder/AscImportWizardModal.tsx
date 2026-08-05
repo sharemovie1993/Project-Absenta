@@ -73,9 +73,19 @@ export const AscImportWizardModal: React.FC<Props> = ({
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.warn('⚠️ [aSc Import Wizard] No file selected.');
+      return;
+    }
+
+    console.log('🚀 [aSc Import Wizard] Selected XML File:', {
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+      type: file.type,
+    });
 
     if (!file.name.toLowerCase().endsWith('.xml')) {
+      console.error('❌ [aSc Import Wizard] Invalid file extension (must be .xml):', file.name);
       toast.error('File harus berformat XML (.xml) hasil export aSc TimeTables');
       return;
     }
@@ -83,7 +93,10 @@ export const AscImportWizardModal: React.FC<Props> = ({
     setLoading(true);
     const toastId = toast.loading('Memproses & menganalisis file XML aSc TimeTables...');
     try {
+      console.log('⏳ [aSc Import Wizard] Sending XML file to backend /api/academic/asc-importer/analyze ...');
       const res = await analyzeAscXml(file);
+      console.log('📩 [aSc Import Wizard] Received Backend Analysis Response:', res);
+
       if (res.success && res.data) {
         setAnalysis(res.data);
 
@@ -126,12 +139,21 @@ export const AscImportWizardModal: React.FC<Props> = ({
         });
         setSubjectMappings(initSubjects);
 
+        console.log('✅ [aSc Import Wizard] Pre-Execution Mappings Initialized:', {
+          teachers: Object.keys(initTeachers).length,
+          classes: Object.keys(initClasses).length,
+          subjects: Object.keys(initSubjects).length,
+          summary: res.data.summary,
+        });
+
         toast.success('Analisis XML berhasil! Menampilkan pratinjau pemetaan.', { id: toastId });
         setStep(2);
       } else {
+        console.error('❌ [aSc Import Wizard] Analysis failed with server message:', res.message);
         toast.error(res.message || 'Gagal menganalisis file XML', { id: toastId });
       }
     } catch (err: any) {
+      console.error('💥 [aSc Import Wizard] Exception in handleFileUpload:', err);
       const serverMsg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat mengunggah file XML';
       toast.error(serverMsg, { id: toastId });
     } finally {
@@ -141,32 +163,49 @@ export const AscImportWizardModal: React.FC<Props> = ({
 
   const handleExecuteImport = async () => {
     if (!analysis || !tahunPelajaranId || !semesterId) {
+      console.error('❌ [aSc Import Wizard] Invalid parameters for execution:', { analysis: !!analysis, tahunPelajaranId, semesterId });
       toast.error('Parameter Tahun Pelajaran / Semester tidak valid');
       return;
     }
 
+    const payload = {
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId,
+      filename: analysis.filename,
+      xml_content: analysis.xml_content,
+      teacher_mappings: Object.values(teacherMappings),
+      class_mappings: Object.values(classMappings),
+      subject_mappings: Object.values(subjectMappings),
+    };
+
+    console.log('🚀 [aSc Import Wizard] Executing Import Payload:', {
+      tahunPelajaranId,
+      semesterId,
+      filename: analysis.filename,
+      teachersCount: payload.teacher_mappings.length,
+      classesCount: payload.class_mappings.length,
+      subjectsCount: payload.subject_mappings.length,
+    });
+
     setExecuting(true);
     const toastId = toast.loading('Sedang menyimpan & menimpa jadwal KBM dari XML...');
     try {
-      const res = await executeAscImport({
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
-        filename: analysis.filename,
-        xml_content: analysis.xml_content,
-        teacher_mappings: Object.values(teacherMappings),
-        class_mappings: Object.values(classMappings),
-        subject_mappings: Object.values(subjectMappings),
-      });
+      const res = await executeAscImport(payload);
+      console.log('📩 [aSc Import Wizard] Received Execute Response:', res);
 
       if (res.success) {
+        console.log('🎉 [aSc Import Wizard] Import successfully committed to database!', res.data);
         toast.success('Impor XML aSc TimeTables BERHASIL! Jadwal & Kontrak KBM telah diperbarui 100%.', { id: toastId, duration: 5000 });
         if (onSuccessImport) onSuccessImport();
         handleClose();
       } else {
+        console.error('❌ [aSc Import Wizard] Execute failed with server message:', res.message);
         toast.error(res.message || 'Gagal mengimpor jadwal', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Terjadi kesalahan saat mengesekusi impor', { id: toastId });
+      console.error('💥 [aSc Import Wizard] Exception in handleExecuteImport:', err);
+      const serverMsg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat mengesekusi impor';
+      toast.error(serverMsg, { id: toastId });
     } finally {
       setExecuting(false);
     }
