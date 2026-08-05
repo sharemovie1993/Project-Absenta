@@ -102,6 +102,49 @@ export class AscImporterService {
     return daysMap;
   }
 
+  /**
+   * Smart Day-Pattern Slot Resolver:
+   * 1. Checks DB Tenant 'shift_jam_pelajaran' config for day-specific bell schedule (Senin 07:50, Jumat 07:35, etc.)
+   * 2. Fallback to XML <periods> starttime & endtime
+   * 3. Fallback to default 07:00
+   */
+  static async resolveSlotTimesForDay(
+    tenantId: string,
+    kelasId: string,
+    dayName: string,
+    slotIndex: number,
+    xmlPeriodTimes: Record<number, { start: string; end: string }>
+  ): Promise<{ start: string; end: string }> {
+    try {
+      const config = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' },
+      });
+
+      if (config?.value) {
+        const shiftConfig = JSON.parse(config.value);
+        const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+        const shift = shiftConfig.shifts?.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts?.[0];
+
+        const dayPattern = shift?.day_patterns?.[dayName] || shift?.slots;
+
+        if (Array.isArray(dayPattern)) {
+          const matchedSlot = dayPattern.find((sl: any) => Number(sl.slot || sl.slot_index) === slotIndex);
+          if (matchedSlot?.start && matchedSlot?.end) {
+            return { start: matchedSlot.start, end: matchedSlot.end };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[AscImporter] Failed to parse tenant shift_jam_pelajaran config, falling back to XML period times', err);
+    }
+
+    if (xmlPeriodTimes[slotIndex]) {
+      return xmlPeriodTimes[slotIndex];
+    }
+
+    return { start: '07:00', end: '07:45' };
+  }
+
   static async analyzeAscXml(tenantId: string, xmlContent: string) {
     const timetable = this.parseXml(xmlContent);
 
@@ -405,7 +448,13 @@ export class AscImporterService {
         }
         if (!dayName) dayName = 'SENIN';
 
-        const slotTimes = dynamicPeriodTimes[periodIndex] || { start: '07:00', end: '07:45' };
+        const slotTimes = await AscImporterService.resolveSlotTimesForDay(
+          tenantId,
+          lessonMeta.kelasId,
+          dayName,
+          periodIndex,
+          dynamicPeriodTimes
+        );
 
         try {
           await tx.jadwalKBM.create({
