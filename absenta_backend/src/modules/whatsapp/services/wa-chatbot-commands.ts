@@ -253,7 +253,7 @@ export function aggregateJadwal(items: any[]): any[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MENU FORMATTERS
+// MENU FORMATTERS (Maksimal 2 Kata per Opsi Menu)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function formatGuruMenu(nama: string): string {
@@ -261,14 +261,14 @@ export function formatGuruMenu(nama: string): string {
     `👨‍🏫 *Halo Bapak/Ibu ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
-    `[1] 📋 Jadwal Mengajar & Piket Hari Ini\n` +
-    `[2] 🏫 Daftar Wali Kelas Sekolah\n` +
-    `[3] 📊 Info Supervisi Akademik Saya\n` +
-    `[4] ⏰ Info & Rekap Presensi Guru\n` +
-    `[5] 👤 Data Profil Pribadi Saya\n` +
-    `[6] 📅 Jadwal Mengajar & Piket Minggu Ini\n` +
-    `[7] 🔑 Quick Login ke Aplikasi Web\n` +
-    `[0] 🔄 Tampilkan Kembali Menu Ini`
+    `[1] 📋 Jadwal Hari Ini\n` +
+    `[2] 🏫 Wali Kelas\n` +
+    `[3] 📊 Supervisi Saya\n` +
+    `[4] ⏰ Presensi Saya\n` +
+    `[5] 👤 Profil Saya\n` +
+    `[6] 📅 Jadwal Mingguan\n` +
+    `[7] 🔑 Quick Login\n` +
+    `[0] 🔄 Menu Utama`
   );
 }
 
@@ -277,12 +277,12 @@ export function formatSiswaMenu(nama: string): string {
     `👦 *Halo ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
-    `[1] 👤 Data Profil Pribadi & NIS\n` +
-    `[2] ⏰ Status Presensi Saya Hari Ini\n` +
-    `[3] 🏆 Catatan Poin Pelanggaran & Prestasi\n` +
-    `[4] 📅 Jadwal Pelajaran Saya Hari Ini\n` +
-    `[5] 📊 Rekap Kehadiran Bulan Ini\n` +
-    `[0] 🔄 Tampilkan Kembali Menu Ini`
+    `[1] 👤 Profil Saya\n` +
+    `[2] ⏰ Presensi Harian\n` +
+    `[3] 🏆 Catatan Poin\n` +
+    `[4] 📅 Jadwal Pelajaran\n` +
+    `[5] 📊 Rekap Bulanan\n` +
+    `[0] 🔄 Menu Utama`
   );
 }
 
@@ -291,11 +291,11 @@ export function formatOrtuMenu(nama: string): string {
     `👨‍👩‍👧 *Halo Bapak/Ibu ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
-    `[1] ⏰ Status Presensi Ananda Hari Ini\n` +
-    `[2] 📊 Rekap Kehadiran Ananda Bulan Ini\n` +
-    `[3] 🏆 Catatan Poin & Prestasi Ananda\n` +
-    `[4] 📞 Kontak & Info Wali Kelas Ananda\n` +
-    `[0] 🔄 Tampilkan Kembali Menu Ini`
+    `[1] ⏰ Presensi Ananda\n` +
+    `[2] 📊 Rekap Bulanan\n` +
+    `[3] 🏆 Poin Ananda\n` +
+    `[4] 📞 Wali Kelas\n` +
+    `[0] 🔄 Menu Utama`
   );
 }
 
@@ -304,8 +304,8 @@ export function formatDualRoleMenu(nama: string): string {
     `👋 *Halo Bapak/Ibu ${nama}!*\n` +
     `Nomor Anda terdaftar sebagai *Guru & Orang Tua* di Absenta.\n\n` +
     `Ketik *huruf* peran yang ingin diakses:\n` +
-    `[G] 👨‍🏫 Masuk sebagai GURU\n` +
-    `[O] 👨‍👩‍👧 Masuk sebagai ORANG TUA`
+    `[G] 👨‍🏫 Peran Guru\n` +
+    `[O] 👨‍👩‍👧 Peran Ortu`
   );
 }
 
