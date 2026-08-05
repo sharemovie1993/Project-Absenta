@@ -15,9 +15,10 @@ export interface UseKelasOptionsParams {
 export function useKelasOptions(params: UseKelasOptionsParams = {}) {
   const { onlyActive = true, jurusanId, tingkat, filterByJenjang = true } = params;
   const { tingkatList } = useJenjang();
+  const serializedTingkatList = useMemo(() => (tingkatList || []).join(','), [tingkatList]);
 
   const query = useQuery({
-    queryKey: ['kelas-options-list', onlyActive, jurusanId, tingkat, filterByJenjang, tingkatList],
+    queryKey: ['kelas-options-list', onlyActive, jurusanId, tingkat, filterByJenjang, serializedTingkatList],
     queryFn: () => kelasApi.getAll({ 
       limit: 500, 
       ...(onlyActive ? { is_active: true } : {}) 

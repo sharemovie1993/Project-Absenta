@@ -176,7 +176,16 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [localJadwal, setLocalJadwal] = useState<JadwalKBM[]>([]);
 
   useEffect(() => {
-    setLocalJadwal(unifiedJadwal);
+    setLocalJadwal(prev => {
+      if (prev === unifiedJadwal) return prev;
+      if (
+        prev.length === unifiedJadwal.length &&
+        prev.every((item, idx) => item.id === unifiedJadwal[idx]?.id)
+      ) {
+        return prev;
+      }
+      return unifiedJadwal;
+    });
   }, [unifiedJadwal]);
 
   const allJadwal = localJadwal;
