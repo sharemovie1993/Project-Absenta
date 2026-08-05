@@ -22,7 +22,7 @@ interface Props {
   onDeleteSlot: (day: string, slotIndex: number, id: string) => void;
 }
 
-export const SingleGridTimetable: React.FC<Props> = ({
+export const SingleGridTimetable: React.FC<Props> = React.memo(({
   viewMode,
   toolMode,
   colorByMode = 'MAPEL',
@@ -286,4 +286,4 @@ export const SingleGridTimetable: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});
