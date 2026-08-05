@@ -110,6 +110,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'kesiswaan.schedules.create',
     'kesiswaan.schedules.update',
     'kesiswaan.schedules.delete',
+    'kesiswaan.kegiatan.view',
+    'kesiswaan.kegiatan.manage',
     // ─── CRUD Jadwal Piket Guru ───
     'kurikulum.jadwal-piket.view',
     'kurikulum.jadwal-piket.create',
