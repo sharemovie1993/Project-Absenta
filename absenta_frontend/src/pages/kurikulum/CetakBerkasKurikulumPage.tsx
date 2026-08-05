@@ -4,6 +4,9 @@ import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTempla
 import { type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { getJadwalKBM } from '../../api/attendance/jadwalKBM.api';
+import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
+import { isRoutineKesiswaanActivity } from '../../hooks/attendance/useJadwalKegiatan';
+import { parseDaysArray } from '../../hooks/attendance/useUnifiedScheduleData';
 import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '@/components/ui/Loader';
@@ -162,37 +165,71 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
       const tpId = checklistData?.current_year?.id;
       const semId = checklistData?.current_semester?.id;
 
-      const jadwalKey = ['jadwal-kbm-options', kelasId, guruId, tpId, semId];
-      const jenisKey = ['jenis-kegiatan-master-all'];
-
       try {
-        const [jadwalData, jenisData] = await Promise.all([
-          queryClient.fetchQuery({
-            queryKey: jadwalKey,
-            queryFn: async () => {
-              const res = await getJadwalKBM({
-                kelas_id: kelasId,
-                guru_id: guruId,
-                tahun_pelajaran_id: tpId,
-                semester_id: semId
-              });
-              return res?.success && res?.data ? res.data : [];
-            },
-            staleTime: 0
-          }).catch(() => (queryClient.getQueryData(jadwalKey) as any[]) || []),
-
-          queryClient.fetchQuery({
-            queryKey: jenisKey,
-            queryFn: async () => {
-              const res = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
-              return res?.success && res?.data ? res.data : [];
-            },
-            staleTime: 10 * 60 * 1000
-          }).catch(() => (queryClient.getQueryData(jenisKey) as any[]) || [])
+        const [kbmRes, kegiatanRes, jenisData] = await Promise.all([
+          getJadwalKBM({
+            kelas_id: kelasId,
+            guru_id: guruId,
+            tahun_pelajaran_id: tpId,
+            semester_id: semId
+          }).catch(() => null),
+          getJadwalKegiatan({ aktif: true }).catch(() => null),
+          jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 }).catch(() => null)
         ]);
 
-        jadwalList = Array.isArray(jadwalData) ? jadwalData : [];
-        jenisKegiatanList = Array.isArray(jenisData) ? jenisData : [];
+        const rawKbm: any[] = Array.isArray(kbmRes)
+          ? kbmRes
+          : (Array.isArray((kbmRes as any)?.data) ? (kbmRes as any).data : []);
+
+        const rawKegiatan: any[] = Array.isArray(kegiatanRes)
+          ? kegiatanRes
+          : (Array.isArray((kegiatanRes as any)?.data) ? (kegiatanRes as any).data : []);
+
+        const pembiasaanItems: any[] = [];
+        rawKegiatan.filter(isRoutineKesiswaanActivity).forEach((keg: any) => {
+          const days = parseDaysArray(keg.hari);
+          const targetKelasIds = parseDaysArray(keg.target_kelas_ids);
+          const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
+
+          const activeClassIds = isTargetAll
+            ? (classes && classes.length > 0
+                ? Array.from(new Set([...classes.map(k => k.id), 'all']))
+                : (kelasId && kelasId !== 'all' ? [kelasId, 'all'] : ['all']))
+            : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
+
+          const rawName = keg.nama || 'PEMBIASAAN';
+          const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
+            ? rawName.toUpperCase()
+            : `PEMBIASAAN ${rawName.toUpperCase()}`;
+
+          days.forEach(dayStr => {
+            const upperDay = dayStr.toUpperCase();
+            activeClassIds.forEach(kId => {
+              pembiasaanItems.push({
+                id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+                tenant_id: keg.tenant_id,
+                tahun_pelajaran_id: tpId || '',
+                semester_id: semId || '',
+                kelas_id: kId,
+                guru_id: guruId || 'all',
+                hari: upperDay,
+                slot_index: 0,
+                jam_mulai: keg.waktu_mulai || '06:30',
+                jam_selesai: keg.waktu_selesai || '07:00',
+                jenis_kegiatan: 'PEMBIASAAN',
+                is_locked: true,
+                is_pembiasaan: true,
+                target_semua_kelas: keg.target_semua_kelas,
+                Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
+                Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
+                Guru: undefined,
+              });
+            });
+          });
+        });
+
+        jadwalList = [...rawKbm, ...pembiasaanItems];
+        jenisKegiatanList = Array.isArray((jenisData as any)?.data) ? (jenisData as any).data : (Array.isArray(jenisData) ? jenisData : []);
       } catch (e) {
         console.error('Gagal mengambil data untuk PDF:', e);
       }
@@ -211,7 +248,7 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
       includeSchoolLogo,
       filterData: { jadwalList, classes, gurus, jenisKegiatanList }
     });
-  }, [queryClient]);
+  }, []);
 
   return (
     <InfraErrorBoundary>
