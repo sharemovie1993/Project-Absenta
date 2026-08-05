@@ -35,6 +35,7 @@ const JadwalKegiatanFormModal = lazy(() => import('./JadwalKegiatanFormModal'));
 
 import { HARI_LIST as HARI_OPTION } from '../../constants/day.constants';
 import { getTimezone } from '../../utils/attendance/time';
+import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
 
 // ─── Types (Point #3: No any) ─────────────────────────────────────────────────
 interface CardItem {
@@ -78,9 +79,6 @@ export default function JadwalKegiatanPage() {
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
   const [presetMasterNama, setPresetMasterNama] = useState<string>('');
 
-import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
-
-// ─── Component ───────────────────────────────────────────────────────────────
   // ── useQuery: Jadwal & Master Data ───────────────────────────────────────
   const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useJadwalKegiatan();
 
