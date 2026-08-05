@@ -111,11 +111,11 @@ axiosInstance.interceptors.request.use(
     }
 
     // Determine Public Endpoints (No Token)
-    const url = config.url || '';
+    const rawUrl = typeof config.url === 'string' ? config.url : (config.url ? String(config.url) : '');
     const method = String(config.method || 'GET').toUpperCase();
     
     // Normalize url by prepending a leading slash if missing for robust matching
-    const urlToCheck = url.startsWith('/') ? url : '/' + url;
+    const urlToCheck = rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl;
     
     // Updated isPublic list based on audit directives
     const isPublic = 
