@@ -4,8 +4,6 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { useJadwalKontrakKbm } from '../../hooks/kurikulum/useJadwalKontrakKbm';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
-import { useKelasOptions } from '../../hooks/useKelasOptions';
-import { useGuruOptions } from '../../hooks/useGuruOptions';
 import type { JadwalKontrakKbmItem } from '../../api/kurikulum/jadwal-kontrak-kbm.api';
 import {
   BookOpen, Users, School, FileText, Trash2, Search, RefreshCw,
@@ -46,8 +44,6 @@ const JadwalKontrakKbmPage: React.FC = () => {
   // === Hooks untuk dropdown filter ===
   const { rawList: tahunList } = useTahunPelajaranOptions();
   const { rawList: semesterList } = useSemesterOptions({ tahunPelajaranId: selectedTahunId });
-  const { rawList: kelasList } = useKelasOptions({ onlyActive: false });
-  const { rawList: guruList } = useGuruOptions();
 
   // === Main data hook ===
   const {
@@ -59,6 +55,8 @@ const JadwalKontrakKbmPage: React.FC = () => {
     refetch,
     deleteKontrak,
     isDeleting,
+    kelasOptionsFromData,
+    guruOptionsFromData,
   } = useJadwalKontrakKbm({
     enabled: canView,
     tahun_pelajaran_id: selectedTahunId || undefined,
@@ -197,8 +195,8 @@ const JadwalKontrakKbmPage: React.FC = () => {
             className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
           >
             <option value="">Semua Kelas</option>
-            {kelasList.map((k: any) => (
-              <option key={k.id} value={k.id}>{k.nama_kelas || k.nama}</option>
+            {kelasOptionsFromData.map((k) => (
+              <option key={k.value} value={k.value}>{k.label}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -213,8 +211,8 @@ const JadwalKontrakKbmPage: React.FC = () => {
             className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
           >
             <option value="">Semua Guru</option>
-            {guruList.map((g: any) => (
-              <option key={g.id} value={g.id}>{g.nama_guru || g.nama}</option>
+            {guruOptionsFromData.map((g) => (
+              <option key={g.value} value={g.value}>{g.label}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
