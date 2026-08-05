@@ -500,7 +500,11 @@ export const renderKurikulumRosterPdf = (
 
         if (!item) {
           if (slot === 0) {
-            row.push(`[KESISWAAN]\n${DEFAULT_KESISWAAN_SLOT_0[day] || 'Kegiatan Kesiswaan'}`);
+            const defaultActName = DEFAULT_KESISWAAN_SLOT_0[day] || 'Kegiatan Kesiswaan';
+            row.push({
+              content: `${defaultActName}\n(06:30-07:00)`,
+              styles: { fontStyle: 'bold', fillColor: [254, 252, 232], textColor: [146, 64, 14] } // Soft amber for Kesiswaan
+            });
           } else {
             row.push('');
           }
@@ -535,8 +539,20 @@ export const renderKurikulumRosterPdf = (
           !item.jenis_kegiatan || 
           String(item.jenis_kegiatan).toUpperCase() === 'KBM' || 
           (act && act.tipe?.toUpperCase() === 'KBM');
-        const rawSubjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
-        const subjectName = getMapelAbbreviation(rawSubjectName);
+
+        let rawSubjectName = '';
+        if (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) {
+          rawSubjectName = item.Mapel?.nama_mapel || act?.nama || DEFAULT_KESISWAAN_SLOT_0[day] || 'Pembiasaan';
+        } else if (isKbm && item.Mapel?.nama_mapel) {
+          rawSubjectName = item.Mapel.nama_mapel;
+        } else {
+          rawSubjectName = act?.nama || item.Mapel?.nama_mapel || 'KEGIATAN';
+        }
+
+        rawSubjectName = rawSubjectName.replace(/^\[KESISWAAN\]\s*/i, '');
+        const subjectName = (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) 
+          ? rawSubjectName 
+          : getMapelAbbreviation(rawSubjectName);
 
         const lastSlotItem = getSlotData(day, SLOTS[i + colSpan - 1]) || item;
         
@@ -563,7 +579,11 @@ export const renderKurikulumRosterPdf = (
         const timeText = (startTime && endTime) ? `(${startTime}-${endTime})` : '';
 
         let cellText = '';
-        if (printType === 'roster_teacher') {
+        const isPembiasaanItem = item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0;
+
+        if (isPembiasaanItem) {
+          cellText = `${subjectName}${timeText ? `\n${timeText}` : ''}`;
+        } else if (printType === 'roster_teacher') {
           const targetClass = item.Kelas?.nama_kelas || 'Kelas';
           cellText = `${targetClass.toUpperCase()}\n${subjectName}${timeText ? `\n${timeText}` : ''}`;
         } else {
@@ -571,7 +591,13 @@ export const renderKurikulumRosterPdf = (
           cellText = `${subjectName.toUpperCase()}\n${teacher}${timeText ? `\n${timeText}` : ''}`;
         }
 
-        if (colSpan > 1) {
+        if (isPembiasaanItem) {
+          row.push({
+            content: cellText,
+            colSpan,
+            styles: { fontStyle: 'bold', fillColor: [254, 252, 232], textColor: [146, 64, 14] } // Warm Amber fill for Slot 0 / Pembiasaan
+          });
+        } else if (colSpan > 1) {
           row.push({
             content: cellText,
             colSpan,
