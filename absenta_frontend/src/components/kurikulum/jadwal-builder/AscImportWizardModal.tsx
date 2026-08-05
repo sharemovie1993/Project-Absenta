@@ -13,7 +13,8 @@ import {
   BookOpen, 
   Sparkles,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Layers
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { 
