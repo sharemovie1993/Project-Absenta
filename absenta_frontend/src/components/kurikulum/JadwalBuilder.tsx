@@ -399,30 +399,24 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   });
   const bebanGuruList = useMemo(() => bebanGuruRes?.data || [], [bebanGuruRes]);
 
-  // Shift config states
-  const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
-  const [hariSekolah, setHariSekolah] = useState<string[]>(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']);
+  // ── useQuery: Tenant Shift & Day Config ────────────────────────────────────
+  const { data: tenantRes } = useQuery({
+    queryKey: ['my-tenant'],
+    queryFn: () => getMyTenant().catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const fetchTenantShift = async () => {
-      try {
-        const tenantRes = await getMyTenant();
-        if (tenantRes?.success) {
-          if (tenantRes.data?.shift_jam_pelajaran) {
-            setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
-          }
-          if (Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
-            const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
-            const sortedDays = [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-            setHariSekolah(sortedDays);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load shift jam pelajaran config:', err);
-      }
-    };
-    fetchTenantShift();
-  }, []);
+  const shiftJamPelajaran = useMemo(() => {
+    return tenantRes?.data?.shift_jam_pelajaran || null;
+  }, [tenantRes]);
+
+  const hariSekolah = useMemo(() => {
+    if (Array.isArray(tenantRes?.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+      const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+      return [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    }
+    return ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+  }, [tenantRes]);
 
   // Resolve slot time dynamically based on the class shift assignment (STRICT MANDATORY DAY PARAMETER)
   const resolveSlotTime = (targetKelasId: string, slotIndex: number, day: string): { start: string; end: string } => {
