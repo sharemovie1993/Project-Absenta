@@ -547,6 +547,13 @@ export class AscImporterService {
       const usedClassSlots = new Set<string>();
       const usedGuruSlots = new Set<string>();
 
+      // Count how many <card> entries exist in XML for each lessonid
+      const cardCountPerLesson = new Map<string, number>();
+      for (const card of xmlCardsArr) {
+        const lesId = String(card.lessonid);
+        cardCountPerLesson.set(lesId, (cardCountPerLesson.get(lesId) || 0) + 1);
+      }
+
       // XML aSc TimeTables uses 1-based period numbering:
       //   period 1 = JAM 0 (Pembiasaan: Upacara, Apel Datang, dll.)
       //   period 2 = JAM 1 (KBM pertama)
@@ -563,7 +570,14 @@ export class AscImporterService {
 
         const xmlBasePeriod = Number(card.period) || 1; // original XML period (for time lookup)
         const absBasePeriod = Math.max(0, xmlBasePeriod - PERIOD_OFFSET); // Absenta slot_index (JAM 0-based)
-        const durasiJp = Number(lessonMeta.periodsPerCard) || 1;
+
+        // If XML exports individual <card> elements for each 1-JP slot of a lesson (cardCount > 1 or cardCount >= periodsPerWeek),
+        // each <card> element is already 1 period. Otherwise, if XML exports 1 block <card> element, expand by periodsPerCard.
+        const totalCardsForThisLesson = cardCountPerLesson.get(ascLessonId) || 1;
+        const durasiJp = (totalCardsForThisLesson > 1 || totalCardsForThisLesson >= (lessonMeta.periodsPerWeek || 1))
+          ? 1
+          : (Number(lessonMeta.periodsPerCard) || 1);
+
         const daysInput = String(card.days || '');
         const targetDays = AscImporterService.resolveDaysFromXml(daysInput, dynamicDaysdefsMap);
 
