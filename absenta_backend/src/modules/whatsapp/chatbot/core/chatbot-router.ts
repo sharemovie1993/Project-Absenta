@@ -57,9 +57,9 @@ export class ChatbotRouter {
       return OrtuHandler.handleCommand(ctx);
     }
 
-    // 5. Guest / Unregistered User
+    // 5. Guest / Unregistered User (Silent Mode: Jangan membalas pesan nomor luar/publik)
     if (activeCount === 0) {
-      return RoleSelectorHandler.formatGuest(ctx.resolvedPhone);
+      return '';
     }
 
     // 6. Multi-Role Menu Fallback

@@ -327,16 +327,9 @@ export class WaChatbotResolverService {
     // ── Step 3: Cari semua persona di DB ────────────────────────────────────
     const { guru, siswa, ortu } = await this.findPersona(resolvedPhone);
 
-    // ── Step 4: Jika LID belum resolve dan tidak ditemukan → minta self-ID ──
+    // ── Step 4: Jika LID/nomor tidak ditemukan di DB → Silent Mode (jangan di-response) ──
     if (this.isLikelyLid(resolvedPhone) && !guru && !siswa && !ortu) {
-      pendingIdentification.set(cleanJid, true);
-      pendingIdentification.set(fullJid, true);
-      return (
-        `👋 Halo! Selamat datang di *Sistem Absenta*.\n\n` +
-        `Untuk melanjutkan, sistem perlu memverifikasi identitas Anda.\n\n` +
-        `Ketik *nomor HP* Anda yang terdaftar di sekolah:\n` +
-        `_(contoh: 0812xxxxxxxx)_`
-      );
+      return '';
     }
 
     // ── Step 5: Hitung berapa role yang aktif ────────────────────────────────
