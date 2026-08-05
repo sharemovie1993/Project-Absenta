@@ -442,7 +442,10 @@ export class AscImporterService {
       }
 
       if (kontrakBatch.length > 0) {
-        await tx.jadwalKontrakKbm.createMany({ data: kontrakBatch });
+        await tx.jadwalKontrakKbm.createMany({
+          data: kontrakBatch,
+          skipDuplicates: true,
+        });
       }
 
       // 6. Dynamically Extract Period Times & Daysdefs directly from XML
@@ -483,7 +486,7 @@ export class AscImporterService {
           );
 
           const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
-          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${periodIndex}` : null;
+          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
 
           if (usedClassSlots.has(classKey)) {
             continue;
@@ -515,7 +518,10 @@ export class AscImporterService {
       }
 
       if (cardsBatch.length > 0) {
-        await tx.jadwalKBM.createMany({ data: cardsBatch });
+        await tx.jadwalKBM.createMany({
+          data: cardsBatch,
+          skipDuplicates: true,
+        });
       }
 
       // 7. Log Import Activity
