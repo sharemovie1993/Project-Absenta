@@ -174,7 +174,16 @@ export class AscImporterService {
       return xmlPeriodTimes[slotIndex];
     }
 
-    return { start: '07:00', end: '07:45' };
+    // Dynamic 45-minute fallback slot calculation per slotIndex
+    const startTotalMin = 7 * 60 + slotIndex * 45;
+    const endTotalMin = startTotalMin + 45;
+
+    const startH = String(Math.floor(startTotalMin / 60)).padStart(2, '0');
+    const startM = String(startTotalMin % 60).padStart(2, '0');
+    const endH = String(Math.floor(endTotalMin / 60)).padStart(2, '0');
+    const endM = String(endTotalMin % 60).padStart(2, '0');
+
+    return { start: `${startH}:${startM}`, end: `${endH}:${endM}` };
   }
 
   static async analyzeAscXml(tenantId: string, xmlContent: string) {
@@ -510,7 +519,7 @@ export class AscImporterService {
             );
 
             const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
-            const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
+            const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${periodIndex}` : null;
 
             if (usedClassSlots.has(classKey)) {
               continue;
