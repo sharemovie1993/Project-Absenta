@@ -319,13 +319,8 @@ export function formatMultiRoleMenu(nama: string, roles: { key: string; label: s
   );
 }
 
-export function formatGuestMessage(phone: string): string {
-  return (
-    `👋 *Halo!*\n` +
-    `Nomor Anda (${phone}) *belum terdaftar* di Sistem Absenta.\n\n` +
-    `Jika Anda adalah Orang Tua, Guru, atau Siswa di sekolah ini,\n` +
-    `silakan hubungi bagian *Tata Usaha (TU)* sekolah untuk memverifikasi pendaftaran nomor HP Anda.`
-  );
+export function formatGuestMessage(_phone?: string): string {
+  return '';
 }
 
 function invalidCommand(menu: string): string {
