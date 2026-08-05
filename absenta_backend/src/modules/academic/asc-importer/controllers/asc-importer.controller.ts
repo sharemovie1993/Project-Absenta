@@ -40,15 +40,23 @@ export class AscImporterController {
       return reply.status(400).send({ success: false, message: 'Parameter tahun_pelajaran_id, semester_id, dan xml_content wajib diisi' });
     }
 
-    const result = await AscImporterService.executeAscImport(tenantId, {
-      ...body,
-      user_id: userId,
-    });
+    try {
+      const result = await AscImporterService.executeAscImport(tenantId, {
+        ...body,
+        user_id: userId,
+      });
 
-    return reply.send({
-      success: true,
-      message: 'Berhasil mengimpor jadwal KBM dari aSc TimeTables',
-      data: result,
-    });
+      return reply.send({
+        success: true,
+        message: 'Berhasil mengimpor jadwal KBM dari aSc TimeTables',
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('[AscImporterController] Execute error:', error);
+      return reply.status(400).send({
+        success: false,
+        message: error.message || 'Gagal mengeksekusi impor jadwal KBM',
+      });
+    }
   }
 }

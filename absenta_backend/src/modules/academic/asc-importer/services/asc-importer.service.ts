@@ -475,7 +475,7 @@ export class AscImporterService {
           dynamicPeriodTimes
         );
 
-        const existingCard = await tx.jadwalKBM.findFirst({
+        const existingClassSlot = await tx.jadwalKBM.findFirst({
           where: {
             tenant_id: tenantId,
             tahun_pelajaran_id: input.tahun_pelajaran_id,
@@ -486,10 +486,25 @@ export class AscImporterService {
           },
         });
 
-        if (existingCard) {
+        const existingGuruSlot = lessonMeta.guruId ? await tx.jadwalKBM.findFirst({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+            guru_id: lessonMeta.guruId,
+            hari: dayName as any,
+            jam_mulai: slotTimes.start,
+            jam_selesai: slotTimes.end,
+          },
+        }) : null;
+
+        const targetSlot = existingClassSlot || existingGuruSlot;
+
+        if (targetSlot) {
           await tx.jadwalKBM.update({
-            where: { id: existingCard.id },
+            where: { id: targetSlot.id },
             data: {
+              kelas_id: lessonMeta.kelasId,
               guru_id: lessonMeta.guruId,
               mapel_id: lessonMeta.mapelId,
               jam_mulai: slotTimes.start,
