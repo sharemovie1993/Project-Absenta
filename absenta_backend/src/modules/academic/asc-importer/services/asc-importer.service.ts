@@ -489,17 +489,18 @@ export class AscImporterService {
           const xmlSub = xmlSubjectsArr.find((s: any) => String(s.id) === subjectIdStr);
           if (xmlSub) {
             const subName = String(xmlSub.name || xmlSub.short || 'Mata Pelajaran').trim();
-            const existingMapel = await tx.masterMapel.findFirst({
+            const existingMapel = await tx.mapel.findFirst({
               where: { tenant_id: tenantId, nama_mapel: { equals: subName, mode: 'insensitive' } },
             });
             if (existingMapel) {
               targetSubjectId = existingMapel.id;
             } else {
-              const newSub = await tx.masterMapel.create({
+              const uniqueKode = `${(xmlSub.short || subName.substring(0, 8)).replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'MAPEL'}_${subjectIdStr}`;
+              const newSub = await tx.mapel.create({
                 data: {
                   tenant_id: tenantId,
                   nama_mapel: subName,
-                  kode_mapel: String(xmlSub.short || subName).substring(0, 20),
+                  kode_mapel: uniqueKode,
                   asc_id: subjectIdStr,
                 },
               });
