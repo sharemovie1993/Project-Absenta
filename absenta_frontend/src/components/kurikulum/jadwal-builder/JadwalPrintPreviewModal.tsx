@@ -10,6 +10,7 @@ import { getMyTenant } from '../../../api/tenants.api';
 import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { useGuruOptions, useMapelOptions, useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '../../common';
 import { useTenantSettings } from '../../../hooks/useTenantSettings';
+import { useJadwalKegiatan } from '../../../hooks/attendance/useJadwalKegiatan';
 import { WORKDAYS_HARI_KEYS, getDayLabel } from '../../../constants/day.constants';
 import { getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { toast } from 'react-hot-toast';
@@ -132,7 +133,92 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
     staleTime: 2 * 60 * 1000,
   });
 
-  const jadwalList = useMemo(() => jadwalRes?.data || [], [jadwalRes]);
+  const { pembiasaanList } = useJadwalKegiatan({ aktif: true });
+
+  const pembiasaanJadwalItems = useMemo(() => {
+    if (!pembiasaanList || pembiasaanList.length === 0) return [];
+    
+    const items: any[] = [];
+    const parseArr = (field: any): string[] => {
+      if (!field) return [];
+      if (Array.isArray(field)) return field;
+      if (typeof field === 'string') {
+        try {
+          const parsed = JSON.parse(field);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return field.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    };
+
+    pembiasaanList.forEach((keg: any) => {
+      const days = parseArr(keg.hari);
+      const targetKelasIds = parseArr(keg.target_kelas_ids);
+
+      days.forEach(dayStr => {
+        const upperDay = dayStr.toUpperCase();
+
+        if (keg.target_semua_kelas) {
+          const activeClassIds = (kelasRawList && kelasRawList.length > 0) ? kelasRawList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
+          activeClassIds.forEach(kId => {
+            items.push({
+              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+              tenant_id: keg.tenant_id,
+              tahun_pelajaran_id: activeTahunPelajaran?.id || '',
+              semester_id: activeSemester?.id || '',
+              kelas_id: kId,
+              guru_id: selectedGuruId || 'all',
+              hari: upperDay,
+              slot_index: 0,
+              jam_mulai: keg.waktu_mulai || '06:30',
+              jam_selesai: keg.waktu_selesai || '07:00',
+              jenis_kegiatan: 'PEMBIASAAN',
+              is_locked: true,
+              is_pembiasaan: true,
+              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
+              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            });
+          });
+        } else {
+          targetKelasIds.forEach(kId => {
+            items.push({
+              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+              tenant_id: keg.tenant_id,
+              tahun_pelajaran_id: activeTahunPelajaran?.id || '',
+              semester_id: activeSemester?.id || '',
+              kelas_id: kId,
+              guru_id: selectedGuruId || 'all',
+              hari: upperDay,
+              slot_index: 0,
+              jam_mulai: keg.waktu_mulai || '06:30',
+              jam_selesai: keg.waktu_selesai || '07:00',
+              jenis_kegiatan: 'PEMBIASAAN',
+              is_locked: true,
+              is_pembiasaan: true,
+              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Kelas: { id: kId, nama_kelas: 'Kelas Terpilih' },
+              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            });
+          });
+        }
+      });
+    });
+
+    return items;
+  }, [pembiasaanList, kelasRawList, activeTahunPelajaran, activeSemester, selectedKelasId, selectedGuruId]);
+
+  const rawJadwalList = useMemo(() => {
+    const apiData = Array.isArray(jadwalRes)
+      ? jadwalRes
+      : (Array.isArray((jadwalRes as any)?.data) ? (jadwalRes as any).data : []);
+    return apiData;
+  }, [jadwalRes]);
+
+  const jadwalList = useMemo(() => {
+    return [...rawJadwalList, ...pembiasaanJadwalItems];
+  }, [rawJadwalList, pembiasaanJadwalItems]);
 
   // Dynamic Options Formatting
   const kelasOptionsFormatted = useMemo(() => {
@@ -173,7 +259,11 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
   const previewJadwalMap = useMemo(() => {
     const map = new Map<string, any>();
     (jadwalList || []).forEach((j: any) => {
-      if (mode === 'KELAS' && selectedKelasId && j.kelas_id === selectedKelasId) {
+      if (j.is_pembiasaan || j.jenis_kegiatan === 'PEMBIASAAN' || Number(j.slot_index) === 0) {
+        if (!map.has(`${j.hari}-0`)) {
+          map.set(`${j.hari}-0`, j);
+        }
+      } else if (mode === 'KELAS' && selectedKelasId && j.kelas_id === selectedKelasId) {
         map.set(`${j.hari}-${j.slot_index}`, j);
       } else if (mode === 'GURU' && selectedGuruId && j.guru_id === selectedGuruId) {
         map.set(`${j.hari}-${j.slot_index}`, j);
