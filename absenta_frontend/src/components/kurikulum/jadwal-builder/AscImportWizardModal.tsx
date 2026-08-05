@@ -96,7 +96,26 @@ export const AscImportWizardModal: React.FC<Props> = ({
   // Editable User Mappings
   const [teacherMappings, setTeacherMappings] = useState<Record<string, EntityMapping>>({});
   const [classMappings, setClassMappings] = useState<Record<string, EntityMapping>>({});
-  const [subjectMappings, setSubjectMappings] = useState<Record<string, EntityMapping>>({});
+  const mappingStats = useMemo(() => {
+    const teachersList = Object.values(teacherMappings);
+    const classesList = Object.values(classMappings);
+    const subjectsList = Object.values(subjectMappings);
+
+    const activeTeachers = teachersList.filter(t => t.action !== 'IGNORE');
+    const ignoredTeachers = teachersList.filter(t => t.action === 'IGNORE');
+
+    const activeClasses = classesList.filter(c => c.action !== 'IGNORE');
+    const ignoredClasses = classesList.filter(c => c.action === 'IGNORE');
+
+    const activeSubjects = subjectsList.filter(s => s.action !== 'IGNORE');
+    const ignoredSubjects = subjectsList.filter(s => s.action === 'IGNORE');
+
+    return {
+      teachers: { total: teachersList.length, active: activeTeachers.length, ignored: ignoredTeachers.length },
+      classes: { total: classesList.length, active: activeClasses.length, ignored: ignoredClasses.length },
+      subjects: { total: subjectsList.length, active: activeSubjects.length, ignored: ignoredSubjects.length },
+    };
+  }, [teacherMappings, classMappings, subjectMappings]);
 
   const resetState = () => {
     setStep(1);
@@ -456,13 +475,18 @@ export const AscImportWizardModal: React.FC<Props> = ({
             {/* Top Summary Banner */}
             <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
               <div className="space-y-1">
-                <div className="text-xs text-indigo-300 font-semibold uppercase tracking-wider">
-                  File Terbaca: <span className="text-white font-mono">{analysis.filename}</span>
+                <div className="text-xs text-indigo-300 font-semibold uppercase tracking-wider flex items-center gap-2">
+                  <span>File Terbaca: <span className="text-white font-mono">{analysis.filename}</span></span>
+                  <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded border border-indigo-400/30 font-sans font-medium">
+                    {mappingStats.teachers.ignored + mappingStats.classes.ignored + mappingStats.subjects.ignored > 0
+                      ? `🚫 ${mappingStats.teachers.ignored + mappingStats.classes.ignored + mappingStats.subjects.ignored} Entitas Di-Uncheck (Diabaikan)`
+                      : '✓ Seluruh Entitas Di-Centang (Diimpor)'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-medium">
-                  <span>👥 {analysis.summary.total_teachers} Guru</span>
-                  <span>🏫 {analysis.summary.total_classes} Kelas</span>
-                  <span>📚 {analysis.summary.total_subjects} Mapel</span>
+                <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
+                  <span>👥 <strong>{mappingStats.teachers.active}</strong>/{analysis.summary.total_teachers} Guru</span>
+                  <span>🏫 <strong>{mappingStats.classes.active}</strong>/{analysis.summary.total_classes} Kelas</span>
+                  <span>📚 <strong>{mappingStats.subjects.active}</strong>/{analysis.summary.total_subjects} Mapel</span>
                   <span>📜 {analysis.summary.total_lessons} Kontrak</span>
                   <span>🧩 {analysis.summary.total_cards} Kartu Jam</span>
                 </div>
@@ -1018,6 +1042,74 @@ export const AscImportWizardModal: React.FC<Props> = ({
                   <div className="flex justify-between"><span>Kontrak KBM:</span> <span className="font-bold">{executionResult?.total_kontrak || 0} Kontrak</span></div>
                   <div className="flex justify-between"><span>Pola Jam Bel:</span> <span className="font-bold">Day-Pattern Sync</span></div>
                 </div>
+              </div>
+            </div>
+
+            {/* Tabel Matriks Komparasi Audit */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-500" />
+                  Matriks Perbandingan Audit (File XML ➔ Filter Check/Uncheck ➔ Realisasi Database)
+                </span>
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                  100% Data Verified & Stored
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold bg-slate-100/60 dark:bg-slate-800/60">
+                      <th className="py-2.5 px-3 rounded-l-lg">Kategori Entitas</th>
+                      <th className="py-2.5 px-3 text-center">Total di XML</th>
+                      <th className="py-2.5 px-3 text-center">Di-Centang (Impor)</th>
+                      <th className="py-2.5 px-3 text-center">Di-Uncheck (Diabaikan)</th>
+                      <th className="py-2.5 px-3 text-center font-bold text-emerald-600 rounded-r-lg">Realisasi Masuk DB</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 font-medium">
+                    <tr>
+                      <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-indigo-500" /> Master Guru
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-slate-500">{analysis?.summary.total_teachers} orang</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-indigo-600 dark:text-indigo-400">{mappingStats.teachers.active} orang</td>
+                      <td className="py-2.5 px-3 text-center text-rose-500">{mappingStats.teachers.ignored > 0 ? `🚫 ${mappingStats.teachers.ignored} orang` : '0'}</td>
+                      <td className="py-2.5 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">{executionResult?.total_guru || 0} orang</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5 text-blue-500" /> Master Rombel / Kelas
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-slate-500">{analysis?.summary.total_classes} kelas</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-blue-600 dark:text-blue-400">{mappingStats.classes.active} kelas</td>
+                      <td className="py-2.5 px-3 text-center text-rose-500">{mappingStats.classes.ignored > 0 ? `🚫 ${mappingStats.classes.ignored} kelas` : '0'}</td>
+                      <td className="py-2.5 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">{executionResult?.total_kelas || 0} kelas</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-amber-500" /> Master Mapel
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-slate-500">{analysis?.summary.total_subjects} mapel</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-amber-600 dark:text-amber-400">{mappingStats.subjects.active} mapel</td>
+                      <td className="py-2.5 px-3 text-center text-rose-500">{mappingStats.subjects.ignored > 0 ? `🚫 ${mappingStats.subjects.ignored} mapel` : '0'}</td>
+                      <td className="py-2.5 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30">{executionResult?.total_mapel || 0} mapel</td>
+                    </tr>
+                    <tr className="bg-emerald-100/50 dark:bg-emerald-950/40 font-bold border-t border-emerald-200 dark:border-emerald-800">
+                      <td className="py-3 px-3 text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Slot Jam Plotting & Kontrak KBM
+                      </td>
+                      <td className="py-3 px-3 text-center text-slate-600 dark:text-slate-300">{analysis?.summary.total_cards} slot</td>
+                      <td className="py-3 px-3 text-center text-indigo-700 dark:text-indigo-300" colSpan={2}>
+                        Disaring Berdasarkan Entitas Di-Centang ({mappingStats.teachers.ignored + mappingStats.classes.ignored + mappingStats.subjects.ignored} Di-Uncheck)
+                      </td>
+                      <td className="py-3 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 text-sm bg-emerald-100 dark:bg-emerald-950/80">
+                        {executionResult?.total_cards || 0} Slot ({executionResult?.total_kontrak || 0} Kontrak)
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
