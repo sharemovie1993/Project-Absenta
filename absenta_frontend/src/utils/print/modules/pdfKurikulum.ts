@@ -556,10 +556,13 @@ export const renderKurikulumRosterPdf = (
           row.push({
             content: cellText,
             colSpan,
-            styles: { fillColor: [239, 246, 255] }
+            styles: { fontStyle: 'bold', fillColor: [239, 246, 255] }
           });
         } else {
-          row.push(cellText);
+          row.push({
+            content: cellText,
+            styles: { fontStyle: 'bold' }
+          });
         }
       }
       body.push(row);
