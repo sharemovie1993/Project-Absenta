@@ -214,28 +214,54 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
       days.forEach(dayStr => {
         const upperDay = dayStr.toUpperCase();
-        items.push({
-          id: `pembiasaan-${keg.id}-${upperDay}`,
-          tenant_id: keg.tenant_id,
-          tahun_pelajaran_id: tahunPelajaranId || '',
-          semester_id: semesterId || '',
-          kelas_id: keg.target_semua_kelas ? (selectedKelasId || 'ALL') : (targetKelasIds[0] || selectedKelasId || 'ALL'),
-          hari: upperDay,
-          slot_index: 0,
-          jam_mulai: keg.waktu_mulai || '06:30',
-          jam_selesai: keg.waktu_selesai || '07:00',
-          jenis_kegiatan: 'PEMBIASAAN',
-          is_locked: true,
-          is_pembiasaan: true,
-          Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
-          Kelas: { id: 'all-kelas', nama_kelas: keg.target_semua_kelas ? 'Seluruh Kelas' : 'Kelas Terpilih' },
-          Guru: { nama_guru: 'Pembiasaan Sekolah' }
-        } as any);
+
+        if (keg.target_semua_kelas) {
+          const activeClassIds = (kelasList && kelasList.length > 0) ? kelasList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
+          activeClassIds.forEach(kId => {
+            items.push({
+              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+              tenant_id: keg.tenant_id,
+              tahun_pelajaran_id: tahunPelajaranId || '',
+              semester_id: semesterId || '',
+              kelas_id: kId,
+              hari: upperDay,
+              slot_index: 0,
+              jam_mulai: keg.waktu_mulai || '06:30',
+              jam_selesai: keg.waktu_selesai || '07:00',
+              jenis_kegiatan: 'PEMBIASAAN',
+              is_locked: true,
+              is_pembiasaan: true,
+              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
+              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            } as any);
+          });
+        } else {
+          targetKelasIds.forEach(kId => {
+            items.push({
+              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+              tenant_id: keg.tenant_id,
+              tahun_pelajaran_id: tahunPelajaranId || '',
+              semester_id: semesterId || '',
+              kelas_id: kId,
+              hari: upperDay,
+              slot_index: 0,
+              jam_mulai: keg.waktu_mulai || '06:30',
+              jam_selesai: keg.waktu_selesai || '07:00',
+              jenis_kegiatan: 'PEMBIASAAN',
+              is_locked: true,
+              is_pembiasaan: true,
+              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Kelas: { id: kId, nama_kelas: 'Kelas Terpilih' },
+              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            } as any);
+          });
+        }
       });
     });
 
     return items;
-  }, [pembiasaanList, tahunPelajaranId, semesterId, selectedKelasId]);
+  }, [pembiasaanList, kelasList, tahunPelajaranId, semesterId, selectedKelasId]);
 
   const allJadwal = useMemo(() => {
     return [...localJadwal, ...pembiasaanJadwalItems];
