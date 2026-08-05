@@ -66,9 +66,9 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
 
       const activeClassIds = isTargetAll
         ? (kelasRawList && kelasRawList.length > 0
-            ? kelasRawList.map(k => k.id)
-            : (kelasId && kelasId !== 'all' ? [kelasId] : []))
-        : targetKelasIds;
+            ? Array.from(new Set([...kelasRawList.map(k => k.id), 'all']))
+            : (kelasId && kelasId !== 'all' ? [kelasId, 'all'] : ['all']))
+        : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
 
       const rawName = keg.nama || 'PEMBIASAAN';
       const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
@@ -106,6 +106,12 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
 
   // 4. Unified Single Source of Truth List (KBM + Routine Activities)
   const allJadwal = useMemo(() => {
+    console.log('[DEBUG useUnifiedScheduleData]', {
+      kbmListLength: kbmList.length,
+      pembiasaanJadwalItemsLength: pembiasaanJadwalItems.length,
+      pembiasaanJadwalItems,
+      allJadwalLength: kbmList.length + pembiasaanJadwalItems.length,
+    });
     return [...kbmList, ...pembiasaanJadwalItems];
   }, [kbmList, pembiasaanJadwalItems]);
 

@@ -2,26 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getJadwalKegiatan, type JadwalKegiatanItem } from '@/api/attendance/jadwalKegiatan.api';
 
 export const isRoutineKesiswaanActivity = (keg: any): boolean => {
-  if (!keg || keg.aktif === false) return false;
-  const jTipe = String(keg.jenis_kegiatan || '').toUpperCase();
-  const namaLower = String(keg.nama || '').toLowerCase();
-
-  return (
-    jTipe === 'PEMBIASAAN' ||
-    jTipe === 'UPACARA' ||
-    jTipe === 'APEL' ||
-    jTipe === 'IBADAH' ||
-    namaLower.includes('upacara') ||
-    namaLower.includes('apel') ||
-    namaLower.includes('duha') ||
-    namaLower.includes('dhuha') ||
-    namaLower.includes('ketarunaan') ||
-    namaLower.includes('pembiasaan') ||
-    namaLower.includes('senam') ||
-    namaLower.includes('pramuka') ||
-    namaLower.includes('yasin') ||
-    namaLower.includes('literasi')
-  );
+  if (!keg) return false;
+  if (keg.aktif === false || keg.aktif === 0 || keg.aktif === 'false' || keg.aktif === '0') return false;
+  return true;
 };
 
 export function useJadwalKegiatan(params?: { aktif?: boolean }) {
@@ -31,9 +14,18 @@ export function useJadwalKegiatan(params?: { aktif?: boolean }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const rawList: JadwalKegiatanItem[] = data?.success && Array.isArray(data.data) ? data.data : [];
+  const rawList: JadwalKegiatanItem[] = Array.isArray(data)
+    ? data
+    : (Array.isArray((data as any)?.data) ? (data as any).data : []);
 
   const pembiasaanList = rawList.filter(isRoutineKesiswaanActivity);
+
+  console.log('[DEBUG useJadwalKegiatan]', {
+    rawApiData: data,
+    parsedRawListLength: rawList.length,
+    pembiasaanListLength: pembiasaanList.length,
+    pembiasaanList,
+  });
 
   return {
     data,
