@@ -48,6 +48,7 @@ import { getGuruList } from '../../api/academic/guru.api';
 import { piketGuruApi } from '../../api/piketGuru.api';
 import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
 import { isRoutineKesiswaanActivity } from '../../hooks/attendance/useJadwalKegiatan';
+import { useJenisKegiatanMaster } from '../../hooks/academic/useJenisKegiatanMaster';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
@@ -127,10 +128,10 @@ export default function JadwalPelajaranPage() {
     setViewMode('preview');
   }, [selectedGuruId, selectedKelasId, queryClient]);
 
-  // Reference options for print preview & filters
   const { rawList: kelasRawList } = useKelasOptions();
   const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
   const { rawList: mapelRawList } = useMapelOptions();
+  const { rawList: jenisMasterRawList } = useJenisKegiatanMaster();
   const { data: sekolahProfileRes } = useQuery({
     queryKey: ['sekolah-profile-preview'],
     queryFn: () => sekolahApi.getProfile().catch(() => null),

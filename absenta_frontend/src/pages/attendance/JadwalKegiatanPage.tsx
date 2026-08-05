@@ -8,6 +8,7 @@ import {
   type JadwalKegiatanItem,
 } from '@/api/attendance/jadwalKegiatan.api';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
+import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
 import { getKelasList } from '@/api/academic/kelas.api';
 import { getActiveTahunPelajaran } from '@/api/academic/tahunPelajaran.api';
 import type { Kelas } from '@/types/academic';
@@ -88,11 +89,7 @@ export default function JadwalKegiatanPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: masterRes } = useQuery({
-    queryKey: ['jenis-kegiatan-master-list'],
-    queryFn: () => jenisKegiatanMasterApi.getAll({ limit: 100 }).catch(() => ({ data: [] as JenisKegiatanMaster[] })),
-    staleTime: 10 * 60 * 1000,
-  });
+  const { rawList: masterKegiatans } = useJenisKegiatanMaster();
 
   const { data: activeTp } = useQuery({
     queryKey: ['active-tahun-pelajaran'],
@@ -102,7 +99,6 @@ export default function JadwalKegiatanPage() {
 
   const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
   const classes = useMemo(() => kelasRes?.data ?? [], [kelasRes]);
-  const masterKegiatans = useMemo(() => masterRes?.data ?? [], [masterRes]);
   const activeTpData = (activeTp as any)?.data || activeTp;
   const activeTahunPelajaranId = activeTpData?.id ?? '';
   const activeTahunPelajaranName = activeTpData?.tahun ?? '';
