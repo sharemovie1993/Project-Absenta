@@ -127,6 +127,16 @@ import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
     setPresetMasterNama('');
   }, []);
 
+  const invalidateAllJadwalKegiatanCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-builder'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
+    queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+  }, [queryClient]);
+
   // ── Submit (from form modal) ──
   const handleFormSubmit = useCallback(async (formData: JadwalKegiatanFormData) => {
     const payload = {
@@ -140,10 +150,7 @@ import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil diperbarui');
         handleCloseModal();
-        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
-        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
-        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+        invalidateAllJadwalKegiatanCaches();
         refetchJadwal();
       }
     } else {
@@ -151,18 +158,14 @@ import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil dibuat');
         handleCloseModal();
-        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
-        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
-        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+        invalidateAllJadwalKegiatanCaches();
         refetchJadwal();
       }
     }
-  }, [editingItem, handleCloseModal, queryClient, refetchJadwal]);
+  }, [editingItem, handleCloseModal, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
 
   // ── Delete ──
   const handleDelete = useCallback(async (id: string, nama: string) => {
-    // Point #7: useConfirm dialog
     const confirmed = await confirm({
       title: 'Hapus Jadwal Kegiatan',
       description: `Apakah Anda yakin ingin menghapus jadwal "${nama}"? Tindakan ini tidak dapat dibatalkan.`,
@@ -175,17 +178,14 @@ import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
       const res = await deleteJadwalKegiatan(id);
       if (res.success) {
         toast.success('Jadwal Kegiatan berhasil dihapus');
-        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
-        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
-        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+        invalidateAllJadwalKegiatanCaches();
         refetchJadwal();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal menghapus data';
       toast.error(message);
     }
-  }, [confirm, queryClient, refetchJadwal]);
+  }, [confirm, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
 
   // ── Toggle Active ──
   const handleToggleActive = useCallback(async (item: JadwalKegiatanItem) => {
@@ -193,17 +193,14 @@ import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
       const res = await updateJadwalKegiatan(item.id, { aktif: !item.aktif });
       if (res.success) {
         toast.success(`Jadwal ${!item.aktif ? 'diaktifkan' : 'dinonaktifkan'}`);
-        queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
-        queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
-        queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-        queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
+        invalidateAllJadwalKegiatanCaches();
         refetchJadwal();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal mengubah status';
       toast.error(message);
     }
-  }, [queryClient, refetchJadwal]);
+  }, [invalidateAllJadwalKegiatanCaches, refetchJadwal]);
 
   // ── Handle open create from master card (pre-fills kategori kegiatan) ──
   const handleOpenCreateFromMaster = useCallback((nama: string) => {
