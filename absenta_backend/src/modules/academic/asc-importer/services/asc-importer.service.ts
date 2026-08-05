@@ -101,6 +101,21 @@ export class AscImporterService {
   }
 
   /**
+   * Helper to match day name string in English or Indonesian
+   */
+  static getDayFromText(text: string): string | null {
+    const t = text.toUpperCase();
+    if (t.includes('SEN') || t.includes('MON') || t === 'MO') return 'SENIN';
+    if (t.includes('SEL') || t.includes('TUE') || t === 'TU') return 'SELASA';
+    if (t.includes('RAB') || t.includes('WED') || t === 'WE') return 'RABU';
+    if (t.includes('KAM') || t.includes('THU') || t === 'TH') return 'KAMIS';
+    if (t.includes('JUM') || t.includes('FRI') || t === 'FR') return 'JUMAT';
+    if (t.includes('SAB') || t.includes('SAT') || t === 'SA') return 'SABTU';
+    if (t.includes('MIN') || t.includes('SUN') || t === 'SU') return 'MINGGU';
+    return null;
+  }
+
+  /**
    * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 11111 -> SENIN..JUMAT)
    */
   static resolveDaysFromXml(daysInput: string, daysdefsMap: Map<string, { bitmask: string; name: string }>): string[] {
@@ -108,8 +123,15 @@ export class AscImporterService {
     if (!rawInput) return ['SENIN'];
 
     const foundDef = daysdefsMap.get(rawInput);
-    const bitmask = foundDef ? foundDef.bitmask : (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
 
+    // 1. Match by day name text (English / Indonesian / Short Code)
+    if (foundDef?.name) {
+      const dayFromText = AscImporterService.getDayFromText(foundDef.name);
+      if (dayFromText) return [dayFromText];
+    }
+
+    // 2. Match by Bitmask string (e.g. "10000" -> SENIN, "01000" -> SELASA, "11111" -> SENIN..JUMAT)
+    const bitmask = foundDef ? foundDef.bitmask : (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
     const dayNames = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
     const resolvedDays: string[] = [];
 
@@ -121,17 +143,15 @@ export class AscImporterService {
       }
     }
 
-    if (resolvedDays.length === 0) {
-      if (foundDef?.name.includes('SENIN')) resolvedDays.push('SENIN');
-      else if (foundDef?.name.includes('SELASA')) resolvedDays.push('SELASA');
-      else if (foundDef?.name.includes('RABU')) resolvedDays.push('RABU');
-      else if (foundDef?.name.includes('KAMIS')) resolvedDays.push('KAMIS');
-      else if (foundDef?.name.includes('JUMAT')) resolvedDays.push('JUMAT');
-      else if (foundDef?.name.includes('SABTU')) resolvedDays.push('SABTU');
-      else resolvedDays.push('SENIN');
+    if (resolvedDays.length > 0) {
+      return resolvedDays;
     }
 
-    return resolvedDays;
+    // 3. Fallback direct text check on rawInput
+    const directDay = AscImporterService.getDayFromText(rawInput);
+    if (directDay) return [directDay];
+
+    return ['SENIN'];
   }
 
   /**
