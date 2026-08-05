@@ -109,6 +109,7 @@ const JurusanPage = lazy(() => import('./pages/academic/JurusanPage').then(modul
 const JenisKegiatanMasterPage = lazy(() => import('./pages/academic/JenisKegiatanMasterPage'));
 const WaliKelasPage = lazy(() => import('./pages/kurikulum/WaliKelasPage'));
 const GuruMapelPage = lazy(() => import('./pages/kurikulum/GuruMapelPage'));
+const JadwalKontrakKbmPage = lazy(() => import('./pages/kurikulum/JadwalKontrakKbmPage'));
 const StrukturOrganisasiPage = lazy(() => import('./pages/academic/struktur-organisasi/StrukturOrganisasiPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WhatsappSettingsPage = lazy(() => import('./pages/settings/WhatsappSettingsPage'));
@@ -851,11 +852,16 @@ function App() {
                     <Route path="/kurikulum/perangkat" element={
                       <ProtectedRoute requiredCapability="academic.teaching.view">
                         <PerangkatAjarPage />
-                      </ProtectedRoute>
+                    </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/guru-mapel" element={
                       <ProtectedRoute requiredCapability="academic.teaching.view">
                         <GuruMapelPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/jadwal-kontrak-kbm" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <JadwalKontrakKbmPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/wali-kelas" element={
