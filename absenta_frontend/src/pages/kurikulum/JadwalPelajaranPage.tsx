@@ -47,6 +47,7 @@ import { getKelasList } from '../../api/academic/kelas.api';
 import { getGuruList } from '../../api/academic/guru.api';
 import { piketGuruApi } from '../../api/piketGuru.api';
 import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
+import { isRoutineKesiswaanActivity } from '../../hooks/attendance/useJadwalKegiatan';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
@@ -272,9 +273,7 @@ export default function JadwalPelajaranPage() {
         };
 
         kegiatanRes.data.forEach((keg: any) => {
-          const jTipe = (keg.jenis_kegiatan || '').toUpperCase();
-          const isPembiasaan = jTipe === 'PEMBIASAAN' || (keg.nama || '').toLowerCase().includes('apel') || (keg.nama || '').toLowerCase().includes('duha') || (keg.nama || '').toLowerCase().includes('ketarunaan');
-          if (!isPembiasaan) return;
+          if (!isRoutineKesiswaanActivity(keg)) return;
 
           const days = parseArray(keg.hari);
           const targetKelasIds = parseArray(keg.target_kelas_ids);
