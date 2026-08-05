@@ -82,8 +82,8 @@ export class AscImporterService {
   /**
    * Dynamically extract days mapping directly from XML <daysdefs>
    */
-  static extractDaysdefs(timetable: any): Map<string, string> {
-    const daysMap = new Map<string, string>();
+  static extractDaysdefs(timetable: any): Map<string, { bitmask: string; name: string }> {
+    const daysMap = new Map<string, { bitmask: string; name: string }>();
     const rawDays = timetable.daysdefs?.daysdef || [];
     const daysArr = Array.isArray(rawDays) ? rawDays : [rawDays];
 
@@ -92,15 +92,46 @@ export class AscImporterService {
       const dName = String(d.name || d.short || '').toUpperCase();
       const dBit = String(d.days || '');
 
-      if (dName.includes('SENIN') || dBit === '10000') daysMap.set(dId, 'SENIN');
-      else if (dName.includes('SELASA') || dBit === '01000') daysMap.set(dId, 'SELASA');
-      else if (dName.includes('RABU') || dBit === '00100') daysMap.set(dId, 'RABU');
-      else if (dName.includes('KAMIS') || dBit === '00010') daysMap.set(dId, 'KAMIS');
-      else if (dName.includes('JUMAT') || dBit === '00001') daysMap.set(dId, 'JUMAT');
-      else if (dName.includes('SABTU') || dBit === '000001') daysMap.set(dId, 'SABTU');
+      const entry = { bitmask: dBit, name: dName };
+      daysMap.set(dId, entry);
+      if (dBit) daysMap.set(dBit, entry);
     });
 
     return daysMap;
+  }
+
+  /**
+   * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 11111 -> SENIN..JUMAT)
+   */
+  static resolveDaysFromXml(daysInput: string, daysdefsMap: Map<string, { bitmask: string; name: string }>): string[] {
+    const rawInput = String(daysInput || '').trim();
+    if (!rawInput) return ['SENIN'];
+
+    const foundDef = daysdefsMap.get(rawInput);
+    const bitmask = foundDef ? foundDef.bitmask : (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
+
+    const dayNames = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+    const resolvedDays: string[] = [];
+
+    if (bitmask) {
+      for (let i = 0; i < bitmask.length; i++) {
+        if (bitmask[i] === '1' && dayNames[i]) {
+          resolvedDays.push(dayNames[i]);
+        }
+      }
+    }
+
+    if (resolvedDays.length === 0) {
+      if (foundDef?.name.includes('SENIN')) resolvedDays.push('SENIN');
+      else if (foundDef?.name.includes('SELASA')) resolvedDays.push('SELASA');
+      else if (foundDef?.name.includes('RABU')) resolvedDays.push('RABU');
+      else if (foundDef?.name.includes('KAMIS')) resolvedDays.push('KAMIS');
+      else if (foundDef?.name.includes('JUMAT')) resolvedDays.push('JUMAT');
+      else if (foundDef?.name.includes('SABTU')) resolvedDays.push('SABTU');
+      else resolvedDays.push('SENIN');
+    }
+
+    return resolvedDays;
   }
 
   /**
@@ -465,56 +496,49 @@ export class AscImporterService {
         if (!lessonMeta || !lessonMeta.classIds || lessonMeta.classIds.length === 0) continue;
 
         const periodIndex = Number(card.period) || 0;
-        const daysdefId = String(card.days || '');
-        let dayName = dynamicDaysdefsMap.get(daysdefId);
+        const daysInput = String(card.days || '');
+        const targetDays = AscImporterService.resolveDaysFromXml(daysInput, dynamicDaysdefsMap);
 
-        if (!dayName && daysdefId.length === 5) {
-          if (daysdefId === '10000') dayName = 'SENIN';
-          else if (daysdefId === '01000') dayName = 'SELASA';
-          else if (daysdefId === '00100') dayName = 'RABU';
-          else if (daysdefId === '00010') dayName = 'KAMIS';
-          else if (daysdefId === '00001') dayName = 'JUMAT';
-        }
-        if (!dayName) dayName = 'SENIN';
+        for (const dayName of targetDays) {
+          for (const targetClassId of lessonMeta.classIds) {
+            const slotTimes = await AscImporterService.resolveSlotTimesForDay(
+              tenantId,
+              targetClassId,
+              dayName,
+              periodIndex,
+              dynamicPeriodTimes
+            );
 
-        for (const targetClassId of lessonMeta.classIds) {
-          const slotTimes = await AscImporterService.resolveSlotTimesForDay(
-            tenantId,
-            targetClassId,
-            dayName,
-            periodIndex,
-            dynamicPeriodTimes
-          );
+            const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
+            const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
 
-          const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
-          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
+            if (usedClassSlots.has(classKey)) {
+              continue;
+            }
+            if (guruKey && usedGuruSlots.has(guruKey)) {
+              continue;
+            }
 
-          if (usedClassSlots.has(classKey)) {
-            continue;
+            usedClassSlots.add(classKey);
+            if (guruKey) usedGuruSlots.add(guruKey);
+
+            cardsBatch.push({
+              id: crypto.randomUUID(),
+              tenant_id: tenantId,
+              tahun_pelajaran_id: input.tahun_pelajaran_id,
+              semester_id: input.semester_id,
+              kelas_id: targetClassId,
+              guru_id: lessonMeta.guruId,
+              mapel_id: lessonMeta.mapelId,
+              hari: dayName as any,
+              slot_index: periodIndex,
+              jam_mulai: slotTimes.start,
+              jam_selesai: slotTimes.end,
+              jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
+              asc_id: String(card.id || `${ascLessonId}-${dayName}-${periodIndex}`),
+              created_by_user_id: input.user_id,
+            });
           }
-          if (guruKey && usedGuruSlots.has(guruKey)) {
-            continue;
-          }
-
-          usedClassSlots.add(classKey);
-          if (guruKey) usedGuruSlots.add(guruKey);
-
-          cardsBatch.push({
-            id: crypto.randomUUID(),
-            tenant_id: tenantId,
-            tahun_pelajaran_id: input.tahun_pelajaran_id,
-            semester_id: input.semester_id,
-            kelas_id: targetClassId,
-            guru_id: lessonMeta.guruId,
-            mapel_id: lessonMeta.mapelId,
-            hari: dayName as any,
-            slot_index: periodIndex,
-            jam_mulai: slotTimes.start,
-            jam_selesai: slotTimes.end,
-            jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-            asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
-            created_by_user_id: input.user_id,
-          });
         }
       }
 
