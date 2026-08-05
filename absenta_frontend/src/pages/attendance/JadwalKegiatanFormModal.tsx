@@ -242,9 +242,10 @@ export default function JadwalKegiatanFormModal({
     const result = jadwalKegiatanSchema.safeParse(formData);
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach(err => {
+      const issues = result.error.issues || (result.error as any).errors || [];
+      issues.forEach(err => {
         const field = err.path[0] as string;
-        if (!fieldErrors[field]) fieldErrors[field] = err.message;
+        if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
       });
       setErrors(fieldErrors);
       return;
