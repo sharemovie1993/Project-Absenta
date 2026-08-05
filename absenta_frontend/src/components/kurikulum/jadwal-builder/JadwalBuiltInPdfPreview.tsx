@@ -70,52 +70,67 @@ export const JadwalBuiltInPdfPreview: React.FC<Props> = ({
     };
   }, [pdfBlobUrl]);
 
-  // Generate PDF Function
-  const generatePdfPreview = useCallback(async () => {
+  // Stable primitive key for triggering PDF generation (prevents array reference churn flickering)
+  const pdfTriggerKey = useMemo(() => {
+    return `${mode}-${selectedKelasId}-${selectedGuruId}-${activeTahunPelajaran?.id}-${activeSemester?.id}-${allJadwal.length}-${kelasRawList.length}-${guruRawList.length}`;
+  }, [mode, selectedKelasId, selectedGuruId, activeTahunPelajaran?.id, activeSemester?.id, allJadwal.length, kelasRawList.length, guruRawList.length]);
+
+  // Debounced smooth PDF Generation
+  useEffect(() => {
     if (!activeTahunPelajaran?.id || !activeSemester?.id) return;
     if (mode === 'KELAS' && !selectedKelasId) return;
     if (mode === 'GURU' && !selectedGuruId) return;
 
-    try {
-      setIsGeneratingPdf(true);
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        setIsGeneratingPdf(true);
 
-      const jenisRes = await jenisKegiatanMasterApi.getAll().catch(() => ({ data: [] }));
+        const jenisRes = await jenisKegiatanMasterApi.getAll().catch(() => ({ data: [] }));
+        if (isCancelled) return;
 
-      const blob = await generateGenericPdf({
-        module: 'kurikulum',
-        printType: mode === 'KELAS' ? 'roster' : 'roster_teacher',
-        selectedClassId: selectedKelasId || 'all',
-        selectedGuruId: selectedGuruId || 'all',
-        sekolah: sekolahProfileRes || null,
-        tenantInfo: tenant || null,
-        strukturList: [],
-        logoDaerahBase64: null,
-        logoSekolahBase64: null,
-        includeSchoolLogo: true,
-        filterData: {
-          jadwalList: allJadwal,
-          jenisKegiatanList: jenisRes.data || [],
-          classes: kelasRawList || [],
-          gurus: guruRawList || [],
-        },
-      });
+        const blob = await generateGenericPdf({
+          module: 'kurikulum',
+          printType: mode === 'KELAS' ? 'roster' : 'roster_teacher',
+          selectedClassId: selectedKelasId || 'all',
+          selectedGuruId: selectedGuruId || 'all',
+          sekolah: sekolahProfileRes || null,
+          tenantInfo: tenant || null,
+          strukturList: [],
+          logoDaerahBase64: null,
+          logoSekolahBase64: null,
+          includeSchoolLogo: true,
+          filterData: {
+            jadwalList: allJadwal,
+            jenisKegiatanList: jenisRes.data || [],
+            classes: kelasRawList || [],
+            gurus: guruRawList || [],
+          },
+        });
 
-      const blobUrl = URL.createObjectURL(blob);
-      setPdfBlobUrl(prevUrl => {
-        if (prevUrl) URL.revokeObjectURL(prevUrl);
-        return blobUrl;
-      });
-    } catch (err) {
-      console.error('Failed to generate PDF preview:', err);
-      toast.error('Gagal memproses dokumen PDF');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  }, [mode, selectedKelasId, selectedGuruId, activeTahunPelajaran, activeSemester, sekolahProfileRes, tenant, kelasRawList, guruRawList, allJadwal]);
+        if (isCancelled) return;
 
-  useEffect(() => {
-    generatePdfPreview();
-  }, [generatePdfPreview]);
+        const blobUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(prevUrl => {
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
+          return blobUrl;
+        });
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to generate PDF preview:', err);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsGeneratingPdf(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pdfTriggerKey]);
 
   const handlePrint = () => {
     if (!pdfBlobUrl) return;
