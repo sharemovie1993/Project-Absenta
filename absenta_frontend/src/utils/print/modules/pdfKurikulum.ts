@@ -471,8 +471,7 @@ export const renderKurikulumRosterPdf = (
       [
         'HARI',
         ...SLOTS.map(slot => {
-          const time = resolveHeaderSlotTime(slot);
-          return slot === 0 ? `JAM 0\n(KESISWAAN)` : `JAM ${slot}\n(${time})`;
+          return slot === 0 ? `JAM 0\n(KESISWAAN)` : `JAM ${slot}`;
         })
       ]
     ];

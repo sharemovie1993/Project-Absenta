@@ -212,14 +212,12 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
             HARI / WAKTU
           </div>
           {SLOTS.map(slot => {
-            const time = resolveSlotTime('SELASA', selectedKelasId || '', slot);
             return (
               <div 
                 key={slot} 
-                className="p-1.5 bg-gray-50 dark:bg-slate-800/50 font-bold text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800 flex flex-col justify-center items-center"
+                className="p-2 bg-gray-50 dark:bg-slate-800/50 font-bold text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800 flex flex-col justify-center items-center"
               >
                 <div className="text-[10px] text-gray-900 dark:text-white uppercase font-black">JAM {slot}</div>
-                <div className="text-[8.5px] text-gray-400 font-mono mt-0.5">{time.start} - {time.end}</div>
               </div>
             );
           })}

@@ -166,17 +166,13 @@ export const SingleGridTimetable: React.FC<Props> = ({
                 HARI / WAKTU
               </div>
               {slots.map((slotIndex) => {
-                const slot = resolveSlotTime(selectedKelasId, slotIndex);
                 return (
                   <div
                     key={slotIndex}
-                    className="p-1.5 font-black text-slate-800 dark:text-slate-200 text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-wider flex flex-col items-center justify-center gap-0.5"
+                    className="p-2 font-black text-slate-800 dark:text-slate-200 text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-wider flex items-center justify-center"
                   >
                     <span className="text-[9.5px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase">
                       JAM {slotIndex}
-                    </span>
-                    <span className="text-[8.5px] text-slate-450 dark:text-slate-550 font-bold">
-                      {slot.start} - {slot.end}
                     </span>
                   </div>
                 );
