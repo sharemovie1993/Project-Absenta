@@ -78,12 +78,11 @@ export default function JadwalKegiatanPage() {
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
   const [presetMasterNama, setPresetMasterNama] = useState<string>('');
 
+import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
+
+// ─── Component ───────────────────────────────────────────────────────────────
   // ── useQuery: Jadwal & Master Data ───────────────────────────────────────
-  const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useQuery({
-    queryKey: ['jadwal-kegiatan-list'],
-    queryFn: getJadwalKegiatan,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useJadwalKegiatan();
 
   const { data: kelasRes } = useQuery({
     queryKey: ['kelas-list-dropdown'],

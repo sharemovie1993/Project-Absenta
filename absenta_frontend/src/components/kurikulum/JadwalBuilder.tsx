@@ -25,7 +25,7 @@ import {
   clearJadwalKBM,
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
-import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
+import { useJadwalKegiatan } from '../../hooks/attendance/useJadwalKegiatan';
 import { getMapelColor } from '../../utils/mapelColorHelper';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
 import { type DropdownOption } from '../../api/dropdown.api';
@@ -189,14 +189,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
   }, [schedulesRes]);
 
-  const { data: kesiswaanKegiatanRes } = useQuery({
-    queryKey: ['jadwal-kegiatan-builder'],
-    queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { pembiasaanList } = useJadwalKegiatan({ aktif: true });
 
   const pembiasaanJadwalItems = useMemo(() => {
-    if (!kesiswaanKegiatanRes?.success || !Array.isArray(kesiswaanKegiatanRes.data)) return [];
+    if (!pembiasaanList || pembiasaanList.length === 0) return [];
     
     const items: JadwalKBM[] = [];
     const parseArr = (field: any): string[] => {
@@ -212,11 +208,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       return [];
     };
 
-    kesiswaanKegiatanRes.data.forEach((keg: any) => {
-      const jTipe = (keg.jenis_kegiatan || '').toUpperCase();
-      const isPembiasaan = jTipe === 'PEMBIASAAN' || (keg.nama || '').toLowerCase().includes('apel') || (keg.nama || '').toLowerCase().includes('duha') || (keg.nama || '').toLowerCase().includes('ketarunaan');
-      if (!isPembiasaan) return;
-
+    pembiasaanList.forEach((keg: any) => {
       const days = parseArr(keg.hari);
       const targetKelasIds = parseArr(keg.target_kelas_ids);
 
