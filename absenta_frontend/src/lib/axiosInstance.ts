@@ -80,13 +80,13 @@ axiosInstance.interceptors.request.use(
     }
 
     // DEFENSIVE FIX: Remove /api prefix if present in the call
-    if (config.url && config.url.startsWith('/api/')) {
+    if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/')) {
        LogService.warn(`Detected double /api prefix in request to ${config.url}. Auto-fixing.`);
        config.url = config.url.substring(4); // Remove /api
     }
 
     // NEW FIX: Ensure leading slash doesn't bypass /api prefix in baseURL
-    if (config.url && config.url.startsWith('/') && !config.url.startsWith('http')) {
+    if (config.url && typeof config.url === 'string' && config.url.startsWith('/') && !config.url.startsWith('http')) {
        config.url = config.url.substring(1);
     }
 

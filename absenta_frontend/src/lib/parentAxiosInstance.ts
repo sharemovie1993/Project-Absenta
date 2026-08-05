@@ -34,7 +34,7 @@ const parentAxiosInstance = axios.create({
 parentAxiosInstance.interceptors.request.use(
   (config) => {
     // Prevent double /api prefix
-    if (config.url && config.url.startsWith('/api/')) {
+    if (config.url && typeof config.url === 'string' && config.url.startsWith('/api/')) {
        config.url = config.url.substring(4);
     }
 
