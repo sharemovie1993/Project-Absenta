@@ -346,40 +346,43 @@ export const renderKurikulumRosterPdf = (
         groups.get(name)!.push(j);
       });
     } else {
-      const g = (filterData?.gurus as any[])?.find(x => x.id === selectedGuruId);
+      const g = (filterData?.gurus as any[])?.find(x => String(x.id) === String(selectedGuruId));
       const name = g?.nama_guru || 'Guru';
       // Filter: own schedule + pembiasaan for all classes (no guru filter for slot 0)
       const filtered = jadwalList.filter(j =>
-        j.guru_id === selectedGuruId ||
+        String(j.guru_id) === String(selectedGuruId) ||
         j.is_pembiasaan === true ||
-        j.jenis_kegiatan === 'PEMBIASAAN'
+        String(j.jenis_kegiatan || '').toUpperCase() === 'PEMBIASAAN' ||
+        Number(j.slot_index) === 0
       );
       groups.set(name, filtered);
     }
   } else {
     if (selectedClassId === 'all') {
       // For each non-pembiasaan item, group by class name
-      jadwalList.filter(j => !j.is_pembiasaan && j.jenis_kegiatan !== 'PEMBIASAAN').forEach(j => {
+      jadwalList.filter(j => !j.is_pembiasaan && String(j.jenis_kegiatan || '').toUpperCase() !== 'PEMBIASAAN' && Number(j.slot_index) !== 0).forEach(j => {
         const name = j.Kelas?.nama_kelas || 'Tanpa Kelas';
         if (!groups.has(name)) groups.set(name, []);
         groups.get(name)!.push(j);
       });
       // For pembiasaan items, inject into every matching class bucket
-      jadwalList.filter(j => j.is_pembiasaan || j.jenis_kegiatan === 'PEMBIASAAN').forEach(j => {
-        const cls = (filterData?.classes as any[])?.find(c => c.id === j.kelas_id);
+      jadwalList.filter(j => j.is_pembiasaan || String(j.jenis_kegiatan || '').toUpperCase() === 'PEMBIASAAN' || Number(j.slot_index) === 0).forEach(j => {
+        const cls = (filterData?.classes as any[])?.find(c => String(c.id) === String(j.kelas_id));
         const name = cls?.nama_kelas;
         if (name && groups.has(name)) {
           groups.get(name)!.push(j);
         }
       });
     } else {
-      const cls = (filterData?.classes as any[])?.find(c => c.id === selectedClassId);
+      const cls = (filterData?.classes as any[])?.find(c => String(c.id) === String(selectedClassId));
       const name = cls?.nama_kelas || 'Kelas';
       // Filter: items for this class + pembiasaan targeting this class or all classes
       const filtered = jadwalList.filter(j =>
-        j.kelas_id === selectedClassId ||
-        j.target_semua_kelas === true ||
-        (j.is_pembiasaan && j.kelas_id === selectedClassId)
+        String(j.kelas_id) === String(selectedClassId) ||
+        Boolean(j.target_semua_kelas) ||
+        j.is_pembiasaan === true ||
+        String(j.jenis_kegiatan || '').toUpperCase() === 'PEMBIASAAN' ||
+        Number(j.slot_index) === 0
       );
       groups.set(name, filtered);
     }
@@ -421,7 +424,7 @@ export const renderKurikulumRosterPdf = (
     // 3. Draw Timetable Grid
     const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
     const days = [...DAYS];
-    if (groupJadwal.some(j => j.hari === 'SABTU')) {
+    if (groupJadwal.some(j => String(j.hari || '').toUpperCase() === 'SABTU')) {
       days.push('SABTU');
     }
 
@@ -457,7 +460,7 @@ export const renderKurikulumRosterPdf = (
       if (slotNum === 0) return SLOT_TIME_FALLBACK[0];
       // 1. Try to find from groupJadwal on SELASA/RABU/KAMIS
       const generalDayMatch = groupJadwal.find(j => 
-        ['SELASA', 'RABU', 'KAMIS'].includes(j.hari) && 
+        ['SELASA', 'RABU', 'KAMIS'].includes(String(j.hari || '').toUpperCase()) && 
         Number(j.slot_index) === slotNum && 
         j.jam_mulai && j.jam_selesai
       );
@@ -490,20 +493,11 @@ export const renderKurikulumRosterPdf = (
     ];
 
     const getSlotData = (dayStr: string, slotNum: number) => {
-      if (slotNum === 0) {
-        if (printType === 'roster' && selectedClassId !== 'all') {
-          return groupJadwal.find(j => 
-            j.hari === dayStr && 
-            Number(j.slot_index) === 0 && 
-            (j.kelas_id === selectedClassId || j.target_semua_kelas)
-          );
-        }
-        return groupJadwal.find(j => 
-          j.hari === dayStr && Number(j.slot_index) === 0
-        );
-      }
+      const normDay = String(dayStr || '').trim().toUpperCase();
+      const normSlot = Number(slotNum);
       return groupJadwal.find(j => 
-        j.hari === dayStr && Number(j.slot_index) === slotNum
+        String(j.hari || '').trim().toUpperCase() === normDay && 
+        Number(j.slot_index) === normSlot
       );
     };
 

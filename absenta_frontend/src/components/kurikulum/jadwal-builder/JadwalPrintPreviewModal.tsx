@@ -11,6 +11,7 @@ import { getJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { useGuruOptions, useMapelOptions, useKelasOptions, useTahunPelajaranOptions, useSemesterOptions } from '../../common';
 import { useTenantSettings } from '../../../hooks/useTenantSettings';
 import { useJadwalKegiatan } from '../../../hooks/attendance/useJadwalKegiatan';
+import { useUnifiedScheduleData } from '../../../hooks/attendance/useUnifiedScheduleData';
 import { WORKDAYS_HARI_KEYS, getDayLabel } from '../../../constants/day.constants';
 import { getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { toast } from 'react-hot-toast';
@@ -61,6 +62,15 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
   const { options: mapelSelectOptions, rawList: mapelRawList } = useMapelOptions();
   const { activeTahunPelajaran, rawList: tpRawList } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList } = useSemesterOptions({ tahunPelajaranId: activeTahunPelajaran?.id });
+
+  // Single Source of Truth Unified Schedule Data
+  const { allJadwal: jadwalList } = useUnifiedScheduleData({
+    tahunPelajaranId: activeTahunPelajaran?.id,
+    semesterId: activeSemester?.id,
+    kelasId: mode === 'KELAS' ? selectedKelasId : undefined,
+    guruId: mode === 'GURU' ? selectedGuruId : undefined,
+    enabled: isOpen,
+  });
 
   // School Profile Hook
   const { data: sekolahProfileRes } = useQuery({
