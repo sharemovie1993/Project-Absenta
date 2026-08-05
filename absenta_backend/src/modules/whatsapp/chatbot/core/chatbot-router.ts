@@ -20,6 +20,18 @@ export class ChatbotRouter {
       return QuickLoginHandler.handleQuickLogin(ctx);
     }
 
+    // 0b. Global Intent Matcher: Tarik Guru JP Command (e.g. !tarikguru, tarik guru jam 1-5, tarik jp)
+    const upperMsg = (messageText || '').toUpperCase();
+    if (
+      upperMsg.includes('TARIK GURU') || 
+      upperMsg.includes('TARIKGURU') || 
+      upperMsg.includes('TARIK JP') || 
+      upperMsg.includes('TARIK JADWAL') || 
+      upperMsg.startsWith('!TARIKGURU')
+    ) {
+      return GuruJadwalHandler.handleTarikGuruJP(ctx);
+    }
+
     // 1. Cek Sesi Dialog FSM yang Sedang Aktif
     const pendingSession = chatbotSessionManager.get(cleanJid);
 
