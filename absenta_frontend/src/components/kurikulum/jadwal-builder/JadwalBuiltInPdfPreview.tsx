@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Printer, Download, User, School, Loader2, FileText, Info } from 'lucide-react';
 import { Button } from '../../ui/Button';

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Users } from 'lucide-react';
 import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
 import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';

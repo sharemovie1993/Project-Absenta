@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BookOpen } from 'lucide-react';
 import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
 import { DropdownOption } from '../../../api/dropdown.api';
