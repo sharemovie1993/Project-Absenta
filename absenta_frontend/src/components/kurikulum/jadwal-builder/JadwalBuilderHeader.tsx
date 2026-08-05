@@ -14,7 +14,8 @@ import {
   AlertTriangle, 
   Clock,
   Printer,
-  MessageSquare
+  MessageSquare,
+  FileUp
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
@@ -48,6 +49,7 @@ interface Props {
   onToggleLeftPanel?: () => void;
   onOpenPrintPreview?: () => void;
   onOpenTarikGuruJP?: () => void;
+  onOpenAscImporter?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -77,6 +79,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onToggleLeftPanel,
   onOpenPrintPreview,
   onOpenTarikGuruJP,
+  onOpenAscImporter,
 }) => {
   return (
     <div className="pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 space-y-3 relative z-20">
@@ -212,6 +215,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               >
                 <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
                 <span>📢 Tarik Guru JP (WA)</span>
+              </Button>
+            )}
+            {onOpenAscImporter && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onOpenAscImporter}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all"
+                title="Impor Jadwal dari File Export XML aSc TimeTables"
+              >
+                <FileUp className="w-3.5 h-3.5" />
+                <span>📥 Import aSc XML</span>
               </Button>
             )}
           </div>

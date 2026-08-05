@@ -119,6 +119,9 @@ model Tenant {
   SKWaliKelasArsip   SKWaliKelasArsip[]
   SarprasLoan        SarprasLoan[]
   SarprasAssetRepair SarprasAssetRepair[]
+  MasterRuangan      MasterRuangan[]
+  JadwalKontrakKbm   JadwalKontrakKbm[]
+  AscImportLog       AscImportLog[]
 
   // TU
   SuratMasuk               SuratMasuk[]
@@ -774,6 +777,7 @@ model Kelas {
   jam_masuk  String? // Opsional: "13:00" untuk shift siang
   jam_pulang String? // Opsional: "17:00"
   is_active  Boolean @default(true)
+  asc_id     String?
 
   created_at                DateTime                   @default(now())
   updated_at                DateTime                   @updatedAt
@@ -784,6 +788,7 @@ model Kelas {
   Siswa                     Siswa[]
   SiswaAkademik             SiswaAkademik[]
   JadwalKBM                 JadwalKBM[]
+  JadwalKontrakKbm          JadwalKontrakKbm[]
   OrganizationalAssignments OrganizationalAssignment[]
   PelanggaranSiswa          PelanggaranSiswa[]
   AttendanceDevice          AttendanceDevice?
@@ -818,6 +823,7 @@ model Guru {
   jenis_ptk             String?                    @default("PENDIDIK") // PENDIDIK atau TENAGA_KEPENDIDIKAN
   max_jp                Int?                       @default(24)
   foto                  String?
+  asc_id                String?
   created_at            DateTime                   @default(now())
   updated_at            DateTime                   @updatedAt
   AbsenGuru             AbsenGuru[]
@@ -836,6 +842,7 @@ model Guru {
   AbsenGerbangGuru      AbsenGerbangGuru[]
   GuruTimeOff           GuruTimeOff[]
   JadwalPiketGuru       JadwalPiketGuru[]
+  JadwalKontrakKbm      JadwalKontrakKbm[]
 
   Member Member?
 
@@ -850,6 +857,7 @@ model Mapel {
   kode_mapel        String?
   tingkat           Int?
   kelompok_mapel    String?             @default("UMUM")
+  asc_id            String?
   created_at        DateTime            @default(now())
   updated_at        DateTime            @updatedAt
   GuruMapel         GuruMapel[]
@@ -861,6 +869,7 @@ model Mapel {
   Kkmp              Kkmp[]
   NilaiSiswa        NilaiSiswa[]
   PerangkatAjar     PerangkatAjar[]
+  JadwalKontrakKbm  JadwalKontrakKbm[]
 
   @@unique([tenant_id, kode_mapel])
   @@index([tenant_id])
@@ -894,6 +903,7 @@ model TahunPelajaran {
   PelanggaranSiswa  PelanggaranSiswa[]
   SupervisiGuru     SupervisiGuru[]
   GuruTimeOff       GuruTimeOff[]
+  JadwalKontrakKbm  JadwalKontrakKbm[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -925,6 +935,7 @@ model Semester {
   PelanggaranSiswa   PelanggaranSiswa[]
   SupervisiGuru      SupervisiGuru[]
   GuruTimeOff        GuruTimeOff[]
+  JadwalKontrakKbm   JadwalKontrakKbm[]
 
   @@index([tenant_id])
 }
@@ -2148,6 +2159,8 @@ model JadwalKBM {
   mapel_id       String? // Nullable
   guru_id        String? // Nullable
   jenis_kegiatan String  @default("KBM")
+  ruangan_id     String? // Nullable (referensi ke MasterRuangan)
+  asc_id         String? // Referensi card ID dari XML aSc TimeTables
 
   // Metadata
   created_at         DateTime @default(now())
@@ -2161,6 +2174,7 @@ model JadwalKBM {
   Kelas          Kelas          @relation(fields: [kelas_id], references: [id])
   Mapel          Mapel?         @relation(fields: [mapel_id], references: [id])
   Guru           Guru?          @relation(fields: [guru_id], references: [id])
+  MasterRuangan  MasterRuangan? @relation(fields: [ruangan_id], references: [id])
 
   // Relation ke Instance Sesi (One-to-Many)
   SesiAbsensi SesiAbsensi[]
@@ -2174,6 +2188,80 @@ model JadwalKBM {
   @@index([tenant_id, guru_id, mapel_id])
   @@index([kelas_id, hari])
   @@index([guru_id, hari])
+}
+
+model MasterRuangan {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  nama_ruangan  String
+  kode_ruangan  String?
+  jenis_ruangan String   @default("TEORI") // TEORI, LAB, BENGKEL, LAPANGAN, AULA
+  kapasitas     Int?     @default(36)
+  asc_id        String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  Tenant           Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  JadwalKBM        JadwalKBM[]
+  JadwalKontrakKbm JadwalKontrakKbm[]
+
+  @@unique([tenant_id, nama_ruangan])
+  @@index([tenant_id])
+}
+
+model JadwalKontrakKbm {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  tahun_pelajaran_id String
+  semester_id        String
+  kelas_id           String
+  guru_id            String?
+  mapel_id           String?
+  ruangan_id         String?
+
+  jumlah_kartu       Int      @default(1)
+  durasi_jp          Int      @default(2)
+  total_jp           Int      @default(2)
+  aturan_blok        String   @default("DOBEL") // TUNGGAL, DOBEL, TIGA, EMPAT, BLOK_PENUH
+  is_pembiasaan      Boolean  @default(false)
+
+  asc_lesson_id      String?
+
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester       @relation(fields: [semester_id], references: [id])
+  Kelas          Kelas          @relation(fields: [kelas_id], references: [id])
+  Mapel          Mapel?         @relation(fields: [mapel_id], references: [id])
+  Guru           Guru?          @relation(fields: [guru_id], references: [id])
+  MasterRuangan  MasterRuangan? @relation(fields: [ruangan_id], references: [id])
+
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, kelas_id])
+  @@index([tenant_id, guru_id])
+}
+
+model AscImportLog {
+  id                   String   @id @default(uuid())
+  tenant_id            String
+  tahun_pelajaran_id   String
+  semester_id          String
+  nama_file            String
+  total_guru_imported  Int      @default(0)
+  total_kelas_imported Int      @default(0)
+  total_mapel_imported Int      @default(0)
+  total_kontrak        Int      @default(0)
+  total_jadwal_cards   Int      @default(0)
+  status               String   @default("SUCCESS")
+  created_by_user_id   String?
+  summary_json         Json?
+  created_at           DateTime @default(now()) @db.Timestamptz
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id, created_at])
 }
 
 model JadwalPiketGuru {

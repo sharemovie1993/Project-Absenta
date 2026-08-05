@@ -12,6 +12,7 @@ import { backupRoutes } from '../backup/routes/backup.routes';
 import { studentCardConfigRoutes } from '../student-card-config/routes/student-card-config.routes';
 import { organizationalRoutes } from '../organizational/routes/organizational.routes';
 import programKeahlianRoutes from '../program-keahlian/routes/program-keahlian.routes';
+import { ascImporterRoutes } from '../asc-importer/routes/asc-importer.routes';
 import { AcademicStatsController } from '../controllers/academic-stats.controller';
 import { UniversalSearchController } from '../controllers/universal-search.controller';
 import { PrepChecklistController } from '../controllers/prep-checklist.controller';
@@ -35,6 +36,7 @@ export async function academicRoutes(fastify: any) {
   await fastify.register(backupRoutes, { prefix: '/backup' });
   await fastify.register(studentCardConfigRoutes, { prefix: '/student-card-config' });
   await fastify.register(programKeahlianRoutes, { prefix: '/program-keahlian' });
+  await fastify.register(ascImporterRoutes, { prefix: '/asc-importer' });
 
   const academicStatsController = new AcademicStatsController();
   const universalSearchController = new UniversalSearchController();

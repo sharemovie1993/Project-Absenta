@@ -41,6 +41,8 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 import { TarikGuruJPModal } from './jadwal-builder/TarikGuruJPModal';
+import { AscImportWizardModal } from './jadwal-builder/AscImportWizardModal';
+import { UnallocatedCardsPanel } from './jadwal-builder/UnallocatedCardsPanel';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
@@ -100,6 +102,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
   const [showLeftPanel, setShowLeftPanel] = useState<boolean>(false);
   const [colorByMode, setColorByMode] = useState<ColorByMode>('MAPEL');
+  const [isAscWizardOpen, setIsAscWizardOpen] = useState<boolean>(false);
 
   const setViewMode = (m: ViewMode) => {
     setViewModeState(m);
@@ -1000,6 +1003,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           onRefreshSchedules={fetchSchedules}
           onOpenPrintPreview={onOpenPrintPreview}
           onOpenTarikGuruJP={() => setTarikGuruModalOpen(true)}
+          onOpenAscImporter={() => setIsAscWizardOpen(true)}
         />
 
         {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}
@@ -1076,6 +1080,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           allJadwal={allJadwal}
           classes={kelasRawList || []}
           gurus={guruRawList || []}
+        />
+
+        {/* Modal Wizard Impor XML aSc TimeTables */}
+        <AscImportWizardModal
+          isOpen={isAscWizardOpen}
+          onClose={() => setIsAscWizardOpen(false)}
+          tahunPelajaranId={tahunPelajaranId}
+          semesterId={semesterId}
+          onSuccessImport={fetchSchedules}
         />
       </div>
     </>
