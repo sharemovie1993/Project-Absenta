@@ -499,15 +499,7 @@ export const renderKurikulumRosterPdf = (
         const item = getSlotData(day, slot);
 
         if (!item) {
-          if (slot === 0) {
-            const defaultActName = DEFAULT_KESISWAAN_SLOT_0[day] || 'Kegiatan Kesiswaan';
-            row.push({
-              content: `${defaultActName}\n(06:30-07:00)`,
-              styles: { fontStyle: 'bold', fillColor: [254, 252, 232], textColor: [146, 64, 14] } // Soft amber for Kesiswaan
-            });
-          } else {
-            row.push('');
-          }
+          row.push('');
           continue;
         }
 
