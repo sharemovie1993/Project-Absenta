@@ -382,6 +382,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
+                      <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Nama di File XML aSc</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
@@ -392,13 +393,41 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
                       .map((t) => {
                         const currentMap = teacherMappings[t.asc_id] || { action: 'CREATE', asc_id: t.asc_id, name: t.name };
+                        const isIgnored = currentMap.action === 'IGNORE';
                         return (
-                          <tr key={t.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <tr key={t.asc_id} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800/50", isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20")}>
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={!isIgnored}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  if (!checked) {
+                                    setTeacherMappings(prev => ({
+                                      ...prev,
+                                      [t.asc_id]: { ...prev[t.asc_id], action: 'IGNORE', target_id: undefined }
+                                    }));
+                                  } else {
+                                    const defaultAction = t.matched_db_id ? 'MATCH' : 'CREATE';
+                                    setTeacherMappings(prev => ({
+                                      ...prev,
+                                      [t.asc_id]: { ...prev[t.asc_id], action: defaultAction, target_id: t.matched_db_id || undefined }
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
+                              />
+                            </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
                               {t.name} {t.code ? <span className="text-slate-400 font-normal">({t.code})</span> : null}
                             </td>
                             <td className="py-2.5 px-4">
-                              {t.match_status === 'EXACT_MATCH' ? (
+                              {isIgnored ? (
+                                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px]">
+                                  🚫 Diabaikan (Jangan Impor)
+                                </Badge>
+                              ) : t.match_status === 'EXACT_MATCH' ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
                                   ✓ Cocok di DB Master ({t.matched_db_name})
                                 </Badge>
@@ -410,10 +439,15 @@ export const AscImportWizardModal: React.FC<Props> = ({
                             </td>
                             <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.target_id || '__CREATE__'}
+                                value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__CREATE__') {
+                                  if (val === '__IGNORE__') {
+                                    setTeacherMappings(prev => ({
+                                      ...prev,
+                                      [t.asc_id]: { ...prev[t.asc_id], target_id: undefined, action: 'IGNORE' }
+                                    }));
+                                  } else if (val === '__CREATE__') {
                                     setTeacherMappings(prev => ({
                                       ...prev,
                                       [t.asc_id]: { ...prev[t.asc_id], target_id: undefined, action: 'CREATE' }
@@ -425,10 +459,16 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
+                                className={cn(
+                                  "w-full text-xs rounded-lg border p-1.5",
+                                  isIgnored
+                                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
+                                    : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                )}
                               >
-                                <option value="__CREATE__">+ Buat Guru Baru "{t.name}"</option>
-                                <optgroup label="Pilih dari Master Guru yang Ada:">
+                                <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Guru Ini</option>
+                                <option value="__CREATE__">➕ Buat Guru Baru "{t.name}"</option>
+                                <optgroup label="Arahkan ke Master Guru yang Ada:">
                                   {analysis.db_teachers.map(dbg => (
                                     <option key={dbg.id} value={dbg.id}>
                                       {dbg.name}
@@ -448,6 +488,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
+                      <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Nama Kelas di File XML</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
@@ -458,13 +499,41 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
                       .map((c) => {
                         const currentMap = classMappings[c.asc_id] || { action: 'CREATE', asc_id: c.asc_id, name: c.name };
+                        const isIgnored = currentMap.action === 'IGNORE';
                         return (
-                          <tr key={c.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <tr key={c.asc_id} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800/50", isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20")}>
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={!isIgnored}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  if (!checked) {
+                                    setClassMappings(prev => ({
+                                      ...prev,
+                                      [c.asc_id]: { ...prev[c.asc_id], action: 'IGNORE', target_id: undefined }
+                                    }));
+                                  } else {
+                                    const defaultAction = c.matched_db_id ? 'MATCH' : 'CREATE';
+                                    setClassMappings(prev => ({
+                                      ...prev,
+                                      [c.asc_id]: { ...prev[c.asc_id], action: defaultAction, target_id: c.matched_db_id || undefined }
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
+                              />
+                            </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
                               {c.name}
                             </td>
                             <td className="py-2.5 px-4">
-                              {c.match_status === 'EXACT_MATCH' ? (
+                              {isIgnored ? (
+                                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px]">
+                                  🚫 Diabaikan (Jangan Impor)
+                                </Badge>
+                              ) : c.match_status === 'EXACT_MATCH' ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
                                   ✓ Cocok di DB Master ({c.matched_db_name})
                                 </Badge>
@@ -476,10 +545,15 @@ export const AscImportWizardModal: React.FC<Props> = ({
                             </td>
                             <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.target_id || '__CREATE__'}
+                                value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__CREATE__') {
+                                  if (val === '__IGNORE__') {
+                                    setClassMappings(prev => ({
+                                      ...prev,
+                                      [c.asc_id]: { ...prev[c.asc_id], target_id: undefined, action: 'IGNORE' }
+                                    }));
+                                  } else if (val === '__CREATE__') {
                                     setClassMappings(prev => ({
                                       ...prev,
                                       [c.asc_id]: { ...prev[c.asc_id], target_id: undefined, action: 'CREATE' }
@@ -491,9 +565,15 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
+                                className={cn(
+                                  "w-full text-xs rounded-lg border p-1.5",
+                                  isIgnored
+                                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
+                                    : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                )}
                               >
-                                <option value="__CREATE__">+ Buat Rombel Baru "{c.name}"</option>
+                                <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Kelas Ini</option>
+                                <option value="__CREATE__">➕ Buat Rombel Baru "{c.name}"</option>
                                 <optgroup label="Arahkan ke Master Rombel yang Ada:">
                                   {analysis.db_classes.map(dbc => (
                                     <option key={dbc.id} value={dbc.id}>
@@ -514,6 +594,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
+                      <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Mata Pelajaran di File XML</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
@@ -524,13 +605,41 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
                       .map((s) => {
                         const currentMap = subjectMappings[s.asc_id] || { action: 'CREATE', asc_id: s.asc_id, name: s.name };
+                        const isIgnored = currentMap.action === 'IGNORE';
                         return (
-                          <tr key={s.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <tr key={s.asc_id} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800/50", isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20")}>
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={!isIgnored}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  if (!checked) {
+                                    setSubjectMappings(prev => ({
+                                      ...prev,
+                                      [s.asc_id]: { ...prev[s.asc_id], action: 'IGNORE', target_id: undefined }
+                                    }));
+                                  } else {
+                                    const defaultAction = s.matched_db_id ? 'MATCH' : 'CREATE';
+                                    setSubjectMappings(prev => ({
+                                      ...prev,
+                                      [s.asc_id]: { ...prev[s.asc_id], action: defaultAction, target_id: s.matched_db_id || undefined }
+                                    }));
+                                  }
+                                }}
+                                className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
+                              />
+                            </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
                               {s.name} {s.code ? <span className="text-slate-400 font-normal">({s.code})</span> : null}
                             </td>
                             <td className="py-2.5 px-4">
-                              {s.match_status === 'EXACT_MATCH' ? (
+                              {isIgnored ? (
+                                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px]">
+                                  🚫 Diabaikan (Jangan Impor)
+                                </Badge>
+                              ) : s.match_status === 'EXACT_MATCH' ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
                                   ✓ Cocok di DB Master ({s.matched_db_name})
                                 </Badge>
@@ -542,10 +651,15 @@ export const AscImportWizardModal: React.FC<Props> = ({
                             </td>
                             <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.target_id || '__CREATE__'}
+                                value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__CREATE__') {
+                                  if (val === '__IGNORE__') {
+                                    setSubjectMappings(prev => ({
+                                      ...prev,
+                                      [s.asc_id]: { ...prev[s.asc_id], target_id: undefined, action: 'IGNORE' }
+                                    }));
+                                  } else if (val === '__CREATE__') {
                                     setSubjectMappings(prev => ({
                                       ...prev,
                                       [s.asc_id]: { ...prev[s.asc_id], target_id: undefined, action: 'CREATE' }
@@ -557,9 +671,15 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
+                                className={cn(
+                                  "w-full text-xs rounded-lg border p-1.5",
+                                  isIgnored
+                                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
+                                    : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                                )}
                               >
-                                <option value="__CREATE__">+ Buat Mapel Baru "{s.name}"</option>
+                                <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Mapel Ini</option>
+                                <option value="__CREATE__">➕ Buat Mapel Baru "{s.name}"</option>
                                 <optgroup label="Arahkan ke Master Mapel yang Ada:">
                                   {analysis.db_subjects.map(dbs => (
                                     <option key={dbs.id} value={dbs.id}>
