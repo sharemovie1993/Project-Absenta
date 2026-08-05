@@ -264,6 +264,7 @@ async function main() {
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.manage.academic, academic.structures.view.list' },
         { label: 'Mata Pelajaran', icon: 'BookOpen', path: '/academic/mapel', required_capability: 'academic.subjects.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Guru Mapel', icon: 'ListChecks', path: '/kurikulum/guru-mapel', required_capability: 'academic.teaching.manage, academic.teaching.view' },
+        { label: 'Jadwal Kontrak KBM', icon: 'Layers', path: '/kurikulum/jadwal-kontrak-kbm', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Wali Kelas', icon: 'UserCheck', path: '/kurikulum/wali-kelas', required_capability: 'academic.homeroom.manage' },
         { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Pengaturan Jam KBM', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },

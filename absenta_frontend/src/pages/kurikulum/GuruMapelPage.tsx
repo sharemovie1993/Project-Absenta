@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { SectionCard } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
@@ -9,7 +10,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { listGuruMapel, importGuruMapelFromExcel } from '../../api/kurikulum/guru-mapel.api';
 import { guruApi, mapelApi } from '../../api/academic.api';
-import { Users, BookOpen, GraduationCap, Download, Upload, FileSpreadsheet, FileText, Sparkles, ChevronRight } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Download, Upload, FileSpreadsheet, FileText, Sparkles, ChevronRight, Layers } from 'lucide-react';
 import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import toast from 'react-hot-toast';
@@ -181,6 +182,13 @@ const GuruMapelPage: React.FC = () => {
           noPadding
           actions={
             <div className="flex items-center gap-2 px-4 py-2">
+              <Link
+                to="/kurikulum/jadwal-kontrak-kbm"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors shadow-sm"
+              >
+                <Layers size={14} />
+                Jadwal Kontrak KBM
+              </Link>
               <button
                 onClick={handleExport}
                 disabled={isExporting}
