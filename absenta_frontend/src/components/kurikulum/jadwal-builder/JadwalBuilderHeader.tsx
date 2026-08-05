@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Clock,
-  Printer
+  Printer,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
@@ -46,6 +47,7 @@ interface Props {
   showLeftPanel?: boolean;
   onToggleLeftPanel?: () => void;
   onOpenPrintPreview?: () => void;
+  onOpenTarikGuruJP?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -199,6 +201,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                 <span>🖨️ Cetak Berkas PDF</span>
               </Button>
             )}
+            {onOpenTarikGuruJP && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenTarikGuruJP}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all rounded-xl shadow-xs"
+                title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                <span>📢 Tarik Guru JP (WA)</span>
+              </Button>
+            )}
           </div>
         )}
 
@@ -226,6 +240,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               >
                 <Printer className="w-3.5 h-3.5 text-purple-500" />
                 <span>🖨️ Cetak Berkas PDF</span>
+              </Button>
+            )}
+            {onOpenTarikGuruJP && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenTarikGuruJP}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all rounded-xl shadow-xs"
+                title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                <span>📢 Tarik Guru JP (WA)</span>
               </Button>
             )}
           </div>

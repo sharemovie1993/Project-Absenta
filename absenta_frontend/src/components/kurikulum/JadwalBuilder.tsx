@@ -40,6 +40,7 @@ import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
 import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
+import { TarikGuruJPModal } from './jadwal-builder/TarikGuruJPModal';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
@@ -213,6 +214,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   };
 
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
+  const [tarikGuruModalOpen, setTarikGuruModalOpen] = useState<boolean>(false);
 
   // ── useQuery: Mapped Mapel for Selected Guru ──────────────────────────────
   const { data: mappedMapelsRes, isLoading: loadingMappedMapels } = useQuery({
@@ -997,6 +999,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           loadingData={loadingData}
           onRefreshSchedules={fetchSchedules}
           onOpenPrintPreview={onOpenPrintPreview}
+          onOpenTarikGuruJP={() => setTarikGuruModalOpen(true)}
         />
 
         {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}
@@ -1064,6 +1067,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             setSelectedGuruId(guruId);
             setBebanModalOpen(false);
           }}
+        />
+
+        {/* Modal Tarik Guru Pada JP (WhatsApp Broadcast Generator) */}
+        <TarikGuruJPModal
+          isOpen={tarikGuruModalOpen}
+          onClose={() => setTarikGuruModalOpen(false)}
+          allJadwal={allJadwal}
+          classes={kelasRawList || []}
+          gurus={guruRawList || []}
         />
       </div>
     </>
