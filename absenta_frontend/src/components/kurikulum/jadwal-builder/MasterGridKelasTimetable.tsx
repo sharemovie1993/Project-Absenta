@@ -15,7 +15,7 @@ interface Props {
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../../constants/day.constants';
 
-export const MasterGridKelasTimetable: React.FC<Props> = ({
+export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
   kelasList,
   allJadwal,
   masterGridHari,
@@ -198,4 +198,4 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});
