@@ -514,21 +514,22 @@ export class AscImporterService {
       const usedClassSlots = new Set<string>();
       const usedGuruSlots = new Set<string>();
 
-      // Detect minimum XML period from all cards (usually 1 = Upacara/Apel, so real KBM starts at period 2)
-      // We offset all periods so the smallest KBM period maps to JAM 1 in Absenta.
-      const allXmlPeriods = xmlCardsArr.map((c: any) => Number(c.period) || 1).filter((p: number) => p > 0);
-      const minXmlPeriod = allXmlPeriods.length > 0 ? Math.min(...allXmlPeriods) : 1;
-      // Offset: XML period 2 (minXmlPeriod) → slot_index 1 (JAM 1)
-      const periodOffset = minXmlPeriod - 1;
-      console.log(`[AscImporter] XML min period: ${minXmlPeriod}, periodOffset applied: -${periodOffset} (so JAM 1 starts at XML period ${minXmlPeriod})`);
+      // XML aSc TimeTables uses 1-based period numbering:
+      //   period 1 = JAM 0 (Pembiasaan: Upacara, Apel Datang, dll.)
+      //   period 2 = JAM 1 (KBM pertama)
+      //   period 3 = JAM 2 ... dst.
+      // Absenta slot_index is 0-based (JAM 0, JAM 1, JAM 2, ...).
+      // Simple constant offset: slot_index = xmlPeriod - 1
+      const PERIOD_OFFSET = 1;
+      console.log(`[AscImporter] Using fixed period offset: XML period N -> slot_index N-${PERIOD_OFFSET} (period 1=JAM 0, period 2=JAM 1, ...)`);
 
       for (const card of xmlCardsArr) {
         const ascLessonId = String(card.lessonid);
         const lessonMeta = lessonMetaMap.get(ascLessonId);
         if (!lessonMeta || !lessonMeta.classIds || lessonMeta.classIds.length === 0) continue;
 
-        const xmlBasePeriod = Number(card.period) || minXmlPeriod; // original XML period (for time lookup)
-        const absBasePeriod = Math.max(1, xmlBasePeriod - periodOffset); // Absenta slot index (JAM 1-based)
+        const xmlBasePeriod = Number(card.period) || 1; // original XML period (for time lookup)
+        const absBasePeriod = Math.max(0, xmlBasePeriod - PERIOD_OFFSET); // Absenta slot_index (JAM 0-based)
         const durasiJp = Number(lessonMeta.periodsPerCard) || 1;
         const daysInput = String(card.days || '');
         const targetDays = AscImporterService.resolveDaysFromXml(daysInput, dynamicDaysdefsMap);
