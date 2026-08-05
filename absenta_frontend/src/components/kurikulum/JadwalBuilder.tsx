@@ -962,16 +962,20 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
       if (res && res.success !== false) {
         toast.success(res.message || 'Jadwal berhasil dikosongkan.');
-        setAllJadwal([]);
-        invalidateJadwalBuilderCache();
-        fetchSchedules();
-        if (onRefresh) onRefresh();
+        try {
+          setAllJadwal([]);
+          invalidateJadwalBuilderCache();
+          fetchSchedules();
+          if (onRefresh) onRefresh();
+        } catch (postErr) {
+          console.warn('[JadwalBuilder] Post-clear refresh warning:', postErr);
+        }
       } else {
         toast.error(res?.message || 'Gagal mengosongkan jadwal');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to clear schedules', err);
-      toast.error('Gagal mengosongkan jadwal KBM');
+      toast.error(err?.message || 'Gagal mengosongkan jadwal KBM');
     }
   };
 

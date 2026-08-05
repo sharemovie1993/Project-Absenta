@@ -530,15 +530,19 @@ export default function JadwalPelajaranPage() {
 
       if (res && res.success !== false) {
         toast.success(res.message || 'Berhasil mengosongkan jadwal KBM.');
-        invalidateAllJadwalCaches();
-        setRefreshKey(k => k + 1);
-        setJadwal([]);
+        try {
+          invalidateAllJadwalCaches();
+          setRefreshKey(k => k + 1);
+          setJadwal([]);
+        } catch (postErr) {
+          console.warn('[JadwalPelajaranPage] Post-clear refresh warning:', postErr);
+        }
       } else {
         toast.error(res?.message || 'Gagal mengosongkan jadwal');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to clear schedules', err);
-      toast.error('Gagal mengosongkan jadwal KBM');
+      toast.error(err?.message || 'Gagal mengosongkan jadwal KBM');
     }
   }, [confirm, isSiswa, defaultKelasId, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, invalidateAllJadwalCaches]);
 
