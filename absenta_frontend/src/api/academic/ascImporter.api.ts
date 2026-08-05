@@ -54,9 +54,6 @@ export async function analyzeAscXml(file: File): Promise<{ success: boolean; dat
       url: '/academic/asc-importer/analyze',
       method: 'POST',
       data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
     },
     { success: false, data: null as any }
   );

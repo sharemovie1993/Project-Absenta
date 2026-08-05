@@ -132,7 +132,8 @@ export const AscImportWizardModal: React.FC<Props> = ({
         toast.error(res.message || 'Gagal menganalisis file XML', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Terjadi kesalahan saat mengunggah file XML', { id: toastId });
+      const serverMsg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat mengunggah file XML';
+      toast.error(serverMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
