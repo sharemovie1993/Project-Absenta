@@ -76,6 +76,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   showLeftPanel = true,
   onToggleLeftPanel,
   onOpenPrintPreview,
+  onOpenTarikGuruJP,
 }) => {
   return (
     <div className="pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 space-y-3 relative z-20">
