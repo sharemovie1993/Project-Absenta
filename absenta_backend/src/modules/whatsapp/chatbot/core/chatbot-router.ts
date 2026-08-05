@@ -71,15 +71,15 @@ export class ChatbotRouter {
     const choice = ctx.commandUpper;
 
     if (choice === '1') return GuruJadwalHandler.handleJadwalHariIni(ctx);
-    if (choice === '2') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
-    if (choice === '3') return GuruSupervisiHandler.handleSupervisi(ctx);
-    if (choice === '4') return GuruPresensiHandler.handlePresensi(ctx);
-    if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
-    if (choice === '6') return GuruJadwalHandler.handleJadwalMingguan(ctx);
+    if (choice === '2') return GuruJadwalHandler.handleJadwalMingguan(ctx);
+    if (choice === '3') return GuruPresensiHandler.handlePresensi(ctx);
+    if (choice === '4') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
+    if (choice === '5') return GuruSupervisiHandler.handleSupervisi(ctx);
+    if (choice === '6') return GuruProfileHandler.handleViewProfile(ctx);
     if (choice === '7') return QuickLoginHandler.handleQuickLogin(ctx);
 
-    if (choice.startsWith('51')) return GuruProfileHandler.handleEditNip(ctx);
-    if (choice.startsWith('52')) return GuruProfileHandler.handleEditEmail(ctx);
+    if (choice.startsWith('61') || choice.startsWith('51')) return GuruProfileHandler.handleEditNip(ctx);
+    if (choice.startsWith('62') || choice.startsWith('52')) return GuruProfileHandler.handleEditEmail(ctx);
 
     if (choice === '' || choice === '0') {
       return formatGuruMenu(ctx.guru.nama_guru);

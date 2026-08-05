@@ -262,11 +262,11 @@ export function formatGuruMenu(nama: string): string {
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
     `[1] 📋 Jadwal Hari Ini\n` +
-    `[2] 🏫 Wali Kelas\n` +
-    `[3] 📊 Supervisi Saya\n` +
-    `[4] ⏰ Presensi Saya\n` +
-    `[5] 👤 Profil Saya\n` +
-    `[6] 📅 Jadwal Mingguan\n` +
+    `[2] 📅 Jadwal Mingguan\n` +
+    `[3] ⏰ Presensi Saya\n` +
+    `[4] 🏫 Wali Kelas\n` +
+    `[5] 📊 Supervisi Saya\n` +
+    `[6] 👤 Profil Saya\n` +
     `[7] 🔑 Quick Login\n` +
     `[0] 🔄 Menu Utama`
   );
@@ -437,49 +437,48 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
     }
   }
 
-  // [1] Jadwal Mengajar & Piket Hari Ini (Via Shared Domain Service)
+  // [1] Jadwal Mengajar & Piket Hari Ini
   if (choice === '1') {
     return GuruJadwalHandler.handleJadwalHariIni({ guru, commandUpper: choice } as any);
   }
 
-  // [2] Daftar Semua Wali Kelas Aktif di Sekolah (Via Shared Domain Service)
+  // [2] Jadwal Mengajar & Piket Minggu Ini
   if (choice === '2') {
-    return GuruWalikelasHandler.handleDaftarWaliKelas({ guru, commandUpper: choice } as any);
-  }
-
-  // [3] Info Supervisi Akademik Saya (Via Shared Domain Service)
-  if (choice === '3') {
-    return GuruSupervisiHandler.handleSupervisi({ guru, commandUpper: choice } as any);
-  }
-
-  // [4] Info & Rekap Presensi Guru (Via Shared Domain Service)
-  if (choice === '4') {
-    return GuruPresensiHandler.handlePresensi({ guru, commandUpper: choice } as any);
-  }
-
-  // [0] atau apapun → tampilkan menu
-  // [6] Jadwal Mengajar & Piket Minggu Ini (Via Shared Domain Service)
-  if (choice === '6') {
     return GuruJadwalHandler.handleJadwalMingguan({ guru, commandUpper: choice } as any);
   }
 
-  // [7] Quick Login Aplikasi Web (Via Shared Domain Service)
+  // [3] Info & Rekap Presensi Guru
+  if (choice === '3') {
+    return GuruPresensiHandler.handlePresensi({ guru, commandUpper: choice } as any);
+  }
+
+  // [4] Daftar Semua Wali Kelas Aktif di Sekolah
+  if (choice === '4') {
+    return GuruWalikelasHandler.handleDaftarWaliKelas({ guru, commandUpper: choice } as any);
+  }
+
+  // [5] Info Supervisi Akademik Saya
+  if (choice === '5') {
+    return GuruSupervisiHandler.handleSupervisi({ guru, commandUpper: choice } as any);
+  }
+
+  // [6] Profil Pribadi Guru
+  if (choice === '6') {
+    return GuruProfileHandler.handleViewProfile({ guru, commandUpper: choice } as any);
+  }
+
+  // [7] Quick Login Aplikasi Web
   if (choice === '7') {
     return QuickLoginHandler.handleQuickLogin({ guru, commandUpper: choice } as any);
   }
 
-  // [5] Profil Pribadi Guru (Via Shared Domain Service)
-  if (choice === '5') {
-    return GuruProfileHandler.handleViewProfile({ guru, commandUpper: choice } as any);
-  }
-
-  // [51] Edit NIP Guru
-  if (choice.startsWith('51')) {
+  // [61] / [51] Edit NIP Guru
+  if (choice.startsWith('61') || choice.startsWith('51')) {
     return GuruProfileHandler.handleEditNip({ guru, commandUpper: choice, messageText: choice, cleanJid: jid || '' } as any);
   }
 
-  // [52] Edit Email Guru
-  if (choice.startsWith('52')) {
+  // [62] / [52] Edit Email Guru
+  if (choice.startsWith('62') || choice.startsWith('52')) {
     return GuruProfileHandler.handleEditEmail({ guru, commandUpper: choice, messageText: choice, cleanJid: jid || '' } as any);
   }
 
