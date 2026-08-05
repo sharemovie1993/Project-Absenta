@@ -32,6 +32,10 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
+import { TarikGuruJPModal } from '@/components/kurikulum/jadwal-builder/TarikGuruJPModal';
+import { useUnifiedScheduleData } from '@/hooks/attendance/useUnifiedScheduleData';
+import { useKelasOptions, useGuruOptions } from '@/components/common';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +255,11 @@ const EmptyChat: React.FC = () => (
 // ─────────────────────────────────────────────────────────────────────────────
 const WhatsAppChatLogPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'chats' | 'groups'>('chats');
+  const [tarikGuruModalOpen, setTarikGuruModalOpen] = useState(false);
+
+  const { allJadwal: unifiedAllJadwal } = useUnifiedScheduleData({});
+  const { rawList: kelasRawList } = useKelasOptions();
+  const { rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
   // Chats state
   const [contacts, setContacts] = useState<WaChatContact[]>([]);
@@ -424,15 +433,26 @@ const WhatsAppChatLogPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button
-                id="wa-chatlog-refresh"
-                onClick={() => viewMode === 'chats' ? fetchContacts(1, false) : fetchGroups()}
-                disabled={loadingContacts || loadingGroups}
-                className="p-2 rounded-full hover:bg-white/10 text-[#aebac1] transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-4 h-4 ${(loadingContacts || loadingGroups) ? 'animate-spin' : ''}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTarikGuruModalOpen(true)}
+                  className="px-2.5 py-1.5 rounded-lg bg-[#00a884] hover:bg-[#008f70] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
+                >
+                  <Megaphone className="w-3.5 h-3.5" />
+                  <span>📢 Tarik Guru JP</span>
+                </button>
+                <button
+                  id="wa-chatlog-refresh"
+                  onClick={() => viewMode === 'chats' ? fetchContacts(1, false) : fetchGroups()}
+                  disabled={loadingContacts || loadingGroups}
+                  className="p-2 rounded-full hover:bg-white/10 text-[#aebac1] transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-4 h-4 ${(loadingContacts || loadingGroups) ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
 
             {/* View Mode Toggle: Chats vs Groups */}
@@ -789,6 +809,14 @@ const WhatsAppChatLogPage: React.FC = () => {
         .wa-scrollbar::-webkit-scrollbar-thumb { background: #374045; border-radius: 3px; }
         .wa-scrollbar::-webkit-scrollbar-thumb:hover { background: #4a5568; }
       `}</style>
+
+      <TarikGuruJPModal
+        isOpen={tarikGuruModalOpen}
+        onClose={() => setTarikGuruModalOpen(false)}
+        allJadwal={unifiedAllJadwal}
+        classes={kelasRawList || []}
+        gurus={guruRawList || []}
+      />
     </OperationalPageLayout>
   );
 };
