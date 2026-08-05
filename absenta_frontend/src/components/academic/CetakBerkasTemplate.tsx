@@ -454,7 +454,22 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
       recordSuratKeluar();
       const link = document.createElement('a');
       link.href = pdfUrl;
-      link.download = `${module}_cetak_berkas_${selectedPrintType}.pdf`;
+
+      const selectedClass = classes.find((c: any) => c.id === selectedClassId);
+      const selectedGuru = gurus.find((g: any) => g.id === selectedGuruId);
+
+      let fileName = `${module}_cetak_berkas_${selectedPrintType}.pdf`;
+      if (selectedPrintType === 'roster_teacher') {
+        const name = selectedGuru?.nama_guru || 'Seluruh Guru';
+        fileName = `Jadwal Mengajar Guru ${name}.pdf`;
+      } else if (selectedPrintType === 'roster') {
+        const name = selectedClass?.nama_kelas || 'Seluruh Kelas';
+        fileName = `Jadwal KBM Kelas ${name}.pdf`;
+      } else if (selectedPrintType === 'calendar') {
+        fileName = `Kalender Akademik Sekolah.pdf`;
+      }
+
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

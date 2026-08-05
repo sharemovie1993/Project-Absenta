@@ -31,12 +31,12 @@ const CetakFormGeneric = lazy(() =>
 
 // Pindahkan static array ke luar komponen untuk mencegah re-creation (DOM Churn)
 const DOC_OPTIONS: DocOption[] = [
-  { value: 'roster', label: '1. JADWAL PELAJARAN MINGGUAN KELAS', requireClass: true },
-  { value: 'roster_teacher', label: '2. JADWAL MENGAJAR GURU (PER GURU)', requireClass: false },
-  { value: 'calendar', label: '3. KALENDER AKADEMIK & HARI EFEKTIF SEKOLAH', requireClass: false },
-  { value: 'leger', label: '4. LEGER NILAI SEMESTER (Segera Hadir)', requireClass: true },
-  { value: 'kkm', label: '5. KKM / KKTP MATA PELAJARAN (Segera Hadir)', requireClass: false },
-  { value: 'rpp', label: '6. BLANKO FORMAT RPP / MODUL AJAR (Segera Hadir)', requireClass: false }
+  { value: 'roster', label: 'Jadwal Kelas', requireClass: true },
+  { value: 'roster_teacher', label: 'Jadwal Guru', requireClass: false },
+  { value: 'calendar', label: 'Kalender Akademik', requireClass: false },
+  { value: 'leger', label: 'Leger Nilai', requireClass: true },
+  { value: 'kkm', label: 'KKM / KKTP', requireClass: false },
+  { value: 'rpp', label: 'RPP / Modul Ajar', requireClass: false }
 ];
 
 interface DocFormProps {

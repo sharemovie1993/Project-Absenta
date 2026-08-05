@@ -142,11 +142,14 @@ export const JadwalBuiltInPdfPreview: React.FC<Props> = ({
 
   const handleDownload = () => {
     if (!pdfBlobUrl) return;
+    const targetKelas = kelasRawList?.find((k: any) => k.id === selectedKelasId);
+    const targetGuru = guruRawList?.find((g: any) => g.id === selectedGuruId);
+    const name = mode === 'KELAS' 
+      ? `Jadwal KBM Kelas ${targetKelas?.nama_kelas || selectedKelasId || 'Seluruh Kelas'}.pdf` 
+      : `Jadwal Mengajar Guru ${targetGuru?.nama_guru || selectedGuruId || 'Seluruh Guru'}.pdf`;
+
     const link = document.createElement('a');
     link.href = pdfBlobUrl;
-    const name = mode === 'KELAS' 
-      ? `Jadwal_KBM_Kelas_${selectedKelasId}.pdf` 
-      : `Jadwal_KBM_Guru_${selectedGuruId}.pdf`;
     link.download = name;
     document.body.appendChild(link);
     link.click();

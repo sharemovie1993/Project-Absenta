@@ -214,10 +214,12 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const title = mode === 'KELAS' 
-        ? `Jadwal_Kelas_${currentKelas?.nama_kelas || 'Selected'}` 
-        : `Jadwal_Guru_${currentGuru?.nama_guru || 'Selected'}`;
-      link.setAttribute('download', `${title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+      const targetKelas = kelasRawList?.find((k: any) => k.id === selectedKelasId);
+      const targetGuru = guruRawList?.find((g: any) => g.id === selectedGuruId);
+      const name = mode === 'KELAS' 
+        ? `Jadwal KBM Kelas ${targetKelas?.nama_kelas || 'Seluruh Kelas'}.pdf` 
+        : `Jadwal Mengajar Guru ${targetGuru?.nama_guru || 'Seluruh Guru'}.pdf`;
+      link.setAttribute('download', name);
       document.body.appendChild(link);
       link.click();
       link.remove();
