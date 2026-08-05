@@ -128,29 +128,28 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
 
                 {/* Slot Cells with Consecutive Aggregation */}
                 {isSemuaHari
-                  ? DAYS.map((day) => {
-                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; items: JadwalKBM[] } )[]>((acc, slotIdx, idx, arr) => {
-                        if (acc.length > 0) {
-                          const last = acc[acc.length - 1];
-                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
-                          if (remainingInLast > 1) return acc;
-                        }
-
+                  ? DAYS.map((day, dayIdx) => {
+                      const mergedCells: { slot: number; slotIdxInArr: number; colSpan: number; items: JadwalKBM[] }[] = [];
+                      let i = 0;
+                      while (i < slots.length) {
+                        const slotIdx = slots[i];
                         const teacherSlots = guruSlotMap.get(`${guru.id}_${day}_${slotIdx}`) || [];
                         if (teacherSlots.length === 0) {
-                          acc.push({ slot: slotIdx, colSpan: 1, items: [] });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, items: [] });
+                          i++;
+                          continue;
                         }
                         if (teacherSlots.length > 1) {
-                          acc.push({ slot: slotIdx, colSpan: 1, items: teacherSlots });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, items: teacherSlots });
+                          i++;
+                          continue;
                         }
 
                         const firstItem = teacherSlots[0];
                         let colSpan = 1;
-                        let nextIdx = idx + 1;
-                        while (nextIdx < arr.length) {
-                          const nextSlot = arr[nextIdx];
+                        let nextIdx = i + 1;
+                        while (nextIdx < slots.length) {
+                          const nextSlot = slots[nextIdx];
                           const nextTeacherSlots = guruSlotMap.get(`${guru.id}_${day}_${nextSlot}`) || [];
                           if (
                             nextTeacherSlots.length === 1 &&
@@ -165,11 +164,11 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             break;
                           }
                         }
-                        acc.push({ slot: slotIdx, colSpan, items: teacherSlots });
-                        return acc;
-                      }, []);
+                        mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan, items: teacherSlots });
+                        i += colSpan;
+                      }
 
-                      return mergedCells.map(({ slot: slotIdx, colSpan, items: teacherSlots }) => {
+                      return mergedCells.map(({ slot: slotIdx, slotIdxInArr, colSpan, items: teacherSlots }) => {
                         const isConflict = teacherSlots.length > 1;
                         const item = teacherSlots[0];
                         const mapelStyle = item
@@ -178,10 +177,12 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
                           : null;
 
+                        const startCol = 2 + (dayIdx * slots.length) + slotIdxInArr;
+
                         return (
                           <div
                             key={`${day}-${slotIdx}`}
-                            style={{ gridColumn: `span ${colSpan}` }}
+                            style={{ gridColumn: `${startCol} / span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {isConflict ? (
@@ -219,28 +220,27 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                       });
                     })
                   : (() => {
-                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; items: JadwalKBM[] } )[]>((acc, slotIdx, idx, arr) => {
-                        if (acc.length > 0) {
-                          const last = acc[acc.length - 1];
-                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
-                          if (remainingInLast > 1) return acc;
-                        }
-
+                      const mergedCells: { slot: number; slotIdxInArr: number; colSpan: number; items: JadwalKBM[] }[] = [];
+                      let i = 0;
+                      while (i < slots.length) {
+                        const slotIdx = slots[i];
                         const teacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${slotIdx}`) || [];
                         if (teacherSlots.length === 0) {
-                          acc.push({ slot: slotIdx, colSpan: 1, items: [] });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, items: [] });
+                          i++;
+                          continue;
                         }
                         if (teacherSlots.length > 1) {
-                          acc.push({ slot: slotIdx, colSpan: 1, items: teacherSlots });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, items: teacherSlots });
+                          i++;
+                          continue;
                         }
 
                         const firstItem = teacherSlots[0];
                         let colSpan = 1;
-                        let nextIdx = idx + 1;
-                        while (nextIdx < arr.length) {
-                          const nextSlot = arr[nextIdx];
+                        let nextIdx = i + 1;
+                        while (nextIdx < slots.length) {
+                          const nextSlot = slots[nextIdx];
                           const nextTeacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${nextSlot}`) || [];
                           if (
                             nextTeacherSlots.length === 1 &&
@@ -255,11 +255,11 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             break;
                           }
                         }
-                        acc.push({ slot: slotIdx, colSpan, items: teacherSlots });
-                        return acc;
-                      }, []);
+                        mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan, items: teacherSlots });
+                        i += colSpan;
+                      }
 
-                      return mergedCells.map(({ slot: slotIdx, colSpan, items: teacherSlots }) => {
+                      return mergedCells.map(({ slot: slotIdx, slotIdxInArr, colSpan, items: teacherSlots }) => {
                         const isConflict = teacherSlots.length > 1;
                         const item = teacherSlots[0];
                         const mapelStyle = item
@@ -268,10 +268,12 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
                           : null;
 
+                        const startCol = 2 + slotIdxInArr;
+
                         return (
                           <div
                             key={slotIdx}
-                            style={{ gridColumn: `span ${colSpan}` }}
+                            style={{ gridColumn: `${startCol} / span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {isConflict ? (

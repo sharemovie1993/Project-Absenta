@@ -125,24 +125,22 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
 
                 {/* Slot Cells with Consecutive Aggregation */}
                 {isSemuaHari
-                  ? DAYS.map((day) => {
-                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; item: JadwalKBM | undefined } )[]>((acc, slotIdx, idx, arr) => {
-                        if (acc.length > 0) {
-                          const last = acc[acc.length - 1];
-                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
-                          if (remainingInLast > 1) return acc;
-                        }
-
+                  ? DAYS.map((day, dayIdx) => {
+                      const mergedCells: { slot: number; slotIdxInArr: number; colSpan: number; item: JadwalKBM | undefined }[] = [];
+                      let i = 0;
+                      while (i < slots.length) {
+                        const slotIdx = slots[i];
                         const item = kelasSlotMap.get(`${kelas.value}_${day}_${slotIdx}`);
                         if (!item) {
-                          acc.push({ slot: slotIdx, colSpan: 1, item: undefined });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, item: undefined });
+                          i++;
+                          continue;
                         }
 
                         let colSpan = 1;
-                        let nextIdx = idx + 1;
-                        while (nextIdx < arr.length) {
-                          const nextSlot = arr[nextIdx];
+                        let nextIdx = i + 1;
+                        while (nextIdx < slots.length) {
+                          const nextSlot = slots[nextIdx];
                           const nextItem = kelasSlotMap.get(`${kelas.value}_${day}_${nextSlot}`);
                           if (
                             nextItem &&
@@ -157,21 +155,23 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                             break;
                           }
                         }
-                        acc.push({ slot: slotIdx, colSpan, item });
-                        return acc;
-                      }, []);
+                        mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan, item });
+                        i += colSpan;
+                      }
 
-                      return mergedCells.map(({ slot: slotIdx, colSpan, item }) => {
+                      return mergedCells.map(({ slot: slotIdx, slotIdxInArr, colSpan, item }) => {
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
                             : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
                           : null;
 
+                        const startCol = 2 + (dayIdx * slots.length) + slotIdxInArr;
+
                         return (
                           <div
                             key={`${day}-${slotIdx}`}
-                            style={{ gridColumn: `span ${colSpan}` }}
+                            style={{ gridColumn: `${startCol} / span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {item ? (
@@ -202,23 +202,21 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                       });
                     })
                   : (() => {
-                      const mergedCells = slots.reduce<( { slot: number; colSpan: number; item: JadwalKBM | undefined } )[]>((acc, slotIdx, idx, arr) => {
-                        if (acc.length > 0) {
-                          const last = acc[acc.length - 1];
-                          const remainingInLast = last.colSpan - (idx - (arr.indexOf(last.slot)));
-                          if (remainingInLast > 1) return acc;
-                        }
-
+                      const mergedCells: { slot: number; slotIdxInArr: number; colSpan: number; item: JadwalKBM | undefined }[] = [];
+                      let i = 0;
+                      while (i < slots.length) {
+                        const slotIdx = slots[i];
                         const item = kelasSlotMap.get(`${kelas.value}_${masterGridHari}_${slotIdx}`);
                         if (!item) {
-                          acc.push({ slot: slotIdx, colSpan: 1, item: undefined });
-                          return acc;
+                          mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan: 1, item: undefined });
+                          i++;
+                          continue;
                         }
 
                         let colSpan = 1;
-                        let nextIdx = idx + 1;
-                        while (nextIdx < arr.length) {
-                          const nextSlot = arr[nextIdx];
+                        let nextIdx = i + 1;
+                        while (nextIdx < slots.length) {
+                          const nextSlot = slots[nextIdx];
                           const nextItem = kelasSlotMap.get(`${kelas.value}_${masterGridHari}_${nextSlot}`);
                           if (
                             nextItem &&
@@ -233,21 +231,23 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                             break;
                           }
                         }
-                        acc.push({ slot: slotIdx, colSpan, item });
-                        return acc;
-                      }, []);
+                        mergedCells.push({ slot: slotIdx, slotIdxInArr: i, colSpan, item });
+                        i += colSpan;
+                      }
 
-                      return mergedCells.map(({ slot: slotIdx, colSpan, item }) => {
+                      return mergedCells.map(({ slot: slotIdx, slotIdxInArr, colSpan, item }) => {
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
                             : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
                           : null;
 
+                        const startCol = 2 + slotIdxInArr;
+
                         return (
                           <div
                             key={slotIdx}
-                            style={{ gridColumn: `span ${colSpan}` }}
+                            style={{ gridColumn: `${startCol} / span ${colSpan}` }}
                             className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center"
                           >
                             {item ? (
