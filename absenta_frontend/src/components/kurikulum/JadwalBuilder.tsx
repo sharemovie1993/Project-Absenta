@@ -40,6 +40,7 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
+import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
 const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -158,20 +159,32 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   // ── useQuery: All Schedules for real-time conflict checking ───────────────
   const { data: schedulesRes, isLoading: loadingData, refetch: fetchSchedules } = useQuery({
-    queryKey: ['jadwal-kbm-all-builder', tahunPelajaranId, semesterId],
-    queryFn: () => (tahunPelajaranId && semesterId) ? getJadwalKBM({
-      tahun_pelajaran_id: tahunPelajaranId,
-      semester_id: semesterId
-    }).catch(() => null) : null,
+    queryKey: ['jadwal-kbm-all-builder', tahunPelajaranId, semesterId, selectedGuruId, selectedKelasId, viewMode],
+    queryFn: () => {
+      if (!tahunPelajaranId || !semesterId) return null;
+      const params: any = {
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      };
+      if (viewMode === 'GURU' && selectedGuruId) {
+        params.guru_id = selectedGuruId;
+      } else if (viewMode === 'KELAS' && selectedKelasId) {
+        params.kelas_id = selectedKelasId;
+      }
+      return getJadwalKBM(params).catch(() => null);
+    },
     enabled: !!tahunPelajaranId && !!semesterId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   });
 
   const [localJadwal, setLocalJadwal] = useState<JadwalKBM[]>([]);
 
   useEffect(() => {
-    if (schedulesRes?.data) {
-      setLocalJadwal(schedulesRes.data);
+    if (schedulesRes) {
+      const list = Array.isArray(schedulesRes)
+        ? schedulesRes
+        : (Array.isArray((schedulesRes as any).data) ? (schedulesRes as any).data : []);
+      setLocalJadwal(list);
     }
   }, [schedulesRes]);
 
@@ -407,12 +420,13 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   }, []);
 
   // Resolve slot time dynamically based on the class shift assignment
-  const resolveSlotTime = (targetKelasId: string, slotIndex: number): { start: string; end: string } => {
+  const resolveSlotTime = (targetKelasId: string, slotIndex: number, day: string = 'SELASA'): { start: string; end: string } => {
     if (shiftJamPelajaran) {
       const assignedShiftId = shiftJamPelajaran.class_assignments?.[targetKelasId] || 'pagi';
       const shift = shiftJamPelajaran.shifts?.find((s: any) => s.id === assignedShiftId) || shiftJamPelajaran.shifts?.[0];
       if (shift) {
-        const slot = shift.slots?.find((sl: any) => sl.slot === slotIndex);
+        const slotsForDay = getSlotsForDay(shift, day);
+        const slot = slotsForDay?.find((sl: any) => sl.slot === slotIndex);
         if (slot) {
           return { start: slot.start, end: slot.end };
         }
@@ -530,27 +544,32 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   // Find slot data for grid rendering
   const getSlotData = (day: string, slotIndex: number) => {
+    const normDay = String(day || '').trim().toUpperCase();
+    const normSlot = Number(slotIndex);
+    const normGuruId = String(selectedGuruId || '').trim();
+    const normKelasId = String(selectedKelasId || '').trim();
+
     if (viewMode === 'KELAS') {
       return allJadwal.find(j => 
-        j.hari === day && 
-        j.slot_index === slotIndex && 
-        j.kelas_id === selectedKelasId
+        String(j.hari || '').trim().toUpperCase() === normDay && 
+        Number(j.slot_index) === normSlot && 
+        String(j.kelas_id || '').trim() === normKelasId
       );
     } else {
       // 1. Search for selected teacher's own schedule
       const ownSchedule = allJadwal.find(j => 
-        j.hari === day && 
-        j.guru_id === selectedGuruId &&
-        j.slot_index === slotIndex
+        String(j.hari || '').trim().toUpperCase() === normDay && 
+        String(j.guru_id || '').trim() === normGuruId &&
+        Number(j.slot_index) === normSlot
       );
       if (ownSchedule) return ownSchedule;
 
       // 2. If no own schedule, check if the target class is occupied by another teacher
-      if (selectedKelasId) {
+      if (normKelasId) {
         const foreignSchedule = allJadwal.find(j => 
-          j.hari === day && 
-          j.slot_index === slotIndex && 
-          j.kelas_id === selectedKelasId
+          String(j.hari || '').trim().toUpperCase() === normDay && 
+          Number(j.slot_index) === normSlot && 
+          String(j.kelas_id || '').trim() === normKelasId
         );
         if (foreignSchedule) {
           return {

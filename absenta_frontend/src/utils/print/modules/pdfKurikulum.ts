@@ -439,11 +439,39 @@ export const renderKurikulumRosterPdf = (
       12: "16:15-17:00",
     };
 
+    // Resolve slot time using general pattern (SELASA - RABU - KAMIS) or tenant shift config
+    const resolveHeaderSlotTime = (slotNum: number): string => {
+      if (slotNum === 0) return SLOT_TIME_FALLBACK[0];
+      // 1. Try to find from groupJadwal on SELASA/RABU/KAMIS
+      const generalDayMatch = groupJadwal.find(j => 
+        ['SELASA', 'RABU', 'KAMIS'].includes(j.hari) && 
+        Number(j.slot_index) === slotNum && 
+        j.jam_mulai && j.jam_selesai
+      );
+      if (generalDayMatch) {
+        return `${generalDayMatch.jam_mulai}-${generalDayMatch.jam_selesai}`;
+      }
+
+      // 2. Try to resolve from tenant shift config if available
+      const shiftConfig = tenantInfo?.shift_jam_pelajaran;
+      if (shiftConfig && shiftConfig.shifts && shiftConfig.shifts.length > 0) {
+        const shift = shiftConfig.shifts[0];
+        const dayPatternSlots = shift.day_patterns?.['SELASA']?.slots || shift.slots;
+        const matchedSlot = dayPatternSlots?.find((s: any) => s.slot === slotNum);
+        if (matchedSlot) {
+          return `${matchedSlot.start}-${matchedSlot.end}`;
+        }
+      }
+
+      // 3. Fallback
+      return SLOT_TIME_FALLBACK[slotNum] || '';
+    };
+
     const head = [
       [
         'HARI',
         ...SLOTS.map(slot => {
-          const time = SLOT_TIME_FALLBACK[slot] || '';
+          const time = resolveHeaderSlotTime(slot);
           return slot === 0 ? `JAM 0\n(KESISWAAN)` : `JAM ${slot}\n(${time})`;
         })
       ]
@@ -501,7 +529,7 @@ export const renderKurikulumRosterPdf = (
 
         skipCount = colSpan - 1;
 
-        // Resolve display text
+        // Resolve display text and time range
         const act = getActivityInfo(item.jenis_kegiatan);
         const isKbm = 
           !item.jenis_kegiatan || 
@@ -509,13 +537,19 @@ export const renderKurikulumRosterPdf = (
           (act && act.tipe?.toUpperCase() === 'KBM');
         const rawSubjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
         const subjectName = getMapelAbbreviation(rawSubjectName);
+
+        const lastSlotItem = getSlotData(day, SLOTS[i + colSpan - 1]) || item;
+        const startTime = item.jam_mulai || SLOT_TIME_FALLBACK[slot]?.split('-')[0] || '';
+        const endTime = lastSlotItem.jam_selesai || item.jam_selesai || SLOT_TIME_FALLBACK[SLOTS[i + colSpan - 1]]?.split('-')[1] || '';
+        const timeText = (startTime && endTime) ? `(${startTime}-${endTime})` : '';
+
         let cellText = '';
         if (printType === 'roster_teacher') {
           const targetClass = item.Kelas?.nama_kelas || 'Kelas';
-          cellText = `${targetClass.toUpperCase()}\n${subjectName}`;
+          cellText = `${targetClass.toUpperCase()}\n${subjectName}${timeText ? `\n${timeText}` : ''}`;
         } else {
           const teacher = item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru';
-          cellText = `${subjectName.toUpperCase()}\n${teacher}`;
+          cellText = `${subjectName.toUpperCase()}\n${teacher}${timeText ? `\n${timeText}` : ''}`;
         }
 
         if (colSpan > 1) {

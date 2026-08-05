@@ -15,7 +15,7 @@ interface Props {
   slots: number[];
   loadingData: boolean;
   savingSlot: string | null;
-  resolveSlotTime: (targetKelasId: string, slotIndex: number) => { start: string; end: string };
+  resolveSlotTime: (targetKelasId: string, slotIndex: number, day?: string) => { start: string; end: string };
   getSlotData: (day: string, slotIndex: number) => any;
   checkConflict: (day: string, slotIndex: number, targetKelasId: string) => any;
   onSlotClick: (day: string, slotIndex: number) => void;
@@ -80,6 +80,9 @@ export const SingleGridTimetable: React.FC<Props> = ({
                       <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                         {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                       </div>
+                      <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                        {item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} - ${item.jam_selesai}` : `${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).start} - ${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).end}`}
+                      </div>
                     </>
                   ) : (
                     <>
@@ -92,6 +95,9 @@ export const SingleGridTimetable: React.FC<Props> = ({
                           : item.Guru?.nama_guru ||
                             item.Guru?.User?.full_name ||
                             (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
+                      </div>
+                      <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                        {item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} - ${item.jam_selesai}` : `${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).start} - ${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).end}`}
                       </div>
                     </>
                   )}

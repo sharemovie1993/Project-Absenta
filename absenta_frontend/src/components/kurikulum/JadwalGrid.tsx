@@ -212,7 +212,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
             HARI / WAKTU
           </div>
           {SLOTS.map(slot => {
-            const time = resolveSlotTime('SENIN', selectedKelasId || '', slot);
+            const time = resolveSlotTime('SELASA', selectedKelasId || '', slot);
             return (
               <div 
                 key={slot} 

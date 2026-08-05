@@ -143,7 +143,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
+                                title={`${day} Jam ${slotIdx}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
                               >
                                 <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate leading-none">
                                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
@@ -176,7 +176,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                             <div
                               className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                               style={{ borderLeftColor: mapelStyle?.dotHex }}
-                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
+                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}`}
                             >
                               <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
                                 {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}

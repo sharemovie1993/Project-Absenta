@@ -155,7 +155,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
+                                title={`${day} Jam ${slotIdx}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
                               >
                                 <span className="font-black text-[9px] text-indigo-700 dark:text-indigo-300 truncate leading-none">
                                   {item.Kelas?.nama_kelas}
@@ -197,7 +197,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                             <div
                               className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                               style={{ borderLeftColor: mapelStyle?.dotHex }}
-                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
+                              title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}${item.jam_mulai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : ''}`}
                             >
                               <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
                                 {item.Kelas?.nama_kelas}
