@@ -23,15 +23,6 @@ interface Props {
   initialGuruId?: string;
 }
 
-const DEFAULT_KESISWAAN_SLOT_0: Record<string, string> = {
-  'SENIN': 'Upacara Bendera',
-  'SELASA': 'Pembiasaan & Literasi',
-  'RABU': 'Sholat Duha / Keagamaan',
-  'KAMIS': 'Kultum & Literasi',
-  'JUMAT': 'Yasinan / Jumat Bersih',
-  'SABTU': 'Senam & Ekstrakurikuler',
-};
-
 const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
   0: { start: "06:30", end: "07:00" },
   1: { start: "07:00", end: "07:45" },
@@ -567,21 +558,6 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                         const isFocused = !fokusMapelId || (item && item.mapel_id === fokusMapelId);
 
                         if (!item) {
-                          if (slotIndex === 0) {
-                            return (
-                              <td key={`${h}-0`} className="p-1.5 border-r last:border-r-0 border-slate-400 bg-amber-50/60 text-center align-middle">
-                                <div className="space-y-0.5">
-                                  <div className="font-black text-[10px] text-amber-900 uppercase leading-tight">
-                                    {DEFAULT_KESISWAAN_SLOT_0[h] || 'Kegiatan Kesiswaan'}
-                                  </div>
-                                  <div className="text-[8.5px] font-bold text-amber-700/80">
-                                    [Kesiswaan]
-                                  </div>
-                                </div>
-                              </td>
-                            );
-                          }
-
                           return (
                             <td key={`${h}-${slotIndex}`} className="p-1.5 border-r last:border-r-0 border-slate-300 text-slate-300 text-[9px]">
                               -
@@ -600,7 +576,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                             {slotIndex === 0 ? (
                               <div className="space-y-0.5">
                                 <div className="font-black text-[10px] text-amber-900 uppercase leading-tight">
-                                  {item.Mapel?.nama_mapel || item.nama || item.jenis_kegiatan || DEFAULT_KESISWAAN_SLOT_0[h] || 'Kegiatan Kesiswaan'}
+                                  {item.Mapel?.nama_mapel || item.nama || item.jenis_kegiatan || 'PEMBIASAAN'}
                                 </div>
                                 <div className="text-[8.5px] font-bold text-amber-700/80">
                                   [Kesiswaan]

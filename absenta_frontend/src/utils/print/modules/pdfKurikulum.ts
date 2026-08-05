@@ -415,15 +415,6 @@ export const renderKurikulumRosterPdf = (
 
     const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-    const DEFAULT_KESISWAAN_SLOT_0: Record<string, string> = {
-      'SENIN': 'Upacara Bendera',
-      'SELASA': 'Pembiasaan & Literasi',
-      'RABU': 'Sholat Duha / Keagamaan',
-      'KAMIS': 'Kultum & Literasi',
-      'JUMAT': 'Yasinan / Jumat Bersih',
-      'SABTU': 'Senam & Ekstrakurikuler',
-    };
-
     const SLOT_TIME_FALLBACK: Record<number, string> = {
       0: "06:30-07:00",
       1: "07:00-07:45",
@@ -498,14 +489,6 @@ export const renderKurikulumRosterPdf = (
         const item = getSlotData(day, slot);
 
         if (!item) {
-          if (slot === 0) {
-            const defaultKesiswaanName = DEFAULT_KESISWAAN_SLOT_0[day] || 'Upacara / Pembiasaan';
-            row.push({
-              content: `${defaultKesiswaanName}\n[Kesiswaan]`,
-              styles: { fillColor: [254, 243, 199], textColor: [120, 53, 15], fontStyle: 'bold', fontSize: 6.5, halign: 'center', valign: 'middle' }
-            });
-            continue;
-          }
           row.push('');
           continue;
         }
@@ -541,7 +524,7 @@ export const renderKurikulumRosterPdf = (
 
         let rawSubjectName = '';
         if (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) {
-          rawSubjectName = item.Mapel?.nama_mapel || act?.nama || DEFAULT_KESISWAAN_SLOT_0[day] || 'Pembiasaan';
+          rawSubjectName = item.Mapel?.nama_mapel || item.nama || act?.nama || 'PEMBIASAAN';
         } else if (isKbm && item.Mapel?.nama_mapel) {
           rawSubjectName = item.Mapel.nama_mapel;
         } else {
