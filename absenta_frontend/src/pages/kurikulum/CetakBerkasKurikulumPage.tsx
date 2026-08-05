@@ -6,7 +6,7 @@ import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { getJadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
 import { isRoutineKesiswaanActivity } from '../../hooks/attendance/useJadwalKegiatan';
-import { parseDaysArray } from '../../hooks/attendance/useUnifiedScheduleData';
+import { buildPembiasaanJadwalItems } from '../../hooks/attendance/useUnifiedScheduleData';
 import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '@/components/ui/Loader';
@@ -185,48 +185,15 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
           ? kegiatanRes
           : (Array.isArray((kegiatanRes as any)?.data) ? (kegiatanRes as any).data : []);
 
-        const pembiasaanItems: any[] = [];
-        rawKegiatan.filter(isRoutineKesiswaanActivity).forEach((keg: any) => {
-          const days = parseDaysArray(keg.hari);
-          const targetKelasIds = parseDaysArray(keg.target_kelas_ids);
-          const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
-
-          const activeClassIds = isTargetAll
-            ? (classes && classes.length > 0
-                ? Array.from(new Set([...classes.map(k => k.id), 'all']))
-                : (kelasId && kelasId !== 'all' ? [kelasId, 'all'] : ['all']))
-            : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
-
-          const rawName = keg.nama || 'PEMBIASAAN';
-          const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
-            ? rawName.toUpperCase()
-            : `PEMBIASAAN ${rawName.toUpperCase()}`;
-
-          days.forEach(dayStr => {
-            const upperDay = dayStr.toUpperCase();
-            activeClassIds.forEach(kId => {
-              pembiasaanItems.push({
-                id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-                tenant_id: keg.tenant_id,
-                tahun_pelajaran_id: tpId || '',
-                semester_id: semId || '',
-                kelas_id: kId,
-                guru_id: guruId || 'all',
-                hari: upperDay,
-                slot_index: 0,
-                jam_mulai: keg.waktu_mulai || '06:30',
-                jam_selesai: keg.waktu_selesai || '07:00',
-                jenis_kegiatan: 'PEMBIASAAN',
-                is_locked: true,
-                is_pembiasaan: true,
-                target_semua_kelas: keg.target_semua_kelas,
-                Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
-                Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-                Guru: undefined,
-              });
-            });
-          });
-        });
+        const pembiasaanFiltered = rawKegiatan.filter(isRoutineKesiswaanActivity);
+        const pembiasaanItems = buildPembiasaanJadwalItems(
+          pembiasaanFiltered,
+          classes,
+          tpId,
+          semId,
+          kelasId,
+          guruId
+        );
 
         jadwalList = [...rawKbm, ...pembiasaanItems];
         jenisKegiatanList = Array.isArray((jenisData as any)?.data) ? (jenisData as any).data : (Array.isArray(jenisData) ? jenisData : []);

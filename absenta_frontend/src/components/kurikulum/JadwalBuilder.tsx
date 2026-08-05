@@ -80,7 +80,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const queryClient = useQueryClient();
 
   const invalidateJadwalBuilderCache = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+    queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
     queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });

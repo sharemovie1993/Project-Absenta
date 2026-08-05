@@ -25,6 +25,63 @@ export function parseDaysArray(field: any): string[] {
   return [];
 }
 
+export function buildPembiasaanJadwalItems(
+  pembiasaanList: any[],
+  classes: any[] = [],
+  tahunPelajaranId?: string,
+  semesterId?: string,
+  kelasId?: string,
+  guruId?: string
+): JadwalKBM[] {
+  if (!pembiasaanList || pembiasaanList.length === 0) return [];
+
+  const items: JadwalKBM[] = [];
+
+  pembiasaanList.forEach((keg: any) => {
+    const days = parseDaysArray(keg.hari);
+    const targetKelasIds = parseDaysArray(keg.target_kelas_ids);
+    const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
+
+    const activeClassIds = isTargetAll
+      ? (classes && classes.length > 0
+          ? Array.from(new Set([...classes.map(k => k.id), 'all']))
+          : (kelasId && kelasId !== 'all' ? [kelasId, 'all'] : ['all']))
+      : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
+
+    const rawName = keg.nama || 'PEMBIASAAN';
+    const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
+      ? rawName.toUpperCase()
+      : `PEMBIASAAN ${rawName.toUpperCase()}`;
+
+    days.forEach(dayStr => {
+      const upperDay = dayStr.toUpperCase();
+      activeClassIds.forEach(kId => {
+        items.push({
+          id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+          tenant_id: keg.tenant_id,
+          tahun_pelajaran_id: tahunPelajaranId || '',
+          semester_id: semesterId || '',
+          kelas_id: kId,
+          guru_id: guruId || 'all',
+          hari: upperDay as any,
+          slot_index: 0,
+          jam_mulai: keg.waktu_mulai || '06:30',
+          jam_selesai: keg.waktu_selesai || '07:00',
+          jenis_kegiatan: 'PEMBIASAAN',
+          is_locked: true,
+          is_pembiasaan: true,
+          target_semua_kelas: keg.target_semua_kelas,
+          Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
+          Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
+          Guru: undefined,
+        } as any);
+      });
+    });
+  });
+
+  return items;
+}
+
 /**
  * Single Source of Truth Hook combining Jadwal KBM (lessons) and Jadwal Kegiatan (routine activities).
  * Ensures Visual Builder, PDF Printer, and Document Previews always receive 100% identical schedule items.
@@ -55,53 +112,14 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
 
   // 3. Transform routine activities into JadwalKBM-shaped items (slot_index: 0)
   const pembiasaanJadwalItems = useMemo(() => {
-    if (!pembiasaanList || pembiasaanList.length === 0) return [];
-
-    const items: JadwalKBM[] = [];
-
-    pembiasaanList.forEach((keg: any) => {
-      const days = parseDaysArray(keg.hari);
-      const targetKelasIds = parseDaysArray(keg.target_kelas_ids);
-      const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
-
-      const activeClassIds = isTargetAll
-        ? (kelasRawList && kelasRawList.length > 0
-            ? Array.from(new Set([...kelasRawList.map(k => k.id), 'all']))
-            : (kelasId && kelasId !== 'all' ? [kelasId, 'all'] : ['all']))
-        : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
-
-      const rawName = keg.nama || 'PEMBIASAAN';
-      const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
-        ? rawName.toUpperCase()
-        : `PEMBIASAAN ${rawName.toUpperCase()}`;
-
-      days.forEach(dayStr => {
-        const upperDay = dayStr.toUpperCase();
-        activeClassIds.forEach(kId => {
-          items.push({
-            id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-            tenant_id: keg.tenant_id,
-            tahun_pelajaran_id: tahunPelajaranId || '',
-            semester_id: semesterId || '',
-            kelas_id: kId,
-            guru_id: guruId || 'all',
-            hari: upperDay as any,
-            slot_index: 0,
-            jam_mulai: keg.waktu_mulai || '06:30',
-            jam_selesai: keg.waktu_selesai || '07:00',
-            jenis_kegiatan: 'PEMBIASAAN',
-            is_locked: true,
-            is_pembiasaan: true,
-            target_semua_kelas: keg.target_semua_kelas,
-            Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
-            Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-            Guru: undefined,
-          } as any);
-        });
-      });
-    });
-
-    return items;
+    return buildPembiasaanJadwalItems(
+      pembiasaanList,
+      kelasRawList,
+      tahunPelajaranId,
+      semesterId,
+      kelasId,
+      guruId
+    );
   }, [pembiasaanList, kelasRawList, tahunPelajaranId, semesterId, kelasId, guruId]);
 
   // 4. Unified Single Source of Truth List (KBM + Routine Activities)
