@@ -479,8 +479,7 @@ export const renderKurikulumRosterPdf = (
 
     const getSlotData = (dayStr: string, slotNum: number) => {
       return groupJadwal.find(j => 
-        j.hari === dayStr && 
-        (Number(j.slot_index) === slotNum || (j.jam_mulai && j.jam_mulai.startsWith(SLOT_TIME_FALLBACK[slotNum]?.split('-')[0] || '')))
+        j.hari === dayStr && Number(j.slot_index) === slotNum
       );
     };
 

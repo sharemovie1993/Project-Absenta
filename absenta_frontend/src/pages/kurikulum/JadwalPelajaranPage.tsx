@@ -334,7 +334,7 @@ export default function JadwalPelajaranPage() {
 
       return [...pembiasaanItems, ...kbmItems, ...piketItems] as JadwalKBM[];
     },
-    enabled: viewMode === 'grid' && !!selectedTahunId && !!selectedSemesterId,
+    enabled: !!selectedTahunId && !!selectedSemesterId,
     staleTime: 5 * 60 * 1000,
   });
 
