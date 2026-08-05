@@ -25,7 +25,7 @@ import {
   clearJadwalKBM,
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
-import { useJadwalKegiatan } from '../../hooks/attendance/useJadwalKegiatan';
+import { useUnifiedScheduleData } from '../../hooks/attendance/useUnifiedScheduleData';
 import { getMapelColor } from '../../utils/mapelColorHelper';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
 import { type DropdownOption } from '../../api/dropdown.api';
@@ -158,115 +158,21 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
   }, [guruList, selectedGuruId]);
 
-  // ── useQuery: All Schedules for real-time conflict checking ───────────────
-  const { data: schedulesRes, isLoading: loadingData, refetch: fetchSchedules } = useQuery({
-    queryKey: ['jadwal-kbm-all-builder', tahunPelajaranId, semesterId, selectedGuruId, selectedKelasId, viewMode],
-    queryFn: () => {
-      if (!tahunPelajaranId || !semesterId) return null;
-      const params: any = {
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
-      };
-      if (viewMode === 'GURU' && selectedGuruId) {
-        params.guru_id = selectedGuruId;
-      } else if (viewMode === 'KELAS' && selectedKelasId) {
-        params.kelas_id = selectedKelasId;
-      }
-      return getJadwalKBM(params).catch(() => null);
-    },
-    enabled: !!tahunPelajaranId && !!semesterId,
-    staleTime: 0,
+  // ── Single Source of Truth Unified Schedule Data ───────────────────────────
+  const { allJadwal: unifiedJadwal, isLoading: loadingData, fetchSchedules } = useUnifiedScheduleData({
+    tahunPelajaranId,
+    semesterId,
+    kelasId: viewMode === 'KELAS' ? selectedKelasId : undefined,
+    guruId: viewMode === 'GURU' ? selectedGuruId : undefined,
   });
 
   const [localJadwal, setLocalJadwal] = useState<JadwalKBM[]>([]);
 
   useEffect(() => {
-    if (schedulesRes) {
-      const list = Array.isArray(schedulesRes)
-        ? schedulesRes
-        : (Array.isArray((schedulesRes as any).data) ? (schedulesRes as any).data : []);
-      setLocalJadwal(list);
-    }
-  }, [schedulesRes]);
+    setLocalJadwal(unifiedJadwal);
+  }, [unifiedJadwal]);
 
-  const { pembiasaanList } = useJadwalKegiatan({ aktif: true });
-
-  const pembiasaanJadwalItems = useMemo(() => {
-    if (!pembiasaanList || pembiasaanList.length === 0) return [];
-    
-    const items: JadwalKBM[] = [];
-    const parseArr = (field: any): string[] => {
-      if (!field) return [];
-      if (Array.isArray(field)) return field;
-      if (typeof field === 'string') {
-        try {
-          const parsed = JSON.parse(field);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {}
-        return field.split(',').map(s => s.trim()).filter(Boolean);
-      }
-      return [];
-    };
-
-    pembiasaanList.forEach((keg: any) => {
-      const days = parseArr(keg.hari);
-      const targetKelasIds = parseArr(keg.target_kelas_ids);
-      const mapelNama = keg.nama ? (keg.nama.toUpperCase().startsWith('PEMBIASAAN') ? keg.nama.toUpperCase() : `PEMBIASAAN ${keg.nama.toUpperCase()}`) : 'PEMBIASAAN';
-
-      days.forEach(dayStr => {
-        const upperDay = dayStr.toUpperCase();
-
-        if (keg.target_semua_kelas) {
-          const activeClassIds = (kelasRawList && kelasRawList.length > 0) ? kelasRawList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
-          activeClassIds.forEach(kId => {
-            items.push({
-              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-              tenant_id: keg.tenant_id,
-              tahun_pelajaran_id: tahunPelajaranId || '',
-              semester_id: semesterId || '',
-              kelas_id: kId,
-              hari: upperDay,
-              slot_index: 0,
-              jam_mulai: keg.waktu_mulai || '06:30',
-              jam_selesai: keg.waktu_selesai || '07:00',
-              jenis_kegiatan: 'PEMBIASAAN',
-              is_locked: true,
-              is_pembiasaan: true,
-              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
-              Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-              Guru: undefined
-            } as any);
-          });
-        } else {
-          targetKelasIds.forEach(kId => {
-            items.push({
-              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-              tenant_id: keg.tenant_id,
-              tahun_pelajaran_id: tahunPelajaranId || '',
-              semester_id: semesterId || '',
-              kelas_id: kId,
-              hari: upperDay,
-              slot_index: 0,
-              jam_mulai: keg.waktu_mulai || '06:30',
-              jam_selesai: keg.waktu_selesai || '07:00',
-              jenis_kegiatan: 'PEMBIASAAN',
-              is_locked: true,
-              is_pembiasaan: true,
-              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
-              Kelas: { id: kId, nama_kelas: 'Kelas Terpilih' },
-              Guru: undefined
-            } as any);
-          });
-        }
-      });
-    });
-
-    return items;
-  }, [pembiasaanList, kelasRawList, tahunPelajaranId, semesterId, selectedKelasId]);
-
-  const allJadwal = useMemo(() => {
-    return [...localJadwal, ...pembiasaanJadwalItems];
-  }, [localJadwal, pembiasaanJadwalItems]);
+  const allJadwal = localJadwal;
 
   const setAllJadwal = setLocalJadwal;
 
