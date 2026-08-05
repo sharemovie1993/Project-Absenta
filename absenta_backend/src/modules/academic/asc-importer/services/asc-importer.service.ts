@@ -156,17 +156,18 @@ export class AscImporterService {
 
   /**
    * Smart Day-Pattern Slot Resolver:
-   * 1. Checks DB Tenant 'shift_jam_pelajaran' config for day-specific bell schedule (Senin 07:50, Jumat 07:35, etc.)
-   * 2. Fallback to XML <periods> starttime & endtime
-   * 3. Fallback to default 07:00
+   * 1. Checks DB Tenant 'shift_jam_pelajaran' config for day-specific bell schedule
+   * 2. Fallback to XML <periods> starttime & endtime (using original XML period number)
+   * 3. Returns null if no time found — caller must skip this slot (NO fallback generation)
    */
   static async resolveSlotTimesForDay(
     tenantId: string,
     kelasId: string,
     dayName: string,
-    slotIndex: number,
+    absSlotIndex: number,     // Absenta slot index (JAM 1-based, for DB config lookup)
+    xmlPeriodNum: number,     // Original XML period number (for XML period-time lookup)
     xmlPeriodTimes: Record<number, { start: string; end: string }>
-  ): Promise<{ start: string; end: string }> {
+  ): Promise<{ start: string; end: string } | null> {
     try {
       const config = await prisma.config.findFirst({
         where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' },
@@ -180,7 +181,7 @@ export class AscImporterService {
         const dayPattern = shift?.day_patterns?.[dayName] || shift?.slots;
 
         if (Array.isArray(dayPattern)) {
-          const matchedSlot = dayPattern.find((sl: any) => Number(sl.slot || sl.slot_index) === slotIndex);
+          const matchedSlot = dayPattern.find((sl: any) => Number(sl.slot || sl.slot_index) === absSlotIndex);
           if (matchedSlot?.start && matchedSlot?.end) {
             return { start: matchedSlot.start, end: matchedSlot.end };
           }
@@ -190,20 +191,13 @@ export class AscImporterService {
       console.warn('[AscImporter] Failed to parse tenant shift_jam_pelajaran config, falling back to XML period times', err);
     }
 
-    if (xmlPeriodTimes[slotIndex]) {
-      return xmlPeriodTimes[slotIndex];
+    // Use the original XML period number for time lookup
+    if (xmlPeriodTimes[xmlPeriodNum]) {
+      return xmlPeriodTimes[xmlPeriodNum];
     }
 
-    // Dynamic 45-minute fallback slot calculation per slotIndex
-    const startTotalMin = 7 * 60 + slotIndex * 45;
-    const endTotalMin = startTotalMin + 45;
-
-    const startH = String(Math.floor(startTotalMin / 60)).padStart(2, '0');
-    const startM = String(startTotalMin % 60).padStart(2, '0');
-    const endH = String(Math.floor(endTotalMin / 60)).padStart(2, '0');
-    const endM = String(endTotalMin % 60).padStart(2, '0');
-
-    return { start: `${startH}:${startM}`, end: `${endH}:${endM}` };
+    // NO fallback — return null so caller can skip this slot
+    return null;
   }
 
   static async analyzeAscXml(tenantId: string, xmlContent: string) {
@@ -520,12 +514,21 @@ export class AscImporterService {
       const usedClassSlots = new Set<string>();
       const usedGuruSlots = new Set<string>();
 
+      // Detect minimum XML period from all cards (usually 1 = Upacara/Apel, so real KBM starts at period 2)
+      // We offset all periods so the smallest KBM period maps to JAM 1 in Absenta.
+      const allXmlPeriods = xmlCardsArr.map((c: any) => Number(c.period) || 1).filter((p: number) => p > 0);
+      const minXmlPeriod = allXmlPeriods.length > 0 ? Math.min(...allXmlPeriods) : 1;
+      // Offset: XML period 2 (minXmlPeriod) → slot_index 1 (JAM 1)
+      const periodOffset = minXmlPeriod - 1;
+      console.log(`[AscImporter] XML min period: ${minXmlPeriod}, periodOffset applied: -${periodOffset} (so JAM 1 starts at XML period ${minXmlPeriod})`);
+
       for (const card of xmlCardsArr) {
         const ascLessonId = String(card.lessonid);
         const lessonMeta = lessonMetaMap.get(ascLessonId);
         if (!lessonMeta || !lessonMeta.classIds || lessonMeta.classIds.length === 0) continue;
 
-        const basePeriodIndex = Number(card.period) || 0;
+        const xmlBasePeriod = Number(card.period) || minXmlPeriod; // original XML period (for time lookup)
+        const absBasePeriod = Math.max(1, xmlBasePeriod - periodOffset); // Absenta slot index (JAM 1-based)
         const durasiJp = Number(lessonMeta.periodsPerCard) || 1;
         const daysInput = String(card.days || '');
         const targetDays = AscImporterService.resolveDaysFromXml(daysInput, dynamicDaysdefsMap);
@@ -533,18 +536,26 @@ export class AscImporterService {
         for (const dayName of targetDays) {
           for (const targetClassId of lessonMeta.classIds) {
             for (let pOffset = 0; pOffset < durasiJp; pOffset++) {
-              const slotIdx = basePeriodIndex + pOffset;
+              const absSlotIdx = absBasePeriod + pOffset;    // Absenta JAM index (stored as slot_index)
+              const xmlPeriodNum = xmlBasePeriod + pOffset;  // XML period number (for time lookup)
 
               const slotTimes = await AscImporterService.resolveSlotTimesForDay(
                 tenantId,
                 targetClassId,
                 dayName,
-                slotIdx,
+                absSlotIdx,
+                xmlPeriodNum,
                 dynamicPeriodTimes
               );
 
-              const classKey = `${targetClassId}_${dayName}_${slotIdx}`;
-              const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotIdx}` : null;
+              // Skip slot if no period time found — NO fallback generation
+              if (!slotTimes) {
+                console.warn(`[AscImporter] Skipping slot: no time found for XML period ${xmlPeriodNum} (abs JAM ${absSlotIdx}), day ${dayName}, class ${targetClassId}`);
+                continue;
+              }
+
+              const classKey = `${targetClassId}_${dayName}_${absSlotIdx}`;
+              const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${absSlotIdx}` : null;
 
               if (usedClassSlots.has(classKey)) {
                 continue;
@@ -565,11 +576,11 @@ export class AscImporterService {
                 guru_id: lessonMeta.guruId,
                 mapel_id: lessonMeta.mapelId,
                 hari: dayName as any,
-                slot_index: slotIdx,
+                slot_index: absSlotIdx,
                 jam_mulai: slotTimes.start,
                 jam_selesai: slotTimes.end,
                 jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-                asc_id: String(card.id || `${ascLessonId}-${dayName}-${slotIdx}`),
+                asc_id: String(card.id || `${ascLessonId}-${dayName}-${absSlotIdx}`),
                 created_by_user_id: input.user_id,
               });
             }
