@@ -46,6 +46,7 @@ import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.a
 import { getKelasList } from '../../api/academic/kelas.api';
 import { getGuruList } from '../../api/academic/guru.api';
 import { piketGuruApi } from '../../api/piketGuru.api';
+import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
@@ -213,7 +214,7 @@ export default function JadwalPelajaranPage() {
     queryKey: ['jadwal-pelajaran-grid', targetKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey],
     queryFn: async () => {
       if (!selectedTahunId || !selectedSemesterId) return [];
-      const [res, piketRes] = await Promise.all([
+      const [res, piketRes, kegiatanRes] = await Promise.all([
         getJadwalKBM({
           kelas_id: targetKelasId || undefined,
           guru_id: selectedGuruId || undefined,
@@ -226,11 +227,13 @@ export default function JadwalPelajaranPage() {
               tahun_pelajaran_id: selectedTahunId,
               semester_id: selectedSemesterId
             }).catch(() => ({ success: false, data: [] }))
-          : Promise.resolve({ success: false, data: [] })
+          : Promise.resolve({ success: false, data: [] }),
+        getJadwalKegiatan({ aktif: true }).catch(() => ({ success: false, data: [] }))
       ]);
 
       const kbmItems = res.data || [];
       const piketItems: any[] = [];
+      const pembiasaanItems: any[] = [];
 
       if (piketRes?.success && Array.isArray(piketRes.data)) {
         piketRes.data.forEach((p: any) => {
@@ -254,7 +257,56 @@ export default function JadwalPelajaranPage() {
         });
       }
 
-      return [...kbmItems, ...piketItems] as JadwalKBM[];
+      if (kegiatanRes?.success && Array.isArray(kegiatanRes.data)) {
+        const parseArray = (val: any): string[] => {
+          if (!val) return [];
+          if (Array.isArray(val)) return val;
+          if (typeof val === 'string') {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) return parsed;
+            } catch {}
+            return val.split(',').map(s => s.trim()).filter(Boolean);
+          }
+          return [];
+        };
+
+        kegiatanRes.data.forEach((keg: any) => {
+          const jTipe = (keg.jenis_kegiatan || '').toUpperCase();
+          const isPembiasaan = jTipe === 'PEMBIASAAN' || (keg.nama || '').toLowerCase().includes('apel') || (keg.nama || '').toLowerCase().includes('duha') || (keg.nama || '').toLowerCase().includes('ketarunaan');
+          if (!isPembiasaan) return;
+
+          const days = parseArray(keg.hari);
+          const targetKelasIds = parseArray(keg.target_kelas_ids);
+
+          if (targetKelasId && !keg.target_semua_kelas && !targetKelasIds.includes(targetKelasId)) {
+            return;
+          }
+
+          days.forEach((dStr: string) => {
+            const upperDay = dStr.toUpperCase();
+            pembiasaanItems.push({
+              id: `pembiasaan-${keg.id}-${upperDay}`,
+              tenant_id: keg.tenant_id,
+              tahun_pelajaran_id: selectedTahunId,
+              semester_id: selectedSemesterId,
+              kelas_id: targetKelasId || 'ALL',
+              hari: upperDay,
+              slot_index: 0,
+              jam_mulai: keg.waktu_mulai || '06:30',
+              jam_selesai: keg.waktu_selesai || '07:00',
+              jenis_kegiatan: 'PEMBIASAAN',
+              is_locked: true,
+              is_pembiasaan: true,
+              Mapel: { nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+              Kelas: { id: targetKelasId || 'ALL', nama_kelas: keg.target_semua_kelas ? 'Seluruh Kelas' : 'Kelas Terpilih' },
+              Guru: { nama_guru: 'Pembiasaan Sekolah' }
+            });
+          });
+        });
+      }
+
+      return [...pembiasaanItems, ...kbmItems, ...piketItems] as JadwalKBM[];
     },
     enabled: viewMode === 'grid' && !!selectedTahunId && !!selectedSemesterId,
     staleTime: 5 * 60 * 1000,

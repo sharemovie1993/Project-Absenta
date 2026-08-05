@@ -25,6 +25,7 @@ import {
   clearJadwalKBM,
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
+import { getJadwalKegiatan } from '../../api/attendance/jadwalKegiatan.api';
 import { getMapelColor } from '../../utils/mapelColorHelper';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
 import { type DropdownOption } from '../../api/dropdown.api';
@@ -188,7 +189,66 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
   }, [schedulesRes]);
 
-  const allJadwal = localJadwal;
+  const { data: kesiswaanKegiatanRes } = useQuery({
+    queryKey: ['jadwal-kegiatan-builder'],
+    queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pembiasaanJadwalItems = useMemo(() => {
+    if (!kesiswaanKegiatanRes?.success || !Array.isArray(kesiswaanKegiatanRes.data)) return [];
+    
+    const items: JadwalKBM[] = [];
+    const parseArr = (field: any): string[] => {
+      if (!field) return [];
+      if (Array.isArray(field)) return field;
+      if (typeof field === 'string') {
+        try {
+          const parsed = JSON.parse(field);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return field.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    };
+
+    kesiswaanKegiatanRes.data.forEach((keg: any) => {
+      const jTipe = (keg.jenis_kegiatan || '').toUpperCase();
+      const isPembiasaan = jTipe === 'PEMBIASAAN' || (keg.nama || '').toLowerCase().includes('apel') || (keg.nama || '').toLowerCase().includes('duha') || (keg.nama || '').toLowerCase().includes('ketarunaan');
+      if (!isPembiasaan) return;
+
+      const days = parseArr(keg.hari);
+      const targetKelasIds = parseArr(keg.target_kelas_ids);
+
+      days.forEach(dayStr => {
+        const upperDay = dayStr.toUpperCase();
+        items.push({
+          id: `pembiasaan-${keg.id}-${upperDay}`,
+          tenant_id: keg.tenant_id,
+          tahun_pelajaran_id: tahunPelajaranId || '',
+          semester_id: semesterId || '',
+          kelas_id: keg.target_semua_kelas ? (selectedKelasId || 'ALL') : (targetKelasIds[0] || selectedKelasId || 'ALL'),
+          hari: upperDay,
+          slot_index: 0,
+          jam_mulai: keg.waktu_mulai || '06:30',
+          jam_selesai: keg.waktu_selesai || '07:00',
+          jenis_kegiatan: 'PEMBIASAAN',
+          is_locked: true,
+          is_pembiasaan: true,
+          Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
+          Kelas: { id: 'all-kelas', nama_kelas: keg.target_semua_kelas ? 'Seluruh Kelas' : 'Kelas Terpilih' },
+          Guru: { nama_guru: 'Pembiasaan Sekolah' }
+        } as any);
+      });
+    });
+
+    return items;
+  }, [kesiswaanKegiatanRes, tahunPelajaranId, semesterId, selectedKelasId]);
+
+  const allJadwal = useMemo(() => {
+    return [...localJadwal, ...pembiasaanJadwalItems];
+  }, [localJadwal, pembiasaanJadwalItems]);
+
   const setAllJadwal = setLocalJadwal;
 
   // Confirmation Dialog State

@@ -56,29 +56,46 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
       >
         {item ? (
           (() => {
-            const mapelStyle = colorByMode === 'GURU'
-              ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
-              : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
+            const isPembiasaan = item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN';
+            const mapelStyle = isPembiasaan
+              ? { bg: 'bg-amber-50/80 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800', dotHex: '#f59e0b' }
+              : colorByMode === 'GURU'
+                ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
+                : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
             return (
               <div
                 className={cn(
                   'h-full w-full rounded-xl p-1.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4 min-h-[40px]',
-                  item.isForeign
-                    ? 'bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed'
-                    : `${mapelStyle.bg} ${mapelStyle.border}`
+                  isPembiasaan
+                    ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                    : item.isForeign
+                      ? 'bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed'
+                      : `${mapelStyle.bg} ${mapelStyle.border}`
                 )}
                 style={{
-                  borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex,
+                  borderLeftColor: isPembiasaan ? '#f59e0b' : item.isForeign ? undefined : mapelStyle.dotHex,
                 }}
               >
                 <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
                   {(() => {
                     const dynamicSlot = resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day);
-                    const displayStart = dynamicSlot?.start || item.jam_mulai || '';
-                    const displayEnd = dynamicSlot?.end || item.jam_selesai || '';
+                    const displayStart = item.jam_mulai || dynamicSlot?.start || '';
+                    const displayEnd = item.jam_selesai || dynamicSlot?.end || '';
                     return (
                       <>
-                        {viewMode === 'KELAS' ? (
+                        {isPembiasaan ? (
+                          <>
+                            <div className="text-[8.5px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">
+                              PEMBIASAAN
+                            </div>
+                            <div className="text-[9px] font-extrabold uppercase text-amber-950 dark:text-amber-100 leading-tight truncate">
+                              {item.Mapel?.nama_mapel || item.nama}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400 leading-none mt-0.5">
+                              {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
+                            </div>
+                          </>
+                        ) : viewMode === 'KELAS' ? (
                           <>
                             <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                               {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}

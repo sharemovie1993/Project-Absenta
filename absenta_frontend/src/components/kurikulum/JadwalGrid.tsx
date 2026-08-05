@@ -19,10 +19,11 @@ interface JadwalGridProps {
 }
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
-const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1); // 12 Jam Pelajaran
+const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // Mock time mapping for slots
 const SLOT_TIME: Record<number, string> = {
+  0: "06:30 - 07:00",
   1: "07:00 - 07:45",
   2: "07:45 - 08:30",
   3: "08:30 - 09:15",
