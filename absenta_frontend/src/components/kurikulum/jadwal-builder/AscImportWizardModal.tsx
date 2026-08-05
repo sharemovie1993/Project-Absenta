@@ -24,13 +24,56 @@ import {
 } from '../../../api/academic/ascImporter.api';
 import { cn } from '../../../lib/utils';
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  tahunPelajaranId: string;
-  semesterId: string;
-  onSuccessImport?: () => void;
+const ASC_STORAGE_KEY = 'absenta_asc_import_mappings_v1';
+
+interface SavedMappingPref {
+  action: 'MATCH' | 'CREATE' | 'IGNORE';
+  target_id?: string;
 }
+
+interface SavedMappingMap {
+  teachers: Record<string, SavedMappingPref>;
+  classes: Record<string, SavedMappingPref>;
+  subjects: Record<string, SavedMappingPref>;
+}
+
+const loadSavedMappings = (): SavedMappingMap => {
+  try {
+    const raw = localStorage.getItem(ASC_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to load saved aSc import mappings', e);
+  }
+  return { teachers: {}, classes: {}, subjects: {} };
+};
+
+const saveMappingsToStorage = (
+  teachers: Record<string, EntityMapping>,
+  classes: Record<string, EntityMapping>,
+  subjects: Record<string, EntityMapping>
+) => {
+  try {
+    const data: SavedMappingMap = { teachers: {}, classes: {}, subjects: {} };
+    Object.values(teachers).forEach(t => {
+      const entry = { action: t.action, target_id: t.target_id };
+      data.teachers[t.name.toLowerCase().trim()] = entry;
+      data.teachers[t.asc_id] = entry;
+    });
+    Object.values(classes).forEach(c => {
+      const entry = { action: c.action, target_id: c.target_id };
+      data.classes[c.name.toLowerCase().trim()] = entry;
+      data.classes[c.asc_id] = entry;
+    });
+    Object.values(subjects).forEach(s => {
+      const entry = { action: s.action, target_id: s.target_id };
+      data.subjects[s.name.toLowerCase().trim()] = entry;
+      data.subjects[s.asc_id] = entry;
+    });
+    localStorage.setItem(ASC_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Failed to save aSc import mappings', e);
+  }
+};
 
 export const AscImportWizardModal: React.FC<Props> = ({
   isOpen,
@@ -102,42 +145,81 @@ export const AscImportWizardModal: React.FC<Props> = ({
       if (res.success && res.data) {
         setAnalysis(res.data);
 
-        // Initialize Teacher Mappings
+        // Load saved mapping preferences from localStorage memory
+        const saved = loadSavedMappings();
+
+        // Initialize Teacher Mappings with persistent memory restore
         const initTeachers: Record<string, EntityMapping> = {};
         res.data.teachers.forEach(t => {
-          initTeachers[t.asc_id] = {
-            asc_id: t.asc_id,
-            name: t.name,
-            code: t.code,
-            target_id: t.matched_db_id || undefined,
-            action: t.matched_db_id ? 'MATCH' : 'CREATE',
-          };
+          const keyName = t.name.toLowerCase().trim();
+          const savedPref = saved.teachers[t.asc_id] || saved.teachers[keyName];
+          if (savedPref) {
+            initTeachers[t.asc_id] = {
+              asc_id: t.asc_id,
+              name: t.name,
+              code: t.code,
+              target_id: savedPref.target_id || (t.matched_db_id || undefined),
+              action: savedPref.action,
+            };
+          } else {
+            initTeachers[t.asc_id] = {
+              asc_id: t.asc_id,
+              name: t.name,
+              code: t.code,
+              target_id: t.matched_db_id || undefined,
+              action: t.matched_db_id ? 'MATCH' : 'CREATE',
+            };
+          }
         });
         setTeacherMappings(initTeachers);
 
-        // Initialize Class Mappings
+        // Initialize Class Mappings with persistent memory restore
         const initClasses: Record<string, EntityMapping> = {};
         res.data.classes.forEach(c => {
-          initClasses[c.asc_id] = {
-            asc_id: c.asc_id,
-            name: c.name,
-            code: c.code,
-            target_id: c.matched_db_id || undefined,
-            action: c.matched_db_id ? 'MATCH' : 'CREATE',
-          };
+          const keyName = c.name.toLowerCase().trim();
+          const savedPref = saved.classes[c.asc_id] || saved.classes[keyName];
+          if (savedPref) {
+            initClasses[c.asc_id] = {
+              asc_id: c.asc_id,
+              name: c.name,
+              code: c.code,
+              target_id: savedPref.target_id || (c.matched_db_id || undefined),
+              action: savedPref.action,
+            };
+          } else {
+            initClasses[c.asc_id] = {
+              asc_id: c.asc_id,
+              name: c.name,
+              code: c.code,
+              target_id: c.matched_db_id || undefined,
+              action: c.matched_db_id ? 'MATCH' : 'CREATE',
+            };
+          }
         });
         setClassMappings(initClasses);
 
-        // Initialize Subject Mappings
+        // Initialize Subject Mappings with persistent memory restore
         const initSubjects: Record<string, EntityMapping> = {};
         res.data.subjects.forEach(s => {
-          initSubjects[s.asc_id] = {
-            asc_id: s.asc_id,
-            name: s.name,
-            code: s.code,
-            target_id: s.matched_db_id || undefined,
-            action: s.matched_db_id ? 'MATCH' : 'CREATE',
-          };
+          const keyName = s.name.toLowerCase().trim();
+          const savedPref = saved.subjects[s.asc_id] || saved.subjects[keyName];
+          if (savedPref) {
+            initSubjects[s.asc_id] = {
+              asc_id: s.asc_id,
+              name: s.name,
+              code: s.code,
+              target_id: savedPref.target_id || (s.matched_db_id || undefined),
+              action: savedPref.action,
+            };
+          } else {
+            initSubjects[s.asc_id] = {
+              asc_id: s.asc_id,
+              name: s.name,
+              code: s.code,
+              target_id: s.matched_db_id || undefined,
+              action: s.matched_db_id ? 'MATCH' : 'CREATE',
+            };
+          }
         });
         setSubjectMappings(initSubjects);
 
@@ -160,6 +242,76 @@ export const AscImportWizardModal: React.FC<Props> = ({
       toast.error(serverMsg, { id: toastId });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkSetAction = (tab: 'GURU' | 'KELAS' | 'MAPEL', action: 'CHECK_ALL' | 'UNCHECK_ALL') => {
+    if (tab === 'GURU') {
+      setTeacherMappings(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => {
+          if (action === 'UNCHECK_ALL') {
+            next[id] = { ...next[id], action: 'IGNORE', target_id: undefined };
+          } else {
+            const originalMatch = analysis?.teachers.find(t => t.asc_id === id)?.matched_db_id;
+            next[id] = { ...next[id], action: originalMatch ? 'MATCH' : 'CREATE', target_id: originalMatch || undefined };
+          }
+        });
+        saveMappingsToStorage(next, classMappings, subjectMappings);
+        return next;
+      });
+    } else if (tab === 'KELAS') {
+      setClassMappings(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => {
+          if (action === 'UNCHECK_ALL') {
+            next[id] = { ...next[id], action: 'IGNORE', target_id: undefined };
+          } else {
+            const originalMatch = analysis?.classes.find(c => c.asc_id === id)?.matched_db_id;
+            next[id] = { ...next[id], action: originalMatch ? 'MATCH' : 'CREATE', target_id: originalMatch || undefined };
+          }
+        });
+        saveMappingsToStorage(teacherMappings, next, subjectMappings);
+        return next;
+      });
+    } else if (tab === 'MAPEL') {
+      setSubjectMappings(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => {
+          if (action === 'UNCHECK_ALL') {
+            next[id] = { ...next[id], action: 'IGNORE', target_id: undefined };
+          } else {
+            const originalMatch = analysis?.subjects.find(s => s.asc_id === id)?.matched_db_id;
+            next[id] = { ...next[id], action: originalMatch ? 'MATCH' : 'CREATE', target_id: originalMatch || undefined };
+          }
+        });
+        saveMappingsToStorage(teacherMappings, classMappings, next);
+        return next;
+      });
+    }
+  };
+
+  const handleResetSavedPreferences = () => {
+    localStorage.removeItem(ASC_STORAGE_KEY);
+    toast.success('Memori pilihan impor berhasil dibersihkan ke default auto-match.');
+    if (analysis) {
+      const initTeachers: Record<string, EntityMapping> = {};
+      analysis.teachers.forEach(t => {
+        initTeachers[t.asc_id] = { asc_id: t.asc_id, name: t.name, code: t.code, target_id: t.matched_db_id || undefined, action: t.matched_db_id ? 'MATCH' : 'CREATE' };
+      });
+      setTeacherMappings(initTeachers);
+
+      const initClasses: Record<string, EntityMapping> = {};
+      analysis.classes.forEach(c => {
+        initClasses[c.asc_id] = { asc_id: c.asc_id, name: c.name, code: c.code, target_id: c.matched_db_id || undefined, action: c.matched_db_id ? 'MATCH' : 'CREATE' };
+      });
+      setClassMappings(initClasses);
+
+      const initSubjects: Record<string, EntityMapping> = {};
+      analysis.subjects.forEach(s => {
+        initSubjects[s.asc_id] = { asc_id: s.asc_id, name: s.name, code: s.code, target_id: s.matched_db_id || undefined, action: s.matched_db_id ? 'MATCH' : 'CREATE' };
+      });
+      setSubjectMappings(initSubjects);
     }
   };
 
@@ -376,6 +528,43 @@ export const AscImportWizardModal: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Toolbar Kontrol Masal & Memori Presisten */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl text-xs border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Aksi Masal ({activeTab}):</span>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSetAction(activeTab, 'CHECK_ALL')}
+                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Centang Semua ({activeTab})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSetAction(activeTab, 'UNCHECK_ALL')}
+                  className="px-2.5 py-1 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                >
+                  🚫 Abaikan Semua ({activeTab})
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                  Check/Uncheck tersimpan otomatis untuk pengujian selanjutnya
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetSavedPreferences}
+                  className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 font-medium underline cursor-pointer"
+                  title="Hapus memori pilihan yang tersimpan di browser dan kembalikan ke default auto-match"
+                >
+                  Reset Memori Pilihan
+                </button>
+              </div>
+            </div>
+
             {/* TAB CONTENT TABLES */}
             <div className="max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
               {activeTab === 'GURU' && (
@@ -402,18 +591,17 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 checked={!isIgnored}
                                 onChange={(e) => {
                                   const checked = e.target.checked;
-                                  if (!checked) {
-                                    setTeacherMappings(prev => ({
-                                      ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], action: 'IGNORE', target_id: undefined }
-                                    }));
-                                  } else {
-                                    const defaultAction = t.matched_db_id ? 'MATCH' : 'CREATE';
-                                    setTeacherMappings(prev => ({
-                                      ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], action: defaultAction, target_id: t.matched_db_id || undefined }
-                                    }));
-                                  }
+                                  setTeacherMappings(prev => {
+                                    const next = { ...prev };
+                                    if (!checked) {
+                                      next[t.asc_id] = { ...next[t.asc_id], action: 'IGNORE', target_id: undefined };
+                                    } else {
+                                      const defaultAction = t.matched_db_id ? 'MATCH' : 'CREATE';
+                                      next[t.asc_id] = { ...next[t.asc_id], action: defaultAction, target_id: t.matched_db_id || undefined };
+                                    }
+                                    saveMappingsToStorage(next, classMappings, subjectMappings);
+                                    return next;
+                                  });
                                 }}
                                 className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                                 title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
@@ -442,22 +630,18 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__IGNORE__') {
-                                    setTeacherMappings(prev => ({
-                                      ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], target_id: undefined, action: 'IGNORE' }
-                                    }));
-                                  } else if (val === '__CREATE__') {
-                                    setTeacherMappings(prev => ({
-                                      ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], target_id: undefined, action: 'CREATE' }
-                                    }));
-                                  } else {
-                                    setTeacherMappings(prev => ({
-                                      ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], target_id: val, action: 'MATCH' }
-                                    }));
-                                  }
+                                  setTeacherMappings(prev => {
+                                    const next = { ...prev };
+                                    if (val === '__IGNORE__') {
+                                      next[t.asc_id] = { ...next[t.asc_id], target_id: undefined, action: 'IGNORE' };
+                                    } else if (val === '__CREATE__') {
+                                      next[t.asc_id] = { ...next[t.asc_id], target_id: undefined, action: 'CREATE' };
+                                    } else {
+                                      next[t.asc_id] = { ...next[t.asc_id], target_id: val, action: 'MATCH' };
+                                    }
+                                    saveMappingsToStorage(next, classMappings, subjectMappings);
+                                    return next;
+                                  });
                                 }}
                                 className={cn(
                                   "w-full text-xs rounded-lg border p-1.5",
@@ -508,18 +692,17 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 checked={!isIgnored}
                                 onChange={(e) => {
                                   const checked = e.target.checked;
-                                  if (!checked) {
-                                    setClassMappings(prev => ({
-                                      ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], action: 'IGNORE', target_id: undefined }
-                                    }));
-                                  } else {
-                                    const defaultAction = c.matched_db_id ? 'MATCH' : 'CREATE';
-                                    setClassMappings(prev => ({
-                                      ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], action: defaultAction, target_id: c.matched_db_id || undefined }
-                                    }));
-                                  }
+                                  setClassMappings(prev => {
+                                    const next = { ...prev };
+                                    if (!checked) {
+                                      next[c.asc_id] = { ...next[c.asc_id], action: 'IGNORE', target_id: undefined };
+                                    } else {
+                                      const defaultAction = c.matched_db_id ? 'MATCH' : 'CREATE';
+                                      next[c.asc_id] = { ...next[c.asc_id], action: defaultAction, target_id: c.matched_db_id || undefined };
+                                    }
+                                    saveMappingsToStorage(teacherMappings, next, subjectMappings);
+                                    return next;
+                                  });
                                 }}
                                 className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                                 title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
@@ -548,22 +731,18 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__IGNORE__') {
-                                    setClassMappings(prev => ({
-                                      ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], target_id: undefined, action: 'IGNORE' }
-                                    }));
-                                  } else if (val === '__CREATE__') {
-                                    setClassMappings(prev => ({
-                                      ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], target_id: undefined, action: 'CREATE' }
-                                    }));
-                                  } else {
-                                    setClassMappings(prev => ({
-                                      ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], target_id: val, action: 'MATCH' }
-                                    }));
-                                  }
+                                  setClassMappings(prev => {
+                                    const next = { ...prev };
+                                    if (val === '__IGNORE__') {
+                                      next[c.asc_id] = { ...next[c.asc_id], target_id: undefined, action: 'IGNORE' };
+                                    } else if (val === '__CREATE__') {
+                                      next[c.asc_id] = { ...next[c.asc_id], target_id: undefined, action: 'CREATE' };
+                                    } else {
+                                      next[c.asc_id] = { ...next[c.asc_id], target_id: val, action: 'MATCH' };
+                                    }
+                                    saveMappingsToStorage(teacherMappings, next, subjectMappings);
+                                    return next;
+                                  });
                                 }}
                                 className={cn(
                                   "w-full text-xs rounded-lg border p-1.5",
@@ -614,18 +793,17 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 checked={!isIgnored}
                                 onChange={(e) => {
                                   const checked = e.target.checked;
-                                  if (!checked) {
-                                    setSubjectMappings(prev => ({
-                                      ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], action: 'IGNORE', target_id: undefined }
-                                    }));
-                                  } else {
-                                    const defaultAction = s.matched_db_id ? 'MATCH' : 'CREATE';
-                                    setSubjectMappings(prev => ({
-                                      ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], action: defaultAction, target_id: s.matched_db_id || undefined }
-                                    }));
-                                  }
+                                  setSubjectMappings(prev => {
+                                    const next = { ...prev };
+                                    if (!checked) {
+                                      next[s.asc_id] = { ...next[s.asc_id], action: 'IGNORE', target_id: undefined };
+                                    } else {
+                                      const defaultAction = s.matched_db_id ? 'MATCH' : 'CREATE';
+                                      next[s.asc_id] = { ...next[s.asc_id], action: defaultAction, target_id: s.matched_db_id || undefined };
+                                    }
+                                    saveMappingsToStorage(teacherMappings, classMappings, next);
+                                    return next;
+                                  });
                                 }}
                                 className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                                 title="Centang untuk mengimpor, hapus centang untuk mengabaikan"
@@ -654,22 +832,18 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  if (val === '__IGNORE__') {
-                                    setSubjectMappings(prev => ({
-                                      ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], target_id: undefined, action: 'IGNORE' }
-                                    }));
-                                  } else if (val === '__CREATE__') {
-                                    setSubjectMappings(prev => ({
-                                      ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], target_id: undefined, action: 'CREATE' }
-                                    }));
-                                  } else {
-                                    setSubjectMappings(prev => ({
-                                      ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], target_id: val, action: 'MATCH' }
-                                    }));
-                                  }
+                                  setSubjectMappings(prev => {
+                                    const next = { ...prev };
+                                    if (val === '__IGNORE__') {
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, action: 'IGNORE' };
+                                    } else if (val === '__CREATE__') {
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, action: 'CREATE' };
+                                    } else {
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: val, action: 'MATCH' };
+                                    }
+                                    saveMappingsToStorage(teacherMappings, classMappings, next);
+                                    return next;
+                                  });
                                 }}
                                 className={cn(
                                   "w-full text-xs rounded-lg border p-1.5",
@@ -683,7 +857,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 <optgroup label="Arahkan ke Master Mapel yang Ada:">
                                   {analysis.db_subjects.map(dbs => (
                                     <option key={dbs.id} value={dbs.id}>
-                                      {dbs.name} {dbs.code ? `(${dbs.code})` : ''}
+                                      {dbs.name}
                                     </option>
                                   ))}
                                 </optgroup>
