@@ -269,20 +269,27 @@ export class AscImporterService {
           if (existingGuru) {
             teacherIdMap.set(String(tm.asc_id), existingGuru.id);
           } else {
-            const tenantUser = await tx.user.findFirst({
-              where: { tenant_id: tenantId },
+            const randomId = Math.floor(Math.random() * 1000000);
+            const newUser = await tx.user.create({
+              data: {
+                tenant_id: tenantId,
+                username: `guru_${tm.asc_id}_${randomId}`,
+                email: `guru_${tm.asc_id}_${randomId}@absenta.local`,
+                nama_lengkap: tm.name,
+                role_name: 'GURU',
+                is_active: true,
+              },
             });
-            if (tenantUser) {
-              const createdGuru = await tx.guru.create({
-                data: {
-                  tenant_id: tenantId,
-                  user_id: tenantUser.id,
-                  nama_guru: tm.name,
-                  asc_id: String(tm.asc_id),
-                },
-              });
-              teacherIdMap.set(String(tm.asc_id), createdGuru.id);
-            }
+
+            const createdGuru = await tx.guru.create({
+              data: {
+                tenant_id: tenantId,
+                user_id: newUser.id,
+                nama_guru: tm.name,
+                asc_id: String(tm.asc_id),
+              },
+            });
+            teacherIdMap.set(String(tm.asc_id), createdGuru.id);
           }
         }
       }
@@ -333,11 +340,12 @@ export class AscImporterService {
           if (existingMapel) {
             subjectIdMap.set(String(sm.asc_id), existingMapel.id);
           } else {
+            const uniqueKode = `${(sm.code || sm.name.substring(0, 8)).replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'MAPEL'}_${sm.asc_id}`;
             const createdMapel = await tx.mapel.create({
               data: {
                 tenant_id: tenantId,
                 nama_mapel: sm.name,
-                kode_mapel: sm.code || sm.name.substring(0, 10),
+                kode_mapel: uniqueKode,
                 asc_id: String(sm.asc_id),
               },
             });
@@ -456,7 +464,30 @@ export class AscImporterService {
           dynamicPeriodTimes
         );
 
-        try {
+        const existingCard = await tx.jadwalKBM.findFirst({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+            kelas_id: lessonMeta.kelasId,
+            hari: dayName as any,
+            slot_index: periodIndex,
+          },
+        });
+
+        if (existingCard) {
+          await tx.jadwalKBM.update({
+            where: { id: existingCard.id },
+            data: {
+              guru_id: lessonMeta.guruId,
+              mapel_id: lessonMeta.mapelId,
+              jam_mulai: slotTimes.start,
+              jam_selesai: slotTimes.end,
+              jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
+              asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
+            },
+          });
+        } else {
           await tx.jadwalKBM.create({
             data: {
               tenant_id: tenantId,
@@ -474,10 +505,8 @@ export class AscImporterService {
               created_by_user_id: input.user_id,
             },
           });
-          totalCardsCreated++;
-        } catch (e) {
-          console.warn(`[AscImporter] Duplicate slot collision ignored for class ${lessonMeta.kelasId} ${dayName} slot ${periodIndex}`);
         }
+        totalCardsCreated++;
       }
 
       // 7. Log Import Activity
