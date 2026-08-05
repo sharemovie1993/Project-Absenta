@@ -33,7 +33,7 @@ export class AscImporterService {
     const parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '',
-      parseAttributeValue: true,
+      parseAttributeValue: false, // Crucial: Keep raw attribute strings (e.g. bitmasks "01000", "00001", IDs)
     });
     const parsed = parser.parse(xmlContent);
     if (!parsed?.timetable) {
@@ -116,7 +116,7 @@ export class AscImporterService {
   }
 
   /**
-   * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 00001 -> JUMAT, 11111 -> SENIN..JUMAT)
+   * Resolve list of days from daysdefId or days bitmask string (e.g. 10000 -> SENIN, 01000 -> SELASA, 00001 -> JUMAT, 11111 -> SENIN..JUMAT)
    */
   static resolveDaysFromXml(daysInput: string, daysdefsMap: Map<string, { bitmask: string; name: string }>): string[] {
     const rawInput = String(daysInput || '').trim();
@@ -125,11 +125,33 @@ export class AscImporterService {
     const foundDef = daysdefsMap.get(rawInput);
     const dayNames = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
 
-    // 1. FIRST: Check Bitmask string from foundDef or rawInput directly
-    // Bitmask string example: "10000" (Senin), "01000" (Selasa), "00100" (Rabu), "00010" (Kamis), "00001" (Jumat), "11111" (5 Hari)
-    const bitmask = foundDef?.bitmask || (rawInput.length >= 5 && /^[01]+$/.test(rawInput) ? rawInput : '');
+    // 1. Check foundDef name first if it contains explicit day names
+    const defName = foundDef?.name || '';
+    if (defName) {
+      const explicitDays: string[] = [];
+      if (/SENIN|MON/i.test(defName)) explicitDays.push('SENIN');
+      if (/SELASA|TUE/i.test(defName)) explicitDays.push('SELASA');
+      if (/RABU|WED/i.test(defName)) explicitDays.push('RABU');
+      if (/KAMIS|THU/i.test(defName)) explicitDays.push('KAMIS');
+      if (/JUMAT|FRI/i.test(defName)) explicitDays.push('JUMAT');
+      if (/SABTU|SAT/i.test(defName)) explicitDays.push('SABTU');
+      if (/MINGGU|SUN/i.test(defName)) explicitDays.push('MINGGU');
 
-    if (bitmask) {
+      if (explicitDays.length > 0) {
+        return explicitDays;
+      }
+    }
+
+    // 2. Check Bitmask string from foundDef or rawInput directly
+    let bitmask = (foundDef?.bitmask || rawInput).trim();
+
+    // If bitmask is binary string (contains only 0 and 1)
+    if (/^[01]+$/.test(bitmask)) {
+      // Pad with leading zeros if fast-xml-parser or XML stripped leading 0 (e.g. "1000" -> "01000")
+      if (bitmask.length < 5) {
+        bitmask = bitmask.padStart(5, '0');
+      }
+
       const resolvedDays: string[] = [];
       for (let i = 0; i < bitmask.length; i++) {
         if (bitmask[i] === '1' && dayNames[i]) {
@@ -141,16 +163,16 @@ export class AscImporterService {
       }
     }
 
-    // 2. SECOND: Match by day name text from foundDef or rawInput
-    if (foundDef?.name) {
-      const dayFromText = AscImporterService.getDayFromText(foundDef.name);
-      if (dayFromText) return [dayFromText];
+    // 3. Check 1-based day index number (1 = Senin, 2 = Selasa, 3 = Rabu, 4 = Kamis, 5 = Jumat, 6 = Sabtu)
+    const numInput = Number(rawInput);
+    if (!isNaN(numInput) && numInput >= 1 && numInput <= 7) {
+      return [dayNames[numInput - 1]];
     }
 
+    // 4. Fallback direct text check
     const directDayFromText = AscImporterService.getDayFromText(rawInput);
     if (directDayFromText) return [directDayFromText];
 
-    // Default fallback
     return ['SENIN'];
   }
 
