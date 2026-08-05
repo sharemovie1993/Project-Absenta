@@ -49,9 +49,7 @@ export function buildPembiasaanJadwalItems(
       : (targetKelasIds && targetKelasIds.length > 0 ? targetKelasIds : ['all']);
 
     const rawName = keg.nama || 'PEMBIASAAN';
-    const mapelNama = rawName.toUpperCase().startsWith('PEMBIASAAN')
-      ? rawName.toUpperCase()
-      : `PEMBIASAAN ${rawName.toUpperCase()}`;
+    const mapelNama = rawName.toUpperCase();
 
     days.forEach(dayStr => {
       const upperDay = dayStr.toUpperCase();

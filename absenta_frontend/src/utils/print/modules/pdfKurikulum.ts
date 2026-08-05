@@ -497,7 +497,7 @@ export const renderKurikulumRosterPdf = (
       [
         'HARI',
         ...SLOTS.map(slot => {
-          return slot === 0 ? `JAM 0\n(KESISWAAN)` : `JAM ${slot}`;
+          return slot === 0 ? `JAM 0\n(PEMBIASAAN)` : `JAM ${slot}`;
         })
       ]
     ];
@@ -561,14 +561,19 @@ export const renderKurikulumRosterPdf = (
 
         let rawSubjectName = '';
         if (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) {
-          rawSubjectName = item.Mapel?.nama_mapel || item.nama || act?.nama || 'PEMBIASAAN';
+          rawSubjectName = item.nama || item.Mapel?.nama_mapel || act?.nama || 'PEMBIASAAN';
         } else if (isKbm && item.Mapel?.nama_mapel) {
           rawSubjectName = item.Mapel.nama_mapel;
         } else {
           rawSubjectName = act?.nama || item.Mapel?.nama_mapel || 'KEGIATAN';
         }
 
-        rawSubjectName = rawSubjectName.replace(/^\[KESISWAAN\]\s*/i, '');
+        rawSubjectName = rawSubjectName
+          .replace(/^\[KESISWAAN\]\s*/i, '')
+          .replace(/^PEMBIASAAN\s*/i, '')
+          .trim();
+        if (!rawSubjectName) rawSubjectName = 'PEMBIASAAN';
+
         const subjectName = (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) 
           ? rawSubjectName 
           : getMapelAbbreviation(rawSubjectName);
