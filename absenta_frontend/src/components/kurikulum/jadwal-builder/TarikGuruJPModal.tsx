@@ -33,6 +33,14 @@ const TINGKAT_OPTIONS = [
   { value: 'XII', label: 'Kelas XII (12)' }
 ];
 
+const PRESET_SCENARIOS = [
+  { label: '⚡ Apel Pagi (JP 1-5)', start: 1, end: 5, tingkat: 'XI' },
+  { label: '🌅 Awal KBM (JP 1-2)', start: 1, end: 2, tingkat: 'SEMUA' },
+  { label: '☀️ Sesi Pagi (JP 1-4)', start: 1, end: 4, tingkat: 'SEMUA' },
+  { label: '🌤️ Sesi Siang (JP 5-8)', start: 5, end: 8, tingkat: 'SEMUA' },
+  { label: '🌆 Akhir KBM (JP 8-10)', start: 8, end: 10, tingkat: 'SEMUA' },
+];
+
 export const TarikGuruJPModal: React.FC<TarikGuruJPModalProps> = ({
   isOpen,
   onClose,
@@ -248,6 +256,28 @@ export const TarikGuruJPModal: React.FC<TarikGuruJPModalProps> = ({
                 <Filter className="w-3.5 h-3.5" />
                 <span>Parameter Filter</span>
               </h3>
+
+              {/* Quick Preset Buttons */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Quick Presets Skenario:</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_SCENARIOS.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setStartJP(p.start);
+                        setEndJP(p.end);
+                        setSelectedTingkat(p.tingkat);
+                        handleParamChange(p.tingkat, p.start, p.end);
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all shadow-2xs"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Hari */}
               <div className="space-y-1.5">
