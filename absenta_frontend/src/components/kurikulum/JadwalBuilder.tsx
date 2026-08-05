@@ -542,35 +542,42 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     return null;
   };
 
-  // Find slot data for grid rendering
-  const getSlotData = (day: string, slotIndex: number) => {
+  // High-performance O(1) Hash Map for JadwalBuilder slot rendering to prevent CPU spikes
+  const { builderKelasSlotMap, builderGuruSlotMap } = useMemo(() => {
+    const kMap = new Map<string, JadwalKBM>();
+    const gMap = new Map<string, JadwalKBM>();
+    for (let i = 0; i < allJadwal.length; i++) {
+      const j = allJadwal[i];
+      if (!j.hari || j.slot_index == null) continue;
+      const h = String(j.hari).trim().toUpperCase();
+      const s = Number(j.slot_index);
+      if (j.kelas_id) {
+        kMap.set(`${h}_${s}_${String(j.kelas_id).trim()}`, j);
+      }
+      if (j.guru_id) {
+        gMap.set(`${h}_${s}_${String(j.guru_id).trim()}`, j);
+      }
+    }
+    return { builderKelasSlotMap: kMap, builderGuruSlotMap: gMap };
+  }, [allJadwal]);
+
+  // Find slot data for grid rendering - Instant O(1) Lookup
+  const getSlotData = useCallback((day: string, slotIndex: number) => {
     const normDay = String(day || '').trim().toUpperCase();
     const normSlot = Number(slotIndex);
     const normGuruId = String(selectedGuruId || '').trim();
     const normKelasId = String(selectedKelasId || '').trim();
 
     if (viewMode === 'KELAS') {
-      return allJadwal.find(j => 
-        String(j.hari || '').trim().toUpperCase() === normDay && 
-        Number(j.slot_index) === normSlot && 
-        String(j.kelas_id || '').trim() === normKelasId
-      );
+      return builderKelasSlotMap.get(`${normDay}_${normSlot}_${normKelasId}`);
     } else {
       // 1. Search for selected teacher's own schedule
-      const ownSchedule = allJadwal.find(j => 
-        String(j.hari || '').trim().toUpperCase() === normDay && 
-        String(j.guru_id || '').trim() === normGuruId &&
-        Number(j.slot_index) === normSlot
-      );
+      const ownSchedule = builderGuruSlotMap.get(`${normDay}_${normSlot}_${normGuruId}`);
       if (ownSchedule) return ownSchedule;
 
       // 2. If no own schedule, check if the target class is occupied by another teacher
       if (normKelasId) {
-        const foreignSchedule = allJadwal.find(j => 
-          String(j.hari || '').trim().toUpperCase() === normDay && 
-          Number(j.slot_index) === normSlot && 
-          String(j.kelas_id || '').trim() === normKelasId
-        );
+        const foreignSchedule = builderKelasSlotMap.get(`${normDay}_${normSlot}_${normKelasId}`);
         if (foreignSchedule) {
           return {
             ...foreignSchedule,
@@ -580,7 +587,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       }
       return undefined;
     }
-  };
+  }, [viewMode, selectedGuruId, selectedKelasId, builderKelasSlotMap, builderGuruSlotMap]);
 
   // Dedicated delete slot action
   const handleDeleteSlotAction = async (day: string, slotIndex: number, id: string) => {

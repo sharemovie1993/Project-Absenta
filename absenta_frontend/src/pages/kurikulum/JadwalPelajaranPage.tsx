@@ -379,6 +379,17 @@ export default function JadwalPelajaranPage() {
     }
   }, [user, selectedGuruId, selectedKelasId, isSiswa, defaultKelasId, selectedTahunId, selectedSemesterId, jadwal]);
 
+  const invalidateAllJadwalCaches = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+    queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['struktur-kurikulum-builder-jp'] });
+  }, [queryClient]);
+
   const handleDeleteSlot = useCallback(async (id: string) => {
     if (!canManage) return;
     
@@ -393,6 +404,7 @@ export default function JadwalPelajaranPage() {
     if (isConfirmed) {
       try {
         await deleteJadwalKBM(id);
+        invalidateAllJadwalCaches();
         setRefreshKey(k => k + 1);
         toast.success('Jadwal berhasil dihapus');
       } catch (err) {
@@ -400,7 +412,7 @@ export default function JadwalPelajaranPage() {
         toast.error('Gagal menghapus jadwal');
       }
     }
-  }, [canManage, confirm]);
+  }, [canManage, confirm, invalidateAllJadwalCaches]);
 
   const handleClearSchedule = useCallback(async () => {
     const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
@@ -431,6 +443,7 @@ export default function JadwalPelajaranPage() {
 
       if (res && res.success !== false) {
         toast.success(res.message || 'Berhasil mengosongkan jadwal KBM.');
+        invalidateAllJadwalCaches();
         setRefreshKey(k => k + 1);
         setJadwal([]);
       } else {
@@ -440,7 +453,7 @@ export default function JadwalPelajaranPage() {
       console.error('Failed to clear schedules', err);
       toast.error('Gagal mengosongkan jadwal KBM');
     }
-  }, [confirm, isSiswa, defaultKelasId, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId]);
+  }, [confirm, isSiswa, defaultKelasId, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, invalidateAllJadwalCaches]);
 
   const canViewTpl = can('academic.schedules.view.list') || can('attendance.schedules.view.list');
   const isAllowed = absensiMode === 'MULTI_SESI' && canViewTpl;
