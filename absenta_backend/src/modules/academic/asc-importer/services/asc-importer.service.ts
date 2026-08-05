@@ -390,15 +390,15 @@ export class AscImporterService {
 
       for (const les of xmlLessonsArr) {
         const ascLessonId = String(les.id);
-        const classIdsStr = String(les.classids || '');
-        const subjectIdStr = String(les.subjectid || '');
-        const teacherIdsStr = String(les.teacherids || '');
+        const classIdsArr = String(les.classids || '').split(',').map(s => s.trim()).filter(Boolean);
+        const teacherIdsArr = String(les.teacherids || '').split(',').map(s => s.trim()).filter(Boolean);
+        const subjectIdStr = String(les.subjectid || '').trim();
 
-        const targetClassId = classIdMap.get(classIdsStr) || null;
         const targetSubjectId = subjectIdMap.get(subjectIdStr) || null;
-        const targetTeacherId = teacherIdMap.get(teacherIdsStr) || null;
+        const targetTeacherId = teacherIdsArr.map(tId => teacherIdMap.get(tId)).find(Boolean) || null;
+        const targetClassIds = classIdsArr.map(cId => classIdMap.get(cId)).filter((cId): cId is string => Boolean(cId));
 
-        if (!targetClassId) continue;
+        if (targetClassIds.length === 0) continue;
 
         const periodsPerCard = Number(les.periodspercard) || 1;
         const periodsPerWeek = Number(les.periodsperweek) || periodsPerCard;
@@ -414,26 +414,27 @@ export class AscImporterService {
           subjectIdStr.toUpperCase().includes('PEMBIASAAN') ||
           subjectIdStr.toUpperCase().includes('UPACARA');
 
-        const kontrakId = crypto.randomUUID();
-        kontrakBatch.push({
-          id: kontrakId,
-          tenant_id: tenantId,
-          tahun_pelajaran_id: input.tahun_pelajaran_id,
-          semester_id: input.semester_id,
-          kelas_id: targetClassId,
-          guru_id: targetTeacherId,
-          mapel_id: targetSubjectId,
-          jumlah_kartu: countCards,
-          durasi_jp: periodsPerCard,
-          total_jp: periodsPerWeek,
-          aturan_blok: blockRule,
-          is_pembiasaan: isPembiasaan,
-          asc_lesson_id: ascLessonId,
-        });
+        for (const targetClassId of targetClassIds) {
+          const kontrakId = crypto.randomUUID();
+          kontrakBatch.push({
+            id: kontrakId,
+            tenant_id: tenantId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+            kelas_id: targetClassId,
+            guru_id: targetTeacherId,
+            mapel_id: targetSubjectId,
+            jumlah_kartu: countCards,
+            durasi_jp: periodsPerCard,
+            total_jp: periodsPerWeek,
+            aturan_blok: blockRule,
+            is_pembiasaan: isPembiasaan,
+            asc_lesson_id: ascLessonId,
+          });
+        }
 
         lessonMetaMap.set(ascLessonId, {
-          kontrakId,
-          kelasId: targetClassId,
+          classIds: targetClassIds,
           guruId: targetTeacherId,
           mapelId: targetSubjectId,
           isPembiasaan,
@@ -457,7 +458,7 @@ export class AscImporterService {
       for (const card of xmlCardsArr) {
         const ascLessonId = String(card.lessonid);
         const lessonMeta = lessonMetaMap.get(ascLessonId);
-        if (!lessonMeta) continue;
+        if (!lessonMeta || !lessonMeta.classIds || lessonMeta.classIds.length === 0) continue;
 
         const periodIndex = Number(card.period) || 0;
         const daysdefId = String(card.days || '');
@@ -472,43 +473,45 @@ export class AscImporterService {
         }
         if (!dayName) dayName = 'SENIN';
 
-        const slotTimes = await AscImporterService.resolveSlotTimesForDay(
-          tenantId,
-          lessonMeta.kelasId,
-          dayName,
-          periodIndex,
-          dynamicPeriodTimes
-        );
+        for (const targetClassId of lessonMeta.classIds) {
+          const slotTimes = await AscImporterService.resolveSlotTimesForDay(
+            tenantId,
+            targetClassId,
+            dayName,
+            periodIndex,
+            dynamicPeriodTimes
+          );
 
-        const classKey = `${lessonMeta.kelasId}_${dayName}_${periodIndex}`;
-        const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
+          const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
+          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
 
-        if (usedClassSlots.has(classKey)) {
-          continue;
+          if (usedClassSlots.has(classKey)) {
+            continue;
+          }
+          if (guruKey && usedGuruSlots.has(guruKey)) {
+            continue;
+          }
+
+          usedClassSlots.add(classKey);
+          if (guruKey) usedGuruSlots.add(guruKey);
+
+          cardsBatch.push({
+            id: crypto.randomUUID(),
+            tenant_id: tenantId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+            kelas_id: targetClassId,
+            guru_id: lessonMeta.guruId,
+            mapel_id: lessonMeta.mapelId,
+            hari: dayName as any,
+            slot_index: periodIndex,
+            jam_mulai: slotTimes.start,
+            jam_selesai: slotTimes.end,
+            jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
+            asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
+            created_by_user_id: input.user_id,
+          });
         }
-        if (guruKey && usedGuruSlots.has(guruKey)) {
-          continue;
-        }
-
-        usedClassSlots.add(classKey);
-        if (guruKey) usedGuruSlots.add(guruKey);
-
-        cardsBatch.push({
-          id: crypto.randomUUID(),
-          tenant_id: tenantId,
-          tahun_pelajaran_id: input.tahun_pelajaran_id,
-          semester_id: input.semester_id,
-          kelas_id: lessonMeta.kelasId,
-          guru_id: lessonMeta.guruId,
-          mapel_id: lessonMeta.mapelId,
-          hari: dayName as any,
-          slot_index: periodIndex,
-          jam_mulai: slotTimes.start,
-          jam_selesai: slotTimes.end,
-          jenis_kegiatan: lessonMeta.isPembiasaan ? 'PEMBIASAAN' : 'KBM',
-          asc_id: String(card.id || `${ascLessonId}-${periodIndex}`),
-          created_by_user_id: input.user_id,
-        });
       }
 
       if (cardsBatch.length > 0) {
