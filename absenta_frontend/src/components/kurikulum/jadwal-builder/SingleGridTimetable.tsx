@@ -72,35 +72,41 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                 }}
               >
                 <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
-                  {viewMode === 'GURU' ? (
-                    <>
-                      <div className="text-[9.5px] font-black uppercase text-indigo-700 dark:text-indigo-300 leading-tight truncate">
-                        {item.isForeign ? 'TERISI' : (item.Kelas?.nama_kelas || 'KELAS')}
-                      </div>
-                      <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                      </div>
-                      <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
-                        {item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} - ${item.jam_selesai}` : `${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).start} - ${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).end}`}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                      </div>
-                      <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
-                        {item.isForeign
-                          ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
-                          : item.Guru?.nama_guru ||
-                            item.Guru?.User?.full_name ||
-                            (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
-                      </div>
-                      <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
-                        {item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} - ${item.jam_selesai}` : `${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).start} - ${resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day).end}`}
-                      </div>
-                    </>
-                  )}
+                  {(() => {
+                    const dynamicSlot = resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day);
+                    const displayStart = dynamicSlot?.start || item.jam_mulai || '';
+                    const displayEnd = dynamicSlot?.end || item.jam_selesai || '';
+                    return (
+                      <>
+                        {viewMode === 'KELAS' ? (
+                          <>
+                            <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                              {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                            </div>
+                            <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
+                              {item.isForeign
+                                ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
+                                : item.Guru?.nama_guru ||
+                                  item.Guru?.User?.full_name ||
+                                  (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                              {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Delete Hover Action */}

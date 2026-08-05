@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
 import { drawKopSurat } from '../pdfGeneric';
 import { getMapelAbbreviation } from '../../mapelColorHelper';
+import { getSlotsForDay } from '../../../components/kurikulum/jam-kbm/JamKBMTypes';
 
 export interface StrukturPrintRow {
   id: string;
@@ -538,8 +539,27 @@ export const renderKurikulumRosterPdf = (
         const subjectName = getMapelAbbreviation(rawSubjectName);
 
         const lastSlotItem = getSlotData(day, SLOTS[i + colSpan - 1]) || item;
-        const startTime = item.jam_mulai || SLOT_TIME_FALLBACK[slot]?.split('-')[0] || '';
-        const endTime = lastSlotItem.jam_selesai || item.jam_selesai || SLOT_TIME_FALLBACK[SLOTS[i + colSpan - 1]]?.split('-')[1] || '';
+        
+        // Resolve dynamic slot time based on tenant shift & day_pattern
+        const shiftConfig = options.tenantInfo?.shift_jam_pelajaran;
+        let startSlotTime = '';
+        let endSlotTime = '';
+
+        if (shiftConfig && shiftConfig.shifts && shiftConfig.shifts.length > 0) {
+          const classId = item.kelas_id || '';
+          const assignedShiftId = shiftConfig.class_assignments?.[classId] || 'pagi';
+          const shift = shiftConfig.shifts.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts[0];
+          if (shift) {
+            const slotsForDay = getSlotsForDay(shift, day);
+            const startMatched = slotsForDay?.find((sl: any) => sl.slot === slot);
+            const endMatched = slotsForDay?.find((sl: any) => sl.slot === SLOTS[i + colSpan - 1]);
+            if (startMatched) startSlotTime = startMatched.start;
+            if (endMatched) endSlotTime = endMatched.end;
+          }
+        }
+
+        const startTime = startSlotTime || item.jam_mulai || SLOT_TIME_FALLBACK[slot]?.split('-')[0] || '';
+        const endTime = endSlotTime || lastSlotItem.jam_selesai || item.jam_selesai || SLOT_TIME_FALLBACK[SLOTS[i + colSpan - 1]]?.split('-')[1] || '';
         const timeText = (startTime && endTime) ? `(${startTime}-${endTime})` : '';
 
         let cellText = '';

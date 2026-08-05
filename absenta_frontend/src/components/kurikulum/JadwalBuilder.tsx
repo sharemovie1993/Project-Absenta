@@ -507,7 +507,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const checkConflict = (day: string, slotIndex: number, targetKelasId: string) => {
     if (toolMode !== 'PAINT' || !paintMapelId || !paintGuruId) return null;
 
-    const targetSlot = resolveSlotTime(targetKelasId, slotIndex);
+    const targetSlot = resolveSlotTime(targetKelasId, slotIndex, day);
 
     // Check 1: Teacher conflict (Guru is already scheduled at an overlapping time in another class)
     const teacherConflict = allJadwal.find(j => 
@@ -651,7 +651,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         targetKelasId = selectedKelasId;
       }
 
-      const slot = resolveSlotTime(targetKelasId, slotIndex);
+      const slot = resolveSlotTime(targetKelasId, slotIndex, day);
 
       // Check conflict
       const conflict = checkConflict(day, slotIndex, targetKelasId);
