@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
@@ -39,6 +39,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
   semesterId,
   onSuccessImport,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -223,8 +224,9 @@ export const AscImportWizardModal: React.FC<Props> = ({
               </p>
             </div>
 
-            <label className="cursor-pointer">
+            <div>
               <input
+                ref={fileInputRef}
                 type="file"
                 accept=".xml"
                 className="hidden"
@@ -233,13 +235,14 @@ export const AscImportWizardModal: React.FC<Props> = ({
               />
               <Button
                 variant="primary"
+                onClick={() => fileInputRef.current?.click()}
                 className="rounded-xl px-6 py-2.5 shadow-md flex items-center gap-2"
                 disabled={loading}
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {loading ? 'Menganalisis XML...' : 'Pilih File XML aSc'}
               </Button>
-            </label>
+            </div>
           </div>
         )}
 
