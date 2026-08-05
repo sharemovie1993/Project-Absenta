@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
+import { useJadwalKBM } from './useJadwalKBM';
 import { useJadwalKegiatan } from './useJadwalKegiatan';
 import { useKelasOptions } from '../../components/common';
+import type { JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 
 export interface UseUnifiedScheduleParams {
   tahunPelajaranId?: string;
@@ -28,36 +28,32 @@ export function parseDaysArray(field: any): string[] {
 /**
  * Single Source of Truth Hook combining Jadwal KBM (lessons) and Jadwal Kegiatan (routine activities).
  * Ensures Visual Builder, PDF Printer, and Document Previews always receive 100% identical schedule items.
+ *
+ * Depends on:
+ *   - useJadwalKBM    → fetches lesson schedule data
+ *   - useJadwalKegiatan → fetches routine activity data (Upacara, Apel, Duha, etc.)
  */
 export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
   const { tahunPelajaranId, semesterId, kelasId, guruId, enabled = true } = params;
 
-  // 1. Query KBM Schedules
-  const { data: schedulesRes, isLoading: loadingKbm, refetch: fetchSchedules } = useQuery({
-    queryKey: ['unified-jadwal-kbm-all', tahunPelajaranId, semesterId, guruId, kelasId],
-    queryFn: () => {
-      if (!tahunPelajaranId || !semesterId) return null;
-      const apiParams: any = {
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
-      };
-      if (guruId && guruId !== 'all') {
-        apiParams.guru_id = guruId;
-      }
-      if (kelasId && kelasId !== 'all') {
-        apiParams.kelas_id = kelasId;
-      }
-      return getJadwalKBM(apiParams).catch(() => null);
-    },
-    enabled: enabled && !!tahunPelajaranId && !!semesterId,
-    staleTime: 0,
+  // 1. Jadwal KBM (lesson schedules)
+  const {
+    rawList: kbmList,
+    isLoading: loadingKbm,
+    refetch: fetchSchedules,
+  } = useJadwalKBM({
+    tahun_pelajaran_id: tahunPelajaranId,
+    semester_id: semesterId,
+    kelas_id: kelasId,
+    guru_id: guruId,
+    enabled,
   });
 
-  // 2. Query Routine Activities (Pembiasaan / Jam 0)
+  // 2. Jadwal Kegiatan Rutin (routine activities: Upacara, Apel, Duha, etc.)
   const { pembiasaanList, isLoading: loadingKegiatan } = useJadwalKegiatan({ aktif: true });
   const { rawList: kelasRawList } = useKelasOptions();
 
-  // 3. Transform Routine Activities into JadwalKBM items
+  // 3. Transform routine activities into JadwalKBM-shaped items (slot_index: 0)
   const pembiasaanJadwalItems = useMemo(() => {
     if (!pembiasaanList || pembiasaanList.length === 0) return [];
 
@@ -69,7 +65,9 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
       const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
 
       const activeClassIds = isTargetAll
-        ? (kelasRawList && kelasRawList.length > 0 ? kelasRawList.map(k => k.id) : (kelasId && kelasId !== 'all' ? [kelasId] : []))
+        ? (kelasRawList && kelasRawList.length > 0
+            ? kelasRawList.map(k => k.id)
+            : (kelasId && kelasId !== 'all' ? [kelasId] : []))
         : targetKelasIds;
 
       const rawName = keg.nama || 'PEMBIASAAN';
@@ -79,7 +77,6 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
 
       days.forEach(dayStr => {
         const upperDay = dayStr.toUpperCase();
-
         activeClassIds.forEach(kId => {
           items.push({
             id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
@@ -107,14 +104,7 @@ export function useUnifiedScheduleData(params: UseUnifiedScheduleParams) {
     return items;
   }, [pembiasaanList, kelasRawList, tahunPelajaranId, semesterId, kelasId, guruId]);
 
-  // 4. Raw KBM list
-  const kbmList = useMemo(() => {
-    return Array.isArray(schedulesRes)
-      ? schedulesRes
-      : (Array.isArray((schedulesRes as any)?.data) ? (schedulesRes as any).data : []);
-  }, [schedulesRes]);
-
-  // 5. Unified Single Source of Truth List (KBM + Routine Activities)
+  // 4. Unified Single Source of Truth List (KBM + Routine Activities)
   const allJadwal = useMemo(() => {
     return [...kbmList, ...pembiasaanJadwalItems];
   }, [kbmList, pembiasaanJadwalItems]);
