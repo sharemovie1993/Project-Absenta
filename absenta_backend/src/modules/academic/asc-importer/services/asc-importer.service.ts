@@ -483,7 +483,7 @@ export class AscImporterService {
           );
 
           const classKey = `${targetClassId}_${dayName}_${periodIndex}`;
-          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${slotTimes.start}_${slotTimes.end}` : null;
+          const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${periodIndex}` : null;
 
           if (usedClassSlots.has(classKey)) {
             continue;
