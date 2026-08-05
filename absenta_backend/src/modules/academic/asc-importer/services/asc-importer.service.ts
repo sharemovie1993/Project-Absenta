@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
+import bcrypt from 'bcrypt';
 import { prisma } from '@/utils/prisma';
 
 export interface EntityMappingInput {
@@ -254,8 +255,18 @@ export class AscImporterService {
 
   static async executeAscImport(tenantId: string, input: ExecuteAscImportInput) {
     const timetable = this.parseXml(input.xml_content);
+    const defaultHashedPassword = await bcrypt.hash('Absenta123!', 10);
 
     return await prisma.$transaction(async (tx: any) => {
+      // Find or fallback Role GURU
+      const guruRole = (await tx.role.findFirst({
+        where: { name: 'GURU' },
+      })) || (await tx.role.findFirst());
+
+      if (!guruRole) {
+        throw new Error('Role GURU tidak ditemukan di sistem.');
+      }
+
       // 1. Resolve / Auto-Create Teachers Map
       const teacherIdMap = new Map<string, string>(); // asc_id -> db_id
       for (const tm of input.teacher_mappings) {
@@ -273,11 +284,11 @@ export class AscImporterService {
             const newUser = await tx.user.create({
               data: {
                 tenant_id: tenantId,
-                username: `guru_${tm.asc_id}_${randomId}`,
                 email: `guru_${tm.asc_id}_${randomId}@absenta.local`,
-                nama_lengkap: tm.name,
-                role_name: 'GURU',
-                is_active: true,
+                password: defaultHashedPassword,
+                full_name: tm.name,
+                role_id: guruRole.id,
+                status: 'ACTIVE',
               },
             });
 
