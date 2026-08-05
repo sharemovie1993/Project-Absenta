@@ -273,7 +273,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                   </Badge>
                                 ) : (
                                   <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
-                                    {item.Kelas?.nama_kelas || item.jenis_kegiatan}
+                                    {item.Kelas?.nama_kelas || (item.jenis_kegiatan !== 'KBM' ? item.jenis_kegiatan : 'KBM')}
                                   </Badge>
                                 )}
                                 
@@ -314,11 +314,9 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                 </div>
                               ) : (
                                 <>
-                                  {item.Mapel && (
-                                    <div className="text-xs font-bold text-gray-900 dark:text-white leading-snug mb-0.5 break-words">
-                                      {item.Mapel.nama_mapel}
-                                    </div>
-                                  )}
+                                  <div className="text-xs font-bold text-gray-900 dark:text-white leading-snug mb-0.5 break-words">
+                                    {item.Mapel?.nama_mapel || item.nama_kegiatan || item.nama || (item.jenis_kegiatan !== 'KBM' ? item.jenis_kegiatan : 'Mata Pelajaran')}
+                                  </div>
                                   
                                   <div className="flex flex-col gap-0.5 mt-1">
                                     <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">

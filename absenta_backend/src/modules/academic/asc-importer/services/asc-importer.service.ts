@@ -482,7 +482,31 @@ export class AscImporterService {
         const teacherIdsArr = String(les.teacherids || '').split(',').map(s => s.trim()).filter(Boolean);
         const subjectIdStr = String(les.subjectid || '').trim();
 
-        const targetSubjectId = subjectIdMap.get(subjectIdStr) || null;
+        let targetSubjectId = subjectIdMap.get(subjectIdStr) || null;
+        if (!targetSubjectId && subjectIdStr) {
+          const xmlSub = xmlSubjectsArr.find((s: any) => String(s.id) === subjectIdStr);
+          if (xmlSub) {
+            const subName = String(xmlSub.name || xmlSub.short || 'Mata Pelajaran').trim();
+            const existingMapel = await tx.masterMapel.findFirst({
+              where: { tenant_id: tenantId, nama_mapel: { equals: subName, mode: 'insensitive' } },
+            });
+            if (existingMapel) {
+              targetSubjectId = existingMapel.id;
+            } else {
+              const newSub = await tx.masterMapel.create({
+                data: {
+                  tenant_id: tenantId,
+                  nama_mapel: subName,
+                  kode_mapel: String(xmlSub.short || subName).substring(0, 20),
+                  asc_id: subjectIdStr,
+                },
+              });
+              targetSubjectId = newSub.id;
+            }
+            subjectIdMap.set(subjectIdStr, targetSubjectId);
+          }
+        }
+
         const targetTeacherId = teacherIdsArr.map(tId => teacherIdMap.get(tId)).find(Boolean) || null;
         const targetClassIds = classIdsArr.map(cId => classIdMap.get(cId)).filter((cId): cId is string => Boolean(cId));
 

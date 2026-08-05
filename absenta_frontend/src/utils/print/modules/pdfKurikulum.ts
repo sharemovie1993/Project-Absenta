@@ -552,10 +552,10 @@ export const renderKurikulumRosterPdf = (
         let rawSubjectName = '';
         if (item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN' || slot === 0) {
           rawSubjectName = item.nama || item.Mapel?.nama_mapel || act?.nama || 'PEMBIASAAN';
-        } else if (isKbm && item.Mapel?.nama_mapel) {
+        } else if (item.Mapel?.nama_mapel) {
           rawSubjectName = item.Mapel.nama_mapel;
         } else {
-          rawSubjectName = act?.nama || item.Mapel?.nama_mapel || 'KEGIATAN';
+          rawSubjectName = item.nama_kegiatan || item.nama || act?.nama || (item.jenis_kegiatan && item.jenis_kegiatan !== 'KBM' ? item.jenis_kegiatan : 'Mata Pelajaran');
         }
 
         rawSubjectName = rawSubjectName

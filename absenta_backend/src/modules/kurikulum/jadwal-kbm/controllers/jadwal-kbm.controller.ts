@@ -418,7 +418,7 @@ export class JadwalKBMController {
       .map((s: any) => {
         const attendance = roleName === RoleName.SISWA ? s.AbsenSiswa?.[0] : s.AbsenGuru?.[0];
         const sessionWithSummary = { ...s, _summary: summaryMap.get(s.id) };
-        const resolvedNamaKegiatan = s.jenis_kegiatan || s.Mapel?.nama_mapel || 'Kegiatan';
+        const resolvedNamaKegiatan = s.Mapel?.nama_mapel || (s.jenis_kegiatan && s.jenis_kegiatan !== 'KEGIATAN' ? s.jenis_kegiatan : 'Mata Pelajaran');
         return {
           id: `adhoc-${s.id}`,
           jam_mulai: s.waktu_mulai ? new Date(s.waktu_mulai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') : '??:??',
@@ -428,7 +428,7 @@ export class JadwalKBMController {
           jenis_kegiatan: resolvedNamaKegiatan,
           category: s.jadwal_kegiatan_id ? 'KEGIATAN' : 'KBM',
           is_kegiatan: !!s.jadwal_kegiatan_id,
-          Mapel: s.Mapel || (s.jenis_kegiatan ? { nama_mapel: s.jenis_kegiatan } : undefined),
+          Mapel: s.Mapel || (s.jenis_kegiatan && s.jenis_kegiatan !== 'KEGIATAN' ? { nama_mapel: s.jenis_kegiatan } : undefined),
           Guru: s.Guru,
           Kelas: s.Kelas,
           session: sessionWithSummary,
