@@ -257,7 +257,8 @@ export class AscImporterService {
     const timetable = this.parseXml(input.xml_content);
     const defaultHashedPassword = await bcrypt.hash('Absenta123!', 10);
 
-    return await prisma.$transaction(async (tx: any) => {
+    return await prisma.$transaction(
+      async (tx: any) => {
       // Find or fallback Role GURU
       const guruRole = (await tx.role.findFirst({
         where: { name: 'GURU' },
@@ -563,6 +564,9 @@ export class AscImporterService {
           total_cards: cardsBatch.length,
         },
       };
+    }, {
+      timeout: 60000,
+      maxWait: 10000,
     });
   }
 }
