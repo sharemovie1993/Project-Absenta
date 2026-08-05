@@ -146,54 +146,38 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
     pembiasaanList.forEach((keg: any) => {
       const days = parseArr(keg.hari);
       const targetKelasIds = parseArr(keg.target_kelas_ids);
+      const isTargetAll = keg.target_semua_kelas || !targetKelasIds || targetKelasIds.length === 0;
+
+      const activeClassIds = isTargetAll
+        ? (kelasRawList && kelasRawList.length > 0 ? kelasRawList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []))
+        : targetKelasIds;
+
+      const mapelNama = keg.nama ? (keg.nama.toUpperCase().startsWith('PEMBIASAAN') ? keg.nama.toUpperCase() : `PEMBIASAAN ${keg.nama.toUpperCase()}`) : 'PEMBIASAAN';
 
       days.forEach(dayStr => {
         const upperDay = dayStr.toUpperCase();
 
-        if (keg.target_semua_kelas) {
-          const activeClassIds = (kelasRawList && kelasRawList.length > 0) ? kelasRawList.map(k => k.id) : (selectedKelasId ? [selectedKelasId] : []);
-          activeClassIds.forEach(kId => {
-            items.push({
-              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-              tenant_id: keg.tenant_id,
-              tahun_pelajaran_id: activeTahunPelajaran?.id || '',
-              semester_id: activeSemester?.id || '',
-              kelas_id: kId,
-              guru_id: selectedGuruId || 'all',
-              hari: upperDay,
-              slot_index: 0,
-              jam_mulai: keg.waktu_mulai || '06:30',
-              jam_selesai: keg.waktu_selesai || '07:00',
-              jenis_kegiatan: 'PEMBIASAAN',
-              is_locked: true,
-              is_pembiasaan: true,
-              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
-              Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
-              Guru: { nama_guru: 'Pembiasaan Sekolah' }
-            });
+        activeClassIds.forEach(kId => {
+          items.push({
+            id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
+            tenant_id: keg.tenant_id,
+            tahun_pelajaran_id: activeTahunPelajaran?.id || '',
+            semester_id: activeSemester?.id || '',
+            kelas_id: kId,
+            guru_id: selectedGuruId || 'all',
+            hari: upperDay,
+            slot_index: 0,
+            jam_mulai: keg.waktu_mulai || '06:30',
+            jam_selesai: keg.waktu_selesai || '07:00',
+            jenis_kegiatan: 'PEMBIASAAN',
+            is_locked: true,
+            is_pembiasaan: true,
+            target_semua_kelas: keg.target_semua_kelas,
+            Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: mapelNama, kode_mapel: 'PEMBIASAAN' },
+            Kelas: { id: kId, nama_kelas: 'Seluruh Kelas' },
+            Guru: { nama_guru: 'Pembiasaan Sekolah' }
           });
-        } else {
-          targetKelasIds.forEach(kId => {
-            items.push({
-              id: `pembiasaan-${keg.id}-${upperDay}-${kId}`,
-              tenant_id: keg.tenant_id,
-              tahun_pelajaran_id: activeTahunPelajaran?.id || '',
-              semester_id: activeSemester?.id || '',
-              kelas_id: kId,
-              guru_id: selectedGuruId || 'all',
-              hari: upperDay,
-              slot_index: 0,
-              jam_mulai: keg.waktu_mulai || '06:30',
-              jam_selesai: keg.waktu_selesai || '07:00',
-              jenis_kegiatan: 'PEMBIASAAN',
-              is_locked: true,
-              is_pembiasaan: true,
-              Mapel: { id: `mapel-pembiasaan-${keg.id}`, nama_mapel: keg.nama || 'PEMBIASAAN', kode_mapel: 'PEMBIASAAN' },
-              Kelas: { id: kId, nama_kelas: 'Kelas Terpilih' },
-              Guru: { nama_guru: 'Pembiasaan Sekolah' }
-            });
-          });
-        }
+        });
       });
     });
 

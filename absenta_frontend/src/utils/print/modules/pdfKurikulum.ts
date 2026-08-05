@@ -469,6 +469,18 @@ export const renderKurikulumRosterPdf = (
     ];
 
     const getSlotData = (dayStr: string, slotNum: number) => {
+      if (slotNum === 0) {
+        if (printType === 'roster' && selectedClassId !== 'all') {
+          return groupJadwal.find(j => 
+            j.hari === dayStr && 
+            Number(j.slot_index) === 0 && 
+            (j.kelas_id === selectedClassId || j.target_semua_kelas)
+          );
+        }
+        return groupJadwal.find(j => 
+          j.hari === dayStr && Number(j.slot_index) === 0
+        );
+      }
       return groupJadwal.find(j => 
         j.hari === dayStr && Number(j.slot_index) === slotNum
       );
