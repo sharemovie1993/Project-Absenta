@@ -595,17 +595,19 @@ export class JadwalKBMController {
     const normalizedHari = rawHari ? (rawHari.toUpperCase() as Hari) : undefined;
     const hari = normalizedHari && validHari.includes(normalizedHari) ? normalizedHari : undefined;
 
+    const targetGuruId = pickId(request?.query?.guru_id) || guru.id;
+
     const jadwal = await jadwalKBMDb.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
         tahun_pelajaran_id: tahunPelajaran.id,
         semester_id: semester.id,
-        guru_id: guru.id,
+        guru_id: targetGuruId,
         ...(hari ? { hari } : {}),
       },
       include: {
-        Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, User: { select: { full_name: true } } } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [
@@ -1140,8 +1142,8 @@ export class JadwalKBMController {
     const jadwal = await jadwalKBMDb.jadwalKBM.findMany({
       where: filters,
       include: {
-        Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, User: { select: { full_name: true } } } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [

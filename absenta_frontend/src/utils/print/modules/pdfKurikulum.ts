@@ -498,6 +498,14 @@ export const renderKurikulumRosterPdf = (
         const item = getSlotData(day, slot);
 
         if (!item) {
+          if (slot === 0) {
+            const defaultKesiswaanName = DEFAULT_KESISWAAN_SLOT_0[day] || 'Upacara / Pembiasaan';
+            row.push({
+              content: `${defaultKesiswaanName}\n[Kesiswaan]`,
+              styles: { fillColor: [254, 243, 199], textColor: [120, 53, 15], fontStyle: 'bold', fontSize: 6.5, halign: 'center', valign: 'middle' }
+            });
+            continue;
+          }
           row.push('');
           continue;
         }

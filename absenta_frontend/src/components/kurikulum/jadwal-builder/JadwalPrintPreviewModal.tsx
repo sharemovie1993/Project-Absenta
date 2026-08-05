@@ -504,10 +504,19 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
                             key={`${h}-${slotIndex}`}
                             className={cn(
                               'p-2 border-r last:border-r-0 border-slate-400 transition-all text-center align-middle',
-                              isFocused ? 'bg-indigo-50/50' : 'opacity-30 bg-slate-100/50'
+                              slotIndex === 0 ? 'bg-amber-50/80' : isFocused ? 'bg-indigo-50/50' : 'opacity-30 bg-slate-100/50'
                             )}
                           >
-                            {mode === 'KELAS' ? (
+                            {slotIndex === 0 ? (
+                              <div className="space-y-0.5">
+                                <div className="font-black text-[10px] text-amber-900 uppercase leading-tight">
+                                  {item.Mapel?.nama_mapel || item.nama || item.jenis_kegiatan || DEFAULT_KESISWAAN_SLOT_0[h] || 'Kegiatan Kesiswaan'}
+                                </div>
+                                <div className="text-[8.5px] font-bold text-amber-700/80">
+                                  [Kesiswaan]
+                                </div>
+                              </div>
+                            ) : mode === 'KELAS' ? (
                               <div className="space-y-1">
                                 <div className="font-black text-[11px] text-slate-900 leading-tight">
                                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
