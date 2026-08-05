@@ -19,7 +19,33 @@ export interface JadwalKegiatanItem {
 }
 
 export async function getJadwalKegiatan(params?: { aktif?: boolean }): Promise<{ success: boolean; data: JadwalKegiatanItem[] }> {
-  return requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/kesiswaan/jadwal-kegiatan', { params });
+  try {
+    const res = await requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/kesiswaan/jadwal-kegiatan', {
+      params,
+      headers: { 'X-Skip-403-Redirect': 'true' }
+    });
+    if (res && (Array.isArray(res) || (res as any).data)) return res;
+    throw new Error('Empty response from /kesiswaan/jadwal-kegiatan');
+  } catch (err) {
+    console.warn('[JadwalKegiatan API] Primary /kesiswaan/jadwal-kegiatan failed, trying fallback...', err);
+    try {
+      const res2 = await requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/kurikulum/jadwal-kegiatan', {
+        params,
+        headers: { 'X-Skip-403-Redirect': 'true' }
+      });
+      if (res2 && (Array.isArray(res2) || (res2 as any).data)) return res2;
+      throw new Error('Empty response from /kurikulum/jadwal-kegiatan');
+    } catch (err2) {
+      console.warn('[JadwalKegiatan API] Fallback /kurikulum/jadwal-kegiatan failed, trying /academic/jenis-kegiatan-master...', err2);
+      return await requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/academic/jenis-kegiatan-master', {
+        params,
+        headers: { 'X-Skip-403-Redirect': 'true' }
+      }).catch((e3) => {
+        console.error('[JadwalKegiatan API] All endpoints failed:', e3);
+        return { success: false, data: [] };
+      });
+    }
+  }
 }
 
 export async function getJadwalKegiatanDetail(id: string): Promise<{ success: boolean; data: JadwalKegiatanItem }> {

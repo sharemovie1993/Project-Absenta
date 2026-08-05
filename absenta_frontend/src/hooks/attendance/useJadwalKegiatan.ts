@@ -10,7 +10,10 @@ export const isRoutineKesiswaanActivity = (keg: any): boolean => {
 export function useJadwalKegiatan(params?: { aktif?: boolean }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['jadwal-kegiatan-list', params?.aktif],
-    queryFn: () => getJadwalKegiatan(params),
+    queryFn: () => getJadwalKegiatan(params).catch(err => {
+      console.error('[ERROR in queryFn getJadwalKegiatan]', err);
+      return null;
+    }),
     staleTime: 5 * 60 * 1000,
   });
 
