@@ -471,6 +471,8 @@ export class AscImporterService {
       });
 
       // 5. Extract & Import Lessons (JadwalKontrakKbm)
+      const xmlSubjectsRaw = timetable.subjects?.subject || [];
+      const xmlSubjectsArr = Array.isArray(xmlSubjectsRaw) ? xmlSubjectsRaw : [xmlSubjectsRaw];
       const xmlLessonsRaw = timetable.lessons?.lesson || [];
       const xmlLessonsArr = Array.isArray(xmlLessonsRaw) ? xmlLessonsRaw : [xmlLessonsRaw];
       const lessonMetaMap = new Map<string, any>(); // asc_lesson_id -> lesson record
@@ -503,7 +505,9 @@ export class AscImporterService {
               });
               targetSubjectId = newSub.id;
             }
-            subjectIdMap.set(subjectIdStr, targetSubjectId);
+            if (targetSubjectId) {
+              subjectIdMap.set(subjectIdStr, targetSubjectId);
+            }
           }
         }
 
