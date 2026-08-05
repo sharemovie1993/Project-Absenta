@@ -540,6 +540,12 @@ export class AscImporterService {
               const absSlotIdx = absBasePeriod + pOffset;    // Absenta JAM index (stored as slot_index)
               const xmlPeriodNum = xmlBasePeriod + pOffset;  // XML period number (for time lookup)
 
+              // JAM 0 dikelola oleh sistem Jadwal Kegiatan Absenta (Upacara, Apel, dll.)
+              // Pembiasaan juga dikelola terpisah. Keduanya TIDAK diimpor dari XML.
+              if (absSlotIdx === 0 || lessonMeta.isPembiasaan) {
+                continue;
+              }
+
               const slotTimes = await AscImporterService.resolveSlotTimesForDay(
                 tenantId,
                 targetClassId,
