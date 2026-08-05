@@ -419,8 +419,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     fetchTenantShift();
   }, []);
 
-  // Resolve slot time dynamically based on the class shift assignment
-  const resolveSlotTime = (targetKelasId: string, slotIndex: number, day: string = 'SELASA'): { start: string; end: string } => {
+  // Resolve slot time dynamically based on the class shift assignment (STRICT MANDATORY DAY PARAMETER)
+  const resolveSlotTime = (targetKelasId: string, slotIndex: number, day: string): { start: string; end: string } => {
     if (shiftJamPelajaran) {
       const assignedShiftId = shiftJamPelajaran.class_assignments?.[targetKelasId] || 'pagi';
       const shift = shiftJamPelajaran.shifts?.find((s: any) => s.id === assignedShiftId) || shiftJamPelajaran.shifts?.[0];

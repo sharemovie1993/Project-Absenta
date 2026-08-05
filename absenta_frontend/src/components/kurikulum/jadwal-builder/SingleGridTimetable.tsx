@@ -15,7 +15,7 @@ interface Props {
   slots: number[];
   loadingData: boolean;
   savingSlot: string | null;
-  resolveSlotTime: (targetKelasId: string, slotIndex: number, day?: string) => { start: string; end: string };
+  resolveSlotTime: (targetKelasId: string, slotIndex: number, day: string) => { start: string; end: string };
   getSlotData: (day: string, slotIndex: number) => any;
   checkConflict: (day: string, slotIndex: number, targetKelasId: string) => any;
   onSlotClick: (day: string, slotIndex: number) => void;
