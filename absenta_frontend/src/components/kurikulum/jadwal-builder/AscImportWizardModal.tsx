@@ -40,10 +40,11 @@ export const AscImportWizardModal: React.FC<Props> = ({
   onSuccessImport,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [analysis, setAnalysis] = useState<AscAnalysisResult | null>(null);
+  const [executionResult, setExecutionResult] = useState<any>(null);
 
   // Tab State in Step 2
   const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL'>('GURU');
@@ -59,6 +60,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
     setLoading(false);
     setExecuting(false);
     setAnalysis(null);
+    setExecutionResult(null);
     setActiveTab('GURU');
     setSearchQuery('');
     setTeacherMappings({});
@@ -195,9 +197,10 @@ export const AscImportWizardModal: React.FC<Props> = ({
 
       if (res.success) {
         console.log('🎉 [aSc Import Wizard] Import successfully committed to database!', res.data);
-        toast.success('Impor XML aSc TimeTables BERHASIL! Jadwal & Kontrak KBM telah diperbarui 100%.', { id: toastId, duration: 5000 });
+        toast.success('Impor XML Berhasil! Menampilkan Ringkasan Laporan Hasil CRUD.', { id: toastId, duration: 4000 });
+        setExecutionResult(res.data?.summary || res.data);
+        setStep(4);
         if (onSuccessImport) onSuccessImport();
-        handleClose();
       } else {
         console.error('❌ [aSc Import Wizard] Execute failed with server message:', res.message);
         toast.error(res.message || 'Gagal mengimpor jadwal', { id: toastId });
@@ -226,7 +229,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
               1
             </div>
             <span className={cn("text-xs font-semibold", step === 1 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500")}>
-              Unggah File XML
+              Unggah XML
             </span>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />
@@ -235,16 +238,25 @@ export const AscImportWizardModal: React.FC<Props> = ({
               2
             </div>
             <span className={cn("text-xs font-semibold", step === 2 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500")}>
-              Pratinjau & Pemetaan
+              Pratinjau Pemetaan
             </span>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />
           <div className="flex items-center space-x-2">
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs", step === 3 ? "bg-indigo-600 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-500")}>
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs", step === 3 ? "bg-indigo-600 text-white" : step > 3 ? "bg-emerald-500 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-500")}>
               3
             </div>
             <span className={cn("text-xs font-semibold", step === 3 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500")}>
-              Eksekusi & Overwrite
+              Eksekusi Overwrite
+            </span>
+          </div>
+          <ArrowRight className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center space-x-2">
+            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs", step === 4 ? "bg-emerald-600 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-500")}>
+              4
+            </div>
+            <span className={cn("text-xs font-semibold", step === 4 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-500")}>
+              Laporan CRUD Hasil
             </span>
           </div>
         </div>
@@ -286,123 +298,141 @@ export const AscImportWizardModal: React.FC<Props> = ({
           </div>
         )}
 
-        {/* STEP 2: PRATINJAU & PEMETAAN */}
+        {/* STEP 2: PRE-EXECUTION PREVIEW & MAPPING */}
         {step === 2 && analysis && (
           <div className="space-y-4">
-            {/* Summary Header Badges */}
-            <div className="grid grid-cols-5 gap-3 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 text-center">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Guru XML</div>
-                <div className="text-base font-black text-indigo-600 dark:text-indigo-400">{analysis.summary.total_teachers}</div>
+            {/* Top Summary Banner */}
+            <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
+              <div className="space-y-1">
+                <div className="text-xs text-indigo-300 font-semibold uppercase tracking-wider">
+                  File Terbaca: <span className="text-white font-mono">{analysis.filename}</span>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-medium">
+                  <span>👥 {analysis.summary.total_teachers} Guru</span>
+                  <span>🏫 {analysis.summary.total_classes} Kelas</span>
+                  <span>📚 {analysis.summary.total_subjects} Mapel</span>
+                  <span>📜 {analysis.summary.total_lessons} Kontrak</span>
+                  <span>🧩 {analysis.summary.total_cards} Kartu Jam</span>
+                </div>
               </div>
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Kelas XML</div>
-                <div className="text-base font-black text-indigo-600 dark:text-indigo-400">{analysis.summary.total_classes}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Mapel XML</div>
-                <div className="text-base font-black text-indigo-600 dark:text-indigo-400">{analysis.summary.total_subjects}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Kontrak Les</div>
-                <div className="text-base font-black text-emerald-600 dark:text-emerald-400">{analysis.summary.total_lessons}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Slot Plotting</div>
-                <div className="text-base font-black text-amber-600 dark:text-amber-400">{analysis.summary.total_cards}</div>
-              </div>
+              <Badge className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-xs px-3 py-1">
+                Mode Transaksional
+              </Badge>
             </div>
 
-            {/* Sub-Tabs Navigation */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-              <div className="flex space-x-2">
+            {/* Sub-Tabs Selector */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+              <div className="flex space-x-1">
                 <button
-                  onClick={() => setActiveTab('GURU')}
-                  className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2", activeTab === 'GURU' ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300")}
+                  onClick={() => { setActiveTab('GURU'); setSearchQuery(''); }}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all",
+                    activeTab === 'GURU'
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+                      : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
                 >
-                  <Users className="w-3.5 h-3.5" />
-                  Pemetaan Guru ({analysis.teachers.length})
+                  <Users className="w-4 h-4" />
+                  Pemetaan Guru ({Object.keys(teacherMappings).length})
                 </button>
+
                 <button
-                  onClick={() => setActiveTab('KELAS')}
-                  className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2", activeTab === 'KELAS' ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300")}
+                  onClick={() => { setActiveTab('KELAS'); setSearchQuery(''); }}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all",
+                    activeTab === 'KELAS'
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+                      : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
                 >
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  Pemetaan Kelas ({analysis.classes.length})
+                  <GraduationCap className="w-4 h-4" />
+                  Pemetaan Kelas ({Object.keys(classMappings).length})
                 </button>
+
                 <button
-                  onClick={() => setActiveTab('MAPEL')}
-                  className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2", activeTab === 'MAPEL' ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300")}
+                  onClick={() => { setActiveTab('MAPEL'); setSearchQuery(''); }}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all",
+                    activeTab === 'MAPEL'
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+                      : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
                 >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Pemetaan Mapel ({analysis.subjects.length})
+                  <BookOpen className="w-4 h-4" />
+                  Pemetaan Mapel ({Object.keys(subjectMappings).length})
                 </button>
               </div>
 
-              {/* Search input */}
-              <div className="relative">
+              {/* Search Filter */}
+              <div className="relative w-64 pb-1">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari..."
+                  placeholder="Cari nama..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
             </div>
 
-            {/* TAB CONTENT: GURU */}
-            {activeTab === 'GURU' && (
-              <div className="max-h-[340px] overflow-y-auto border rounded-xl border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 font-bold text-slate-700 dark:text-slate-300">
+            {/* TAB CONTENT TABLES */}
+            <div className="max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+              {activeTab === 'GURU' && (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                      <th className="p-2.5">Nama di XML aSc</th>
-                      <th className="p-2.5">Kode</th>
-                      <th className="p-2.5">Status Matching</th>
-                      <th className="p-2.5">Arahkan ke Master Data Guru Absenta</th>
+                      <th className="py-2.5 px-4">Nama di File XML aSc</th>
+                      <th className="py-2.5 px-4">Status Pemetaan Auto</th>
+                      <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {analysis.teachers
                       .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map(t => {
-                        const currentMap = teacherMappings[t.asc_id] || { action: 'CREATE' };
+                      .map((t) => {
+                        const currentMap = teacherMappings[t.asc_id] || { action: 'CREATE', asc_id: t.asc_id, name: t.name };
                         return (
-                          <tr key={t.asc_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">{t.name}</td>
-                            <td className="p-2.5 font-mono text-slate-500">{t.code || '-'}</td>
-                            <td className="p-2.5">
-                              {currentMap.action === 'MATCH' ? (
-                                <Badge variant="success" className="text-[10px]">Terhubung DB</Badge>
+                          <tr key={t.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
+                              {t.name} {t.code ? <span className="text-slate-400 font-normal">({t.code})</span> : null}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              {t.match_status === 'EXACT_MATCH' ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
+                                  ✓ Cocok di DB Master ({t.matched_db_name})
+                                </Badge>
                               ) : (
-                                <Badge variant="info" className="text-[10px]">Auto-Create Baru</Badge>
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                                  + Guru Baru (Auto Create)
+                                </Badge>
                               )}
                             </td>
-                            <td className="p-2.5">
+                            <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.action === 'MATCH' ? currentMap.target_id || '' : '__CREATE__'}
+                                value={currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val === '__CREATE__') {
                                     setTeacherMappings(prev => ({
                                       ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], action: 'CREATE', target_id: undefined }
+                                      [t.asc_id]: { ...prev[t.asc_id], target_id: undefined, action: 'CREATE' }
                                     }));
                                   } else {
                                     setTeacherMappings(prev => ({
                                       ...prev,
-                                      [t.asc_id]: { ...prev[t.asc_id], action: 'MATCH', target_id: val }
+                                      [t.asc_id]: { ...prev[t.asc_id], target_id: val, action: 'MATCH' }
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold"
+                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
                               >
-                                <option value="__CREATE__">+ Buat Guru Baru di DB ("{t.name}")</option>
-                                <optgroup label="Pilih Guru dari Database Absenta">
+                                <option value="__CREATE__">+ Buat Guru Baru "{t.name}"</option>
+                                <optgroup label="Pilih dari Master Guru yang Ada:">
                                   {analysis.db_teachers.map(dbg => (
-                                    <option key={dbg.id} value={dbg.id}>{dbg.name}</option>
+                                    <option key={dbg.id} value={dbg.id}>
+                                      {dbg.name}
+                                    </option>
                                   ))}
                                 </optgroup>
                               </select>
@@ -412,60 +442,63 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       })}
                   </tbody>
                 </table>
-              </div>
-            )}
+              )}
 
-            {/* TAB CONTENT: KELAS */}
-            {activeTab === 'KELAS' && (
-              <div className="max-h-[340px] overflow-y-auto border rounded-xl border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 font-bold text-slate-700 dark:text-slate-300">
+              {activeTab === 'KELAS' && (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                      <th className="p-2.5">Nama Kelas di XML aSc</th>
-                      <th className="p-2.5">Kode</th>
-                      <th className="p-2.5">Status Matching</th>
-                      <th className="p-2.5">Arahkan ke Master Data Kelas Absenta (Redirection)</th>
+                      <th className="py-2.5 px-4">Nama Kelas di File XML</th>
+                      <th className="py-2.5 px-4">Status Pemetaan Auto</th>
+                      <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {analysis.classes
                       .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map(c => {
-                        const currentMap = classMappings[c.asc_id] || { action: 'CREATE' };
+                      .map((c) => {
+                        const currentMap = classMappings[c.asc_id] || { action: 'CREATE', asc_id: c.asc_id, name: c.name };
                         return (
-                          <tr key={c.asc_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">{c.name}</td>
-                            <td className="p-2.5 font-mono text-slate-500">{c.code || '-'}</td>
-                            <td className="p-2.5">
-                              {currentMap.action === 'MATCH' ? (
-                                <Badge variant="success" className="text-[10px]">Terhubung DB</Badge>
+                          <tr key={c.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
+                              {c.name}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              {c.match_status === 'EXACT_MATCH' ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
+                                  ✓ Cocok di DB Master ({c.matched_db_name})
+                                </Badge>
                               ) : (
-                                <Badge variant="info" className="text-[10px]">Auto-Create Baru</Badge>
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                                  + Rombel Baru (Auto Create)
+                                </Badge>
                               )}
                             </td>
-                            <td className="p-2.5">
+                            <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.action === 'MATCH' ? currentMap.target_id || '' : '__CREATE__'}
+                                value={currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val === '__CREATE__') {
                                     setClassMappings(prev => ({
                                       ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], action: 'CREATE', target_id: undefined }
+                                      [c.asc_id]: { ...prev[c.asc_id], target_id: undefined, action: 'CREATE' }
                                     }));
                                   } else {
                                     setClassMappings(prev => ({
                                       ...prev,
-                                      [c.asc_id]: { ...prev[c.asc_id], action: 'MATCH', target_id: val }
+                                      [c.asc_id]: { ...prev[c.asc_id], target_id: val, action: 'MATCH' }
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold"
+                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
                               >
-                                <option value="__CREATE__">+ Buat Kelas Baru di DB ("{c.name}")</option>
-                                <optgroup label="Arahkan ke Kelas yang Ada di Absenta">
+                                <option value="__CREATE__">+ Buat Rombel Baru "{c.name}"</option>
+                                <optgroup label="Arahkan ke Master Rombel yang Ada:">
                                   {analysis.db_classes.map(dbc => (
-                                    <option key={dbc.id} value={dbc.id}>{dbc.name}</option>
+                                    <option key={dbc.id} value={dbc.id}>
+                                      {dbc.name}
+                                    </option>
                                   ))}
                                 </optgroup>
                               </select>
@@ -475,60 +508,63 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       })}
                   </tbody>
                 </table>
-              </div>
-            )}
+              )}
 
-            {/* TAB CONTENT: MAPEL */}
-            {activeTab === 'MAPEL' && (
-              <div className="max-h-[340px] overflow-y-auto border rounded-xl border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 font-bold text-slate-700 dark:text-slate-300">
+              {activeTab === 'MAPEL' && (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                     <tr>
-                      <th className="p-2.5">Nama Mapel di XML aSc</th>
-                      <th className="p-2.5">Kode Singkatan</th>
-                      <th className="p-2.5">Status Matching</th>
-                      <th className="p-2.5">Arahkan ke Master Data Mapel Absenta</th>
+                      <th className="py-2.5 px-4">Mata Pelajaran di File XML</th>
+                      <th className="py-2.5 px-4">Status Pemetaan Auto</th>
+                      <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {analysis.subjects
                       .filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map(s => {
-                        const currentMap = subjectMappings[s.asc_id] || { action: 'CREATE' };
+                      .map((s) => {
+                        const currentMap = subjectMappings[s.asc_id] || { action: 'CREATE', asc_id: s.asc_id, name: s.name };
                         return (
-                          <tr key={s.asc_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                            <td className="p-2.5 font-bold text-slate-900 dark:text-white">{s.name}</td>
-                            <td className="p-2.5 font-mono text-slate-500">{s.code || '-'}</td>
-                            <td className="p-2.5">
-                              {currentMap.action === 'MATCH' ? (
-                                <Badge variant="success" className="text-[10px]">Terhubung DB</Badge>
+                          <tr key={s.asc_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
+                              {s.name} {s.code ? <span className="text-slate-400 font-normal">({s.code})</span> : null}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              {s.match_status === 'EXACT_MATCH' ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
+                                  ✓ Cocok di DB Master ({s.matched_db_name})
+                                </Badge>
                               ) : (
-                                <Badge variant="info" className="text-[10px]">Auto-Create Baru</Badge>
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px]">
+                                  + Mapel Baru (Auto Create)
+                                </Badge>
                               )}
                             </td>
-                            <td className="p-2.5">
+                            <td className="py-2.5 px-4">
                               <select
-                                value={currentMap.action === 'MATCH' ? currentMap.target_id || '' : '__CREATE__'}
+                                value={currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val === '__CREATE__') {
                                     setSubjectMappings(prev => ({
                                       ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], action: 'CREATE', target_id: undefined }
+                                      [s.asc_id]: { ...prev[s.asc_id], target_id: undefined, action: 'CREATE' }
                                     }));
                                   } else {
                                     setSubjectMappings(prev => ({
                                       ...prev,
-                                      [s.asc_id]: { ...prev[s.asc_id], action: 'MATCH', target_id: val }
+                                      [s.asc_id]: { ...prev[s.asc_id], target_id: val, action: 'MATCH' }
                                     }));
                                   }
                                 }}
-                                className="w-full text-xs p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold"
+                                className="w-full text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 text-slate-800 dark:text-slate-100"
                               >
-                                <option value="__CREATE__">+ Buat Mapel Baru di DB ("{s.name}")</option>
-                                <optgroup label="Pilih Mapel dari Database Absenta">
+                                <option value="__CREATE__">+ Buat Mapel Baru "{s.name}"</option>
+                                <optgroup label="Arahkan ke Master Mapel yang Ada:">
                                   {analysis.db_subjects.map(dbs => (
-                                    <option key={dbs.id} value={dbs.id}>{dbs.name} ({dbs.code || '-'})</option>
+                                    <option key={dbs.id} value={dbs.id}>
+                                      {dbs.name} {dbs.code ? `(${dbs.code})` : ''}
+                                    </option>
                                   ))}
                                 </optgroup>
                               </select>
@@ -538,10 +574,10 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       })}
                   </tbody>
                 </table>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Step 2 Bottom Actions */}
+            {/* Step 2 Bottom Navigation */}
             <div className="flex items-center justify-between pt-2">
               <Button
                 variant="outline"
@@ -549,7 +585,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                 onClick={() => setStep(1)}
                 className="rounded-xl"
               >
-                Kembali ke Unggah
+                Kembali
               </Button>
               <Button
                 variant="primary"
@@ -557,7 +593,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
                 onClick={() => setStep(3)}
                 className="rounded-xl px-6 bg-indigo-600 text-white font-bold"
               >
-                Lanjut ke Eksekusi Overwrite
+                Lanjut ke Eksekusi
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
@@ -603,6 +639,131 @@ export const AscImportWizardModal: React.FC<Props> = ({
               >
                 {executing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                 {executing ? 'Sedang Memproses Impor...' : 'EKSEKUSI IMPOR XML SEKARANG'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4: LAPORAN KEBERHASILAN CRUD RECORD */}
+        {step === 4 && (
+          <div className="space-y-6 py-2">
+            {/* Hero Success Banner */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl flex items-start justify-between">
+              <div className="flex items-start space-x-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <CheckCircle2 className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold uppercase tracking-wider mb-2">
+                    <Sparkles className="w-3.5 h-3.5" /> 100% Impor Transaksional Sukses
+                  </div>
+                  <h2 className="text-xl font-black">Laporan Keberhasilan Impor & CRUD Record</h2>
+                  <p className="text-xs text-emerald-100 mt-1 max-w-xl">
+                    Seluruh Jadwal KBM & Kontrak Pelajaran dari file <code className="bg-black/20 px-1.5 py-0.5 rounded text-white font-bold">{analysis?.filename}</code> telah berhasil ditimpa dan disimpan ke database PostgreSQL Absenta.
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-white text-emerald-800 font-bold px-3 py-1 text-xs shadow-sm">
+                STATUS: COMMITTED
+              </Badge>
+            </div>
+
+            {/* Stat Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-indigo-500" /> Master Guru</span>
+                  <span className="text-indigo-600 font-bold">{executionResult?.total_guru || 0} Terproses</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {executionResult?.total_guru || 0} <span className="text-xs font-normal text-slate-400">orang</span>
+                </div>
+                <div className="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-100 dark:border-slate-800 pt-2 font-medium">
+                  <div className="flex justify-between"><span>Sesuai Database:</span> <span className="font-bold text-emerald-600">{executionResult?.total_guru_matched || 0}</span></div>
+                  <div className="flex justify-between"><span>Dibuat Baru:</span> <span className="font-bold text-indigo-600">{executionResult?.total_guru_created || 0}</span></div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5"><GraduationCap className="w-4 h-4 text-blue-500" /> Master Rombel</span>
+                  <span className="text-blue-600 font-bold">{executionResult?.total_kelas || 0} Terproses</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {executionResult?.total_kelas || 0} <span className="text-xs font-normal text-slate-400">kelas</span>
+                </div>
+                <div className="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-100 dark:border-slate-800 pt-2 font-medium">
+                  <div className="flex justify-between"><span>Sesuai Database:</span> <span className="font-bold text-emerald-600">{executionResult?.total_kelas_matched || 0}</span></div>
+                  <div className="flex justify-between"><span>Dibuat Baru:</span> <span className="font-bold text-blue-600">{executionResult?.total_kelas_created || 0}</span></div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4 text-amber-500" /> Master Mapel</span>
+                  <span className="text-amber-600 font-bold">{executionResult?.total_mapel || 0} Terproses</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">
+                  {executionResult?.total_mapel || 0} <span className="text-xs font-normal text-slate-400">mapel</span>
+                </div>
+                <div className="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-100 dark:border-slate-800 pt-2 font-medium">
+                  <div className="flex justify-between"><span>Sesuai Database:</span> <span className="font-bold text-emerald-600">{executionResult?.total_mapel_matched || 0}</span></div>
+                  <div className="flex justify-between"><span>Dibuat Baru:</span> <span className="font-bold text-amber-600">{executionResult?.total_mapel_created || 0}</span></div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl p-4 shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> Slot Jam Plotting</span>
+                  <span className="text-emerald-600 font-bold">100% Terisi</span>
+                </div>
+                <div className="text-2xl font-black text-emerald-900 dark:text-emerald-200">
+                  {executionResult?.total_cards || 0} <span className="text-xs font-normal text-emerald-600">slot</span>
+                </div>
+                <div className="text-[11px] text-emerald-700 dark:text-emerald-400 space-y-0.5 border-t border-emerald-200 dark:border-emerald-800/60 pt-2 font-medium">
+                  <div className="flex justify-between"><span>Kontrak KBM:</span> <span className="font-bold">{executionResult?.total_kontrak || 0} Kontrak</span></div>
+                  <div className="flex justify-between"><span>Pola Jam Bel:</span> <span className="font-bold">Day-Pattern Sync</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Audit Log Box */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                <span>Ringkasan Eksekusi Transaksi Database & Log Sync</span>
+                <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full font-bold">
+                  200 OK (COMMITTED)
+                </span>
+              </div>
+              <div className="p-4 bg-white dark:bg-slate-900 space-y-2 text-xs font-mono text-slate-600 dark:text-slate-300">
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                  <span>[Mode Transaksi] Overwrite Per Periode</span>
+                  <span className="text-emerald-600 font-bold">CLEARED & RE-CREATED</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                  <span>[Table Inserted] JadwalKontrakKbm</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{executionResult?.total_kontrak || 0} Record</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                  <span>[Table Inserted] JadwalKBM (Slot Jam)</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{executionResult?.total_cards || 0} Record</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>[Sinkronisasi Waktu] Day-Pattern Shift Bel</span>
+                  <span className="text-indigo-600 font-bold">Pola Jam Senin-Jumat Aktif</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Finish Action */}
+            <div className="flex items-center justify-end pt-2">
+              <Button
+                variant="primary"
+                onClick={handleClose}
+                className="rounded-xl px-8 py-3 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm flex items-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Selesai & Lihat Jadwal di Visual Builder
               </Button>
             </div>
           </div>

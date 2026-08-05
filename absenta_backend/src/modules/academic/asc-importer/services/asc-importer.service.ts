@@ -535,9 +535,23 @@ export class AscImporterService {
       return {
         success: true,
         summary: {
+          total_guru_matched: input.teacher_mappings.filter(t => t.action === 'MATCH').length,
+          total_guru_created: input.teacher_mappings.filter(t => t.action === 'CREATE').length,
+          total_guru_ignored: input.teacher_mappings.filter(t => t.action === 'IGNORE').length,
           total_guru: teacherIdMap.size,
+
+          total_kelas_matched: input.class_mappings.filter(c => c.action === 'MATCH').length,
+          total_kelas_created: input.class_mappings.filter(c => c.action === 'CREATE').length,
+          total_kelas_ignored: input.class_mappings.filter(c => c.action === 'IGNORE').length,
           total_kelas: classIdMap.size,
+
+          total_mapel_matched: input.subject_mappings.filter(s => s.action === 'MATCH').length,
+          total_mapel_created: input.subject_mappings.filter(s => s.action === 'CREATE').length,
+          total_mapel_ignored: input.subject_mappings.filter(s => s.action === 'IGNORE').length,
           total_mapel: subjectIdMap.size,
+
+          total_kontrak: kontrakBatch.length,
+          total_cards: cardsBatch.length,
         },
       };
     });
