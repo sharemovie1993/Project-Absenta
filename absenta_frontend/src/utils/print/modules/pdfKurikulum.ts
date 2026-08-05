@@ -341,26 +341,47 @@ export const renderKurikulumRosterPdf = (
   if (printType === 'roster_teacher') {
     if (selectedGuruId === 'all') {
       jadwalList.forEach(j => {
-        const name = j.Guru?.User?.full_name || 'Guru Tanpa Nama';
+        const name = j.Guru?.User?.full_name || j.Guru?.nama_guru || 'Guru Tanpa Nama';
         if (!groups.has(name)) groups.set(name, []);
         groups.get(name)!.push(j);
       });
     } else {
       const g = (filterData?.gurus as any[])?.find(x => x.id === selectedGuruId);
       const name = g?.nama_guru || 'Guru';
-      groups.set(name, jadwalList);
+      // Filter: own schedule + pembiasaan for all classes (no guru filter for slot 0)
+      const filtered = jadwalList.filter(j =>
+        j.guru_id === selectedGuruId ||
+        j.is_pembiasaan === true ||
+        j.jenis_kegiatan === 'PEMBIASAAN'
+      );
+      groups.set(name, filtered);
     }
   } else {
     if (selectedClassId === 'all') {
-      jadwalList.forEach(j => {
+      // For each non-pembiasaan item, group by class name
+      jadwalList.filter(j => !j.is_pembiasaan && j.jenis_kegiatan !== 'PEMBIASAAN').forEach(j => {
         const name = j.Kelas?.nama_kelas || 'Tanpa Kelas';
         if (!groups.has(name)) groups.set(name, []);
         groups.get(name)!.push(j);
       });
+      // For pembiasaan items, inject into every matching class bucket
+      jadwalList.filter(j => j.is_pembiasaan || j.jenis_kegiatan === 'PEMBIASAAN').forEach(j => {
+        const cls = (filterData?.classes as any[])?.find(c => c.id === j.kelas_id);
+        const name = cls?.nama_kelas;
+        if (name && groups.has(name)) {
+          groups.get(name)!.push(j);
+        }
+      });
     } else {
       const cls = (filterData?.classes as any[])?.find(c => c.id === selectedClassId);
       const name = cls?.nama_kelas || 'Kelas';
-      groups.set(name, jadwalList);
+      // Filter: items for this class + pembiasaan targeting this class or all classes
+      const filtered = jadwalList.filter(j =>
+        j.kelas_id === selectedClassId ||
+        j.target_semua_kelas === true ||
+        (j.is_pembiasaan && j.kelas_id === selectedClassId)
+      );
+      groups.set(name, filtered);
     }
   }
 
