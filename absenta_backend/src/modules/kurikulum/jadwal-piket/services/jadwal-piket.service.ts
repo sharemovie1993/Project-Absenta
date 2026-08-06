@@ -512,18 +512,33 @@ export class JadwalPiketService {
 
       // Render kelompok Piket Jurusan
       if (piketJurusan.length > 0) {
-        let sec = `📌 *PIKET JURUSAN*\n`;
+        const piketJurusanGroupsMap = new Map<string, { slotMulai: number; items: typeof list }>();
         piketJurusan.forEach((item) => {
-          const namaGuru = item.Guru?.nama_guru || '-';
-          let detail = (item.catatan || '').trim();
-          if (!detail) {
-            const posClean = (item.pos_piket || '').replace(/^piket\s+jurusan\s*/i, '').trim();
-            if (posClean) detail = posClean;
+          const slotM = item.slot_mulai ?? 1;
+          const slotS = item.slot_selesai ?? 12;
+          const key = `${slotM}-${slotS}`;
+          if (!piketJurusanGroupsMap.has(key)) {
+            piketJurusanGroupsMap.set(key, { slotMulai: slotM, items: [] });
           }
-          const detailStr = detail ? (detail.startsWith('(') ? ` ${detail}` : ` (${detail})`) : '';
-          sec += `* 👨‍🏫 ${namaGuru}${detailStr}\n`;
+          piketJurusanGroupsMap.get(key)!.items.push(item);
         });
-        sections.push(sec);
+
+        const sortedJurusanGroups = Array.from(piketJurusanGroupsMap.values()).sort((a, b) => a.slotMulai - b.slotMulai);
+        sortedJurusanGroups.forEach((group) => {
+          const waktuHeader = buildWaktuHeader(group.items);
+          let sec = `${waktuHeader}📌 *PIKET JURUSAN*\n`;
+          group.items.forEach((item) => {
+            const namaGuru = item.Guru?.nama_guru || '-';
+            let detail = (item.catatan || '').trim();
+            if (!detail) {
+              const posClean = (item.pos_piket || '').replace(/^piket\s+jurusan\s*/i, '').trim();
+              if (posClean) detail = posClean;
+            }
+            const detailStr = detail ? (detail.startsWith('(') ? ` ${detail}` : ` (${detail})`) : '';
+            sec += `* 👨‍🏫 ${namaGuru}${detailStr}\n`;
+          });
+          sections.push(sec);
+        });
       }
 
       msg += sections.join('\n') + '\n';
