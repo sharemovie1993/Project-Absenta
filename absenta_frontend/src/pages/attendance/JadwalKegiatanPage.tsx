@@ -167,7 +167,6 @@ export default function JadwalKegiatanPage() {
     } catch (err: any) {
       const serverMsg = err?.response?.data?.message || err?.response?.data?.errors?.[0]?.message || err?.message || 'Gagal menyimpan jadwal kegiatan';
       toast.error(serverMsg);
-      throw err;
     }
   }, [editingItem, activeTahunPelajaranId, handleCloseModal, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
 

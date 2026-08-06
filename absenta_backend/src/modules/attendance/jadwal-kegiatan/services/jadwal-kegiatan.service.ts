@@ -65,6 +65,17 @@ export class JadwalKegiatanService {
       throw new Error('Format waktu_mulai dan waktu_selesai harus HH:mm');
     }
 
+    let tpId = input.tahun_pelajaran_id;
+    if (!tpId || tpId.trim() === '') {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: scope.tenantId, is_active: true }
+      }) || await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: scope.tenantId }
+      });
+      if (!activeTp) throw new Error('Tahun Pelajaran tidak ditemukan di sistem');
+      tpId = activeTp.id;
+    }
+
     const created = await prisma.jadwalKegiatan.create({
       data: {
         tenant_id: scope.tenantId,
@@ -77,7 +88,7 @@ export class JadwalKegiatanService {
         target_kelas_ids: input.target_kelas_ids || [],
         berlaku_mulai: new Date(input.berlaku_mulai),
         berlaku_sampai: input.berlaku_sampai ? new Date(input.berlaku_sampai) : null,
-        tahun_pelajaran_id: input.tahun_pelajaran_id,
+        tahun_pelajaran_id: tpId,
         dibuat_oleh: userId,
         aktif: true,
       },

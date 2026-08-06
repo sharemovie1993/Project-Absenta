@@ -12,7 +12,7 @@ const createSchema = z.object({
   target_kelas_ids: z.array(z.string()).optional(),
   berlaku_mulai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format berlaku mulai harus YYYY-MM-DD'),
   berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format berlaku sampai harus YYYY-MM-DD').nullable().optional(),
-  tahun_pelajaran_id: z.string().uuid('Tahun Pelajaran ID tidak valid'),
+  tahun_pelajaran_id: z.string().optional(),
 });
 
 const updateSchema = z.object({
