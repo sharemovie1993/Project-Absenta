@@ -1013,8 +1013,10 @@ export class JadwalKBMController {
       const isSpecificFilter = (kelas_id && typeof kelas_id === 'string' && kelas_id.trim() !== '') ||
                               (guru_id && typeof guru_id === 'string' && guru_id.trim() !== '');
 
-      const jadwalWhere: any = { tenant_id: tenantId };
-      const kegiatanWhere: any = { tenant_id: tenantId };
+      const jadwalWhere: any = { 
+        tenant_id: tenantId,
+        slot_index: { not: 0 }, // Protect Slot Jam 0 (Upacara / Pembiasaan) from deletion
+      };
       const sesiWhere: any = { tenant_id: tenantId };
 
       if (kelas_id && typeof kelas_id === 'string' && kelas_id.trim()) {
@@ -1038,21 +1040,12 @@ export class JadwalKBMController {
         await prisma.sesiAbsensi.deleteMany({ where: { id: { in: targetSesiIds } } });
       }
 
-      // 2. Delete JadwalKBM
+      // 2. Delete JadwalKBM (Except slot_index: 0)
       const resJadwal = await prisma.jadwalKBM.deleteMany({
         where: jadwalWhere
       });
 
-      // 3. Delete JadwalKegiatan if global purge
-      let resKegiatanCount = 0;
-      if (!isSpecificFilter) {
-        const resKegiatan = await prisma.jadwalKegiatan.deleteMany({
-          where: kegiatanWhere
-        });
-        resKegiatanCount = resKegiatan.count;
-      }
-
-      const totalDeleted = resJadwal.count + targetSesiIds.length + resKegiatanCount;
+      const totalDeleted = resJadwal.count + targetSesiIds.length;
 
       // Auto-sync sessions for today in background
       void this.syncSessionsToday(tenantId);
@@ -1061,25 +1054,22 @@ export class JadwalKBMController {
         await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
         return reply.send({
           success: true,
-          message: `Berhasil mengosongkan/reset ${totalDeleted} item (Jadwal KBM, Kegiatan, & Sesi Absensi).`,
+          message: `Berhasil mengosongkan/reset ${totalDeleted} item (Jadwal KBM & Sesi Absensi, Slot Jam 0 tetap aman).`,
           count: totalDeleted,
         });
       }
 
-      // Force fallback purge across entire tenant if initial match returned 0
+      // Force fallback purge across entire tenant if initial match returned 0 (protecting slot_index 0)
       const forceJadwal = await prisma.jadwalKBM.deleteMany({
-        where: { tenant_id: tenantId }
+        where: { tenant_id: tenantId, slot_index: { not: 0 } }
       });
-      const forceKegiatan = await prisma.jadwalKegiatan.deleteMany({
-        where: { tenant_id: tenantId }
-      });
-      const forceTotal = forceJadwal.count + forceKegiatan.count;
+      const forceTotal = forceJadwal.count;
 
       if (forceTotal > 0) {
         await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
         return reply.send({
           success: true,
-          message: `Berhasil mengosongkan/reset ${forceTotal} jadwal KBM sekolah.`,
+          message: `Berhasil mengosongkan/reset ${forceTotal} jadwal KBM (Slot Jam 0 tetap aman).`,
           count: forceTotal
         });
       }
