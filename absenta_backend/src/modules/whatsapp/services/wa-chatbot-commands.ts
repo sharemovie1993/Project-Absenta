@@ -126,11 +126,7 @@ export function formatShortMapelName(mapelInput?: any): string {
     kode = (mapelInput.kode_mapel || '').trim();
   }
 
-  // Jika kode_mapel sudah ada dan pendek (2-10 karakter), utamakan kode_mapel
-  if (kode && kode.length <= 10 && kode.length >= 2) {
-    return kode.toUpperCase();
-  }
-
+  // Utamakan Nama Mapel; jika tidak ada, gunakan kode_mapel sebagai fallback
   if (!fullName) return kode || '-';
 
   const nameUpper = fullName.toUpperCase();
@@ -156,8 +152,6 @@ export function formatShortMapelName(mapelInput?: any): string {
     'PENDIDIKAN JASMANI, OLAHRAGA, DAN KESEHATAN': 'PJOK',
     'PROJEK PENGUATAN PROFIL PELAJAR PANCASILA': 'P5',
     'PROJEK KREATIF DAN KEWIRAUSAHAAN': 'PKK',
-    'DASAR-DASAR PENGEMBANGAN PERANGKAT LUNAK DAN GIM': 'Dasar PPLG',
-    'DASAR-DASAR TEKNIK KOMPUTER DAN JARINGAN': 'Dasar TJKT',
     'BIMBINGAN DAN KONSELING': 'BK',
     'BIMBINGAN KONSELING': 'BK',
     'INFORMATIKA': 'Informatika',
@@ -179,15 +173,17 @@ export function formatShortMapelName(mapelInput?: any): string {
     }
   }
 
-  if (fullName.length > 20) {
-    const words = fullName.split(/\s+/).filter(w => !['dan', 'atau', 'pada', 'yang', 'untuk', '&'].includes(w.toLowerCase()));
-    if (words.length >= 3) {
-      const acronym = words.map(w => w[0].toUpperCase()).join('');
-      if (acronym.length >= 2 && acronym.length <= 6) {
-        return acronym;
-      }
+  // Jika nama mapel <= 35 karakter, langsung kembalikan NAMA MAPEL ASLI secara utuh
+  if (fullName.length <= 35) {
+    return fullName;
+  }
+
+  const words = fullName.split(/\s+/).filter(w => !['dan', 'atau', 'pada', 'yang', 'untuk', '&'].includes(w.toLowerCase()));
+  if (words.length >= 3) {
+    const acronym = words.map(w => w[0].toUpperCase()).join('');
+    if (acronym.length >= 2 && acronym.length <= 6) {
+      return acronym;
     }
-    return fullName.substring(0, 18) + '...';
   }
 
   return fullName;
