@@ -191,6 +191,15 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   const block2GuruTiles = useMemo<AppTileData[]>(() => {
     const items: AppTileData[] = [
       {
+        id: 'b2-ops-presensi',
+        title: 'Operasional Presensi',
+        iconComp: CheckCircle2,
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+        badgeText: 'Gerbang & Ops',
+        path: '/attendance/ops',
+      },
+      {
         id: 'b2-absensi-kbm',
         title: 'Absensi Kelas',
         iconComp: Monitor,

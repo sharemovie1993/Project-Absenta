@@ -167,13 +167,22 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
 
     if (isPetugasKelas) {
       actions.push({
+        id: 'b1-ops-presensi',
+        title: 'Operasional Presensi',
+        iconComp: CheckCircle,
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+        badgeText: 'Petugas',
+        path: '/attendance/ops',
+      });
+      actions.push({
         id: 'b1-presensi-rombel',
         title: 'Presensi Rombel',
         iconComp: Users,
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
         badgeText: 'Petugas',
-        path: '/attendance/sesi',
+        path: '/attendance/ops?tab=sesi',
       });
     }
 
