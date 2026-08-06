@@ -13,7 +13,7 @@ export interface CreateJadwalKegiatanInput {
   target_kelas_ids?: string[];
   berlaku_mulai: string; // YYYY-MM-DD
   berlaku_sampai?: string | null; // YYYY-MM-DD
-  tahun_pelajaran_id: string;
+  tahun_pelajaran_id?: string;
 }
 
 export interface UpdateJadwalKegiatanInput {
