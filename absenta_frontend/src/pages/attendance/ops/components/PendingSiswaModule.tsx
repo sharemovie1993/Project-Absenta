@@ -114,47 +114,48 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
 
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-[3rem] border border-gray-100 dark:border-gray-800 p-8 shadow-2xl shadow-black/[0.02] space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-         <div className="space-y-1">
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white">Daftar Kehadiran</h3>
-            <p className="text-sm font-bold text-gray-400 italic">Mendukung setiap langkah siswa menuju gerbang sekolah.</p>
+  return (
+    <div className="op-card bg-white dark:bg-gray-900 rounded-xl sm:rounded-[3rem] border border-gray-100 dark:border-gray-800 p-2 sm:p-8 shadow-xl shadow-black/[0.02] space-y-3 sm:space-y-8 w-full min-w-0">
+      <div className="flex flex-row items-center justify-between gap-2 sm:gap-6">
+         <div className="min-w-0">
+            <h3 className="text-base sm:text-2xl font-black text-gray-900 dark:text-white truncate">Daftar Kehadiran</h3>
+            <p className="hidden sm:block text-sm font-bold text-gray-400 italic">Mendukung setiap langkah siswa menuju gerbang sekolah.</p>
          </div>
-         <div className="flex items-center gap-3">
+         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-50 dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700 mr-2">
+            <div className="flex items-center bg-gray-50 dark:bg-gray-800 p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-700">
                <button 
                  onClick={() => setViewMode('grid')}
-                 className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                 className={`p-1.5 sm:p-2 rounded-md sm:rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-xs text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                >
-                 <LayoutGrid size={18} />
+                 <LayoutGrid className="w-4 h-4 sm:w-4 sm:h-4" />
                </button>
                <button 
                  onClick={() => setViewMode('list')}
-                 className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                 className={`p-1.5 sm:p-2 rounded-md sm:rounded-xl transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-xs text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                >
-                 <List size={18} />
+                 <List className="w-4 h-4 sm:w-4 sm:h-4" />
                </button>
             </div>
 
-            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700">
-               <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-               <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                 {socketConnected ? 'Live Feed' : 'Offline'}
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50 dark:bg-gray-800 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-700">
+               <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${socketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-500">
+                 {socketConnected ? 'Live' : 'Offline'}
                </span>
             </div>
-            <Button size="sm" variant="ghost" onClick={refreshData} className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 border border-indigo-100 dark:border-indigo-800">
-              <RefreshCw className={`h-5 w-5 ${notPresentLoading ? 'animate-spin' : ''}`} />
+            <Button size="sm" variant="ghost" onClick={refreshData} className="h-8 w-8 sm:h-10 sm:w-10 p-0 rounded-lg sm:rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center">
+              <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${notPresentLoading ? 'animate-spin' : ''}`} />
             </Button>
          </div>
       </div>
 
       {/* Summary Analytic Cards Placed TOP of Table */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
          <AnalyticsCard
            title="Masih Dinanti"
            value={filteredNotPresent.length}
-           icon={<Clock className="w-4 h-4 text-white" />}
+           icon={<Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />}
            gradient="bg-gradient-to-br from-rose-500 to-rose-700"
            variant="compact-premium"
            mobileCompact={true}
@@ -163,29 +164,29 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
          <AnalyticsCard
            title="Siap Belajar"
            value={chartMasuk}
-           icon={<TrendingUp className="w-4 h-4 text-white" />}
+           icon={<TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />}
            gradient="bg-gradient-to-br from-emerald-500 to-teal-700"
            variant="compact-premium"
            mobileCompact={true}
          />
 
          {!isPetugasSiswa ? (
-            <div className="space-y-1">
-               <Label htmlFor="kelas-filter" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Filter Kelas</Label>
+            <div className="space-y-1 col-span-1">
+               <Label htmlFor="kelas-filter" className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Filter Kelas</Label>
                <SearchableSelect
                  id="kelas-filter"
                  value={selectedKelasId}
                  onValueChange={(v) => setSelectedKelasId(v)}
                  options={kelasOptions}
                  placeholder="Pilih Kelas"
-                 triggerClassName="h-11 rounded-xl bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 font-bold text-xs"
+                 triggerClassName="h-8 sm:h-11 rounded-lg sm:rounded-xl bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 font-bold text-xs"
                />
             </div>
          ) : null}
 
-         <div className="flex items-center justify-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800">
+         <div className="flex items-center justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg sm:rounded-2xl border border-gray-100 dark:border-gray-800 col-span-1">
             <Switch id="confirm-toggle" checked={confirmEnabled} onCheckedChange={setConfirmEnabled} />
-            <Label htmlFor="confirm-toggle" className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-gray-500 dark:text-gray-400">Konfirmasi Aksi</Label>
+            <Label htmlFor="confirm-toggle" className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-gray-500 dark:text-gray-400 truncate">Konfirmasi</Label>
          </div>
       </div>
 

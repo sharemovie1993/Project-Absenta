@@ -196,14 +196,14 @@ export function GerbangPendingStudentsPanel({
   );
 
   const renderList = () => (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-       <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left border-collapse">
+    <div className="bg-white dark:bg-gray-900 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden w-full">
+       <div className="overflow-x-auto no-scrollbar w-full">
+          <table className="w-full text-left border-collapse min-w-full">
              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
                 <tr>
-                   <th className="px-2.5 sm:px-6 py-3 sm:py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Nama Siswa</th>
+                   <th className="px-1.5 sm:px-6 py-2 sm:py-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Nama Siswa</th>
                    <th className="hidden sm:table-cell px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">NIS</th>
-                   <th className="px-2 sm:px-6 py-3 sm:py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Tindakan Kehadiran</th>
+                   <th className="px-1 sm:px-6 py-2 sm:py-4 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Tindakan Kehadiran</th>
                 </tr>
              </thead>
              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -219,19 +219,19 @@ export function GerbangPendingStudentsPanel({
                         exit={{ opacity: 0, x: 50 }}
                         className="hover:bg-gray-50/30 dark:hover:bg-gray-800/10 transition-colors"
                       >
-                         <td className="px-2.5 sm:px-6 py-2.5 sm:py-4 max-w-[110px] xs:max-w-[140px] sm:max-w-none min-w-0">
-                            <span className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm truncate block whitespace-nowrap" title={nama}>{nama}</span>
+                         <td className="px-1.5 sm:px-6 py-2 sm:py-4 max-w-[85px] xs:max-w-[125px] sm:max-w-none min-w-0">
+                            <span className="font-bold text-gray-900 dark:text-white text-[11px] sm:text-sm truncate block whitespace-nowrap" title={nama}>{nama}</span>
                          </td>
                          <td className="hidden sm:table-cell px-6 py-4">
                             <span className="text-xs font-black text-gray-400 uppercase tracking-tighter">{row.nis || row.Siswa?.nis || '-'}</span>
                          </td>
-                         <td className="px-1.5 sm:px-6 py-2.5 sm:py-4 text-right">
-                            <div className="flex items-center justify-end gap-1 sm:gap-2">
-                               <Button size="sm" className="h-7 sm:h-8 min-w-[44px] sm:min-w-[70px] px-2 sm:px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'HADIR')} disabled={!isPetugas} aria-label={`Tandai ${nama} Hadir`}>Hadir</Button>
-                               <Button size="sm" variant="outline" className="h-7 sm:h-8 min-w-[44px] sm:min-w-[70px] px-2 sm:px-3 rounded-lg border-amber-200 text-amber-600 dark:border-amber-900/50 dark:text-amber-400 font-black text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'SAKIT')} disabled={!isPetugas} aria-label={`Tandai ${nama} Sakit`}>Sakit</Button>
-                               <Button size="sm" variant="outline" className="h-7 sm:h-8 min-w-[44px] sm:min-w-[70px] px-2 sm:px-3 rounded-lg border-blue-200 text-blue-600 dark:border-blue-900/50 dark:text-blue-400 font-black text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'IZIN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Izin`}>Izin</Button>
-                               <Button size="sm" variant="outline" className="h-7 sm:h-8 min-w-[44px] sm:min-w-[70px] px-2 sm:px-3 rounded-lg border-indigo-200 text-indigo-600 dark:border-indigo-900/50 dark:text-indigo-400 font-black text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'DISPEN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Dispen`}>Dispen</Button>
-                               <Button size="sm" variant="outline" className="h-7 sm:h-8 min-w-[44px] sm:min-w-[70px] px-2 sm:px-3 rounded-lg border-red-200 text-red-600 dark:border-red-900/50 dark:text-red-400 font-black text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'ALPA')} disabled={!isPetugas} aria-label={`Tandai ${nama} Alpa`}>Alpa</Button>
+                         <td className="px-1 sm:px-6 py-2 sm:py-4 text-right">
+                            <div className="flex items-center justify-end gap-0.5 sm:gap-2">
+                               <Button size="sm" className="h-6.5 sm:h-8 min-w-[38px] sm:min-w-[70px] px-1 sm:px-3 rounded-md sm:rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[8.5px] sm:text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'HADIR')} disabled={!isPetugas} aria-label={`Tandai ${nama} Hadir`}>Hadir</Button>
+                               <Button size="sm" variant="outline" className="h-6.5 sm:h-8 min-w-[38px] sm:min-w-[70px] px-1 sm:px-3 rounded-md sm:rounded-lg border-amber-200 text-amber-600 dark:border-amber-900/50 dark:text-amber-400 font-black text-[8.5px] sm:text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'SAKIT')} disabled={!isPetugas} aria-label={`Tandai ${nama} Sakit`}>Sakit</Button>
+                               <Button size="sm" variant="outline" className="h-6.5 sm:h-8 min-w-[38px] sm:min-w-[70px] px-1 sm:px-3 rounded-md sm:rounded-lg border-blue-200 text-blue-600 dark:border-blue-900/50 dark:text-blue-400 font-black text-[8.5px] sm:text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'IZIN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Izin`}>Izin</Button>
+                               <Button size="sm" variant="outline" className="h-6.5 sm:h-8 min-w-[38px] sm:min-w-[70px] px-1 sm:px-3 rounded-md sm:rounded-lg border-indigo-200 text-indigo-600 dark:border-indigo-900/50 dark:text-indigo-400 font-black text-[8.5px] sm:text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'DISPEN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Dispen`}>Dispen</Button>
+                               <Button size="sm" variant="outline" className="h-6.5 sm:h-8 min-w-[38px] sm:min-w-[70px] px-1 sm:px-3 rounded-md sm:rounded-lg border-red-200 text-red-600 dark:border-red-900/50 dark:text-red-400 font-black text-[8.5px] sm:text-[9px] uppercase tracking-wider shrink-0" onClick={() => openConfirm(row, 'ALPA')} disabled={!isPetugas} aria-label={`Tandai ${nama} Alpa`}>Alpa</Button>
                             </div>
                          </td>
                       </motion.tr>
