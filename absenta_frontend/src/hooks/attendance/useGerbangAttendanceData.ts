@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect } from 'react';
 import { getGerbangStats, getNotPresentStudents } from '../../api/attendanceGerbang.api';
 import { useSocket } from '../useSocket';
 
@@ -16,64 +17,63 @@ interface MiniStats {
 }
 
 export function useGerbangAttendanceData({ tenantId, selectedKelasId, tanggal, enabled = true }: Params) {
-  const [notPresent, setNotPresent] = useState<any[]>([]);
-  const [notPresentLoading, setNotPresentLoading] = useState<boolean>(false);
-  const [miniStats, setMiniStats] = useState<MiniStats>({ masuk: 0, keluar: 0, total_target: 0 });
-  
+  const queryClient = useQueryClient();
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
 
-  const fetchNotPresent = useCallback(async () => {
-    setNotPresentLoading(true);
-    try {
-      if (!enabled) {
-        setNotPresent([]);
-        return;
-      }
+  // Query 1: Not Present Students
+  const notPresentQuery = useQuery({
+    queryKey: ['gerbang-not-present', tenantId || '', selectedKelasId || '', tanggal || ''],
+    queryFn: async () => {
       const params: any = { kelas_id: selectedKelasId || undefined, limit: 200, offset: 0 };
       if (tanggal) params.tanggal = tanggal;
       const res = await getNotPresentStudents(params);
-      setNotPresent(res.data || []);
-    } catch {
-      setNotPresent([]);
-    } finally {
-      setNotPresentLoading(false);
-    }
-  }, [selectedKelasId, tanggal, enabled]);
+      return res.data || [];
+    },
+    enabled: enabled && !!tenantId,
+    staleTime: 15 * 1000,
+  });
 
-  const removePendingStudent = useCallback((siswaId: string) => {
-    if (!siswaId) return;
-    setNotPresent(prev => prev.filter((s: any) => String(s.id) !== String(siswaId)));
-  }, []);
-
-  const refreshStats = useCallback(async () => {
-    try {
-      if (!enabled) {
-        setMiniStats({ masuk: 0, keluar: 0, total_target: 0 });
-        return null;
-      }
+  // Query 2: Mini Stats
+  const miniStatsQuery = useQuery({
+    queryKey: ['gerbang-mini-stats', tenantId || '', selectedKelasId || '', tanggal || ''],
+    queryFn: async () => {
       const statsRes = await getGerbangStats({ kelas_id: selectedKelasId });
       const s = statsRes?.data || null;
-      // Prioritize explicit unique counts from backend, fallback to legacy fields
       const masukFromStats = Number((s && (s as any).students_entered) ?? (s && (s as any).total_masuk) ?? 0);
       const keluarFromStats = Number((s && (s as any).students_exited) ?? (s && (s as any).total_keluar) ?? 0);
       const totalTargetFromStats = Number((s as any)?.total_students_target ?? 0);
-      
-      setMiniStats({ 
-        masuk: isNaN(masukFromStats) ? 0 : masukFromStats, 
+
+      return {
+        masuk: isNaN(masukFromStats) ? 0 : masukFromStats,
         keluar: isNaN(keluarFromStats) ? 0 : keluarFromStats,
-        total_target: isNaN(totalTargetFromStats) ? 0 : totalTargetFromStats
-      });
-      return statsRes?.data ?? null;
-    } catch {
-      return null;
-    }
-  }, [selectedKelasId, enabled]);
+        total_target: isNaN(totalTargetFromStats) ? 0 : totalTargetFromStats,
+      } as MiniStats;
+    },
+    enabled: enabled && !!tenantId,
+    staleTime: 15 * 1000,
+  });
+
+  const refreshStats = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['gerbang-mini-stats'] });
+    return null;
+  }, [queryClient]);
+
+  const fetchNotPresent = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['gerbang-not-present'] });
+  }, [queryClient]);
+
+  const removePendingStudent = useCallback((siswaId: string) => {
+    if (!siswaId) return;
+    queryClient.setQueryData(['gerbang-not-present', tenantId || '', selectedKelasId || '', tanggal || ''], (old: any[] | undefined) => {
+      if (!old) return [];
+      return old.filter((s: any) => String(s.id) !== String(siswaId));
+    });
+  }, [queryClient, tenantId, selectedKelasId, tanggal]);
 
   // Socket Subscription
   useEffect(() => {
     if (!enabled || !isConnected) return;
 
-    // Join room / Subscribe feed
     const params: any = {};
     if (tanggal) params.tanggal = tanggal;
     if (selectedKelasId) params.kelas_id = selectedKelasId;
@@ -89,11 +89,20 @@ export function useGerbangAttendanceData({ tenantId, selectedKelasId, tanggal, e
     };
 
     subscribe('gerbang_tap_update', handleTapUpdate);
+    subscribe('attendance_update', handleTapUpdate);
 
     return () => {
       unsubscribe('gerbang_tap_update', handleTapUpdate);
+      unsubscribe('attendance_update', handleTapUpdate);
     };
   }, [isConnected, enabled, tanggal, selectedKelasId, refreshStats, removePendingStudent, fetchNotPresent, subscribe, unsubscribe, emit]);
 
-  return { notPresent, notPresentLoading, fetchNotPresent, miniStats, refreshStats, removePendingStudent };
+  return {
+    notPresent: notPresentQuery.data || [],
+    notPresentLoading: notPresentQuery.isLoading,
+    fetchNotPresent,
+    miniStats: miniStatsQuery.data || { masuk: 0, keluar: 0, total_target: 0 },
+    refreshStats,
+    removePendingStudent,
+  };
 }

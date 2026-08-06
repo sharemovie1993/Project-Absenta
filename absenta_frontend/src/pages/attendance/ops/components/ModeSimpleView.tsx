@@ -9,6 +9,8 @@ import { Card } from '../../../../components/ui/Card';
 import { LogIn, LogOut, Loader, UserCheck, MapPin } from 'lucide-react';
 import { TabSwitcher } from '../../../../components/ui/TabSwitcher';
 
+import { useKelasOptions } from '../../../../hooks/useKelasOptions';
+
 // Lazy load GateInputModule to avoid loading ZXing library (400KB+) when not needed
 const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
 
@@ -48,10 +50,11 @@ export default function ModeSimpleView({
 
   const { tenantId } = useTenant();
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
+  const { options: fetchedKelasOptions } = useKelasOptions();
+  const kelasOptions = fetchedKelasOptions || [];
   
   // State
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [direction, setDirection] = useState<'GERBANG_DATANG' | 'GERBANG_PULANG'>('GERBANG_DATANG');
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
 
@@ -64,11 +67,6 @@ export default function ModeSimpleView({
     miniStats, 
     refreshStats 
   } = useGerbangAttendanceData({ tenantId, selectedKelasId, tanggal: today });
-
-  // Load Kelas Options
-  useEffect(() => {
-    dropdownApi.getKelasForDropdown().then(setKelasOptions).catch(() => {});
-  }, []);
 
   // Additional Socket Events & Reconnection Room Join
   useEffect(() => {

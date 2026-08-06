@@ -123,17 +123,17 @@ export function GerbangPendingStudentsPanel({
                  <div className="flex-1 grid grid-cols-2 gap-2">
                      <Button 
                        size="sm" 
-                       className="col-span-2 rounded-xl h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest gap-2"
+                       className="col-span-2 rounded-xl h-11 sm:h-10 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs sm:text-[10px] uppercase tracking-widest gap-2 transition-transform"
                        onClick={() => openConfirm(row, 'HADIR')}
                        disabled={!isPetugas}
                        aria-label={`Tandai ${nama} Hadir`}
                      >
-                       <CheckCircle2 className="w-3.5 h-3.5" /> Hadir
+                       <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Hadir
                      </Button>
                      <Button 
                        size="sm" 
                        variant="outline" 
-                       className="rounded-xl h-10 border-amber-100 dark:border-amber-900/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       className="rounded-xl h-11 sm:h-10 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 active:scale-95 font-black text-xs sm:text-[10px] uppercase tracking-widest gap-1.5 transition-transform"
                        onClick={() => openConfirm(row, 'SAKIT')}
                        disabled={!isPetugas}
                        aria-label={`Tandai ${nama} Sakit`}
@@ -143,7 +143,7 @@ export function GerbangPendingStudentsPanel({
                      <Button 
                        size="sm" 
                        variant="outline" 
-                       className="rounded-xl h-10 border-blue-100 dark:border-blue-900/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       className="rounded-xl h-11 sm:h-10 border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95 font-black text-xs sm:text-[10px] uppercase tracking-widest gap-1.5 transition-transform"
                        onClick={() => openConfirm(row, 'IZIN')}
                        disabled={!isPetugas}
                        aria-label={`Tandai ${nama} Izin`}
@@ -153,7 +153,7 @@ export function GerbangPendingStudentsPanel({
                      <Button 
                        size="sm" 
                        variant="outline" 
-                       className="rounded-xl h-10 border-indigo-100 dark:border-indigo-900/40 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       className="rounded-xl h-11 sm:h-10 border-indigo-200 dark:border-indigo-900/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95 font-black text-xs sm:text-[10px] uppercase tracking-widest gap-1.5 transition-transform"
                        onClick={() => openConfirm(row, 'DISPEN')}
                        disabled={!isPetugas}
                        aria-label={`Tandai ${nama} Dispen`}
@@ -163,7 +163,7 @@ export function GerbangPendingStudentsPanel({
                      <Button 
                        size="sm" 
                        variant="outline" 
-                       className="rounded-xl h-10 border-red-100 dark:border-red-900/40 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       className="rounded-xl h-11 sm:h-10 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 active:scale-95 font-black text-xs sm:text-[10px] uppercase tracking-widest gap-1.5 transition-transform"
                        onClick={() => openConfirm(row, 'ALPA')}
                        disabled={!isPetugas}
                        aria-label={`Tandai ${nama} Alpa`}
