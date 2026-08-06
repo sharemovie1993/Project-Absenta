@@ -1010,9 +1010,6 @@ export class JadwalKBMController {
     }
 
     try {
-      const isSpecificFilter = (kelas_id && typeof kelas_id === 'string' && kelas_id.trim() !== '') ||
-                              (guru_id && typeof guru_id === 'string' && guru_id.trim() !== '');
-
       const jadwalWhere: any = { 
         tenant_id: tenantId,
         slot_index: { not: 0 }, // Protect Slot Jam 0 (Upacara / Pembiasaan) from deletion
