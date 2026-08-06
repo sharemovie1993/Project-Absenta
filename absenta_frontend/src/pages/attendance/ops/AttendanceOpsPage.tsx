@@ -29,6 +29,8 @@ export default function AttendanceOpsPage() {
   
   const {
     absensiMode,
+    isPetugasSiswa: isPetugasSiswaHook,
+    isPetugasGuru: isPetugasGuruHook,
     petugasVariant,
     petugasLabel,
     roleLabel,
@@ -36,17 +38,24 @@ export default function AttendanceOpsPage() {
     managedKelasIds
   } = useGerbangModeAndRole({ user, tenantId, selectedKelasId });
 
-interface AuthUserCaps {
-  capabilities?: string[];
-  role?: { name?: string };
-}
+  const roleName = user?.role?.name || '';
+  const caps = (user as any)?.capabilities || [];
+  const isPetugasClassOrAdmin = 
+    roleName === 'ADMIN' || 
+    roleName === 'SUPERADMIN' || 
+    roleName === 'GURU' || 
+    isPetugasSiswaHook || 
+    petugasLabel === 'Aktif' ||
+    caps.includes('attendance.markGateAbsence') || 
+    caps.includes('attendance.sessions.create') ||
+    caps.includes('attendance.scan');
 
   // Shared Props
   const sharedProps = {
     user,
     absensiMode,
-    isPetugasSiswa: petugasLabel === 'Petugas Absensi Kelas' || petugasLabel === 'GURU' || petugasLabel === 'Admin',
-    isPetugasGuru: user?.role?.name === 'GURU' || (user as AuthUserCaps | null)?.capabilities?.includes('attendance.sessions.view.list'),
+    isPetugasSiswa: isPetugasClassOrAdmin,
+    isPetugasGuru: roleName === 'GURU' || caps.includes('attendance.sessions.view.list') || isPetugasGuruHook,
     kelasLabel: kelasNama,
     roleLabel,
     petugasLabel,

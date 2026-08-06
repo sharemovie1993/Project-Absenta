@@ -308,6 +308,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.petugas',
     'dashboard.view.overview',
     'core.tenants.view.detail',
+    // ─── CRUD Presensi Gerbang & Cek Manual ─────────────────────────────
+    'attendance.scan',                    // CRUD Absensi Gerbang & POS
+    'attendance.gate.tap.entry',          // Entry gate tap
+    'attendance.gate.tap.exit',           // Exit gate tap
+    'attendance.gate.bypass',             // Bypass gate
+    'attendance.gate.view.logs',          // View logs
+    'attendance.piket.view',              // View piket
+    'attendance.piket.manage',            // Manage piket
     // ─── Referensi Akademik ───────────────────────────────────────────
     'academic.students.view.list',
     'academic.students.view.detail',
