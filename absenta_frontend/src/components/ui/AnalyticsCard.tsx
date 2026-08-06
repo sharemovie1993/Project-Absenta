@@ -71,7 +71,7 @@ export function AnalyticsCard({
           : variant === 'card' 
             ? "bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-800" 
             : "bg-transparent border border-gray-200 dark:border-gray-800",
-        variant === 'compact-premium' || mobileCompact ? "rounded-xl min-h-[52px] sm:min-h-[96px]" : isCompact ? "rounded-xl h-[68px]" : "rounded-xl min-h-[96px]"
+        variant === 'compact-premium' ? "rounded-xl min-h-[52px] sm:min-h-[68px]" : isCompact ? "rounded-xl h-[68px]" : "rounded-xl min-h-[52px] sm:min-h-[96px]"
       )}>
         {/* Background Pattern */}
         {variant === 'card' && (
@@ -85,7 +85,7 @@ export function AnalyticsCard({
         )}
         
         {isLoading ? (
-          <div className={cn("relative z-10 animate-pulse min-w-0", isCompact ? "p-2.5 sm:p-3" : "p-4 min-h-[96px]")}>
+          <div className={cn("relative z-10 animate-pulse min-w-0", isCompact ? "p-2.5 sm:p-3" : "p-2.5 sm:p-4 min-h-[52px] sm:min-h-[96px]")}>
             <div className="flex items-start justify-between">
               <div className="flex-1 space-y-2">
                 <div className={cn("h-2 w-16 rounded opacity-50", isPremiumVariant ? "bg-white/40" : "bg-gray-200 dark:bg-gray-800")} />
@@ -94,12 +94,11 @@ export function AnalyticsCard({
             </div>
           </div>
         ) : (
-          <div className={cn("relative z-10 min-w-0", variant === 'compact-premium' || mobileCompact ? "p-2.5 sm:p-4" : isCompact ? "p-3" : "p-4")}>
-            <div className="flex items-center sm:items-start justify-between gap-2 min-w-0">
+          <div className={cn("relative z-10 min-w-0", variant === 'compact-premium' ? "p-2.5 sm:p-3" : isCompact ? "p-2.5 sm:p-3" : "p-2.5 sm:p-4")}>
+            <div className="flex items-center sm:items-start justify-between gap-1.5 sm:gap-2 min-w-0">
               <div className="flex-1 min-w-0">
                 <p className={cn(
-                  "uppercase font-black tracking-widest truncate", 
-                  variant === 'compact-premium' || mobileCompact ? "text-[8px] sm:text-[9px] mb-0" : isCompact ? "text-[8px] mb-0.5" : "text-[9px] mb-0.5",
+                  "uppercase font-black tracking-widest truncate text-[8px] sm:text-[9px] mb-0 sm:mb-0.5", 
                   isPremiumVariant ? "text-white/80" : "text-slate-700 dark:text-slate-400"
                 )}>
                   {title}
@@ -131,16 +130,11 @@ export function AnalyticsCard({
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-baseline gap-1.5 max-w-full min-w-0">
+                  <div className="flex items-baseline gap-1 sm:gap-1.5 max-w-full min-w-0">
                     <div 
                       title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
                       className={cn(
-                        "font-black tracking-tight min-w-0 truncate", 
-                        variant === 'compact-premium' || mobileCompact
-                          ? "text-sm sm:text-xl"
-                          : isCompact 
-                            ? (typeof value === 'string' && value.length > 10 ? "text-[13px]" : "text-lg") 
-                            : "text-xl",
+                        "font-black tracking-tight min-w-0 truncate text-sm sm:text-xl", 
                         isPremiumVariant ? "text-white" : "text-gray-900 dark:text-gray-100"
                       )}
                     >
@@ -161,8 +155,7 @@ export function AnalyticsCard({
                 
                 {subtitle && (
                   <p className={cn(
-                    "text-[10px] font-medium items-center gap-1 mt-0.5 max-w-full overflow-hidden truncate",
-                    variant === 'compact-premium' || mobileCompact ? "hidden sm:flex" : "flex",
+                    "text-[10px] font-medium items-center gap-1 mt-0.5 max-w-full overflow-hidden truncate hidden sm:flex",
                     isPremiumVariant ? "text-white/70" : "text-slate-600 dark:text-slate-400"
                   )}>
                     <span className={cn("w-1 h-1 rounded-full shrink-0", isPremiumVariant ? "bg-white/40" : "bg-slate-300")} />
@@ -172,15 +165,12 @@ export function AnalyticsCard({
               </div>
               {icon && (
                 <div className={cn(
-                  "rounded-lg sm:rounded-xl transition-transform duration-500 group-hover:scale-110 shrink-0",
+                  "rounded-lg sm:rounded-xl transition-transform duration-500 group-hover:scale-110 shrink-0 p-1.5 sm:p-3 [&_svg]:w-3.5 [&_svg]:h-3.5 sm:[&_svg]:w-5 sm:[&_svg]:h-5",
                   isPremiumVariant
                     ? "bg-white/20 text-white shadow-sm"
-                    : cn("text-white shadow-md bg-gradient-to-br", gradient),
-                  variant === 'compact-premium' || mobileCompact ? "p-1 sm:p-3" : isCompact ? "p-1.5" : "p-3"
+                    : cn("text-white shadow-md bg-gradient-to-br", gradient)
                 )}>
-                  {React.cloneElement(icon as React.ReactElement<{ size: number }>, { 
-                    size: variant === 'compact-premium' || mobileCompact ? 14 : isCompact ? 14 : 20 
-                  })}
+                  {icon}
                 </div>
               )}
             </div>
