@@ -51,4 +51,5 @@ export const tapSiswaSchema = z.object({
   status: z.nativeEnum(AbsenStatus).optional().nullable(),
   rfid: z.string().optional().nullable(),
   device_id: z.string().optional().nullable(),
+  catatan: z.string().optional().nullable(),
 });

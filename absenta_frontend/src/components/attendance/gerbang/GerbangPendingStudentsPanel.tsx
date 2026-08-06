@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../ui/Button';
 import Loader from '../../ui/Loader';
 import { default as ConfirmDialog } from '../../ui/ConfirmDialog';
+import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { 
   User, 
   Clock, 
@@ -40,40 +41,55 @@ export function GerbangPendingStudentsPanel({
   isPetugas: boolean;
   confirmEnabled?: boolean;
   viewMode?: 'grid' | 'list';
-  onMarkSakit: (siswaId: string) => void;
-  onMarkIzin: (siswaId: string) => void;
+  onMarkSakit: (siswaId: string, catatan?: string) => void;
+  onMarkIzin: (siswaId: string, catatan?: string) => void;
   onMarkAlpa: (siswaId: string) => void;
-  onMarkDispen: (siswaId: string) => void;
+  onMarkDispen: (siswaId: string, catatan?: string) => void;
   onMarkHadir: (siswaId: string) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
-  const [confirmTarget, setConfirmTarget] = React.useState<{ id: string; nama: string; action: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' | 'HADIR' } | null>(null);
+  const [confirmTarget, setConfirmTarget] = React.useState<{ id: string; nama: string; action: 'ALPA' | 'HADIR' } | null>(null);
+
+  const [noteModalOpen, setNoteModalOpen] = React.useState(false);
+  const [noteTarget, setNoteTarget] = React.useState<{ id: string; nama: string; action: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
 
   const openConfirm = async (row: any, action: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' | 'HADIR') => {
+    const id = String(row.id);
+    const nama = String(row.nama_siswa || row.Siswa?.nama_siswa || 'Siswa');
+
+    // SAKIT, IZIN, DISPEN -> Selalu buka Popup Catatan / Alasan
+    if (action === 'SAKIT' || action === 'IZIN' || action === 'DISPEN') {
+      setNoteTarget({ id, nama, action });
+      setNoteModalOpen(true);
+      return;
+    }
+
+    // HADIR & ALPA
     if (!confirmEnabled) {
       try {
-        const id = String(row.id);
-        if (action === 'SAKIT') await onMarkSakit(id);
-        else if (action === 'IZIN') await onMarkIzin(id);
-        else if (action === 'DISPEN') await onMarkDispen(id);
-        else if (action === 'HADIR') await onMarkHadir(id);
+        if (action === 'HADIR') await onMarkHadir(id);
         else await onMarkAlpa(id);
       } catch (e) {
         console.error('OpenConfirm direct action failed', e);
       }
       return;
     }
-    setConfirmTarget({ id: String(row.id), nama: String(row.nama_siswa || row.Siswa?.nama_siswa || 'Siswa'), action });
+    setConfirmTarget({ id, nama, action: action as 'HADIR' | 'ALPA' });
     setConfirmOpen(true);
+  };
+
+  const handleNoteSubmit = async (catatan: string) => {
+    if (!noteTarget) return;
+    const { id, action } = noteTarget;
+    if (action === 'SAKIT') await onMarkSakit(id, catatan);
+    else if (action === 'IZIN') await onMarkIzin(id, catatan);
+    else if (action === 'DISPEN') await onMarkDispen(id, catatan);
   };
 
   const handleConfirm = async () => {
     if (!confirmTarget) return;
     const { id, action } = confirmTarget;
-    if (action === 'SAKIT') await onMarkSakit(id);
-    else if (action === 'IZIN') await onMarkIzin(id);
-    else if (action === 'DISPEN') await onMarkDispen(id);
-    else if (action === 'HADIR') await onMarkHadir(id);
+    if (action === 'HADIR') await onMarkHadir(id);
     else await onMarkAlpa(id);
     setConfirmOpen(false);
     setConfirmTarget(null);
@@ -237,7 +253,7 @@ export function GerbangPendingStudentsPanel({
         title="Konfirmasi Kehadiran"
         description={confirmTarget ? (
           <div className="space-y-4 py-2">
-             <p className="text-sm font-medium text-gray-600">Catat <span className="font-black text-gray-900">{confirmTarget.nama}</span> dengan keterangan <span className={`font-black uppercase ${confirmTarget.action === 'ALPA' ? 'text-red-600' : (confirmTarget.action === 'HADIR' ? 'text-emerald-600' : 'text-indigo-600')}`}>{confirmTarget.action}</span>?</p>
+             <p className="text-sm font-medium text-gray-600">Catat <span className="font-black text-gray-900">{confirmTarget.nama}</span> dengan keterangan <span className={`font-black uppercase ${confirmTarget.action === 'ALPA' ? 'text-red-600' : 'text-emerald-600'}`}>{confirmTarget.action}</span>?</p>
              <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-indigo-600" />
                 <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Data harian siswa ini akan segera diperbarui secara permanen.</p>
@@ -248,7 +264,15 @@ export function GerbangPendingStudentsPanel({
         cancelText="Batal"
         onConfirm={handleConfirm}
         onCancel={() => { setConfirmOpen(false); setConfirmTarget(null); }}
-        style={confirmTarget?.action === 'ALPA' ? 'danger' : (confirmTarget?.action === 'HADIR' ? 'success' : 'info')}
+        style={confirmTarget?.action === 'ALPA' ? 'danger' : 'success'}
+      />
+
+      <CatatanAbsensiModal
+        isOpen={noteModalOpen}
+        onClose={() => { setNoteModalOpen(false); setNoteTarget(null); }}
+        studentName={noteTarget?.nama || 'Siswa'}
+        status={noteTarget?.action || 'SAKIT'}
+        onSubmit={handleNoteSubmit}
       />
     </>
   );

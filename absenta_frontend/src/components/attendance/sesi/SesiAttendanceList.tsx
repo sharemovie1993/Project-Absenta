@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Badge } from '../../ui';
 import { getAttendanceBadgeVariant } from '../../../utils/attendance/attendanceUiSelectors';
+import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { 
   BookOpen, AlertCircle, CheckCircle2, Users, Search, 
   Clock, GraduationCap, Info, RefreshCw,
@@ -157,6 +158,9 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
   const [isSlideMode, setIsSlideMode] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
 
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
+
   // Sync state with parent props for robust optimistic updates across all dashboards
   const [localRecords, setLocalRecords] = useState<SesiAttendanceRecord[]>(records);
   useEffect(() => {
@@ -165,11 +169,12 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
 
   // Mutation for updating student attendance with advanced React Query Optimistic Updates (Fase 3)
   const updateAttendanceMutation = useMutation({
-    mutationFn: async ({ siswaAkademikId, status }: { siswaAkademikId: string, status: string }) => {
+    mutationFn: async ({ siswaAkademikId, status, catatan }: { siswaAkademikId: string, status: string, catatan?: string }) => {
       return requestWithFallback('post', `/attendance/sesi-absensi/${sesi?.id}/tap-siswa`, {
         data: {
           siswa_akademik_id: siswaAkademikId,
-          status: status
+          status: status,
+          catatan: catatan
         }
       });
     },
@@ -256,7 +261,15 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       });
   }, [localRecords, filterStatus, searchTerm]);
 
-  const handleUpdateStatus = (siswaAkademikId: string, status: string) => {
+  const handleUpdateStatus = (siswaAkademikId: string, status: string, catatan?: string) => {
+    if ((status === 'SAKIT' || status === 'IZIN' || status === 'DISPEN') && !catatan) {
+      const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.id) === siswaAkademikId);
+      const sName = rec?.Siswa?.nama_siswa || 'Siswa';
+      setNoteTarget({ siswaAkademikId, studentName: sName, status: status as 'SAKIT' | 'IZIN' | 'DISPEN' });
+      setNoteModalOpen(true);
+      return;
+    }
+
     // 1. Instant optimistic update to local state
     setLocalRecords(prev => 
       prev.map(r => {
@@ -265,6 +278,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           ? { 
               ...r, 
               status: status, 
+              catatan: catatan !== undefined ? catatan : r.catatan,
               waktu_tap: status === 'HADIR' ? new Date().toISOString() : null 
             }
           : r;
@@ -272,7 +286,13 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
     );
 
     // 2. Fire mutation
-    updateAttendanceMutation.mutate({ siswaAkademikId, status });
+    updateAttendanceMutation.mutate({ siswaAkademikId, status, catatan });
+  };
+
+  const handleNoteSubmit = async (catatan: string) => {
+    if (!noteTarget) return;
+    const { siswaAkademikId, status } = noteTarget;
+    handleUpdateStatus(siswaAkademikId, status, catatan);
   };
 
   const currentSlideSiswa = filteredRecords[slideIndex];
@@ -489,6 +509,14 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CatatanAbsensiModal
+        isOpen={noteModalOpen}
+        onClose={() => { setNoteModalOpen(false); setNoteTarget(null); }}
+        studentName={noteTarget?.studentName || 'Siswa'}
+        status={noteTarget?.status || 'SAKIT'}
+        onSubmit={handleNoteSubmit}
+      />
     </div>
   );
 }

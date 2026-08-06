@@ -140,27 +140,28 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col antialiased">
-      {/* ── STANDARDIZED OPERATIONAL TOPBAR ── */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 px-3 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md shrink-0 select-none gap-2">
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+      {/* ── STANDARDIZED OPERATIONAL TOPBAR (RESPONSIVE: MOBILE, TABLET, DESKTOP) ── */}
+      <header className="bg-slate-900 text-white border-b border-slate-800 px-2.5 sm:px-4 lg:px-6 py-2 sm:py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md shrink-0 select-none gap-1.5 sm:gap-3 max-w-full overflow-hidden">
+        {/* Left Section: Back button & Title */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => navigate(backPath)}
-            className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 text-white transition border border-white/10 shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-white/10 hover:bg-white/20 text-white transition border border-white/10 shrink-0 cursor-pointer"
             title={backLabel}
           >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">{backLabel}</span>
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline truncate max-w-[140px] md:max-w-none">{backLabel}</span>
           </button>
 
           <div className="h-4 w-px bg-slate-700/80 mx-0.5 hidden sm:block shrink-0" />
 
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-            <div className="p-1.5 bg-indigo-600 rounded-lg font-black text-white shrink-0 shadow-xs hidden xs:flex">
-              <ShieldCheck size={16} />
+            <div className="p-1 sm:p-1.5 bg-indigo-600 rounded-lg font-black text-white shrink-0 shadow-xs hidden xs:flex">
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xs sm:text-sm font-black text-white leading-none tracking-tight truncate">
+              <h1 className="text-xs sm:text-sm lg:text-base font-black text-white leading-none tracking-tight truncate">
                 <span className="sm:hidden">{shortTitle || title}</span>
                 <span className="hidden sm:inline">{title}</span>
               </h1>
@@ -171,11 +172,11 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
           </div>
         </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* Right Section: Controls, Actions, Theme Toggle, User Profile */}
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 shrink-0">
           {/* HARDENING / AUDIT INSPECTOR TOOL INTEGRATION */}
           {hardeningConfig && resolvedKey && (
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <HardeningInspector 
                 pageName={hardeningConfig.displayName}
                 standards={hardeningConfig.standards}
@@ -184,16 +185,21 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
             </div>
           )}
 
-          {statusBadge && <div className="hidden sm:block">{statusBadge}</div>}
+          {statusBadge && <div className="hidden md:block shrink-0">{statusBadge}</div>}
 
-          {actions}
+          {/* Desktop & Tablet Action Buttons */}
+          {actions && (
+            <div className="hidden sm:flex items-center gap-1.5 shrink-0 [&_button]:text-[11px] lg:[&_button]:text-xs [&_button]:px-2.5 lg:[&_button]:px-3.5 [&_button]:py-1 lg:[&_button]:py-1.5 [&_button]:h-auto">
+              {actions}
+            </div>
+          )}
 
           <div className="bg-slate-800 text-slate-200 rounded-lg border border-slate-700 px-1 py-0.5 flex items-center shrink-0">
             <ThemeToggle />
           </div>
 
           <div className="flex items-center gap-1.5 pl-1 sm:pl-2 border-l border-slate-800 shrink-0">
-            <div className="w-7 h-7 rounded-full bg-indigo-600/30 text-indigo-300 font-bold flex items-center justify-center text-xs border border-indigo-500/40 shrink-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-indigo-600/30 text-indigo-300 font-bold flex items-center justify-center text-[10px] sm:text-xs border border-indigo-500/40 shrink-0">
               {user?.nama?.charAt(0) || user?.full_name?.charAt(0) || 'G'}
             </div>
             <div className="hidden lg:block text-left text-xs">
@@ -206,9 +212,21 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
         </div>
       </header>
 
+      {/* ── MOBILE SECONDARY ACTION BAR (Visible on < sm if actions/statusBadge present) ── */}
+      {(actions || statusBadge) && (
+        <div className="sm:hidden bg-slate-900 border-b border-slate-800/90 px-3 py-1.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar shadow-inner">
+          {statusBadge && <div className="shrink-0">{statusBadge}</div>}
+          {actions && (
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto [&_button]:text-[10px] [&_button]:px-2.5 [&_button]:py-1 [&_button]:h-8 [&_button]:rounded-lg">
+              {actions}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Mobile Hardening Inspector fallback */}
       {hardeningConfig && resolvedKey && (
-        <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex justify-center">
+        <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-1 flex justify-center">
           <HardeningInspector 
             pageName={hardeningConfig.displayName}
             standards={hardeningConfig.standards}

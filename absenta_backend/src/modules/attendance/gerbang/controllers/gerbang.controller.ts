@@ -797,7 +797,7 @@ export const gerbangController = {
     try {
       const tenantId = request.tenantId ?? request.user?.tenantId;
       const userId = request.user?.id;
-      const { siswa_id, status } = request.body || {};
+      const { siswa_id, status, catatan } = request.body || {};
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
@@ -870,6 +870,7 @@ export const gerbangController = {
           siswa_id,
           arah: 'GERBANG_DATANG',
           status,
+          catatan: catatan ? String(catatan).trim() : null,
           waktu_tap: new Date(),
           kelas_id_snapshot: siswaInfo?.kelas_id || null,
           kelas_nama_snapshot: siswaInfo?.Kelas?.nama_kelas || null,

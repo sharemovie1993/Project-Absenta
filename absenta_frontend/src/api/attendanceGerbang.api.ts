@@ -234,7 +234,7 @@ export async function getNotPresentStudents(params?: { tanggal?: string; kelas_i
   }
 }
 
-export async function markGateAbsence(payload: { siswa_id: string; status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' }): Promise<{ success: boolean; message: string; data: any }> {
+export async function markGateAbsence(payload: { siswa_id: string; status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN'; catatan?: string }): Promise<{ success: boolean; message: string; data: any }> {
   try {
     return requestWithFallback<{ success: boolean; message: string; data: any }>('post', '/attendance/gerbang/absence', { data: payload });
   } catch (error) {
@@ -499,7 +499,7 @@ export async function updateAbsenGuru(
 
 export async function tapSiswaKeSesi(
   sesi_id: string,
-  payload: { siswa_id: string; status?: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' }
+  payload: { siswa_id: string; status?: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN'; catatan?: string }
 ): Promise<{ success: boolean; message: string; data: any }> {
   const res = await requestWithFallback<{ success: boolean; message: string; data: any }>('post', `/attendance/sesi-absensi/${sesi_id}/tap-siswa`, { data: payload });
 

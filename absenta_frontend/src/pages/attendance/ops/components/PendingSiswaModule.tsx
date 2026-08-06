@@ -88,9 +88,9 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
     }
   }, [selectedKelasId, kelasOptions, setSelectedKelasId]);
 
-  const handleMarkStatus = useCallback(async (siswaId: string, status: string) => {
+  const handleMarkStatus = useCallback(async (siswaId: string, status: string, catatan?: string) => {
     try {
-      await markGateAbsence({ siswa_id: siswaId, status: status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' });
+      await markGateAbsence({ siswa_id: siswaId, status: status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN', catatan });
       toast.success(`Status ${status} direkam`);
       logAttendanceMetric('GERBANG_MANUAL_STATUS', { role: userRole, kelasId: inferredKelasId || null, siswaId, status });
       await refreshData();
@@ -207,9 +207,9 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
                 confirmEnabled={confirmEnabled}
                 viewMode={viewMode}
                 onMarkHadir={(id) => handleMarkStatus(id, 'HADIR')}
-                onMarkSakit={(id) => handleMarkStatus(id, 'SAKIT')}
-                onMarkIzin={(id) => handleMarkStatus(id, 'IZIN')}
-                onMarkDispen={(id) => handleMarkStatus(id, 'DISPEN')}
+                onMarkSakit={(id, note) => handleMarkStatus(id, 'SAKIT', note)}
+                onMarkIzin={(id, note) => handleMarkStatus(id, 'IZIN', note)}
+                onMarkDispen={(id, note) => handleMarkStatus(id, 'DISPEN', note)}
                 onMarkAlpa={(id) => handleMarkStatus(id, 'ALPA')}
               />
             </motion.div>

@@ -636,7 +636,7 @@ export class SesiService {
   }
 
   async tapSiswa(tenantId: string, _org: any, sesi_id: string, data: any, userId: string) {
-    let { siswa_id, siswa_akademik_id, status, rfid, device_id } = data;
+    let { siswa_id, siswa_akademik_id, status, rfid, device_id, catatan } = data;
     const startedAt = Date.now();
     const nowTap = new Date();
 
@@ -915,7 +915,7 @@ export class SesiService {
     let isTerlambatToSave = isTerlambat;
     let lateMinutesToSave = isTerlambat ? lateMinutesComputed : 0;
     let poinToSave = poin;
-    let catatanToSave = existing?.catatan || null;
+    let catatanToSave = catatan ? String(catatan).trim() : (existing?.catatan || null);
 
     if (existing) {
       const isAlreadyHadir = String(existing.status).toUpperCase() === 'HADIR';
@@ -966,6 +966,7 @@ export class SesiService {
             siswa_akademik_id: siswaAkademik.id,
             status: finalStatus,
             waktu_tap: nowTap,
+            catatan: catatanToSave,
             asal_gerbang: asalGerbang,
             is_terlambat: isTerlambat,
             menit_keterlambatan: isTerlambat ? lateMinutesComputed : 0,
