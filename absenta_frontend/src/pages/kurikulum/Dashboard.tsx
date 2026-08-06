@@ -352,7 +352,7 @@ export default function KurikulumDashboard() {
               {currentScene === 0 && (
                 <div className="space-y-6">
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
                     <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : ''} icon={<CalendarDays className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
                     <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru pendidik aktif" icon={<Users className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
                     <AnalyticsCard variant="premium" title="Rombel" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
@@ -560,7 +560,7 @@ export default function KurikulumDashboard() {
           </div>
 
           {/* HERO STAT CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
             <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran'} icon={<CalendarDays size={20} className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
             <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru pendidik aktif" icon={<Users size={20} className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
             <AnalyticsCard variant="premium" title="Rombongan Belajar" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid size={20} className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />

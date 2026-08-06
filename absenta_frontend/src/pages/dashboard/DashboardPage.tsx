@@ -377,7 +377,7 @@ function DashboardContent() {
         <Card className="border-none shadow-sm">
           <div className="p-6">
             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Billing Overview</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {[
                 { label: 'Total Invoices', val: billingOverview.total_billings, gradient: 'from-slate-500 to-slate-700 text-white' },
                 { label: 'Paid Invoices', val: billingOverview.paid_billings, gradient: 'from-emerald-500 to-emerald-700 text-white' },
