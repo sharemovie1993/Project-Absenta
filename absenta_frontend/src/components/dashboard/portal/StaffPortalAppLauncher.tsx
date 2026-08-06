@@ -680,7 +680,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               className="bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-xs py-2 px-3 shadow-sm flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
             >
               <LayoutGrid size={14} className="text-indigo-600" />
-              <span>Mode Desktop 🖥️</span>
+              <span>Desktop 🖥️</span>
             </Button>
           </div>
         </div>
