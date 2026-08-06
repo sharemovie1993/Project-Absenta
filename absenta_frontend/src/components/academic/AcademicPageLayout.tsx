@@ -196,8 +196,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
   return (
     <div className={cn(
-      "space-y-4 max-w-full relative transition-all duration-300",
-      isTvMode ? "p-6 min-h-screen" : "px-4 pt-2 pb-6"
+      "space-y-3 sm:space-y-4 max-w-full relative transition-all duration-300 min-w-0 overflow-x-hidden",
+      isTvMode ? "p-6 min-h-screen" : "px-0 sm:px-4 pt-1.5 sm:pt-2 pb-4 sm:pb-6"
     )}>
 
       {/* TV Mode Header Bar */}
@@ -225,22 +225,22 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
       {/* Responsive Breadcrumbs */}
       {!isTvMode && (breadcrumbs === undefined || breadcrumbs.length > 0) && (
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="px-3 sm:px-0 flex items-center justify-between gap-2 flex-wrap">
           <Breadcrumb items={breadcrumbs} />
         </div>
       )}
 
       {/* Page Header */}
       {!isTvMode && (title || description || toolbar) && (
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+        <div className="px-3 sm:px-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
           <div>
             {title && (
-              <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-400 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-400 tracking-tight">
                 {title}
               </h1>
             )}
             {description && (
-              <p className="text-[13px] text-slate-700 dark:text-slate-400 mt-0.5 font-medium leading-relaxed">
+              <p className="text-xs sm:text-[13px] text-slate-700 dark:text-slate-400 mt-0.5 font-medium leading-relaxed">
                 {description}
               </p>
             )}
@@ -255,7 +255,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
       {/* Renders dynamic interactive certification badge at Layout-level */}
       {!isTvMode && hardeningConfig && resolvedKey && (
-        <div className="animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
+        <div className="px-3 sm:px-0 animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
           <HardeningInspector 
             pageName={hardeningConfig.displayName}
             standards={hardeningConfig.standards}
@@ -266,14 +266,14 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
       {/* Premium Stats Grid */}
       {(stats.length > 0 || isLoadingStats) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[80px]">
+        <div className="px-2 sm:px-0 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-h-[60px] sm:min-h-[80px]">
           {isLoadingStats ? (
             // Render 2 skeletons on mobile/tablet, 4 on desktop to match layout
             [...Array(4)].map((_, i) => (
               <div key={i} className={cn(
-                "h-[80px] bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-xl animate-pulse",
-                i >= 1 && "hidden sm:block",
-                i >= 2 && "hidden lg:block"
+                "h-[60px] sm:h-[80px] bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-lg sm:rounded-xl animate-pulse",
+                i >= 2 && "hidden sm:block",
+                i >= 4 && "hidden lg:block"
               )} />
             ))
           ) : (
@@ -288,7 +288,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
                 subtitle={stat.subtitle}
                 onClick={stat.onClick}
                 subCards={stat.subCards}
-                variant={stat.variant}
+                variant={stat.variant || 'premium'}
+                mobileCompact={true}
               />
             ))
           )}
@@ -301,7 +302,9 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
           fallbackTitle={`Gagal memuat halaman ${title || 'Akademik'}`}
           queryKeyToInvalidate={hardeningModuleKey ? [hardeningModuleKey] : undefined}
         >
-          {children}
+          <div className="w-full space-y-2 sm:space-y-6 [&_.academic-card]:rounded-none sm:[&_.academic-card]:rounded-2xl [&_.academic-card]:border-x-0 sm:[&_.academic-card]:border-x [&_.academic-card]:p-2 sm:[&_.academic-card]:p-6 [&_.academic-card]:space-y-3 sm:[&_.academic-card]:space-y-6 [&>div]:rounded-none sm:[&>div]:rounded-2xl [&>div]:border-x-0 sm:[&>div]:border-x">
+            {children}
+          </div>
         </InfraErrorBoundary>
       </div>
     </div>
