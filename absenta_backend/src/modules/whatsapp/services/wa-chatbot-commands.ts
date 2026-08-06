@@ -131,36 +131,20 @@ export function formatShortMapelName(mapelInput?: any): string {
 
   const nameUpper = fullName.toUpperCase();
 
+  // Kamus penyederhanaan khusus mapel umum nasional yang sangat panjang
   const mapelDict: Record<string, string> = {
-    'PEMROGRAMAN BERORIENTASI OBJEK': 'PBO',
-    'PEMROGRAMAN WEB DAN PERANGKAT BERGERAK': 'PWEB',
-    'PEMROGRAMAN WEB': 'PWEB',
-    'BASIS DATA': 'Basdat',
     'PENDIDIKAN AGAMA ISLAM DAN BUDI PEKERTI': 'PAI',
     'PENDIDIKAN AGAMA ISLAM': 'PAI',
     'PENDIDIKAN AGAMA KRISTEN': 'PAK',
     'PENDIDIKAN AGAMA KATOLIK': 'PA Katolik',
     'PENDIDIKAN PANCASILA DAN KEWARGANEGARAAN': 'PPKn',
     'PENDIDIKAN PANCASILA': 'Pancasila',
-    'BAHASA INDONESIA': 'B. Indo',
-    'BAHASA INGGRIS': 'B. Inggris',
-    'BAHASA SUNDA': 'B. Sunda',
-    'BAHASA JEPANG': 'B. Jepang',
-    'MATEMATIKA': 'MTK',
-    'MATEMATIKA TINGKAT LANJUT': 'MTK Lanjut',
     'PENDIDIKAN JASMANI OLAHRAGA DAN KESEHATAN': 'PJOK',
     'PENDIDIKAN JASMANI, OLAHRAGA, DAN KESEHATAN': 'PJOK',
     'PROJEK PENGUATAN PROFIL PELAJAR PANCASILA': 'P5',
     'PROJEK KREATIF DAN KEWIRAUSAHAAN': 'PKK',
     'BIMBINGAN DAN KONSELING': 'BK',
     'BIMBINGAN KONSELING': 'BK',
-    'INFORMATIKA': 'Informatika',
-    'SEJARAH INDONESIA': 'Sejarah',
-    'SEJARAH': 'Sejarah',
-    'SENI BUDAYA': 'Seni Budaya',
-    'FISIKA': 'Fisika',
-    'KIMIA': 'Kimia',
-    'BIOLOGI': 'Biologi',
   };
 
   if (mapelDict[nameUpper]) {
@@ -173,19 +157,7 @@ export function formatShortMapelName(mapelInput?: any): string {
     }
   }
 
-  // Jika nama mapel <= 35 karakter, langsung kembalikan NAMA MAPEL ASLI secara utuh
-  if (fullName.length <= 35) {
-    return fullName;
-  }
-
-  const words = fullName.split(/\s+/).filter(w => !['dan', 'atau', 'pada', 'yang', 'untuk', '&'].includes(w.toLowerCase()));
-  if (words.length >= 3) {
-    const acronym = words.map(w => w[0].toUpperCase()).join('');
-    if (acronym.length >= 2 && acronym.length <= 6) {
-      return acronym;
-    }
-  }
-
+  // Untuk mapel Kejuruan, Pilihan, dan mapel lainnya: Gunakan NAMA MAPEL ASLI secara utuh!
   return fullName;
 }
 
