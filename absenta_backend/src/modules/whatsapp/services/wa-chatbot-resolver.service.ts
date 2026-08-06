@@ -327,9 +327,17 @@ export class WaChatbotResolverService {
     // ── Step 3: Cari semua persona di DB ────────────────────────────────────
     const { guru, siswa, ortu } = await this.findPersona(resolvedPhone);
 
-    // ── Step 4: Jika LID/nomor tidak ditemukan di DB → Silent Mode (jangan di-response) ──
-    if (this.isLikelyLid(resolvedPhone) && !guru && !siswa && !ortu) {
-      return '';
+    // ── Step 4: Jika LID/nomor tidak ditemukan di DB → Tampilkan Pesan Verifikasi ──
+    if (!guru && !siswa && !ortu) {
+      pendingIdentification.set(cleanJid, true);
+      pendingIdentification.set(fullJid, true);
+      const phoneHint = this.isLikelyLid(resolvedPhone) ? '' : ` (*${resolvedPhone}*)`;
+      return (
+        `👋 *Selamat Datang di WA Bot Absenta*\n\n` +
+        `Akun WhatsApp ini${phoneHint} belum terhubung dengan data Guru, Siswa, atau Orang Tua di SMKN 1 PLERED.\n\n` +
+        `Silakan ketik *Nomor HP Anda* yang terdaftar di sekolah untuk menghubungkan akun:\n` +
+        `_(contoh: *0812xxxxxxxx* atau *628xxxxxxxx*)_`
+      );
     }
 
     // ── Step 5: Hitung berapa role yang aktif ────────────────────────────────
