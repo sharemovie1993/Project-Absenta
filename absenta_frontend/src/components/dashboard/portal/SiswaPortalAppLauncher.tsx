@@ -38,6 +38,7 @@ import {
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
+import { useGerbangModeAndRole } from '../../../hooks/attendance/useGerbangModeAndRole';
 import { iconForName } from '../../../lib/iconForName';
 import { useNavStore } from '../../../store/navStore';
 import {
@@ -123,7 +124,19 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
+  const { kelasLabel } = useGerbangModeAndRole({ user });
   const activeWorkspaceId = useNavStore((state) => state.activeWorkspaceId) || 'STUDENT_WORKSPACE';
+
+  const petugasKelasName = useMemo(() => {
+    if (kelasLabel && kelasLabel !== '-') return kelasLabel;
+    return (
+      (user as any)?.siswa_profile?.Kelas?.nama_kelas ||
+      (user as any)?.siswa_profile?.kelas?.nama_kelas ||
+      (user as any)?.Kelas?.nama_kelas ||
+      (user as any)?.kelas?.nama_kelas ||
+      ''
+    );
+  }, [kelasLabel, user]);
 
   const handleTileNavigate = useCallback(
     (path?: string, onClick?: () => void) => {
@@ -355,12 +368,9 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">🎒</span>
-              <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Siswa (Dinamis & RBAC)
-              </Badge>
               {isPetugasKelas && (
-                <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
-                  PETUGAS KELAS
+                <Badge variant="success" className="text-[10px] font-bold py-0.5 px-2.5 shadow-xs uppercase">
+                  PETUGAS KELAS {petugasKelasName ? `: ${petugasKelasName}` : ''}
                 </Badge>
               )}
             </div>
@@ -372,8 +382,8 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-            <div className="relative min-w-[180px] w-full sm:w-auto">
+          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+            <div className="relative min-w-[200px] w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Cari aplikasi..."
@@ -383,14 +393,6 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
               />
               <Search size={13} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
             </div>
-
-            <Button
-              onClick={onSwitchToDesktop}
-              className="bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-xs py-2 px-3 shadow-sm flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-            >
-              <LayoutGrid size={14} className="text-indigo-600" />
-              <span>Desktop 🖥️</span>
-            </Button>
           </div>
         </div>
       </div>

@@ -643,11 +643,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
-              <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher
-              </Badge>
               {dynamicJabatanLabel && (
-                <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs uppercase">
+                <Badge variant="success" className="text-[10px] font-bold py-0.5 px-2.5 shadow-xs uppercase">
                   {dynamicJabatanLabel}
                 </Badge>
               )}
@@ -660,10 +657,10 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             </p>
           </div>
 
-          {/* Controls: Search & Switch Mode */}
-          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+          {/* Controls: Search */}
+          <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
             {/* Search Input */}
-            <div className="relative min-w-[180px] w-full sm:w-auto">
+            <div className="relative min-w-[200px] w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Cari aplikasi..."
@@ -673,15 +670,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               />
               <Search size={13} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
             </div>
-
-            {/* Switch to Desktop Mode */}
-            <Button
-              onClick={onSwitchToDesktop}
-              className="bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-xs py-2 px-3 shadow-sm flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-            >
-              <LayoutGrid size={14} className="text-indigo-600" />
-              <span>Desktop 🖥️</span>
-            </Button>
           </div>
         </div>
       </div>
