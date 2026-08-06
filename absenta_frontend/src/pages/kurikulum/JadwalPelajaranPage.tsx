@@ -186,10 +186,10 @@ export default function JadwalPelajaranPage() {
   // ── useQuery: Academic Context (Active Tahun & Semester) ──────────────────
   const { data: activeTpRes } = useQuery({
     queryKey: ['active-tahun-pelajaran'],
-    queryFn: () => getTahunPelajaranList(1, 10, '', 'ACTIVE').catch(() => null),
+    queryFn: () => getTahunPelajaranList(1, 10).catch(() => null),
     staleTime: 10 * 60 * 1000,
   });
-  const activeTp = activeTpRes?.data?.[0];
+  const activeTp = activeTpRes?.data?.find((t: { is_active?: boolean }) => t.is_active) || activeTpRes?.data?.[0];
 
   useEffect(() => {
     if (activeTp?.id && !selectedTahunId) {

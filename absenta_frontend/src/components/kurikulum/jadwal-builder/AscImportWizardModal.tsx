@@ -24,6 +24,8 @@ import {
   type EntityMapping 
 } from '../../../api/academic/ascImporter.api';
 import { cn } from '../../../lib/utils';
+import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
+import { getSemesterList } from '../../../api/academic/semester.api';
 
 const ASC_STORAGE_KEY = 'absenta_asc_import_mappings_v1';
 
@@ -338,15 +340,35 @@ export const AscImportWizardModal: React.FC<Props> = ({
   };
 
   const handleExecuteImport = async () => {
-    if (!analysis || !tahunPelajaranId || !semesterId) {
-      console.error('❌ [aSc Import Wizard] Invalid parameters for execution:', { analysis: !!analysis, tahunPelajaranId, semesterId });
+    let effectiveTpId = tahunPelajaranId;
+    let effectiveSemId = semesterId;
+
+    if (!effectiveTpId || !effectiveSemId) {
+      try {
+        const tpRes = await getTahunPelajaranList(1, 10);
+        const activeTp = tpRes?.data?.find((t: any) => t.is_active) || tpRes?.data?.[0];
+        if (activeTp) {
+          effectiveTpId = effectiveTpId || activeTp.id;
+          const semRes = await getSemesterList(1, 10, '', activeTp.id);
+          const activeSem = semRes?.data?.find((s: any) => s.is_active) || semRes?.data?.[0];
+          if (activeSem) {
+            effectiveSemId = effectiveSemId || activeSem.id;
+          }
+        }
+      } catch (err) {
+        console.warn('Fallback fetch TP/Semester failed in AscImportWizardModal', err);
+      }
+    }
+
+    if (!analysis || !effectiveTpId || !effectiveSemId) {
+      console.error('❌ [aSc Import Wizard] Invalid parameters for execution:', { analysis: !!analysis, effectiveTpId, effectiveSemId });
       toast.error('Parameter Tahun Pelajaran / Semester tidak valid');
       return;
     }
 
     const payload = {
-      tahun_pelajaran_id: tahunPelajaranId,
-      semester_id: semesterId,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
       filename: analysis.filename,
       xml_content: analysis.xml_content,
       teacher_mappings: Object.values(teacherMappings),
