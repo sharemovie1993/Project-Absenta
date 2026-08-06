@@ -56,7 +56,6 @@ import { isRoutineKesiswaanActivity } from '../../hooks/attendance/useJadwalKegi
 import { useJenisKegiatanMaster } from '../../hooks/academic/useJenisKegiatanMaster';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
-const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
 const JadwalGrid = lazy(() => import('../../components/kurikulum/JadwalGrid').then(m => ({ default: m.JadwalGrid })));
 const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder'));
 const CetakBerkasKurikulumPage = lazy(() => import('./CetakBerkasKurikulumPage').then(m => ({ default: m.CetakBerkasKurikulumPage })));
@@ -83,7 +82,7 @@ export default function JadwalPelajaranPage() {
                     can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete');
   
   // ── 2. View State Logic ─────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder' | 'preview'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'builder' | 'preview'>('grid');
 
   // ── 3. Shared Data State (for Grid View) ────────────────────────────────────
   const [refreshKey, setRefreshKey] = useState(0);
@@ -163,12 +162,15 @@ export default function JadwalPelajaranPage() {
     }
   }, [viewMode, isGuru, isWaliKelas, myGuruId, myKelasId]);
 
-  // Security Lock: Ensure non-canManage users cannot access builder mode
+  // Security Lock: Ensure non-canManage users cannot access builder mode & Siswa cannot access preview
   useEffect(() => {
     if (!canManage && viewMode === 'builder') {
       setViewMode('grid');
     }
-  }, [canManage, viewMode]);
+    if (isSiswa && viewMode === 'preview') {
+      setViewMode('grid');
+    }
+  }, [canManage, isSiswa, viewMode]);
 
   const { absensiMode, managedKelasIds } = useGerbangModeAndRole({
     user,
@@ -354,8 +356,10 @@ export default function JadwalPelajaranPage() {
 
   // Pillar 2: Memoize callbacks
   const handleEditSlot = useCallback(() => {
-    setViewMode('list');
-  }, []);
+    if (canManage) {
+      setViewMode('builder');
+    }
+  }, [canManage]);
 
   const handlePrint = useCallback(async () => {
     const toastId = toast.loading('Sedang menyiapkan dokumen PDF...');
@@ -626,29 +630,25 @@ export default function JadwalPelajaranPage() {
               options={[
                 { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
                 { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
-                { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' },
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
               onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as any)}
             />
-          ) : (
+          ) : !isSiswa ? (
             <TabSwitcher
               options={[
                 { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
-                { id: 'list', label: 'Daftar Tabel', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' },
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
               onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as any)}
             />
-          )}
+          ) : null}
         </div>
 
         <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
-          {viewMode === 'list' ? (
-            <JadwalTplList kelasId={isSiswa ? defaultKelasId : selectedKelasId} />
-          ) : viewMode === 'builder' ? (
+          {viewMode === 'builder' && canManage ? (
             <JadwalBuilder 
               tahunPelajaranId={selectedTahunId} 
               semesterId={selectedSemesterId}
@@ -659,7 +659,7 @@ export default function JadwalPelajaranPage() {
               onRefresh={() => setRefreshKey(k => k + 1)}
               onOpenPrintPreview={(pType, targetId) => triggerPrintPreview(pType, targetId)}
             />
-          ) : viewMode === 'preview' ? (
+          ) : viewMode === 'preview' && !isSiswa ? (
             <CetakBerkasKurikulumPage 
               key={`${previewPrintType}-${previewTargetClassId}-${previewTargetGuruId}`}
               initialPrintType={previewPrintType}
@@ -670,7 +670,7 @@ export default function JadwalPelajaranPage() {
           ) : (
             <JadwalGrid 
               jadwal={jadwal} 
-              onAddSlot={() => canManage && setViewMode('list')}
+              onAddSlot={() => canManage && setViewMode('builder')}
               onEditSlot={handleEditSlot}
               onDeleteSlot={handleDeleteSlot}
               loading={loadingJadwal}
