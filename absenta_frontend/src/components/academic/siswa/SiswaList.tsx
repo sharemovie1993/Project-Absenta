@@ -278,14 +278,6 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     return can('academic.students.view.list');
   }, [can]);
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center p-8">
-        <Loader size="lg" />
-      </div>
-    );
-  }
-
   // Check if user can send parent access
   const canSendAccess = can('academic.students.send.access_token');
 
@@ -1030,6 +1022,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       </div>
     </div>
   ), [onView, getStatusBadge]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Loader size="lg" />
+      </div>
+    );
+  }
 
   // Don't render if user doesn't have permission to view
   if (!canView) {
