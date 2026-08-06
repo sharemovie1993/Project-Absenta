@@ -968,7 +968,66 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
-  }, [selectedIds, siswas, confirm, queryClient, refetch]);
+  const renderSiswaMobileCard = useCallback((siswa: Siswa) => (
+    <div 
+      key={siswa.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => onView?.(siswa)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onView?.(siswa);
+        }
+      }}
+      aria-label={`Lihat detail ${siswa.nama_siswa}`}
+      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1">
+          <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{siswa.nama_siswa}</h3>
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight mt-0.5">
+            {siswa.nis || 'Tanpa NIS'} {siswa.nisn ? `(${siswa.nisn})` : ''} • {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          {getStatusBadge(siswa.status)}
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800/50">
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gender</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              {siswa.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
+            </span>
+          </div>
+          {siswa.no_rfid && (
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RFID</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono tracking-tighter">
+                {siswa.no_rfid}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(siswa);
+          }}
+          aria-label={`Lihat detail ${siswa.nama_siswa}`}
+          className="h-11 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 font-bold text-[11px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
+        >
+          Detail
+        </Button>
+      </div>
+    </div>
+  ), [onView, getStatusBadge]);
 
   // Don't render if user doesn't have permission to view
   if (!canView) {
@@ -1004,66 +1063,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               totalPages,
               onPageChange: handlePageChange
             }}
-            renderCard={useCallback((siswa: Siswa) => (
-              <div 
-                key={siswa.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onView?.(siswa)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onView?.(siswa);
-                  }
-                }}
-                aria-label={`Lihat detail ${siswa.nama_siswa}`}
-                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{siswa.nama_siswa}</h3>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight mt-0.5">
-                      {siswa.nis || 'Tanpa NIS'} {siswa.nisn ? `(${siswa.nisn})` : ''} • {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {getStatusBadge(siswa.status)}
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gender</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        {siswa.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
-                      </span>
-                    </div>
-                    {siswa.no_rfid && (
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RFID</span>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono tracking-tighter">
-                          {siswa.no_rfid}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView?.(siswa);
-                    }}
-                    aria-label={`Lihat detail ${siswa.nama_siswa}`}
-                    className="h-11 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 font-bold text-[11px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
-                  >
-                    Detail
-                  </Button>
-                </div>
-              </div>
-            ), [onView])}
+            renderCard={renderSiswaMobileCard}
           />
         ) : (
           <div className="hidden md:block">
