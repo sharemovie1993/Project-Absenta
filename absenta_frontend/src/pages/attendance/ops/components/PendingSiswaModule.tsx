@@ -9,6 +9,7 @@ import { markGateAbsence } from '../../../../api/attendanceGerbang.api';
 import toast from 'react-hot-toast';
 import { logAttendanceMetric } from '../../../../utils/attendanceMetrics';
 import type { DropdownOption } from '../../../../api/dropdown.api';
+import { AnalyticsCard } from '../../../../components/ui/AnalyticsCard';
 import { 
   RefreshCw, 
   Users, 
@@ -149,26 +150,24 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
       </div>
 
       {/* Summary Analytic Cards Placed TOP of Table */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-         <div className="bg-rose-50 dark:bg-rose-900/20 p-5 rounded-2xl border border-rose-100 dark:border-rose-800/30 flex items-center gap-4 group hover:scale-[1.01] transition-transform">
-            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center shrink-0">
-               <Clock className="w-6 h-6 text-rose-500" />
-            </div>
-            <div>
-               <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">Masih Dinanti</p>
-               <p className="text-2xl font-black text-rose-600 dark:text-rose-400 leading-none">{filteredNotPresent.length}</p>
-            </div>
-         </div>
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+         <AnalyticsCard
+           title="Masih Dinanti"
+           value={filteredNotPresent.length}
+           icon={<Clock className="w-4 h-4 text-white" />}
+           gradient="bg-gradient-to-br from-rose-500 to-rose-700"
+           variant="compact-premium"
+           mobileCompact={true}
+         />
 
-         <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-4 group hover:scale-[1.01] transition-transform">
-            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center shrink-0">
-               <TrendingUp className="w-6 h-6 text-emerald-500" />
-            </div>
-            <div>
-               <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">Siap Belajar</p>
-               <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{chartMasuk}</p>
-            </div>
-         </div>
+         <AnalyticsCard
+           title="Siap Belajar"
+           value={chartMasuk}
+           icon={<TrendingUp className="w-4 h-4 text-white" />}
+           gradient="bg-gradient-to-br from-emerald-500 to-teal-700"
+           variant="compact-premium"
+           mobileCompact={true}
+         />
 
          {!isPetugasSiswa ? (
             <div className="space-y-1">
