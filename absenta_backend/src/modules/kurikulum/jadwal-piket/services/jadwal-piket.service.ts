@@ -433,73 +433,100 @@ export class JadwalPiketService {
     if (list.length === 0) {
       msg += `ℹ️ Tidak ada jadwal penugasan piket guru untuk ${isNightReminder ? 'besok hari' : 'hari ini'}. Libur atau belum diset di sistem Absenta.\n`;
     } else {
-      // Grouping by Jam -> Pos Piket
-      const groupedByJam: Record<string, Record<string, typeof list>> = {};
+      // Helper untuk membangun header waktu secara dinamis dari data DB tanpa hardcoded string
+      const buildWaktuHeader = (items: typeof list) => {
+        let minSlot: number | null = null;
+        let maxSlot: number | null = null;
+        let minJamMulai: string | null = null;
+        let maxJamSelesai: string | null = null;
 
-      list.forEach(item => {
-        const slotMulai = item.slot_mulai || 1;
-        const slotSelesai = item.slot_selesai || 10;
-        const jamMulai = item.jam_mulai || '06:30';
-        const jamSelesai = item.jam_selesai || '15:30';
-
-        const slotLabel = slotMulai === slotSelesai
-          ? `Jam Ke ${slotMulai}`
-          : `Jam Ke ${slotMulai} - ${slotSelesai}`;
-
-        const waktuHeader = `WAKTU : ${slotLabel} (${jamMulai} s/d ${jamSelesai})`;
-        
-        const posKey = (item.pos_piket || 'Piket Umum').trim();
-
-        if (!groupedByJam[waktuHeader]) {
-          groupedByJam[waktuHeader] = {};
-        }
-        if (!groupedByJam[waktuHeader][posKey]) {
-          groupedByJam[waktuHeader][posKey] = [];
-        }
-
-        groupedByJam[waktuHeader][posKey].push(item);
-      });
-
-      const jamEntries = Object.entries(groupedByJam);
-      jamEntries.forEach(([waktuHeader, posGroupMap], jamIdx) => {
-        if (jamIdx > 0) {
-          msg += `\n`;
-        }
-        msg += `⏰ *${waktuHeader}*\n`;
-
-
-        // Priority sorting for Pos Piket: Piket Umum -> Piket Jurusan -> Others
-        const posEntries = Object.entries(posGroupMap).sort(([nameA], [nameB]) => {
-          const aUpper = nameA.toUpperCase();
-          const bUpper = nameB.toUpperCase();
-
-          const getRank = (name: string) => {
-            if (name.includes('PIKET UMUM')) return 1;
-            if (name.includes('UMUM')) return 1;
-            if (name.includes('PIKET JURUSAN')) return 2;
-            if (name.includes('JURUSAN')) return 2;
-            return 3;
-          };
-
-          const rankA = getRank(aUpper);
-          const rankB = getRank(bUpper);
-
-          if (rankA !== rankB) return rankA - rankB;
-          return aUpper.localeCompare(bUpper);
+        items.forEach((item) => {
+          if (typeof item.slot_mulai === 'number') {
+            if (minSlot === null || item.slot_mulai < minSlot) minSlot = item.slot_mulai;
+          }
+          if (typeof item.slot_selesai === 'number') {
+            if (maxSlot === null || item.slot_selesai > maxSlot) maxSlot = item.slot_selesai;
+          }
+          if (item.jam_mulai) {
+            if (minJamMulai === null || item.jam_mulai < minJamMulai) minJamMulai = item.jam_mulai;
+          }
+          if (item.jam_selesai) {
+            if (maxJamSelesai === null || item.jam_selesai > maxJamSelesai) maxJamSelesai = item.jam_selesai;
+          }
         });
 
-        posEntries.forEach(([posName, items]) => {
-          const posKapital = posName.toUpperCase();
-          msg += `📌 *${posKapital}*\n`;
-          items.forEach(item => {
-            const namaGuru = item.Guru?.nama_guru || '-';
-            const catatanStr = item.catatan ? ` (${item.catatan})` : '';
-            msg += `• 👨‍🏫 *${namaGuru}*${catatanStr}\n`;
-          });
-          msg += `\n`;
-        });
+        let slotLabel = '';
+        if (minSlot !== null && maxSlot !== null) {
+          slotLabel = minSlot === maxSlot ? `Jam Ke ${minSlot}` : `Jam Ke ${minSlot} - ${maxSlot}`;
+        } else if (minSlot !== null) {
+          slotLabel = `Jam Ke ${minSlot}`;
+        }
+
+        let jamLabel = '';
+        if (minJamMulai && maxJamSelesai) {
+          jamLabel = `(${minJamMulai} s/d ${maxJamSelesai})`;
+        } else if (minJamMulai) {
+          jamLabel = `(${minJamMulai})`;
+        }
+
+        const fullTimeStr = [slotLabel, jamLabel].filter(Boolean).join(' ');
+        return fullTimeStr ? `⏰ *WAKTU : ${fullTimeStr}*\n` : '';
+      };
+
+      // Pisahkan Piket Umum (dikelompokkan dinamis berdasar rentang slot/shift) & Piket Jurusan
+      const piketUmumGroupsMap = new Map<string, { slotMulai: number; items: typeof list }>();
+      const piketJurusan: typeof list = [];
+
+      list.forEach((item) => {
+        const posKey = (item.pos_piket || '').toUpperCase().trim();
+        const isJurusan = posKey.includes('JURUSAN');
+
+        if (isJurusan) {
+          piketJurusan.push(item);
+        } else {
+          const slotM = item.slot_mulai ?? 1;
+          const slotS = item.slot_selesai ?? 10;
+          const key = `${slotM}-${slotS}`;
+
+          if (!piketUmumGroupsMap.has(key)) {
+            piketUmumGroupsMap.set(key, { slotMulai: slotM, items: [] });
+          }
+          piketUmumGroupsMap.get(key)!.items.push(item);
+        }
       });
 
+      // Sort kelompok Piket Umum berdasarkan slotMulai terkecil
+      const sortedUmumGroups = Array.from(piketUmumGroupsMap.values()).sort((a, b) => a.slotMulai - b.slotMulai);
+      const sections: string[] = [];
+
+      // Render setiap kelompok Piket Umum
+      sortedUmumGroups.forEach((group) => {
+        const waktuHeader = buildWaktuHeader(group.items);
+        let sec = `${waktuHeader}📌 *PIKET UMUM*\n`;
+        group.items.forEach((item) => {
+          const namaGuru = item.Guru?.nama_guru || '-';
+          sec += `* 👨‍🏫 ${namaGuru}\n`;
+        });
+        sections.push(sec);
+      });
+
+      // Render kelompok Piket Jurusan
+      if (piketJurusan.length > 0) {
+        let sec = `📌 *PIKET JURUSAN*\n`;
+        piketJurusan.forEach((item) => {
+          const namaGuru = item.Guru?.nama_guru || '-';
+          let detail = (item.catatan || '').trim();
+          if (!detail) {
+            const posClean = (item.pos_piket || '').replace(/^piket\s+jurusan\s*/i, '').trim();
+            if (posClean) detail = posClean;
+          }
+          const detailStr = detail ? (detail.startsWith('(') ? ` ${detail}` : ` (${detail})`) : '';
+          sec += `* 👨‍🏫 ${namaGuru}${detailStr}\n`;
+        });
+        sections.push(sec);
+      }
+
+      msg += sections.join('\n') + '\n';
       msg += `💡 Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
       msg += `🤖 _Pesan pengingat otomatis ini dikirimkan oleh *Sistem Absenta*._\n`;
     }
