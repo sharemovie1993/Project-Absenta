@@ -308,14 +308,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.petugas',
     'dashboard.view.overview',
     'core.tenants.view.detail',
-    // ─── CRUD Presensi Gerbang & Cek Manual ─────────────────────────────
-    'attendance.scan',                    // CRUD Absensi Gerbang & POS
-    'attendance.gate.tap.entry',          // Entry gate tap
-    'attendance.gate.tap.exit',           // Exit gate tap
-    'attendance.gate.bypass',             // Bypass gate
-    'attendance.gate.view.logs',          // View logs
-    'attendance.piket.view',              // View piket
-    'attendance.piket.manage',            // Manage piket
+    // ─── Operasional Akses Cek Manual & Tap Gerbang ───────────────────
+    'attendance.gate.tap.entry',          // Entry gate tap / pencatatan
+    'attendance.markGateAbsence',         // Klik tombol status HADIR/SAKIT/IZIN/ALPA/DISPEN
+    'attendance.getNotPresentStudents',   // Baca daftar siswa belum hadir
+    'attendance.gate.view.logs',          // Lihat log gerbang
     // ─── Referensi Akademik ───────────────────────────────────────────
     'academic.students.view.list',
     'academic.students.view.detail',
@@ -333,7 +330,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update',
     'attendance.sessions.delete',
     'attendance.sessions.close',          // Tutup sesi absensi
-    'attendance.sessions.update.attendance', // Koreksi status kehadiran
+    'attendance.sessions.update.attendance', // Koreksi status kehadiran (Update)
     'attendance.sessions.tap',            // Scan siswa
     'attendance.sessions.update.journal', // Isi jurnal KBM
     // ─── Kejadian Khusus (Read Only) ────────────────────────────────
@@ -344,8 +341,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.monitoring.view.live.status',
-    'attendance.markGateAbsence',
-    'attendance.getNotPresentStudents',
     'dashboard.view.teacher.attendance'
   ],
 
