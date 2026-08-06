@@ -148,94 +148,91 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-         {/* Summary Cards */}
-         <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-xl border border-rose-100 dark:border-rose-800/30 flex items-center gap-4 group hover:scale-[1.02] transition-transform">
-               <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-rose-500" />
-               </div>
-               <div>
-                  <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">Masih Dinanti</p>
-                  <p className="text-2xl font-black text-rose-600 dark:text-rose-400 leading-none">{filteredNotPresent.length}</p>
-               </div>
+      {/* Summary Analytic Cards Placed TOP of Table */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+         <div className="bg-rose-50 dark:bg-rose-900/20 p-5 rounded-2xl border border-rose-100 dark:border-rose-800/30 flex items-center gap-4 group hover:scale-[1.01] transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center shrink-0">
+               <Clock className="w-6 h-6 text-rose-500" />
             </div>
-
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-xl border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-4 group hover:scale-[1.02] transition-transform">
-               <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-emerald-500" />
-               </div>
-               <div>
-                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">Siap Belajar</p>
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{chartMasuk}</p>
-               </div>
-            </div>
-
-            <div className="mt-4 space-y-4">
-               {!isPetugasSiswa && (
-                  <div className="space-y-2">
-                     <Label htmlFor="kelas-filter" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Filter Kelas</Label>
-                     <SearchableSelect
-                       id="kelas-filter"
-                       value={selectedKelasId}
-                       onValueChange={(v) => setSelectedKelasId(v)}
-                       options={kelasOptions}
-                       placeholder="Pilih Kelas"
-                       triggerClassName="h-12 rounded-xl bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 font-bold"
-                     />
-                  </div>
-               )}
-               <div className="flex items-center gap-3 px-4">
-                 <Switch id="confirm-toggle" checked={confirmEnabled} onCheckedChange={setConfirmEnabled} />
-                 <Label htmlFor="confirm-toggle" className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-gray-400">Konfirmasi Aksi</Label>
-               </div>
+            <div>
+               <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">Masih Dinanti</p>
+               <p className="text-2xl font-black text-rose-600 dark:text-rose-400 leading-none">{filteredNotPresent.length}</p>
             </div>
          </div>
- 
-         {/* List Panel */}
-         <div className="lg:col-span-3">
-           <AnimatePresence mode="wait">
-             {(filteredNotPresent || []).length > 0 ? (
-               <motion.div
-                 key="list"
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 exit={{ opacity: 0 }}
-               >
-                 <GerbangPendingStudentsPanel
-                   students={filteredNotPresent}
-                   loading={notPresentLoading}
-                   isPetugas={isPetugasSiswa}
-                   confirmEnabled={confirmEnabled}
-                   viewMode={viewMode}
-                   onMarkHadir={(id) => handleMarkStatus(id, 'HADIR')}
-                   onMarkSakit={(id) => handleMarkStatus(id, 'SAKIT')}
-                   onMarkIzin={(id) => handleMarkStatus(id, 'IZIN')}
-                   onMarkDispen={(id) => handleMarkStatus(id, 'DISPEN')}
-                   onMarkAlpa={(id) => handleMarkStatus(id, 'ALPA')}
-                 />
-               </motion.div>
-             ) : (
-               <motion.div 
-                 key="empty"
-                 initial={{ opacity: 0, scale: 0.9 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 className="h-full flex flex-col items-center justify-center text-center p-12 bg-emerald-50/20 dark:bg-emerald-900/10 rounded-[3rem] border-2 border-dashed border-emerald-100 dark:border-emerald-800/30"
-               >
-                  <div className="w-24 h-24 rounded-3xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-6 shadow-xl shadow-emerald-600/10">
-                    <Sparkles className="w-10 h-10 text-emerald-600" />
-                  </div>
-                  <h4 className="text-2xl font-black text-emerald-800 dark:text-emerald-200">Semua Telah Hadir!</h4>
-                  <p className="text-gray-400 font-bold max-w-sm mt-2 italic">
-                    Luar biasa! Seluruh siswa telah menyapa hari ini. Ruang kelas siap untuk petualangan ilmu pengetahuan.
-                  </p>
-                  <div className="mt-8 flex items-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">
-                     <Heart className="w-3 h-3 fill-current" /> Harmoni Sekolah Terjaga
-                  </div>
-               </motion.div>
-             )}
-           </AnimatePresence>
+
+         <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-4 group hover:scale-[1.01] transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center shrink-0">
+               <TrendingUp className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div>
+               <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">Siap Belajar</p>
+               <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{chartMasuk}</p>
+            </div>
          </div>
+
+         {!isPetugasSiswa ? (
+            <div className="space-y-1">
+               <Label htmlFor="kelas-filter" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Filter Kelas</Label>
+               <SearchableSelect
+                 id="kelas-filter"
+                 value={selectedKelasId}
+                 onValueChange={(v) => setSelectedKelasId(v)}
+                 options={kelasOptions}
+                 placeholder="Pilih Kelas"
+                 triggerClassName="h-11 rounded-xl bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 font-bold text-xs"
+               />
+            </div>
+         ) : null}
+
+         <div className="flex items-center justify-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800">
+            <Switch id="confirm-toggle" checked={confirmEnabled} onCheckedChange={setConfirmEnabled} />
+            <Label htmlFor="confirm-toggle" className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-gray-500 dark:text-gray-400">Konfirmasi Aksi</Label>
+         </div>
+      </div>
+
+      {/* List Panel / Table (Full Width Underneath) */}
+      <div className="w-full">
+        <AnimatePresence mode="wait">
+          {(filteredNotPresent || []).length > 0 ? (
+            <motion.div
+              key="list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <GerbangPendingStudentsPanel
+                students={filteredNotPresent}
+                loading={notPresentLoading}
+                isPetugas={isPetugasSiswa}
+                confirmEnabled={confirmEnabled}
+                viewMode={viewMode}
+                onMarkHadir={(id) => handleMarkStatus(id, 'HADIR')}
+                onMarkSakit={(id) => handleMarkStatus(id, 'SAKIT')}
+                onMarkIzin={(id) => handleMarkStatus(id, 'IZIN')}
+                onMarkDispen={(id) => handleMarkStatus(id, 'DISPEN')}
+                onMarkAlpa={(id) => handleMarkStatus(id, 'ALPA')}
+              />
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="empty"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="h-full flex flex-col items-center justify-center text-center p-12 bg-emerald-50/20 dark:bg-emerald-900/10 rounded-[3rem] border-2 border-dashed border-emerald-100 dark:border-emerald-800/30"
+            >
+               <div className="w-24 h-24 rounded-3xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-6 shadow-xl shadow-emerald-600/10">
+                 <Sparkles className="w-10 h-10 text-emerald-600" />
+               </div>
+               <h4 className="text-2xl font-black text-emerald-800 dark:text-emerald-200">Semua Telah Hadir!</h4>
+               <p className="text-gray-400 font-bold max-w-sm mt-2 italic">
+                 Luar biasa! Seluruh siswa telah menyapa hari ini. Ruang kelas siap untuk petualangan ilmu pengetahuan.
+               </p>
+               <div className="mt-8 flex items-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">
+                  <Heart className="w-3 h-3 fill-current" /> Harmoni Sekolah Terjaga
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
