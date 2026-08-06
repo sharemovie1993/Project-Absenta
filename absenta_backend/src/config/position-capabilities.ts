@@ -307,7 +307,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'organization.scope.unit_restricted',
     'dashboard.view.petugas',
     'dashboard.view.overview',
-    'core.tenants.view.detail',
     // ─── Operasional Akses Cek Manual & Tap Gerbang ───────────────────
     'attendance.gate.tap.entry',          // Entry gate tap / pencatatan
     'attendance.markGateAbsence',         // Klik tombol status HADIR/SAKIT/IZIN/ALPA/DISPEN

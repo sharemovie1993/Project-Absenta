@@ -167,8 +167,8 @@ export function UserMenu() {
               Profil Saya
             </button>
             
-            {/* RBAC Protected Settings Menu */}
-            {(user?.capabilities?.some(cap => cap.startsWith('core.system.')) || user?.role?.name === 'SUPERADMIN') && (
+            {/* RBAC Protected Settings Menu (Excludes SISWA) */}
+            {user?.role?.name !== 'SISWA' && (user?.capabilities?.some(cap => cap.startsWith('core.system.')) || user?.role?.name === 'SUPERADMIN') && (
               <button
                 onClick={() => { setIsOpen(false); navigate('/settings'); }}
                 className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"

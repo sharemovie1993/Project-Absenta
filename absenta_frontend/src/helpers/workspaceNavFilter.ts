@@ -83,6 +83,14 @@ export const getAllUserCrossModuleItems = (
     noisePathsToExclude.add('/bpbk/rujukan');
   }
 
+  const isSiswaUser = String(user?.role?.name || '').toUpperCase() === 'SISWA';
+  if (isSiswaUser) {
+    noisePathsToExclude.add('/settings');
+    noisePathsToExclude.add('/settings/whatsapp');
+    noisePathsToExclude.add('/settings/system-update');
+    noisePathsToExclude.add('/settings/easy-tunnel');
+  }
+
   const validItems = allItems.filter((item) => {
     const p = (item.path || '').toLowerCase();
     return p && p !== '#' && p !== '/dashboard' && !p.startsWith('menu:');
@@ -328,8 +336,10 @@ export const filterNavByWorkspace = (
     (currentWs.crossModulePaths || []).map((p) => p.toLowerCase())
   );
 
+  const isSiswaRole = String(user?.role?.name || '').toUpperCase() === 'SISWA';
   const crossModuleItems = validItems.filter((item) => {
     const p = (item.path || '').toLowerCase();
+    if (isSiswaRole && (p === '/settings' || p.startsWith('/settings/'))) return false;
     return p && !primaryPathSet.has(p) && allowedCrossPaths.has(p);
   });
 
