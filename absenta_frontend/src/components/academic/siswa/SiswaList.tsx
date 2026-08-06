@@ -968,6 +968,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setBulkDeleting(false);
       confirm.setLoading(false);
     }
+  }, [selectedIds, siswas, confirm, queryClient, refetch]);
+
   const renderSiswaMobileCard = useCallback((siswa: Siswa) => (
     <div 
       key={siswa.id}
