@@ -29,6 +29,15 @@ import { getSemesterList } from '../../../api/academic/semester.api';
 
 const ASC_STORAGE_KEY = 'absenta_asc_import_mappings_v1';
 
+const extractClassLevel = (name: string): 'X' | 'XI' | 'XII' | null => {
+  if (!name) return null;
+  const trimmed = name.trim().toUpperCase();
+  if (/\b(XII|12)\b/i.test(trimmed) || trimmed.startsWith('XII') || trimmed.startsWith('12')) return 'XII';
+  if (/\b(XI|11)\b/i.test(trimmed) || trimmed.startsWith('XI') || trimmed.startsWith('11')) return 'XI';
+  if (/\b(X|10)\b/i.test(trimmed) || trimmed.startsWith('X') || trimmed.startsWith('10')) return 'X';
+  return null;
+};
+
 interface SavedMappingPref {
   action: 'MATCH' | 'CREATE' | 'IGNORE';
   target_id?: string;
@@ -337,6 +346,34 @@ export const AscImportWizardModal: React.FC<Props> = ({
       });
       setSubjectMappings(initSubjects);
     }
+  };
+
+  const handleProceedToStep3 = () => {
+    if (!analysis) return;
+
+    const mismatches: string[] = [];
+    analysis.classes.forEach(c => {
+      const mapping = classMappings[c.asc_id];
+      if (mapping && mapping.action === 'MATCH' && mapping.target_id) {
+        const targetDbClass = analysis.db_classes.find(d => d.id === mapping.target_id);
+        const xmlLevel = extractClassLevel(c.name);
+        const targetLevel = extractClassLevel(targetDbClass?.name || '');
+        if (xmlLevel && targetLevel && xmlLevel !== targetLevel) {
+          mismatches.push(`• "${c.name}" (Tingkat ${xmlLevel}) ➔ "${targetDbClass?.name}" (Tingkat ${targetLevel})`);
+        }
+      }
+    });
+
+    if (mismatches.length > 0) {
+      toast.error(
+        `⛔ PEMETAAN TINGKAT KELAS SALAH:\n${mismatches.slice(0, 3).join('\n')}${mismatches.length > 3 ? `\n(+${mismatches.length - 3} lainnya)` : ''}\n\nKelas Tingkat XI wajib ke XI, 10/X wajib ke 10/X, XII wajib ke XII!`,
+        { duration: 7000 }
+      );
+      setActiveTab('KELAS');
+      return;
+    }
+
+    setStep(3);
   };
 
   const handleExecuteImport = async () => {
@@ -733,8 +770,23 @@ export const AscImportWizardModal: React.FC<Props> = ({
                       .map((c) => {
                         const currentMap = classMappings[c.asc_id] || { action: 'CREATE', asc_id: c.asc_id, name: c.name };
                         const isIgnored = currentMap.action === 'IGNORE';
+
+                        const targetDbClass = currentMap.action === 'MATCH' && currentMap.target_id
+                          ? analysis.db_classes.find(d => d.id === currentMap.target_id)
+                          : null;
+                        const xmlLevel = extractClassLevel(c.name);
+                        const targetLevel = targetDbClass ? extractClassLevel(targetDbClass.name) : null;
+                        const isLevelMismatched = xmlLevel && targetLevel && xmlLevel !== targetLevel;
+
                         return (
-                          <tr key={c.asc_id} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800/50", isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20")}>
+                          <tr
+                            key={c.asc_id}
+                            className={cn(
+                              "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
+                              isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20",
+                              isLevelMismatched && "bg-rose-50/80 dark:bg-rose-950/40 border-l-4 border-l-rose-600"
+                            )}
+                          >
                             <td className="py-2.5 px-3 text-center">
                               <input
                                 type="checkbox"
@@ -759,11 +811,21 @@ export const AscImportWizardModal: React.FC<Props> = ({
                             </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
                               {c.name}
+                              {xmlLevel && (
+                                <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                                  Tingkat {xmlLevel}
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-4">
                               {isIgnored ? (
                                 <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px]">
                                   🚫 Diabaikan (Jangan Impor)
+                                </Badge>
+                              ) : isLevelMismatched ? (
+                                <Badge className="bg-rose-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-xs animate-pulse">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  ⛔ SALAH TINGKAT: {xmlLevel} ➔ {targetLevel}
                                 </Badge>
                               ) : c.match_status === 'EXACT_MATCH' ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
@@ -780,6 +842,16 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                 value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
                                 onChange={(e) => {
                                   const val = e.target.value;
+                                  if (val !== '__IGNORE__' && val !== '__CREATE__') {
+                                    const selectedDbClass = analysis.db_classes.find(d => d.id === val);
+                                    const selTargetLevel = selectedDbClass ? extractClassLevel(selectedDbClass.name) : null;
+                                    if (xmlLevel && selTargetLevel && xmlLevel !== selTargetLevel) {
+                                      toast.error(
+                                        `⚠️ Peringatan Tingkat Berbeda!\nKelas XML "${c.name}" (${xmlLevel}) tidak boleh dipetakan ke "${selectedDbClass?.name}" (${selTargetLevel}).`,
+                                        { duration: 5000 }
+                                      );
+                                    }
+                                  }
                                   setClassMappings(prev => {
                                     const next = { ...prev };
                                     if (val === '__IGNORE__') {
@@ -794,20 +866,26 @@ export const AscImportWizardModal: React.FC<Props> = ({
                                   });
                                 }}
                                 className={cn(
-                                  "w-full text-xs rounded-lg border p-1.5",
+                                  "w-full text-xs rounded-lg border p-1.5 transition-colors",
                                   isIgnored
                                     ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
+                                    : isLevelMismatched
+                                    ? "border-rose-500 bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-100 font-bold ring-2 ring-rose-500/50"
                                     : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                                 )}
                               >
                                 <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Kelas Ini</option>
                                 <option value="__CREATE__">➕ Buat Rombel Baru "{c.name}"</option>
                                 <optgroup label="Arahkan ke Master Rombel yang Ada:">
-                                  {analysis.db_classes.map(dbc => (
-                                    <option key={dbc.id} value={dbc.id}>
-                                      {dbc.name}
-                                    </option>
-                                  ))}
+                                  {analysis.db_classes.map(dbc => {
+                                    const dbcLevel = extractClassLevel(dbc.name);
+                                    const mismatchFlag = xmlLevel && dbcLevel && xmlLevel !== dbcLevel;
+                                    return (
+                                      <option key={dbc.id} value={dbc.id}>
+                                        {mismatchFlag ? `⚠️ [BEDA TINGKAT] ${dbc.name}` : dbc.name}
+                                      </option>
+                                    );
+                                  })}
                                 </optgroup>
                               </select>
                             </td>
@@ -933,7 +1011,7 @@ export const AscImportWizardModal: React.FC<Props> = ({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setStep(3)}
+                onClick={handleProceedToStep3}
                 className="rounded-xl px-6 bg-indigo-600 text-white font-bold"
               >
                 Lanjut ke Eksekusi
