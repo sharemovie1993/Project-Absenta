@@ -276,13 +276,13 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
         </div>
       )}
 
-      {/* ── MAIN OPERATIONAL WORKSPACE CANVAS (PROTECTED BY INFRA ERROR BOUNDARY) ── */}
-      <main className="flex-1 w-full max-w-[1600px] mx-auto px-1 py-1 sm:px-3.5 sm:py-3.5 space-y-2 sm:space-y-3.5 min-w-0 overflow-x-hidden">
+      {/* ── MAIN OPERATIONAL WORKSPACE CANVAS (MARGINLESS ON MOBILE) ── */}
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-0 py-1 sm:px-3.5 sm:py-3.5 space-y-2 sm:space-y-3.5 min-w-0 overflow-x-hidden">
         <InfraErrorBoundary 
           fallbackTitle={`Gagal memuat modul operasional ${title}`}
           queryKeyToInvalidate={resolvedKey ? [resolvedKey] : undefined}
         >
-          <div className="w-full space-y-2 sm:space-y-6 [&_.op-card]:rounded-xl sm:[&_.op-card]:rounded-[2.5rem] [&_.op-card]:p-2.5 sm:[&_.op-card]:p-8 [&_.op-card]:space-y-3 sm:[&_.op-card]:space-y-8">
+          <div className="w-full space-y-2 sm:space-y-6 [&_.op-card]:rounded-none sm:[&_.op-card]:rounded-[2.5rem] [&_.op-card]:border-x-0 sm:[&_.op-card]:border-x [&_.op-card]:p-2 sm:[&_.op-card]:p-8 [&_.op-card]:space-y-3 sm:[&_.op-card]:space-y-8">
             {children}
           </div>
         </InfraErrorBoundary>

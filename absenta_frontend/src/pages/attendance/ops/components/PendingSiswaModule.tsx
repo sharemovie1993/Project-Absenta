@@ -114,8 +114,7 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
 
 
   return (
-  return (
-    <div className="op-card bg-white dark:bg-gray-900 rounded-xl sm:rounded-[3rem] border border-gray-100 dark:border-gray-800 p-2 sm:p-8 shadow-xl shadow-black/[0.02] space-y-3 sm:space-y-8 w-full min-w-0">
+    <div className="op-card bg-white dark:bg-gray-900 rounded-none sm:rounded-[3rem] border-x-0 sm:border border-gray-100 dark:border-gray-800 p-2 sm:p-8 shadow-none sm:shadow-xl space-y-3 sm:space-y-8 w-full min-w-0">
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-6">
          <div className="min-w-0">
             <h3 className="text-base sm:text-2xl font-black text-gray-900 dark:text-white truncate">Daftar Kehadiran</h3>

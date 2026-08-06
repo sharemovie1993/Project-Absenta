@@ -196,7 +196,7 @@ export function GerbangPendingStudentsPanel({
   );
 
   const renderList = () => (
-    <div className="bg-white dark:bg-gray-900 rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden w-full">
+    <div className="bg-white dark:bg-gray-900 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-100 dark:border-gray-800 overflow-hidden w-full">
        <div className="overflow-x-auto no-scrollbar w-full">
           <table className="w-full text-left border-collapse min-w-full">
              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
