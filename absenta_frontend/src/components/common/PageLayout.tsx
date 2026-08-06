@@ -200,7 +200,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
       {/* Premium Stats Grid */}
       {stats.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
           {stats.map((stat, idx) => (
             <AnalyticsCard
               key={idx}

@@ -205,7 +205,7 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
 
       {/* Grid Kartu Statistik Premium Responsif (Menghindari visual overlap / squished grid) */}
       {(stats.length > 0 || isLoadingStats) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-h-[80px]">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-h-[80px]">
           {isLoadingStats ? (
             [...Array(Math.min(4, stats.length || 4))].map((_, i) => (
               <div key={i} className={cn(
