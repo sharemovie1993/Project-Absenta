@@ -77,7 +77,7 @@ const SesiAttendanceRow = React.memo(({
         <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
           {record.Siswa?.nama_siswa || studentId}
         </p>
-        <p className="text-[8px] text-gray-400 font-bold truncate">NIS: {record.Siswa?.nis || '-'}</p>
+        <p className="hidden sm:block text-[8px] text-gray-400 font-bold truncate">NIS: {record.Siswa?.nis || '-'}</p>
         {record.catatan && (
           <p className="text-[7px] text-indigo-500 font-black italic truncate mt-0.5">
             {record.catatan}
