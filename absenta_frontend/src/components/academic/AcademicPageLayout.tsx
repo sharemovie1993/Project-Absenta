@@ -302,7 +302,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
           fallbackTitle={`Gagal memuat halaman ${title || 'Akademik'}`}
           queryKeyToInvalidate={hardeningModuleKey ? [hardeningModuleKey] : undefined}
         >
-          <div className="w-full space-y-2 sm:space-y-6 [&_.academic-card]:rounded-none sm:[&_.academic-card]:rounded-2xl [&_.academic-card]:border-x-0 sm:[&_.academic-card]:border-x [&_.academic-card]:p-2 sm:[&_.academic-card]:p-6 [&_.academic-card]:space-y-3 sm:[&_.academic-card]:space-y-6 [&>div]:rounded-none sm:[&>div]:rounded-2xl [&>div]:border-x-0 sm:[&>div]:border-x">
+          <div className="w-full space-y-2 sm:space-y-6 max-sm:[&_.academic-card]:rounded-none max-sm:[&_.academic-card]:border-x-0 max-sm:[&_.academic-card]:p-2 max-sm:[&>div]:rounded-none max-sm:[&>div]:border-x-0">
             {children}
           </div>
         </InfraErrorBoundary>

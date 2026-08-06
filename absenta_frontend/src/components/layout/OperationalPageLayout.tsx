@@ -282,7 +282,7 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
           fallbackTitle={`Gagal memuat modul operasional ${title}`}
           queryKeyToInvalidate={resolvedKey ? [resolvedKey] : undefined}
         >
-          <div className="w-full space-y-2 sm:space-y-6 [&_.op-card]:rounded-none sm:[&_.op-card]:rounded-[2.5rem] [&_.op-card]:border-x-0 sm:[&_.op-card]:border-x [&_.op-card]:p-2 sm:[&_.op-card]:p-8 [&_.op-card]:space-y-3 sm:[&_.op-card]:space-y-8 [&>div]:rounded-none sm:[&>div]:rounded-[2.5rem] [&>div]:border-x-0 sm:[&>div]:border-x">
+          <div className="w-full space-y-2 sm:space-y-6 max-sm:[&_.op-card]:rounded-none max-sm:[&_.op-card]:border-x-0 max-sm:[&_.op-card]:p-2 max-sm:[&>div]:rounded-none max-sm:[&>div]:border-x-0">
             {children}
           </div>
         </InfraErrorBoundary>
