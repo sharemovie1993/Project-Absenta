@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Maximize, Minimize, ShieldCheck, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/Badge';
 import { MemoizedAnalyticsCard } from '../ui/AnalyticsCard';
@@ -54,7 +54,6 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
   const { user } = useAuth();
   const { setInstructionData } = useInstruction();
   const [tenantName, setTenantName] = useState<string>('');
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const userRole = (user?.role?.name || '').toUpperCase();
 
@@ -137,34 +136,7 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
     loadTenant();
   }, []);
 
-  const [liveTime, setLiveTime] = useState<string>('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      setLiveTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB');
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const [showMobileStats, setShowMobileStats] = useState<boolean>(true);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    }
-  };
-
-  useEffect(() => {
-    const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
-  }, []);
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col antialiased">
@@ -201,14 +173,6 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
 
         {/* Right Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* LIVE WIB DIGITAL CLOCK */}
-          {liveTime && (
-            <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 text-emerald-400 text-xs font-mono font-bold border border-slate-700/80 shrink-0">
-              <Clock size={13} className="text-emerald-400 animate-pulse" />
-              <span>{liveTime}</span>
-            </div>
-          )}
-
           {/* HARDENING / AUDIT INSPECTOR TOOL INTEGRATION */}
           {hardeningConfig && resolvedKey && (
             <div className="hidden md:block">
@@ -227,16 +191,6 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
           <div className="bg-slate-800 text-slate-200 rounded-lg border border-slate-700 px-1 py-0.5 flex items-center shrink-0">
             <ThemeToggle />
           </div>
-
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition border border-slate-700 cursor-pointer"
-            title={isFullscreen ? 'Keluar Layar Penuh' : 'Mode Layar Penuh'}
-          >
-            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-            <span className="hidden md:inline">{isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}</span>
-          </button>
 
           <div className="flex items-center gap-1.5 pl-1 sm:pl-2 border-l border-slate-800 shrink-0">
             <div className="w-7 h-7 rounded-full bg-indigo-600/30 text-indigo-300 font-bold flex items-center justify-center text-xs border border-indigo-500/40 shrink-0">

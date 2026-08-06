@@ -89,31 +89,6 @@ export default function AttendanceOpsPage() {
       subtitle="Pencatatan Kehadiran Realtime & POS Scanner"
       backPath="/dashboard"
       backLabel="Kembali ke Dashboard"
-      actions={
-        <div className="flex gap-2 items-center">
-          <Button 
-            onClick={() => navigate('/kesiswaan/pos-keamanan')}
-            variant="outline"
-            className="rounded-lg h-8 px-3 font-bold text-xs border-indigo-600/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hidden sm:inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <ShieldCheck size={14} /> Pos Satpam Gerbang
-          </Button>
-          <Button 
-            onClick={() => setTindakMasalModalOpen(true)}
-            variant="outline"
-            className="rounded-lg h-8 px-3 font-bold text-xs border-emerald-600/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hidden sm:inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <CheckCircle2 size={14} /> ⚡ Tindak Masal
-          </Button>
-          <Button 
-            onClick={() => setCatatModalOpen(true)}
-            variant="default"
-            className="rounded-lg h-8 px-3 font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white hidden sm:inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-          >
-            <Plus size={14} /> ⚡ Catat Pelanggaran
-          </Button>
-        </div>
-      }
       instruction={{
         title: "Panduan Operasional Presensi",
         description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung di gerbang.",
