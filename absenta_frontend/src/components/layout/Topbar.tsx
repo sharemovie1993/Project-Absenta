@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Search, Sparkles, LayoutGrid, Smartphone } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
@@ -181,25 +181,13 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             {isNotDashboard && (
               <Link
                 to="/dashboard"
-                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex-shrink-0"
-                title="Kembali ke Portal Apps Launcher"
+                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-bold transition-all flex-shrink-0 border border-slate-200/80 dark:border-slate-800"
+                title="Kembali ke Launcher Apps"
               >
-                <LayoutGrid size={14} className="text-white" />
-                <span className="hidden sm:inline">📱 Launcher Apps</span>
-                <span className="sm:hidden">📱 Launcher</span>
+                <ArrowLeft size={16} className="stroke-[2.5]" />
+                <span className="hidden sm:inline">Kembali</span>
               </Link>
             )}
-
-            {/* Premium Hub Search Access - Slim Version */}
-            <button 
-              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
-              aria-label="Pencarian Global"
-              className="ml-4 flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl transition-all hover:bg-white dark:hover:bg-slate-900 group"
-            >
-              <Search className="w-3 h-3 text-slate-400 group-hover:text-blue-500 transition-colors" />
-              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Telusuri...</span>
-              <kbd className="hidden md:inline px-1 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded text-[8px] font-black text-slate-300">Ctrl K</kbd>
-            </button>
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
