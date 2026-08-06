@@ -1468,8 +1468,9 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 } />
+                <Route path="/attendance/sesi" element={<Navigate to="/attendance/ops?tab=sesi" replace />} />
                 <Route path="/attendance/ops" element={
-                  <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                  <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.markGateAbsence', 'attendance.sessions.create']}>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
