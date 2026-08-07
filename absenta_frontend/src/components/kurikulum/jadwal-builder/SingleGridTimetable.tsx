@@ -149,15 +149,15 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
             );
           })()
         ) : (
-          <div className="h-full w-full flex items-center justify-center min-h-[38px]">
+          <div className="h-full w-full flex items-center justify-center min-h-[38px] relative">
             {toolMode === 'PAINT' && conflict ? (
               <div
                 title={conflict.message}
                 className={cn(
-                  'flex flex-col items-center justify-center p-1 rounded-xl border text-center transition-all w-full h-full cursor-help shadow-sm leading-tight',
+                  'absolute inset-0 flex flex-col items-center justify-center p-1 rounded-xl border text-center transition-all cursor-help shadow-md leading-tight opacity-0 group-hover/cell:opacity-100 z-10 backdrop-blur-[1px]',
                   conflict.type === 'TEACHER'
-                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300'
-                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                    ? 'bg-rose-50/95 dark:bg-rose-950/95 border-rose-400 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                    : 'bg-amber-50/95 dark:bg-amber-950/95 border-amber-400 dark:border-amber-800 text-amber-800 dark:text-amber-300'
                 )}
               >
                 <div className="flex items-center justify-center gap-0.5 font-black text-[8px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
@@ -165,24 +165,17 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                   <span>{conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA'}</span>
                 </div>
                 {conflict.type === 'TEACHER' && (
-                  <div className="flex flex-col items-center text-[7.5px] mt-0.5 leading-tight font-bold">
-                    {conflict.guruName && (
-                      <span className="truncate max-w-[110px] font-black text-rose-950 dark:text-rose-100">{conflict.guruName}</span>
-                    )}
+                  <div className="flex flex-col items-center text-[7.5px] leading-tight font-bold">
                     {conflict.kelasName && (
                       <span className="text-[7px] text-rose-600 dark:text-rose-300">di {conflict.kelasName}</span>
-                    )}
-                    {conflict.ruanganName && (
-                      <span className="text-[6.5px] opacity-80">📍 {conflict.ruanganName}</span>
                     )}
                   </div>
                 )}
               </div>
-            ) : (
-              <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
-                <Plus size={11} className="stroke-[2.5]" />
-              </span>
-            )}
+            ) : null}
+            <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
+              <Plus size={11} className="stroke-[2.5]" />
+            </span>
           </div>
         )}
       </div>
