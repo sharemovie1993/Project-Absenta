@@ -245,7 +245,8 @@ export class GuruJadwalHandler {
       `[11] 📋 Jadwal Saya Hari Ini\n` +
       `[12] 📅 Jadwal Saya 1 Minggu\n` +
       `[13] 🔍 Lihat Jadwal Guru Lain\n` +
-      `[14] 🏫 Jadwal Kelas\n\n` +
+      `[14] 🏫 Jadwal Kelas\n` +
+      `[15] 📍 Posisi Guru Saat Ini\n\n` +
       `[0] 🔄 Menu Utama`
     );
   }
@@ -488,6 +489,164 @@ export class GuruJadwalHandler {
     msg += `💡 Tambah kata _minggu_ untuk 1 minggu penuh\n`;
     msg += `Contoh: ketik *${input} minggu*\n`;
     msg += `Atau ketik *[0]* untuk Menu Utama.`;
+    return msg;
+  }
+
+  /**
+   * MENU 15 / POSISI GURU: Cek Posisi & Status Mengajar Guru Saat Ini
+   * Contoh: "15", "posisi", "posisi firman", "15 firman"
+   */
+  static async handlePosisiGuru(ctx: ChatbotContext): Promise<string> {
+    const tenantId = ctx.guru?.tenant_id || ctx.siswa?.tenant_id || ctx.ortu?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant sekolah tidak ditemukan.';
+
+    const activeSem = await getWhatsappActiveSemester(tenantId);
+    if (!activeSem) return '⚠️ Semester aktif sekolah belum diatur.';
+
+    const tz = await getTenantTimezone(tenantId);
+    const currentDay = getHariByTimezone(tz);
+
+    // Ambil waktu WIB saat ini (HH:mm)
+    const nowWibStr = new Date().toLocaleTimeString('en-US', {
+      timeZone: tz || 'Asia/Jakarta',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Tanggal WIB hari ini (start of day & end of day UTC for db query)
+    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' }); // YYYY-MM-DD
+    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+
+    const rawText = (ctx.messageText || '').trim();
+    let filterName = '';
+
+    // If message starts with "15" or "posisi", strip command to get name filter if any
+    if (/^(15|posisi\s*guru|posisi)\b/i.test(rawText)) {
+      filterName = rawText.replace(/^(15|posisi\s*guru|posisi)\s*/i, '').trim();
+    } else if (!/^\d{1,2}$/.test(rawText)) {
+      filterName = rawText;
+    }
+
+    // Query JadwalKBM hari ini
+    const whereJadwal: any = {
+      tenant_id: tenantId,
+      semester_id: activeSem.id,
+      hari: currentDay as any,
+    };
+
+    if (filterName && filterName.length >= 2) {
+      whereJadwal.Guru = {
+        nama_guru: { contains: filterName, mode: 'insensitive' },
+      };
+    }
+
+    const jadwalList = await prisma.jadwalKBM.findMany({
+      where: whereJadwal,
+      include: {
+        Guru: { select: { id: true, nama_guru: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Mapel: { select: { id: true, nama_mapel: true } },
+      },
+      orderBy: { slot_index: 'asc' },
+    });
+
+    if (jadwalList.length === 0) {
+      if (filterName) {
+        return (
+          `📍 *Posisi & Status Guru*\n\n` +
+          `❌ Tidak ada jadwal KBM hari ini (${currentDay}) untuk guru dengan nama *"${filterName}"*.\n\n` +
+          `💡 Ketik *[15]* untuk lihat semua posisi guru hari ini.`
+        );
+      }
+      return (
+        `📍 *Posisi & Status Guru Hari Ini (${currentDay})*\n\n` +
+        `Belum ada jadwal KBM yang tercatat untuk hari ini. 😊\n\n` +
+        `💡 Ketik *[0]* untuk Menu Utama.`
+      );
+    }
+
+    // Query SesiAbsensi hari ini
+    const sesiList = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: startOfDay, lte: endOfDay },
+      },
+      select: {
+        id: true,
+        guru_id: true,
+        kelas_id: true,
+        jadwal_kbm_id: true,
+        status: true,
+        waktu_mulai: true,
+        waktu_selesai: true,
+      },
+    });
+
+    // Match each schedule item with session status
+    let targetJadwal = jadwalList;
+    let isCurrentTimeSlot = false;
+
+    if (!filterName) {
+      const activeSlotItems = jadwalList.filter(j => j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr);
+      if (activeSlotItems.length > 0) {
+        targetJadwal = activeSlotItems;
+        isCurrentTimeSlot = true;
+      }
+    }
+
+    // Prepare response message
+    let msg = `📍 *Posisi & Status Guru (${currentDay}, ${nowWibStr} WIB)*\n`;
+    if (filterName) {
+      msg += `🔍 Hasil Pencarian: "${filterName}"\n\n`;
+    } else if (isCurrentTimeSlot) {
+      msg += `⏱️ *Sesi KBM yang sedang berlangsung saat ini:*\n\n`;
+    } else {
+      msg += `📋 *Daftar Jadwal Mengajar Guru Hari Ini:*\n\n`;
+    }
+
+    const formattedRows: string[] = [];
+
+    targetJadwal.forEach((j: any) => {
+      const teacherName = j.Guru?.nama_guru || 'Guru (Belum Diatur)';
+      const kelasName = j.Kelas?.nama_kelas || '-';
+      const mapelName = j.Mapel?.nama_mapel || '-';
+      const timeRange = `${j.jam_mulai}–${j.jam_selesai}`;
+
+      // Check if session exists today for this schedule
+      const matchedSesi = sesiList.find(s => 
+        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
+        (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
+      );
+
+      let statusBadge = '🔴 Belum Hadir / Mengajar';
+      if (matchedSesi) {
+        if (matchedSesi.status === 'BERLANGSUNG') {
+          statusBadge = '🟢 Sedang Mengajar (Sesi Aktif)';
+        } else if (matchedSesi.status === 'SELESAI') {
+          statusBadge = '✅ Selesai Mengajar';
+        } else {
+          statusBadge = `🟡 Sesi ${matchedSesi.status}`;
+        }
+      }
+
+      let row = `👨‍🏫 *${teacherName}* (${kelasName})\n`;
+      row += `   ├ 📖 *Mapel*: ${mapelName} (${timeRange})\n`;
+      row += `   └ 📊 *Status*: ${statusBadge}\n`;
+
+      formattedRows.push(row);
+    });
+
+    msg += formattedRows.join('\n');
+
+    if (!filterName && !isCurrentTimeSlot) {
+      msg += `\nℹ️ _Saat ini di luar jam slot mengajar aktif, menampilkan seluruh jadwal hari ini._\n`;
+    }
+
+    msg += `\n💡 Ketik *posisi [nama guru]* untuk cari guru spesifik.\n`;
+    msg += `💡 Ketik *[0]* untuk Menu Utama.`;
+
     return msg;
   }
 }

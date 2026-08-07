@@ -20,7 +20,7 @@ export class ChatbotRouter {
       return QuickLoginHandler.handleQuickLogin(ctx);
     }
 
-    // 0b. Global Intent Matcher: Tarik Guru JP Command (e.g. !tarikguru, tarik guru jam 1-5, tarik jp)
+    // 0b. Global Intent Matcher: Tarik Guru JP Command & Posisi Guru
     const upperMsg = (messageText || '').toUpperCase();
     if (
       upperMsg.includes('TARIK GURU') || 
@@ -30,6 +30,15 @@ export class ChatbotRouter {
       upperMsg.startsWith('!TARIKGURU')
     ) {
       return GuruJadwalHandler.handleTarikGuruJP(ctx);
+    }
+
+    if (
+      upperMsg.includes('POSISI GURU') || 
+      upperMsg.startsWith('POSISI ') || 
+      upperMsg === 'POSISI' ||
+      upperMsg === 'CEK POSISI'
+    ) {
+      return GuruJadwalHandler.handlePosisiGuru(ctx);
     }
 
     // 1. Cek Sesi Dialog FSM yang Sedang Aktif
@@ -92,11 +101,14 @@ export class ChatbotRouter {
       return GuruJadwalHandler.handleJadwalGuruLain(ctx);
     }
     if (choice === '14') return GuruJadwalHandler.handleJadwalKelas(ctx);
+    if (choice === '15' || (choice.startsWith('15') && choice.length > 2)) {
+      return GuruJadwalHandler.handlePosisiGuru(ctx);
+    }
 
     // Pesan teks bebas — kemungkinan input nama guru (konteks [13]) atau nama kelas (konteks [14])
     const isNumericMenu = /^\d{1,2}$/.test(choice);
     if (!isNumericMenu && choice.length >= 2) {
-      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL'].some(c => choice.includes(c));
+      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI'].some(c => choice.includes(c));
       if (!isKnownCommand) {
         // Coba jadual kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
         const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');

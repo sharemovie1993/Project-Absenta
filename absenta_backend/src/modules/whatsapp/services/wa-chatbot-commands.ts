@@ -246,7 +246,9 @@ export function formatJadwalKBMSubMenu(nama: string): string {
     `Pilih sub-menu:\n\n` +
     `[11] 📋 Jadwal Saya Hari Ini\n` +
     `[12] 📅 Jadwal Saya 1 Minggu\n` +
-    `[13] 🔍 Lihat Jadwal Guru Lain\n\n` +
+    `[13] 🔍 Lihat Jadwal Guru Lain\n` +
+    `[14] 🏫 Jadwal Kelas\n` +
+    `[15] 📍 Posisi Guru Saat Ini\n\n` +
     `[0] 🔄 Menu Utama`
   );
 }
