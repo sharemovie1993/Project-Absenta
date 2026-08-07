@@ -24,8 +24,6 @@ import {
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
 import { BebanGuruSummaryModal } from '../../components/kurikulum/jadwal-builder/BebanGuruSummaryModal';
-import { TarikGuruJPModal } from '../../components/kurikulum/jadwal-builder/TarikGuruJPModal';
-import { AscImportWizardModal } from '../../components/kurikulum/jadwal-builder/AscImportWizardModal';
 import { JadwalBuiltInPdfPreview } from '../../components/kurikulum/jadwal-builder/JadwalBuiltInPdfPreview';
 import { useGuruOptions, useMapelOptions, useKelasOptions } from '../../components/common';
 import { useUnifiedScheduleData } from '../../hooks/attendance/useUnifiedScheduleData';
@@ -91,8 +89,6 @@ export default function JadwalPelajaranPage() {
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
   const [autoWizardOpen, setAutoWizardOpen] = useState(false);
   const [bebanModalOpen, setBebanModalOpen] = useState(false);
-  const [tarikGuruModalOpen, setTarikGuruModalOpen] = useState(false);
-  const [ascWizardOpen, setAscWizardOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
 
@@ -590,28 +586,6 @@ export default function JadwalPelajaranPage() {
                   Beban JP Guru
                 </Button>
 
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl px-3 py-1.5 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-sm hover:bg-emerald-100/50 hover:shadow-md transition-all text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center gap-1.5 text-xs"
-                  onClick={() => setTarikGuruModalOpen(true)}
-                  title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-                  Tarik Guru JP (WA)
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl px-3 py-1.5 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-sm hover:bg-emerald-100/50 hover:shadow-md transition-all text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center gap-1.5 text-xs"
-                  onClick={() => setAscWizardOpen(true)}
-                  title="Impor Jadwal KBM dari File aSc Timetables (.XML)"
-                >
-                  <FileUp className="w-3.5 h-3.5 text-emerald-500" />
-                  Impor XML aSc
-                </Button>
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -768,27 +742,6 @@ export default function JadwalPelajaranPage() {
         onClose={() => setBebanModalOpen(false)}
         tahunPelajaranId={selectedTahunId}
         semesterId={selectedSemesterId}
-      />
-
-      <TarikGuruJPModal
-        isOpen={tarikGuruModalOpen}
-        onClose={() => setTarikGuruModalOpen(false)}
-        allJadwal={unifiedAllJadwal}
-        classes={kelasRawList || []}
-        gurus={guruRawList || []}
-      />
-
-      <AscImportWizardModal
-        isOpen={ascWizardOpen}
-        onClose={() => setAscWizardOpen(false)}
-        tahunPelajaranId={selectedTahunId}
-        semesterId={selectedSemesterId}
-        onSuccessImport={() => {
-          setRefreshKey(k => k + 1);
-          queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
-          queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
-          queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
-        }}
       />
     </OperationalPageLayout>
   );

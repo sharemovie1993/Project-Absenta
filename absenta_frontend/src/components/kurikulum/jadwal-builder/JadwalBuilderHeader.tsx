@@ -48,8 +48,6 @@ interface Props {
   showLeftPanel?: boolean;
   onToggleLeftPanel?: () => void;
   onOpenPrintPreview?: () => void;
-  onOpenTarikGuruJP?: () => void;
-  onOpenAscImporter?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -78,8 +76,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   showLeftPanel = true,
   onToggleLeftPanel,
   onOpenPrintPreview,
-  onOpenTarikGuruJP,
-  onOpenAscImporter,
 }) => {
   return (
     <div className="pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 space-y-3 relative z-20">
@@ -205,30 +201,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
                 <span>🖨️ Cetak Berkas PDF</span>
               </Button>
             )}
-            {onOpenTarikGuruJP && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenTarikGuruJP}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all rounded-xl shadow-xs"
-                title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-                <span>📢 Tarik Guru JP (WA)</span>
-              </Button>
-            )}
-            {onOpenAscImporter && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onOpenAscImporter}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-all"
-                title="Impor Jadwal dari File Export XML aSc TimeTables"
-              >
-                <FileUp className="w-3.5 h-3.5" />
-                <span>📥 Import aSc XML</span>
-              </Button>
-            )}
           </div>
         )}
 
@@ -256,18 +228,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
               >
                 <Printer className="w-3.5 h-3.5 text-purple-500" />
                 <span>🖨️ Cetak Berkas PDF</span>
-              </Button>
-            )}
-            {onOpenTarikGuruJP && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenTarikGuruJP}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all rounded-xl shadow-xs"
-                title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-                <span>📢 Tarik Guru JP (WA)</span>
               </Button>
             )}
           </div>
