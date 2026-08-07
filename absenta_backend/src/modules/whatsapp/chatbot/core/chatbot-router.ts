@@ -9,6 +9,7 @@ import { SiswaHandler } from '../handlers/siswa/siswa.handler';
 import { OrtuHandler } from '../handlers/ortu/ortu.handler';
 import { RoleSelectorHandler } from '../handlers/common/role-selector.handler';
 import { QuickLoginHandler } from '../handlers/common/quick-login.handler';
+import { GuruPiketHandler } from '../handlers/guru/guru-piket.handler';
 import { formatGuruMenu } from '../../services/wa-chatbot-commands';
 
 export class ChatbotRouter {
@@ -39,6 +40,15 @@ export class ChatbotRouter {
       upperMsg === 'CEK POSISI'
     ) {
       return GuruJadwalHandler.handlePosisiGuru(ctx);
+    }
+
+    if (
+      upperMsg.includes('IZIN KELUAR') ||
+      upperMsg.includes('SISWA IZIN') ||
+      upperMsg.includes('PIKET IZIN') ||
+      upperMsg.includes('IZIN PIKET')
+    ) {
+      return GuruPiketHandler.handleSiswaIzinKeluar(ctx);
     }
 
     // 1. Cek Sesi Dialog FSM yang Sedang Aktif
@@ -108,7 +118,7 @@ export class ChatbotRouter {
     // Pesan teks bebas — kemungkinan input nama guru (konteks [13]) atau nama kelas (konteks [14])
     const isNumericMenu = /^\d{1,2}$/.test(choice);
     if (!isNumericMenu && choice.length >= 2) {
-      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI'].some(c => choice.includes(c));
+      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI','IZIN','PIKET'].some(c => choice.includes(c));
       if (!isKnownCommand) {
         // Coba jadual kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
         const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');
@@ -127,6 +137,7 @@ export class ChatbotRouter {
     if (choice === '6') return QuickLoginHandler.handleQuickLogin(ctx);
     if (choice === '7' || choice.startsWith('7')) return GuruJadwalHandler.handleTarikGuruJP(ctx);
     if (choice === '8' || choice.startsWith('8')) return GuruJadwalHandler.handlePosisiGuru(ctx);
+    if (choice === '9' || choice.startsWith('9')) return GuruPiketHandler.handleSiswaIzinKeluar(ctx);
 
     if (choice.startsWith('51') || choice.startsWith('41')) return GuruProfileHandler.handleEditNip(ctx);
     if (choice.startsWith('52') || choice.startsWith('42')) return GuruProfileHandler.handleEditEmail(ctx);

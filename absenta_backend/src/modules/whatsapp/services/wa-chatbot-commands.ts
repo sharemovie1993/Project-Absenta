@@ -237,6 +237,7 @@ export function formatGuruMenu(nama: string): string {
     `[6] 🔑 Quick Login\n` +
     `[7] 📢 Tarik Guru JP\n` +
     `[8] 📍 Posisi Guru\n` +
+    `[9] 🟨 Siswa Izin Keluar\n` +
     `[0] 🔄 Menu Utama`
   );
 }
