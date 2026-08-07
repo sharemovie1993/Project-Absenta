@@ -308,7 +308,7 @@ async function start() {
 
     const host = process.env.HOST || '0.0.0.0';
     const port = parseInt(process.env.PORT || '3003');
-    await fastify.listen({ port, host });
+    await fastify.listen({ port, host, listenTextResolver: () => '' });
     registerService('Fastify HTTP Server', 'server', 'online');
 
     // Signal PM2 that the server is ready
