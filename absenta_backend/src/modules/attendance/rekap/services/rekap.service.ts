@@ -244,7 +244,7 @@ export class RekapService {
     const sesiHadirCount = sesiTodayList.filter(s => {
       const ag = s.AbsenGuru?.[0];
       const st = String(ag?.status || '').toUpperCase();
-      return st === 'HADIR' || st.includes('HADIR') || !!ag?.waktu_tap;
+      return !!ag?.waktu_tap || (st !== '' && !st.includes('BELUM') && (st === 'HADIR' || st.includes('HADIR')));
     }).length;
 
     let statusKbmTodayText = '-';
@@ -261,7 +261,11 @@ export class RekapService {
     const totalAlpa = datangsMonth.filter(g => String(g.status || '').toUpperCase() === 'ALPA').length;
 
     const totalSesiMonth = sesiMonthList.length;
-    const totalKbmHadirMonth = sesiMonthList.filter(s => String(s.status || '').toUpperCase() === 'HADIR' || String(s.status || '').toUpperCase().includes('HADIR') || !!s.waktu_tap).length;
+    const totalKbmHadirMonth = sesiMonthList.filter(s => {
+      const ag = s.AbsenGuru?.[0];
+      const st = String(ag?.status || s.status || '').toUpperCase();
+      return !!ag?.waktu_tap || !!s.waktu_tap || (st !== '' && !st.includes('BELUM') && (st === 'HADIR' || st.includes('HADIR')));
+    }).length;
     const rateKbm = totalSesiMonth > 0 ? Math.round((totalKbmHadirMonth / totalSesiMonth) * 100) : 0;
 
     return {
@@ -2088,7 +2092,7 @@ export class RekapService {
       const checkOutLog = entry.pulangLog;
       const kbmLogs = entry.kbmLogs;
 
-      let primaryStatus = 'HADIR';
+      let primaryStatus = 'BELUM';
       let poin = 0;
       let jamMasuk: string | undefined = checkInLog?.waktu_tap ? formatTime(checkInLog.waktu_tap) : undefined;
       let jamPulang: string | undefined = checkOutLog?.waktu_tap ? formatTime(checkOutLog.waktu_tap) : undefined;
@@ -2100,30 +2104,41 @@ export class RekapService {
 
       if (checkInLog) {
         const rawStatus = (checkInLog.status || '').toUpperCase();
-        if (rawStatus === 'HADIR' || rawStatus === 'TERLAMBAT') {
+        if (rawStatus === 'HADIR' || rawStatus === 'TERLAMBAT' || rawStatus === 'TEPAT_WAKTU') {
           primaryStatus = checkInLog.is_terlambat ? 'TERLAMBAT' : 'HADIR';
-        } else {
+        } else if (!rawStatus.includes('BELUM')) {
           primaryStatus = rawStatus;
         }
         poin += checkInLog.poin_kehadiran || 0;
       } else if (kbmLogs.length > 0) {
-        const statuses = kbmLogs.map(k => String(k.status || '').toUpperCase());
-        if (statuses.some(s => s.includes('HADIR') || s.includes('TEPAT_WAKTU') || s.includes('MENGAJAR'))) {
-          const hasTerlambat = kbmLogs.some(k => k.is_terlambat);
-          primaryStatus = hasTerlambat ? 'TERLAMBAT' : 'HADIR';
-        } else if (statuses.some(s => s.includes('IZIN'))) primaryStatus = 'IZIN';
-        else if (statuses.some(s => s.includes('SAKIT'))) primaryStatus = 'SAKIT';
-        else if (statuses.some(s => s.includes('DISPEN'))) primaryStatus = 'DISPEN';
-        else primaryStatus = 'ALPA';
+        const validKbmLogs = kbmLogs.filter(k => {
+          const st = String(k.status || '').toUpperCase();
+          return !!k.waktu_tap || (st !== '' && !st.includes('BELUM'));
+        });
 
-        kbmLogs.forEach(k => { poin += k.poin_kehadiran || 0; });
+        if (validKbmLogs.length > 0) {
+          const statuses = validKbmLogs.map(k => String(k.status || '').toUpperCase());
+          if (statuses.some(s => s === 'HADIR' || s === 'TEPAT_WAKTU' || s === 'MENGAJAR' || s === 'HADIR_/_MENGAJAR' || (s.includes('HADIR') && !s.includes('BELUM')))) {
+            const hasTerlambat = validKbmLogs.some(k => k.is_terlambat);
+            primaryStatus = hasTerlambat ? 'TERLAMBAT' : 'HADIR';
+          } else if (statuses.some(s => s.includes('IZIN'))) primaryStatus = 'IZIN';
+          else if (statuses.some(s => s.includes('SAKIT'))) primaryStatus = 'SAKIT';
+          else if (statuses.some(s => s.includes('DISPEN'))) primaryStatus = 'DISPEN';
+          else primaryStatus = 'ALPA';
+
+          validKbmLogs.forEach(k => { poin += k.poin_kehadiran || 0; });
+        } else {
+          const dateOnlyStr = date.slice(0, 10);
+          const todayOnlyStr = new Date().toISOString().slice(0, 10);
+          primaryStatus = dateOnlyStr < todayOnlyStr ? 'ALPA' : 'BELUM';
+        }
       }
 
       if (checkOutLog) {
         poin += checkOutLog.poin_kehadiran || 0;
       }
 
-      if ((statistik as any)[primaryStatus] !== undefined) {
+      if (primaryStatus !== 'BELUM' && (statistik as any)[primaryStatus] !== undefined) {
         (statistik as any)[primaryStatus]++;
       }
       totalPoin += poin;
