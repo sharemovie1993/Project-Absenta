@@ -306,11 +306,14 @@ async function start() {
       await (await import('./infra/event-bus')).initEventBus({ redis, io, ioApi });
     });
 
-    // ─── Start Fastify Server (INSTANT LISTEN - Non-Blocking) ───
-    const host = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
+    const host = process.env.HOST || '0.0.0.0';
     const port = parseInt(process.env.PORT || '3003');
-    
-    await fastify.listen({ port, host });
+    const isClusterWorker = require('cluster').isWorker;
+    if (isClusterWorker) {
+      await fastify.listen({ port });
+    } else {
+      await fastify.listen({ port, host });
+    }
     registerService('Fastify HTTP Server', 'server', 'online');
 
     // Signal PM2 that the server is ready

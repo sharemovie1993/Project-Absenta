@@ -1,6 +1,13 @@
 module.exports = {
   apps: [
     {
+      name: 'absenta-redis',
+      script: './scripts/redis-monitor.js',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+    },
+    {
       name: 'absenta-api:3003',
       script: './dist/main.js',
       cwd: __dirname,
@@ -11,6 +18,17 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3003,
         SERVICE_ROLE: 'api',
+      },
+    },
+    {
+      name: 'absenta-web:5175',
+      script: 'npx',
+      args: 'serve -s ../absenta_frontend/dist -l 5175',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
       },
     },
     {
