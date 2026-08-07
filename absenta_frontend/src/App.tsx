@@ -85,6 +85,7 @@ const SubscriptionList = lazy(() => import('./pages/notifications/SubscriptionLi
 const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEmailSequencePage'));
 const WhatsAppHealthPage = lazy(() => import('./pages/notifications/WhatsAppHealthPage'));
 const WhatsAppChatLogPage = lazy(() => import('./pages/notifications/WhatsAppChatLogPage'));
+const WhatsAppOnboardingPage = lazy(() => import('./pages/notifications/WhatsAppOnboardingPage').then(m => ({ default: m.WhatsAppOnboardingPage })));
 const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
 const CetakBerkasPage = lazy(() => import('./pages/academic/CetakBerkasPage').then(m => ({ default: m.CetakBerkasPage })));
@@ -1465,6 +1466,17 @@ function App() {
                       </div>
                     }>
                       <WhatsAppChatLogPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/notifications/wa-onboarding" element={
+                  <ProtectedRoute requiredCapability="whatsapp.manage.config">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
+                        <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <WhatsAppOnboardingPage />
                     </Suspense>
                   </ProtectedRoute>
                 } />

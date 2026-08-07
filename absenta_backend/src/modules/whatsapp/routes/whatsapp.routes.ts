@@ -24,6 +24,34 @@ export async function whatsappRoutes(fastify: any) {
     handler: waChatLogController.getChatDetail.bind(waChatLogController),
   });
 
+  // ── ONBOARDING & BROADCAST SAPAAN WA ──────────────────────────────────────────
+  // GET /whatsapp/onboarding-users - Daftar Guru/Siswa/Ortu & status komunikasi WA Bot
+  fastify.get('/onboarding-users', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: (req: any, reply: any) => {
+      const { waOnboardingController } = require('../controllers/wa-onboarding.controller');
+      return waOnboardingController.getOnboardingUsers(req, reply);
+    },
+  });
+
+  // POST /whatsapp/send-greeting - Kirim pesan sapaan ke 1 pengguna
+  fastify.post('/send-greeting', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: (req: any, reply: any) => {
+      const { waOnboardingController } = require('../controllers/wa-onboarding.controller');
+      return waOnboardingController.sendGreeting(req, reply);
+    },
+  });
+
+  // POST /whatsapp/send-greeting-bulk - Kirim pesan sapaan masif ke pengguna yang belum komunikasi
+  fastify.post('/send-greeting-bulk', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: (req: any, reply: any) => {
+      const { waOnboardingController } = require('../controllers/wa-onboarding.controller');
+      return waOnboardingController.sendGreetingBulk(req, reply);
+    },
+  });
+
 
   // GET /whatsapp/config - Get current config
   fastify.get('/config', {

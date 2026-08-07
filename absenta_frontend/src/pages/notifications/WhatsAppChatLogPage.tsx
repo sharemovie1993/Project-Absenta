@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
 import {
   Search,
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   Info,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react';
 
 import {
@@ -390,6 +392,8 @@ const WhatsAppChatLogPage: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
+  const navigate = useNavigate();
+
   return (
     <OperationalPageLayout
       title="Riwayat & Grup WhatsApp"
@@ -397,6 +401,15 @@ const WhatsAppChatLogPage: React.FC = () => {
       subtitle="Monitor percakapan chatbot & daftar grup WA tertaut"
       backPath="/settings/whatsapp"
       backLabel="Kembali ke WhatsApp Settings"
+      headerActions={
+        <button
+          onClick={() => navigate('/notifications/wa-onboarding')}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-950/40 transition border border-emerald-500/40"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <span>Monitoring & Sapa WA</span>
+        </button>
+      }
     >
       {/*
         WhatsApp Web-style shell:

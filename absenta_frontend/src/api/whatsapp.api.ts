@@ -126,3 +126,56 @@ export const getWaParticipatingGroups = async (refresh = false) => {
   };
 };
 
+// ── WA Onboarding & Greeting Broadcast ────────────────────────────────────────
+
+export interface WaOnboardingUser {
+  id: string;
+  userType: 'GURU' | 'SISWA' | 'ORTU';
+  nama: string;
+  no_hp: string;
+  detailInfo: string;
+  statusKomunikasi: 'SUDAH' | 'BELUM';
+  lastCommAt: string | null;
+}
+
+export interface WaOnboardingSummary {
+  totalTotal: number;
+  totalGuru: number;
+  totalSiswa: number;
+  totalOrtu: number;
+  totalBelum: number;
+  totalSudah: number;
+}
+
+export const getWaOnboardingUsers = async (params: {
+  role?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await axiosInstance.get('/whatsapp/onboarding-users', { params });
+  return response.data as {
+    success: boolean;
+    data: WaOnboardingUser[];
+    summary: WaOnboardingSummary;
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  };
+};
+
+export const sendWaGreeting = async (payload: {
+  userType: 'GURU' | 'SISWA' | 'ORTU';
+  nama: string;
+  no_hp: string;
+  detailInfo?: string;
+  customMessage?: string;
+}) => {
+  const response = await axiosInstance.post('/whatsapp/send-greeting', payload);
+  return response.data as { success: boolean; message: string };
+};
+
+export const sendWaGreetingBulk = async (payload: { role?: string; search?: string }) => {
+  const response = await axiosInstance.post('/whatsapp/send-greeting-bulk', payload);
+  return response.data as { success: boolean; sentCount: number; message: string };
+};
+
