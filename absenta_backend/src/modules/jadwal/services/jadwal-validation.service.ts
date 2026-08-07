@@ -207,6 +207,7 @@ export class JadwalValidationService {
       include: {
         Kelas: true,
         Mapel: true,
+        MasterRuangan: true,
       },
     });
 
@@ -216,6 +217,7 @@ export class JadwalValidationService {
         id: templateConflict.id,
         kelas: templateConflict.Kelas.nama_kelas,
         mapel: templateConflict.Mapel?.nama_mapel || 'N/A',
+        ruangan: templateConflict.MasterRuangan?.nama_ruangan || 'N/A',
         waktu: `${templateConflict.jam_mulai} - ${templateConflict.jam_selesai}`,
       };
     }
