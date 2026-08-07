@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
   Plus,
@@ -40,30 +41,30 @@ const getCategoryBadge = (category?: string) => {
 const EMPTY_FORM = { jenjang: '', category: 'UMUM', nama_mapel: '', kode_mapel: '', tingkat: 10, jp_per_minggu: 2 };
 
 export const KurikulumStandardsPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
-  const [standards, setStandards] = useState<GlobalKurikulumStandard[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJenjang, setFilterJenjang] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStandard, setEditingStandard] = useState<GlobalKurikulumStandard | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+
+  const standardsQuery = useQuery({
+    queryKey: ['superadmin-kurikulum-standards'],
+    queryFn: async () => {
+      const res = await kurikulumApi.getStandardReferences();
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const standards = standardsQuery.data || [];
+  const loading = standardsQuery.isLoading;
 
   const fetchStandards = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await kurikulumApi.getStandardReferences();
-      if (res.success) setStandards(res.data);
-    } catch {
-      toast.error('Gagal memuat acuan standar kurikulum');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchStandards(); }, [fetchStandards]);
+    await standardsQuery.refetch();
+  }, [standardsQuery]);
 
   const handleOpenCreate = useCallback(() => {
     setEditingStandard(null);
@@ -84,28 +85,39 @@ export const KurikulumStandardsPage: React.FC = () => {
     setModalOpen(true);
   }, []);
 
+  const saveStandardMutation = useMutation({
+    mutationFn: (data: typeof EMPTY_FORM) =>
+      editingStandard
+        ? kurikulumApi.updateStandardReference(editingStandard.id, data)
+        : kurikulumApi.createStandardReference(data),
+    onSuccess: () => {
+      toast.success(editingStandard ? 'Acuan standar berhasil diperbarui.' : 'Acuan standar baru berhasil ditambahkan.');
+      setModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['superadmin-kurikulum-standards'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal menyimpan acuan standar');
+    }
+  });
+
+  const deleteStandardMutation = useMutation({
+    mutationFn: (id: string) => kurikulumApi.deleteStandardReference(id),
+    onSuccess: () => {
+      toast.success('Acuan standar berhasil dihapus.');
+      queryClient.invalidateQueries({ queryKey: ['superadmin-kurikulum-standards'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal menghapus acuan standar');
+    }
+  });
+
   const handleSave = useCallback(async () => {
-    if (!form.jenjang || !form.nama_mapel || !form.kode_mapel || form.tingkat === undefined || form.jp_per_minggu === undefined) {
+    if (!form.jenjang || !form.nama_mapel || !form.kode_mapel) {
       toast.error('Semua field bertanda bintang (*) wajib diisi.');
       return;
     }
-    try {
-      setSaving(true);
-      if (editingStandard) {
-        await kurikulumApi.updateStandardReference(editingStandard.id, form);
-        toast.success('Acuan standar berhasil diperbarui.');
-      } else {
-        await kurikulumApi.createStandardReference(form);
-        toast.success('Acuan standar baru berhasil ditambahkan.');
-      }
-      setModalOpen(false);
-      fetchStandards();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Gagal menyimpan acuan standar');
-    } finally {
-      setSaving(false);
-    }
-  }, [editingStandard, form, fetchStandards]);
+    await saveStandardMutation.mutateAsync(form);
+  }, [form, saveStandardMutation]);
 
   const handleDelete = useCallback(async (standard: GlobalKurikulumStandard) => {
     const ok = await confirm({
@@ -116,14 +128,8 @@ export const KurikulumStandardsPage: React.FC = () => {
       style: 'danger',
     });
     if (!ok) return;
-    try {
-      await kurikulumApi.deleteStandardReference(standard.id);
-      toast.success('Acuan standar berhasil dihapus.');
-      fetchStandards();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Gagal menghapus acuan standar');
-    }
-  }, [confirm, fetchStandards]);
+    await deleteStandardMutation.mutateAsync(standard.id);
+  }, [confirm, deleteStandardMutation]);
 
   const filtered = standards.filter(s => {
     const matchSearch = s.nama_mapel.toLowerCase().includes(searchTerm.toLowerCase()) ||

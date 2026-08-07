@@ -84,55 +84,95 @@ export function RekapBulananMapelContent() {
   const subFeatures = subRecord?.features ?? subRecord?.Plan?.features_json ?? subRecord?.plan?.features_json ?? [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  // ─── Load Dropdowns ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
+  // Dropdowns Query
+  const dropdownsQuery = useQuery({
+    queryKey: ['rekap-bulanan-mapel-dropdowns'],
+    queryFn: async () => {
       const [tahun, active, kelas, mapelList] = await Promise.all([
         dropdownApi.getTahunPelajaranForDropdown(),
         dropdownApi.getActiveTahunPelajaran(),
         dropdownApi.getKelasForDropdown(),
         dropdownApi.getMapelForDropdown(),
       ]);
-      if (!isMounted) return;
-      setTahunOptions(tahun ?? []);
-      if (active?.id) setTahunPelajaranId(active.id);
-      
-      const safeKelas = kelas ?? [];
-      setKelasOptions(safeKelas);
-      if (safeKelas.length > 0 && !kelasId) setKelasId(safeKelas[0].value);
+      return {
+        tahun: tahun ?? [],
+        activeId: active?.id ?? '',
+        kelas: kelas ?? [],
+        mapel: mapelList ?? []
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      const safeMapel = mapelList ?? [];
-      setMapelOptions(safeMapel);
-      if (safeMapel.length > 0 && !mapelId) setMapelId(safeMapel[0].value);
-    })();
-    return () => { isMounted = false; };
-  }, []);
-
-  // ─── Load Kop Surat Data ────────────────────────────────────────────────────
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const sek = await sekolahApi.getProfile();
-        if (isMounted) setSekolah(sek);
-      } catch (_) {}
+    if (dropdownsQuery.data) {
+      setTahunOptions(dropdownsQuery.data.tahun);
+      if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
+      setKelasOptions(dropdownsQuery.data.kelas);
+      if (!kelasId && dropdownsQuery.data.kelas.length > 0) setKelasId(dropdownsQuery.data.kelas[0].value);
+      setMapelOptions(dropdownsQuery.data.mapel);
+      if (!mapelId && dropdownsQuery.data.mapel.length > 0) setMapelId(dropdownsQuery.data.mapel[0].value);
+    }
+  }, [dropdownsQuery.data, tahunPelajaranId, kelasId, mapelId]);
 
-      const tenantId = (user as unknown as { tenant_id?: string })?.tenant_id;
+  // Kop Query
+  const kopQuery = useQuery({
+    queryKey: ['rekap-bulanan-mapel-kop', (user as any)?.tenant_id],
+    queryFn: async () => {
+      const sek = await sekolahApi.getProfile().catch(() => null);
+      let tenantData = null;
+      const tenantId = (user as any)?.tenant_id;
       if (tenantId) {
-        try {
-          const res = await getTenantById(tenantId);
-          if (isMounted && res.success && res.data) setTenantInfo(res.data);
-        } catch (_) {}
+        const res = await getTenantById(tenantId).catch(() => null);
+        if (res?.success) tenantData = res.data;
       }
+      const resStruktur = await getStrukturList({ is_active: true }).catch(() => null);
+      const strList = resStruktur?.success ? resStruktur.data : [];
+      return { sekolah: sek, tenantInfo: tenantData, strukturList: strList };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      try {
-        const res = await getStrukturList({ is_active: true });
-        if (isMounted && res.success && res.data) setStrukturList(res.data);
-      } catch (_) {}
-    })();
-    return () => { isMounted = false; };
-  }, [user]);
+  const sekolah = kopQuery.data?.sekolah || null;
+  const tenantInfo = kopQuery.data?.tenantInfo || null;
+  const strukturList = kopQuery.data?.strukturList || [];
+
+  // Main Mapel Rekap Query
+  const rekapQuery = useQuery({
+    queryKey: ['rekap-bulanan-mapel-data', kelasId, mapelId, bulan, tahunPelajaranId],
+    queryFn: async () => {
+      const res = await getRekapBulananMapel({
+        kelas_id: kelasId,
+        mapel_id: mapelId,
+        bulan,
+        tahun_pelajaran_id: tahunPelajaranId || undefined,
+      });
+      return {
+        rows: Array.isArray(res?.data) ? (res.data as RekapBulananKelasRow[]) : [],
+        totalSesi: res?.total_sesi ?? 0,
+        guruMapelInfo: res?.guru_mapel || null,
+        waliKelasInfo: res?.wali_kelas || null,
+        mapelDetail: res?.mapel || null
+      };
+    },
+    enabled: !!kelasId && !!mapelId && !!bulan && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (rekapQuery.data) {
+      setRows(rekapQuery.data.rows);
+      setTotalSesi(rekapQuery.data.totalSesi);
+      setGuruMapelInfo(rekapQuery.data.guruMapelInfo);
+      setWaliKelasInfo(rekapQuery.data.waliKelasInfo);
+      setMapelDetail(rekapQuery.data.mapelDetail);
+      setPage(1);
+    }
+  }, [rekapQuery.data]);
+
+  const fetchData = useCallback(async () => {
+    await rekapQuery.refetch();
+  }, [rekapQuery]);
 
   useEffect(() => {
     const url = tenantInfo?.logo_daerah_url ?? (sekolah as unknown as Record<string, unknown>)?.logo_daerah_url as string | undefined;
@@ -145,33 +185,6 @@ export function RekapBulananMapelContent() {
     if (url) getBase64ImageFromUrl(url).then(setLogoSekolahBase64).catch(() => setLogoSekolahBase64(null));
     else setLogoSekolahBase64(null);
   }, [tenantInfo?.logo_url, sekolah?.logo_url]);
-
-  // ─── Fetch Data ──────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    if (isLocked) return;
-    const validation = filterMapelSchema.safeParse({ kelasId, mapelId, bulan, tahunPelajaranId });
-    if (!validation.success) return;
-    setLoading(true);
-    try {
-      const res = await getRekapBulananMapel({
-        kelas_id: kelasId,
-        mapel_id: mapelId,
-        bulan,
-        tahun_pelajaran_id: tahunPelajaranId || undefined,
-      });
-      setRows(Array.isArray(res?.data) ? (res.data as RekapBulananKelasRow[]) : []);
-      setTotalSesi(res?.total_sesi ?? 0);
-      setGuruMapelInfo(res?.guru_mapel ?? null);
-      setWaliKelasInfo(res?.wali_kelas ?? null);
-      setMapelDetail(res?.mapel ?? null);
-      setPage(1);
-    } catch {
-      toast.error('Gagal memuat rekap kehadiran mapel');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [kelasId, mapelId, bulan, tahunPelajaranId, isLocked]);
 
   useEffect(() => {
     if (kelasId && mapelId && bulan) fetchData();

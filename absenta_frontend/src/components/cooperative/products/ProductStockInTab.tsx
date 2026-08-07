@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -42,6 +43,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   fetchProducts,
   setActiveTab
 }) => {
+  const queryClient = useQueryClient();
   // Stock-In states
   const [stockInSupplier, setStockInSupplier] = useState('');
   const [stockInNotes, setStockInNotes] = useState('');
@@ -135,54 +137,59 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     return totalStockInCost + (stockInShippingFee || 0);
   }, [totalStockInCost, stockInShippingFee]);
 
-  const handleStockInSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedStockInItems.length === 0) {
-      toast.error('Masukkan minimal satu produk untuk diproses');
-      return;
-    }
-
-    const invalidItem = selectedStockInItems.find(item => item.quantity <= 0 || item.costPrice < 0);
-    if (invalidItem) {
-      toast.error('Kuantitas harus lebih dari 0 dan harga modal tidak boleh negatif');
-      return;
-    }
-
-    setStockInSubmitLoading(true);
-    try {
-      const payload = {
-        supplier: stockInSupplier.trim() || undefined,
-        notes: stockInNotes.trim() || undefined,
-        paymentMethod: stockInPaymentMethod,
-        shippingFee: stockInShippingFee > 0 ? stockInShippingFee : undefined,
-        items: selectedStockInItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          costPrice: item.costPrice
-        }))
-      };
-
-      await api.post('/cooperative/toko/stock-in', payload);
+  const submitStockInMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post('/cooperative/toko/stock-in', payload);
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Penerimaan barang masuk berhasil disimpan');
-      
-      // Reset Form
       setStockInSupplier('');
       setStockInNotes('');
       setStockInPaymentMethod('CASH');
       setSelectedStockInItems([]);
       setStockInShippingFee(0);
-      
-      // Refresh Data & Redirect
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
       fetchProducts();
       setActiveTab('history');
-    } catch (error) {
+    },
+    onError: (error) => {
       const err = error as AxiosErrorLike;
       console.error(err);
       toast.error(err.response?.data?.message || 'Gagal menyimpan transaksi barang masuk');
-    } finally {
-      setStockInSubmitLoading(false);
     }
-  }, [selectedStockInItems, stockInSupplier, stockInNotes, stockInPaymentMethod, stockInShippingFee, fetchProducts, setActiveTab]);
+  });
+
+  const stockInSubmitLoading = submitStockInMutation.isPending;
+
+  const handleStockInSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedStockInItems.length === 0) {
+      toast.error('Pilih setidaknya 1 produk untuk diproses barang masuk');
+      return;
+    }
+
+    const invalidItem = selectedStockInItems.find(item => item.quantity <= 0 || item.costPrice < 0);
+    if (invalidItem) {
+      toast.error(`Periksa kembali kuantitas dan harga beli produk "${invalidItem.product.name}"`);
+      return;
+    }
+
+    const payload = {
+      supplier: stockInSupplier.trim() || undefined,
+      notes: stockInNotes.trim() || undefined,
+      paymentMethod: stockInPaymentMethod,
+      shippingFee: stockInShippingFee > 0 ? stockInShippingFee : undefined,
+      items: selectedStockInItems.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        costPrice: item.costPrice
+      }))
+    };
+
+    await submitStockInMutation.mutateAsync(payload);
+  }, [selectedStockInItems, stockInSupplier, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

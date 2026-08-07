@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -33,9 +34,8 @@ interface PickerSelectedEntity {
 }
 
 export const useMembersState = (subscription: any) => {
-  const [members, setMembers] = useState<Member[]>([]);
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +43,6 @@ export const useMembersState = (subscription: any) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [pinLoading, setPinLoading] = useState(false);
 
   // Premium features state variables
   const [coopName, setCoopName] = useState<string>('KOPERASI SEKOLAH');
@@ -65,13 +64,11 @@ export const useMembersState = (subscription: any) => {
   } | null>(null);
   const [isTerminateConfirmOpen, setIsTerminateConfirmOpen] = useState(false);
   const [terminatingMember, setTerminatingMember] = useState<Member | null>(null);
-  const [terminateLoading, setTerminateLoading] = useState(false);
   const [isBulkPrinting, setIsBulkPrinting] = useState(false);
 
   // Filters state
   const [filterType, setFilterType] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
   const [filterKelasId, setFilterKelasId] = useState<string>('ALL');
-  const [kelasOptions, setKelasOptions] = useState<{ id: string; nama_kelas: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [memberType, setMemberType] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
@@ -94,7 +91,6 @@ export const useMembersState = (subscription: any) => {
     userId: '',
     pin: '',
   });
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [statusLoadingId, setStatusLoadingId] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
@@ -169,49 +165,31 @@ export const useMembersState = (subscription: any) => {
     [];
   const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
-  const fetchMembers = useCallback(async () => {
-    if (isLocked) {
-      if (isMountedRef.current) setLoading(false);
-      return;
-    }
-
-    try {
-      if (isMountedRef.current) setLoading(true);
+  // React Query setup for members and kelas
+  const membersQuery = useQuery({
+    queryKey: ['koperasi-members-list'],
+    queryFn: async () => {
       const response = await api.get('/cooperative/members');
-      if (isMountedRef.current) setMembers(response.data);
-    } catch (err: unknown) {
-      console.error(err);
-      toast.error('Gagal mengambil data anggota.');
-    } finally {
-      if (isMountedRef.current) setLoading(false);
-    }
-  }, [isLocked]);
+      return (Array.isArray(response.data) ? response.data : []) as Member[];
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const members = membersQuery.data || [];
+  const loading = membersQuery.isLoading;
+  const fetchMembers = useCallback(async () => {
+    await membersQuery.refetch();
+  }, [membersQuery]);
 
-  // Load kelas list for filters with active-flag cleanup
-  useEffect(() => {
-    let active = true;
-    const loadKelas = async () => {
-      try {
-        const response = await api.get('/academic/kelas');
-        if (active && response.data && response.data.data) {
-          if (isMountedRef.current) {
-            setKelasOptions(response.data.data);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading kelas for filter dropdown:', err);
-      }
-    };
-    loadKelas();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchMembers();
-  }, [subscription, fetchMembers]);
+  const kelasQuery = useQuery({
+    queryKey: ['academic-kelas-options'],
+    queryFn: async () => {
+      const response = await api.get('/academic/kelas');
+      return (response.data && response.data.data ? response.data.data : []) as { id: string; nama_kelas: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const kelasOptions = kelasQuery.data || [];
 
   // Auto-Generate Member No on Modal Open with active-flag cleanup
   useEffect(() => {
@@ -339,6 +317,32 @@ export const useMembersState = (subscription: any) => {
     setIsAddressEditable(val);
   }, []);
 
+  const createMemberMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post('/cooperative/members', payload);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.isExternal
+          ? 'Anggota eksternal berhasil ditambahkan! Password login default: koperasi123'
+          : 'Anggota berhasil ditambahkan!'
+      );
+      resetForm();
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err: unknown) => {
+      console.error(err);
+      const errorMsg =
+        (err && typeof err === 'object' && 'response' in err
+          ? (err as AxiosErrorLike).response?.data?.message
+          : null) || 'Gagal menambahkan anggota.';
+      toast.error(errorMsg);
+    }
+  });
+
+  const submitLoading = createMemberMutation.isPending;
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       if (isLocked) return;
@@ -354,71 +358,61 @@ export const useMembersState = (subscription: any) => {
         return;
       }
 
-      if (isMountedRef.current) setSubmitLoading(true);
-      try {
-        const payload = {
-          memberNo: formData.memberNo,
-          type: isExternal ? 'GENERAL' : memberType,
-          siswaId: isExternal ? null : formData.siswaId || null,
-          guruId: isExternal ? null : formData.guruId || null,
-          userId: isExternal ? null : formData.userId || null,
-          isExternal: isExternal,
-          name: isExternal ? formData.name : undefined,
-          address: formData.address || null,
-          phone: formData.phone || null,
-          email: formData.email || null,
-          status: 'ACTIVE',
-          pin: formData.pin || '123456',
-        };
-        await api.post('/cooperative/members', payload);
-        toast.success(
-          isExternal
-            ? 'Anggota eksternal berhasil ditambahkan! Password login default: koperasi123'
-            : 'Anggota berhasil ditambahkan!'
-        );
-        resetForm();
-        fetchMembers();
-      } catch (err: unknown) {
-        console.error(err);
-        const errorMsg =
-          (err && typeof err === 'object' && 'response' in err
-            ? (err as AxiosErrorLike).response?.data?.message
-            : null) || 'Gagal menambahkan anggota.';
-        toast.error(errorMsg);
-      } finally {
-        if (isMountedRef.current) setSubmitLoading(false);
-      }
+      const payload = {
+        memberNo: formData.memberNo,
+        type: isExternal ? 'GENERAL' : memberType,
+        siswaId: isExternal ? null : formData.siswaId || null,
+        guruId: isExternal ? null : formData.guruId || null,
+        userId: isExternal ? null : formData.userId || null,
+        isExternal: isExternal,
+        name: isExternal ? formData.name : undefined,
+        address: formData.address || null,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        status: 'ACTIVE',
+        pin: formData.pin || '123456',
+      };
+      await createMemberMutation.mutateAsync(payload);
     },
-    [formData, memberType, fetchMembers, isLocked, resetForm, isExternal]
+    [formData, memberType, isLocked, isExternal, createMemberMutation]
   );
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
+      const res = await api.put(`/cooperative/members/${id}`, payload);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      const newStatus = variables.payload.status;
+      toast.success(
+        `Anggota berhasil ${newStatus === 'ACTIVE' ? 'diaktifkan' : 'dinonaktifkan'}!`
+      );
+      setStatusLoadingId(null);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err: unknown) => {
+      console.error('Error toggling member status:', err);
+      toast.error('Gagal memperbarui status anggota.');
+      setStatusLoadingId(null);
+    }
+  });
 
   const handleToggleStatus = useCallback(
     async (record: Member) => {
       if (isLocked) return;
 
       if (isMountedRef.current) setStatusLoadingId(record.id);
-      try {
-        const newStatus = record.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-        const payload = {
-          status: newStatus,
-          type: record.type,
-          siswaId: record.siswaId || null,
-          guruId: record.guruId || null,
-          userId: record.userId || null,
-        };
-        await api.put(`/cooperative/members/${record.id}`, payload);
-        toast.success(
-          `Anggota berhasil ${newStatus === 'ACTIVE' ? 'diaktifkan' : 'dinonaktifkan'}!`
-        );
-        fetchMembers();
-      } catch (err: unknown) {
-        console.error('Error toggling member status:', err);
-        toast.error('Gagal memperbarui status anggota.');
-      } finally {
-        if (isMountedRef.current) setStatusLoadingId(null);
-      }
+      const newStatus = record.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const payload = {
+        status: newStatus,
+        type: record.type,
+        siswaId: record.siswaId || null,
+        guruId: record.guruId || null,
+        userId: record.userId || null,
+      };
+      await toggleStatusMutation.mutateAsync({ id: record.id, payload });
     },
-    [fetchMembers, isLocked]
+    [isLocked, toggleStatusMutation]
   );
 
   const handleChangePin = useCallback(
@@ -430,35 +424,42 @@ export const useMembersState = (subscription: any) => {
     [isLocked]
   );
 
+  const updatePinMutation = useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
+      const res = await api.put(`/cooperative/members/${id}`, payload);
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`PIN Transaksi untuk ${selectedMember?.name || ''} berhasil diperbarui!`);
+      if (isMountedRef.current) {
+        setIsPinModalOpen(false);
+        setSelectedMember((prev) => (prev ? { ...prev, pin: variables.payload.pin } : null));
+      }
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error('Gagal memperbarui PIN transaksi.');
+    }
+  });
+
+  const pinLoading = updatePinMutation.isPending;
+
   const handlePinSubmit = useCallback(
     async (newPin: string) => {
       if (!selectedMember || isLocked) return;
 
-      if (isMountedRef.current) setPinLoading(true);
-      try {
-        await api.put(`/cooperative/members/${selectedMember.id}`, {
-          type: selectedMember.type,
-          status: selectedMember.status,
-          siswaId: selectedMember.siswaId || null,
-          guruId: selectedMember.guruId || null,
-          userId: selectedMember.userId || null,
-          pin: newPin,
-        });
-        toast.success(`PIN Transaksi untuk ${selectedMember.name} berhasil diperbarui!`);
-
-        if (isMountedRef.current) {
-          setIsPinModalOpen(false);
-          setSelectedMember((prev) => (prev ? { ...prev, pin: newPin } : null));
-        }
-        fetchMembers();
-      } catch (err) {
-        console.error(err);
-        toast.error('Gagal memperbarui PIN transaksi.');
-      } finally {
-        if (isMountedRef.current) setPinLoading(false);
-      }
+      const payload = {
+        type: selectedMember.type,
+        status: selectedMember.status,
+        siswaId: selectedMember.siswaId || null,
+        guruId: selectedMember.guruId || null,
+        userId: selectedMember.userId || null,
+        pin: newPin,
+      };
+      await updatePinMutation.mutateAsync({ id: selectedMember.id, payload });
     },
-    [selectedMember, isLocked, fetchMembers]
+    [selectedMember, isLocked, updatePinMutation]
   );
 
   const handleOpenDetail = useCallback(async (record: Member) => {
@@ -478,6 +479,32 @@ export const useMembersState = (subscription: any) => {
     }
   }, []);
 
+  const importExcelMutation = useMutation({
+    mutationFn: async (rows: any[]) => {
+      const res = await api.post('/cooperative/members/bulk', { rows });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (isMountedRef.current) {
+        setImportResults(data);
+        if (data.failCount === 0) {
+          toast.success(`Berhasil mengimpor ${data.successCount} anggota!`);
+          setIsImportModalOpen(false);
+          setImportFile(null);
+        } else {
+          toast.error(`Impor selesai dengan ${data.failCount} kegagalan.`);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error('Gagal memproses data Excel.');
+    }
+  });
+
+  const importLoading = importExcelMutation.isPending;
+
   const handleImportExcelSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -487,38 +514,21 @@ export const useMembersState = (subscription: any) => {
       }
 
       if (isMountedRef.current) {
-        setImportLoading(true);
         setImportResults(null);
       }
       try {
         const data = await parseImportExcel(importFile);
         if (data.length === 0) {
           toast.error('File Excel kosong atau format tidak sesuai.');
-          if (isMountedRef.current) setImportLoading(false);
           return;
         }
 
-        const response = await api.post('/cooperative/members/bulk', { rows: data });
-        if (isMountedRef.current) {
-          setImportResults(response.data);
-          if (response.data.failCount === 0) {
-            toast.success(`Berhasil mengimpor ${response.data.successCount} anggota!`);
-            setIsImportModalOpen(false);
-            setImportFile(null);
-            fetchMembers();
-          } else {
-            toast.error(`Impor selesai dengan ${response.data.failCount} kegagalan.`);
-            fetchMembers();
-          }
-        }
+        await importExcelMutation.mutateAsync(data);
       } catch (err) {
         console.error(err);
-        toast.error('Gagal memproses data Excel.');
-      } finally {
-        if (isMountedRef.current) setImportLoading(false);
       }
     },
-    [importFile, fetchMembers]
+    [importFile, importExcelMutation]
   );
 
   const handleInitiateTerminate = useCallback((m: Member) => {
@@ -526,29 +536,34 @@ export const useMembersState = (subscription: any) => {
     setIsTerminateConfirmOpen(true);
   }, []);
 
-  const handleTerminateSubmit = useCallback(async () => {
-    if (!terminatingMember) return;
-    if (isMountedRef.current) setTerminateLoading(true);
-    try {
-      const response = await api.post(`/cooperative/members/${terminatingMember.id}/terminate`);
+  const terminateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/cooperative/members/${id}/terminate`);
+      return res.data;
+    },
+    onSuccess: (data) => {
       toast.success(
-        `Anggota berhasil diberhentikan! Total Payout: Rp ${response.data.total.toLocaleString(
-          'id-ID'
-        )}`
+        `Anggota berhasil diberhentikan! Total Payout: Rp ${data.total?.toLocaleString('id-ID') || 0}`
       );
       if (isMountedRef.current) {
         setIsTerminateConfirmOpen(false);
         setIsDetailOpen(false);
         setTerminatingMember(null);
-        fetchMembers();
       }
-    } catch (err) {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err) => {
       console.error(err);
       toast.error('Gagal memberhentikan anggota.');
-    } finally {
-      if (isMountedRef.current) setTerminateLoading(false);
     }
-  }, [terminatingMember, fetchMembers]);
+  });
+
+  const terminateLoading = terminateMutation.isPending;
+
+  const handleTerminateSubmit = useCallback(async () => {
+    if (!terminatingMember) return;
+    await terminateMutation.mutateAsync(terminatingMember.id);
+  }, [terminatingMember, terminateMutation]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setPage(1);

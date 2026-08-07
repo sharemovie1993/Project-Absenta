@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Database, 
   RefreshCw, 
@@ -25,30 +26,26 @@ import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayo
 const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
 
 function BackupsPageContent() {
-  const [backups, setBackups] = useState<Backup[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
 
+  const backupsQuery = useQuery({
+    queryKey: ['superadmin-backups-list'],
+    queryFn: async () => {
+      const res = await backupApi.list();
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const backups = backupsQuery.data || [];
+  const loading = backupsQuery.isLoading;
 
   const loadBackups = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await backupApi.list();
-      if (res.success) {
-        setBackups(res.data || []);
-      }
-    } catch (e: unknown) {
-      toast.error('Gagal memuat arsip cadangan');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadBackups();
-  }, [loadBackups]);
+    await backupsQuery.refetch();
+  }, [backupsQuery]);
 
   const handleDownload = useCallback(async (backup: Backup) => {
     try {

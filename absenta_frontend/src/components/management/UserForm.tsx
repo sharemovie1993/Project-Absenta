@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, X, Eye, EyeOff, User as UserIcon, Mail, ShieldCheck, Globe, Key, Info as InfoIcon, RefreshCw } from 'lucide-react';
 import {
   Button,
@@ -61,6 +62,7 @@ const UserForm: React.FC<UserFormProps> = ({
   onCancel,
   mode = 'create'
 }) => {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<FormData>({
     email: '',
     full_name: '',
@@ -71,15 +73,10 @@ const UserForm: React.FC<UserFormProps> = ({
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<{ score: number; label: string } | null>(null);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
-  const [roles, setRoles] = useState<RoleItem[]>([]);
-  const [tenants, setTenants] = useState<TenantItem[]>([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
-
 
   const { user: currentUser, can, isAdmin, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
   
@@ -90,56 +87,43 @@ const UserForm: React.FC<UserFormProps> = ({
   const isEditMode = mode === 'edit';
   const isCreateMode = mode === 'create';
 
-  // Load dropdown data
-  useEffect(() => {
-    const loadDropdownData = async () => {
-      try {
-        setLoadingDropdowns(true);
-        
-        // Parallel load roles and tenants
-        const rolesPromise = getRoles();
-        let tenantsPromise: Promise<any>;
-
-        if (isSuperAdminUser) {
-          tenantsPromise = getAllTenants({ limit: 1000 }, { skipTenantHeader: true });
-        } else if (currentTenantId) {
-          // For regular Admin, fetch their specific tenant info to display name instead of UUID
-          tenantsPromise = getTenantById(currentTenantId).then(res => ({
-            success: true,
-            data: res.data ? [res.data] : []
-          }));
-        } else {
-          tenantsPromise = Promise.resolve({ success: true, data: [] });
+  // Load roles via useQuery
+  const rolesQuery = useQuery({
+    queryKey: ['user-roles-list', isSuperAdminUser, isCreateMode],
+    queryFn: async () => {
+      const rolesResponse = await getRoles();
+      if (rolesResponse.success) {
+        let availableRoles = rolesResponse.data;
+        if (!isSuperAdminUser || isCreateMode) {
+          availableRoles = availableRoles.filter(role => role.name !== 'SUPERADMIN');
         }
-
-        const [rolesResponse, tenantsResponse] = await Promise.all([
-          rolesPromise,
-          tenantsPromise
-        ]);
-
-        if (rolesResponse.success) {
-          let availableRoles = rolesResponse.data;
-          if (!isSuperAdminUser) {
-            availableRoles = availableRoles.filter(role => role.name !== 'SUPERADMIN');
-          }
-          if (isCreateMode) {
-            availableRoles = availableRoles.filter(role => role.name !== 'SUPERADMIN');
-          }
-          setRoles(availableRoles);
-        }
-
-        if (tenantsResponse.success) {
-          setTenants(tenantsResponse.data || []);
-        }
-      } catch (error) {
-        console.error('Error loading dropdown data:', error);
-        toast.error('Gagal memuat data dropdown');
-      } finally {
-        setLoadingDropdowns(false);
+        return availableRoles;
       }
-    };
-    loadDropdownData();
-  }, [isSuperAdminUser, currentTenantId, isCreateMode]);
+      return [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const roles = rolesQuery.data || [];
+
+  // Load tenants via useQuery
+  const tenantsQuery = useQuery({
+    queryKey: ['tenants-dropdown-list', isSuperAdminUser, currentTenantId],
+    queryFn: async () => {
+      if (isSuperAdminUser) {
+        const res = await getAllTenants({ limit: 1000 }, { skipTenantHeader: true });
+        return res.data || [];
+      } else if (currentTenantId) {
+        const res = await getTenantById(currentTenantId);
+        return res.data ? [res.data] : [];
+      }
+      return [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const tenants = tenantsQuery.data || [];
+  const loadingDropdowns = rolesQuery.isLoading || tenantsQuery.isLoading;
 
   // Initialize form data
   useEffect(() => {
@@ -176,6 +160,75 @@ const UserForm: React.FC<UserFormProps> = ({
       setFormData(prev => ({ ...prev, tenant_id: (user.tenant?.id || user.tenant_id || '') }));
     }
   }, [user, isEditMode, isViewMode, formData.role_id, formData.tenant_id]);
+
+  const saveUserMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const currentRoleName = currentUser?.role?.name || currentUser?.role;
+      const selectedRole = roles.find(role => role.id === formData.role_id);
+      let response: any;
+
+      if (isCreateMode) {
+        if (isSystemSuperAdmin(currentRoleName, currentUser?.tenant_id) && formData.tenant_id) {
+          const superPayload = {
+            email: formData.email.trim(),
+            full_name: formData.full_name.trim(),
+            role_id: formData.role_id,
+            status: formData.status,
+            password: formData.password || undefined
+          };
+          response = await createTenantUser(formData.tenant_id, superPayload as any);
+        } else {
+          const adminPayload = {
+            email: formData.email.trim(),
+            full_name: formData.full_name.trim(),
+            role: selectedRole?.name,
+            status: formData.status,
+            password: formData.password || undefined,
+            tenant_id: selectedRole?.name !== 'SUPERADMIN' ? formData.tenant_id : undefined
+          };
+          response = await createUser(adminPayload as any);
+        }
+      } else if (isEditMode && user) {
+        const updatePayload = {
+          email: formData.email.trim(),
+          full_name: formData.full_name.trim(),
+          status: formData.status,
+          password: formData.password || undefined,
+          role_id: formData.role_id,
+          tenant_id: selectedRole?.name !== 'SUPERADMIN' && formData.tenant_id ? formData.tenant_id : undefined
+        };
+        if (isSystemSuperAdmin(currentRoleName, currentUser?.tenant_id) && formData.tenant_id) {
+          response = await updateTenantUser(formData.tenant_id, user.id, updatePayload as any);
+        } else {
+          response = await updateUser(user.id, updatePayload as any);
+        }
+        if (response?.success && selectedRole?.name === 'SISWA') {
+          const siswaTargetStatus = formData.status === 'INACTIVE' ? 'TIDAK_AKTIF' : 'AKTIF';
+          try {
+            const siswaList = await siswaApi.getAll({ user_id: user.id, limit: 1 } as any);
+            const siswaId = siswaList?.data?.[0]?.id;
+            if (siswaId) await siswaApi.update(siswaId, { status: siswaTargetStatus });
+          } catch {}
+        }
+      }
+      return response;
+    },
+    onSuccess: (response) => {
+      if (response?.success) {
+        toast.success(isCreateMode ? 'Pengguna berhasil dibuat' : 'Pengguna berhasil diperbarui');
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant-users'] });
+        onSuccess?.();
+      } else {
+        toast.error(response?.message || 'Terjadi kesalahan');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data');
+    }
+  });
+
+  const loading = saveUserMutation.isPending;
 
   const validateForm = (): boolean => {
     const baseResult = (isCreateMode ? createUserSchema : updateUserSchema).safeParse({
@@ -225,69 +278,7 @@ const UserForm: React.FC<UserFormProps> = ({
     if (!validateForm()) { toast.error('Mohon perbaiki kesalahan pada form'); return; }
     if (emailAvailable === false) { toast.error('Email sudah digunakan pada tenant ini'); return; }
 
-    try {
-      setLoading(true);
-      const selectedRole = roles.find(role => role.id === formData.role_id);
-      let response;
-      const currentRoleName = currentUser?.role?.name || currentUser?.role;
-
-      if (isCreateMode) {
-        if (isSystemSuperAdmin(currentRoleName, currentUser?.tenant_id)) {
-          const superPayload: any = {
-            email: formData.email.trim(),
-            full_name: formData.full_name.trim(),
-            role: selectedRole?.name,
-            status: formData.status,
-            password: formData.password || undefined
-          };
-          response = await createTenantUser(formData.tenant_id, superPayload as any);
-        } else {
-          const adminPayload: any = {
-            email: formData.email.trim(),
-            full_name: formData.full_name.trim(),
-            role: selectedRole?.name,
-            status: formData.status,
-            password: formData.password || undefined,
-            tenant_id: selectedRole?.name !== 'SUPERADMIN' ? formData.tenant_id : undefined
-          };
-          response = await createUser(adminPayload as any);
-        }
-      } else if (isEditMode && user) {
-        const updatePayload: any = {
-          email: formData.email.trim(),
-          full_name: formData.full_name.trim(),
-          status: formData.status,
-          password: formData.password || undefined,
-          role_id: formData.role_id,
-          tenant_id: selectedRole?.name !== 'SUPERADMIN' && formData.tenant_id ? formData.tenant_id : undefined
-        };
-        if (isSystemSuperAdmin(currentRoleName, currentUser?.tenant_id) && formData.tenant_id) {
-          response = await updateTenantUser(formData.tenant_id, user.id, updatePayload as any);
-        } else {
-          response = await updateUser(user.id, updatePayload as any);
-        }
-        // Handle teacher/student internal status sync
-        if (response?.success && selectedRole?.name === 'SISWA') {
-          const siswaTargetStatus = formData.status === 'INACTIVE' ? 'TIDAK_AKTIF' : 'AKTIF';
-          try {
-            const siswaList = await siswaApi.getAll({ user_id: user.id, limit: 1 } as any);
-            const siswaId = siswaList?.data?.[0]?.id;
-            if (siswaId) await siswaApi.update(siswaId, { status: siswaTargetStatus });
-          } catch {}
-        }
-      }
-
-      if (response?.success) {
-        toast.success(isCreateMode ? 'Pengguna berhasil dibuat' : 'Pengguna berhasil diperbarui');
-        onSuccess?.();
-      } else {
-        toast.error(response?.message || 'Terjadi kesalahan');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data');
-    } finally {
-      setLoading(false);
-    }
+    await saveUserMutation.mutateAsync(formData);
   };
 
   const calculatePasswordStrength = (pwd: string): { score: number; label: string } => {

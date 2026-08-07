@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import api from '../../lib/axiosInstance';
@@ -41,27 +42,19 @@ const indonesianMonths = [
 ];
 
 const Accounting: React.FC = () => {
+    const queryClient = useQueryClient();
     const { subscription, can, isSuperAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<'journal' | 'balance' | 'payroll'>('journal');
-    const [journals, setJournals] = useState<JournalEntry[]>([]);
-    const [balanceSheet, setBalanceSheet] = useState<BalanceSheetItem[]>([]);
-    const [payrollData, setPayrollData] = useState<PayrollItem[]>([]);
-    const [loading, setLoading] = useState(false);
     
     // Payroll recap states
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-    const [coopSettings, setCoopSettings] = useState<CooperativeSettings | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
-    const [isPosted, setIsPosted] = useState(false);
-    const [postingLoading, setPostingLoading] = useState(false);
     const [showPostConfirm, setShowPostConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     
     // Dynamic columns configurations
-    const [savingCategories, setSavingCategories] = useState<{ code: string; name: string }[]>([]);
     const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
-    const [hasLoans, setHasLoans] = useState(false);
     const [showLoans, setShowLoans] = useState(true);
 
     const printTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,126 +71,125 @@ const Accounting: React.FC = () => {
     
     const isOperator = canViewFinancials || canViewDaily || canViewMonthly || isSuperAdmin();
 
-    // ─── DATA FETCHING METHODS ───────────────────────────────────────────────
-    
-    const fetchJournals = useCallback(async () => {
-        if (isLocked || subscription === undefined) return;
-        setLoading(true);
-        try {
+    // ─── REACT QUERY HOOKS ───────────────────────────────────────────────────
+
+    const coopSettingsQuery = useQuery({
+        queryKey: ['koperasi-settings-coop'],
+        queryFn: async () => {
+            const data = await fetchCoopSettings();
+            return data as CooperativeSettings;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+    const coopSettings = coopSettingsQuery.data || null;
+
+    const journalsQuery = useQuery({
+        queryKey: ['koperasi-accounting-journals'],
+        queryFn: async () => {
             const res = await api.get('/cooperative/reports/journals');
-            setJournals((res.data as JournalEntry[]) || []);
-        } catch (e) {
-            console.error(e);
-            toast.error('Gagal mengambil data jurnal');
-        } finally {
-            setLoading(false);
-        }
-    }, [isLocked, subscription]);
+            return (res.data as JournalEntry[]) || [];
+        },
+        enabled: activeTab === 'journal' && !isLocked && subscription !== undefined,
+        staleTime: 5 * 60 * 1000,
+    });
+    const journals = journalsQuery.data || [];
+    const fetchJournals = useCallback(async () => {
+        await journalsQuery.refetch();
+    }, [journalsQuery]);
 
-    const fetchBalanceSheet = useCallback(async () => {
-        if (isLocked || subscription === undefined) return;
-        setLoading(true);
-        try {
+    const balanceSheetQuery = useQuery({
+        queryKey: ['koperasi-accounting-balance-sheet'],
+        queryFn: async () => {
             const res = await api.get('/cooperative/reports/balance-sheet');
-            setBalanceSheet((res.data as BalanceSheetItem[]) || []);
-        } catch (e) {
-            console.error(e);
-            toast.error('Gagal mengambil data neraca');
-        } finally {
-            setLoading(false);
-        }
-    }, [isLocked, subscription]);
+            return (res.data as BalanceSheetItem[]) || [];
+        },
+        enabled: activeTab === 'balance' && !isLocked && subscription !== undefined,
+        staleTime: 5 * 60 * 1000,
+    });
+    const balanceSheet = balanceSheetQuery.data || [];
+    const fetchBalanceSheet = useCallback(async () => {
+        await balanceSheetQuery.refetch();
+    }, [balanceSheetQuery]);
 
-    const fetchPayrollDeductions = useCallback(async () => {
-        if (isLocked || subscription === undefined) return;
-        setLoading(true);
-        try {
+    const payrollQuery = useQuery({
+        queryKey: ['koperasi-accounting-payroll', selectedMonth, selectedYear],
+        queryFn: async () => {
             const res = await api.get(`/cooperative/reports/payroll-deductions?month=${selectedMonth}&year=${selectedYear}`);
-            const { savingCategories: cats, data, hasLoans: backendHasLoans, isPosted: backendIsPosted } = res.data;
-            setPayrollData((data as PayrollItem[]) || []);
-            setSavingCategories((cats as { code: string; name: string }[]) || []);
-            setHasLoans(!!backendHasLoans);
-            setIsPosted(!!backendIsPosted);
-            
-            // Initialize default visible columns for categories
+            return res.data;
+        },
+        enabled: activeTab === 'payroll' && !isLocked && subscription !== undefined,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const payrollData: PayrollItem[] = useMemo(() => (payrollQuery.data?.data as PayrollItem[]) || [], [payrollQuery.data]);
+    const savingCategories: { code: string; name: string }[] = useMemo(() => (payrollQuery.data?.savingCategories as { code: string; name: string }[]) || [], [payrollQuery.data]);
+    const hasLoans: boolean = useMemo(() => !!payrollQuery.data?.hasLoans, [payrollQuery.data]);
+    const isPosted: boolean = useMemo(() => !!payrollQuery.data?.isPosted, [payrollQuery.data]);
+
+    const loading = (activeTab === 'journal' && journalsQuery.isLoading) ||
+                    (activeTab === 'balance' && balanceSheetQuery.isLoading) ||
+                    (activeTab === 'payroll' && payrollQuery.isLoading);
+
+    useEffect(() => {
+        if (savingCategories.length > 0) {
             setVisibleColumns(prev => {
                 const updated = { ...prev };
-                (cats || [])?.forEach((c: { code: string; name: string }) => {
+                savingCategories.forEach((c) => {
                     if (updated[c.code] === undefined) {
                         updated[c.code] = true;
                     }
                 });
                 return updated;
             });
-        } catch (e) {
-            console.error(e);
-            toast.error('Gagal mengambil data rekap potongan');
-        } finally {
-            setLoading(false);
         }
-    }, [isLocked, subscription, selectedMonth, selectedYear]);
+    }, [savingCategories]);
 
-    const handlePostPayroll = useCallback(async () => {
-        setPostingLoading(true);
-        try {
-            await api.post('/cooperative/reports/payroll-deductions/post', {
-                month: selectedMonth,
-                year: selectedYear
-            });
+    const fetchPayrollDeductions = useCallback(async () => {
+        await payrollQuery.refetch();
+    }, [payrollQuery]);
+
+    const postPayrollMutation = useMutation({
+        mutationFn: async (payload: { month: number; year: number }) => {
+            const res = await api.post('/cooperative/reports/payroll-deductions/post', payload);
+            return res.data;
+        },
+        onSuccess: () => {
             toast.success('Potongan gaji massal berhasil diposting!');
-            fetchPayrollDeductions();
             setShowPostConfirm(false);
-        } catch (e: unknown) {
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+        },
+        onError: (e: unknown) => {
             console.error(e);
             const err = e as { response?: { data?: { message?: string } } };
             toast.error(err.response?.data?.message || 'Gagal memproses posting potongan gaji.');
-        } finally {
-            setPostingLoading(false);
         }
-    }, [selectedMonth, selectedYear, fetchPayrollDeductions]);
+    });
+    const postingLoading = postPayrollMutation.isPending;
 
-    const handleCancelPayroll = useCallback(async () => {
-        setPostingLoading(true);
-        try {
-            await api.post('/cooperative/reports/payroll-deductions/cancel', {
-                month: selectedMonth,
-                year: selectedYear
-            });
+    const handlePostPayroll = useCallback(async () => {
+        await postPayrollMutation.mutateAsync({ month: selectedMonth, year: selectedYear });
+    }, [selectedMonth, selectedYear, postPayrollMutation]);
+
+    const cancelPayrollMutation = useMutation({
+        mutationFn: async (payload: { month: number; year: number }) => {
+            const res = await api.post('/cooperative/reports/payroll-deductions/cancel', payload);
+            return res.data;
+        },
+        onSuccess: () => {
             toast.success('Posting potongan gaji massal berhasil dibatalkan!');
-            fetchPayrollDeductions();
             setShowCancelConfirm(false);
-        } catch (e: unknown) {
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+        },
+        onError: (e: unknown) => {
             console.error(e);
             const err = e as { response?: { data?: { message?: string } } };
             toast.error(err.response?.data?.message || 'Gagal membatalkan posting potongan gaji.');
-        } finally {
-            setPostingLoading(false);
         }
-    }, [selectedMonth, selectedYear, fetchPayrollDeductions]);
+    });
 
-    const loadSettings = useCallback(async () => {
-        try {
-            const data = await fetchCoopSettings();
-            setCoopSettings(data as CooperativeSettings);
-        } catch (e) {
-            console.warn('Failed to load cooperative settings:', e);
-        }
-    }, []);
-
-    // ─── EFFECT RUNNERS ──────────────────────────────────────────────────────
-    
-    useEffect(() => {
-        if (subscription === undefined) return;
-        loadSettings();
-    }, [subscription, loadSettings]);
-
-    useEffect(() => {
-        if (subscription === undefined) return;
-
-        if (activeTab === 'journal') fetchJournals();
-        else if (activeTab === 'balance') fetchBalanceSheet();
-        else fetchPayrollDeductions();
-    }, [activeTab, isLocked, subscription, selectedMonth, selectedYear, fetchJournals, fetchBalanceSheet, fetchPayrollDeductions]);
+    const handleCancelPayroll = useCallback(async () => {
+        await cancelPayrollMutation.mutateAsync({ month: selectedMonth, year: selectedYear });
+    }, [selectedMonth, selectedYear, cancelPayrollMutation]);
 
     // Cleanup timers to prevent memory leaks
     useEffect(() => {

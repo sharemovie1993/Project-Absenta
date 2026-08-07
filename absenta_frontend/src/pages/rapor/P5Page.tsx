@@ -129,6 +129,7 @@ export default function P5Page() {
   const saveP5BulkMutation = useMutation({
     mutationFn: raporApi.upsertBulkP5Nilai,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['p5-nilai'] });
       toast.success('Nilai Projek P5 berhasil disimpan');
     },
     onError: (err: any) => {

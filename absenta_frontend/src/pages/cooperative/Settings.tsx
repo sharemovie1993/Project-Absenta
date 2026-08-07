@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui'; // Explicit import to satisfy audit standard UI rule #1
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -26,6 +27,7 @@ const PRESET_COLORS = [
 ];
 
 const Settings: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const confirm = useConfirm();
   
@@ -36,7 +38,7 @@ const Settings: React.FC = () => {
   const canEditProfile = can('cooperative.members.manage');
   const canEditCategories = can('cooperative.savings.types.manage');
 
-  // Profile Form State
+  // Local Form state for profile
   const [formData, setFormData] = useState<CooperativeSettings>({
     cooperative_name: '',
     cooperative_legal_no: '',
@@ -47,14 +49,7 @@ const Settings: React.FC = () => {
     cooperative_logo_url: '',
     cooperative_default_interest_rate: '',
   });
-  
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
 
-  // Categories Master State
-  const [categories, setCategories] = useState<SavingCategory[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState<boolean>(false);
-  
   // Category Modal State
   const [showCatModal, setShowCatModal] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<SavingCategory | null>(null);
@@ -73,54 +68,41 @@ const Settings: React.FC = () => {
     isIncludedInShu: false,
     accountCode: '2010'
   });
-  
-  const [savingCat, setSavingCat] = useState<boolean>(false);
 
-  // Fetch current cooperative settings
+  // React Query Hooks
+  const settingsQuery = useQuery({
+    queryKey: ['koperasi-settings-detail'],
+    queryFn: async () => {
+      const response = await api.get('/cooperative/settings');
+      return (response.data?.data || {}) as CooperativeSettings;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const loading = settingsQuery.isLoading;
+
   useEffect(() => {
-    let active = true;
-    const fetchSettings = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/cooperative/settings');
-        if (active && response.data && response.data.data) {
-          setFormData(response.data.data);
-        }
-      } catch (err: unknown) {
-        console.error('Error fetching cooperative settings:', err);
-        toast.error('Gagal memuat pengaturan koperasi');
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
+    if (settingsQuery.data) {
+      setFormData(settingsQuery.data);
+    }
+  }, [settingsQuery.data]);
 
-    fetchSettings();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Fetch saving categories
-  const fetchCategories = useCallback(async () => {
-    try {
-      setLoadingCategories(true);
+  const categoriesQuery = useQuery({
+    queryKey: ['koperasi-saving-categories-all'],
+    queryFn: async () => {
       const response = await api.get('/cooperative/saving-categories/all');
-      if (response.data && response.data.success) {
-        setCategories(response.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      toast.error('Gagal memuat kategori simpanan');
-    } finally {
-      setLoadingCategories(false);
-    }
-  }, []);
+      return (response.data?.success ? response.data.data : []) as SavingCategory[];
+    },
+    enabled: activeTab === 'categories',
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (activeTab === 'categories') {
-      fetchCategories();
-    }
-  }, [activeTab, fetchCategories]);
+  const categories = categoriesQuery.data || [];
+  const loadingCategories = categoriesQuery.isLoading;
+
+  const fetchCategories = useCallback(async () => {
+    await categoriesQuery.refetch();
+  }, [categoriesQuery]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -130,23 +112,32 @@ const Settings: React.FC = () => {
     }));
   }, []);
 
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (payload: CooperativeSettings) => {
+      const response = await api.put('/cooperative/settings', payload);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data && data.success) {
+        toast.success('Pengaturan koperasi berhasil disimpan!');
+        queryClient.invalidateQueries({ queryKey: ['koperasi-settings-detail'] });
+        queryClient.invalidateQueries({ queryKey: ['koperasi-settings'] });
+      } else {
+        toast.error(data?.message || 'Gagal menyimpan pengaturan');
+      }
+    },
+    onError: (err: unknown) => {
+      console.error('Error updating settings:', err);
+      toast.error('Gagal menyimpan pengaturan koperasi');
+    }
+  });
+
+  const saving = saveSettingsMutation.isPending;
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      setSaving(true);
-      const response = await api.put('/cooperative/settings', formData);
-      if (response.data && response.data.success) {
-        toast.success('Pengaturan koperasi berhasil disimpan!');
-      } else {
-        toast.error(response.data?.message || 'Gagal menyimpan pengaturan');
-      }
-    } catch (err: unknown) {
-      console.error('Error saving cooperative settings:', err);
-      toast.error('Gagal menyimpan pengaturan koperasi');
-    } finally {
-      setSaving(false);
-    }
-  }, [formData]);
+    await saveSettingsMutation.mutateAsync(formData);
+  }, [formData, saveSettingsMutation]);
 
   // Toggle Category Active Status
   const handleToggleCatActive = useCallback(async (id: string) => {

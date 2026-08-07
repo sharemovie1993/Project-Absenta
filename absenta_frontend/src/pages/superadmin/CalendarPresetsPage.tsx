@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
   Plus,
@@ -47,26 +48,28 @@ const getJenisBadgeCls = (val: string) => {
 const EMPTY_FORM = { jenjang: 'ALL', judul: '', jenis: 'KEGIATAN', keterangan: '' };
 
 export const CalendarPresetsPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [presets, setPresets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<any | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+
+  const calendarPresetsQuery = useQuery({
+    queryKey: ['superadmin-calendar-presets'],
+    queryFn: async () => {
+      const res = await kurikulumApi.getCalendarPresets();
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const presets = calendarPresetsQuery.data || [];
+  const loading = calendarPresetsQuery.isLoading;
 
   const fetchPresets = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await kurikulumApi.getCalendarPresets();
-      if (res.data) setPresets(res.data);
-    } catch {
-      toast.error('Gagal memuat preset kalender global');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await calendarPresetsQuery.refetch();
+  }, [calendarPresetsQuery]);
 
   useEffect(() => {
     fetchPresets();
@@ -89,28 +92,39 @@ export const CalendarPresetsPage: React.FC = () => {
     setModalOpen(true);
   }, []);
 
+  const saveCalendarPresetMutation = useMutation({
+    mutationFn: (data: any) =>
+      editingPreset
+        ? kurikulumApi.updateCalendarPreset(editingPreset.id, data)
+        : kurikulumApi.createCalendarPreset(data),
+    onSuccess: () => {
+      toast.success(editingPreset ? 'Preset berhasil diperbarui.' : 'Preset berhasil ditambahkan.');
+      setModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['superadmin-calendar-presets'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal menyimpan preset');
+    }
+  });
+
+  const deleteCalendarPresetMutation = useMutation({
+    mutationFn: (id: string) => kurikulumApi.deleteCalendarPreset(id),
+    onSuccess: () => {
+      toast.success('Preset dihapus.');
+      queryClient.invalidateQueries({ queryKey: ['superadmin-calendar-presets'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal menghapus preset');
+    }
+  });
+
   const handleSave = useCallback(async () => {
     if (!form.judul || !form.jenis) {
       toast.error('Judul dan Jenis wajib diisi.');
       return;
     }
-    try {
-      setSaving(true);
-      if (editingPreset) {
-        await kurikulumApi.updateCalendarPreset(editingPreset.id, form);
-        toast.success('Preset berhasil diperbarui.');
-      } else {
-        await kurikulumApi.createCalendarPreset(form);
-        toast.success('Preset berhasil ditambahkan.');
-      }
-      setModalOpen(false);
-      fetchPresets();
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal menyimpan preset');
-    } finally {
-      setSaving(false);
-    }
-  }, [editingPreset, form, fetchPresets]);
+    await saveCalendarPresetMutation.mutateAsync(form);
+  }, [form, saveCalendarPresetMutation]);
 
   const handleDelete = useCallback(async (preset: any) => {
     const ok = await confirm({
@@ -121,14 +135,8 @@ export const CalendarPresetsPage: React.FC = () => {
       style: 'danger',
     });
     if (!ok) return;
-    try {
-      await kurikulumApi.deleteCalendarPreset(preset.id);
-      toast.success('Preset dihapus.');
-      fetchPresets();
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal menghapus preset');
-    }
-  }, [confirm, fetchPresets]);
+    await deleteCalendarPresetMutation.mutateAsync(preset.id);
+  }, [confirm, deleteCalendarPresetMutation]);
 
   const filtered = presets.filter(p => {
     const term = searchTerm.toLowerCase();

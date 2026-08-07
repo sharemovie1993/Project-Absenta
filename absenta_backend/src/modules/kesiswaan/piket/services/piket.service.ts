@@ -50,7 +50,7 @@ export class PiketService {
       include: {
         SiswaAkademik: {
           include: {
-            siswa: { select: { nama_siswa: true, nis: true } },
+            siswa: { select: { nama_siswa: true, nis: true, no_hp: true } },
             kelas: { select: { nama_kelas: true } }
           }
         },
@@ -58,10 +58,145 @@ export class PiketService {
       }
     });
 
+    // Real-time Sync to Sesi KBM
+    void this.syncIzinToSesiKbm(tenantId, academicId, res);
+
     // Invalidate piket and attendance cache
     void cacheInvalidationService.invalidatePiketCache(tenantId);
 
     return res;
+  }
+
+  /**
+   * Helper Private Method: Sync Izin Piket ke Absensi Sesi KBM
+   */
+  private async syncIzinToSesiKbm(tenantId: string, siswaAkademikId: string, izin: any) {
+    try {
+      const now = new Date(izin.jam_keluar || new Date());
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const sa = await prisma.siswaAkademik.findUnique({
+        where: { id: siswaAkademikId },
+        select: { id: true, siswa_id: true, kelas_id: true }
+      });
+      if (!sa?.kelas_id) return;
+
+      const sessions = await prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: sa.kelas_id,
+          tanggal: { gte: startOfDay, lte: endOfDay }
+        },
+        select: { id: true, waktu_mulai: true, waktu_selesai: true, status: true, kelas_id: true, tahun_pelajaran_id: true }
+      });
+
+      if (sessions.length === 0) return;
+
+      const jamStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+      if (izin.tipe_izin === 'PULANG_AWAL') {
+        for (const sesi of sessions) {
+          const cat = `[PIKET - PULANG AWAL ${jamStr}] ${izin.alasan || ''}`;
+          await prisma.absenSiswa.upsert({
+            where: {
+              sesi_id_siswa_akademik_id: {
+                sesi_id: sesi.id,
+                siswa_akademik_id: siswaAkademikId,
+              }
+            },
+            update: {
+              status: 'IZIN',
+              catatan: cat,
+              poin_kehadiran: 2,
+            },
+            create: {
+              tenant_id: tenantId,
+              sesi_id: sesi.id,
+              siswa_akademik_id: siswaAkademikId,
+              siswa_id: sa.siswa_id,
+              status: 'IZIN',
+              catatan: cat,
+              poin_kehadiran: 2,
+              kelas_id_snapshot: sesi.kelas_id,
+              tahun_pelajaran_id_snapshot: sesi.tahun_pelajaran_id,
+            }
+          });
+        }
+      } else if (izin.tipe_izin === 'DISPENSASI') {
+        for (const sesi of sessions) {
+          const cat = `[PIKET - DISPENSASI] ${izin.alasan || ''}`;
+          await prisma.absenSiswa.upsert({
+            where: {
+              sesi_id_siswa_akademik_id: {
+                sesi_id: sesi.id,
+                siswa_akademik_id: siswaAkademikId,
+              }
+            },
+            update: {
+              status: 'DISPEN',
+              catatan: cat,
+              poin_kehadiran: 2,
+            },
+            create: {
+              tenant_id: tenantId,
+              sesi_id: sesi.id,
+              siswa_akademik_id: siswaAkademikId,
+              siswa_id: sa.siswa_id,
+              status: 'DISPEN',
+              catatan: cat,
+              poin_kehadiran: 2,
+              kelas_id_snapshot: sesi.kelas_id,
+              tahun_pelajaran_id_snapshot: sesi.tahun_pelajaran_id,
+            }
+          });
+        }
+      } else if (izin.tipe_izin === 'IZIN_KELUAR') {
+        const activeSesi = sessions.find(s => {
+          if (s.waktu_mulai <= now && (!s.waktu_selesai || s.waktu_selesai >= now)) return true;
+          return s.status === 'BERLANGSUNG';
+        }) || sessions[0];
+
+        if (activeSesi) {
+          const cat = `[IZIN SEMENTARA ${jamStr}] ${izin.alasan || ''}`;
+          const existingAbsen = await prisma.absenSiswa.findUnique({
+            where: {
+              sesi_id_siswa_akademik_id: {
+                sesi_id: activeSesi.id,
+                siswa_akademik_id: siswaAkademikId,
+              }
+            }
+          });
+
+          if (existingAbsen) {
+            await prisma.absenSiswa.update({
+              where: { id_created_at: { id: existingAbsen.id, created_at: existingAbsen.created_at } },
+              data: {
+                catatan: existingAbsen.catatan ? `${existingAbsen.catatan} | ${cat}` : cat,
+              }
+            });
+          } else {
+            await prisma.absenSiswa.create({
+              data: {
+                tenant_id: tenantId,
+                sesi_id: activeSesi.id,
+                siswa_akademik_id: siswaAkademikId,
+                siswa_id: sa.siswa_id,
+                status: 'HADIR',
+                catatan: cat,
+                poin_kehadiran: 10,
+                kelas_id_snapshot: activeSesi.kelas_id,
+                tahun_pelajaran_id_snapshot: activeSesi.tahun_pelajaran_id,
+              }
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing Izin to Sesi KBM:', err);
+    }
   }
 
   /**
@@ -105,7 +240,16 @@ export class PiketService {
           include: {
             SiswaAkademik: {
               include: {
-                siswa: { select: { nama_siswa: true, nis: true } },
+                siswa: { 
+                  select: { 
+                    id: true,
+                    nama_siswa: true, 
+                    nis: true, 
+                    no_hp: true,
+                    nama_ayah: true,
+                    nama_ibu: true
+                  } 
+                },
                 kelas: { select: { nama_kelas: true } }
               }
             },
@@ -135,7 +279,14 @@ export class PiketService {
       include: {
         SiswaAkademik: {
           include: {
-            siswa: { select: { nama_siswa: true, nis: true } },
+            siswa: { 
+              select: { 
+                id: true,
+                nama_siswa: true, 
+                nis: true, 
+                no_hp: true 
+              } 
+            },
             kelas: { select: { nama_kelas: true } }
           }
         },
@@ -156,6 +307,6 @@ export class PiketService {
     // Invalidate piket cache
     void cacheInvalidationService.invalidatePiketCache(tenantId);
 
-    return res;
   }
 }
+

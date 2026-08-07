@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   BarChart, 
   Bar, 
@@ -34,26 +35,21 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function SupportAnalyticsPanel() {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<SupportAnalytics | null>(null);
+  const analyticsQuery = useQuery({
+    queryKey: ['support-analytics-panel'],
+    queryFn: async () => {
+      const res = await supportTicketApi.getSupportAnalytics();
+      return (res.data as SupportAnalytics) || null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = analyticsQuery.data || null;
+  const loading = analyticsQuery.isLoading;
 
   const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const res = await supportTicketApi.getSupportAnalytics();
-      if (res.success && res.data) {
-        setData(res.data);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memuat analitik support.');
-    } finally {
-      setLoading(false);
-    }
+    await analyticsQuery.refetch();
   };
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
 
   if (loading) {
     return (

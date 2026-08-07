@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
@@ -26,13 +27,11 @@ interface Ticket {
 }
 
 const Tickets: React.FC = () => {
+  const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const location = useLocation();
   const isManageRoute = location.pathname.endsWith('/manage');
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageLimit = 10;
   const [formData, setFormData] = useState({
@@ -44,45 +43,47 @@ const Tickets: React.FC = () => {
   const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
-  const fetchTickets = useCallback(async () => {
-    if (isLocked) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
+  const ticketsQuery = useQuery({
+    queryKey: ['koperasi-tickets-list'],
+    queryFn: async () => {
       const response = await api.get('/cooperative/tickets');
-      setTickets(response.data.data ?? []);
-    } catch (error) {
-      console.error('Failed to fetch tickets', error);
-      toast.error('Gagal mengambil data tiket');
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked]);
+      return (response.data.data ?? []) as Ticket[];
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchTickets();
-  }, [subscription, fetchTickets]);
+  const tickets = ticketsQuery.data || [];
+  const loading = ticketsQuery.isLoading;
+
+  const fetchTickets = useCallback(async () => {
+    await ticketsQuery.refetch();
+  }, [ticketsQuery]);
+
+  const createTicketMutation = useMutation({
+    mutationFn: async (payload: { subject: string; priority: string; message: string }) => {
+      const res = await api.post('/cooperative/tickets', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Tiket berhasil dibuat');
+      setShowModal(false);
+      setFormData({ subject: '', priority: 'MEDIUM', message: '' });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+    },
+    onError: (error) => {
+      console.error('Failed to create ticket', error);
+      toast.error('Gagal membuat tiket');
+    }
+  });
+
+  const submitLoading = createTicketMutation.isPending;
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     if (isLocked) return;
     e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      await api.post('/cooperative/tickets', formData);
-      toast.success('Tiket berhasil dibuat');
-      setShowModal(false);
-      setFormData({ subject: '', priority: 'MEDIUM', message: '' });
-      fetchTickets();
-    } catch (error) {
-      console.error('Failed to create ticket', error);
-      toast.error('Gagal membuat tiket');
-    } finally {
-      setSubmitLoading(false);
-    }
-  }, [isLocked, formData, fetchTickets]);
+    await createTicketMutation.mutateAsync(formData);
+  }, [isLocked, formData, createTicketMutation]);
 
   const paginatedTickets = useMemo(() => {
     const start = (currentPage - 1) * pageLimit;

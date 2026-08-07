@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -47,59 +48,61 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
   fetchProducts,
   activeTab
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
 
-  const [opnameSessions, setOpnameSessions] = useState<OpnameSession[]>([]);
-  const [opnameLoading, setOpnameLoading] = useState(false);
   const [activeOpnameSessionId, setActiveOpnameSessionId] = useState<string | null>(null);
   const [isCreateOpnameModalOpen, setIsCreateOpnameModalOpen] = useState(false);
   const [newOpnameNotes, setNewOpnameNotes] = useState('');
   const [newOpnameCategoryFilter, setNewOpnameCategoryFilter] = useState('ALL');
-  const [createOpnameLoading, setCreateOpnameLoading] = useState(false);
 
-  const fetchOpnameSessions = useCallback(async () => {
-    try {
-      setOpnameLoading(true);
+  const opnameQuery = useQuery({
+    queryKey: ['koperasi-opname-history'],
+    queryFn: async () => {
       const response = await api.get('/cooperative/toko/opname');
-      setOpnameSessions(response.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil data sesi opname');
-    } finally {
-      setOpnameLoading(false);
-    }
-  }, []);
+      return (Array.isArray(response.data) ? response.data : []) as OpnameSession[];
+    },
+    enabled: activeTab === 'opname',
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (activeTab === 'opname') {
-      fetchOpnameSessions();
-    }
-  }, [activeTab, fetchOpnameSessions]);
+  const opnameSessions = opnameQuery.data || [];
+  const opnameLoading = opnameQuery.isLoading;
+  const fetchOpnameSessions = async () => {
+    await opnameQuery.refetch();
+  };
 
-  const handleCreateOpnameSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateOpnameLoading(true);
-    try {
-      const response = await api.post('/cooperative/toko/opname', {
-        notes: newOpnameNotes.trim(),
-        categoryFilter: newOpnameCategoryFilter
-      });
+  const createOpnameMutation = useMutation({
+    mutationFn: async (payload: { notes: string; categoryFilter: string }) => {
+      const response = await api.post('/cooperative/toko/opname', payload);
+      return response.data;
+    },
+    onSuccess: (data) => {
       toast.success('Sesi Stock Opname berhasil dibuat');
       setNewOpnameNotes('');
       setNewOpnameCategoryFilter('ALL');
       setIsCreateOpnameModalOpen(false);
-      
-      // Auto-focus and load the new session detail
-      setActiveOpnameSessionId(response.data.id);
-      fetchOpnameSessions();
-    } catch (error) {
-      console.error(error);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+      if (data?.id) {
+        setActiveOpnameSessionId(data.id);
+      }
+    },
+    onError: (error) => {
       const err = error as AxiosErrorLike;
-      toast.error(err.response?.data?.message || 'Gagal membuat sesi opname');
-    } finally {
-      setCreateOpnameLoading(false);
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Gagal membuat sesi stock opname');
     }
+  });
+
+  const createOpnameLoading = createOpnameMutation.isPending;
+
+  const handleCreateOpnameSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createOpnameMutation.mutateAsync({
+      notes: newOpnameNotes.trim(),
+      categoryFilter: newOpnameCategoryFilter
+    });
   };
 
   return (

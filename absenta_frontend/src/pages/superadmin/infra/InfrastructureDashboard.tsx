@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { Badge } from '@/components/ui/Badge';
 import { infraApi, type GlobalSocketStats, type TenantSocketStats } from '@/api/superadmin-infra.api';
@@ -8,42 +9,31 @@ import { Activity, Users, Cpu, Zap, ShieldCheck } from 'lucide-react';
 import { InfraSocketPanel } from '@/components/superadmin/infra/InfraSocketPanel';
 
 export default function InfrastructureDashboard() {
-  const [stats, setStats] = useState<GlobalSocketStats | null>(null);
   const [history, setHistory] = useState<{ time: string; rate: number }[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    try {
+  const statsQuery = useQuery({
+    queryKey: ['superadmin-infra-global-stats'],
+    queryFn: async () => {
       const response = await infraApi.getGlobalStats();
       const data = response.data;
-      setStats(data);
-      
-      // Update history untuk grafik tren real-time
       setHistory(prev => {
         const newPoint = { 
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), 
           rate: data.eventRate 
         };
         const newHistory = [...prev, newPoint];
-        if (newHistory.length > 20) newHistory.shift(); // Batasi 20 titik untuk visual kompak
+        if (newHistory.length > 20) newHistory.shift();
         return newHistory;
       });
-      
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('Gagal mengambil statistik infrastruktur. Pastikan server backend berjalan.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data;
+    },
+    refetchInterval: 2000,
+    staleTime: 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 2000); // Polling intensif real-time 2 detik
-    return () => clearInterval(interval);
-  }, []);
+  const stats = statsQuery.data || null;
+  const loading = statsQuery.isLoading;
+  const error = statsQuery.error ? 'Gagal mengambil statistik infrastruktur. Pastikan server backend berjalan.' : null;
 
   const getSystemMood = () => {
     if (!stats) return { mood: 'Mencoba terhubung...', status: 'blue', textClass: 'text-blue-500' };

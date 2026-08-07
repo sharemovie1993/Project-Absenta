@@ -12,6 +12,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { requestWithFallback, formatErrorMessage } from '../../../api/apiUtils';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
+import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
+
 
 // Strict TypeScript Interfaces for Hardening
 export interface SiswaDetail {
@@ -74,9 +76,26 @@ const SesiAttendanceRow = React.memo(({
       )}
     >
       <div className="min-w-0">
-        <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
-          {record.Siswa?.nama_siswa || studentId}
-        </p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
+            {record.Siswa?.nama_siswa || studentId}
+          </p>
+          {record.catatan?.includes('PULANG AWAL') && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50">
+              🟧 Pulang Awal
+            </span>
+          )}
+          {record.catatan?.includes('IZIN SEMENTARA') && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300/50">
+              🟨 Izin Sementara
+            </span>
+          )}
+          {record.catatan?.includes('DISPENSASI') && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300/50">
+              🟦 Dispensasi
+            </span>
+          )}
+        </div>
         <p className="hidden sm:block text-[8px] text-gray-400 font-bold truncate">NIS: {record.Siswa?.nis || '-'}</p>
         {record.catatan && (
           <p className="text-[7px] text-indigo-500 font-black italic truncate mt-0.5">
@@ -301,7 +320,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
     <div className="space-y-4 py-1">
       {/* 0. Mode Toggle (Operational only) */}
       {!isReportMode && (
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="📜 SOP Absensi" />
           <button 
             onClick={() => setIsSlideMode(!isSlideMode)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors border border-indigo-100 dark:border-indigo-800/50"

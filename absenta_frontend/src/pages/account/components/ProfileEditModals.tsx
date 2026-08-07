@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Modal, ModalFooter, Input, Label, Button, Loader
 } from '../../../components/ui';
@@ -46,12 +47,27 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = React.memo(({
   onSuccess,
   onError
 }) => {
+  const queryClient = useQueryClient();
   const summaryName = user?.full_name || '';
 
-  // Dropdowns state
-  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
-  const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
+  // Dropdowns state via useQuery
+  const kelasOptionsQuery = useQuery({
+    queryKey: ['kelas-dropdown-profile'],
+    queryFn: () => getKelasForDropdown(),
+    enabled: isOpen && isSiswa,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const tahunOptionsQuery = useQuery({
+    queryKey: ['tahun-dropdown-profile'],
+    queryFn: () => getTahunPelajaranForDropdown(),
+    enabled: isOpen && isSiswa,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const kelasOptions = kelasOptionsQuery.data || [];
+  const tahunOptions = tahunOptionsQuery.data || [];
+  const loadingDropdowns = kelasOptionsQuery.isLoading || tahunOptionsQuery.isLoading;
 
   // Form states
   const [editNama, setEditNama] = useState('');
@@ -106,29 +122,97 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = React.memo(({
   const [editAlasanKeluar, setEditAlasanKeluar] = useState('');
   const [editStatus, setEditStatus] = useState('');
 
-  const [saving, setSaving] = useState(false);
+  const saveProfileMutation = useMutation({
+    mutationFn: async () => {
+      if (isGuru && guruProfile?.id) {
+        const payload: any = {
+          nama_guru: editNama,
+          nip: editKode || undefined,
+          no_hp: editHp || undefined,
+          alamat: editAlamat || undefined,
+          tempat_lahir: editTempatLahir || undefined,
+          tanggal_lahir: editLahir || undefined,
+          jenis_kelamin: editJK || undefined,
+          email: editEmail || undefined,
+          no_rfid: editNoRfid || undefined,
+          agama: editAgama || undefined,
+          status_kepegawaian: editStatusKepegawaian || undefined,
+          pendidikan_terakhir: editPendidikanTerakhir || undefined,
+        };
+        const res = await guruApi.update(guruProfile.id, payload);
+        return { type: 'guru', data: res.data };
+      } else if (isSiswa && siswaProfile?.id) {
+        const payload: any = {
+          nama_siswa: editNama,
+          nis: editKode || undefined,
+          no_hp: editHp || undefined,
+          alamat: editAlamat || undefined,
+          tanggal_lahir: editLahir || undefined,
+          jenis_kelamin: editJK || undefined,
+          nisn: editNisn || undefined,
+          nik: editNik || undefined,
+          tempat_lahir: editTempatLahir || undefined,
+          dusun: editDusun || undefined,
+          kelurahan: editKelurahan || undefined,
+          kecamatan: editKecamatan || undefined,
+          kabupaten: editKabupaten || undefined,
+          provinsi: editProvinsi || undefined,
+          rt: editRt || undefined,
+          rw: editRw || undefined,
+          kode_pos: editKodePos || undefined,
+          transportasi: editTransportasi || undefined,
+          nama_ayah: editNamaAyah || undefined,
+          nik_ayah: editNikAyah || undefined,
+          pekerjaan_ayah: editPekerjaanAyah || undefined,
+          pendidikan_ayah: editPendidikanAyah || undefined,
+          penghasilan_ayah: editPenghasilanAyah || undefined,
+          nama_ibu: editNamaIbu || undefined,
+          nik_ibu: editNikIbu || undefined,
+          pekerjaan_ibu: editPekerjaanIbu || undefined,
+          pendidikan_ibu: editPendidikanIbu || undefined,
+          penghasilan_ibu: editPenghasilanIbu || undefined,
+          nama_wali: editNamaWali || undefined,
+          hubungan_wali: editHubunganWali || undefined,
+          pekerjaan_wali: editPekerjaanWali || undefined,
+          penghasilan_wali: editPenghasilanWali || undefined,
+          anak_ke: editAnakKe === '' ? undefined : Number(editAnakKe),
+          kebutuhan_khusus: editKebutuhanKhusus || undefined,
+          penerima_kps: editPenerimaKps,
+          penerima_kip: editPenerimaKip,
+          no_kip: editNoKip || undefined,
+          kelas_id: editKelasId || undefined,
+          tahun_pelajaran_id: editTahunPelajaranId || undefined,
+          semester_id: editSemesterId || undefined,
+          tanggal_masuk: editTanggalMasuk || undefined,
+          tanggal_keluar: editTanggalKeluar || undefined,
+          alasan_keluar: editAlasanKeluar || undefined,
+          status: editStatus || undefined,
+          no_rfid: editNoRfid || undefined,
+        };
+        const res = await siswaApi.update(siswaProfile.id, payload);
+        return { type: 'siswa', data: res.data };
+      }
+      return null;
+    },
+    onSuccess: (res) => {
+      if (res) {
+        queryClient.invalidateQueries({ queryKey: ['profile-me'] });
+        onSuccess(res.type as any, res.data);
+      }
+    },
+    onError: (err: any) => {
+      onError(err.message || 'Gagal menyimpan profil');
+    }
+  });
+
+  const saving = saveProfileMutation.isPending;
+
+  const handleSaveProfile = async () => {
+    await saveProfileMutation.mutateAsync();
+  };
 
   useEffect(() => {
     if (isOpen) {
-      const loadDropdowns = async () => {
-        setLoadingDropdowns(true);
-        try {
-          if (isSiswa) {
-            const [kelas, tahun] = await Promise.all([
-              getKelasForDropdown(),
-              getTahunPelajaranForDropdown()
-            ]);
-            setKelasOptions(kelas);
-            setTahunOptions(tahun);
-          }
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setLoadingDropdowns(false);
-        }
-      };
-      loadDropdowns();
-
       if (isGuru && guruProfile) {
         setEditNama(guruProfile.nama_guru || summaryName);
         setEditKode(guruProfile.nip || '');
@@ -200,86 +284,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = React.memo(({
       }
     }
   }, [isOpen, isGuru, isSiswa, guruProfile, siswaProfile, summaryName]);
-
-  const handleSaveProfile = async () => {
-    setSaving(true);
-    try {
-      if (isGuru && guruProfile?.id) {
-        const payload: any = {
-          nama_guru: editNama,
-          nip: editKode || undefined,
-          no_hp: editHp || undefined,
-          alamat: editAlamat || undefined,
-          tempat_lahir: editTempatLahir || undefined,
-          tanggal_lahir: editLahir || undefined,
-          jenis_kelamin: editJK || undefined,
-          email: editEmail || undefined,
-          no_rfid: editNoRfid || undefined,
-          agama: editAgama || undefined,
-          status_kepegawaian: editStatusKepegawaian || undefined,
-          pendidikan_terakhir: editPendidikanTerakhir || undefined,
-        };
-        const res = await guruApi.update(guruProfile.id, payload);
-        onSuccess('guru', res.data);
-      } else if (isSiswa && siswaProfile?.id) {
-        const payload: any = {
-          nama_siswa: editNama,
-          nis: editKode || undefined,
-          no_hp: editHp || undefined,
-          alamat: editAlamat || undefined,
-          tanggal_lahir: editLahir || undefined,
-          jenis_kelamin: editJK || undefined,
-          nisn: editNisn || undefined,
-          nik: editNik || undefined,
-          tempat_lahir: editTempatLahir || undefined,
-          dusun: editDusun || undefined,
-          kelurahan: editKelurahan || undefined,
-          kecamatan: editKecamatan || undefined,
-          kabupaten: editKabupaten || undefined,
-          provinsi: editProvinsi || undefined,
-          rt: editRt || undefined,
-          rw: editRw || undefined,
-          kode_pos: editKodePos || undefined,
-          transportasi: editTransportasi || undefined,
-          nama_ayah: editNamaAyah || undefined,
-          nik_ayah: editNikAyah || undefined,
-          pekerjaan_ayah: editPekerjaanAyah || undefined,
-          pendidikan_ayah: editPendidikanAyah || undefined,
-          penghasilan_ayah: editPenghasilanAyah || undefined,
-          nama_ibu: editNamaIbu || undefined,
-          nik_ibu: editNikIbu || undefined,
-          pekerjaan_ibu: editPekerjaanIbu || undefined,
-          pendidikan_ibu: editPendidikanIbu || undefined,
-          penghasilan_ibu: editPenghasilanIbu || undefined,
-          nama_wali: editNamaWali || undefined,
-          hubungan_wali: editHubunganWali || undefined,
-          pekerjaan_wali: editPekerjaanWali || undefined,
-          penghasilan_wali: editPenghasilanWali || undefined,
-          anak_ke: editAnakKe === '' ? undefined : Number(editAnakKe),
-          kebutuhan_khusus: editKebutuhanKhusus || undefined,
-          penerima_kps: editPenerimaKps,
-          penerima_kip: editPenerimaKip,
-          no_kip: editNoKip || undefined,
-          kelas_id: editKelasId || undefined,
-          tahun_pelajaran_id: editTahunPelajaranId || undefined,
-          semester_id: editSemesterId || undefined,
-          tanggal_masuk: editTanggalMasuk || undefined,
-          tanggal_keluar: editTanggalKeluar || undefined,
-          alasan_keluar: editAlasanKeluar || undefined,
-          status: editStatus || undefined,
-          no_rfid: editNoRfid || undefined,
-        };
-        const res = await siswaApi.update(siswaProfile.id, payload);
-        onSuccess('siswa', res.data);
-      } else {
-        onSuccess('user', null);
-      }
-    } catch (e: any) {
-      onError(e?.response?.data?.message || 'Gagal menyimpan profil.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const renderGeneralForm = () => (
     <div className="space-y-6">

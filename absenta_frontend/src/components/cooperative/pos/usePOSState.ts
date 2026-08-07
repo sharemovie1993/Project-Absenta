@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -95,12 +96,10 @@ export interface NonMemberCandidate {
 }
 
 export const usePOSState = () => {
+  const queryClient = useQueryClient();
   const { user, subscription, can } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
-  const [processing, setProcessing] = useState(false);
 
   // States Koperasi Integrasi
   const [selectedMember, setSelectedMember] = useState<CoopMember | null>(null);
@@ -115,16 +114,11 @@ export const usePOSState = () => {
   const [pin, setPin] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [lastSaleRecord, setLastSaleRecord] = useState<SaleRecord | null>(null);
-  const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // States for shopping history (catalog view)
-  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
-  const [salesLoading, setSalesLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [memberInfo, setMemberInfo] = useState<CoopMember | null>(null);
 
   // Voucher integration states
   const [voucherCode, setVoucherCode] = useState('');
@@ -143,7 +137,6 @@ export const usePOSState = () => {
   const [selectedNonMember, setSelectedNonMember] = useState<NonMemberCandidate | null>(null);
   const [nextMemberNumber, setNextMemberNumber] = useState('');
   const [registerPin, setRegisterPin] = useState('123456');
-  const [registering, setRegistering] = useState(false);
   const [selectedMemberPoints, setSelectedMemberPoints] = useState<number | null>(null);
 
   // Table Sorting and Pagination States
@@ -175,80 +168,78 @@ export const usePOSState = () => {
     ? "Transaksi penjualan koperasi" 
     : (canViewAllTx ? "Daftar dan audit seluruh riwayat transaksi penjualan retail" : "Daftar produk dan harga barang koperasi");
 
-  const fetchProducts = useCallback(async () => {
-    if (isLocked || subscription === undefined) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
+  // React Query setup
+  const productsQuery = useQuery({
+    queryKey: ['koperasi-pos-products'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/toko');
-      setProducts(res.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal memuat data produk');
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked, subscription]);
+      return (Array.isArray(res.data) ? res.data : []) as Product[];
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const products = productsQuery.data || [];
+  const loading = productsQuery.isLoading;
+  const fetchProducts = useCallback(async () => {
+    await productsQuery.refetch();
+  }, [productsQuery]);
 
-  const fetchCategories = useCallback(async () => {
-    if (isLocked || subscription === undefined) {
-      setCategories([]);
-      return;
-    }
-    try {
+  const categoriesQuery = useQuery({
+    queryKey: ['koperasi-pos-categories'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/toko/categories');
-      setCategories(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  }, [isLocked, subscription]);
+      return (Array.isArray(res.data) ? res.data : []) as ProductCategory[];
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const categories = categoriesQuery.data || [];
+  const fetchCategories = useCallback(async () => {
+    await categoriesQuery.refetch();
+  }, [categoriesQuery]);
 
-  const loadCoopSettings = useCallback(async () => {
-    if (isLocked || subscription === undefined) return;
-    try {
+  const coopSettingsQuery = useQuery({
+    queryKey: ['koperasi-settings'],
+    queryFn: async () => {
       const data = await fetchCoopSettings();
-      setCoopSettings(data);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [isLocked, subscription]);
+      return data;
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const coopSettings = coopSettingsQuery.data || null;
+  const loadCoopSettings = useCallback(async () => {
+    await coopSettingsQuery.refetch();
+  }, [coopSettingsQuery]);
 
-  const fetchSalesHistory = useCallback(async () => {
-    try {
-      setSalesLoading(true);
+  const salesHistoryQuery = useQuery({
+    queryKey: ['koperasi-pos-history'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/toko/history');
-      setSalesHistory(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Failed to fetch sales history:', err);
-    } finally {
-      setSalesLoading(false);
-    }
-  }, []);
+      return (Array.isArray(res.data) ? res.data : []) as SaleRecord[];
+    },
+    enabled: !hasCashierAccess,
+    staleTime: 5 * 60 * 1000,
+  });
+  const salesHistory = salesHistoryQuery.data || [];
+  const salesLoading = salesHistoryQuery.isLoading;
+  const fetchSalesHistory = useCallback(async () => {
+    await salesHistoryQuery.refetch();
+  }, [salesHistoryQuery]);
 
-  const fetchMemberInfo = useCallback(async () => {
-    try {
+  const memberInfoQuery = useQuery({
+    queryKey: ['koperasi-member-me'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/members/me');
-      if (res.data?.success) {
-        setMemberInfo(res.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch member info:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchProducts();
-    fetchCategories();
-    loadCoopSettings();
-    if (!hasCashierAccess) {
-      fetchSalesHistory();
-      fetchMemberInfo();
-    }
-  }, [subscription, fetchProducts, fetchCategories, loadCoopSettings, hasCashierAccess, fetchSalesHistory, fetchMemberInfo]);
+      return res.data?.success ? (res.data.data as CoopMember) : null;
+    },
+    enabled: !hasCashierAccess,
+    staleTime: 5 * 60 * 1000,
+  });
+  const memberInfo = memberInfoQuery.data || null;
+  const fetchMemberInfo = useCallback(async () => {
+    await memberInfoQuery.refetch();
+  }, [memberInfoQuery]);
 
   const addToCart = useCallback((product: Product) => {
       if (isLocked) return;
@@ -436,64 +427,69 @@ export const usePOSState = () => {
     }
   }, []);
 
+  const registerMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post('/cooperative/members', payload);
+      return res.data;
+    },
+    onSuccess: async (resData, variables) => {
+      toast.success(`Anggota ${selectedNonMember?.name || ''} berhasil didaftarkan!`);
+      try {
+        const searchRes = await api.get(`/cooperative/toko/members?search=${nextMemberNumber}`);
+        if (searchRes.data && searchRes.data.length > 0) {
+          setSelectedMember(searchRes.data[0]);
+        } else {
+          setSelectedMember({
+            id: resData.id,
+            memberNo: nextMemberNumber,
+            name: selectedNonMember?.name || 'Anggota Baru',
+            type: registerType,
+            sukarelaBalance: 0
+          });
+        }
+      } catch (searchErr) {
+        console.error('Failed to auto-select new member:', searchErr);
+        setSelectedMember({
+          id: resData.id,
+          memberNo: nextMemberNumber,
+          name: selectedNonMember?.name || 'Anggota Baru',
+          type: registerType,
+          sukarelaBalance: 0
+        });
+      }
+      setShowQuickRegisterModal(false);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+    },
+    onError: (err: unknown) => {
+      console.error(err);
+      const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const errMsg = axiosError.response?.data?.message || axiosError.response?.data?.error || axiosError.message || 'Pendaftaran Gagal';
+      toast.error(errMsg);
+    }
+  });
+
+  const registering = registerMutation.isPending;
+
   const handleRegisterSubmit = useCallback(async () => {
     if (!selectedNonMember || !nextMemberNumber || registerPin.length !== 6) return;
-    setRegistering(true);
-    try {
-        const payload: {
-            memberNo: string;
-            type: 'STUDENT' | 'TEACHER';
-            pin: string;
-            siswaId?: string;
-            guruId?: string;
-        } = {
-            memberNo: nextMemberNumber,
-            type: registerType,
-            pin: registerPin
-        };
-        if (registerType === 'STUDENT') {
-            payload.siswaId = selectedNonMember.id;
-        } else {
-            payload.guruId = selectedNonMember.id;
-        }
-
-        const res = await api.post('/cooperative/members', payload);
-        toast.success(`Anggota ${selectedNonMember.name} berhasil didaftarkan!`);
-        
-        try {
-            const searchRes = await api.get(`/cooperative/toko/members?search=${nextMemberNumber}`);
-            if (searchRes.data && searchRes.data.length > 0) {
-                setSelectedMember(searchRes.data[0]);
-            } else {
-                setSelectedMember({
-                    id: res.data.id,
-                    memberNo: nextMemberNumber,
-                    name: selectedNonMember.name,
-                    type: registerType,
-                    sukarelaBalance: 0
-                });
-            }
-        } catch (searchErr) {
-            console.error('Failed to auto-select new member:', searchErr);
-            setSelectedMember({
-                id: res.data.id,
-                memberNo: nextMemberNumber,
-                name: selectedNonMember.name,
-                type: registerType,
-                sukarelaBalance: 0
-            });
-        }
-        
-        setShowQuickRegisterModal(false);
-    } catch (err: unknown) {
-        console.error(err);
-        const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
-        const errMsg = axiosError.response?.data?.message || axiosError.response?.data?.error || axiosError.message || 'Pendaftaran Gagal';
-        toast.error(errMsg);
-    } finally {
-        setRegistering(false);
+    const payload: {
+      memberNo: string;
+      type: 'STUDENT' | 'TEACHER';
+      pin: string;
+      siswaId?: string;
+      guruId?: string;
+    } = {
+      memberNo: nextMemberNumber,
+      type: registerType,
+      pin: registerPin
+    };
+    if (registerType === 'STUDENT') {
+      payload.siswaId = selectedNonMember.id;
+    } else {
+      payload.guruId = selectedNonMember.id;
     }
-  }, [selectedNonMember, nextMemberNumber, registerType, registerPin]);
+    await registerMutation.mutateAsync(payload);
+  }, [selectedNonMember, nextMemberNumber, registerType, registerPin, registerMutation]);
 
   const handleCheckout = useCallback(() => {
       if (isLocked || cart.length === 0) return;
@@ -507,43 +503,48 @@ export const usePOSState = () => {
       setShowPaymentModal(true);
   }, [isLocked, cart]);
 
+  const checkoutMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post('/cooperative/toko/checkout', payload);
+      return res.data;
+    },
+    onSuccess: (resData) => {
+      toast.success('Transaksi Berhasil!');
+      setLastSaleRecord(resData);
+      setCheckoutSuccess(true);
+      setCart([]);
+      setPin('');
+      setVoucherCode('');
+      setAppliedVoucher(null);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-products'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-history'] });
+    },
+    onError: (error: unknown) => {
+      console.error(error);
+      const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const errMsg = axiosError.response?.data?.message || axiosError.response?.data?.error || axiosError.message || 'Transaksi Gagal';
+      toast.error(errMsg);
+    }
+  });
+
+  const processing = checkoutMutation.isPending;
+
   const submitCheckout = useCallback(async () => {
     if (isLocked || cart.length === 0) return;
-    
-    setProcessing(true);
-    try {
-        const items = cart.map(c => ({
-            productId: c.id,
-            quantity: c.qty
-        }));
-
-        const res = await api.post('/cooperative/toko/checkout', {
-            items,
-            memberId: selectedMember?.id || null,
-            paymentMethod,
-            cashAmount: paymentMethod === 'CASH' ? Number(cashReceived) : null,
-            changeAmount: paymentMethod === 'CASH' ? (Number(cashReceived) - discountedTotal) : null,
-            pin: paymentMethod === 'SAVING' ? pin : null,
-            voucherCode: appliedVoucher ? appliedVoucher.code : null
-        });
-
-        toast.success('Transaksi Berhasil!');
-        setLastSaleRecord(res.data);
-        setCheckoutSuccess(true);
-        setCart([]);
-        setPin('');
-        setVoucherCode('');
-        setAppliedVoucher(null);
-        fetchProducts(); // Refresh stock
-    } catch (error: unknown) {
-        console.error(error);
-        const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
-        const errMsg = axiosError.response?.data?.message || axiosError.response?.data?.error || axiosError.message || 'Transaksi Gagal';
-        toast.error(errMsg);
-    } finally {
-        setProcessing(false);
-    }
-  }, [isLocked, cart, selectedMember, paymentMethod, cashReceived, pin, discountedTotal, appliedVoucher, fetchProducts]);
+    const items = cart.map(c => ({
+      productId: c.id,
+      quantity: c.qty
+    }));
+    await checkoutMutation.mutateAsync({
+      items,
+      memberId: selectedMember?.id || null,
+      paymentMethod,
+      cashAmount: paymentMethod === 'CASH' ? Number(cashReceived) : null,
+      changeAmount: paymentMethod === 'CASH' ? (Number(cashReceived) - discountedTotal) : null,
+      pin: paymentMethod === 'SAVING' ? pin : null,
+      voucherCode: appliedVoucher ? appliedVoucher.code : null
+    });
+  }, [isLocked, cart, selectedMember, paymentMethod, cashReceived, pin, discountedTotal, appliedVoucher, checkoutMutation]);
 
   const printReceipt = useCallback((sale: SaleRecord) => {
     if (!sale || !coopSettings) return;

@@ -92,73 +92,53 @@ export default function SupportTicketPage() {
   // 📡 API CALLS
   // =========================================================================
   
-  // Mengambil daftar tiket milik sekolah ini
-  const fetchTickets = useCallback(async (showToast = false) => {
-    setIsLoading(true);
-    try {
+  // School Tickets Query
+  const schoolTicketsQuery = useQuery({
+    queryKey: ['school-support-tickets', filterStatus, filterCategory],
+    queryFn: async () => {
       const filters: Record<string, string> = {};
       if (filterStatus !== 'ALL') filters.status = filterStatus as SupportTicketStatus;
       if (filterCategory !== 'ALL') filters.category = filterCategory as SupportTicketCategory;
-      
       const res = await supportTicketApi.getSchoolTickets(filters);
-      if (res.success && res.data) {
-        setTickets(res.data);
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-        // Sinkronisasikan unread status awal dari database ke state local
-        setUnreadTicketIds(prev => {
-          const next = new Set(prev);
-          res.data.forEach((t: SupportTicket) => {
-            if (t.unread_count && t.unread_count > 0) {
-              next.add(t.id);
-            } else if (t.unread_count === 0) {
-              next.delete(t.id);
-            }
-          });
-          return next;
-        });
+  const tickets = schoolTicketsQuery.data || [];
+  const isLoading = schoolTicketsQuery.isLoading;
 
-        if (showToast) toast.success('Daftar tiket diperbarui.');
-      } else {
-        toast.error(res.message || 'Gagal memuat daftar tiket.');
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Gagal terhubung ke server.');
-    } finally {
-      setIsLoading(false);
+  const fetchTickets = useCallback(async () => {
+    await schoolTicketsQuery.refetch();
+  }, [schoolTicketsQuery]);
+
+  // Selected Ticket Detail Query
+  const ticketDetailQuery = useQuery({
+    queryKey: ['school-support-ticket-detail', selectedTicket?.id],
+    queryFn: async () => {
+      if (!selectedTicket?.id) return null;
+      const res = await supportTicketApi.getSchoolTicketDetail(selectedTicket.id);
+      return res.data || null;
+    },
+    enabled: !!selectedTicket?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (ticketDetailQuery.data) {
+      setSelectedTicket(ticketDetailQuery.data);
+      setMessages(ticketDetailQuery.data.Messages || []);
     }
-  }, [filterStatus, filterCategory]);
+  }, [ticketDetailQuery.data]);
 
-  // Mengambil detail tiket terpilih (termasuk percakapan pesan)
+  const isDetailLoading = ticketDetailQuery.isLoading;
+
   const fetchTicketDetail = useCallback(async (ticketId: string) => {
-    setIsDetailLoading(true);
-
     const targetTicket = tickets.find(t => t.id === ticketId);
-    const unreadCount = targetTicket?.unread_count || (unreadTicketIds.has(ticketId) ? 1 : 0);
-    setActiveUnreadCount(unreadCount);
-    setLiveUnreadCount(0); // Reset live unread count saat ganti tiket
-    setJustOpenedTicket(true);
-
-    // Bersihkan penanda belum dibaca secara instan saat tiket dibuka
-    setUnreadTicketIds(prev => {
-      const next = new Set(prev);
-      next.delete(ticketId);
-      return next;
-    });
-
-    try {
-      const res = await supportTicketApi.getSchoolTicketDetail(ticketId);
-      if (res.success && res.data) {
-        setSelectedTicket(res.data);
-        setMessages(res.data.Messages || []);
-      } else {
-        toast.error(res.message || 'Gagal memuat detail tiket.');
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Gagal terhubung ke server.');
-    } finally {
-      setIsDetailLoading(false);
+    if (targetTicket) {
+      setSelectedTicket(targetTicket);
     }
-  }, [tickets, unreadTicketIds]);
+  }, [tickets]);
 
 
   // Membalas pesan aduan

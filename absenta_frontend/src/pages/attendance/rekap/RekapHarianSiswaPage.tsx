@@ -62,58 +62,62 @@ export default function RekapHarianSiswaPage() {
                       subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadDropdowns = async () => {
+  // Dropdowns Query
+  const dropdownsQuery = useQuery({
+    queryKey: ['rekap-harian-siswa-dropdowns', isSiswa, user?.id],
+    queryFn: async () => {
       const opsi = await dropdownApi.getTahunPelajaranForDropdown();
-      if (!isMounted) return;
-      setTahunOptions(opsi);
       const active = await dropdownApi.getActiveTahunPelajaran();
-      if (!isMounted) return;
-      if (active?.id) setTahunPelajaranId(active.id);
-      
+      let sOpts: DropdownOption[] = [];
+      let autoSiswaId = '';
+
       if (isSiswa && user?.id) {
-        try {
-          const resAll = await siswaApi.getAll({ limit: 1000 });
-          if (!isMounted) return;
-          const myProfile = (resAll.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
-          if (myProfile) {
-            setSiswaOptions([{ label: myProfile.nama_siswa, value: myProfile.id }]);
-            setSiswaId(myProfile.id);
-          }
-        } catch (e) {
-          console.error("Failed to auto-select siswa", e);
+        const resAll = await siswaApi.getAll({ limit: 1000 });
+        const myProfile = (resAll.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
+        if (myProfile) {
+          sOpts = [{ label: myProfile.nama_siswa, value: myProfile.id }];
+          autoSiswaId = myProfile.id;
         }
       } else {
-        const siswa = await dropdownApi.getSiswaForDropdown();
-        if (!isMounted) return;
-        setSiswaOptions(siswa);
+        sOpts = await dropdownApi.getSiswaForDropdown();
       }
-    };
-    loadDropdowns();
-    return () => { isMounted = false; };
-  }, [isSiswa, user?.id]);
+
+      return {
+        tahun: opsi || [],
+        activeId: active?.id || '',
+        siswaOpts: sOpts,
+        autoSiswaId
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
-    if (isSiswa && siswaId && tanggal && tahunPelajaranId) {
-       fetchData();
+    if (dropdownsQuery.data) {
+      setTahunOptions(dropdownsQuery.data.tahun);
+      if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
+      setSiswaOptions(dropdownsQuery.data.siswaOpts);
+      if (dropdownsQuery.data.autoSiswaId && !siswaId) setSiswaId(dropdownsQuery.data.autoSiswaId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siswaId, isSiswa]);
+  }, [dropdownsQuery.data, tahunPelajaranId, siswaId]);
+
+  // Main Rekap Query
+  const rekapQuery = useQuery({
+    queryKey: ['rekap-harian-siswa-data', siswaId, tanggal, tahunPelajaranId],
+    queryFn: async () => {
+      const res = await getRekapHarianSiswa(siswaId, { tanggal, tahun_pelajaran_id: tahunPelajaranId || undefined });
+      return (res.data as RekapHarianResponse) || null;
+    },
+    enabled: !!siswaId && !!tanggal && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = rekapQuery.data || null;
+  const loading = rekapQuery.isLoading;
 
   const fetchData = useCallback(async () => {
-    if (isLocked) return;
-    if (!siswaId || !tanggal) return;
-    setLoading(true);
-    try {
-      const res = await getRekapHarianSiswa(siswaId, { tanggal, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setData(res.data as RekapHarianResponse);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked, siswaId, tanggal, tahunPelajaranId]);
+    await rekapQuery.refetch();
+  }, [rekapQuery]);
 
   if (isLoading) {
     return (

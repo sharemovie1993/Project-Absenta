@@ -142,82 +142,79 @@ export function RekapHarianKelasContent({
   const subFeatures = subRecord?.features || subRecord?.Plan?.features_json || subRecord?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  const [isWaliKelasAutoFiltered, setIsWaliKelasAutoFiltered] = useState<boolean>(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadDropdowns = async () => {
+  // Dropdowns Query
+  const dropdownsQuery = useQuery({
+    queryKey: ['rekap-harian-kelas-dropdowns'],
+    queryFn: async () => {
       const tahun = await dropdownApi.getTahunPelajaranForDropdown();
-      if (isMounted) setTahunOptions(tahun);
-      
       const active = await dropdownApi.getActiveTahunPelajaran();
-      if (isMounted && active?.id) setTahunPelajaranId(active.id);
-      
       const kelas = await dropdownApi.getKelasForDropdown();
-      if (isMounted) {
-        setKelasOptions(kelas);
-        
-        let activeWaliKelasId = customUser?.guru_profile?.wali_kelas_di?.id || 
-                                customUser?.guru_profile?.WaliKelas?.[0]?.kelas_id || 
-                                customUser?.guru_profile?.WaliKelas?.[0]?.kelas?.id ||
-                                customUser?.kelas_id;
+      return {
+        tahun: tahun || [],
+        activeId: active?.id || '',
+        kelas: kelas || []
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-        if (!activeWaliKelasId && (customUser?.guru_profile || customUser?.role === 'GURU')) {
-          try {
-            const meRes = await guruApi.getMe();
-            const meData = meRes?.data as unknown as CustomGuruProfile | undefined;
-            if (meData) {
-              activeWaliKelasId = meData?.wali_kelas_di?.id || 
-                                 meData?.WaliKelas?.[0]?.kelas_id || 
-                                 meData?.WaliKelas?.[0]?.kelas?.id;
-            }
-          } catch (e) {}
-        }
-
-        const targetKelasId = initialKelasId || activeWaliKelasId || (kelas.length > 0 ? kelas[0].value : '');
-        if (targetKelasId) {
-          setKelasId(targetKelasId);
-          if (activeWaliKelasId && targetKelasId === activeWaliKelasId) {
-            setIsWaliKelasAutoFiltered(true);
-          }
-        }
-      }
-    };
-    loadDropdowns();
-    return () => { isMounted = false; };
-  }, [initialKelasId, customUser]);
-
-  // Load Kop Surat Data
   useEffect(() => {
-    let isMounted = true;
-    const loadKopSuratData = async () => {
-      try {
-        const sek = await sekolahApi.getProfile();
-        if (isMounted) setSekolah(sek as unknown as Sekolah);
-      } catch (e) {
-        console.warn('Gagal memuat profil sekolah:', e);
-      }
+    if (dropdownsQuery.data) {
+      setTahunOptions(dropdownsQuery.data.tahun);
+      if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
+      setKelasOptions(dropdownsQuery.data.kelas);
+      if (!kelasId && dropdownsQuery.data.kelas.length > 0) setKelasId(dropdownsQuery.data.kelas[0].value);
+    }
+  }, [dropdownsQuery.data, tahunPelajaranId, kelasId]);
 
-      const tenantId = (user as unknown as { tenant_id?: string })?.tenant_id;
+  // Kop Query
+  const kopQuery = useQuery({
+    queryKey: ['rekap-harian-kelas-kop', (user as any)?.tenant_id],
+    queryFn: async () => {
+      const sek = await sekolahApi.getProfile().catch(() => null);
+      let tenantData = null;
+      const tenantId = (user as any)?.tenant_id;
       if (tenantId) {
-        try {
-          const res = await getTenantById(tenantId);
-          if (isMounted && res.success && res.data) setTenantInfo(res.data);
-        } catch (e) {
-          console.warn('Gagal memuat info tenant:', e);
-        }
+        const res = await getTenantById(tenantId).catch(() => null);
+        if (res?.success) tenantData = res.data;
       }
+      const resStruktur = await getStrukturList({ is_active: true }).catch(() => null);
+      const strList = resStruktur?.success ? resStruktur.data : [];
+      return { sekolah: sek, tenantInfo: tenantData, strukturList: strList };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      try {
-        const res = await getStrukturList({ is_active: true });
-        if (isMounted && res.success && res.data) setStrukturList(res.data);
-      } catch (e) {
-        console.warn('Gagal memuat struktur organisasi:', e);
-      }
-    };
-    loadKopSuratData();
-    return () => { isMounted = false; };
-  }, [user]);
+  const sekolah = kopQuery.data?.sekolah || null;
+  const tenantInfo = kopQuery.data?.tenantInfo || null;
+  const strukturList = kopQuery.data?.strukturList || [];
+
+  // Main Rekap Harian Query
+  const rekapQuery = useQuery({
+    queryKey: ['rekap-harian-kelas-data', kelasId, tanggal, tahunPelajaranId],
+    queryFn: async () => {
+      const res = await getRekapHarianKelas(kelasId, { tanggal, tahun_pelajaran_id: tahunPelajaranId || undefined });
+      const fetchedRows = (Array.isArray(res?.data) ? (res.data as RekapHarianKelasRow[]) : []) || [];
+      const fetchedMeta = res?.meta ? (res.meta as RekapHarianKelasMeta) : {
+        kelasId,
+        tanggal,
+        totalSiswa: fetchedRows.length,
+        totalHadir: fetchedRows.filter(r => r.status === 'HADIR' || r.status === 'TERLAMBAT').length,
+        totalAbsen: fetchedRows.filter(r => r.status !== 'HADIR' && r.status !== 'TERLAMBAT').length,
+      };
+      return { rows: fetchedRows, meta: fetchedMeta };
+    },
+    enabled: !!kelasId && !!tanggal && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const rows = rekapQuery.data?.rows || null;
+  const meta = rekapQuery.data?.meta || null;
+  const loading = rekapQuery.isLoading;
+
+  const fetchData = useCallback(async () => {
+    await rekapQuery.refetch();
+  }, [rekapQuery]);
 
   // Fetch Logos
   useEffect(() => {
@@ -241,43 +238,6 @@ export function RekapHarianKelasContent({
       setLogoSekolahBase64(null);
     }
   }, [tenantInfo?.logo_url, sekolah?.logo_url]);
-
-  const fetchData = useCallback(async () => {
-    if (isLocked) return;
-
-    const validation = rekapHarianKelasFilterSchema.safeParse({ kelasId, tanggal, tahunPelajaranId });
-    if (!validation.success) return;
-
-    setLoading(true);
-    try {
-      const { kelasId: validKelasId, tanggal: validTanggal, tahunPelajaranId: validTahunId } = validation.data;
-      const res = await getRekapHarianKelas(validKelasId, { tanggal: validTanggal, tahun_pelajaran_id: validTahunId || undefined });
-      
-      const fetchedRows = (Array.isArray(res?.data) ? (res.data as RekapHarianKelasRow[]) : []) || [];
-      setRows(fetchedRows);
-      setMeta(res?.meta ? (res.meta as RekapHarianKelasMeta) : {
-        kelasId: validKelasId,
-        tanggal: validTanggal,
-        totalSiswa: fetchedRows.length,
-        totalHadir: fetchedRows.filter(r => r.status === 'HADIR' || r.status === 'TERLAMBAT').length,
-        totalAbsen: fetchedRows.filter(r => r.status !== 'HADIR' && r.status !== 'TERLAMBAT').length,
-      });
-      setPage(1);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memuat rekap harian kelas');
-      setRows([]);
-      setMeta(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [kelasId, tanggal, tahunPelajaranId, isLocked]);
-
-  useEffect(() => {
-    if (kelasId && tanggal) {
-      fetchData();
-    }
-  }, [kelasId, tanggal, tahunPelajaranId, fetchData]);
 
   // Stat summary counters
   const statsSummary = useMemo(() => {

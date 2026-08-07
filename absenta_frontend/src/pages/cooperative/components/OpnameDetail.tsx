@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../../../components/cooperative/ui/Button';
 import { Card } from '../../../components/cooperative/ui/Card';
@@ -95,14 +96,10 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = ({
   onBack,
   onFinalizeSuccess
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
 
-  const [session, setSession] = useState<OpnameSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [finalizing, setFinalizing] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Local changes dictionary mapping productId -> { physicalStock: number, notes: string }
@@ -110,35 +107,36 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = ({
   const [isDirty, setIsDirty] = useState(false);
 
   // Fetch session details
-  const fetchSessionDetails = useCallback(async () => {
-    try {
-      setLoading(true);
+  const sessionQuery = useQuery({
+    queryKey: ['koperasi-opname-detail', sessionId],
+    queryFn: async () => {
       const res = await api.get(`/cooperative/toko/opname/${sessionId}`);
-      setSession(res.data);
-      
-      // Initialize local changes from database state
-      const initialChanges: Record<string, { physicalStock: number; notes: string }> = {};
-      if (res.data && res.data.items) {
-        res.data.items.forEach((item: OpnameItem) => {
-          initialChanges[item.productId] = {
-            physicalStock: item.physicalStock,
-            notes: item.notes || ''
-          };
-        });
-      }
-      setLocalChanges(initialChanges);
-      setIsDirty(false);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memuat data sesi opname');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
+      return res.data as OpnameSession;
+    },
+    enabled: !!sessionId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const session = sessionQuery.data || null;
+  const loading = sessionQuery.isLoading;
 
   useEffect(() => {
-    fetchSessionDetails();
-  }, [fetchSessionDetails]);
+    if (session && session.items) {
+      const initialChanges: Record<string, { physicalStock: number; notes: string }> = {};
+      session.items.forEach((item: OpnameItem) => {
+        initialChanges[item.productId] = {
+          physicalStock: item.physicalStock,
+          notes: item.notes || ''
+        };
+      });
+      setLocalChanges(initialChanges);
+      setIsDirty(false);
+    }
+  }, [session]);
+
+  const fetchSessionDetails = useCallback(async () => {
+    await sessionQuery.refetch();
+  }, [sessionQuery]);
 
   // Global Barcode Listener for scanning
   useEffect(() => {
@@ -294,34 +292,68 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = ({
   }, [session, localChanges]);
 
   // Save changes as draft
-  const handleSaveDraft = async () => {
-    if (!session) return;
-    setSaving(true);
-    try {
-      const payloadItems = Object.keys(localChanges).map(prodId => ({
-        productId: prodId,
-        physicalStock: localChanges[prodId].physicalStock,
-        notes: localChanges[prodId].notes
-      }));
-
-      await api.put(`/cooperative/toko/opname/${session.id}/items`, {
+  const saveDraftMutation = useMutation({
+    mutationFn: async (payloadItems: any[]) => {
+      const res = await api.put(`/cooperative/toko/opname/${session!.id}/items`, {
         items: payloadItems
       });
-
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Draft opname berhasil disimpan');
       setIsDirty(false);
-      
-      // Reload session from server
-      await fetchSessionDetails();
-    } catch (err) {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-detail', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+    },
+    onError: (err) => {
       console.error(err);
       toast.error('Gagal menyimpan draft opname');
-    } finally {
-      setSaving(false);
     }
+  });
+
+  const saving = saveDraftMutation.isPending;
+
+  const handleSaveDraft = async () => {
+    if (!session) return;
+    const payloadItems = Object.keys(localChanges).map(prodId => ({
+      productId: prodId,
+      physicalStock: localChanges[prodId].physicalStock,
+      notes: localChanges[prodId].notes
+    }));
+    await saveDraftMutation.mutateAsync(payloadItems);
   };
 
   // Finalize / Commit session
+  const finalizeMutation = useMutation({
+    mutationFn: async () => {
+      if (isDirty) {
+        const payloadItems = Object.keys(localChanges).map(prodId => ({
+          productId: prodId,
+          physicalStock: localChanges[prodId].physicalStock,
+          notes: localChanges[prodId].notes
+        }));
+        await api.put(`/cooperative/toko/opname/${session!.id}/items`, {
+          items: payloadItems
+        });
+      }
+      const res = await api.post(`/cooperative/toko/opname/${session!.id}/finalize`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Sesi Stock Opname berhasil difinalisasi!');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-detail', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      onFinalizeSuccess();
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error('Gagal memfinalisasi sesi opname');
+    }
+  });
+
+  const finalizing = finalizeMutation.isPending;
+
   const handleFinalize = async () => {
     if (!session) return;
     
@@ -331,48 +363,32 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = ({
 
     if (!window.confirm(confirmMsg)) return;
 
-    setFinalizing(true);
-    try {
-      // If dirty, save draft first
-      if (isDirty) {
-        const payloadItems = Object.keys(localChanges).map(prodId => ({
-          productId: prodId,
-          physicalStock: localChanges[prodId].physicalStock,
-          notes: localChanges[prodId].notes
-        }));
-
-        await api.put(`/cooperative/toko/opname/${session.id}/items`, {
-          items: payloadItems
-        });
-      }
-
-      await api.post(`/cooperative/toko/opname/${session.id}/finalize`);
-      toast.success('Sesi Stock Opname berhasil difinalisasi!');
-      onFinalizeSuccess();
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memfinalisasi sesi opname');
-    } finally {
-      setFinalizing(false);
-    }
+    await finalizeMutation.mutateAsync();
   };
 
   // Cancel Session
+  const cancelSessionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.delete(`/cooperative/toko/opname/${session!.id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Sesi opname telah dibatalkan');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+      onBack();
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error('Gagal membatalkan sesi opname');
+    }
+  });
+
+  const cancelling = cancelSessionMutation.isPending;
+
   const handleCancelSession = async () => {
     if (!session) return;
     if (!window.confirm('Apakah Anda yakin ingin membatalkan sesi opname ini? Semua draft yang belum disimpan permanen akan dibuang.')) return;
-
-    setCancelling(true);
-    try {
-      await api.delete(`/cooperative/toko/opname/${session.id}`);
-      toast.success('Sesi opname telah dibatalkan');
-      onBack();
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal membatalkan sesi opname');
-    } finally {
-      setCancelling(false);
-    }
+    await cancelSessionMutation.mutateAsync();
   };
 
   if (loading) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
@@ -23,15 +24,12 @@ const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ defaul
 const SmartStudentPicker = lazy(() => import('../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
 export default function SuratKeluarPage() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [data, setData] = useState<SuratKeluar[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('');
@@ -67,9 +65,9 @@ export default function SuratKeluarPage() {
     setSelectedId(null);
   }, []);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const suratKeluarQuery = useQuery({
+    queryKey: ['surat-keluar-list', page, limit, debouncedSearch, statusFilter, kategoriFilter],
+    queryFn: async () => {
       const res = await correspondenceApi.getSuratKeluar({
         page,
         limit,
@@ -77,34 +75,34 @@ export default function SuratKeluarPage() {
         status: statusFilter || undefined,
         kategori_surat: kategoriFilter || undefined
       });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-      setTotalItems(res.data?.pagination?.total || res.data?.pagination?.totalItems || 0);
-    } catch (err) {
-      console.error('Error fetching surat keluar:', err);
-    } finally {
-      setLoading(false);
+      return {
+        list: res.data?.list || [],
+        totalPages: res.data?.pagination?.totalPages || 1,
+        totalItems: res.data?.pagination?.total || res.data?.pagination?.totalItems || 0
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = suratKeluarQuery.data?.list || [];
+  const totalPages = suratKeluarQuery.data?.totalPages || 1;
+  const totalItems = suratKeluarQuery.data?.totalItems || 0;
+  const loading = suratKeluarQuery.isLoading;
+
+  const fetchData = useCallback(async () => {
+    await suratKeluarQuery.refetch();
+  }, [suratKeluarQuery]);
+
+  const deleteSuratKeluarMutation = useMutation({
+    mutationFn: (id: string) => correspondenceApi.deleteSuratKeluar(id),
+    onSuccess: () => {
+      toast.success('Surat keluar berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['surat-keluar-list'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus surat keluar');
     }
-  }, [page, limit, debouncedSearch, statusFilter, kategoriFilter]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleEdit = useCallback((item: SuratKeluar) => {
-    setSelectedId(item.id);
-    setSelectedStudent(item.Siswa || null);
-    setFormData({
-      nomor_surat: item.nomor_surat,
-      judul: item.judul,
-      tujuan_surat: item.tujuan_surat || '',
-      tanggal_surat: new Date(item.tanggal_surat).toISOString().split('T')[0],
-      isi_ringkas: item.isi_ringkas || '',
-      kategori_surat: item.kategori_surat,
-      siswa_id: item.siswa_id || ''
-    });
-    setModalOpen(true);
-  }, []);
+  });
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -115,15 +113,8 @@ export default function SuratKeluarPage() {
       style: 'danger'
     });
     if (!ok) return;
-
-    try {
-      await correspondenceApi.deleteSuratKeluar(id);
-      toast.success('Surat keluar berhasil dihapus');
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menghapus surat keluar');
-    }
-  }, [confirm, fetchData]);
+    await deleteSuratKeluarMutation.mutateAsync(id);
+  }, [confirm, deleteSuratKeluarMutation]);
 
   const handleOpenSign = useCallback((item: SuratKeluar) => {
     setSelectedId(item.id);

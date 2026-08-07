@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Search, Calendar, Info, ChevronDown, ChevronUp } from 'lucide-react';
@@ -40,36 +41,31 @@ interface ProductHistoryTabProps {
 }
 
 export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab }) => {
-  const [historyList, setHistoryList] = useState<StockIn[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [historySupplierFilter, setHistorySupplierFilter] = useState('');
   const [historyStartDate, setHistoryStartDate] = useState('');
   const [historyEndDate, setHistoryEndDate] = useState('');
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      setHistoryLoading(true);
+  const historyQuery = useQuery({
+    queryKey: ['koperasi-stock-in-history', historySupplierFilter, historyStartDate, historyEndDate],
+    queryFn: async () => {
       const params: Record<string, string> = {};
       if (historySupplierFilter) params.supplier = historySupplierFilter;
       if (historyStartDate) params.startDate = historyStartDate;
       if (historyEndDate) params.endDate = historyEndDate;
 
       const response = await api.get('/cooperative/toko/stock-in', { params });
-      setHistoryList(response.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil riwayat barang masuk');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [historySupplierFilter, historyStartDate, historyEndDate]);
+      return (Array.isArray(response.data) ? response.data : []) as StockIn[];
+    },
+    enabled: activeTab === 'history',
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchHistory();
-    }
-  }, [activeTab, fetchHistory]);
+  const historyList = historyQuery.data || [];
+  const historyLoading = historyQuery.isLoading;
+  const fetchHistory = async () => {
+    await historyQuery.refetch();
+  };
 
   return (
     <div className="space-y-4">

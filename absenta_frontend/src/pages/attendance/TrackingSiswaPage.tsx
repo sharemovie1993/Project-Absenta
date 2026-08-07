@@ -119,34 +119,18 @@ function CalendarCard({
   onDateSelect?: (dateStr: string) => void;
   isLocked: boolean;
 }) {
-  const [data, setData] = useState<RekapBulananResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const calendarQuery = useQuery({
+    queryKey: ['rekap-bulanan-siswa-calendar', siswaId, bulan],
+    queryFn: async () => {
+      const res = await getRekapBulananSiswa(siswaId, { bulan });
+      return (res.data || null) as RekapBulananResponse;
+    },
+    enabled: !!siswaId && !!bulan && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    // Validasi input form sebelum eksekusi API — Google Platform Standards
-    const validation = calendarFilterSchema.safeParse({ siswaId, bulan });
-    if (!validation.success || isLocked) return;
-
-    let isMounted = true;
-    const { siswaId: validSiswaId, bulan: validBulan } = validation.data;
-
-    async function fetchCalendarData() {
-      setLoading(true);
-      try {
-        const res = await getRekapBulananSiswa(validSiswaId, { bulan: validBulan });
-        if (isMounted) setData(res.data as RekapBulananResponse);
-      } catch (err) {
-        console.error(err);
-        if (isMounted) toast.error('Gagal memuat rekap kalender bulanan');
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-    fetchCalendarData();
-    return () => {
-      isMounted = false;
-    };
-  }, [siswaId, bulan, isLocked]);
+  const data = calendarQuery.data || null;
+  const loading = calendarQuery.isLoading;
 
   if (!data && !loading) return (
     <div className="p-12 flex flex-col items-center justify-center text-center">
@@ -171,8 +155,6 @@ function CalendarCard({
   );
 }
 
-
-
 export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHeader?: boolean; kelasId?: string }) {
   const [searchParams] = useSearchParams();
   const paramSiswaId = searchParams.get('siswa_id') || '';
@@ -182,7 +164,6 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
   const { can, isLoading } = useAuth();
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [bulan, setBulan] = useState<string>(toLocalMonth());
-  const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>(paramSiswaId);
 
   useEffect(() => {
@@ -190,66 +171,49 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
       setSelectedSiswaId(paramSiswaId);
     }
   }, [paramSiswaId]);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<TrackingHarianResponse | null>(null);
 
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
   const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  useEffect(() => {
-    let mounted = true;
-    async function initData() {
-      try {
-        let siswaOpts: DropdownOption[] = [];
-        if (kelasId) {
-          const res = await siswaApi.getAll({ kelas_id: kelasId, limit: 1000 });
-          siswaOpts = (Array.isArray(res?.data) ? (res.data as StudentOptionResponse[]) : [])?.map((s) => ({
-            value: s?.id || '',
-            label: s?.nama_siswa || ''
-          })) || [];
-        } else {
-          const rawOpts = await dropdownApi.getSiswaForDropdown();
-          siswaOpts = (Array.isArray(rawOpts) ? rawOpts : [])?.map((opt) => ({
-            ...opt,
-            label: opt?.label?.includes(' - ') ? opt.label.split(' - ')[0] : (opt?.label || '')
-          })) || [];
-        }
-        if (mounted) setSiswaOptions(siswaOpts);
-      } catch (err) {
-        console.error("Failed to load students", err);
+  const siswaOptionsQuery = useQuery({
+    queryKey: ['siswa-options-tracking', kelasId],
+    queryFn: async () => {
+      if (kelasId) {
+        const res = await siswaApi.getAll({ kelas_id: kelasId, limit: 1000 });
+        return (Array.isArray(res?.data) ? (res.data as StudentOptionResponse[]) : [])?.map((s) => ({
+          value: s?.id || '',
+          label: s?.nama_siswa || ''
+        })) || [];
+      } else {
+        const rawOpts = await dropdownApi.getSiswaForDropdown();
+        return (Array.isArray(rawOpts) ? rawOpts : [])?.map((opt) => ({
+          ...opt,
+          label: opt?.label?.includes(' - ') ? opt.label.split(' - ')[0] : (opt?.label || '')
+        })) || [];
       }
-    }
-    initData();
-    return () => { mounted = false; };
-  }, [kelasId]);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const siswaOptions = siswaOptionsQuery.data || [];
+
+  const trackingQuery = useQuery({
+    queryKey: ['tracking-harian-siswa', selectedSiswaId, tanggal],
+    queryFn: async () => {
+      const res = await getTrackingHarianSiswa(selectedSiswaId, { tanggal });
+      return (res.data || null) as TrackingHarianResponse;
+    },
+    enabled: !!selectedSiswaId && !!tanggal && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const result = trackingQuery.data || null;
+  const loading = trackingQuery.isLoading;
 
   const handleSearch = React.useCallback(async () => {
-    if (isLocked) return;
-
-    // Validasi input form sebelum eksekusi API — Google Platform Standards
-    const validation = trackingSearchSchema.safeParse({ siswaId: selectedSiswaId, tanggal });
-    if (!validation.success) {
-      toast.error(validation.error.issues[0]?.message || 'Data form tidak valid');
-      return;
-    }
-
-    setLoading(true);
-    setResult(null);
-    try {
-      const res = await getTrackingHarianSiswa(validation.data.siswaId, { tanggal: validation.data.tanggal });
-      setResult(res.data as TrackingHarianResponse);
-    } catch (err: unknown) {
-      console.error(err);
-      toast.error('Gagal memuat data tracking siswa');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedSiswaId, tanggal, isLocked]);
-
-  useEffect(() => {
-    if (selectedSiswaId) handleSearch();
-  }, [handleSearch, selectedSiswaId]);
+    await trackingQuery.refetch();
+  }, [trackingQuery]);
 
   const currentIndex = useMemo(() => {
     return (Array.isArray(siswaOptions) ? siswaOptions : [])?.findIndex(opt => opt?.value === selectedSiswaId) ?? -1;

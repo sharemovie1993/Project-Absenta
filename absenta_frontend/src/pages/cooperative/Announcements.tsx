@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
@@ -22,13 +23,11 @@ interface Announcement {
 }
 
 const Announcements: React.FC = () => {
+  const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const confirm = useConfirm();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit] = useState(10);
 
@@ -39,39 +38,61 @@ const Announcements: React.FC = () => {
   const canCreate = useMemo(() => user?.capabilities?.includes('cooperative.announcements.create') || user?.role?.name === 'SUPERADMIN', [user]);
   const canDelete = useMemo(() => user?.capabilities?.includes('cooperative.announcements.delete') || user?.role?.name === 'SUPERADMIN', [user]);
 
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setLoading(true);
+  const announcementsQuery = useQuery({
+    queryKey: ['koperasi-announcements-list'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/announcements');
-      setAnnouncements(res.data.data ?? []);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil pengumuman');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return (res.data.data ?? []) as Announcement[];
+    },
+    enabled: !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
+  const announcements = announcementsQuery.data || [];
+  const loading = announcementsQuery.isLoading;
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    try {
-      await api.post('/cooperative/announcements', { title, content });
+  const fetchAnnouncements = useCallback(async () => {
+    await announcementsQuery.refetch();
+  }, [announcementsQuery]);
+
+  const createAnnouncementMutation = useMutation({
+    mutationFn: async (payload: { title: string; content: string }) => {
+      const res = await api.post('/cooperative/announcements', payload);
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Pengumuman berhasil dibuat');
       setTitle('');
       setContent('');
-      fetchAnnouncements();
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-announcements-list'] });
+    },
+    onError: (error) => {
       console.error(error);
       toast.error('Gagal membuat pengumuman');
-    } finally {
-      setSubmitLoading(false);
     }
-  }, [title, content, fetchAnnouncements]);
+  });
+
+  const submitLoading = createAnnouncementMutation.isPending;
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createAnnouncementMutation.mutateAsync({ title, content });
+  }, [title, content, createAnnouncementMutation]);
+
+  const deleteAnnouncementMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete(`/cooperative/announcements/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Pengumuman dihapus');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-announcements-list'] });
+    },
+    onError: (error) => {
+      console.error(error);
+      toast.error('Gagal menghapus pengumuman');
+    }
+  });
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -81,15 +102,8 @@ const Announcements: React.FC = () => {
       style: 'danger'
     });
     if (!ok) return;
-    try {
-      await api.delete(`/cooperative/announcements/${id}`);
-      toast.success('Pengumuman dihapus');
-      fetchAnnouncements();
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal menghapus pengumuman');
-    }
-  }, [confirm, fetchAnnouncements]);
+    await deleteAnnouncementMutation.mutateAsync(id);
+  }, [confirm, deleteAnnouncementMutation]);
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageLimit;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Users, Search, Plus, Trash2, AlertCircle, X, BookOpen, ChevronRight, FileText, Network, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -26,19 +27,11 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
 export default function AnggotaKegiatanEskulPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  // -- Master data eskul
-  const [eskulList, setEskulList] = useState<JenisKegiatanMaster[]>([]);
-  const [loadingEskul, setLoadingEskul] = useState(true);
 
   // -- Tab Selector ('ANGGOTA' | 'PEMBINA')
   const [activeTab, setActiveTab] = useState<'ANGGOTA' | 'PEMBINA'>('ANGGOTA');
-
-  // -- Data lists
-  const [members, setMembers] = useState<AnggotaKegiatanEskulItem[]>([]);
-  const [pembinas, setPembinas] = useState<PembinaKegiatanEskulItem[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
 
   // -- Search filters
   const [memberSearch, setMemberSearch] = useState('');
@@ -61,145 +54,158 @@ export default function AnggotaKegiatanEskulPage() {
   // Teacher single form states
   const [selectedFormGuruId, setSelectedFormGuruId] = useState('');
   const [selectedFormEskulId, setSelectedFormEskulId] = useState('');
-  
-  const [submittingForm, setSubmittingForm] = useState(false);
 
-  // -- Picker source lists
-  const [siswaPickerList, setSiswaPickerList] = useState<SiswaAkademikPickerItem[]>([]);
-  const [guruPickerList, setGuruPickerList] = useState<GuruPickerItem[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [loadingPicker, setLoadingPicker] = useState(false);
+  // -- Master data eskul Query
+  const eskulQuery = useQuery({
+    queryKey: ['jenis-kegiatan-eskul-list'],
+    queryFn: async () => {
+      const res = await jenisKegiatanMasterApi.getAll({ limit: 200 });
+      const eskulOnly = (res.data ?? []).filter(e => e.tipe !== 'KBM' && e.aktif);
+      return [...eskulOnly].sort((a, b) => {
+        const isAOsis = a.nama.toUpperCase().includes('OSIS');
+        const isBOsis = b.nama.toUpperCase().includes('OSIS');
+        if (isAOsis && !isBOsis) return -1;
+        if (!isAOsis && isBOsis) return 1;
+        return a.nama.localeCompare(b.nama);
+      });
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // -- Load active eskul list and class list on mount
-  useEffect(() => {
-    const fetchEskul = async () => {
-      setLoadingEskul(true);
-      try {
-        const res = await jenisKegiatanMasterApi.getAll({ limit: 200 });
-        const eskulOnly = (res.data ?? []).filter(e => e.tipe !== 'KBM' && e.aktif);
-        const sortedEskuls = [...eskulOnly].sort((a, b) => {
-          const isAOsis = a.nama.toUpperCase().includes('OSIS');
-          const isBOsis = b.nama.toUpperCase().includes('OSIS');
-          if (isAOsis && !isBOsis) return -1;
-          if (!isAOsis && isBOsis) return 1;
-          return a.nama.localeCompare(b.nama);
-        });
-        setEskulList(sortedEskuls);
-      } catch {
-        toast.error('Gagal memuat daftar ekstrakurikuler');
-      } finally {
-        setLoadingEskul(false);
-      }
-    };
-    fetchEskul();
+  const eskulList = eskulQuery.data || [];
+  const loadingEskul = eskulQuery.isLoading;
 
-    getKelasList()
-      .then(r => setClasses(Array.isArray(r) ? r : (r as any)?.data ?? []))
-      .catch(() => {});
-  }, []);
+  // -- Kelas Query
+  const kelasQuery = useQuery({
+    queryKey: ['kelas-list-eskul'],
+    queryFn: async () => {
+      const r = await getKelasList();
+      return Array.isArray(r) ? r : (r as any)?.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // -- Load members/pembinas globally ('ALL')
-  const fetchGlobalData = useCallback(async () => {
-    setLoadingData(true);
-    try {
+  const classes = kelasQuery.data || [];
+
+  // -- Global Members / Pembinas Query
+  const globalDataQuery = useQuery({
+    queryKey: ['eskul-members-pembinas-global', activeTab],
+    queryFn: async () => {
       if (activeTab === 'ANGGOTA') {
         const data = await getAnggotaKegiatanEskul('ALL');
-        setMembers(data);
+        return { members: data, pembinas: [] };
       } else {
         const data = await getPembinaKegiatanEskul('ALL');
-        setPembinas(data);
+        return { members: [], pembinas: data };
       }
-    } catch {
-      toast.error('Gagal memuat data penugasan');
-    } finally {
-      setLoadingData(false);
-    }
-  }, [activeTab]);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchGlobalData();
-  }, [activeTab, fetchGlobalData]);
+  const members = globalDataQuery.data?.members || [];
+  const pembinas = globalDataQuery.data?.pembinas || [];
+  const loadingData = globalDataQuery.isLoading;
 
-  // -- Load pickers when modal opens (with debounce for search & filters)
-  useEffect(() => {
-    const loadPickerData = async () => {
-      setLoadingPicker(true);
-      try {
-        if (activeTab === 'ANGGOTA') {
-          const students = await getSiswaAkademikPickerList(wizardSiswaSearch || undefined, wizardSiswaKelasId || undefined);
-          setSiswaPickerList(students);
-        } else {
-          const teachers = await getGuruPickerList();
-          setGuruPickerList(teachers);
-        }
-      } catch {
-        toast.error('Gagal memuat data pilihan form');
-      } finally {
-        setLoadingPicker(false);
+  const fetchGlobalData = useCallback(async () => {
+    await globalDataQuery.refetch();
+  }, [globalDataQuery]);
+
+  // -- Pickers Query
+  const pickerQuery = useQuery({
+    queryKey: ['eskul-pickers', activeTab, wizardSiswaSearch, wizardSiswaKelasId],
+    queryFn: async () => {
+      if (activeTab === 'ANGGOTA') {
+        const students = await getSiswaAkademikPickerList(wizardSiswaSearch || undefined, wizardSiswaKelasId || undefined);
+        return { siswa: students, guru: [] };
+      } else {
+        const teachers = await getGuruPickerList();
+        return { siswa: [], guru: teachers };
       }
-    };
+    },
+    enabled: isAddModalOpen,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    if (isAddModalOpen) {
-      const handler = setTimeout(() => {
-        loadPickerData();
-      }, 300);
-      return () => clearTimeout(handler);
-    }
-  }, [isAddModalOpen, activeTab, wizardSiswaSearch, wizardSiswaKelasId]);
+  const siswaPickerList = pickerQuery.data?.siswa || [];
+  const guruPickerList = pickerQuery.data?.guru || [];
+  const loadingPicker = pickerQuery.isLoading;
 
-  // -- Delete Handlers
-  const handleRemoveMember = async (member: AnggotaKegiatanEskulItem) => {
-    if (!confirm(`Hapus keanggotaan ${member.nama_siswa} dari ${member.eskul_nama || 'eskul'}?`)) return;
-    try {
-      await removeAnggotaKegiatanEskul(member.id);
+  // -- Delete & Save Handlers Mutations
+  const removeMemberMutation = useMutation({
+    mutationFn: (id: string) => removeAnggotaKegiatanEskul(id),
+    onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
-      fetchGlobalData();
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+    },
+    onError: () => {
       toast.error('Gagal menghapus anggota');
     }
+  });
+
+  const removePembinaMutation = useMutation({
+    mutationFn: (id: string) => removePembinaKegiatanEskul(id),
+    onSuccess: () => {
+      toast.success('Pembina berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+    },
+    onError: () => {
+      toast.error('Gagal menghapus pembina');
+    }
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: ({ eskulId, siswaIds }: { eskulId: string; siswaIds: string[] }) =>
+      addAnggotaKegiatanEskul(eskulId, siswaIds),
+    onSuccess: (_, variables) => {
+      toast.success(`${variables.siswaIds.length} anggota eskul berhasil ditambahkan`);
+      setIsAddModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menambahkan anggota');
+    }
+  });
+
+  const addPembinaMutation = useMutation({
+    mutationFn: ({ eskulId, guruIds }: { eskulId: string; guruIds: string[] }) =>
+      addPembinaKegiatanEskul(eskulId, guruIds),
+    onSuccess: () => {
+      toast.success('Pembina eskul berhasil ditambahkan');
+      setIsAddModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menambahkan pembina');
+    }
+  });
+
+  const handleRemoveMember = async (member: AnggotaKegiatanEskulItem) => {
+    if (!confirm(`Hapus keanggotaan ${member.nama_siswa} dari ${member.eskul_nama || 'eskul'}?`)) return;
+    await removeMemberMutation.mutateAsync(member.id);
   };
 
   const handleRemovePembina = async (pembina: PembinaKegiatanEskulItem) => {
-    if (!confirm(`Hapus pembina ${pembina.nama_guru} dari ${pembina.eskul_nama || 'eskul'}?`)) return;
-    try {
-      await removePembinaKegiatanEskul(pembina.id);
-      toast.success('Pembina berhasil dihapus');
-      fetchGlobalData();
-    } catch {
-      toast.error('Gagal menghapus pembina');
-    }
+    if (!confirm(`Hapus penugasan pembina ${pembina.nama_guru} dari ${pembina.eskul_nama || 'eskul'}?`)) return;
+    await removePembinaMutation.mutateAsync(pembina.id);
   };
 
-  // -- Save Wizard / Form Handlers
   const handleSaveWizard = async () => {
     if (!selectedWizardEskulId || selectedWizardSiswaIds.size === 0) return;
-    setSubmittingForm(true);
-    try {
-      await addAnggotaKegiatanEskul(selectedWizardEskulId, Array.from(selectedWizardSiswaIds));
-      toast.success(`${selectedWizardSiswaIds.size} anggota eskul berhasil ditambahkan`);
-      setIsAddModalOpen(false);
-      fetchGlobalData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Gagal menambahkan anggota');
-    } finally {
-      setSubmittingForm(false);
-    }
+    await addMemberMutation.mutateAsync({
+      eskulId: selectedWizardEskulId,
+      siswaIds: Array.from(selectedWizardSiswaIds)
+    });
   };
 
   const handleSavePembinaForm = async () => {
     if (!selectedFormGuruId || !selectedFormEskulId) return;
-    setSubmittingForm(true);
-    try {
-      await addPembinaKegiatanEskul(selectedFormEskulId, [selectedFormGuruId]);
-      toast.success('Pembina eskul berhasil ditambahkan');
-      setIsAddModalOpen(false);
-      fetchGlobalData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Gagal menambahkan pembina');
-    } finally {
-      setSubmittingForm(false);
-    }
+    await addPembinaMutation.mutateAsync({
+      eskulId: selectedFormEskulId,
+      guruIds: [selectedFormGuruId]
+    });
   };
+
+  const submittingForm = addMemberMutation.isPending || addPembinaMutation.isPending;
 
   // -- Wizard helper details
   const wizardEskulName = useMemo(() => {

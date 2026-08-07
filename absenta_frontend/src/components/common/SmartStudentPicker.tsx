@@ -146,32 +146,23 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
     }
   }, [onSelect, onSelectStudent]);
 
-  // 1. Logic: Search API
-  const performSearch = useCallback(async (term: string, isHID = false) => {
-    if (term.length < 2 && !isHID) {
-      setResults([]);
-      setShowDropdown(false);
-      return;
-    }
+  // Search Query via useQuery
+  const searchQuery = useQuery({
+    queryKey: ['smart-student-picker-search', debouncedSearch, mode, scope, filterJurusan],
+    queryFn: async () => {
+      const term = debouncedSearch.trim();
+      if (term.length < 2) return [];
 
-    console.log(`[SmartStudentPicker] Searching for: "${term}" (HID: ${isHID}, Scope: ${scope}, Mode: ${mode}, Jurusan: ${filterJurusan || 'ALL'})`);
-    setIsLoading(true);
-    try {
       let list: Student[] = [];
-
       if (mode === 'universal') {
         const res = await academicSearchApi.universalSearch(term, 15);
         const results = res.data || [];
-        
-        // Map backend format to local Student interface
         list = results.map((item: any) => ({
           ...item.original_data,
           _type: item.type,
-          // Ensure display names are consistent if not in original_data
           nama_siswa: item.type === 'siswa' ? item.name : undefined,
           nama_guru: item.type === 'guru' ? item.name : undefined,
         }));
-
         if (filterJurusan) {
           list = list.filter((s: any) => matchesJurusan(s, filterJurusan));
         }
@@ -190,49 +181,31 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
           elevated_context: 'true',
           context: 'elevated',
         };
-
         if (filterJurusan) {
           queryParams.jurusan = filterJurusan;
           queryParams.nama_jurusan = filterJurusan;
           queryParams.jurusan_id = filterJurusan;
         }
-
         const res = await siswaApi.getAll(queryParams as any);
         list = (res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status);
-
-        // Strict Jurusan Filtering & Scoping
         if (filterJurusan) {
           list = list.filter((s: any) => matchesJurusan(s, filterJurusan));
         }
       }
+      return list;
+    },
+    enabled: debouncedSearch.trim().length >= 2,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      console.log(`[SmartStudentPicker] Found ${list.length} items (Strictly Filtered by Jurusan: ${filterJurusan || 'ALL'})`);
-      setResults(list);
+  const results = searchQuery.data || [];
+  const isLoading = searchQuery.isLoading;
 
-      // HID Logic: If it's a fast input (HID) and we found an exact unique match, auto-select it
-      if (isHID && list.length === 1) {
-        const item = list[0];
-        // Only auto-select if it matches exactly ID, NISN, RFID, NIS, or NIP
-        const isExact = item.id === term ||
-                        item.nisn === term ||
-                        item.no_rfid === term ||
-                        item.nis === term ||
-                        item.nip === term;
+  useEffect(() => {
+    setShowDropdown(results.length > 0);
+  }, [results]);
 
-        if (isExact) {
-          console.log(`[SmartStudentPicker] HID Exact Match! Auto-selecting: ${item.nama_siswa || item.nama_guru}`);
-          handleSelect(item);
-          return;
-        }
-      }
 
-      setShowDropdown(list.length > 0);
-    } catch (err) {
-      console.error('[SmartStudentPicker] Student search failed', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [scope, handleSelect]);
 
   // 2. Logic: HID Detection (Fast typing)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

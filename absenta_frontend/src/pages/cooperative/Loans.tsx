@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard, Table, Badge, SearchableSelect } from '../../components/ui';
@@ -26,6 +27,7 @@ const PaymentInstructionsModal = lazy(() =>
 // Shared interfaces are now imported from types.ts
 
 const Loans: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, subscription, can } = useAuth();
   const confirm = useConfirm();
   
@@ -42,15 +44,9 @@ const Loans: React.FC = () => {
   const isOperatorMode = isManageMode && isCoopStaff;
   const isStudent = !isOperatorMode;
 
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [memberStatus, setMemberStatus] = useState<'loading' | 'member' | 'non-member'>('loading');
-  const [myMemberId, setMyMemberId] = useState<string>('');
   const [isPaymentInstructionsOpen, setIsPaymentInstructionsOpen] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [defaultInterestRate, setDefaultInterestRate] = useState<string>('1.5');
   const [formData, setFormData] = useState({
     memberId: '',
@@ -73,32 +69,29 @@ const Loans: React.FC = () => {
                    subWithFeatures?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
-  // Check membership status
-  useEffect(() => {
-    if (isOperatorMode) {
-      setMemberStatus('member');
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get('/cooperative/members/me');
-        if (!cancelled) {
-          const data = res?.data?.data;
-          if (data && data.status === 'ACTIVE') {
-            setMemberStatus('member');
-            setMyMemberId(data.id);
-            setFormData(prev => ({ ...prev, memberId: data.id }));
-          } else {
-            setMemberStatus('non-member');
-          }
-        }
-      } catch {
-        if (!cancelled) setMemberStatus('non-member');
+  // Member Status query
+  const memberStatusQuery = useQuery({
+    queryKey: ['koperasi-member-status-me'],
+    queryFn: async () => {
+      if (isOperatorMode) return { status: 'member' as const, id: '' };
+      const res = await api.get('/cooperative/members/me');
+      const data = res?.data?.data;
+      if (data && data.status === 'ACTIVE') {
+        return { status: 'member' as const, id: data.id as string };
       }
-    })();
-    return () => { cancelled = true; };
-  }, [isOperatorMode]);
+      return { status: 'non-member' as const, id: '' };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const memberStatus = isOperatorMode ? 'member' : (memberStatusQuery.data?.status || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
+  const myMemberId = isOperatorMode ? '' : (memberStatusQuery.data?.id || '');
+
+  useEffect(() => {
+    if (isStudent && myMemberId) {
+      setFormData(prev => ({ ...prev, memberId: myMemberId }));
+    }
+  }, [isStudent, myMemberId]);
 
   // Load cooperative settings to fetch default interest rate
   useEffect(() => {
@@ -119,44 +112,37 @@ const Loans: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const fetchLoans = useCallback(async () => {
-    if (isLocked || subscription === undefined) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
+  // Loans Query
+  const loansQuery = useQuery({
+    queryKey: ['koperasi-loans-list', isStudent],
+    queryFn: async () => {
       const url = isStudent ? '/cooperative/loans/me' : '/cooperative/loans';
       const response = await api.get(url);
-      setLoans(response.data || []);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mengambil data pinjaman.');
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked, subscription, isStudent]);
+      return (response.data || []) as Loan[];
+    },
+    enabled: !isLocked && subscription !== undefined && (isOperatorMode || memberStatus === 'member'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const loans = loansQuery.data || [];
+  const loading = loansQuery.isLoading;
+  const fetchLoans = useCallback(async () => {
+    await loansQuery.refetch();
+  }, [loansQuery]);
 
-  const fetchMembers = useCallback(async () => {
-    if (isLocked || isStudent) return;
-    try {
+  // Members Query
+  const membersQuery = useQuery({
+    queryKey: ['koperasi-members-list'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/members');
-      setMembers(res.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [isLocked, isStudent]);
-
-  useEffect(() => {
-    if (subscription === undefined) return;
-    if (isOperatorMode || memberStatus === 'member') {
-      fetchLoans();
-      fetchMembers();
-    } else if (memberStatus === 'non-member') {
-      setLoading(false);
-    }
-  }, [subscription, fetchLoans, fetchMembers, isOperatorMode, memberStatus]);
+      return (res.data || []) as Member[];
+    },
+    enabled: !isLocked && !isStudent && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const members = membersQuery.data || [];
+  const fetchMembers = useCallback(async () => {
+    await membersQuery.refetch();
+  }, [membersQuery]);
 
   const simulation = useMemo(() => {
     const amountVal = parseFloat(formData.amount);
@@ -299,6 +285,32 @@ const Loans: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const createLoanMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post('/cooperative/loans', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Pengajuan pinjaman berhasil dibuat!');
+      setIsModalOpen(false);
+      setFormData({
+        memberId: isStudent ? myMemberId : '',
+        amount: '',
+        interestRate: defaultInterestRate,
+        duration: '12',
+        notes: ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+    },
+    onError: (err) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Gagal membuat pengajuan.');
+    }
+  });
+
+  const submitLoading = createLoanMutation.isPending;
+
   const handleSubmit = async (e: React.FormEvent) => {
     if (isLocked) return;
     e.preventDefault();
@@ -309,33 +321,30 @@ const Loans: React.FC = () => {
       return;
     }
 
-    setSubmitLoading(true);
-    try {
-      await api.post('/cooperative/loans', {
-        ...formData,
-        memberId: targetMemberId,
-        amount: Number(formData.amount),
-        interestRate: Number(formData.interestRate),
-        duration: Number(formData.duration)
-      });
-      toast.success('Pengajuan pinjaman berhasil dibuat!');
-      setIsModalOpen(false);
-      setFormData({
-        memberId: isStudent ? myMemberId : '',
-        amount: '',
-        interestRate: defaultInterestRate,
-        duration: '12',
-        notes: ''
-      });
-      fetchLoans();
-    } catch (err) {
+    await createLoanMutation.mutateAsync({
+      ...formData,
+      memberId: targetMemberId,
+      amount: Number(formData.amount),
+      interestRate: Number(formData.interestRate),
+      duration: Number(formData.duration)
+    });
+  };
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ loanId, status }: { loanId: string; status: 'APPROVED' | 'REJECTED' }) => {
+      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status });
+      return { data: res.data, status };
+    },
+    onSuccess: ({ status }) => {
+      toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+    },
+    onError: (err) => {
       const error = err as { response?: { data?: { message?: string } } };
       console.error(error);
-      toast.error(error.response?.data?.message || 'Gagal membuat pengajuan.');
-    } finally {
-      setSubmitLoading(false);
+      toast.error(error.response?.data?.message || 'Gagal mengubah status pengajuan.');
     }
-  };
+  });
 
   const handleUpdateStatus = async (loanId: string, status: 'APPROVED' | 'REJECTED') => {
     const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
@@ -348,17 +357,7 @@ const Loans: React.FC = () => {
     });
     if (!isConfirmed) return;
 
-    try {
-      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status });
-      if (res.data) {
-        toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
-        fetchLoans();
-      }
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Gagal mengubah status pengajuan.');
-    }
+    await updateStatusMutation.mutateAsync({ loanId, status });
   };
 
   const filteredLoans = useMemo(() => {

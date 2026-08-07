@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Checkbox } from '../../ui';
 import { Modal } from '../ui/Modal';
 import { SearchableSelect } from '../../ui/SearchableSelect';
@@ -28,56 +29,30 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
   onClose,
   onSuccess,
 }) => {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<number>(1);
   const [memberType, setMemberType] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
   const [kelasId, setKelasId] = useState<string>('ALL');
-  const [kelasOptions, setKelasOptions] = useState<{ id: string; nama_kelas: string }[]>([]);
-  
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [nonMembers, setNonMembers] = useState<NonMember[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
-  const [submitLoading, setSubmitLoading] = useState<boolean>(false);
   const [createdCount, setCreatedCount] = useState<number>(0);
 
-  // Reset modal state
-  const resetState = useCallback(() => {
-    setStep(1);
-    setMemberType('STUDENT');
-    setKelasId('ALL');
-    setSearchQuery('');
-    setNonMembers([]);
-    setSelectedIds(new Set());
-    setCreatedCount(0);
-    setSubmitLoading(false);
-  }, []);
-
-  const handleClose = () => {
-    resetState();
-    onClose();
-  };
-
   // Fetch kelas options
-  useEffect(() => {
-    if (!isOpen) return;
-    const fetchKelas = async () => {
-      try {
-        const response = await api.get('/academic/kelas');
-        if (response.data && response.data.data) {
-          setKelasOptions(response.data.data);
-        }
-      } catch (err) {
-        console.error('Error loading kelas options:', err);
-      }
-    };
-    fetchKelas();
-  }, [isOpen]);
+  const kelasQuery = useQuery({
+    queryKey: ['academic-kelas-options'],
+    queryFn: async () => {
+      const response = await api.get('/academic/kelas');
+      return (response.data?.data || []) as { id: string; nama_kelas: string }[];
+    },
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  const kelasOptions = kelasQuery.data || [];
 
-  // Fetch non-members from backend
-  const fetchNonMembers = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Fetch non-members
+  const nonMembersQuery = useQuery({
+    queryKey: ['koperasi-non-members', memberType, kelasId, searchQuery],
+    queryFn: async () => {
       const response = await api.get('/cooperative/members/non-members', {
         params: {
           type: memberType,
@@ -85,23 +60,33 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
           search: searchQuery,
         },
       });
-      if (Array.isArray(response.data)) {
-        setNonMembers(response.data);
-      }
-    } catch (err) {
-      console.error('Error fetching non-members:', err);
-      toast.error('Gagal mengambil data calon anggota');
-    } finally {
-      setLoading(false);
-    }
-  }, [memberType, kelasId, searchQuery]);
+      return (Array.isArray(response.data) ? response.data : []) as NonMember[];
+    },
+    enabled: isOpen && step === 2,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Load non-members when entering step 2 or changing filters in step 2
-  useEffect(() => {
-    if (isOpen && step === 2) {
-      fetchNonMembers();
-    }
-  }, [isOpen, step, fetchNonMembers]);
+  const nonMembers = nonMembersQuery.data || [];
+  const loading = nonMembersQuery.isLoading;
+
+  const fetchNonMembers = useCallback(async () => {
+    await nonMembersQuery.refetch();
+  }, [nonMembersQuery]);
+
+  // Reset modal state
+  const resetState = useCallback(() => {
+    setStep(1);
+    setMemberType('STUDENT');
+    setKelasId('ALL');
+    setSearchQuery('');
+    setSelectedIds(new Set());
+    setCreatedCount(0);
+  }, []);
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
 
   // Reset selected IDs when member type changes
   useEffect(() => {
@@ -124,28 +109,33 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
     return (nonMembers || []).filter(m => selectedIds.has(m.id));
   }, [nonMembers, selectedIds]);
 
-  const handleSubmitBulk = async () => {
-    setSubmitLoading(true);
-    try {
-      const response = await api.post('/cooperative/members/bulk-create', {
-        type: memberType,
-        ids: Array.from(selectedIds),
-      });
-
-      if (response.data && response.data.success) {
-        toast.success(`Berhasil mendaftarkan ${response.data.count} anggota baru!`);
-        setCreatedCount(response.data.count);
+  const bulkCreateMutation = useMutation({
+    mutationFn: async (payload: { type: string; ids: string[] }) => {
+      const response = await api.post('/cooperative/members/bulk-create', payload);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data && data.success) {
+        toast.success(`Berhasil mendaftarkan ${data.count} anggota baru!`);
+        setCreatedCount(data.count);
+        queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
         onSuccess();
         setStep(4);
       }
-    } catch (err: unknown) {
-      console.error('Bulk registration error:', err);
-      const errorObj = err as any;
-      const errorMsg = errorObj.response?.data?.message || 'Gagal mendaftarkan anggota secara massal.';
-      toast.error(errorMsg);
-    } finally {
-      setSubmitLoading(false);
+    },
+    onError: (err: unknown) => {
+      console.error('Error bulk adding members:', err);
+      toast.error('Gagal memproses pendaftaran massal');
     }
+  });
+
+  const submitLoading = bulkCreateMutation.isPending;
+
+  const handleSubmitBulk = async () => {
+    await bulkCreateMutation.mutateAsync({
+      type: memberType,
+      ids: Array.from(selectedIds),
+    });
   };
 
   const columns = useMemo(() => [

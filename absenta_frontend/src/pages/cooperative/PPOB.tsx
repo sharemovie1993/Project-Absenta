@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
@@ -46,45 +47,57 @@ const CategoryButton: React.FC<CategoryButtonProps> = ({ type, icon: Icon, label
 );
 
 const PPOB: React.FC = () => {
+  const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const confirm = useConfirm();
-  const [products, setProducts] = useState<PPOBProduct[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState<string>('PULSA');
   const [customerNo, setCustomerNo] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<PPOBProduct | null>(null);
-  const [processing, setProcessing] = useState(false);
 
   // Gating Logic
   const features = useMemo(() => subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
-  const fetchProducts = useCallback(async () => {
-    if (isLocked || subscription === undefined) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
+  const ppobQuery = useQuery({
+    queryKey: ['koperasi-ppob-services'],
+    queryFn: async () => {
       const response = await api.get('/cooperative/ppob');
-      setProducts(response.data.data ?? []);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memuat produk PPOB.');
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked, subscription]);
+      return (response.data.data ?? []) as PPOBProduct[];
+    },
+    enabled: !isLocked && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (subscription === undefined) return;
-    fetchProducts();
-  }, [subscription, fetchProducts]);
+  const products = ppobQuery.data || [];
+  const loading = ppobQuery.isLoading;
+
+  const fetchProducts = useCallback(async () => {
+    await ppobQuery.refetch();
+  }, [ppobQuery]);
 
   const handleTypeSelect = useCallback((type: string) => {
     setSelectedType(type);
     setSelectedProduct(null);
   }, []);
+
+  const purchaseMutation = useMutation({
+    mutationFn: async (payload: { productId: string; customerNo: string; amount: number }) => {
+      const res = await api.post('/cooperative/ppob/transaction', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Pembelian berhasil! Saldo anggota telah dipotong.');
+      setCustomerNo('');
+      setSelectedProduct(null);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(errorMsg ?? 'Pembelian gagal');
+    }
+  });
+
+  const processing = purchaseMutation.isPending;
 
   const handlePurchase = useCallback(async () => {
     if (!selectedProduct || isLocked) return;
@@ -96,17 +109,12 @@ const PPOB: React.FC = () => {
     });
     if (!ok) return;
 
-    try {
-      setProcessing(true);
-      await api.post('/cooperative/ppob/transaction', { productId: selectedProduct.id, customerNo, amount: selectedProduct.price });
-      toast.success('Pembelian berhasil! Saldo anggota telah dipotong.');
-    } catch (err: unknown) {
-      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(errorMsg ?? 'Pembelian gagal');
-    } finally {
-      setProcessing(false);
-    }
-  }, [selectedProduct, isLocked, confirm, customerNo]);
+    await purchaseMutation.mutateAsync({
+      productId: selectedProduct.id,
+      customerNo,
+      amount: selectedProduct.price
+    });
+  }, [selectedProduct, isLocked, confirm, customerNo, purchaseMutation]);
 
   const filteredProducts = useMemo(() => selectedType === 'ALL'
     ? (products ?? [])

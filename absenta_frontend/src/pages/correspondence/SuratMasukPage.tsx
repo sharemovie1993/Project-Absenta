@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
@@ -19,14 +20,11 @@ import { Search, Plus, Edit2, Trash2, Mail, FileText, CheckSquare, Clock } from 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 
 export default function SuratMasukPage() {
-  const [data, setData] = useState<SuratMasuk[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -34,7 +32,6 @@ export default function SuratMasukPage() {
   const [dispoModalOpen, setDispoModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   
-  const [users, setUsers] = useState<DropdownOption[]>([]);
   const confirm = useConfirm();
 
   const [formData, setFormData] = useState({
@@ -65,51 +62,51 @@ export default function SuratMasukPage() {
     setSelectedId(null);
   }, []);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const suratMasukQuery = useQuery({
+    queryKey: ['surat-masuk-list', page, limit, debouncedSearch, statusFilter],
+    queryFn: async () => {
       const res = await correspondenceApi.getSuratMasuk({
         page,
         limit,
         search: debouncedSearch,
         status: statusFilter || undefined
       });
-      setData(res.data?.list || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-      setTotalItems(res.data?.pagination?.total || res.data?.pagination?.totalItems || 0);
-    } catch (err) {
-      console.error('Error fetching surat masuk:', err);
-    } finally {
-      setLoading(false);
+      return {
+        list: res.data?.list || [],
+        totalPages: res.data?.pagination?.totalPages || 1,
+        totalItems: res.data?.pagination?.total || res.data?.pagination?.totalItems || 0
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = suratMasukQuery.data?.list || [];
+  const totalPages = suratMasukQuery.data?.totalPages || 1;
+  const totalItems = suratMasukQuery.data?.totalItems || 0;
+  const loading = suratMasukQuery.isLoading;
+
+  const usersQuery = useQuery({
+    queryKey: ['users-dropdown-disposisi'],
+    queryFn: () => getAllUsersForDropdown(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const users = usersQuery.data || [];
+
+  const fetchData = useCallback(async () => {
+    await suratMasukQuery.refetch();
+  }, [suratMasukQuery]);
+
+  const deleteSuratMasukMutation = useMutation({
+    mutationFn: (id: string) => correspondenceApi.deleteSuratMasuk(id),
+    onSuccess: () => {
+      toast.success('Surat masuk berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['surat-masuk-list'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus surat masuk');
     }
-  }, [page, limit, debouncedSearch, statusFilter]);
-
-  const loadUsers = useCallback(async () => {
-    const opts = await getAllUsersForDropdown();
-    setUsers(opts);
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
-
-  const handleEdit = useCallback((item: SuratMasuk) => {
-    setSelectedId(item.id);
-    setFormData({
-      nomor_surat: item.nomor_surat,
-      judul: item.judul,
-      asal_surat: item.asal_surat || '',
-      tanggal_surat: new Date(item.tanggal_surat).toISOString().split('T')[0],
-      tanggal_terima: new Date(item.tanggal_terima).toISOString().split('T')[0],
-      ringkasan: item.ringkasan || '',
-      dokumen_url: item.dokumen_url || ''
-    });
-    setModalOpen(true);
-  }, []);
+  });
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -120,15 +117,8 @@ export default function SuratMasukPage() {
       style: 'danger'
     });
     if (!ok) return;
-
-    try {
-      await correspondenceApi.deleteSuratMasuk(id);
-      toast.success('Surat masuk berhasil dihapus');
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menghapus surat masuk');
-    }
-  }, [confirm, fetchData]);
+    await deleteSuratMasukMutation.mutateAsync(id);
+  }, [confirm, deleteSuratMasukMutation]);
 
   const handleOpenDisposisi = useCallback((item: SuratMasuk) => {
     setSelectedId(item.id);

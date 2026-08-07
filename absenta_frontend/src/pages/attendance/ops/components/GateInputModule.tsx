@@ -47,9 +47,21 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const { tenantId } = useTenant();
   const { playBeep } = useAudioFeedback();
 
-  // 1. Core Logic & Timing
-  const [tenantConfig, setTenantConfig] = useState<any>(null);
-  const [loadingConfig, setLoadingConfig] = useState(false);
+  // Tenant config Query
+  const tenantConfigQuery = useQuery({
+    queryKey: ['tenant-config-gate', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const res = await getTenantById(tenantId);
+      return res.data || null;
+    },
+    enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const tenantConfig = tenantConfigQuery.data || null;
+  const loadingConfig = tenantConfigQuery.isLoading;
+
   const { currentTime, internalDirection, setInternalDirection, timeStatus } = useGateLogic(tenantConfig, onDirectionChange);
   const inputDirection = direction || internalDirection;
   
@@ -58,40 +70,36 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
   // 2. HID / RFID Logic
   const [hidToken, setHidToken] = useState('');
-  const [searchCandidates, setSearchCandidates] = useState<Student[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const debouncedHidToken = useDebounce(hidToken, 300);
 
-  // Search logic for HID inputs (Smart Autocomplete)
-  useEffect(() => {
-    const searchSiswa = async () => {
+  // Search candidates Query
+  const candidatesQuery = useQuery({
+    queryKey: ['student-candidates-search', debouncedHidToken],
+    queryFn: async () => {
       const term = debouncedHidToken.trim();
-      // Hanya lakukan pencarian jika input adalah text pencarian (nama/NIS pendek)
-      // RFID atau barcode panjang biasanya > 10 digit angka dan di-auto-submit langsung
       const isRfidOrBarcode = /^\d{8,}$/.test(term);
       if (term.length < 2 || isRfidOrBarcode) {
-        setSearchCandidates([]);
-        setShowDropdown(false);
-        return;
+        return [];
       }
-      try {
-        const res = await siswaApi.getAll({
-          search: term,
-          limit: 8,
-          search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
-          elevated_context: 'true',
-          context: 'elevated'
-        } as any);
-        const list = (res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status);
-        setSearchCandidates(list);
-        setShowDropdown(list.length > 0);
-      } catch (err) {
-        console.error('Failed to search student candidates:', err);
-      }
-    };
+      const res = await siswaApi.getAll({
+        search: term,
+        limit: 8,
+        search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
+        elevated_context: 'true',
+        context: 'elevated'
+      } as any);
+      return ((res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status)) as Student[];
+    },
+    enabled: debouncedHidToken.trim().length >= 2,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    searchSiswa();
-  }, [debouncedHidToken]);
+  const searchCandidates = candidatesQuery.data || [];
+
+  useEffect(() => {
+    setShowDropdown(searchCandidates.length > 0);
+  }, [searchCandidates]);
 
   // 3. Scanner / QR Logic
   const videoRef = useRef<HTMLVideoElement | null>(null);

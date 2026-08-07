@@ -96,68 +96,81 @@ export default function AdminSupportTicketPage() {
   } = useSupportWebSocket({
     selectedTicket,
     tickets,
-    fetchTickets: () => fetchTickets(false),
+    fetchTickets: () => fetchTickets(),
     fetchTicketDetail: (ticketId) => fetchTicketDetail(ticketId),
-    setTickets,
+    setTickets: () => {},
     setMessages,
     isScrollAtBottomRef
   });
 
-  // =========================================================================
-  // 📡 API CALLS
-  // =========================================================================
-  const fetchTickets = useCallback(async (showToast = false) => {
-    setIsLoading(true);
-    try {
+  // Admin Tickets Query
+  const adminTicketsQuery = useQuery({
+    queryKey: ['admin-support-tickets', filterPriority, filterCategory, searchQuery],
+    queryFn: async () => {
       const filters: Record<string, unknown> = {};
       if (filterPriority !== 'ALL') filters.priority = filterPriority as SupportTicketPriority;
       if (filterCategory !== 'ALL') filters.category = filterCategory as SupportTicketCategory;
       if (searchQuery.trim() !== '') filters.search = searchQuery;
-      
       const res = await supportTicketApi.getAdminTickets(filters);
-      if (res.success && res.data) {
-        setTickets(res.data);
-        if (showToast) toast.success('Antrean tiket diperbarui.');
-      } else {
-        toast.error(res.message || 'Gagal memuat antrean tiket.');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal terhubung ke server.';
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filterPriority, filterCategory, searchQuery]);
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchQuickReplies = useCallback(async () => {
-    try {
+  const tickets = adminTicketsQuery.data || [];
+  const isLoading = adminTicketsQuery.isLoading;
+
+  const fetchTickets = useCallback(async () => {
+    await adminTicketsQuery.refetch();
+  }, [adminTicketsQuery]);
+
+  // Quick Replies Query
+  const quickRepliesQuery = useQuery({
+    queryKey: ['support-quick-replies'],
+    queryFn: async () => {
       const res = await supportTicketApi.getQuickReplies();
-      if (res.success && res.data) setQuickReplies(res.data);
-    } catch (err: unknown) {
-      console.error('Gagal memuat Quick Replies:', err instanceof Error ? err.message : 'Unknown error');
-    }
-  }, []);
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchKnowledgeBase = useCallback(async (search = '') => {
-    try {
-      const res = await supportTicketApi.getKnowledgeBase(search);
-      if (res.success && res.data) setKnowledgeBase(res.data);
-    } catch (err: unknown) {
-      console.error('Gagal memuat Knowledge Base:', err instanceof Error ? err.message : 'Unknown error');
-    }
-  }, []);
+  const quickReplies = quickRepliesQuery.data || [];
+  const fetchQuickReplies = useCallback(async () => {
+    await quickRepliesQuery.refetch();
+  }, [quickRepliesQuery]);
+
+  // Knowledge Base Query
+  const kbQuery = useQuery({
+    queryKey: ['support-knowledge-base', kbSearchQuery],
+    queryFn: async () => {
+      const res = await supportTicketApi.getKnowledgeBase(kbSearchQuery);
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const knowledgeBase = kbQuery.data || [];
+  const fetchKnowledgeBase = useCallback(async () => {
+    await kbQuery.refetch();
+  }, [kbQuery]);
+
+  // Analytics Query
+  const analyticsQuery = useQuery({
+    queryKey: ['support-analytics-admin'],
+    queryFn: async () => {
+      const res = await supportTicketApi.getSupportAnalytics();
+      return res.data || null;
+    },
+    enabled: activePageTab === 'ANALYTICS',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const analytics = analyticsQuery.data || null;
+  const isAnalyticsLoading = analyticsQuery.isLoading;
 
   const fetchAnalytics = useCallback(async () => {
-    setIsAnalyticsLoading(true);
-    try {
-      const res = await supportTicketApi.getSupportAnalytics();
-      if (res.success && res.data) setAnalytics(res.data);
-    } catch (err: unknown) {
-      console.error('Gagal memuat analitik SLA:', err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsAnalyticsLoading(false);
-    }
-  }, []);
+    await analyticsQuery.refetch();
+  }, [analyticsQuery]);
 
   const fetchTicketDetail = useCallback(async (ticketId: string) => {
     setIsDetailLoading(true);

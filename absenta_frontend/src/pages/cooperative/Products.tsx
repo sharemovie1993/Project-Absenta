@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -59,39 +60,36 @@ const Products: React.FC = () => {
       setActiveTab('catalog');
     }
   }, [activeTab, canUpdateProducts, canManageCategories, canManageInventory]);
-  
-  // Shared central states
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // React Query setup for shared central states
+  const productsQuery = useQuery({
+    queryKey: ['koperasi-products-catalog'],
+    queryFn: async () => {
+      const response = await api.get('/cooperative/toko');
+      return (Array.isArray(response.data) ? response.data : []) as Product[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const products = productsQuery.data || [];
+  const loading = productsQuery.isLoading;
+
+  const categoriesQuery = useQuery({
+    queryKey: ['koperasi-products-categories'],
+    queryFn: async () => {
+      const response = await api.get('/cooperative/toko/categories');
+      return (Array.isArray(response.data) ? response.data : []) as ProductCategory[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const categories = categoriesQuery.data || [];
 
   const fetchProducts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/cooperative/toko');
-      setProducts(response.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil data produk');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await productsQuery.refetch();
+  }, [productsQuery]);
 
   const fetchCategories = useCallback(async () => {
-    try {
-      const response = await api.get('/cooperative/toko/categories');
-      setCategories(response.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil data kategori');
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, [fetchProducts, fetchCategories]);
+    await categoriesQuery.refetch();
+  }, [categoriesQuery]);
 
   // Layout info structures
   const breadcrumbs = useMemo(() => [

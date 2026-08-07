@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -23,6 +24,7 @@ interface SubscriptionWithFeatures {
 }
 
 export const useSavingsState = () => {
+  const queryClient = useQueryClient();
   const { user, subscription, can } = useAuth();
 
   const isManageMode = window.location.pathname.endsWith('/manage');
@@ -31,12 +33,8 @@ export const useSavingsState = () => {
 
   const sub = subscription as SubscriptionWithFeatures | null | undefined;
   const features = sub?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const [savings, setSavings] = useState<Saving[]>([]);
-  const [categories, setCategories] = useState<SavingCategory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedSaving, setSelectedSaving] = useState<Saving | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [memberStatus, setMemberStatus] = useState<'loading' | 'member' | 'non-member'>('loading');
 
   // Scanned member states
   const [scannedStudent, setScannedStudent] = useState<Student | null>(null);
@@ -45,7 +43,6 @@ export const useSavingsState = () => {
   const [quickAmount, setQuickAmount] = useState<string>('');
   const [quickDescription, setQuickDescription] = useState<string>('');
   const [quickTxType, setQuickTxType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
-  const [processingQuickTx, setProcessingQuickTx] = useState(false);
   const [accountsExpanded, setAccountsExpanded] = useState(() => {
     return localStorage.getItem('saving_accounts_expanded') === 'true';
   });
@@ -97,67 +94,55 @@ export const useSavingsState = () => {
     };
   }, []);
 
-  const fetchSavings = useCallback(async (active: boolean = true) => {
-    try {
-      setLoading(true);
-      const url = isStudent ? '/cooperative/savings?personal=true' : '/cooperative/savings';
-      const response = await api.get(url);
-      if (active) {
-        setSavings(response.data);
-      }
-    } catch (err) {
-      console.error(err);
-      if (active) {
-        toast.error('Gagal mengambil data simpanan.');
-      }
-    } finally {
-      if (active) {
-        setLoading(false);
-      }
-    }
-  }, [isStudent]);
-
-  const fetchCategories = useCallback(async (active: boolean = true) => {
-    try {
-      const response = await api.get('/cooperative/saving-categories');
-      if (active && response.data?.success) {
-        setCategories(response.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch saving categories:', err);
-    }
-  }, []);
-
-  // Check membership status
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // Member Status query
+  const memberStatusQuery = useQuery({
+    queryKey: ['koperasi-member-status-me'],
+    queryFn: async () => {
       try {
         const res = await api.get('/cooperative/members/me');
-        if (!cancelled) {
-          const data = res?.data?.data;
-          setMemberStatus(data && data.status === 'ACTIVE' ? 'member' : 'non-member');
-        }
+        const data = res?.data?.data;
+        return (data && data.status === 'ACTIVE' ? 'member' : 'non-member') as 'member' | 'non-member';
       } catch {
-        if (!cancelled) setMemberStatus('non-member');
+        return 'non-member' as const;
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    },
+    enabled: !isOperator,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (subscription === undefined) return;
-    if (isOperator || memberStatus === 'member') {
-      let active = true;
-      fetchSavings(active);
-      fetchCategories(active);
-      return () => {
-        active = false;
-      };
-    } else if (memberStatus === 'non-member') {
-      setLoading(false);
-    }
-  }, [subscription, fetchSavings, fetchCategories, isOperator, memberStatus]);
+  const memberStatus = isOperator ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
+
+  // Savings query
+  const savingsQuery = useQuery({
+    queryKey: ['koperasi-savings-list', isStudent],
+    queryFn: async () => {
+      const url = isStudent ? '/cooperative/savings?personal=true' : '/cooperative/savings';
+      const response = await api.get(url);
+      return (Array.isArray(response.data) ? response.data : []) as Saving[];
+    },
+    enabled: (isOperator || memberStatus === 'member') && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const savings = savingsQuery.data || [];
+  const loading = savingsQuery.isLoading;
+  const fetchSavings = useCallback(async () => {
+    await savingsQuery.refetch();
+  }, [savingsQuery]);
+
+  // Categories query
+  const categoriesQuery = useQuery({
+    queryKey: ['koperasi-saving-categories'],
+    queryFn: async () => {
+      const response = await api.get('/cooperative/saving-categories');
+      return (response.data?.success ? response.data.data : []) as SavingCategory[];
+    },
+    enabled: (isOperator || memberStatus === 'member') && subscription !== undefined,
+    staleTime: 5 * 60 * 1000,
+  });
+  const categories = categoriesQuery.data || [];
+  const fetchCategories = useCallback(async () => {
+    await categoriesQuery.refetch();
+  }, [categoriesQuery]);
 
   const handleShowTransactions = useCallback(async (saving: Saving) => {
     if (isLocked) return;
@@ -261,20 +246,13 @@ export const useSavingsState = () => {
     }, 150);
   }, [savings, quickTxType, getAutoMemo, getVisibleSavingsForTx]);
 
-  const executeQuickTransaction = useCallback(async () => {
-    if (!confirmTxData || isLocked) return;
-
-    setProcessingQuickTx(true);
-    try {
-      const response = await api.post('/cooperative/savings/transaction', {
-        savingId: confirmTxData.savingId,
-        type: confirmTxData.type,
-        amount: confirmTxData.amount,
-        description: confirmTxData.description
-      });
-
-      const txResult = response.data as { id: string; date: string };
-
+  const quickTxMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const response = await api.post('/cooperative/savings/transaction', payload);
+      return response.data as { id: string; date: string };
+    },
+    onSuccess: async (txResult) => {
+      if (!confirmTxData) return;
       const selectedAcc = scannedMemberSavings.find(s => s.id === confirmTxData.savingId);
       const prevBal = selectedAcc ? parseFloat(selectedAcc.amount) : 0;
       const newBalance = confirmTxData.type === 'DEPOSIT' ? prevBal + confirmTxData.amount : prevBal - confirmTxData.amount;
@@ -300,17 +278,30 @@ export const useSavingsState = () => {
       setSelectedScannedSavingId('');
       setShowQuickTxConfirm(false);
       setConfirmTxData(null);
-      await fetchSavings(isMountedRef.current);
-    } catch (err) {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      setTimeout(() => scannerInputRef.current?.focus(), 500);
+    },
+    onError: (err) => {
       console.error(err);
       const errorLike = err as { response?: { data?: { message?: string } }; message?: string };
       const errMsg = errorLike.response?.data?.message || errorLike.message || 'Gagal memproses transaksi';
       toast.error(errMsg);
-    } finally {
-      setProcessingQuickTx(false);
       setTimeout(() => scannerInputRef.current?.focus(), 500);
     }
-  }, [confirmTxData, isLocked, scannedMemberSavings, fetchSavings, user]);
+  });
+
+  const processingQuickTx = quickTxMutation.isPending;
+
+  const executeQuickTransaction = useCallback(async () => {
+    if (!confirmTxData || isLocked) return;
+
+    await quickTxMutation.mutateAsync({
+      savingId: confirmTxData.savingId,
+      type: confirmTxData.type,
+      amount: confirmTxData.amount,
+      description: confirmTxData.description
+    });
+  }, [confirmTxData, isLocked, quickTxMutation]);
 
   const handleQuickTransactionSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

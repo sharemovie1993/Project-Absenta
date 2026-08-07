@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../../ui';
 import { X, RefreshCw } from 'lucide-react';
@@ -11,6 +12,7 @@ interface PeriodFormModalProps {
 }
 
 export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClose, onSuccess }) => {
+  const queryClient = useQueryClient();
   const [newPeriodData, setNewPeriodData] = useState({
     year: new Date().getFullYear() - 1,
     startDate: `${new Date().getFullYear() - 1}-01-01`,
@@ -18,7 +20,6 @@ export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClo
     totalRevenue: '',
     totalExpense: ''
   });
-  const [creatingPeriod, setCreatingPeriod] = useState(false);
   const [loadingLabaRugi, setLoadingLabaRugi] = useState(false);
 
   const fetchLabaRugiData = async () => {
@@ -56,30 +57,38 @@ export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClo
     }
   };
 
-  const handleCreatePeriodSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreatingPeriod(true);
-    try {
-      const payload = {
-        year: Number(newPeriodData.year),
-        startDate: new Date(newPeriodData.startDate).toISOString(),
-        endDate: new Date(newPeriodData.endDate).toISOString(),
-        totalRevenue: Number(newPeriodData.totalRevenue),
-        totalExpense: Number(newPeriodData.totalExpense)
-      };
+  const createPeriodMutation = useMutation({
+    mutationFn: async (payload: any) => {
       const res = await api.post('/cooperative/shu/periods', payload);
-      if (res.data?.success) {
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (data?.success) {
         toast.success('Periode SHU berhasil dibuat!');
+        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
         onSuccess();
         onClose();
       }
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       console.error(err);
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error.response?.data?.message || 'Gagal membuat periode SHU');
-    } finally {
-      setCreatingPeriod(false);
     }
+  });
+
+  const creatingPeriod = createPeriodMutation.isPending;
+
+  const handleCreatePeriodSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      year: Number(newPeriodData.year),
+      startDate: new Date(newPeriodData.startDate).toISOString(),
+      endDate: new Date(newPeriodData.endDate).toISOString(),
+      totalRevenue: Number(newPeriodData.totalRevenue),
+      totalExpense: Number(newPeriodData.totalExpense)
+    };
+    await createPeriodMutation.mutateAsync(payload);
   };
 
   if (!isOpen) return null;

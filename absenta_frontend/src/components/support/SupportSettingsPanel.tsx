@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
   Search, 
@@ -23,14 +24,10 @@ import Modal, { ModalFooter } from '../ui/Modal';
 import useConfirm from '../../hooks/useConfirm';
 
 export default function SupportSettingsPanel() {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<'FAQ' | 'QUICK_REPLIES'>('FAQ');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Data States
-  const [faqs, setFaqs] = useState<SupportKnowledgeBase[]>([]);
-  const [quickReplies, setQuickReplies] = useState<SupportQuickReply[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Modal Control States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,26 +45,35 @@ export default function SupportSettingsPanel() {
   const [qrContent, setQrContent] = useState('');
   const [qrCategory, setQrCategory] = useState('');
 
-  // Fetch data
+  // FAQs Query
+  const faqsQuery = useQuery({
+    queryKey: ['support-knowledge-base-settings', searchQuery],
+    queryFn: async () => {
+      const res = await supportTicketApi.getKnowledgeBase(searchQuery);
+      return res.data || [];
+    },
+    enabled: activeTab === 'FAQ',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Quick Replies Query
+  const quickRepliesQuery = useQuery({
+    queryKey: ['support-quick-replies-settings'],
+    queryFn: async () => {
+      const res = await supportTicketApi.getQuickReplies();
+      return res.data || [];
+    },
+    enabled: activeTab === 'QUICK_REPLIES',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const faqs = faqsQuery.data || [];
+  const quickReplies = quickRepliesQuery.data || [];
+  const loading = activeTab === 'FAQ' ? faqsQuery.isLoading : quickRepliesQuery.isLoading;
+
   const loadData = async () => {
-    try {
-      setLoading(true);
-      if (activeTab === 'FAQ') {
-        const res = await supportTicketApi.getKnowledgeBase(searchQuery);
-        if (res.success && res.data) {
-          setFaqs(res.data);
-        }
-      } else {
-        const res = await supportTicketApi.getQuickReplies();
-        if (res.success && res.data) {
-          setQuickReplies(res.data);
-        }
-      }
-    } catch (err: any) {
-      toast.error('Gagal memuat basis data bantuan.');
-    } finally {
-      setLoading(false);
-    }
+    if (activeTab === 'FAQ') await faqsQuery.refetch();
+    else await quickRepliesQuery.refetch();
   };
 
   useEffect(() => {

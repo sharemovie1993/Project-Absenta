@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { supportTicketApi, type SupportTicket, type SupportTicketMessage } from '@/api/support-ticket.api';
@@ -6,13 +7,11 @@ import { MessageCircle, X, Send, Shield, User, Loader2, MessageSquare, ExternalL
 import { playNotificationSound } from '@/utils/audioUtils';
 
 export default function FloatingMessenger() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { socket, isConnected } = useSocket();
   const [isOpen, setIsOpen] = useState(false);
-  const [ticket, setTicket] = useState<SupportTicket | null>(null);
-  const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
   const [replyText, setReplyText] = useState('');
-  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -26,75 +25,39 @@ export default function FloatingMessenger() {
     user?.role?.name === 'PLATFORM_SUPPORT' ||
     (user?.capabilities && user.capabilities.includes('support.tickets.view'));
 
-  // 📡 Mengambil data tiket aktif terbaru atau tiket spesifik berdasarkan ID
-  const loadActiveTicket = async (specificTicketId?: string) => {
-    if (!hasSupportAccess || !user?.id) return;
-    try {
-      setLoading(true);
-      
-      // Jika ada ticketId spesifik yang dikirimkan (dari klik toast atau websocket)
-      if (specificTicketId) {
-        let detailRes;
-        if (isCS) {
-          detailRes = await supportTicketApi.getAdminTicketDetail(specificTicketId);
-        } else {
-          detailRes = await supportTicketApi.getSchoolTicketDetail(specificTicketId);
-        }
-        
-        if (detailRes.success && detailRes.data) {
-          setTicket(detailRes.data);
-          setMessages(detailRes.data.Messages || []);
-          return; // Selesai!
-        }
-      }
-
+  // Active Ticket Query via useQuery
+  const activeTicketQuery = useQuery({
+    queryKey: ['floating-messenger-active-ticket', isCS, user?.id],
+    queryFn: async () => {
       if (isCS) {
-        // Jika CS, ambil keluhan paling baru yang aktif (OPEN / IN_PROGRESS)
         const res = await supportTicketApi.getAdminTickets({ status: 'OPEN' });
         if (res.success && res.data && res.data.length > 0) {
-          // Ambil detail keluhan paling atas
           const latestTicket = res.data[0];
           const detailRes = await supportTicketApi.getAdminTicketDetail(latestTicket.id);
-          if (detailRes.success && detailRes.data) {
-            setTicket(detailRes.data);
-            setMessages(detailRes.data.Messages || []);
-          }
-        } else {
-          setTicket(null);
-          setMessages([]);
+          return detailRes.data || null;
         }
       } else {
-        // Jika sekolah, ambil keluhan terbarunya
         const res = await supportTicketApi.getSchoolTickets();
         if (res.success && res.data && res.data.length > 0) {
-          // Filter tiket aktif
           const activeTickets = res.data.filter(t => t.status !== 'CLOSED' && t.status !== 'RESOLVED');
           const targetTicket = activeTickets.length > 0 ? activeTickets[0] : res.data[0];
-          
           const detailRes = await supportTicketApi.getSchoolTicketDetail(targetTicket.id);
-          if (detailRes.success && detailRes.data) {
-            setTicket(detailRes.data);
-            setMessages(detailRes.data.Messages || []);
-          }
-        } else {
-          setTicket(null);
-          setMessages([]);
+          return detailRes.data || null;
         }
       }
-    } catch (err) {
-      // Modul tiket dikelola secara eksternal di Server Lisensi — tangani error dengan aman
-      setTicket(null);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return null;
+    },
+    enabled: !!hasSupportAccess && !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (hasSupportAccess && user?.id) {
-      loadActiveTicket();
-    }
-  }, [isCS, hasSupportAccess, user?.id]);
+  const ticket = activeTicketQuery.data || null;
+  const messages = ticket?.Messages || [];
+  const loading = activeTicketQuery.isLoading;
+
+  const loadActiveTicket = async () => {
+    await activeTicketQuery.refetch();
+  };
 
   // 🔔 Menangani WebSocket Real-Time untuk Pesan Baru
   useEffect(() => {

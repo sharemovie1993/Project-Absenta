@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, Minus, MessageCircle, Mail, MapPin, User, PieChart, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -42,7 +43,6 @@ interface Insights {
   coopContact:     CoopContact;
 }
 
-// ─── Sparkline SVG ────────────────────────────────────────────────────────────
 // ─── Sparkline SVG ────────────────────────────────────────────────────────────
 const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = React.memo(({
   data,
@@ -114,23 +114,17 @@ Sparkline.displayName = 'Sparkline';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const SavingInsightsPanel: React.FC = React.memo(() => {
-  const [insights, setInsights] = useState<Insights | null>(null);
-  const [loading, setLoading] = useState(true);
+  const insightsQuery = useQuery({
+    queryKey: ['koperasi-savings-insights'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/savings/me/insights');
+      return res.data as Insights;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get('/cooperative/savings/me/insights');
-        if (!cancelled) setInsights(res.data);
-      } catch {
-        // Silently fail — insights are supplementary
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const insights = insightsQuery.data || null;
+  const loading = insightsQuery.isLoading;
 
   const [expanded, setExpanded] = useState(() => {
     return localStorage.getItem('saving_insights_expanded') === 'true';

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
-// Standardized using lazy( and Suspense
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   SectionCard, 
   Badge, 
@@ -64,12 +64,6 @@ export default function GuruMonitoringPage() {
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
-  const [sessions, setSessions] = useState<SesiMonitoringData[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [kelasMap, setKelasMap] = useState<Record<string, string>>({});
-  const [guruMap, setGuruMap] = useState<Record<string, string>>({});
-  const [kelasOptions, setKelasOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
   const [selectedGuruId] = useState<string>('');
   const [explicitTanggal, setExplicitTanggal] = useState<boolean>(false);
@@ -88,31 +82,26 @@ export default function GuruMonitoringPage() {
                       subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  const fetchSessions = useCallback(async () => {
-    if (isLocked) return;
-    try {
-      setLoading(true);
-      setError(null);
+  const sessionsQuery = useQuery({
+    queryKey: ['guru-monitoring-sessions', explicitTanggal, tanggal, selectedKelasId, selectedGuruId],
+    queryFn: async () => {
       const params: Record<string, unknown> = { summary: true };
       if (explicitTanggal && tanggal) params.tanggal = tanggal;
       if (selectedKelasId) params.kelas_id = selectedKelasId;
       if (selectedGuruId) params.guru_id = selectedGuruId;
       const res = await getSesiAbsensiList(params);
-      const list = (res.data as SesiMonitoringData[]) || [];
-      setSessions(list);
-      setPage(1); // Reset page on fresh load
-    } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal memuat sesi';
-      setError(String(msg));
-    } finally {
-      setLoading(false);
-    }
-  }, [explicitTanggal, tanggal, selectedKelasId, selectedGuruId, isLocked]);
+      return (res.data as SesiMonitoringData[]) || [];
+    },
+    enabled: !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+  const sessions = sessionsQuery.data || [];
+  const loading = sessionsQuery.isLoading;
+
+  const fetchSessions = useCallback(async () => {
+    await sessionsQuery.refetch();
+  }, [sessionsQuery]);
 
   useEffect(() => {
     if (!isConnected || isLocked) return;
@@ -133,41 +122,41 @@ export default function GuruMonitoringPage() {
     };
   }, [isConnected, explicitTanggal, tanggal, selectedKelasId, selectedGuruId, subscribe, unsubscribe, emit, fetchSessions, isLocked]);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadRefs = async () => {
-      try {
-        const [kRes, gRes] = await Promise.all([
-          kelasApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>),
-          guruApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>)
-        ]);
-        const km: Record<string, string> = {};
-        const gm: Record<string, string> = {};
-        const kOpts: Array<{ value: string; label: string }> = [];
-        
-        ((kRes.data as DropdownOptionResponse[]) || []).forEach((k) => { 
-          if (k?.id) { 
-            const lbl = k.nama_kelas || k.nama || String(k.id); 
-            km[k.id] = lbl; 
-            kOpts.push({ value: String(k.id), label: lbl }); 
-          } 
-        });
-        ((gRes.data as DropdownOptionResponse[]) || []).forEach((g) => { 
-          if (g?.id) { 
-            const lbl = g.nama_guru || g.nama || String(g.id); 
-            gm[g.id] = lbl; 
-          } 
-        });
-        if (mounted) { 
-          setKelasMap(km); 
-          setGuruMap(gm); 
-          setKelasOptions(kOpts); 
+  const refsQuery = useQuery({
+    queryKey: ['guru-monitoring-refs'],
+    queryFn: async () => {
+      const [kRes, gRes] = await Promise.all([
+        kelasApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>),
+        guruApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>)
+      ]);
+      const kList = (kRes.data as DropdownOptionResponse[]) || [];
+      const gList = (gRes.data as DropdownOptionResponse[]) || [];
+      const km: Record<string, string> = {};
+      const gm: Record<string, string> = {};
+      const kOpts: Array<{ value: string; label: string }> = [];
+
+      kList.forEach((k) => {
+        if (k.id) {
+          const name = k.nama_kelas || k.nama || String(k.id);
+          km[k.id] = name;
+          kOpts.push({ value: String(k.id), label: name });
         }
-      } catch {}
-    };
-    loadRefs();
-    return () => { mounted = false; };
-  }, []);
+      });
+
+      gList.forEach((g) => {
+        if (g.id) {
+          gm[g.id] = g.nama_guru || g.nama || String(g.id);
+        }
+      });
+
+      return { kelasMap: km, guruMap: gm, kelasOptions: kOpts };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const kelasMap = refsQuery.data?.kelasMap || {};
+  const guruMap = refsQuery.data?.guruMap || {};
+  const kelasOptions = refsQuery.data?.kelasOptions || [];
 
   const stats = useMemo(() => [
     {

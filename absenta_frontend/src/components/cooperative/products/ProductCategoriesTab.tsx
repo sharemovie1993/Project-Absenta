@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
@@ -39,6 +40,7 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
   fetchCategories,
   fetchProducts
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
 
@@ -53,12 +55,10 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [categoryFormName, setCategoryFormName] = useState('');
   const [categoryFormDesc, setCategoryFormDesc] = useState('');
-  const [categorySubmitLoading, setCategorySubmitLoading] = useState(false);
 
   // Confirm delete category state
   const [categoryDeleteConfirmOpen, setCategoryDeleteConfirmOpen] = useState(false);
   const [categoryIdToDelete, setCategoryIdToDelete] = useState<string | null>(null);
-  const [categoryDeleteLoading, setCategoryDeleteLoading] = useState(false);
 
   const handleOpenCategoryModal = useCallback((cat?: ProductCategory) => {
     if (cat) {
@@ -73,6 +73,32 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
     setIsCategoryModalOpen(true);
   }, []);
 
+  const saveCategoryMutation = useMutation({
+    mutationFn: async (payload: { name: string; description: string }) => {
+      if (editingCategory) {
+        const res = await api.put(`/cooperative/toko/categories/${editingCategory.id}`, payload);
+        return res.data;
+      } else {
+        const res = await api.post('/cooperative/toko/categories', payload);
+        return res.data;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingCategory ? 'Kategori berhasil diperbarui' : 'Kategori baru berhasil ditambahkan');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      fetchCategories();
+      fetchProducts();
+      setIsCategoryModalOpen(false);
+    },
+    onError: (error) => {
+      const err = error as AxiosErrorLike;
+      toast.error(err.response?.data?.message || 'Gagal menyimpan kategori');
+    }
+  });
+
+  const categorySubmitLoading = saveCategoryMutation.isPending;
+
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryFormName.trim()) {
@@ -80,30 +106,10 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
       return;
     }
 
-    setCategorySubmitLoading(true);
-    try {
-      if (editingCategory) {
-        await api.put(`/cooperative/toko/categories/${editingCategory.id}`, {
-          name: categoryFormName,
-          description: categoryFormDesc
-        });
-        toast.success('Kategori berhasil diperbarui');
-      } else {
-        await api.post('/cooperative/toko/categories', {
-          name: categoryFormName,
-          description: categoryFormDesc
-        });
-        toast.success('Kategori baru berhasil ditambahkan');
-      }
-      fetchCategories();
-      fetchProducts(); // Refresh products in case category name mapping updated
-      setIsCategoryModalOpen(false);
-    } catch (error) {
-      const err = error as AxiosErrorLike;
-      toast.error(err.response?.data?.message || 'Gagal menyimpan kategori');
-    } finally {
-      setCategorySubmitLoading(false);
-    }
+    await saveCategoryMutation.mutateAsync({
+      name: categoryFormName,
+      description: categoryFormDesc
+    });
   };
 
   const handleCategoryDeleteClick = useCallback((id: string) => {
@@ -111,22 +117,32 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
     setCategoryDeleteConfirmOpen(true);
   }, []);
 
-  const handleCategoryDeleteConfirm = async () => {
-    if (!categoryIdToDelete) return;
-    setCategoryDeleteLoading(true);
-    try {
-      await api.delete(`/cooperative/toko/categories/${categoryIdToDelete}`);
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete(`/cooperative/toko/categories/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Kategori berhasil dihapus.');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
       fetchCategories();
       fetchProducts();
       setCategoryDeleteConfirmOpen(false);
-    } catch (error) {
+      setCategoryIdToDelete(null);
+    },
+    onError: (error) => {
       const err = error as AxiosErrorLike;
       toast.error(err.response?.data?.message || 'Gagal menghapus kategori');
-    } finally {
-      setCategoryDeleteLoading(false);
       setCategoryIdToDelete(null);
     }
+  });
+
+  const categoryDeleteLoading = deleteCategoryMutation.isPending;
+
+  const handleCategoryDeleteConfirm = async () => {
+    if (!categoryIdToDelete) return;
+    await deleteCategoryMutation.mutateAsync(categoryIdToDelete);
   };
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {

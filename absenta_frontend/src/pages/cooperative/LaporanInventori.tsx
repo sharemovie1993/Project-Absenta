@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import api from '../../lib/axiosInstance';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -51,25 +52,72 @@ const LaporanInventori: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'stock' | 'valuation' | 'purchases'>('stock');
 
-  // — Stok Barang state
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [stockSummary, setStockSummary] = useState<StockSummary | null>(null);
-  const [stockLoading, setStockLoading] = useState(false);
+  // — Filter states
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [lowStockOnly, setLowStockOnly] = useState(false);
-
-  // — Nilai Persediaan state
-  const [valuationRows, setValuationRows] = useState<ValuationRow[]>([]);
-  const [valuationGrand, setValuationGrand] = useState<ValuationGrand | null>(null);
-  const [valuationLoading, setValuationLoading] = useState(false);
-
-  // — Rekap Barang Masuk state
-  const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([]);
-  const [purchaseGrand, setPurchaseGrand] = useState<PurchaseGrand | null>(null);
-  const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [supplierFilter, setSupplierFilter] = useState('');
+
+  // ─── React Query Hooks ───────────────────────────────────────────────────
+
+  const stockQuery = useQuery({
+    queryKey: ['koperasi-reports-inventory-stock'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/reports/inventory/stock');
+      return res.data as { items: StockItem[]; summary: StockSummary };
+    },
+    enabled: activeTab === 'stock',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stockItems = useMemo(() => stockQuery.data?.items || [], [stockQuery.data]);
+  const stockSummary = stockQuery.data?.summary || null;
+  const stockLoading = stockQuery.isLoading;
+
+  const fetchStock = useCallback(async () => {
+    await stockQuery.refetch();
+  }, [stockQuery]);
+
+  const valuationQuery = useQuery({
+    queryKey: ['koperasi-reports-inventory-valuation'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/reports/inventory/valuation');
+      return res.data as { rows: ValuationRow[]; grandTotal: ValuationGrand };
+    },
+    enabled: activeTab === 'valuation',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const valuationRows = useMemo(() => valuationQuery.data?.rows || [], [valuationQuery.data]);
+  const valuationGrand = valuationQuery.data?.grandTotal || null;
+  const valuationLoading = valuationQuery.isLoading;
+
+  const fetchValuation = useCallback(async () => {
+    await valuationQuery.refetch();
+  }, [valuationQuery]);
+
+  const purchasesQuery = useQuery({
+    queryKey: ['koperasi-reports-inventory-purchases', startDate, endDate, supplierFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (supplierFilter) params.supplier = supplierFilter;
+      const res = await api.get('/cooperative/reports/inventory/purchases', { params });
+      return res.data as { rows: PurchaseRow[]; grandTotal: PurchaseGrand };
+    },
+    enabled: activeTab === 'purchases',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const purchaseRows = useMemo(() => purchasesQuery.data?.rows || [], [purchasesQuery.data]);
+  const purchaseGrand = purchasesQuery.data?.grandTotal || null;
+  const purchaseLoading = purchasesQuery.isLoading;
+
+  const fetchPurchases = useCallback(async () => {
+    await purchasesQuery.refetch();
+  }, [purchasesQuery]);
 
   // — Derived category list for filter
   const categories = useMemo(() => {
@@ -84,51 +132,6 @@ const LaporanInventori: React.FC = () => {
       return matchCat && matchLow;
     });
   }, [stockItems, categoryFilter, lowStockOnly]);
-
-  // ─── Fetchers ────────────────────────────────────────────────────────────
-
-  const fetchStock = useCallback(async () => {
-    setStockLoading(true);
-    try {
-      const res = await api.get('/cooperative/reports/inventory/stock');
-      setStockItems(res.data.items || []);
-      setStockSummary(res.data.summary || null);
-    } catch (e) {
-      toast.error('Gagal mengambil laporan stok barang');
-    } finally { setStockLoading(false); }
-  }, []);
-
-  const fetchValuation = useCallback(async () => {
-    setValuationLoading(true);
-    try {
-      const res = await api.get('/cooperative/reports/inventory/valuation');
-      setValuationRows(res.data.rows || []);
-      setValuationGrand(res.data.grandTotal || null);
-    } catch (e) {
-      toast.error('Gagal mengambil laporan nilai persediaan');
-    } finally { setValuationLoading(false); }
-  }, []);
-
-  const fetchPurchases = useCallback(async () => {
-    setPurchaseLoading(true);
-    try {
-      const params: Record<string, string> = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (supplierFilter) params.supplier = supplierFilter;
-      const res = await api.get('/cooperative/reports/inventory/purchases', { params });
-      setPurchaseRows(res.data.rows || []);
-      setPurchaseGrand(res.data.grandTotal || null);
-    } catch (e) {
-      toast.error('Gagal mengambil rekap barang masuk');
-    } finally { setPurchaseLoading(false); }
-  }, [startDate, endDate, supplierFilter]);
-
-  useEffect(() => {
-    if (activeTab === 'stock') fetchStock();
-    else if (activeTab === 'valuation') fetchValuation();
-    else fetchPurchases();
-  }, [activeTab]);
 
   // ─── Export Excel ────────────────────────────────────────────────────────
 

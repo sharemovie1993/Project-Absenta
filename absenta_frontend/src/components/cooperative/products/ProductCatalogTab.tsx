@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
@@ -56,6 +57,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   fetchProducts,
   fetchCategories
 }) => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const canCreate = user?.capabilities?.includes('cooperative.store.products.create') || false;
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
@@ -71,18 +73,15 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   // Product CRUD Modals
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productSubmitLoading, setProductSubmitLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
   // Stock Opname (Adjust Stock) Modal
   const [isOpnameModalOpen, setIsOpnameModalOpen] = useState(false);
   const [opnameProduct, setOpnameProduct] = useState<Product | null>(null);
-  const [opnameSubmitLoading, setOpnameSubmitLoading] = useState(false);
 
   // Confirm delete product state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [productIdToDelete, setProductIdToDelete] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Derived category options for filter dropdown
   const categoryOptions = useMemo(() => {
@@ -98,45 +97,36 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   // Sorting products helper
   const sortedProducts = useMemo(() => {
     const sorted = [...products];
-    if (!sortKey) return sorted;
-    
-    sorted.sort((a, b) => {
-      let valA = a[sortKey as keyof Product] ?? '';
-      let valB = b[sortKey as keyof Product] ?? '';
-      
-      if (sortKey === 'price' || sortKey === 'costPrice' || sortKey === 'stock') {
-        valA = Number(valA);
-        valB = Number(valB);
-      }
-      
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return sortDirection === 'asc' ? valA - valB : valB - valA;
-      }
-      
-      const strA = String(valA).toLowerCase();
-      const strB = String(valB).toLowerCase();
-      return sortDirection === 'asc' 
-        ? strA.localeCompare(strB) 
-        : strB.localeCompare(strA);
-    });
-    
+    if (sortKey) {
+      sorted.sort((a, b) => {
+        let aValue = (a as any)[sortKey];
+        let bValue = (b as any)[sortKey];
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
     return sorted;
   }, [products, sortKey, sortDirection]);
 
-  // Filtered products for Catalog Tab
+  // Filter products by search and category
   const filteredProducts = useMemo(() => {
     return sortedProducts.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            p.code.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
-      return matchesSearch && matchesCategory;
+      const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.code.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
+      return matchSearch && matchCategory;
     });
   }, [sortedProducts, searchQuery, categoryFilter]);
 
-  // Paginated products
+  // Paginated data for the Table component
   const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * limit;
-    return filteredProducts.slice(startIndex, startIndex + limit);
+    const start = (currentPage - 1) * limit;
+    return filteredProducts.slice(start, start + limit);
   }, [filteredProducts, currentPage, limit]);
 
   const totalPages = useMemo(() => {
@@ -152,6 +142,32 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     setIsProductModalOpen(true);
   }, []);
 
+  const saveProductMutation = useMutation({
+    mutationFn: async (formData: any) => {
+      if (editingProduct) {
+        const res = await api.put(`/cooperative/toko/${editingProduct.id}`, formData);
+        return res.data;
+      } else {
+        const res = await api.post('/cooperative/toko', formData);
+        return res.data;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingProduct ? 'Produk berhasil diperbarui' : 'Produk berhasil ditambahkan');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      fetchProducts();
+      fetchCategories();
+      setIsProductModalOpen(false);
+    },
+    onError: (error) => {
+      const err = error as AxiosErrorLike;
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Gagal menyimpan produk');
+    }
+  });
+
+  const productSubmitLoading = saveProductMutation.isPending;
+
   const handleProductSubmit = useCallback(async (formData: {
     code: string;
     name: string;
@@ -160,54 +176,68 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     stock: string;
     category: string;
   }) => {
-    setProductSubmitLoading(true);
-    try {
-      if (editingProduct) {
-        await api.put(`/cooperative/toko/${editingProduct.id}`, formData);
-        toast.success('Produk berhasil diperbarui');
-      } else {
-        await api.post('/cooperative/toko', formData);
-        toast.success('Produk berhasil ditambahkan');
-      }
-      fetchProducts();
-      fetchCategories();
-      setIsProductModalOpen(false);
-    } catch (error) {
-      const err = error as AxiosErrorLike;
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Gagal menyimpan produk');
-    } finally {
-      setProductSubmitLoading(false);
-    }
-  }, [editingProduct, fetchProducts, fetchCategories]);
+    await saveProductMutation.mutateAsync(formData);
+  }, [saveProductMutation]);
 
   const handleProductDeleteClick = useCallback((id: string) => {
     setProductIdToDelete(id);
     setDeleteConfirmOpen(true);
   }, []);
 
-  const handleProductDeleteConfirm = useCallback(async () => {
-    if (!productIdToDelete) return;
-    setDeleteLoading(true);
-    try {
-      await api.delete(`/cooperative/toko/${productIdToDelete}`);
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete(`/cooperative/toko/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Produk berhasil dihapus.');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
       fetchProducts();
       setDeleteConfirmOpen(false);
-    } catch (error) {
+      setProductIdToDelete(null);
+    },
+    onError: (error) => {
       const err = error as AxiosErrorLike;
       const msg = err.response?.data?.message || err.response?.data?.error || 'Gagal menghapus produk.';
       toast.error(msg, { duration: 5000 });
-    } finally {
-      setDeleteLoading(false);
       setProductIdToDelete(null);
     }
-  }, [productIdToDelete, fetchProducts]);
+  });
+
+  const deleteLoading = deleteProductMutation.isPending;
+
+  const handleProductDeleteConfirm = useCallback(async () => {
+    if (!productIdToDelete) return;
+    await deleteProductMutation.mutateAsync(productIdToDelete);
+  }, [productIdToDelete, deleteProductMutation]);
 
   const handleOpenOpnameModal = useCallback((product: Product) => {
     setOpnameProduct(product);
     setIsOpnameModalOpen(true);
   }, []);
+
+  const adjustStockMutation = useMutation({
+    mutationFn: async ({ productId, newStockVal, reason }: { productId: string; newStockVal: number; reason: string }) => {
+      const res = await api.post(`/cooperative/toko/${productId}/adjust-stock`, {
+        newStock: newStockVal,
+        reason: reason.trim() || undefined
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Stok berhasil disesuaikan');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      fetchProducts();
+      setIsOpnameModalOpen(false);
+    },
+    onError: (error) => {
+      const err = error as AxiosErrorLike;
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Gagal menyesuaikan stok');
+    }
+  });
+
+  const opnameSubmitLoading = adjustStockMutation.isPending;
 
   const handleOpnameSubmit = useCallback(async (newStockVal: number, reason: string) => {
     if (!opnameProduct) return;
@@ -216,23 +246,12 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       return;
     }
 
-    setOpnameSubmitLoading(true);
-    try {
-      await api.post(`/cooperative/toko/${opnameProduct.id}/adjust-stock`, {
-        newStock: newStockVal,
-        reason: reason.trim() || undefined
-      });
-      toast.success('Stok berhasil disesuaikan');
-      fetchProducts();
-      setIsOpnameModalOpen(false);
-    } catch (error) {
-      const err = error as AxiosErrorLike;
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Gagal menyesuaikan stok');
-    } finally {
-      setOpnameSubmitLoading(false);
-    }
-  }, [opnameProduct, fetchProducts]);
+    await adjustStockMutation.mutateAsync({
+      productId: opnameProduct.id,
+      newStockVal,
+      reason
+    });
+  }, [opnameProduct, adjustStockMutation]);
 
   const handleImportProducts = useCallback(async (file: File, onProgress: (p: number) => void) => {
     return importDataFromExcel('/cooperative/toko/import', file, onProgress);

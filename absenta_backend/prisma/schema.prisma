@@ -2098,8 +2098,9 @@ model SystemConfig {
   default_late_threshold        Int             @default(5)
   default_notap_threshold       Int             @default(5)
 
-  // Piket / Izin Keluar
-  max_izin_sementara_menit Int @default(45)
+  // Piket / Izin Keluar & SOP Configs
+  max_izin_sementara_menit Int   @default(45)
+  sop_configs              Json?
 
   // Parent App Feature Flags (Per Tenant)
   parent_app_enabled                    Boolean @default(true)

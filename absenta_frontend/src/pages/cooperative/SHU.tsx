@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -79,6 +80,7 @@ const ShuRulesForm = lazy(() =>
 );
 
 const SHU: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const confirm = useConfirm();
 
@@ -121,132 +123,121 @@ const SHU: React.FC = () => {
   
   // Selected Period Detail View
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
-  const [periodDetail, setPeriodDetail] = useState<ShuPeriod | null>(null);
-  const [allocations, setAllocations] = useState<ShuAllocation[]>([]);
   const [searchMember, setSearchMember] = useState('');
-  const [loadingDetail, setLoadingDetail] = useState(false);
-
-  // Periods state
-  const [periods, setPeriods] = useState<ShuPeriod[]>([]);
-  const [loadingPeriods, setLoadingPeriods] = useState(false);
 
   // Config State
-  const [config, setConfig] = useState<ShuConfig>({
-    porsiJasaModal: '30',
-    porsiJasaTransaksi: '30',
-    porsiCadangan: '20',
-    porsiPengurus: '5',
-    porsiSosial: '5',
-    porsiPembangunan: '10'
-  });
+  const [localConfig, setLocalConfig] = useState<ShuConfig | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // New Period Modal State
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [loadingSync, setLoadingSync] = useState(false);
 
-  // Member history state
-  const [myHistory, setMyHistory] = useState<MyShuHistory[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [memberStatus, setMemberStatus] = useState<'loading' | 'member' | 'non-member'>('loading');
+  // Member status
+  const memberStatusQuery = useQuery({
+    queryKey: ['koperasi-member-status-me'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/members/me');
+        const data = res?.data?.data;
+        return (data && data.status === 'ACTIVE' ? 'member' : 'non-member') as 'member' | 'non-member';
+      } catch {
+        return 'non-member' as const;
+      }
+    },
+    enabled: !isOperator,
+    staleTime: 5 * 60 * 1000,
+  });
+  const memberStatus = isOperator ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
 
   // Fetch all periods
-  const fetchPeriods = useCallback(async () => {
-    try {
-      setLoadingPeriods(true);
+  const periodsQuery = useQuery({
+    queryKey: ['koperasi-shu-periods'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/shu/periods');
-      if (res.data?.success) {
-        setPeriods(res.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching SHU periods:', err);
-      toast.error('Gagal mengambil daftar periode SHU');
-    } finally {
-      setLoadingPeriods(false);
-    }
-  }, []);
+      return (res.data?.success ? res.data.data : []) as ShuPeriod[];
+    },
+    enabled: isOperator,
+    staleTime: 5 * 60 * 1000,
+  });
+  const periods = periodsQuery.data || [];
+  const loadingPeriods = periodsQuery.isLoading;
+  const fetchPeriods = useCallback(async () => {
+    await periodsQuery.refetch();
+  }, [periodsQuery]);
 
   // Fetch configuration
-  const fetchConfig = useCallback(async () => {
-    try {
+  const configQuery = useQuery({
+    queryKey: ['koperasi-shu-config'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/shu/config');
       if (res.data?.success && res.data.data) {
-        setConfig({
+        return {
           porsiJasaModal: String(res.data.data.porsiJasaModal),
           porsiJasaTransaksi: String(res.data.data.porsiJasaTransaksi),
           porsiCadangan: String(res.data.data.porsiCadangan),
           porsiPengurus: String(res.data.data.porsiPengurus),
           porsiSosial: String(res.data.data.porsiSosial),
           porsiPembangunan: String(res.data.data.porsiPembangunan)
-        });
+        } as ShuConfig;
       }
-    } catch (err) {
-      console.error('Error fetching SHU config:', err);
-    }
-  }, []);
+      return null;
+    },
+    enabled: isOperator,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const defaultConfig: ShuConfig = useMemo(() => ({
+    porsiJasaModal: '30',
+    porsiJasaTransaksi: '30',
+    porsiCadangan: '20',
+    porsiPengurus: '5',
+    porsiSosial: '5',
+    porsiPembangunan: '10'
+  }), []);
+
+  const config = localConfig || configQuery.data || defaultConfig;
+  const setConfig = setLocalConfig;
+
+  const fetchConfig = useCallback(async () => {
+    await configQuery.refetch();
+  }, [configQuery]);
 
   // Fetch member personal history
-  const fetchMyHistory = useCallback(async () => {
-    try {
-      setLoadingHistory(true);
+  const myHistoryQuery = useQuery({
+    queryKey: ['koperasi-shu-my-history'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/shu/my-history');
-      if (res.data?.success) {
-        setMyHistory(res.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching member SHU history:', err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, []);
-
-  // Check membership status
-  useEffect(() => {
-    if (isOperator) {
-      setMemberStatus('member');
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get('/cooperative/members/me');
-        if (!cancelled) {
-          const data = res?.data?.data;
-          setMemberStatus(data && data.status === 'ACTIVE' ? 'member' : 'non-member');
-        }
-      } catch {
-        if (!cancelled) setMemberStatus('non-member');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isOperator]);
-
-  // Init fetch based on user role
-  useEffect(() => {
-    if (isOperator) {
-      fetchPeriods();
-      fetchConfig();
-    } else if (memberStatus === 'member') {
-      fetchMyHistory();
-    }
-  }, [isOperator, fetchPeriods, fetchConfig, fetchMyHistory, memberStatus]);
+      return (res.data?.success ? res.data.data : []) as MyShuHistory[];
+    },
+    enabled: isStudent && memberStatus === 'member',
+    staleTime: 5 * 60 * 1000,
+  });
+  const myHistory = myHistoryQuery.data || [];
+  const loadingHistory = myHistoryQuery.isLoading;
+  const fetchMyHistory = useCallback(async () => {
+    await myHistoryQuery.refetch();
+  }, [myHistoryQuery]);
 
   // Fetch single period details
+  const periodDetailQuery = useQuery({
+    queryKey: ['koperasi-shu-period-detail', selectedPeriodId],
+    queryFn: async () => {
+      if (!selectedPeriodId) return null;
+      const res = await api.get(`/cooperative/shu/periods/${selectedPeriodId}`);
+      return res.data?.success ? res.data.data : null;
+    },
+    enabled: !!selectedPeriodId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const periodDetail = periodDetailQuery.data?.period || null;
+  const allocations: ShuAllocation[] = useMemo(() => periodDetailQuery.data?.allocations || [], [periodDetailQuery.data]);
+  const loadingDetail = periodDetailQuery.isLoading;
+
   const fetchPeriodDetail = useCallback(async (id: string) => {
-    try {
-      setLoadingDetail(true);
-      const res = await api.get(`/cooperative/shu/periods/${id}`);
-      if (res.data?.success) {
-        setPeriodDetail(res.data.data.period);
-        setAllocations(res.data.data.allocations || []);
-      }
-    } catch (err) {
-      console.error('Error fetching period detail:', err);
-      toast.error('Gagal memuat detail alokasi SHU');
-    } finally {
-      setLoadingDetail(false);
-    }
-  }, []);
+    setSelectedPeriodId(id);
+    await queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', id] });
+  }, [queryClient]);
 
   useEffect(() => {
     if (selectedPeriodId) {

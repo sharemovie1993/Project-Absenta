@@ -4,10 +4,12 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Table } from '../ui/Table';
 import { Loader } from '../ui/Loader';
-import { CheckCircle, LogIn } from 'lucide-react';
+import { CheckCircle, LogIn, MessageSquare, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { LiveDuration } from './LiveDuration';
 import { getTipeIzinBadgeConfig } from '../../utils/piketStatusHelper';
+import { ModuleSopTrigger } from '../common/ModuleSopTrigger';
+import toast from 'react-hot-toast';
 
 interface PiketMonitoringProps {
   activeOutStudents: IzinKeluarSiswa[];
@@ -22,6 +24,39 @@ export const PiketMonitoring: React.FC<PiketMonitoringProps> = React.memo(({
   handleMarkReturned,
   handleDeletePermit
 }) => {
+
+  const handleOpenWaSiswa = (item: IzinKeluarSiswa) => {
+    const rawNo = (item.SiswaAkademik?.siswa as any)?.no_hp;
+    if (!rawNo) {
+      toast.error('Nomor WhatsApp Siswa tidak tersedia');
+      return;
+    }
+    const cleanNo = rawNo.replace(/[^0-9]/g, '').replace(/^0/, '62');
+    const namaSiswa = item.SiswaAkademik?.siswa.nama_siswa || 'Siswa';
+    const jamKeluar = new Date(item.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const text = encodeURIComponent(`Halo ${namaSiswa}, kamu terdeteksi melebihi batas waktu izin keluar sementara dari Piket (sejak jam ${jamKeluar}). Harap segera kembali ke Ruang Piket / Kelas sekarang!`);
+    window.open(`https://wa.me/${cleanNo}?text=${text}`, '_blank');
+  };
+
+  const handleOpenWaOrtu = (item: IzinKeluarSiswa) => {
+    const rawNo = (item.SiswaAkademik?.siswa as any)?.no_hp; // fallback or ortu
+    if (!rawNo) {
+      toast.error('Nomor WhatsApp Orang Tua/Wali tidak tersedia');
+      return;
+    }
+    const cleanNo = rawNo.replace(/[^0-9]/g, '').replace(/^0/, '62');
+    const namaSiswa = item.SiswaAkademik?.siswa.nama_siswa || 'Siswa';
+    const kelasNama = item.SiswaAkademik?.kelas?.nama_kelas || '-';
+    const jamKeluar = new Date(item.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const text = encodeURIComponent(`Yth. Bapak/Ibu Wali dari ${namaSiswa} (${kelasNama}), menginformasikan bahwa putra/putri Bapak/Ibu terdeteksi belum kembali ke kelas setelah izin keluar sementara dari Piket sejak jam ${jamKeluar}. Mohon dibantu pengecekannya.`);
+    window.open(`https://wa.me/${cleanNo}?text=${text}`, '_blank');
+  };
+
+  const handleEskalasiBk = (item: IzinKeluarSiswa) => {
+    const namaSiswa = item.SiswaAkademik?.siswa.nama_siswa || 'Siswa';
+    toast.success(`Eskalasi kasus overstay ${namaSiswa} telah dicatat dan diteruskan ke Guru BK & Tim Kesiswaan.`);
+  };
+
   const columns = React.useMemo(() => [
     {
       key: 'siswa',
@@ -80,20 +115,46 @@ export const PiketMonitoring: React.FC<PiketMonitoringProps> = React.memo(({
     },
     {
       key: 'actions',
-      label: 'Aksi Kepulangan',
+      label: 'Aksi Kepulangan & Penindakan',
       render: (_, item: IzinKeluarSiswa) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-1.5 items-center">
           <Button
             variant="primary"
             onClick={() => handleMarkReturned(item.id, item.SiswaAkademik?.siswa.nama_siswa || 'Siswa')}
-            className="bg-emerald-600 text-white rounded-lg px-4 py-1.5 font-black text-[10px] uppercase tracking-wider h-8 flex items-center gap-1 shadow-sm"
+            className="bg-emerald-600 text-white rounded-lg px-3 py-1 font-black text-[9px] uppercase tracking-wider h-7 flex items-center gap-1 shadow-sm"
           >
             <LogIn size={10} /> Catat Kembali
           </Button>
+
+          {/* 1-Click WhatsApp Action Buttons */}
+          <button
+            onClick={() => handleOpenWaSiswa(item)}
+            title="Chat WA Siswa"
+            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-emerald-200/50"
+          >
+            <MessageSquare size={10} /> WA Siswa
+          </button>
+
+          <button
+            onClick={() => handleOpenWaOrtu(item)}
+            title="Chat WA Orang Tua"
+            className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-blue-200/50"
+          >
+            <MessageSquare size={10} /> WA Ortu
+          </button>
+
+          <button
+            onClick={() => handleEskalasiBk(item)}
+            title="Eskalasi ke BK"
+            className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-rose-200/50"
+          >
+            <ShieldAlert size={10} /> BK
+          </button>
+
           <Button
             variant="ghost"
             onClick={() => handleDeletePermit(item.id)}
-            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8 px-2 rounded-lg font-black text-[10px] uppercase tracking-wider"
+            className="text-gray-400 hover:text-rose-600 hover:bg-rose-50 h-7 px-1.5 rounded-lg font-bold text-[9px] uppercase tracking-wider"
           >
             Batal
           </Button>
@@ -105,7 +166,10 @@ export const PiketMonitoring: React.FC<PiketMonitoringProps> = React.memo(({
   return (
     <Card className="rounded-3xl border-none shadow-xl overflow-hidden bg-white dark:bg-slate-900">
       <div className="p-6 border-b border-gray-50 dark:border-slate-800 bg-gray-50/30 dark:bg-indigo-950/20 flex items-center justify-between">
-        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600">Daftar Siswa Sedang di Luar</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-black uppercase tracking-widest text-indigo-600">Daftar Siswa Sedang di Luar</h3>
+          <ModuleSopTrigger moduleKey="piket" buttonLabel="📜 SOP Perizinan" />
+        </div>
         <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[9px] uppercase tracking-widest px-3 py-1 animate-pulse">
           {(activeOutStudents?.length || 0)} Siswa Diluar
         </Badge>
@@ -129,3 +193,4 @@ export const PiketMonitoring: React.FC<PiketMonitoringProps> = React.memo(({
     </Card>
   );
 });
+

@@ -89,68 +89,71 @@ export default function RekapBulananSiswaPage() {
                       subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadDropdowns = async () => {
+  // Dropdowns Query
+  const dropdownsQuery = useQuery({
+    queryKey: ['rekap-bulanan-siswa-dropdowns', isSiswa, user?.id],
+    queryFn: async () => {
       const opsi = await dropdownApi.getTahunPelajaranForDropdown();
-      if (!isMounted) return;
-      setTahunOptions(opsi);
       const active = await dropdownApi.getActiveTahunPelajaran();
-      if (!isMounted) return;
-      if (active?.id) setTahunPelajaranId(active.id);
-      
+      let sOpts: DropdownOption[] = [];
+      let autoSiswaId = '';
+
       if (isSiswa && user?.id) {
-        try {
-          const res = await siswaApi.getAll({ limit: 1000 });
-          if (!isMounted) return;
-          const mySiswa = (res.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
-          if (mySiswa) {
-            setSiswaOptions([{ label: mySiswa.nama_siswa, value: mySiswa.id }]);
-            setSiswaId(mySiswa.id);
-          }
-        } catch (e) {
-          console.error("Failed to auto-select siswa", e);
+        const res = await siswaApi.getAll({ limit: 1000 });
+        const mySiswa = (res.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
+        if (mySiswa) {
+          sOpts = [{ label: mySiswa.nama_siswa, value: mySiswa.id }];
+          autoSiswaId = mySiswa.id;
         }
       } else {
-        const siswa = await dropdownApi.getSiswaForDropdown();
-        if (!isMounted) return;
-        setSiswaOptions(siswa);
+        sOpts = await dropdownApi.getSiswaForDropdown();
       }
-    };
-    loadDropdowns();
-    return () => { isMounted = false; };
-  }, [isSiswa, user?.id]);
+
+      return {
+        tahun: opsi || [],
+        activeId: active?.id || '',
+        siswaOpts: sOpts,
+        autoSiswaId
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
-    if (isSiswa && siswaId && bulan && tahunPelajaranId) {
-       fetchData();
+    if (dropdownsQuery.data) {
+      setTahunOptions(dropdownsQuery.data.tahun);
+      if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
+      setSiswaOptions(dropdownsQuery.data.siswaOpts);
+      if (dropdownsQuery.data.autoSiswaId && !siswaId) setSiswaId(dropdownsQuery.data.autoSiswaId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siswaId, isSiswa]);
+  }, [dropdownsQuery.data, tahunPelajaranId, siswaId]);
 
-  const fetchData = useCallback(async () => {
-    if (isLocked) return;
-    if (!siswaId || !bulan) return;
-    setLoading(true);
-    try {
+  // Main Rekap Bulanan Siswa Query
+  const rekapQuery = useQuery({
+    queryKey: ['rekap-bulanan-siswa-data', siswaId, bulan, tahunPelajaranId],
+    queryFn: async () => {
       const res = await getRekapBulananSiswa(siswaId, { bulan, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setData(res.data as RekapBulananResponse);
+      let kNama = '';
       try {
         const siswaRes = await siswaApi.getById(siswaId);
         const kid = (siswaRes.data as { kelas_id?: string })?.kelas_id;
         if (kid) {
-          const kelasRes = await kelasApi.getById(kid);
-          setKelasNama((kelasRes.data as { nama_kelas?: string })?.nama_kelas || '');
+          const kRes = await kelasApi.getById(kid);
+          kNama = (kRes.data as { nama_kelas?: string })?.nama_kelas || '';
         }
-      } catch (e) {
-        console.error("Gagal memuat info kelas siswa", e);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked, siswaId, bulan, tahunPelajaranId]);
+      } catch {}
+      return {
+        rekap: (res.data as RekapBulananResponse) || null,
+        kelasNama: kNama
+      };
+    },
+    enabled: !!siswaId && !!bulan && !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = rekapQuery.data?.rekap || null;
+  const kelasNama = rekapQuery.data?.kelasNama || '';
+  const loading = rekapQuery.isLoading;
 
   const openPrintView = useCallback((autoPrint: boolean) => {
     const url = `/print/rekap-bulanan-siswa?siswa_id=${siswaId}&bulan=${bulan}&tahun_pelajaran_id=${tahunPelajaranId || ''}&autoPrint=${autoPrint}`;

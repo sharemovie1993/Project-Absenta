@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Sparkles,
   Plus,
@@ -45,9 +46,8 @@ const EMPTY_FORM = {
 };
 
 export const TopikPresetsPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [presets, setPresets] = useState<GlobalTopikPresetItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJenjang, setFilterJenjang] = useState('');
 
@@ -56,21 +56,23 @@ export const TopikPresetsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
-  const fetchPresets = useCallback(async () => {
-    try {
-      setLoading(true);
+  const topikPresetsQuery = useQuery({
+    queryKey: ['superadmin-topik-presets', filterJenjang],
+    queryFn: async () => {
       const res = await kurikulumApi.getTopikPresets({
         jenjang: filterJenjang || undefined,
       });
-      if (res?.success) {
-        setPresets(res.data || []);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memuat preset topik');
-    } finally {
-      setLoading(false);
-    }
-  }, [filterJenjang]);
+      return (res.data as GlobalTopikPresetItem[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const presets = topikPresetsQuery.data || [];
+  const loading = topikPresetsQuery.isLoading;
+
+  const fetchPresets = useCallback(async () => {
+    await topikPresetsQuery.refetch();
+  }, [topikPresetsQuery]);
 
   useEffect(() => {
     fetchPresets();
@@ -97,32 +99,41 @@ export const TopikPresetsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const saveTopikPresetMutation = useMutation({
+    mutationFn: (data: typeof EMPTY_FORM) => {
+      const payload = { ...data, tingkat: Number(data.tingkat) };
+      return editingId
+        ? kurikulumApi.updateTopikPreset(editingId, payload)
+        : kurikulumApi.createTopikPreset(payload);
+    },
+    onSuccess: () => {
+      toast.success(editingId ? 'Preset topik berhasil diperbarui' : 'Preset topik baru berhasil ditambahkan');
+      setIsModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['superadmin-topik-presets'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menyimpan preset topik');
+    }
+  });
+
+  const deleteTopikPresetMutation = useMutation({
+    mutationFn: (id: string) => kurikulumApi.deleteTopikPreset(id),
+    onSuccess: () => {
+      toast.success('Preset topik berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['superadmin-topik-presets'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus preset topik');
+    }
+  });
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nama_mapel || !formData.judul_topik) {
       toast.error('Nama mapel dan Judul topik wajib diisi');
       return;
     }
-
-    try {
-      if (editingId) {
-        await kurikulumApi.updateTopikPreset(editingId, {
-          ...formData,
-          tingkat: Number(formData.tingkat),
-        });
-        toast.success('Preset topik berhasil diperbarui');
-      } else {
-        await kurikulumApi.createTopikPreset({
-          ...formData,
-          tingkat: Number(formData.tingkat),
-        });
-        toast.success('Preset topik baru berhasil ditambahkan');
-      }
-      setIsModalOpen(false);
-      fetchPresets();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan preset topik');
-    }
+    await saveTopikPresetMutation.mutateAsync(formData);
   };
 
   const handleDelete = async (id: string, judul: string) => {
@@ -133,14 +144,7 @@ export const TopikPresetsPage: React.FC = () => {
       style: 'danger',
     });
     if (!isOk) return;
-
-    try {
-      await kurikulumApi.deleteTopikPreset(id);
-      toast.success('Preset topik berhasil dihapus');
-      fetchPresets();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menghapus preset topik');
-    }
+    await deleteTopikPresetMutation.mutateAsync(id);
   };
 
   const filteredPresets = presets.filter((item) => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
@@ -69,13 +70,11 @@ const ReceiptModal = lazy(() =>
 );
 
 const Vouchers: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const confirm = useConfirm();
   const location = useLocation();
   const isManageRoute = location.pathname.endsWith('/manage');
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -83,24 +82,13 @@ const Vouchers: React.FC = () => {
     validUntil: ''
   });
 
-  // Member points & tier states
-  const [mySavingsSum, setMySavingsSum] = useState<number>(0);
-  const [myPoints, setMyPoints] = useState<number>(0);
-  const [pointHistory, setPointHistory] = useState<PointTransaction[]>([]);
-  const [pointsLoading, setPointsLoading] = useState<boolean>(true);
-  const [redeemLoading, setRedeemLoading] = useState<boolean>(false);
-  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
-  const [salesLoading, setSalesLoading] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
-  const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
-
   // Admin Table Pagination and Sorting states
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [sortKey, setSortKey] = useState<string>('code');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Gating Logic
   const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
@@ -117,95 +105,65 @@ const Vouchers: React.FC = () => {
            user?.capabilities?.includes('cooperative.vouchers.manage') || false;
   }, [user]);
 
-  const adminInstruction = {
-    title: "Panduan Manajemen Voucher",
-    description: "Kelola kode voucher belanja dan potongan harga bagi pelanggan koperasi.",
-    items: [
-      { text: "Tentukan kode voucher unik (kapital) dan tentukan nominal potongan dalam Rupiah." },
-      { text: "Atur tanggal kedaluwarsa jika promo hanya berlaku pada periode tertentu." }
-    ]
-  };
-
-  const auditInstruction = {
-    title: "Panduan Audit & Daftar Voucher",
-    description: "Tinjau dan audit seluruh kode voucher belanja serta potongan harga aktif di koperasi.",
-    items: [
-      { text: "Daftar di bawah memuat semua voucher belanja yang diterbitkan oleh pengurus." },
-      { text: "Voucher hasil penukaran poin loyalitas anggota juga terdaftar secara transparan di sini." }
-    ]
-  };
-
-  const memberInstruction = {
-    title: "Panduan Benefit & Poin",
-    description: "Kumpulkan poin belanja dan klaim diskon belanja menarik.",
-    items: [
-      { text: "Setiap belanja atau setoran simpanan kelipatan Rp 10.000 menghasilkan 1 poin." },
-      { text: "Tukarkan poin Anda dengan voucher belanja yang tersedia di bawah." }
-    ]
-  };
-
-  const fetchVouchers = useCallback(async () => {
-    if (isLocked) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
+  // React Query Hooks
+  const vouchersQuery = useQuery({
+    queryKey: ['koperasi-vouchers-list'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/vouchers');
-      setVouchers(res.data.data || []);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil data voucher');
-    } finally {
-      setLoading(false);
-    }
-  }, [isLocked]);
+      return (res.data.data || []) as Voucher[];
+    },
+    enabled: !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchMemberData = useCallback(async () => {
-    try {
-      const savingsRes = await api.get('/cooperative/savings');
-      const savingsList = savingsRes.data || [];
-      const totalMySavings = savingsList.reduce((sum: number, s: { amount?: string | number }) => sum + Number(s.amount || 0), 0);
-      setMySavingsSum(totalMySavings);
-    } catch (err) {
-      console.error('Failed to fetch personal savings:', err);
-    }
-  }, []);
+  const vouchers = vouchersQuery.data || [];
+  const loading = vouchersQuery.isLoading;
+  const fetchVouchers = useCallback(async () => {
+    await vouchersQuery.refetch();
+  }, [vouchersQuery]);
 
-  const fetchPointsData = useCallback(async () => {
-    if (isLocked) return;
-    try {
-      setPointsLoading(true);
+  const pointsQuery = useQuery({
+    queryKey: ['koperasi-points-history'],
+    queryFn: async () => {
       const res = await api.get('/cooperative/points/my-history');
-      if (res.data && res.data.success) {
-        setMyPoints(res.data.balance || 0);
-        setPointHistory(res.data.data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch points data:', err);
-    } finally {
-      setPointsLoading(false);
-    }
-  }, [isLocked]);
+      return {
+        balance: (res.data?.balance || 0) as number,
+        history: (res.data?.data || []) as PointTransaction[]
+      };
+    },
+    enabled: !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const handleRedeemPoints = useCallback(async (pointsToRedeem: number) => {
-    if (isLocked) return;
-    setRedeemLoading(true);
-    try {
+  const myPoints = pointsQuery.data?.balance || 0;
+  const pointHistory = pointsQuery.data?.history || [];
+  const pointsLoading = pointsQuery.isLoading;
+
+  const redeemPointsMutation = useMutation({
+    mutationFn: async (pointsToRedeem: number) => {
       const res = await api.post('/cooperative/points/redeem', { points: pointsToRedeem });
-      if (res.data && res.data.success) {
-        toast.success(res.data.message || 'Penukaran poin berhasil!');
-        fetchPointsData();
-        fetchVouchers();
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (data && data.success) {
+        toast.success(data.message || 'Penukaran poin berhasil!');
+        queryClient.invalidateQueries({ queryKey: ['koperasi-points-history'] });
+        queryClient.invalidateQueries({ queryKey: ['koperasi-vouchers-list'] });
       }
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       console.error('Failed to redeem points:', err);
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error.response?.data?.message || 'Gagal menukarkan poin.');
-    } finally {
-      setRedeemLoading(false);
     }
-  }, [isLocked, fetchPointsData, fetchVouchers]);
+  });
+
+  const redeemLoading = redeemPointsMutation.isPending;
+
+  const handleRedeemPoints = useCallback(async (pointsToRedeem: number) => {
+    if (isLocked) return;
+    await redeemPointsMutation.mutateAsync(pointsToRedeem);
+  }, [isLocked, redeemPointsMutation]);
 
   const fetchSalesHistory = useCallback(async () => {
     try {

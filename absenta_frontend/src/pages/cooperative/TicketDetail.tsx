@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Send, ArrowLeft, User } from 'lucide-react';
@@ -28,6 +29,7 @@ interface TicketDetailData {
 }
 
 const TicketDetail: React.FC = () => {
+  const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { id } = useParams<{ id: string }>();
 
@@ -35,59 +37,72 @@ const TicketDetail: React.FC = () => {
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
   const navigate = useNavigate();
   const hasListPermission = useMemo(() => user?.capabilities?.includes('cooperative.tickets.view.list') || user?.role?.name === 'SUPERADMIN', [user]);
-  const [ticket, setTicket] = useState<TicketDetailData | null>(null);
   const [reply, setReply] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+
+  const ticketQuery = useQuery({
+    queryKey: ['koperasi-ticket-detail', id],
+    queryFn: async () => {
+      const response = await api.get(`/cooperative/tickets/${id}`);
+      return (response.data.data ?? null) as TicketDetailData;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const ticket = ticketQuery.data || null;
+  const loading = ticketQuery.isLoading;
 
   const fetchTicket = useCallback(async () => {
-    if (!id) return;
-    try {
-      const response = await api.get(`/cooperative/tickets/${id}`);
-      setTicket(response.data.data);
-    } catch (error) {
-      console.error('Failed to fetch ticket details', error);
-      toast.error('Gagal memuat detail tiket');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+    await ticketQuery.refetch();
+  }, [ticketQuery]);
 
-  useEffect(() => {
-    fetchTicket();
-  }, [fetchTicket]);
+  const replyMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const res = await api.post(`/cooperative/tickets/${id}/reply`, {
+        content,
+        isStaff: hasListPermission
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      setReply('');
+      queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+    },
+    onError: (error) => {
+      console.error('Failed to send reply', error);
+      toast.error('Gagal mengirim balasan');
+    }
+  });
+
+  const sending = replyMutation.isPending;
 
   const handleReply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reply.trim()) return;
+    await replyMutation.mutateAsync(reply);
+  }, [reply, replyMutation]);
 
-    setSending(true);
-    try {
-      await api.post(`/cooperative/tickets/${id}/reply`, {
-        content: reply,
-        isStaff: hasListPermission
-      });
-      setReply('');
-      fetchTicket();
-    } catch (error) {
-      console.error('Failed to send reply', error);
-      toast.error('Gagal mengirim balasan');
-    } finally {
-      setSending(false);
-    }
-  }, [reply, id, hasListPermission, fetchTicket]);
-
-  const handleStatusChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const status = e.target.value;
-    try {
-      await api.patch(`/cooperative/tickets/${id}/status`, { status });
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const res = await api.patch(`/cooperative/tickets/${id}/status`, { status });
+      return res.data;
+    },
+    onSuccess: () => {
       toast.success('Status tiket diperbarui');
-      fetchTicket();
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+    },
+    onError: (error) => {
       console.error('Failed to update status', error);
       toast.error('Gagal memperbarui status');
     }
-  }, [id, fetchTicket]);
+  });
+
+  const handleStatusChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const status = e.target.value;
+    await updateStatusMutation.mutateAsync(status);
+  }, [updateStatusMutation]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', href: '/cooperative' },

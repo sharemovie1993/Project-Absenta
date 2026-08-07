@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import api from '../../lib/axiosInstance';
@@ -19,16 +20,14 @@ import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoan
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 
 const LoanDetail: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const confirm = useConfirm();
 
-  const [loan, setLoan] = useState<LoanDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [printTarget, setPrintTarget] = useState<'CARD' | 'AGREEMENT' | 'RECEIPT' | 'REPAYMENT' | null>(null);
   const [selectedRepayment, setSelectedRepayment] = useState<{ installment: Installment; index: number } | null>(null);
-  const [coopSettings, setCoopSettings] = useState<CooperativeSettings | null>(null);
   const [installmentPage, setInstallmentPage] = useState(1);
   const installmentLimit = 12;
 
@@ -42,6 +41,49 @@ const LoanDetail: React.FC = () => {
   const canApprove = user?.capabilities?.includes('cooperative.loans.approve');
   const canReject = user?.capabilities?.includes('cooperative.loans.reject');
 
+  // React Query Hooks
+  const coopSettingsQuery = useQuery({
+    queryKey: ['koperasi-settings-detail'],
+    queryFn: async () => {
+      const data = await fetchCoopSettings();
+      return data as CooperativeSettings;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const coopSettings = coopSettingsQuery.data || null;
+
+  const loanDetailQuery = useQuery({
+    queryKey: ['koperasi-loan-detail', id],
+    queryFn: async () => {
+      const response = await api.get(`/cooperative/loans/${id}`);
+      return response.data as LoanDetailData;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const loan = loanDetailQuery.data || null;
+  const loading = loanDetailQuery.isLoading;
+  const fetchDetail = useCallback(async () => {
+    await loanDetailQuery.refetch();
+  }, [loanDetailQuery]);
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: 'APPROVED' | 'REJECTED') => {
+      const res = await api.put(`/cooperative/loans/${id}/status`, { status });
+      return { data: res.data, status };
+    },
+    onSuccess: ({ status }) => {
+      toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+    },
+    onError: (error) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Gagal mengubah status pengajuan');
+    }
+  });
+
   const handleUpdateStatus = async (status: 'APPROVED' | 'REJECTED') => {
     const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
     const isConfirmed = await confirm({
@@ -52,61 +94,25 @@ const LoanDetail: React.FC = () => {
       style: status === 'APPROVED' ? 'success' : 'danger'
     });
     if (!isConfirmed) return;
-    
-    try {
-      await api.put(`/cooperative/loans/${id}/status`, { status });
-      toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
-      fetchDetail(); // Refresh data
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Gagal mengubah status pengajuan');
-    }
+    await updateStatusMutation.mutateAsync(status);
   };
 
-  const fetchDetail = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/cooperative/loans/${id}`);
-      setLoan(response.data);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal mengambil detail pinjaman');
-    } finally {
-      setLoading(false);
+  const payInstallmentMutation = useMutation({
+    mutationFn: async ({ installmentId, installmentNo }: { installmentId: string; installmentNo: number }) => {
+      const res = await api.post('/cooperative/loans/pay-installment', { installmentId });
+      return { data: res.data, installmentNo };
+    },
+    onSuccess: ({ installmentNo }) => {
+      toast.success(`Pembayaran angsuran ke-${installmentNo} berhasil diproses!`);
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+    },
+    onError: (error) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Pembayaran gagal');
     }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) fetchDetail();
-  }, [id, fetchDetail]);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const data = await fetchCoopSettings();
-        setCoopSettings(data as CooperativeSettings);
-      } catch (error) {
-        console.warn('Failed to load cooperative settings:', error);
-      }
-    };
-    loadSettings();
-  }, []);
-
-  useEffect(() => {
-    if (printTarget !== null) {
-      const timer = setTimeout(() => {
-        window.print();
-        setPrintTarget(null);
-      }, 150);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => {
-        setSelectedRepayment(null);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [printTarget]);
+  });
 
   const handlePayInstallment = async (installmentId: string, installmentNo: number) => {
     const isConfirmed = await confirm({
@@ -117,15 +123,7 @@ const LoanDetail: React.FC = () => {
       style: 'success'
     });
     if (!isConfirmed) return;
-    
-    try {
-      await api.post('/cooperative/loans/pay-installment', { installmentId });
-      toast.success(`Pembayaran angsuran ke-${installmentNo} berhasil diproses!`);
-      fetchDetail(); // Refresh data
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Pembayaran gagal');
-    }
+    await payInstallmentMutation.mutateAsync({ installmentId, installmentNo });
   };
 
   // Remaining balance
