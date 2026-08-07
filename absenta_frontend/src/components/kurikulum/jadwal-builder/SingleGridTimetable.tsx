@@ -182,6 +182,190 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
     );
   };
 
+  const getMergedCellsForDay = (day: string) => {
+    const mergedCells: {
+      startSlot: number;
+      endSlot: number;
+      span: number;
+      item: any;
+      lastSlotItem: any;
+    }[] = [];
+
+    let i = 0;
+    while (i < slots.length) {
+      const slotIdx = slots[i];
+      const item = getSlotData(day, slotIdx);
+
+      if (!item) {
+        mergedCells.push({
+          startSlot: slotIdx,
+          endSlot: slotIdx,
+          span: 1,
+          item: null,
+          lastSlotItem: null,
+        });
+        i++;
+        continue;
+      }
+
+      let span = 1;
+      let nextIdx = i + 1;
+      let lastItem = item;
+
+      while (nextIdx < slots.length) {
+        const nextSlot = slots[nextIdx];
+        const nextItem = getSlotData(day, nextSlot);
+
+        if (
+          nextItem &&
+          String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+          String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+          String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+          String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+        ) {
+          span++;
+          lastItem = nextItem;
+          nextIdx++;
+        } else {
+          break;
+        }
+      }
+
+      mergedCells.push({
+        startSlot: slotIdx,
+        endSlot: slotIdx + span - 1,
+        span,
+        item,
+        lastSlotItem: lastItem,
+      });
+
+      i += span;
+    }
+
+    return mergedCells;
+  };
+
+  const renderAggregatedCell = (day: string, cell: { startSlot: number; endSlot: number; span: number; item: any; lastSlotItem: any }) => {
+    const { startSlot, endSlot, span, item, lastSlotItem } = cell;
+
+    if (!item) {
+      return renderCell(day, startSlot);
+    }
+
+    const active = savingSlot === `${day}-${startSlot}`;
+    const isPembiasaan = item.is_pembiasaan || item.jenis_kegiatan === 'PEMBIASAAN';
+
+    const mapelStyle = isPembiasaan
+      ? { bg: 'bg-amber-50/80 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800', dotHex: '#f59e0b' }
+      : colorByMode === 'GURU'
+        ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
+        : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
+
+    const dynamicStartSlot = resolveSlotTime(item.kelas_id || selectedKelasId, startSlot, day);
+    const dynamicEndSlot = resolveSlotTime((lastSlotItem || item).kelas_id || selectedKelasId, endSlot, day);
+    const isZero = (t?: string) => !t || t === '00:00' || t === '00:00:00';
+    const displayStart = !isZero(item.jam_mulai) ? item.jam_mulai : dynamicStartSlot?.start || '';
+    const displayEnd = !isZero((lastSlotItem || item).jam_selesai) ? (lastSlotItem || item).jam_selesai : dynamicEndSlot?.end || '';
+
+    return (
+      <div
+        key={`${day}-${startSlot}`}
+        style={{ gridColumn: `span ${span}` }}
+        onClick={() => onSlotClick(day, startSlot)}
+        className={cn(
+          'p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[52px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none',
+          active && 'bg-indigo-50/30 dark:bg-indigo-950/10 ring-1 ring-indigo-500/20 z-10',
+          !active && 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
+        )}
+      >
+        <div
+          className={cn(
+            'h-full w-full rounded-xl p-2 border flex flex-col justify-between relative transition-all shadow-sm border-l-4 min-h-[44px]',
+            isPembiasaan
+              ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+              : item.isForeign
+                ? 'bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed'
+                : `${mapelStyle.bg} ${mapelStyle.border}`
+          )}
+          style={{
+            borderLeftColor: isPembiasaan ? '#f59e0b' : item.isForeign ? undefined : mapelStyle.dotHex,
+          }}
+        >
+          {/* Badge Indicator MANUAL (Bukan Impor XML) */}
+          {!item.asc_id && !isPembiasaan && (
+            <span className="absolute -top-1.5 -right-1.5 z-10 text-[7px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-white border border-amber-600 shadow-md uppercase tracking-tighter">
+              MANUAL
+            </span>
+          )}
+
+          {/* Badge JP jika > 1 JP */}
+          {span > 1 && (
+            <span className="absolute -top-1.5 left-2 z-10 text-[7.5px] font-black px-2 py-0.5 rounded-full bg-indigo-600 text-white border border-indigo-700 shadow-md uppercase tracking-tighter">
+              {span} JP
+            </span>
+          )}
+
+          <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
+            {isPembiasaan ? (
+              <>
+                <div className="text-[8.5px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">
+                  PEMBIASAAN {span > 1 ? `(${span} JP)` : ''}
+                </div>
+                <div className="text-[9.5px] font-extrabold uppercase text-amber-950 dark:text-amber-100 leading-tight truncate">
+                  {item.Mapel?.nama_mapel || item.nama}
+                </div>
+                <div className="text-[8px] font-mono font-bold text-amber-600 dark:text-amber-400 leading-none mt-0.5">
+                  {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
+                </div>
+              </>
+            ) : viewMode === 'KELAS' ? (
+              <>
+                <div className="text-[10px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                </div>
+                <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
+                  {item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
+                </div>
+                <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                  {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''} {span > 1 ? `(${span} JP)` : ''}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                  {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                </div>
+                <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
+                  {item.isForeign
+                    ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
+                    : item.Kelas?.nama_kelas || `Kelas ${item.kelas_id || ''}`}
+                </div>
+                <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
+                  {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''} {span > 1 ? `(${span} JP)` : ''}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Action Hover Delete Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              for (let s = startSlot; s <= endSlot; s++) {
+                const sItem = getSlotData(day, s);
+                if (sItem?.id) onDeleteSlot(day, s, sItem.id);
+              }
+            }}
+            className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity z-20"
+            title={`Hapus ${span > 1 ? `${span} JP` : 'jadwal'}`}
+          >
+            <Trash2 size={9} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full overflow-x-auto max-h-[764px] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className="min-w-[1000px]">
@@ -230,8 +414,8 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                     {day}
                   </div>
 
-                  {/* Slot Cells */}
-                  {slots.map((slotIndex) => renderCell(day, slotIndex))}
+                  {/* Aggregated Consecutive Slot Cells */}
+                  {getMergedCellsForDay(day).map((cell) => renderAggregatedCell(day, cell))}
                 </div>
               ))}
             </div>
