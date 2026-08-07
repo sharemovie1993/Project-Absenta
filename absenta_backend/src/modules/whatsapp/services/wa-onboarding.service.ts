@@ -91,7 +91,10 @@ export class WaOnboardingService {
     // 3. Fetch Siswa
     if (roleFilter === 'ALL' || roleFilter === 'SISWA') {
       const siswaList = await prisma.siswa.findMany({
-        where: { tenant_id: tenantId, status: 'AKTIF' },
+        where: {
+          tenant_id: tenantId,
+          no_hp: { not: null },
+        },
         select: {
           id: true,
           nama_siswa: true,
@@ -102,7 +105,7 @@ export class WaOnboardingService {
       });
 
       siswaList.forEach((s) => {
-        if (!s.no_hp) return;
+        if (!s.no_hp || s.no_hp.trim() === '') return;
         const norm = this.normalizePhone(s.no_hp);
         const lastComm = commMap.get(norm) || null;
 
@@ -121,7 +124,10 @@ export class WaOnboardingService {
     // 4. Fetch Orang Tua
     if (roleFilter === 'ALL' || roleFilter === 'ORTU') {
       const ortuList = await prisma.orangTua.findMany({
-        where: { tenant_id: tenantId },
+        where: {
+          tenant_id: tenantId,
+          no_hp: { not: null },
+        },
         select: {
           id: true,
           nama: true,
@@ -135,7 +141,7 @@ export class WaOnboardingService {
       });
 
       ortuList.forEach((o) => {
-        if (!o.no_hp) return;
+        if (!o.no_hp || o.no_hp.trim() === '') return;
         const norm = this.normalizePhone(o.no_hp);
         const lastComm = commMap.get(norm) || null;
 
@@ -158,7 +164,6 @@ export class WaOnboardingService {
       const siswaWithOrtuHp = await prisma.siswa.findMany({
         where: {
           tenant_id: tenantId,
-          status: 'AKTIF',
           no_hp: { not: null },
         },
         select: {

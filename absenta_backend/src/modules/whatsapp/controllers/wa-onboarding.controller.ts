@@ -1,11 +1,25 @@
 import { waOnboardingService } from '../services/wa-onboarding.service';
 
 export class WaOnboardingController {
+  private extractTenantId(req: any): string | null {
+    return (
+      req.user?.tenant_id ||
+      req.user?.tenantId ||
+      req.dataScope?.tenantId ||
+      req.dataScope?.tenant_id ||
+      req.headers?.['x-tenant-id'] ||
+      req.query?.tenant_id ||
+      req.query?.tenantId ||
+      null
+    );
+  }
+
   async getOnboardingUsers(req: any, reply: any) {
     try {
-      const tenantId = req.user?.tenant_id || req.query?.tenant_id;
+      const tenantId = this.extractTenantId(req);
       if (!tenantId) {
-        return reply.status(400).send({ success: false, message: 'Tenant ID tidak ditemukan.' });
+        console.warn('[WaOnboardingController] Warning: tenantId not found in request context.');
+        return reply.status(400).send({ success: false, message: 'Tenant ID tidak ditemukan pada sesi pengguna.' });
       }
 
       const { role, status, search, page, limit } = req.query || {};
@@ -32,7 +46,7 @@ export class WaOnboardingController {
 
   async sendGreeting(req: any, reply: any) {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = this.extractTenantId(req);
       if (!tenantId) {
         return reply.status(400).send({ success: false, message: 'Tenant ID tidak ditemukan.' });
       }
@@ -59,7 +73,7 @@ export class WaOnboardingController {
 
   async sendGreetingBulk(req: any, reply: any) {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = this.extractTenantId(req);
       if (!tenantId) {
         return reply.status(400).send({ success: false, message: 'Tenant ID tidak ditemukan.' });
       }
