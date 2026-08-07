@@ -519,12 +519,25 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       }
     };
 
+    const handlePiketUpdate = () => {
+      fetchSessions();
+      Object.keys(expandedRef.current).forEach((sesiId) => {
+        if (expandedRef.current[sesiId]) {
+          getSesiAbsenSiswa(sesiId).then((res) => {
+            setSessionAttendance((p) => ({ ...p, [sesiId]: (res.data as SesiAttendanceRecord[]) || [] }));
+          });
+        }
+      });
+    };
+
     subscribe('sesi_status_update', handleSesiUpdate);
     subscribe('session_attendance_update', handleSessionAttendanceUpdate);
+    subscribe('piket_status_update', handlePiketUpdate);
 
     return () => {
       unsubscribe('sesi_status_update', handleSesiUpdate);
       unsubscribe('session_attendance_update', handleSessionAttendanceUpdate);
+      unsubscribe('piket_status_update', handlePiketUpdate);
     };
   }, [subscribe, unsubscribe, fetchSessions]);
 

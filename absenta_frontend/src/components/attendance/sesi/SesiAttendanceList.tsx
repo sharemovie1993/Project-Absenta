@@ -34,6 +34,9 @@ export interface SesiAttendanceRecord {
   asal_gerbang?: boolean;
   catatan?: string | null;
   Siswa?: SiswaDetail;
+  is_piket_out?: boolean;
+  piket_jam_keluar?: string | null;
+  piket_log_id?: string | null;
 }
 
 export interface SesiDetail {
@@ -65,6 +68,7 @@ const SesiAttendanceRow = React.memo(({
   onUpdateStatus: (siswaAkademikId: string, status: string) => void;
 }) => {
   const studentId = record.siswa_akademik_id || record.siswa_id || '';
+  const isPiketOut = record.is_piket_out || record.catatan?.includes('IZIN SEMENTARA PIKET') || record.catatan?.includes('IZIN SEMENTARA');
 
   return (
     <motion.div 
@@ -85,9 +89,9 @@ const SesiAttendanceRow = React.memo(({
               🟧 Pulang Awal
             </span>
           )}
-          {record.catatan?.includes('IZIN SEMENTARA') && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300/50">
-              🟨 Izin Sementara
+          {isPiketOut && record.status !== 'HADIR' && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300/80 animate-pulse">
+              🟨 Izin Piket {record.piket_jam_keluar ? `(${record.piket_jam_keluar})` : ''}
             </span>
           )}
           {record.catatan?.includes('DISPENSASI') && (
@@ -127,16 +131,31 @@ const SesiAttendanceRow = React.memo(({
             {record.status}
           </Badge>
         ) : (
-          <div className="flex items-center gap-0.5 bg-gray-50 dark:bg-gray-900 p-0.5 rounded-sm border border-gray-100 dark:border-gray-800 shadow-inner">
-            {[
-              { label: 'H', val: 'HADIR', color: 'emerald' },
-              { label: 'I', val: 'IZIN', color: 'blue' },
-              { label: 'S', val: 'SAKIT', color: 'amber' },
-              { label: 'D', val: 'DISPEN', color: 'violet' },
-              { label: 'A', val: 'ALPA', color: 'rose' }
-            ].map((btn) => {
-              const isActive = record.status === btn.val;
-              const isCurrentPending = isPending && isActive;
+          <div className="flex items-center gap-1">
+            {isPiketOut && record.status !== 'HADIR' && (
+              <button
+                disabled={isPending}
+                onClick={() => {
+                  onUpdateStatus(studentId, 'HADIR');
+                  toast.success(`Konfirmasi kembali: Status ${record.Siswa?.nama_siswa || 'siswa'} diubah ke HADIR & Piket diselesaikan`);
+                }}
+                className="h-6 px-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[8px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1 transition-all active:scale-95"
+                title="Siswa sudah kembali ke kelas — ubah status ke HADIR & selesaikan Izin Piket"
+              >
+                <CheckCircle2 size={10} />
+                <span>Balik Ke Kelas</span>
+              </button>
+            )}
+            <div className="flex items-center gap-0.5 bg-gray-50 dark:bg-gray-900 p-0.5 rounded-sm border border-gray-100 dark:border-gray-800 shadow-inner">
+              {[
+                { label: 'H', val: 'HADIR', color: 'emerald' },
+                { label: 'I', val: 'IZIN', color: 'blue' },
+                { label: 'S', val: 'SAKIT', color: 'amber' },
+                { label: 'D', val: 'DISPEN', color: 'violet' },
+                { label: 'A', val: 'ALPA', color: 'rose' }
+              ].map((btn) => {
+                const isActive = record.status === btn.val;
+                const isCurrentPending = isPending && isActive;
               
               return (
                 <button

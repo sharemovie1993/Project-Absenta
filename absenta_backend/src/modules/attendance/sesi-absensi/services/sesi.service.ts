@@ -1035,6 +1035,36 @@ export class SesiService {
       record: { id: updated.id, siswa_id, status: updated.status, waktu_tap: updated.waktu_tap }
     });
 
+    // Auto-resolve active PiketLog if student is confirmed HADIR in session
+    if (String(finalStatusToSave).toUpperCase() === 'HADIR') {
+      void (async () => {
+        try {
+          const activePiketLog = await prisma.piketLog.findFirst({
+            where: { tenant_id: tenantId, siswa_id, jam_kembali: null }
+          });
+          if (activePiketLog) {
+            await prisma.piketLog.update({
+              where: { id: activePiketLog.id },
+              data: {
+                jam_kembali: nowTap,
+                status: 'SUDAH_KEMBALI',
+                catatan_kembali: 'Dikonfirmasi Kembali oleh Guru/Petugas Kelas di Sesi KBM'
+              }
+            });
+            await this.publishRedisEvent('events:piket_status_update', {
+              tenant_id: tenantId,
+              piket_log_id: activePiketLog.id,
+              siswa_id,
+              status: 'SUDAH_KEMBALI',
+              jam_kembali: nowTap.toISOString()
+            });
+          }
+        } catch (err) {
+          console.error('[TAP_SISWA] Auto-resolve PiketLog error:', err);
+        }
+      })();
+    }
+
     // Late/ALPA Notification
     handleLateOrAlpaNotification({ tenantId, sesiFull: sesi, siswa, updated, lateMinutes: lateMinutesComputed });
 
@@ -1440,20 +1470,40 @@ export class SesiService {
       }));
     }
 
-    // 2. Get existing attendance records
-    const records = await prisma.absenSiswa.findMany({
-      where: { tenant_id: tenantId, sesi_id: sesi_id },
-      include: {
-        Siswa: {
-          select: {
-            id: true,
-            nama_siswa: true,
-            nis: true
+    // 2. Get existing attendance records & active piket leave logs
+    const [records, activePiketLogs] = await Promise.all([
+      prisma.absenSiswa.findMany({
+        where: { tenant_id: tenantId, sesi_id: sesi_id },
+        include: {
+          Siswa: {
+            select: {
+              id: true,
+              nama_siswa: true,
+              nis: true
+            }
           }
+        },
+        orderBy: { waktu_tap: 'asc' },
+      }),
+      prisma.piketLog.findMany({
+        where: {
+          tenant_id: tenantId,
+          jam_kembali: null,
+          status: { in: ['DILUAR', 'IZIN_KELUAR', 'IZIN_SEMENTARA', 'PULANG_AWAL', 'DISPENSASI'] }
+        },
+        select: {
+          id: true,
+          siswa_id: true,
+          jenis_izin: true,
+          jam_keluar: true,
+          status: true,
+          alasan: true
         }
-      },
-      orderBy: { waktu_tap: 'asc' },
-    });
+      })
+    ]);
+
+    const piketLogMap = new Map();
+    activePiketLogs.forEach(p => piketLogMap.set(p.siswa_id, p));
 
     // 3. Merge: Map all students to an attendance status
     const recordMap = new Map();
@@ -1464,12 +1514,18 @@ export class SesiService {
     
     const mergedList = allStudentsInClass.map((sa: any) => {
       const existingRecord = recordMap.get(sa.id) || recordMap.get(sa.siswa_id);
+      const studentId = sa.siswa_id || sa.id;
+      const activePiket = piketLogMap.get(studentId);
       
       if (existingRecord) {
         return {
           ...existingRecord,
           Siswa: sa.siswa || existingRecord.Siswa,
-          SiswaAkademik: sa
+          SiswaAkademik: sa,
+          is_piket_out: !!activePiket,
+          piket_log_id: activePiket?.id || null,
+          piket_jam_keluar: activePiket?.jam_keluar ? new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null,
+          piket_jenis: activePiket?.jenis_izin || null
         };
       }
 
@@ -1477,16 +1533,21 @@ export class SesiService {
         id: `virtual-${sa.id}`,
         tenant_id: tenantId,
         sesi_id: sesi_id,
-        siswa_id: sa.siswa_id || sa.id,
+        siswa_id: studentId,
         siswa_akademik_id: sa.id,
-        status: sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP',
+        status: activePiket ? 'IZIN' : (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
+        catatan: activePiket ? `IZIN SEMENTARA PIKET (Jam Keluar ${new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})` : null,
         waktu_tap: null,
         asal_gerbang: false,
         is_terlambat: false,
         menit_keterlambatan: 0,
         poin_kehadiran: 0,
         Siswa: sa.siswa,
-        SiswaAkademik: sa
+        SiswaAkademik: sa,
+        is_piket_out: !!activePiket,
+        piket_log_id: activePiket?.id || null,
+        piket_jam_keluar: activePiket?.jam_keluar ? new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null,
+        piket_jenis: activePiket?.jenis_izin || null
       };
     });
 
