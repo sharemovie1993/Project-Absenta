@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   apps: [
     {
@@ -23,6 +25,17 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         SERVICE_ROLE: 'wa-worker',
+      },
+    },
+    {
+      name: 'absenta-web:5175',
+      script: 'npx',
+      args: 'serve -s ../absenta_frontend/dist -l 5175',
+      cwd: __dirname,
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
       },
     },
   ],
