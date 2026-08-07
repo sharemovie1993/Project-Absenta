@@ -289,6 +289,7 @@ export function formatOrtuMenu(nama: string): string {
     `[2] 📊 Rekap Bulanan\n` +
     `[3] 🏆 Poin Ananda\n` +
     `[4] 📞 Wali Kelas\n` +
+    `[5] ✉️ Pengajuan Izin / Sakit Anak\n` +
     `[0] 🔄 Menu Utama`
   );
 }

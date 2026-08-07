@@ -3,6 +3,8 @@ import { ChatbotContext } from '../../core/chatbot-context';
 import { siswaService } from '@/modules/academic/siswa/services/siswa.service';
 import { parentDataService } from '@/modules/parent-app/services/parent-data.service';
 import { formatOrtuMenu } from '../../../services/wa-chatbot-commands';
+import { chatbotSessionManager, ChatbotDialogSession } from '../../core/session-state-manager';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 
 export class OrtuHandler {
   /**
@@ -115,6 +117,116 @@ export class OrtuHandler {
       return msg;
     }
 
+    // [5] Pengajuan Izin / Sakit Anak via WA Bot
+    if (choice === '5' || choice.startsWith('5')) {
+      return this.handlePengajuanIzinPrompt(ctx, anakLinks);
+    }
+
     return formatOrtuMenu(ortu.nama);
+  }
+
+  /**
+   * PROMPT: Pengajuan Surat Izin / Sakit Anak
+   */
+  private static async handlePengajuanIzinPrompt(ctx: ChatbotContext, anakLinks: any[]): Promise<string> {
+    const choice = ctx.commandUpper.trim();
+
+    let selectedChild = null;
+
+    if (anakLinks.length === 1) {
+      selectedChild = anakLinks[0].Siswa;
+    } else {
+      if (choice === '51' && anakLinks[0]) selectedChild = anakLinks[0].Siswa;
+      else if (choice === '52' && anakLinks[1]) selectedChild = anakLinks[1].Siswa;
+      else if (choice === '53' && anakLinks[2]) selectedChild = anakLinks[2].Siswa;
+      else {
+        // Tampilkan pilihan anak
+        let msg = `✉️ *Pengajuan Surat Izin / Sakit Ananda*\n\n`;
+        msg += `Pilih Ananda yang ingin diajukan izinnya:\n\n`;
+        anakLinks.forEach((item, idx) => {
+          msg += `[5${idx + 1}] *${item.Siswa?.nama_siswa}* (${item.Siswa?.Kelas?.nama_kelas || '-'})\n`;
+        });
+        msg += `\n[0] 🔄 Menu Utama`;
+        return msg;
+      }
+    }
+
+    // Set FSM Session untuk menunggu alasan izin dari Ortu
+    chatbotSessionManager.set(ctx.cleanJid, {
+      flowId: 'ORTU_SUBMIT_LEAVE',
+      step: 'AWAITING_REASON',
+      payload: {
+        siswaId: selectedChild.id,
+        namaSiswa: selectedChild.nama_siswa,
+        kelasNama: selectedChild.Kelas?.nama_kelas || '-',
+        tenantId: selectedChild.tenant_id,
+      },
+    });
+
+    return (
+      `✉️ *Pengajuan Surat Izin / Sakit Ananda*\n` +
+      `Siswa: *${selectedChild.nama_siswa}* (${selectedChild.Kelas?.nama_kelas || '-'})\n\n` +
+      `Silakan ketik *keterangan/alasan izin* Ananda hari ini:\n` +
+      `_Contoh_: *Demam tinggi sejak kemarin* atau *Acara keluarga di luar kota*\n\n` +
+      `💡 Ketik *[0]* untuk membatalkan pengajuan.`
+    );
+  }
+
+  /**
+   * PROCESS FSM: Memproses teks alasan izin yang dikirim Ortu
+   */
+  static async processSubmitLeave(ctx: ChatbotContext, session: ChatbotDialogSession): Promise<string> {
+    chatbotSessionManager.delete(ctx.cleanJid);
+
+    const payload = session.payload || {};
+    const reasonText = (ctx.messageText || '').trim();
+
+    if (!payload.siswaId || !reasonText) {
+      return `⚠️ Pengajuan izin dibatalkan karena keterangan kosong.\n\n💡 Ketik *[0]* untuk Menu Utama.`;
+    }
+
+    const tenantId = payload.tenantId || ctx.ortu?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant sekolah tidak ditemukan.';
+
+    const tz = await getTenantTimezone(tenantId);
+    const tglFormatted = new Date().toLocaleDateString('id-ID', {
+      timeZone: tz || 'Asia/Jakarta',
+      weekday: 'long',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const isSakit = /sakit|demam|flu|batuk|pusing|berobat|rs|puskesmas|dokter/i.test(reasonText);
+    const tipeIzin = isSakit ? 'IZIN_SAKIT' : 'IZIN_ACARA';
+
+    // Cari registrasi SiswaAkademik aktif
+    const sa = await prisma.siswaAkademik.findFirst({
+      where: { siswa_id: payload.siswaId, status: 'AKTIF' },
+      select: { id: true },
+    });
+
+    if (sa) {
+      await prisma.izinKeluarSiswa.create({
+        data: {
+          tenant_id: tenantId,
+          siswa_akademik_id: sa.id,
+          jam_keluar: new Date(),
+          alasan: reasonText,
+          tipe_izin: tipeIzin,
+          status: 'DISETUJUI',
+        },
+      });
+    }
+
+    return (
+      `✅ *Pengajuan Izin Ananda Berhasil Dikirim!*\n\n` +
+      `• Nama Siswa : *${payload.namaSiswa}* (${payload.kelasNama})\n` +
+      `• Keterangan : "${reasonText}"\n` +
+      `• Tipe Izin  : *${isSakit ? '🏥 Izin Sakit' : '✉️ Izin Acara'}*\n` +
+      `• Tanggal    : ${tglFormatted}\n\n` +
+      `📋 Laporan izin ini telah otomatis tercatat di sistem dan diteruskan ke Wali Kelas & Guru Piket sekolah. Semoga Ananda lekas sembuh/kegiatan berjalan lancar! 😊\n\n` +
+      `💡 Ketik *[0]* untuk Menu Utama.`
+    );
   }
 }

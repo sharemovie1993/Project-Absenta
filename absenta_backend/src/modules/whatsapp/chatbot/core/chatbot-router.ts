@@ -71,6 +71,10 @@ export class ChatbotRouter {
           return GuruProfileHandler.processUpdateEmail(guru, messageText.trim(), cleanJid);
         }
       }
+
+      if (pendingSession.flowId === 'ORTU_SUBMIT_LEAVE') {
+        return OrtuHandler.processSubmitLeave(ctx, pendingSession);
+      }
     }
 
     // 2. Routing Persona Guru
