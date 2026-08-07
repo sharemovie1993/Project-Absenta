@@ -854,7 +854,6 @@ export class SesiService {
       try {
         siswaAkademik = await prisma.siswaAkademik.create({
           data: {
-            tenant_id: tenantId,
             siswa_id,
             kelas_id: sesi.kelas_id,
             tahun_pelajaran_id: activeYear.id,
@@ -1035,32 +1034,38 @@ export class SesiService {
       record: { id: updated.id, siswa_id, status: updated.status, waktu_tap: updated.waktu_tap }
     });
 
-    // Auto-resolve active PiketLog if student is confirmed HADIR in session
+    // Auto-resolve active IzinKeluarSiswa if student is confirmed HADIR in session
     if (String(finalStatusToSave).toUpperCase() === 'HADIR') {
       void (async () => {
         try {
-          const activePiketLog = await prisma.piketLog.findFirst({
-            where: { tenant_id: tenantId, siswa_id, jam_kembali: null }
+          // Cari siswa_akademik_id yang bersangkutan
+          const siswaAkademikRec = await prisma.siswaAkademik.findFirst({
+            where: { siswa_id },
+            select: { id: true }
           });
-          if (activePiketLog) {
-            await prisma.piketLog.update({
-              where: { id: activePiketLog.id },
-              data: {
-                jam_kembali: nowTap,
-                status: 'SUDAH_KEMBALI',
-                catatan_kembali: 'Dikonfirmasi Kembali oleh Guru/Petugas Kelas di Sesi KBM'
-              }
+          if (siswaAkademikRec) {
+            const activeIzin = await prisma.izinKeluarSiswa.findFirst({
+              where: { siswa_akademik_id: siswaAkademikRec.id, jam_kembali: null }
             });
-            await this.publishRedisEvent('events:piket_status_update', {
-              tenant_id: tenantId,
-              piket_log_id: activePiketLog.id,
-              siswa_id,
-              status: 'SUDAH_KEMBALI',
-              jam_kembali: nowTap.toISOString()
-            });
+            if (activeIzin) {
+              await prisma.izinKeluarSiswa.update({
+                where: { id: activeIzin.id },
+                data: {
+                  jam_kembali: nowTap,
+                  status: 'KEMBALI'
+                }
+              });
+              await this.publishRedisEvent('events:piket_status_update', {
+                tenant_id: tenantId,
+                izin_id: activeIzin.id,
+                siswa_id,
+                status: 'KEMBALI',
+                jam_kembali: nowTap.toISOString()
+              });
+            }
           }
         } catch (err) {
-          console.error('[TAP_SISWA] Auto-resolve PiketLog error:', err);
+          console.error('[TAP_SISWA] Auto-resolve IzinKeluarSiswa error:', err);
         }
       })();
     }
@@ -1485,29 +1490,25 @@ export class SesiService {
         },
         orderBy: { waktu_tap: 'asc' },
       }),
-      prisma.piketLog.findMany({
+      prisma.izinKeluarSiswa.findMany({
         where: {
           tenant_id: tenantId,
-          jam_kembali: null,
-          status: { in: ['DILUAR', 'IZIN_KELUAR', 'IZIN_SEMENTARA', 'PULANG_AWAL', 'DISPENSASI'] }
+          jam_kembali: null
         },
-        select: {
-          id: true,
-          siswa_id: true,
-          jenis_izin: true,
-          jam_keluar: true,
-          status: true,
-          alasan: true
+        include: {
+          SiswaAkademik: {
+            select: { siswa_id: true }
+          }
         }
       })
     ]);
 
-    const piketLogMap = new Map();
-    activePiketLogs.forEach(p => piketLogMap.set(p.siswa_id, p));
+    const piketLogMap = new Map<string, any>();
+    activePiketLogs.forEach((p: any) => piketLogMap.set(p.SiswaAkademik?.siswa_id || p.siswa_akademik_id, p));
 
     // 3. Merge: Map all students to an attendance status
-    const recordMap = new Map();
-    records.forEach(r => {
+    const recordMap = new Map<string, any>();
+    records.forEach((r: any) => {
       if (r.siswa_akademik_id) recordMap.set(r.siswa_akademik_id, r);
       if (r.siswa_id) recordMap.set(r.siswa_id, r);
     });
@@ -1525,7 +1526,7 @@ export class SesiService {
           is_piket_out: !!activePiket,
           piket_log_id: activePiket?.id || null,
           piket_jam_keluar: activePiket?.jam_keluar ? new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null,
-          piket_jenis: activePiket?.jenis_izin || null
+          piket_jenis: activePiket?.tipe_izin || null
         };
       }
 
@@ -1547,7 +1548,7 @@ export class SesiService {
         is_piket_out: !!activePiket,
         piket_log_id: activePiket?.id || null,
         piket_jam_keluar: activePiket?.jam_keluar ? new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null,
-        piket_jenis: activePiket?.jenis_izin || null
+        piket_jenis: activePiket?.tipe_izin || null
       };
     });
 

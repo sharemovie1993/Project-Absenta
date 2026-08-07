@@ -1,5 +1,5 @@
-import { prisma } from '@/utils/prisma';
-import { isSystemSuperAdmin } from '@/utils/rbac';
+import { prisma } from '../utils/prisma';
+import { isSystemSuperAdmin } from '../utils/rbac';
 
 function getRouteConfig(request: any): any {
   return (

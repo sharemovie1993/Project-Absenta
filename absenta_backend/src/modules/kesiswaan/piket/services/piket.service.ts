@@ -300,7 +300,7 @@ export class PiketService {
    * 4. Batalkan Izin
    */
   async deleteIzin(tenantId: string, id: string) {
-    const res = await prisma.izinKeluarSiswa.delete({
+    await prisma.izinKeluarSiswa.delete({
       where: { id, tenant_id: tenantId }
     });
 

@@ -6,6 +6,7 @@ module.exports = {
       cwd: __dirname,
       instances: 4,
       exec_mode: 'cluster',
+      node_args: '-r tsconfig-paths/register',
       env: {
         NODE_ENV: 'production',
         PORT: 3003,
@@ -18,6 +19,7 @@ module.exports = {
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
+      node_args: '-r tsconfig-paths/register',
       env: {
         NODE_ENV: 'production',
         SERVICE_ROLE: 'wa-worker',

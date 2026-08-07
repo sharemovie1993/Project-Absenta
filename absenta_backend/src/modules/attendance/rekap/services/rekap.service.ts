@@ -205,11 +205,13 @@ export class RekapService {
           created_at: { gte: firstDayMonth }
         }
       }).catch(() => []),
-      prisma.absenGuru.findMany({
+      prisma.sesiAbsensi.findMany({
         where: {
           guru_id: guruId,
-          created_at: { gte: firstDayMonth }
-        }
+          tanggal: { gte: firstDayMonth }
+        },
+        include: { AbsenGuru: { where: { guru_id: guruId } } },
+        orderBy: { waktu_mulai: 'asc' }
       }).catch(() => [])
     ]);
 
@@ -261,7 +263,7 @@ export class RekapService {
     const totalAlpa = datangsMonth.filter(g => String(g.status || '').toUpperCase() === 'ALPA').length;
 
     const totalSesiMonth = sesiMonthList.length;
-    const totalKbmHadirMonth = sesiMonthList.filter(s => {
+    const totalKbmHadirMonth = (sesiMonthList as any[]).filter(s => {
       const ag = s.AbsenGuru?.[0];
       const st = String(ag?.status || s.status || '').toUpperCase();
       return !!ag?.waktu_tap || !!s.waktu_tap || (st !== '' && !st.includes('BELUM') && (st === 'HADIR' || st.includes('HADIR')));
