@@ -51,7 +51,6 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   const [selectedStockInItems, setSelectedStockInItems] = useState<TempStockInItem[]>([]);
   const [productSearchInput, setProductSearchInput] = useState('');
   const [showProductSuggestions, setShowProductSuggestions] = useState(false);
-  const [stockInSubmitLoading, setStockInSubmitLoading] = useState(false);
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
 
   // Autocomplete products suggestion for Stock-In Tab

@@ -56,7 +56,6 @@ export const useMembersState = (subscription: any) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importLoading, setImportLoading] = useState(false);
   const [importResults, setImportResults] = useState<{
     successCount: number;
     failCount: number;

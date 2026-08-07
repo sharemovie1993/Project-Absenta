@@ -110,16 +110,10 @@ export function RekapHarianKelasContent({
   const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<RekapHarianKelasRow[] | null>(null);
-  const [meta, setMeta] = useState<RekapHarianKelasMeta | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Harian_Presensi_Kelas.pdf');
 
   // Kop Surat Data
-  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 

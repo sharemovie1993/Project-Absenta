@@ -96,18 +96,12 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
   const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<RekapBulananKelasRow[] | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Presensi.pdf');
   const [isWaliKelasAutoFiltered, setIsWaliKelasAutoFiltered] = useState(false);
   const [waliKelasName, setWaliKelasName] = useState<string>('');
   const [waliKelasNip, setWaliKelasNip] = useState<string>('');
 
-  // Kop Surat
-  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 

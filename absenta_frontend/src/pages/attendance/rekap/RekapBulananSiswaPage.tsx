@@ -72,9 +72,6 @@ export default function RekapBulananSiswaPage() {
   const [bulan, setBulan] = useState<string>(new Date().toISOString().slice(0, 7));
   const [siswaId, setSiswaId] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<RekapBulananResponse | null>(null);
-  const [kelasNama, setKelasNama] = useState<string>('');
   
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
   const monthDate = useMemo(() => {

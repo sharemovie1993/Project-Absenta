@@ -37,11 +37,9 @@ export default function AdminSupportTicketPage() {
   // =========================================================================
   // 💾 STATE MANAGEMENT
   // =========================================================================
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
   
-  const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -74,12 +72,8 @@ export default function AdminSupportTicketPage() {
 
   // Enterprise CSModules State
   const [isInternalNote, setIsInternalNote] = useState(false);
-  const [quickReplies, setQuickReplies] = useState<SupportQuickReply[]>([]);
   const [isQuickRepliesOpen, setIsQuickRepliesOpen] = useState(false);
-  const [knowledgeBase, setKnowledgeBase] = useState<SupportKnowledgeBase[]>([]);
   const [kbSearchQuery, setKbSearchQuery] = useState('');
-  const [analytics, setAnalytics] = useState<SupportAnalytics | null>(null);
-  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'DIAGNOSTIC' | 'KNOWLEDGE_BASE'>('DIAGNOSTIC');
 
   // =========================================================================

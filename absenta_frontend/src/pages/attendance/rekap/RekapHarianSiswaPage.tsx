@@ -51,8 +51,6 @@ export default function RekapHarianSiswaPage() {
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [siswaId, setSiswaId] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<RekapHarianResponse | null>(null);
   
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
   const isSiswa = user?.role?.name === 'SISWA';

@@ -53,8 +53,6 @@ export function RekapBulananMapelContent() {
   const [mapelId, setMapelId] = useState('');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<RekapBulananKelasRow[] | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Mapel.pdf');
 
@@ -65,9 +63,6 @@ export function RekapBulananMapelContent() {
   const [mapelDetail, setMapelDetail] = useState<{ id: string; nama_mapel: string; kode_mapel?: string | null } | null>(null);
 
   // Kop Surat
-  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
-  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
-  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 

@@ -180,6 +180,7 @@ const SesiAttendanceRow = React.memo(({
               );
             })}
           </div>
+          </div>
         )}
       </div>
     </motion.div>
