@@ -325,7 +325,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                     {item.Guru && (
                                       <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">
                                         <User className="w-2.5 h-2.5 mr-1 text-green-500 shrink-0" />
-                                        <span className="truncate">{item.Guru.User?.full_name?.split(' ')[0]}</span>
+                                        <span className="truncate">{item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru'}</span>
                                       </div>
                                     )}
                                   </div>
