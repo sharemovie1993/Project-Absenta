@@ -512,15 +512,31 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
     const targetSlot = resolveSlotTime(targetKelasId, slotIndex, day);
 
-    // Check 1: Teacher conflict (Guru is already scheduled at an overlapping time in another class)
-    const teacherConflict = allJadwal.find(j => 
-      j.hari === day && 
-      j.guru_id === paintGuruId &&
-      j.kelas_id !== targetKelasId &&
-      (j.jam_mulai && j.jam_selesai && targetSlot.start && targetSlot.end
-        ? (j.jam_mulai < targetSlot.end && targetSlot.start < j.jam_selesai)
-        : false)
-    );
+    // Check 1: Teacher conflict (Guru is already scheduled at the same slot_index or overlapping time in another class)
+    const teacherConflict = allJadwal.find(j => {
+      if (j.hari !== day || j.guru_id !== paintGuruId || j.kelas_id === targetKelasId) return false;
+      
+      // Primary match: Same slot index in another class
+      if (j.slot_index === slotIndex) return true;
+
+      // Secondary match: Strict non-zero time overlap (> 10 mins) for different shift schedules
+      if (j.jam_mulai && j.jam_selesai && targetSlot.start && targetSlot.end) {
+        const isZero = (t: string) => !t || t === '00:00' || t === '00:00:00';
+        if (!isZero(j.jam_mulai) && !isZero(j.jam_selesai) && !isZero(targetSlot.start) && !isZero(targetSlot.end)) {
+          const toMins = (t: string) => {
+            const parts = t.split(':').map(Number);
+            return (parts[0] || 0) * 60 + (parts[1] || 0);
+          };
+          const startA = toMins(j.jam_mulai);
+          const endA = toMins(j.jam_selesai);
+          const startB = toMins(targetSlot.start);
+          const endB = toMins(targetSlot.end);
+          const overlap = Math.max(0, Math.min(endA, endB) - Math.max(startA, startB));
+          return overlap >= 10;
+        }
+      }
+      return false;
+    });
     if (teacherConflict) {
       const guruObj = guruList.find(g => g.id === paintGuruId);
       return {
