@@ -295,7 +295,7 @@ export class GuruService {
     const waliKelasAssignment = assigns.find(
       (a: any) => a.kelas_id && (
         (a.Position?.code ?? '').toUpperCase().includes('WALI') ||
-        a.Position?.scope_type === 'KELAS'
+        (a.Position?.name ?? '').toLowerCase().includes('wali kelas')
       )
     );
 

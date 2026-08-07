@@ -850,15 +850,29 @@ export class AuthService {
       });
       if (guru) {
         let waliKelasDi = null;
-        if (orgCtx.kelas_ids && orgCtx.kelas_ids.length > 0) {
-           const assignedKelas = await prisma.kelas.findFirst({
-             where: { id: { in: orgCtx.kelas_ids } },
-             select: { id: true, nama_kelas: true }
-           });
-           if (assignedKelas) {
-             waliKelasDi = assignedKelas;
-           }
+        const waliAssignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            user_id: user.id,
+            tenant_id: user.tenant_id,
+            is_active: true,
+            Position: { code: 'WALIKELAS' },
+            kelas_id: { not: null },
+          },
+          include: {
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+              },
+            },
+          },
+        });
+
+        if (waliAssignment?.Kelas) {
+          waliKelasDi = waliAssignment.Kelas;
         }
+
         response.guru_profile = {
           id: guru.id,
           wali_kelas_di: waliKelasDi,
