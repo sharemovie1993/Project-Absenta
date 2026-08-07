@@ -594,7 +594,7 @@ export class SesiService {
     // Hitung poin kehadiran Guru
     const rawStatus = normalizedStatus.toUpperCase();
     let poinKehadiran = 0;
-    if (rawStatus.includes('HADIR') || rawStatus.includes('MENGAJAR')) {
+    if (!rawStatus.includes('BELUM') && (rawStatus.includes('HADIR') || rawStatus.includes('MENGAJAR'))) {
       poinKehadiran = isTerlambat ? ATTENDANCE_POINTS.HADIR_TERLAMBAT : ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
     } else if (rawStatus.includes('SAKIT')) {
       poinKehadiran = ATTENDANCE_POINTS.SAKIT;

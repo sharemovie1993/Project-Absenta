@@ -126,7 +126,8 @@ export function SesiCard({
     return fromRel || '-';
   })();
 
-  const isGuruHadir = String(guruStatusText || '').toUpperCase() === 'HADIR' || String(guruStatusText || '').toUpperCase().includes('HADIR');
+  const stGuru = String(guruStatusText || '').toUpperCase();
+  const isGuruHadir = !stGuru.includes('BELUM') && (stGuru === 'HADIR' || stGuru.includes('HADIR') || stGuru === 'TEPAT_WAKTU');
 
   // Suggested Logic: What should the user do next?
   const suggestedAction = (() => {

@@ -168,7 +168,7 @@ export default function RekapHarianSiswaPage() {
       sortable: true,
       render: (v: unknown) => {
         const statusStr = String(v || '');
-        const isHadir = statusStr.toUpperCase().includes('HADIR') || statusStr.toUpperCase().includes('MASUK');
+        const isHadir = (statusStr.toUpperCase().includes('HADIR') || statusStr.toUpperCase().includes('MASUK')) && !statusStr.toUpperCase().includes('BELUM');
         const isPulang = statusStr.toUpperCase().includes('PULANG');
         return (
           <Badge 
@@ -299,7 +299,7 @@ export default function RekapHarianSiswaPage() {
               <div className="flex flex-col items-end">
                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Kehadiran</div>
                  <Badge 
-                   variant={data.status?.toUpperCase().includes('HADIR') ? 'success' : 'secondary'}
+                   variant={data.status?.toUpperCase().includes('HADIR') && !data.status?.toUpperCase().includes('BELUM') ? 'success' : 'secondary'}
                    className="h-10 px-6 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] shadow-sm"
                  >
                    {data.status || 'BELUM ABSEN'}

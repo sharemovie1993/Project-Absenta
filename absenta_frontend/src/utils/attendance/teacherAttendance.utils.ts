@@ -41,7 +41,7 @@ export function computeTeacherSessionStats(teacherSessions: TeacherSession[] = [
   const totalSesiHariIni = teacherSessions.length;
   const sesiHadirHariIni = teacherSessions.filter((s) => {
     const st = String(s.guru_status || s.AbsenGuru?.[0]?.status || s._summary?.teacherStatus || '').toUpperCase();
-    return st === 'HADIR' || st.includes('HADIR') || st === 'TEPAT_WAKTU' || !!s.AbsenGuru?.[0]?.waktu_tap;
+    return !!s.AbsenGuru?.[0]?.waktu_tap || (st !== '' && !st.includes('BELUM') && (st === 'HADIR' || st.includes('HADIR') || st === 'TEPAT_WAKTU'));
   }).length;
 
   let firstSessionTapTime: string | null = null;
@@ -121,7 +121,7 @@ export function getTeacherTimelineItemStyle(status?: string, jenisKegiatan?: str
   const isGate = !!jenisKegiatan?.includes('Gerbang');
   const isDatang = !!jenisKegiatan?.includes('Datang');
   const isPulang = !!jenisKegiatan?.includes('Pulang');
-  const isHadir = st === 'HADIR' || st.includes('HADIR') || st.includes('MENGAJAR') || st === 'TEPAT_WAKTU';
+  const isHadir = (st === 'HADIR' || (st.includes('HADIR') && !st.includes('BELUM')) || st.includes('MENGAJAR') || st === 'TEPAT_WAKTU') && !st.includes('BELUM');
   const isLate = st === 'TERLAMBAT' || st.includes('TELAT');
   const isAlpa = st === 'ALPA';
 

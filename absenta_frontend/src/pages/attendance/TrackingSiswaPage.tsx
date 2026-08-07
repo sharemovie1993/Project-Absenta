@@ -333,7 +333,7 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
             {result ? (
               <div className="flex flex-col items-center py-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-4 border transition-all ${
-                  result.status?.toUpperCase().includes('HADIR') 
+                  result.status?.toUpperCase().includes('HADIR') && !result.status?.toUpperCase().includes('BELUM')
                     ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30' 
                     : result.status?.toUpperCase().includes('TERLAMBAT')
                     ? 'bg-purple-50 border-purple-100 text-purple-600 dark:bg-purple-900/20 dark:border-purple-900/30'
@@ -349,7 +349,7 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Keterangan Hari Ini</div>
                 <Badge 
                   variant={
-                    result.status?.toUpperCase().includes('HADIR') ? 'success' :
+                    result.status?.toUpperCase().includes('HADIR') && !result.status?.toUpperCase().includes('BELUM') ? 'success' :
                     result.status?.toUpperCase().includes('TERLAMBAT') ? 'warning' :
                     result.status?.toUpperCase().includes('ALPA') ? 'error' :
                     result.status?.toUpperCase().includes('SAKIT') || result.status?.toUpperCase().includes('IZIN') || result.status?.toUpperCase().includes('DISPEN') ? 'info' : 'secondary'
