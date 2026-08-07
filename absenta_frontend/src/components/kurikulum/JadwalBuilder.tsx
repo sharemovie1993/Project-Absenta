@@ -518,9 +518,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         : false)
     );
     if (teacherConflict) {
+      const guruObj = guruList.find(g => g.id === paintGuruId);
       return {
         type: 'TEACHER' as const,
-        message: `Guru sudah mengajar di kelas ${teacherConflict.Kelas?.nama_kelas || 'lain'} pada jam ${teacherConflict.jam_mulai} - ${teacherConflict.jam_selesai}.`
+        guruName: guruObj?.nama_guru || 'Guru',
+        kelasName: teacherConflict.Kelas?.nama_kelas || 'Lain',
+        mapelName: teacherConflict.Mapel?.nama_mapel || '',
+        ruanganName: (teacherConflict as any).MasterRuangan?.nama_ruangan || '',
+        waktu: `${teacherConflict.jam_mulai} - ${teacherConflict.jam_selesai}`,
+        message: `Guru ${guruObj?.nama_guru || ''} sudah mengajar di kelas ${teacherConflict.Kelas?.nama_kelas || 'lain'}${(teacherConflict as any).MasterRuangan?.nama_ruangan ? ` (${(teacherConflict as any).MasterRuangan.nama_ruangan})` : ''} pada jam ${teacherConflict.jam_mulai} - ${teacherConflict.jam_selesai}.`
       };
     }
 
