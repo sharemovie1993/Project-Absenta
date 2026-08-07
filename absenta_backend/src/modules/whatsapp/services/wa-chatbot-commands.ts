@@ -254,6 +254,17 @@ export function formatJadwalKBMSubMenu(nama: string): string {
   );
 }
 
+export function formatPosisiGuruSubMenu(nama: string): string {
+  return (
+    `📍 *Posisi & Keberadaan Guru — ${nama}*\n\n` +
+    `Pilih sub-menu:\n\n` +
+    `[81] ⏱️ Posisi Guru Jam Ini (Saat Ini)\n` +
+    `[82] 🔍 Cari Posisi Guru (By Nama)\n` +
+    `[83] 📋 Semua Posisi Guru Hari Ini\n\n` +
+    `[0] 🔄 Menu Utama`
+  );
+}
+
 export function formatSiswaMenu(nama: string): string {
   return (
     `👦 *Halo ${nama}!*\n` +

@@ -493,12 +493,51 @@ export class GuruJadwalHandler {
   }
 
   /**
-   * MENU 15 / POSISI GURU: Cek Posisi & Status Mengajar Guru Saat Ini
-   * Contoh: "15", "posisi", "posisi firman", "15 firman"
+   * SUB-MENU: Posisi Guru
+   */
+  static handlePosisiGuruSubMenu(ctx: ChatbotContext): string {
+    const guru = ctx.guru;
+    const nama = guru?.nama_guru || 'Bapak/Ibu';
+    return (
+      `📍 *Posisi & Keberadaan Guru — ${nama}*\n\n` +
+      `Pilih sub-menu:\n\n` +
+      `[81] ⏱️ Posisi Guru Jam Ini (Saat Ini)\n` +
+      `[82] 🔍 Cari Posisi Guru (By Nama)\n` +
+      `[83] 📋 Semua Posisi Guru Hari Ini\n\n` +
+      `[0] 🔄 Menu Utama`
+    );
+  }
+
+  /**
+   * MENU 8 / 15 / POSISI GURU: Cek Posisi & Status Mengajar Guru
+   * Options:
+   * 8 / 15 / POSISI -> Sub Menu
+   * 81 / 151 -> Jam ini
+   * 82 / 152 -> By nama (prompt if no name)
+   * 83 / 153 -> Semua hari ini
+   * "posisi firman" / "82 firman" -> Search teacher name
    */
   static async handlePosisiGuru(ctx: ChatbotContext): Promise<string> {
     const tenantId = ctx.guru?.tenant_id || ctx.siswa?.tenant_id || ctx.ortu?.tenant_id;
     if (!tenantId) return '⚠️ Data tenant sekolah tidak ditemukan.';
+
+    const cmd = ctx.commandUpper.trim();
+    const rawText = (ctx.messageText || '').trim();
+
+    // 1. Sub-menu Trigger (hanya ketik "8", "15", "POSISI", "POSISI GURU", "CEK POSISI")
+    if (cmd === '8' || cmd === '15' || cmd === 'POSISI' || cmd === 'POSISI GURU' || cmd === 'CEK POSISI') {
+      return GuruJadwalHandler.handlePosisiGuruSubMenu(ctx);
+    }
+
+    // 2. Opsi 82 / 152 tanpa nama -> Prompt minta input nama
+    if (cmd === '82' || cmd === '152') {
+      return (
+        `🔍 *Cari Posisi Guru*\n\n` +
+        `Ketik *nama guru* yang ingin dicari (minimal 2 huruf):\n` +
+        `Contoh: _ketik_ *firman* atau *budi*\n\n` +
+        `💡 Ketik *[0]* untuk kembali ke Menu Utama.`
+      );
+    }
 
     const activeSem = await getWhatsappActiveSemester(tenantId);
     if (!activeSem) return '⚠️ Semester aktif sekolah belum diatur.';
@@ -514,19 +553,22 @@ export class GuruJadwalHandler {
       minute: '2-digit',
     });
 
-    // Tanggal WIB hari ini (start of day & end of day UTC for db query)
+    // Tanggal WIB hari ini
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' }); // YYYY-MM-DD
     const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-    const rawText = (ctx.messageText || '').trim();
+    let filterMode: 'NOW' | 'ALL' | 'SEARCH' = 'ALL';
     let filterName = '';
 
-    // If message starts with "15" or "posisi", strip command to get name filter if any
-    if (/^(15|posisi\s*guru|posisi)\b/i.test(rawText)) {
-      filterName = rawText.replace(/^(15|posisi\s*guru|posisi)\s*/i, '').trim();
-    } else if (!/^\d{1,2}$/.test(rawText)) {
-      filterName = rawText;
+    if (cmd === '81' || cmd === '151') {
+      filterMode = 'NOW';
+    } else if (cmd === '83' || cmd === '153') {
+      filterMode = 'ALL';
+    } else {
+      filterMode = 'SEARCH';
+      // Strip command prefixes if any e.g. "82 firman", "posisi firman", "15 firman"
+      filterName = rawText.replace(/^(82|152|81|151|83|153|15|8|posisi\s*guru|posisi)\s*/i, '').trim();
     }
 
     // Query JadwalKBM hari ini
@@ -536,7 +578,7 @@ export class GuruJadwalHandler {
       hari: currentDay as any,
     };
 
-    if (filterName && filterName.length >= 2) {
+    if (filterMode === 'SEARCH' && filterName && filterName.length >= 2) {
       whereJadwal.Guru = {
         nama_guru: { contains: filterName, mode: 'insensitive' },
       };
@@ -553,11 +595,11 @@ export class GuruJadwalHandler {
     });
 
     if (jadwalList.length === 0) {
-      if (filterName) {
+      if (filterMode === 'SEARCH' && filterName) {
         return (
           `📍 *Posisi & Status Guru*\n\n` +
           `❌ Tidak ada jadwal KBM hari ini (${currentDay}) untuk guru dengan nama *"${filterName}"*.\n\n` +
-          `💡 Ketik *[15]* untuk lihat semua posisi guru hari ini.`
+          `💡 Ketik *[82]* untuk cari guru lain atau *[8]* untuk Sub-menu Posisi Guru.`
         );
       }
       return (
@@ -579,29 +621,24 @@ export class GuruJadwalHandler {
         kelas_id: true,
         jadwal_kbm_id: true,
         status: true,
-        waktu_mulai: true,
-        waktu_selesai: true,
       },
     });
 
-    // Match each schedule item with session status
     let targetJadwal = jadwalList;
-    let isCurrentTimeSlot = false;
 
-    if (!filterName) {
+    if (filterMode === 'NOW') {
       const activeSlotItems = jadwalList.filter(j => j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr);
       if (activeSlotItems.length > 0) {
         targetJadwal = activeSlotItems;
-        isCurrentTimeSlot = true;
       }
     }
 
-    // Prepare response message
+    // Header message
     let msg = `📍 *Posisi & Status Guru (${currentDay}, ${nowWibStr} WIB)*\n`;
-    if (filterName) {
+    if (filterMode === 'SEARCH' && filterName) {
       msg += `🔍 Hasil Pencarian: "${filterName}"\n\n`;
-    } else if (isCurrentTimeSlot) {
-      msg += `⏱️ *Sesi KBM yang sedang berlangsung saat ini:*\n\n`;
+    } else if (filterMode === 'NOW') {
+      msg += `⏱️ *Daftar Guru pada Sesi Jam Ini:*\n\n`;
     } else {
       msg += `📋 *Daftar Jadwal Mengajar Guru Hari Ini:*\n\n`;
     }
@@ -614,7 +651,6 @@ export class GuruJadwalHandler {
       const mapelName = j.Mapel?.nama_mapel || '-';
       const timeRange = `${j.jam_mulai}–${j.jam_selesai}`;
 
-      // Check if session exists today for this schedule
       const matchedSesi = sesiList.find(s => 
         (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
         (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
@@ -640,12 +676,12 @@ export class GuruJadwalHandler {
 
     msg += formattedRows.join('\n');
 
-    if (!filterName && !isCurrentTimeSlot) {
-      msg += `\nℹ️ _Saat ini di luar jam slot mengajar aktif, menampilkan seluruh jadwal hari ini._\n`;
+    if (filterMode === 'NOW' && targetJadwal.length === 0) {
+      msg += `ℹ️ _Saat ini tidak ada slot mengajar aktif pada jam ini (${nowWibStr} WIB)._\n\n`;
+      msg += `💡 Ketik *[83]* untuk lihat seluruh jadwal guru hari ini.`;
+    } else {
+      msg += `\n💡 Ketik *[8]* untuk Sub-menu Posisi Guru atau *[0]* Menu Utama.`;
     }
-
-    msg += `\n💡 Ketik *posisi [nama guru]* untuk cari guru spesifik.\n`;
-    msg += `💡 Ketik *[0]* untuk Menu Utama.`;
 
     return msg;
   }
