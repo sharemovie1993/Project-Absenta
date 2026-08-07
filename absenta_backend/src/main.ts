@@ -308,12 +308,7 @@ async function start() {
 
     const host = process.env.HOST || '0.0.0.0';
     const port = parseInt(process.env.PORT || '3003');
-    const isClusterWorker = require('cluster').isWorker;
-    if (isClusterWorker) {
-      await fastify.listen({ port });
-    } else {
-      await fastify.listen({ port, host });
-    }
+    await fastify.listen({ port, host });
     registerService('Fastify HTTP Server', 'server', 'online');
 
     // Signal PM2 that the server is ready
