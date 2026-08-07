@@ -6,6 +6,8 @@ module.exports = {
       cwd: __dirname,
       instances: 4,
       exec_mode: 'cluster',
+      restart_delay: 2000,
+      listen_timeout: 10000,
       node_args: '-r tsconfig-paths/register',
       env: {
         NODE_ENV: 'production',
