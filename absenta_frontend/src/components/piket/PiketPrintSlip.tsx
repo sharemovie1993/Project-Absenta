@@ -207,16 +207,37 @@ export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = React.memo(({
           </div>
         </div>
 
-        {printedPermit.tipe_izin === 'IZIN_KELUAR' && !printedPermit.jam_kembali && systemConfig?.max_izin_sementara_menit && (
-          <div className={`mt-1 p-1 bg-gray-50 border border-dashed border-gray-300 rounded text-center`}>
-            <span className={`font-black uppercase block ${isFormalPaper ? 'text-[10px]' : 'text-[6px]'} text-rose-600 animate-pulse`}>
-              ⚠️ MAKSIMAL DURASI IZIN: {systemConfig.max_izin_sementara_menit} MENIT
-            </span>
-            <span className={`block font-medium italic ${isFormalPaper ? 'text-[8px]' : 'text-[5px]'} text-gray-500`}>
-              * Jika melebihi batas waktu, status otomatis menjadi ALPA (Bolos).
-            </span>
-          </div>
-        )}
+        {/* SOP Rules & Mandate Box */}
+        <div className="mt-1.5 p-1.5 bg-slate-50 border border-dashed border-slate-300 rounded text-center">
+          {printedPermit.tipe_izin === 'PULANG_AWAL' ? (
+            <div>
+              <span className={`font-black uppercase block ${isFormalPaper ? 'text-[10px]' : 'text-[6.5px]'} text-amber-800`}>
+                📜 SOP PULANG AWAL: SISWA RESMI DIPULANGKAN KE ORANG TUA/WALI
+              </span>
+              <span className={`block font-medium italic ${isFormalPaper ? 'text-[8px]' : 'text-[5.5px]'} text-slate-500`}>
+                * Dilarang berada di luar kelas / lingkungan sekolah berseragam tanpa pendamping.
+              </span>
+            </div>
+          ) : printedPermit.tipe_izin === 'DISPENSASI' ? (
+            <div>
+              <span className={`font-black uppercase block ${isFormalPaper ? 'text-[10px]' : 'text-[6.5px]'} text-indigo-700`}>
+                📜 SOP DISPENSASI: TUGAS RESMI SEKOLAH / LOMBA
+              </span>
+              <span className={`block font-medium italic ${isFormalPaper ? 'text-[8px]' : 'text-[5.5px]'} text-slate-500`}>
+                * Wajib menyerahkan bukti tugas ke Guru Piket setelah kegiatan selesai.
+              </span>
+            </div>
+          ) : (
+            <div>
+              <span className={`font-black uppercase block ${isFormalPaper ? 'text-[10px]' : 'text-[6.5px]'} text-rose-700`}>
+                ⚠️ MAKSIMAL DURATION: {systemConfig?.max_izin_sementara_menit || 45} MENIT (WAKTU KEMBALI S/D {new Date(new Date(printedPermit.jam_keluar).getTime() + (systemConfig?.max_izin_sementara_menit || 45) * 60 * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB)
+              </span>
+              <span className={`block font-medium italic ${isFormalPaper ? 'text-[8px]' : 'text-[5.5px]'} text-slate-600`}>
+                * Overstay tanpa perpanjangan resmi otomatis dicatat ALPA (Bolos) & WA Ortu terkirim.
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer / QR + Signature Row */}
