@@ -132,6 +132,78 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     setPetugasForm((f) => (f.kelas_id ? f : { ...f, kelas_id: selectedKelasId }));
   }, [selectedKelasId]);
 
+  // Dropdowns Query
+  const dropdownsQuery = useQuery({
+    queryKey: ['session-manager-dropdowns'],
+    queryFn: async () => {
+      const guruRes = await guruApi.getAll({ limit: 1000 });
+      const guruList = (guruRes.data as { id: string; nama_guru: string }[]) || [];
+      const mappedGuru = guruList.map((g) => ({ value: g.id, label: g.nama_guru }));
+      
+      const mapelRes = await mapelApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>);
+      const mapelList = (mapelRes.data as { id: string; kode_mapel?: string; nama_mapel?: string; nama?: string }[]) || [];
+      const mappedMapel = mapelList.map((m) => ({ value: m.id, label: m.kode_mapel || m.nama_mapel || m.nama || '' }));
+      
+      const jenisList = await dropdownApi.getJenisKegiatanMasterForDropdown();
+      const jenisMetaRes = await jenisKegiatanMasterApi.getAll({ limit: 1000 });
+      const jenisMetaList = (jenisMetaRes.data as { id: string; nama: string; tipe: string }[]) || [];
+      const typeMap: Record<string, string> = {};
+      jenisMetaList.forEach((jk) => { 
+        if (jk?.nama && jk?.tipe) typeMap[String(jk.nama)] = String(jk.tipe); 
+        if (jk?.id && jk?.tipe) typeMap[String(jk.id)] = String(jk.tipe); 
+      });
+
+      return {
+        guruOptions: mappedGuru,
+        mapelOptions: mappedMapel,
+        allMapelOptions: mappedMapel,
+        jenisOptions: jenisList,
+        jenisTypeByName: typeMap
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const guruOptions = dropdownsQuery.data?.guruOptions || [];
+  const allMapelOptions = dropdownsQuery.data?.allMapelOptions || [];
+  const jenisOptions = dropdownsQuery.data?.jenisOptions || [];
+  const jenisTypeByName = dropdownsQuery.data?.jenisTypeByName || {};
+
+  const [filteredMapelOptions, setFilteredMapelOptions] = useState<DropdownOption[] | null>(null);
+  const mapelOptions = filteredMapelOptions || allMapelOptions;
+
+  // Filter Mapel based on Guru
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMapelForGuru() {
+      try {
+        const gid = petugasForm.guru_id;
+        if (!gid) {
+          if (isMounted) setFilteredMapelOptions(null);
+          return;
+        }
+        const res = await listGuruMapel({ guru_id: gid });
+        const items = (res.data as { mapel_id: string; Mapel?: { kode_mapel?: string; nama_mapel?: string; nama?: string } }[]) || [];
+        if (items.length === 0) {
+          if (isMounted) setFilteredMapelOptions(null);
+          return;
+        }
+        const filtered = items.map((gm) => {
+          const fromRel = gm.Mapel ? (gm.Mapel.kode_mapel || gm.Mapel.nama_mapel || gm.Mapel.nama) : undefined;
+          const fallback = allMapelOptions.find((o) => String(o.value) === String(gm.mapel_id))?.label || gm.mapel_id;
+          return { value: gm.mapel_id, label: fromRel || fallback };
+        });
+        if (isMounted) setFilteredMapelOptions(filtered);
+      } catch {
+        if (isMounted) setFilteredMapelOptions(null);
+      }
+    }
+    loadMapelForGuru();
+    return () => {
+      isMounted = false;
+    };
+  }, [petugasForm.guru_id, allMapelOptions]);
+
   // Scanning State
   const [inputModalOpen, setInputModalOpen] = useState(false);
   const [inputModalSesiId, setInputModalSesiId] = useState<string>('');
@@ -236,77 +308,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     await sessionsQuery.refetch();
   }, [sessionsQuery]);
 
-  // Dropdowns Query
-  const dropdownsQuery = useQuery({
-    queryKey: ['session-manager-dropdowns'],
-    queryFn: async () => {
-      const guruRes = await guruApi.getAll({ limit: 1000 });
-      const guruList = (guruRes.data as { id: string; nama_guru: string }[]) || [];
-      const mappedGuru = guruList.map((g) => ({ value: g.id, label: g.nama_guru }));
-      
-      const mapelRes = await mapelApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>);
-      const mapelList = (mapelRes.data as { id: string; kode_mapel?: string; nama_mapel?: string; nama?: string }[]) || [];
-      const mappedMapel = mapelList.map((m) => ({ value: m.id, label: m.kode_mapel || m.nama_mapel || m.nama || '' }));
-      
-      const jenisList = await dropdownApi.getJenisKegiatanMasterForDropdown();
-      const jenisMetaRes = await jenisKegiatanMasterApi.getAll({ limit: 1000 });
-      const jenisMetaList = (jenisMetaRes.data as { id: string; nama: string; tipe: string }[]) || [];
-      const typeMap: Record<string, string> = {};
-      jenisMetaList.forEach((jk) => { 
-        if (jk?.nama && jk?.tipe) typeMap[String(jk.nama)] = String(jk.tipe); 
-        if (jk?.id && jk?.tipe) typeMap[String(jk.id)] = String(jk.tipe); 
-      });
 
-      return {
-        guruOptions: mappedGuru,
-        mapelOptions: mappedMapel,
-        allMapelOptions: mappedMapel,
-        jenisOptions: jenisList,
-        jenisTypeByName: typeMap
-      };
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const guruOptions = dropdownsQuery.data?.guruOptions || [];
-  const allMapelOptions = dropdownsQuery.data?.allMapelOptions || [];
-  const jenisOptions = dropdownsQuery.data?.jenisOptions || [];
-  const jenisTypeByName = dropdownsQuery.data?.jenisTypeByName || {};
-
-  const [filteredMapelOptions, setFilteredMapelOptions] = useState<DropdownOption[] | null>(null);
-  const mapelOptions = filteredMapelOptions || allMapelOptions;
-
-  // Filter Mapel based on Guru
-  useEffect(() => {
-    let isMounted = true;
-    async function loadMapelForGuru() {
-      try {
-        const gid = petugasForm.guru_id;
-        if (!gid) {
-          if (isMounted) setFilteredMapelOptions(null);
-          return;
-        }
-        const res = await listGuruMapel({ guru_id: gid });
-        const items = (res.data as { mapel_id: string; Mapel?: { kode_mapel?: string; nama_mapel?: string; nama?: string } }[]) || [];
-        if (items.length === 0) {
-          if (isMounted) setFilteredMapelOptions(null);
-          return;
-        }
-        const filtered = items.map((gm) => {
-          const fromRel = gm.Mapel ? (gm.Mapel.kode_mapel || gm.Mapel.nama_mapel || gm.Mapel.nama) : undefined;
-          const fallback = allMapelOptions.find((o) => String(o.value) === String(gm.mapel_id))?.label || gm.mapel_id;
-          return { value: gm.mapel_id, label: fromRel || fallback };
-        });
-        if (isMounted) setFilteredMapelOptions(filtered);
-      } catch {
-        if (isMounted) setFilteredMapelOptions(null);
-      }
-    }
-    loadMapelForGuru();
-    return () => {
-      isMounted = false;
-    };
-  }, [petugasForm.guru_id, allMapelOptions]);
 
   const normalizeDateTimeWithTanggal = useCallback((tanggalValue: string, dt: string): string => {
     const datePart = String(tanggalValue || '').trim();
