@@ -104,14 +104,12 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
     inputRef: externalInputRef
   } = props;
   const [inputValue, setInputValue] = useState(value || '');
-  const [results, setResults] = useState<Student[]>([]);
   
   // Sync with external value
   useEffect(() => {
     if (value !== undefined) setInputValue(value);
   }, [value]);
 
-  const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
@@ -142,7 +140,6 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
   // 0. Logic: Selection (Define first to avoid initialization error)
   const handleSelect = useCallback((student: Student) => {
     setInputValue('');
-    setResults([]);
     setShowDropdown(false);
     const callback = onSelect || onSelectStudent;
     if (typeof callback === 'function') {
@@ -209,49 +206,18 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
     setShowDropdown(results.length > 0);
   }, [results]);
 
-
-
   // 2. Logic: HID Detection (Fast typing)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
     if (onChange) onChange(val);
-
-    if (allowHID) {
-      if (hidTimerRef.current) window.clearTimeout(hidTimerRef.current);
-      // If input is fast (RFID scanners usually type very fast), trigger search quickly
-      const t = window.setTimeout(() => {
-        if (val.length >= 6) { // Most IDs/RFID are 6+ chars
-          console.log(`[SmartStudentPicker] HID potential detected: ${val}`);
-          performSearch(val, true);
-        }
-      }, 150); // Slightly longer delay for HID to distinguish from manual typing
-      hidTimerRef.current = t;
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (inputValue.length >= 4) {
-        console.log(`[SmartStudentPicker] Enter pressed, forcing search: ${inputValue}`);
-        performSearch(inputValue, true);
-      }
       if (onEnter) onEnter(inputValue);
     }
   };
-
-  // 3. Logic: Regular Fuzzy Search (Debounced)
-  useEffect(() => {
-    if (debouncedSearch) {
-      // Avoid searching again if HID already triggered or if it's too short
-      if (debouncedSearch.length >= 2) {
-        performSearch(debouncedSearch);
-      }
-    } else {
-      setResults([]);
-      setShowDropdown(false);
-    }
-  }, [debouncedSearch, performSearch]);
 
   // 4. Logic: Camera Scanner
   const startScanner = async () => {
@@ -268,7 +234,7 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
           console.log(`[SmartStudentPicker] QR Scanned: ${token}`);
           if (token) {
             setScannerStatus('success');
-            performSearch(token, true); // Treat QR as HID (instant match)
+            setInputValue(token);
             setIsScannerOpen(false);
           }
         }
@@ -355,7 +321,6 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
               disabled={disabled}
               onClick={() => {
                 setInputValue('');
-                setResults([]);
                 setShowDropdown(false);
                 inputRef.current?.focus();
               }}
