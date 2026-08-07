@@ -198,7 +198,11 @@ export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = React.memo(({
             <span className={`font-black block whitespace-nowrap ${isFormalPaper ? 'text-xs' : styles.bodyText}`}>
               {printedPermit.jam_kembali 
                 ? `${new Date(printedPermit.jam_kembali).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB` 
-                : '-'}
+                : printedPermit.tipe_izin === 'PULANG_AWAL'
+                  ? 'PULANG AWAL'
+                  : printedPermit.tipe_izin === 'DISPENSASI'
+                    ? 'DISPENSASI'
+                    : `${new Date(new Date(printedPermit.jam_keluar).getTime() + (systemConfig?.max_izin_sementara_menit || 45) * 60 * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`}
             </span>
           </div>
         </div>

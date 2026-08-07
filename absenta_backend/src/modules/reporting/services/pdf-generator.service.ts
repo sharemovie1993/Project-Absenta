@@ -691,9 +691,18 @@ export class PdfGeneratorService {
       year: 'numeric'
     });
     const timeOutStr = izin.jam_keluar.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const timeInStr = izin.jam_kembali 
-      ? izin.jam_kembali.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) 
-      : '-';
+    const maxIzinMenit = 45;
+    let timeInStr = '-';
+    if (izin.jam_kembali) {
+      timeInStr = `${izin.jam_kembali.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+    } else if (izin.tipe_izin === 'PULANG_AWAL') {
+      timeInStr = 'PULANG AWAL';
+    } else if (izin.tipe_izin === 'DISPENSASI') {
+      timeInStr = 'DISPENSASI';
+    } else {
+      const estimatedKembali = new Date(izin.jam_keluar.getTime() + maxIzinMenit * 60 * 1000);
+      timeInStr = `${estimatedKembali.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+    }
 
     const html = `
       <!DOCTYPE html>
