@@ -94,9 +94,6 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   const { subscribe, unsubscribe } = useSocket();
   
   // State
-  const [sessions, setSessions] = useState<SessionData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   
   // Delete Confirmation State
