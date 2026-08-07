@@ -80,25 +80,29 @@ function matchesJurusan(s: any, filterJurusan: string): boolean {
   return targets.some((target) => target.includes(fj) || fj.includes(target));
 }
 
-export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStudentPickerProps>(({
-  id,
-  onSelect,
-  onSelectStudent,
-  placeholder,
-  scope = 'global',
-  mode = 'siswa',
-  filterJurusan,
-  personaMode,
-  className = "",
-  allowCamera = true,
-  allowHID = true,
-  autoFocus = false,
-  disabled = false,
-  value,
-  onChange,
-  onEnter,
-  inputRef: externalInputRef
-}, ref) => {
+export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
+  props: SmartStudentPickerProps,
+  ref: React.Ref<HTMLInputElement>
+) {
+  const {
+    id,
+    onSelect,
+    onSelectStudent,
+    placeholder,
+    scope = 'global',
+    mode = 'siswa',
+    filterJurusan,
+    personaMode,
+    className = "",
+    allowCamera = true,
+    allowHID = true,
+    autoFocus = false,
+    disabled = false,
+    value,
+    onChange,
+    onEnter,
+    inputRef: externalInputRef
+  } = props;
   const [inputValue, setInputValue] = useState(value || '');
   const [results, setResults] = useState<Student[]>([]);
   
@@ -494,3 +498,6 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
     </div>
   );
 });
+
+SmartStudentPicker.displayName = 'SmartStudentPicker';
+
