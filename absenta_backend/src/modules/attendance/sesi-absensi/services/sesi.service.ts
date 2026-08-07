@@ -1354,7 +1354,7 @@ export class SesiService {
     }
 
     // 1. Get all students registered in this class for the session's academic context
-    const allStudentsInClass = await prisma.siswaAkademik.findMany({
+    let allStudentsInClass = await prisma.siswaAkademik.findMany({
       where: {
         kelas_id: sesi.kelas_id,
         tahun_pelajaran_id: sesi.tahun_pelajaran_id,
@@ -1374,34 +1374,92 @@ export class SesiService {
       }
     }) as any[];
 
+    if (!allStudentsInClass || allStudentsInClass.length === 0) {
+      // Fallback 1: Try SiswaAkademik without rigid academic term filter
+      allStudentsInClass = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: sesi.kelas_id,
+          status: 'AKTIF'
+        },
+        include: {
+          siswa: {
+            select: {
+              id: true,
+              nama_siswa: true,
+              nis: true,
+              no_rfid: true
+            }
+          },
+          kelas: true
+        }
+      }) as any[];
+    }
+
+    if (!allStudentsInClass || allStudentsInClass.length === 0) {
+      // Fallback 2: Fetch directly from Siswa table
+      const rawSiswaList = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: sesi.kelas_id,
+          status: 'AKTIF'
+        },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nis: true,
+          no_rfid: true,
+          kelas_id: true,
+          Kelas: true
+        }
+      });
+      allStudentsInClass = rawSiswaList.map(s => ({
+        id: s.id,
+        siswa_id: s.id,
+        kelas_id: s.kelas_id,
+        status: 'AKTIF',
+        siswa: s,
+        kelas: s.Kelas
+      }));
+    }
+
     // 2. Get existing attendance records
     const records = await prisma.absenSiswa.findMany({
       where: { tenant_id: tenantId, sesi_id: sesi_id },
+      include: {
+        Siswa: {
+          select: {
+            id: true,
+            nama_siswa: true,
+            nis: true
+          }
+        }
+      },
       orderBy: { waktu_tap: 'asc' },
     });
 
     // 3. Merge: Map all students to an attendance status
-    const recordMap = new Map(records.map(r => [r.siswa_akademik_id, r]));
+    const recordMap = new Map();
+    records.forEach(r => {
+      if (r.siswa_akademik_id) recordMap.set(r.siswa_akademik_id, r);
+      if (r.siswa_id) recordMap.set(r.siswa_id, r);
+    });
     
     const mergedList = allStudentsInClass.map((sa: any) => {
-      const existingRecord = recordMap.get(sa.id);
+      const existingRecord = recordMap.get(sa.id) || recordMap.get(sa.siswa_id);
       
       if (existingRecord) {
         return {
           ...existingRecord,
-          Siswa: sa.siswa,
+          Siswa: sa.siswa || existingRecord.Siswa,
           SiswaAkademik: sa
         };
       }
 
-      // If no record exists, return a "virtual" record
-      // If session is finished, it should have been 'ALPA' (handled by finalize), 
-      // but if somehow missing or session is ongoing, we show 'BELUM_TAP'
       return {
         id: `virtual-${sa.id}`,
         tenant_id: tenantId,
         sesi_id: sesi_id,
-        siswa_id: sa.siswa_id,
+        siswa_id: sa.siswa_id || sa.id,
         siswa_akademik_id: sa.id,
         status: sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP',
         waktu_tap: null,
