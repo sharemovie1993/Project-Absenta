@@ -337,17 +337,44 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   const primaryWs = structuralWorkspaces[0];
   const secondaryWs = structuralWorkspaces.length > 1 ? structuralWorkspaces[1] : null;
 
-  // Dynamic Wali Kelas Class Name via useWaliKelasOptions Hook & Profile
+  // Dynamic Wali Kelas Class Name strictly sourced from Struktur Organisasi
   const waliKelasNama = useMemo(() => {
+    const guruProfileId = (user as any)?.guru_profile?.id;
+    const userId = user?.id;
+
+    // 1. Primary Source: Check active assignments from Struktur Organisasi API (useWaliKelasOptions)
+    if (waliKelasAssignments && waliKelasAssignments.length > 0) {
+      const found = waliKelasAssignments.find((item: any) => {
+        if (guruProfileId && (item.guru_id === guruProfileId || item.Guru?.id === guruProfileId)) return true;
+        if (userId && (item.user_id === userId || item.Guru?.user_id === userId)) return true;
+        return false;
+      });
+      if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
+      if (found?.StrukturOrganisasi?.Kelas?.nama_kelas) return found.StrukturOrganisasi.Kelas.nama_kelas;
+    }
+
+    // 2. Secondary Source: Check active positions & assignments in user object (Struktur Organisasi in Auth Context)
+    if (Array.isArray(user?.positions)) {
+      const foundPos = user.positions.find((p: any) =>
+        (p?.code === 'WALIKELAS' || p?.name?.toLowerCase().includes('wali kelas')) && (p?.Kelas?.nama_kelas || p?.kelas_nama)
+      );
+      if (foundPos?.Kelas?.nama_kelas) return foundPos.Kelas.nama_kelas;
+      if (foundPos?.kelas_nama) return foundPos.kelas_nama;
+    }
+
+    if (Array.isArray(user?.organizational_assignments)) {
+      const foundWk = user.organizational_assignments.find((a: any) =>
+        a?.is_active !== false &&
+        (a?.Position?.code === 'WALIKELAS' || a?.position_code === 'WALIKELAS' || a?.code === 'WALIKELAS')
+      );
+      if (foundWk?.Kelas?.nama_kelas) return foundWk.Kelas.nama_kelas;
+      if (foundWk?.kelas_nama) return foundWk.kelas_nama;
+    }
+
+    // 3. Fallback: Only check legacy profile if not found in Struktur Organisasi
     const directObj = (user as any)?.guru_profile?.wali_kelas_di;
     if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
 
-    if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
-      const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
-      );
-      if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
-    }
     return '';
   }, [user, waliKelasAssignments]);
 

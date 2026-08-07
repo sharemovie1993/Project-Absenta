@@ -29,6 +29,7 @@ import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
 import { Modal, Badge, Button } from '../../ui';
 import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
+import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -162,7 +163,32 @@ export const UnifiedStaffDashboard: React.FC = () => {
     || isBpbk || isBkk || isGerbang || isTU;
 
   // ── 3. Role-Specific Queries ───────────────────────────────────────────────────
-  const waliKelasId = guruProfile?.wali_kelas_di?.id || (user?.guru_profile as any)?.wali_kelas_di?.id;
+  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
+
+  const waliKelasStrukturItem = useMemo(() => {
+    const guruProfileId = (user as any)?.guru_profile?.id;
+    const userId = user?.id;
+    if (waliKelasAssignments && waliKelasAssignments.length > 0) {
+      return waliKelasAssignments.find((item: any) => {
+        if (guruProfileId && (item.guru_id === guruProfileId || item.Guru?.id === guruProfileId)) return true;
+        if (userId && (item.user_id === userId || item.Guru?.user_id === userId)) return true;
+        return false;
+      });
+    }
+    return null;
+  }, [user, waliKelasAssignments]);
+
+  const waliKelasId = useMemo(() => {
+    if (waliKelasStrukturItem?.Kelas?.id) return waliKelasStrukturItem.Kelas.id;
+    if (waliKelasStrukturItem?.kelas_id) return waliKelasStrukturItem.kelas_id;
+    return guruProfile?.wali_kelas_di?.id || (user?.guru_profile as any)?.wali_kelas_di?.id;
+  }, [waliKelasStrukturItem, guruProfile, user]);
+
+  const waliKelasNama = useMemo(() => {
+    if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
+    if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
+    return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
+  }, [waliKelasStrukturItem, guruProfile, user]);
 
   const { data: classPresence, isLoading: classPresenceLoading } = useQuery({
     queryKey: ['attendance-today-me-class', waliKelasId],
@@ -505,7 +531,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
         component: (
           <WaliKelasSidebarPanel
             key="walikelas"
-            namaKelas={guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas}
+            namaKelas={waliKelasNama}
             attendanceRate={attendanceRate}
             absentStudents={absentStudents.map((s) => ({ id: s.id, nama: s.nama, status: s.status }))}
             isLoading={classPresenceLoading}
