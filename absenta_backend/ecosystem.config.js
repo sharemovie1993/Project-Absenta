@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'absenta-redis',
-      script: 'redis-server',
+      script: './scripts/redis-monitor.js',
       cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
