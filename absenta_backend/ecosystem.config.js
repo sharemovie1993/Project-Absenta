@@ -6,8 +6,8 @@ module.exports = {
       name: 'absenta-api:3003',
       script: './dist/main.js',
       cwd: __dirname,
-      instances: 1,
-      exec_mode: 'fork',
+      instances: 4,
+      exec_mode: 'cluster',
       node_args: '-r tsconfig-paths/register',
       env: {
         NODE_ENV: 'production',

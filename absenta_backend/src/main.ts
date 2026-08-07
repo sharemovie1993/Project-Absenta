@@ -361,10 +361,14 @@ async function start() {
           await initInvoicePdfDomainConsumer();
         });
 
-        await trackService('WhatsApp Gateway Pool', 'infra', async () => {
-          const { waGatewayService } = await import('./services/wa-gateway.service');
-          await waGatewayService.restoreConnections();
-        });
+        if (isMasterInstance()) {
+          await trackService('WhatsApp Gateway Pool', 'infra', async () => {
+            const { waGatewayService } = await import('./services/wa-gateway.service');
+            await waGatewayService.restoreConnections();
+          });
+        } else {
+          registerService('WhatsApp Gateway Pool', 'infra', 'online');
+        }
 
         // ─── Cetak Tabel Lengkap (Semua 22 Service Online - Hanya di Master Instance 0) ───
         if (isMasterInstance()) {
