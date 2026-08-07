@@ -97,7 +97,7 @@ export async function sesiAbsensiRoutes(fastify: any) {
   fastify.get('/:id/absen-siswa', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.view.detail'), 
+        requireCapability('attendance.sessions.view.detail', { exemptRoles: [RoleName.SISWA, RoleName.GURU, RoleName.ADMIN] }), 
         elevatedScopeMiddleware,        // tenant_wide: operator perlu lihat semua siswa
         determineDataScope(),
         SesiGuard.validateSessionAccess
