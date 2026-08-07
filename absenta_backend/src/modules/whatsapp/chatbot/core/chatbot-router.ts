@@ -130,7 +130,7 @@ export class ChatbotRouter {
     }
 
     // Menu utama (nomor baru)
-    if (choice === '2') return GuruPresensiHandler.handlePresensi(ctx);
+    if (choice === '2' || choice === '21' || choice === '22' || choice === '23') return GuruPresensiHandler.handlePresensi(ctx);
     if (choice === '3') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
     if (choice === '4') return GuruSupervisiHandler.handleSupervisi(ctx);
     if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
