@@ -302,31 +302,62 @@ const WhatsappSettingsPage: React.FC = () => {
                 </AlertDescription>
               </Alert>
 
-              {/* Quick Access: Riwayat Chat */}
-              <div
-                role="button"
-                tabIndex={0}
-                id="wa-chatlog-shortcut"
-                className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/5 cursor-pointer hover:from-emerald-500/15 hover:to-teal-500/10 transition-all group shadow-sm"
-                onClick={() => navigate('/notifications/wa-chat-logs')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') navigate('/notifications/wa-chat-logs');
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                    <History className="w-5 h-5 text-emerald-400" />
+              {/* Quick Access Banners */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Riwayat Chat */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  id="wa-chatlog-shortcut"
+                  className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/5 cursor-pointer hover:from-emerald-500/15 hover:to-teal-500/10 transition-all group shadow-sm"
+                  onClick={() => navigate('/notifications/wa-chat-logs')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') navigate('/notifications/wa-chat-logs');
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                      <History className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">Riwayat Percakapan WA</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Monitor percakapan chatbot real-time
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white">Riwayat Percakapan Chatbot WA</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Monitor semua percakapan user dengan chatbot WhatsApp secara real-time
-                    </p>
+                  <div className="flex items-center gap-2 text-emerald-500 group-hover:gap-3 transition-all">
+                    <span className="text-xs font-semibold hidden sm:block">Lihat</span>
+                    <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-emerald-500 group-hover:gap-3 transition-all">
-                  <span className="text-xs font-semibold hidden sm:block">Lihat</span>
-                  <ArrowRight className="w-4 h-4" />
+
+                {/* 2. Monitoring & Sapa WA (NEW) */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  id="wa-onboarding-shortcut"
+                  className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5 cursor-pointer hover:from-amber-500/15 hover:to-orange-500/10 transition-all group shadow-sm"
+                  onClick={() => navigate('/notifications/wa-onboarding')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') navigate('/notifications/wa-onboarding');
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                      <Users className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">Monitoring & Sapa WA</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Cek status & kirim sapaan onboarding Guru/Siswa/Ortu
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-500 group-hover:gap-3 transition-all">
+                    <span className="text-xs font-semibold hidden sm:block font-bold">Buka</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
 
