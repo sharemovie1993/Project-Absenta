@@ -38,6 +38,7 @@ import { ViewMode, ToolMode, JadwalBuilderProps } from './jadwal-builder/types';
 import { JadwalBuilderHeader } from './jadwal-builder/JadwalBuilderHeader';
 import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
 import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
+import { ConflictResolverModal, type ConflictDetails } from './jadwal-builder/ConflictResolverModal';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 import { TarikGuruJPModal } from './jadwal-builder/TarikGuruJPModal';
@@ -125,6 +126,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   // Paint payload
   const [paintMapelId, setPaintMapelId] = useState<string>('');
   const [paintGuruId, setPaintGuruId] = useState<string>('');
+
+  // Conflict Resolver State
+  const [activeConflictDetails, setActiveConflictDetails] = useState<ConflictDetails | null>(null);
 
   // ── Reference Options Hooks ──────────────────────────────────────────────
   const { options: kelasSelectOptions, rawList: kelasRawList } = useKelasOptions();
@@ -547,6 +551,38 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     return null;
   };
 
+  const alternativeTeachers = useMemo(() => {
+    if (!activeConflictDetails) return [];
+    const { day, slotIndex, guruId } = activeConflictDetails;
+    const occupiedGuruIds = new Set(
+      allJadwal
+        .filter(j => j.hari === day && j.slot_index === slotIndex && j.guru_id)
+        .map(j => j.guru_id)
+    );
+    return guruList
+      .filter(g => !occupiedGuruIds.has(g.id) && g.id !== guruId)
+      .map(g => ({ id: g.id, nama_guru: g.nama_guru, isAvailable: true }))
+      .slice(0, 6);
+  }, [activeConflictDetails, allJadwal, guruList]);
+
+  const availableSlotsForTeacher = useMemo(() => {
+    if (!activeConflictDetails) return [];
+    const { day, guruId, targetKelasId } = activeConflictDetails;
+    const occupiedSlots = new Set(
+      allJadwal
+        .filter(j => j.hari === day && (j.guru_id === guruId || j.kelas_id === targetKelasId))
+        .map(j => j.slot_index)
+    );
+    return SLOTS.filter(s => !occupiedSlots.has(s)).map(s => {
+      const time = resolveSlotTime(targetKelasId, s, day);
+      return {
+        slotIndex: s,
+        jamLabel: `${time.start} - ${time.end}`,
+        isAvailable: true
+      };
+    });
+  }, [activeConflictDetails, allJadwal, SLOTS, resolveSlotTime]);
+
   // High-performance O(1) Hash Map for JadwalBuilder slot rendering to prevent CPU spikes
   const { builderKelasSlotMap, builderGuruSlotMap } = useMemo(() => {
     const kMap = new Map<string, JadwalKBM>();
@@ -661,7 +697,23 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       // Check conflict
       const conflict = checkConflict(day, slotIndex, targetKelasId);
       if (conflict && conflict.type === 'TEACHER') {
-        toast.error(`Gagal: ${conflict.message}`);
+        const targetKelasObj = kelasList.find(k => k.id === targetKelasId);
+        const mapelObj = mapelList.find(m => m.id === paintMapelId);
+        const guruObj = guruList.find(g => g.id === paintGuruId);
+        setActiveConflictDetails({
+          day,
+          slotIndex,
+          targetKelasId,
+          targetKelasName: targetKelasObj?.nama_kelas || targetKelasId,
+          guruId: paintGuruId,
+          guruName: conflict.guruName || guruObj?.nama_guru || 'Guru',
+          mapelId: paintMapelId,
+          mapelName: mapelObj?.nama_mapel || 'Mapel',
+          conflictKelasName: conflict.kelasName || 'Lain',
+          ruanganName: conflict.ruanganName,
+          waktu: conflict.waktu || `${slot.start} - ${slot.end}`,
+          message: conflict.message
+        });
         return;
       }
 
@@ -1105,6 +1157,84 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
           onSuccessImport={fetchSchedules}
+        />
+
+        {/* Modal Resolusi Bentrok Jadwal Guru */}
+        <ConflictResolverModal
+          isOpen={!!activeConflictDetails}
+          onClose={() => setActiveConflictDetails(null)}
+          conflict={activeConflictDetails}
+          alternativeTeachers={alternativeTeachers}
+          availableSlots={availableSlotsForTeacher}
+          onSelectAlternativeTeacher={async (newGuruId) => {
+            if (!activeConflictDetails) return;
+            const { day, slotIndex, targetKelasId, mapelId } = activeConflictDetails;
+            setActiveConflictDetails(null);
+            setPaintGuruId(newGuruId);
+            const slot = resolveSlotTime(targetKelasId, slotIndex, day);
+            const classExisting = allJadwal.find(j => j.hari === day && j.slot_index === slotIndex && j.kelas_id === targetKelasId);
+            setSavingSlot(`${day}-${slotIndex}`);
+            try {
+              if (classExisting) {
+                await deleteJadwalKBM(classExisting.id);
+              }
+              const res = await createJadwalKBM({
+                tenant_id: tenantId,
+                tahun_pelajaran_id: tahunPelajaranId,
+                semester_id: semesterId,
+                kelas_id: targetKelasId,
+                hari: day as any,
+                slot_index: slotIndex,
+                jam_mulai: slot.start,
+                jam_selesai: slot.end,
+                mapel_id: mapelId,
+                guru_id: newGuruId,
+                jenis_kegiatan: 'KBM'
+              });
+              setAllJadwal(prev => [...prev.filter(j => j.id !== classExisting?.id), res]);
+              invalidateJadwalBuilderCache();
+              toast.success('Berhasil ganti guru pengganti!');
+              if (onRefresh) onRefresh();
+            } catch (err) {
+              toast.error('Gagal memperbarui guru pengampu.');
+            } finally {
+              setSavingSlot(null);
+            }
+          }}
+          onMoveToSlot={async (newSlotIndex) => {
+            if (!activeConflictDetails) return;
+            const { day, targetKelasId, mapelId, guruId } = activeConflictDetails;
+            setActiveConflictDetails(null);
+            const slot = resolveSlotTime(targetKelasId, newSlotIndex, day);
+            const classExisting = allJadwal.find(j => j.hari === day && j.slot_index === newSlotIndex && j.kelas_id === targetKelasId);
+            setSavingSlot(`${day}-${newSlotIndex}`);
+            try {
+              if (classExisting) {
+                await deleteJadwalKBM(classExisting.id);
+              }
+              const res = await createJadwalKBM({
+                tenant_id: tenantId,
+                tahun_pelajaran_id: tahunPelajaranId,
+                semester_id: semesterId,
+                kelas_id: targetKelasId,
+                hari: day as any,
+                slot_index: newSlotIndex,
+                jam_mulai: slot.start,
+                jam_selesai: slot.end,
+                mapel_id: mapelId,
+                guru_id: guruId,
+                jenis_kegiatan: 'KBM'
+              });
+              setAllJadwal(prev => [...prev.filter(j => j.id !== classExisting?.id), res]);
+              invalidateJadwalBuilderCache();
+              toast.success(`Berhasil dipindahkan ke Jam ke-${newSlotIndex}!`);
+              if (onRefresh) onRefresh();
+            } catch (err) {
+              toast.error('Gagal memindahkan slot jam.');
+            } finally {
+              setSavingSlot(null);
+            }
+          }}
         />
       </div>
     </>
