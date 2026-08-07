@@ -41,7 +41,7 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
 
   const renderCell = (day: string, slotIndex: number) => {
     const item = getSlotData(day, slotIndex) as any;
-    const conflict = checkConflict(day, slotIndex, viewMode === 'KELAS' ? selectedKelasId : '');
+    const conflict = checkConflict(day, slotIndex, selectedKelasId);
     const active = savingSlot === `${day}-${slotIndex}`;
 
     return (

@@ -1081,7 +1081,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             toolMode={toolMode}
             colorByMode={colorByMode}
             gridOrientation={gridOrientation}
-            selectedKelasId={selectedKelasId}
+            selectedKelasId={viewMode === 'KELAS' ? selectedKelasId : paintKelasId}
             hariSekolah={hariSekolah}
             slots={SLOTS}
             loadingData={loadingData}
