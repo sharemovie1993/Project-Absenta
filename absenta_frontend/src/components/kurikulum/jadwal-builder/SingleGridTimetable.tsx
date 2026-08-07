@@ -87,8 +87,8 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                   {(() => {
                     const dynamicSlot = resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day);
                     const isZero = (t?: string) => !t || t === '00:00' || t === '00:00:00';
-                    const displayStart = !isZero(item.jam_mulai) ? item.jam_mulai : dynamicSlot?.start || '';
-                    const displayEnd = !isZero(item.jam_selesai) ? item.jam_selesai : dynamicSlot?.end || '';
+                    const displayStart = dynamicSlot?.start || (!isZero(item.jam_mulai) ? item.jam_mulai : '');
+                    const displayEnd = dynamicSlot?.end || (!isZero(item.jam_selesai) ? item.jam_selesai : '');
                     return (
                       <>
                         {isPembiasaan ? (
@@ -264,8 +264,8 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
     const dynamicStartSlot = resolveSlotTime(item.kelas_id || selectedKelasId, startSlot, day);
     const dynamicEndSlot = resolveSlotTime((lastSlotItem || item).kelas_id || selectedKelasId, endSlot, day);
     const isZero = (t?: string) => !t || t === '00:00' || t === '00:00:00';
-    const displayStart = !isZero(item.jam_mulai) ? item.jam_mulai : dynamicStartSlot?.start || '';
-    const displayEnd = !isZero((lastSlotItem || item).jam_selesai) ? (lastSlotItem || item).jam_selesai : dynamicEndSlot?.end || '';
+    const displayStart = dynamicStartSlot?.start || (!isZero(item.jam_mulai) ? item.jam_mulai : '');
+    const displayEnd = dynamicEndSlot?.end || (!isZero((lastSlotItem || item).jam_selesai) ? (lastSlotItem || item).jam_selesai : '');
 
     return (
       <div
