@@ -76,6 +76,13 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                   borderLeftColor: isPembiasaan ? '#f59e0b' : item.isForeign ? undefined : mapelStyle.dotHex,
                 }}
               >
+                {/* Badge Indicator MANUAL (Bukan Impor XML) */}
+                {!item.asc_id && !isPembiasaan && (
+                  <span className="absolute -top-1.5 -right-1.5 z-10 text-[7px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-white border border-amber-600 shadow-md uppercase tracking-tighter">
+                    MANUAL
+                  </span>
+                )}
+
                 <div className="flex flex-col justify-center space-y-0.5 text-center py-0.5">
                   {(() => {
                     const dynamicSlot = resolveSlotTime(item.kelas_id || selectedKelasId, slotIndex, day);
@@ -98,15 +105,8 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                           </>
                         ) : viewMode === 'KELAS' ? (
                           <>
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                              </span>
-                              {!item.asc_id && (
-                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
-                                  MANUAL
-                                </span>
-                              )}
+                            <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                             </div>
                             <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
                               {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
@@ -114,15 +114,8 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                           </>
                         ) : (
                           <>
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
-                              </span>
-                              {!item.asc_id && (
-                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
-                                  MANUAL
-                                </span>
-                              )}
+                            <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                             </div>
                             <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
                               {item.isForeign
