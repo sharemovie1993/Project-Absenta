@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Camera, QrCode, X, Check, Loader2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserMultiFormatReader } from '@zxing/browser';
