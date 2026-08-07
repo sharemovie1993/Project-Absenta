@@ -287,15 +287,8 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
   // Fetch Config
   const fetchTenantConfig = useCallback(async () => {
-    if (!tenantId) return;
-    setLoadingConfig(true);
-    try {
-      const res = await getTenantById(tenantId);
-      if (res.data) setTenantConfig({ jamMasuk: res.data.jam_masuk_default || '07:00', jamPulang: res.data.jam_pulang_default || '14:00', toleransi: res.data.toleransi_keterlambatan_menit || 0 });
-    } finally { setLoadingConfig(false); }
-  }, [tenantId]);
-
-  useEffect(() => { fetchTenantConfig(); }, [fetchTenantConfig]);
+    await tenantConfigQuery.refetch();
+  }, [tenantConfigQuery]);
 
   // Tab Effects
   useEffect(() => {
