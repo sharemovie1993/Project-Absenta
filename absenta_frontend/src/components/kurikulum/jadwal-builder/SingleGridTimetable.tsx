@@ -103,7 +103,7 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                                 {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                               </span>
                               {!item.asc_id && (
-                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
                                   MANUAL
                                 </span>
                               )}
@@ -119,7 +119,7 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                                 {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                               </span>
                               {!item.asc_id && (
-                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
                                   MANUAL
                                 </span>
                               )}

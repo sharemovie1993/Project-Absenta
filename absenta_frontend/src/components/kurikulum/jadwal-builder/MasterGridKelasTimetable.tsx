@@ -184,6 +184,11 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                                   <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate leading-none">
                                     {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                                   </span>
+                                  {!item.asc_id && (
+                                    <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
+                                      MANUAL
+                                    </span>
+                                  )}
                                   {colSpan > 1 && (
                                     <span className="text-[7.5px] font-black px-1 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
                                       {colSpan}JP
