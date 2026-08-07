@@ -2228,52 +2228,92 @@ export class RekapService {
 
     const teacherIds = teachers.map(t => t.id);
 
-    const gerbangCounts = await prisma.absenGerbangGuru.groupBy({
+    // 1. Total & Tepat Waktu Datang Gerbang per Guru
+    const gerbangTotalCounts = await prisma.absenGerbangGuru.groupBy({
       by: ['guru_id'],
       where: {
         tenant_id: tenantId,
-        guru_id: { in: teacherIds },
-        status: { in: ['HADIR', 'TERLAMBAT'] }
+        guru_id: { in: teacherIds }
       },
       _count: { id: true }
     });
 
-    const kbmCounts = await prisma.absenGuru.groupBy({
+    const gerbangTepatCounts = await prisma.absenGerbangGuru.groupBy({
       by: ['guru_id'],
       where: {
         tenant_id: tenantId,
         guru_id: { in: teacherIds },
-        status: { in: ['HADIR', 'TEPAT_WAKTU', 'TERLAMBAT'] }
+        is_terlambat: false,
+        status: 'HADIR'
       },
       _count: { id: true }
     });
 
-    const gerbangMap = new Map<string, number>();
-    gerbangCounts.forEach(g => gerbangMap.set(g.guru_id, g._count.id));
+    // 2. Total & Tepat Waktu Sesi KBM per Guru
+    const kbmTotalCounts = await prisma.sesiAbsensi.groupBy({
+      by: ['guru_id'],
+      where: {
+        tenant_id: tenantId,
+        guru_id: { in: teacherIds }
+      },
+      _count: { id: true }
+    });
 
-    const kbmMap = new Map<string, number>();
-    kbmCounts.forEach(k => kbmMap.set(k.guru_id, k._count.id));
+    const kbmTepatCounts = await prisma.absenGuru.groupBy({
+      by: ['guru_id'],
+      where: {
+        tenant_id: tenantId,
+        guru_id: { in: teacherIds },
+        is_terlambat: false,
+        status: { in: ['HADIR', 'TEPAT_WAKTU', 'Hadir / Mengajar'] }
+      },
+      _count: { id: true }
+    });
+
+    const gerbangTotalMap = new Map<string, number>();
+    gerbangTotalCounts.forEach(g => gerbangTotalMap.set(g.guru_id, g._count.id));
+
+    const gerbangTepatMap = new Map<string, number>();
+    gerbangTepatCounts.forEach(g => gerbangTepatMap.set(g.guru_id, g._count.id));
+
+    const kbmTotalMap = new Map<string, number>();
+    kbmTotalCounts.forEach(k => { if (k.guru_id) kbmTotalMap.set(k.guru_id, k._count.id); });
+
+    const kbmTepatMap = new Map<string, number>();
+    kbmTepatCounts.forEach(k => kbmTepatMap.set(k.guru_id, k._count.id));
 
     const leaderboard = teachers.map(t => {
-      const gHadir = gerbangMap.get(t.id) || 0;
-      const kHadir = kbmMap.get(t.id) || 0;
-      const poinGerbang = gHadir * 10; // Aspek 1: Kepatuhan Hadir di Sekolah (Gerbang)
-      const poinKbm = kHadir * 10;     // Aspek 2: Kehadiran Sesi Mengajar (KBM)
-      const totalPoints = poinGerbang + poinKbm;
+      const gTotal = gerbangTotalMap.get(t.id) || 0;
+      const gTepat = gerbangTepatMap.get(t.id) || 0;
+      const gerbangRate = gTotal > 0 ? Math.round((gTepat / gTotal) * 100) : 100;
+
+      const kTotal = kbmTotalMap.get(t.id) || 0;
+      const kTepat = kbmTepatMap.get(t.id) || 0;
+      const kbmRate = kTotal > 0 ? Math.round((kTepat / kTotal) * 100) : 100;
+
+      // Fair Punctuality Score (0 - 100%)
+      const score = Math.round((gerbangRate + kbmRate) / 2);
 
       return {
         id: t.id,
         nama: t.nama_guru,
         nip: t.nip || '-',
         jenis_ptk: t.jenis_ptk || 'PENDIDIK',
-        gerbang_count: gHadir,
-        kbm_count: kHadir,
-        poin_gerbang: poinGerbang,
-        poin_kbm: poinKbm,
-        hadir_count: gHadir + kHadir,
-        points: totalPoints
+        gerbang_count: gTepat,
+        gerbang_total: gTotal,
+        gerbang_rate: gerbangRate,
+        kbm_count: kTepat,
+        kbm_total: kTotal,
+        kbm_rate: kbmRate,
+        hadir_count: gTepat + kTepat,
+        points: score, // Skor Persentase Ketepatan Waktu Adil (0-100%)
+        score: score
       };
-    }).sort((a, b) => b.points - a.points).slice(0, limit);
+    }).sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.kbm_rate !== a.kbm_rate) return b.kbm_rate - a.kbm_rate;
+      return a.nama.localeCompare(b.nama);
+    }).slice(0, limit);
 
     return leaderboard;
   }
