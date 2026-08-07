@@ -126,6 +126,7 @@ export class ChatbotRouter {
     if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
     if (choice === '6') return QuickLoginHandler.handleQuickLogin(ctx);
     if (choice === '7' || choice.startsWith('7')) return GuruJadwalHandler.handleTarikGuruJP(ctx);
+    if (choice === '8' || choice.startsWith('8')) return GuruJadwalHandler.handlePosisiGuru(ctx);
 
     if (choice.startsWith('51') || choice.startsWith('41')) return GuruProfileHandler.handleEditNip(ctx);
     if (choice.startsWith('52') || choice.startsWith('42')) return GuruProfileHandler.handleEditEmail(ctx);
