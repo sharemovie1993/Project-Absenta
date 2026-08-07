@@ -98,8 +98,15 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                           </>
                         ) : viewMode === 'KELAS' ? (
                           <>
-                            <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                              </span>
+                              {!item.asc_id && (
+                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                                  MANUAL
+                                </span>
+                              )}
                             </div>
                             <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
                               {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
@@ -107,8 +114,15 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                           </>
                         ) : (
                           <>
-                            <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
-                              {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                            <div className="flex items-center justify-center gap-1">
+                              <span className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
+                                {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                              </span>
+                              {!item.asc_id && (
+                                <span className="text-[6.5px] font-black px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                                  MANUAL
+                                </span>
+                              )}
                             </div>
                             <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
                               {item.isForeign
