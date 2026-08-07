@@ -38,7 +38,33 @@ export class GuruWalikelasHandler {
   }
 
   /**
-   * MENU 3: Wali Kelas
+   * Helper: Resolve target class from search text or default homeroom class
+   */
+  private static async resolveTargetKelas(ctx: ChatbotContext, kelasBinaan: any) {
+    if (kelasBinaan) return kelasBinaan;
+
+    const tenantId = ctx.guru?.tenant_id;
+    if (!tenantId) return null;
+
+    const rawText = (ctx.messageText || '').trim();
+    const cleanSearch = rawText.replace(/^(31|32|33|34|35|3|walikelas|wali\s*kelas)\s*/i, '').trim();
+
+    if (cleanSearch && cleanSearch.length >= 2) {
+      const foundKelas = await prisma.kelas.findFirst({
+        where: {
+          tenant_id: tenantId,
+          nama_kelas: { contains: cleanSearch, mode: 'insensitive' },
+        },
+        select: { id: true, nama_kelas: true, tingkat: true },
+      });
+      if (foundKelas) return foundKelas;
+    }
+
+    return null;
+  }
+
+  /**
+   * MENU 3: Wali Kelas Portal
    */
   static async handleDaftarWaliKelas(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
@@ -46,21 +72,39 @@ export class GuruWalikelasHandler {
 
     const cmd = ctx.commandUpper.trim();
 
-    // Check if teacher is assigned as a Wali Kelas
-    const kelasBinaan = await this.getKelasBinaan(guru.id, guru.user_id, guru.tenant_id);
-
-    // Route sub-menu choices if teacher is a Wali Kelas
-    if (kelasBinaan) {
-      if (cmd === '31') return this.handlePresensiSiswaKelas(ctx, kelasBinaan.id, kelasBinaan.nama_kelas);
-      if (cmd === '32') return this.handleIzinSiswaKelas(ctx, kelasBinaan.id, kelasBinaan.nama_kelas);
-      if (cmd === '33') return this.handleKontakOrtuKelas(ctx, kelasBinaan.id, kelasBinaan.nama_kelas);
-      if (cmd === '34') return this.handlePoinPelanggaranKelas(ctx, kelasBinaan.id, kelasBinaan.nama_kelas);
-      if (cmd === '35') return this.handleDaftarSemuaWaliKelas(ctx);
-    } else {
-      if (cmd === '35' || cmd === '3') return this.handleDaftarSemuaWaliKelas(ctx);
+    // 1. Opsi [35] -> Daftar Wali Kelas Seluruh Sekolah
+    if (cmd === '35') {
+      return this.handleDaftarSemuaWaliKelas(ctx);
     }
 
-    // Default response for Wali Kelas (Homeroom Dashboard)
+    // 2. Cek apakah guru terdaftar sebagai Wali Kelas di DB
+    const kelasBinaan = await this.getKelasBinaan(guru.id, guru.user_id, guru.tenant_id);
+
+    // 3. Resolve target kelas (kelas binaan atau dari pencarian teks)
+    const targetKelas = await this.resolveTargetKelas(ctx, kelasBinaan);
+
+    // 4. Sub-menu routing [31] .. [34]
+    if (cmd.startsWith('31') || cmd === '31') {
+      if (!targetKelas) return this.promptInputKelas(cmd);
+      return this.handlePresensiSiswaKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
+    }
+
+    if (cmd.startsWith('32') || cmd === '32') {
+      if (!targetKelas) return this.promptInputKelas(cmd);
+      return this.handleIzinSiswaKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
+    }
+
+    if (cmd.startsWith('33') || cmd === '33') {
+      if (!targetKelas) return this.promptInputKelas(cmd);
+      return this.handleKontakOrtuKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
+    }
+
+    if (cmd.startsWith('34') || cmd === '34') {
+      if (!targetKelas) return this.promptInputKelas(cmd);
+      return this.handlePoinPelanggaranKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
+    }
+
+    // 5. Tampilan Utama Menu [3] Wali Kelas (Jika Guru Memiliki Kelas Binaan)
     if (kelasBinaan) {
       const tz = await getTenantTimezone(guru.tenant_id);
       const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
@@ -75,7 +119,6 @@ export class GuruWalikelasHandler {
       const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
       const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
 
-      // Count class attendance summary today
       const siswaList = await prisma.siswaAkademik.findMany({
         where: { kelas_id: kelasBinaan.id, status: 'AKTIF' },
         select: { siswa_id: true },
@@ -117,8 +160,32 @@ export class GuruWalikelasHandler {
       return msg;
     }
 
-    // General teacher: list all homeroom teachers
-    return this.handleDaftarSemuaWaliKelas(ctx);
+    // 6. Tampilan Utama Menu [3] Wali Kelas (Jika Guru Umum / Belum Terdaftar Kelas Binaan)
+    return (
+      `🏫 *Portal & Informasi Wali Kelas*\n` +
+      `Guru: *${guru.nama_guru}*\n\n` +
+      `Pilih fitur Wali Kelas:\n\n` +
+      `[31] 📋 Presensi Siswa Kelas (Rincian)\n` +
+      `[32] 🟨 Siswa Izin / Sakit / Keluar Hari Ini\n` +
+      `[33] 📞 Kontak Orang Tua Siswa\n` +
+      `[34] 🏆 Catatan Poin Pelanggaran Kelas\n` +
+      `[35] 🏫 Daftar Wali Kelas Seluruh Sekolah\n\n` +
+      `[0]  🔄 Menu Utama\n\n` +
+      `💡 Ketik *walikelas [nama kelas]* untuk lihat info kelas tertentu.\n` +
+      `Contoh: ketik *walikelas X TKJ 1*`
+    );
+  }
+
+  /**
+   * Prompt Minta Input Nama Kelas jika belum terdaftar kelas binaan
+   */
+  private static promptInputKelas(cmdCode: string): string {
+    return (
+      `🏫 *Portal Wali Kelas*\n\n` +
+      `Ketik *nama kelas* yang ingin dilihat:\n` +
+      `Contoh: _ketik_ *${cmdCode} X TKJ 1* atau *${cmdCode} XI IPA 2*\n\n` +
+      `💡 Ketik *[35]* untuk lihat Daftar Wali Kelas Sekolah atau *[0]* Menu Utama.`
+    );
   }
 
   /**
