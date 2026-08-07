@@ -91,14 +91,18 @@ export class ChatbotRouter {
     if (choice === '13' || (choice.startsWith('13') && choice.length > 2)) {
       return GuruJadwalHandler.handleJadwalGuruLain(ctx);
     }
+    if (choice === '14') return GuruJadwalHandler.handleJadwalKelas(ctx);
 
-    // Pesan teks bebas saat dalam konteks cari guru lain (panjang > 2 char, bukan angka menu)
+    // Pesan teks bebas — kemungkinan input nama guru (konteks [13]) atau nama kelas (konteks [14])
     const isNumericMenu = /^\d{1,2}$/.test(choice);
     if (!isNumericMenu && choice.length >= 2) {
-      // Kemungkinan user sedang mengetik nama guru setelah memilih [13]
-      // Cek apakah ini bukan perintah lain
       const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL'].some(c => choice.includes(c));
       if (!isKnownCommand) {
+        // Coba jadual kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
+        const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');
+        if (looksLikeKelas) {
+          return GuruJadwalHandler.handleJadwalKelas(ctx);
+        }
         return GuruJadwalHandler.handleJadwalGuruLain(ctx);
       }
     }

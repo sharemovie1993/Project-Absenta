@@ -244,7 +244,8 @@ export class GuruJadwalHandler {
       `Pilih sub-menu:\n\n` +
       `[11] 📋 Jadwal Saya Hari Ini\n` +
       `[12] 📅 Jadwal Saya 1 Minggu\n` +
-      `[13] 🔍 Lihat Jadwal Guru Lain\n\n` +
+      `[13] 🔍 Lihat Jadwal Guru Lain\n` +
+      `[14] 🏫 Jadwal Kelas\n\n` +
       `[0] 🔄 Menu Utama`
     );
   }
@@ -342,6 +343,151 @@ export class GuruJadwalHandler {
     });
 
     msg += `💡 Ketik *[13]* untuk cari guru lain atau *[0]* untuk Menu Utama.`;
+    return msg;
+  }
+
+  /**
+   * MENU 14: Jadwal Kelas (Guru lihat jadwal kelas tertentu)
+   * Ketik [14] → prompt input nama kelas
+   * Ketik [141] atau [14 hari ini] → hari ini, [142] atau [14 minggu] → 1 minggu
+   */
+  static async handleJadwalKelas(ctx: ChatbotContext): Promise<string> {
+    const tenantId = ctx.guru?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
+
+    const input = (ctx.messageText || '').trim();
+    const cmd = ctx.commandUpper.trim();
+
+    // Jika hanya ketik "14" tanpa parameter → tampilkan prompt
+    if (cmd === '14' || input.length < 2) {
+      return (
+        `🏫 *Jadwal Kelas*\n\n` +
+        `Ketik *nama kelas* yang ingin dilihat:\n` +
+        `Contoh: _ketik_ *XI IPA 1* atau *X TKJ*\n\n` +
+        `💡 Ketik *[0]* untuk kembali ke Menu Utama.`
+      );
+    }
+
+    const activeSem = await getWhatsappActiveSemester(tenantId);
+    if (!activeSem) return '⚠️ Semester aktif belum diatur.';
+
+    // Cari kelas berdasarkan nama (partial match)
+    const kelasList = await prisma.kelas.findMany({
+      where: {
+        tenant_id: tenantId,
+        nama_kelas: { contains: input, mode: 'insensitive' },
+      },
+      select: { id: true, nama_kelas: true },
+      take: 3,
+    });
+
+    if (kelasList.length === 0) {
+      return (
+        `🏫 *Jadwal Kelas*\n\n` +
+        `❌ Kelas dengan nama *"${input}"* tidak ditemukan.\n\n` +
+        `Coba ketik nama lain. Contoh: *XI IPA* atau *X TKJ*\n` +
+        `Atau ketik *[14]* untuk coba lagi.`
+      );
+    }
+
+    const tz = await getTenantTimezone(tenantId);
+    const currentDay = getHariByTimezone(tz);
+    const hariUrut = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+
+    // Jika lebih dari 1 kelas ditemukan, tampilkan pilihan
+    if (kelasList.length > 1) {
+      let msg = `🏫 *Kelas ditemukan:*\n\n`;
+      kelasList.forEach((k, i) => {
+        msg += `[${i + 1}] ${k.nama_kelas}\n`;
+      });
+      msg += `\nKetik nama kelas lebih spesifik untuk melihat jadwalnya.`;
+      return msg;
+    }
+
+    const kelas = kelasList[0];
+
+    // Cek apakah minta hari ini atau 1 minggu (default: hari ini)
+    const wantWeekly = /minggu|week|semua|7 hari/i.test(input);
+
+    if (wantWeekly) {
+      // Jadwal 1 Minggu
+      const jadwalMinggu = await prisma.jadwalKBM.findMany({
+        where: { tenant_id: tenantId, semester_id: activeSem.id, kelas_id: kelas.id },
+        include: {
+          Guru: { select: { nama_guru: true } },
+          Mapel: { select: { nama_mapel: true } },
+        },
+        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+      });
+
+      if (jadwalMinggu.length === 0) {
+        return `🏫 *Jadwal ${kelas.nama_kelas}*\n\nBelum ada jadwal KBM untuk kelas ini.\n\n💡 Ketik *[0]* untuk Menu Utama.`;
+      }
+
+      const grouped: Record<string, typeof jadwalMinggu> = {};
+      jadwalMinggu.forEach(j => {
+        const h = j.hari as string;
+        if (!grouped[h]) grouped[h] = [];
+        grouped[h].push(j);
+      });
+
+      let msg = `🏫 *Jadwal KBM ${kelas.nama_kelas} — 1 Minggu*\n`;
+      msg += `📅 Semester: ${activeSem.nama_semester || '-'}\n\n`;
+
+      hariUrut.forEach(hari => {
+        const items = grouped[hari];
+        if (!items || items.length === 0) return;
+        msg += `📌 *${hari}*\n`;
+        items.forEach((j, idx) => {
+          const isLast = idx === items.length - 1;
+          const branch = isLast ? '└' : '├';
+          const mapel = (j as any).Mapel?.nama_mapel || '-';
+          const guru = (j as any).Guru?.nama_guru || '-';
+          msg += ` ${branch} ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel} (${guru})\n`;
+        });
+        msg += `\n`;
+      });
+
+      msg += `💡 Ketik *[14]* untuk cari kelas lain atau *[0]* Menu Utama.`;
+      return msg;
+    }
+
+    // Default: Jadwal Hari Ini
+    const jadwalHariIni = await prisma.jadwalKBM.findMany({
+      where: {
+        tenant_id: tenantId,
+        semester_id: activeSem.id,
+        kelas_id: kelas.id,
+        hari: currentDay as any,
+      },
+      include: {
+        Guru: { select: { nama_guru: true } },
+        Mapel: { select: { nama_mapel: true } },
+      },
+      orderBy: { slot_index: 'asc' },
+    });
+
+    if (jadwalHariIni.length === 0) {
+      return (
+        `🏫 *Jadwal ${kelas.nama_kelas} — ${currentDay}*\n\n` +
+        `Tidak ada jadwal KBM hari ini. 😊\n\n` +
+        `💡 Tambahkan kata _minggu_ untuk lihat 1 minggu\n` +
+        `Contoh: ketik *${input} minggu*\n` +
+        `Atau ketik *[0]* untuk Menu Utama.`
+      );
+    }
+
+    let msg = `🏫 *Jadwal KBM ${kelas.nama_kelas} — ${currentDay}*\n\n`;
+    jadwalHariIni.forEach((j, idx) => {
+      const mapel = (j as any).Mapel?.nama_mapel || '-';
+      const guru = (j as any).Guru?.nama_guru || '-';
+      msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel}\n`;
+      msg += `   👨‍🏫 Guru: ${guru}\n\n`;
+    });
+
+    msg += `💡 Tambah kata _minggu_ untuk 1 minggu penuh\n`;
+    msg += `Contoh: ketik *${input} minggu*\n`;
+    msg += `Atau ketik *[0]* untuk Menu Utama.`;
     return msg;
   }
 }
