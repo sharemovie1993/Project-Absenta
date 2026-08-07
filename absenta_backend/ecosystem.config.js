@@ -1,3 +1,9 @@
+const os = require('os');
+const cpuCores = os.cpus().length;
+const apiInstances = process.env.PM2_INSTANCES
+  ? (process.env.PM2_INSTANCES === 'max' ? 'max' : parseInt(process.env.PM2_INSTANCES))
+  : (cpuCores > 0 ? Math.min(cpuCores, 4) : 4);
+
 module.exports = {
   apps: [
     {
@@ -11,7 +17,7 @@ module.exports = {
       name: 'absenta-api:3003',
       script: './dist/main.js',
       cwd: __dirname,
-      instances: 4,
+      instances: apiInstances,
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
