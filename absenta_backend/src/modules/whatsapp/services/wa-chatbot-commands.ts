@@ -229,14 +229,24 @@ export function formatGuruMenu(nama: string): string {
     `👨‍🏫 *Halo Bapak/Ibu ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
-    `[1] 📋 Jadwal Hari Ini\n` +
-    `[2] 📅 Jadwal Mingguan\n` +
-    `[3] ⏰ Presensi Saya\n` +
-    `[4] 🏫 Wali Kelas\n` +
-    `[5] 📊 Supervisi Saya\n` +
-    `[6] 👤 Profil Saya\n` +
-    `[7] 🔑 Quick Login\n` +
-    `[8] 📢 Tarik Guru JP\n` +
+    `[1] 📚 Jadwal KBM\n` +
+    `[2] ⏰ Presensi Saya\n` +
+    `[3] 🏫 Wali Kelas\n` +
+    `[4] 📊 Supervisi Saya\n` +
+    `[5] 👤 Profil Saya\n` +
+    `[6] 🔑 Quick Login\n` +
+    `[7] 📢 Tarik Guru JP\n` +
+    `[0] 🔄 Menu Utama`
+  );
+}
+
+export function formatJadwalKBMSubMenu(nama: string): string {
+  return (
+    `📚 *Jadwal KBM — ${nama}*\n\n` +
+    `Pilih sub-menu:\n\n` +
+    `[11] 📋 Jadwal Saya Hari Ini\n` +
+    `[12] 📅 Jadwal Saya 1 Minggu\n` +
+    `[13] 🔍 Lihat Jadwal Guru Lain\n\n` +
     `[0] 🔄 Menu Utama`
   );
 }

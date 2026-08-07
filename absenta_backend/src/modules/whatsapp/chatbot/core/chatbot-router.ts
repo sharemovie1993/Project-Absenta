@@ -15,8 +15,8 @@ export class ChatbotRouter {
   static async route(ctx: ChatbotContext): Promise<string> {
     const { cleanJid, messageText, guru, siswa, ortu, activeCount, activeRole, roles, commandUpper } = ctx;
 
-    // 0. Quick Login (Pintasan 7) Universal
-    if (commandUpper === '7' || commandUpper === 'LOGIN' || commandUpper === 'QUICK LOGIN') {
+    // 0. Quick Login (Pintasan 6) Universal
+    if (commandUpper === '6' || commandUpper === 'LOGIN' || commandUpper === 'QUICK LOGIN') {
       return QuickLoginHandler.handleQuickLogin(ctx);
     }
 
@@ -82,17 +82,37 @@ export class ChatbotRouter {
   private static async routeGuru(ctx: ChatbotContext): Promise<string> {
     const choice = ctx.commandUpper;
 
-    if (choice === '1') return GuruJadwalHandler.handleJadwalHariIni(ctx);
-    if (choice === '2') return GuruJadwalHandler.handleJadwalMingguan(ctx);
-    if (choice === '3') return GuruPresensiHandler.handlePresensi(ctx);
-    if (choice === '4') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
-    if (choice === '5') return GuruSupervisiHandler.handleSupervisi(ctx);
-    if (choice === '6') return GuruProfileHandler.handleViewProfile(ctx);
-    if (choice === '7') return QuickLoginHandler.handleQuickLogin(ctx);
-    if (choice === '8' || choice.startsWith('8')) return GuruJadwalHandler.handleTarikGuruJP(ctx);
+    // [1] Jadwal KBM → masuk sub-menu
+    if (choice === '1') return GuruJadwalHandler.handleJadwalKBMMenu(ctx);
 
-    if (choice.startsWith('61') || choice.startsWith('51')) return GuruProfileHandler.handleEditNip(ctx);
-    if (choice.startsWith('62') || choice.startsWith('52')) return GuruProfileHandler.handleEditEmail(ctx);
+    // Sub-menu Jadwal KBM
+    if (choice === '11') return GuruJadwalHandler.handleJadwalHariIni(ctx);
+    if (choice === '12') return GuruJadwalHandler.handleJadwalMingguan(ctx);
+    if (choice === '13' || (choice.startsWith('13') && choice.length > 2)) {
+      return GuruJadwalHandler.handleJadwalGuruLain(ctx);
+    }
+
+    // Pesan teks bebas saat dalam konteks cari guru lain (panjang > 2 char, bukan angka menu)
+    const isNumericMenu = /^\d{1,2}$/.test(choice);
+    if (!isNumericMenu && choice.length >= 2) {
+      // Kemungkinan user sedang mengetik nama guru setelah memilih [13]
+      // Cek apakah ini bukan perintah lain
+      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL'].some(c => choice.includes(c));
+      if (!isKnownCommand) {
+        return GuruJadwalHandler.handleJadwalGuruLain(ctx);
+      }
+    }
+
+    // Menu utama (nomor baru)
+    if (choice === '2') return GuruPresensiHandler.handlePresensi(ctx);
+    if (choice === '3') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
+    if (choice === '4') return GuruSupervisiHandler.handleSupervisi(ctx);
+    if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
+    if (choice === '6') return QuickLoginHandler.handleQuickLogin(ctx);
+    if (choice === '7' || choice.startsWith('7')) return GuruJadwalHandler.handleTarikGuruJP(ctx);
+
+    if (choice.startsWith('51') || choice.startsWith('41')) return GuruProfileHandler.handleEditNip(ctx);
+    if (choice.startsWith('52') || choice.startsWith('42')) return GuruProfileHandler.handleEditEmail(ctx);
 
     if (choice === '' || choice === '0') {
       return formatGuruMenu(ctx.guru.nama_guru);
