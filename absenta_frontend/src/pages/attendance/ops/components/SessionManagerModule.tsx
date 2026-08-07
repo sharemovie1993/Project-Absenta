@@ -131,13 +131,6 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     setPetugasForm((f) => (f.kelas_id ? f : { ...f, kelas_id: selectedKelasId }));
   }, [selectedKelasId]);
 
-  // Dropdowns for Create Session
-  const [guruOptions, setGuruOptions] = useState<DropdownOption[]>([]);
-  const [mapelOptions, setMapelOptions] = useState<DropdownOption[]>([]);
-  const [allMapelOptions, setAllMapelOptions] = useState<DropdownOption[]>([]);
-  const [jenisOptions, setJenisOptions] = useState<DropdownOption[]>([]);
-  const [jenisTypeByName, setJenisTypeByName] = useState<Record<string, string>>({});
-
   // Scanning State
   const [inputModalOpen, setInputModalOpen] = useState(false);
   const [inputModalSesiId, setInputModalSesiId] = useState<string>('');
@@ -275,10 +268,12 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   });
 
   const guruOptions = dropdownsQuery.data?.guruOptions || [];
-  const mapelOptions = dropdownsQuery.data?.mapelOptions || [];
   const allMapelOptions = dropdownsQuery.data?.allMapelOptions || [];
   const jenisOptions = dropdownsQuery.data?.jenisOptions || [];
   const jenisTypeByName = dropdownsQuery.data?.jenisTypeByName || {};
+
+  const [filteredMapelOptions, setFilteredMapelOptions] = useState<DropdownOption[] | null>(null);
+  const mapelOptions = filteredMapelOptions || allMapelOptions;
 
   // Filter Mapel based on Guru
   useEffect(() => {
@@ -287,13 +282,13 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       try {
         const gid = petugasForm.guru_id;
         if (!gid) {
-          if (isMounted) setMapelOptions(allMapelOptions);
+          if (isMounted) setFilteredMapelOptions(null);
           return;
         }
         const res = await listGuruMapel({ guru_id: gid });
         const items = (res.data as { mapel_id: string; Mapel?: { kode_mapel?: string; nama_mapel?: string; nama?: string } }[]) || [];
         if (items.length === 0) {
-          if (isMounted) setMapelOptions(allMapelOptions);
+          if (isMounted) setFilteredMapelOptions(null);
           return;
         }
         const filtered = items.map((gm) => {
@@ -301,9 +296,9 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
           const fallback = allMapelOptions.find((o) => String(o.value) === String(gm.mapel_id))?.label || gm.mapel_id;
           return { value: gm.mapel_id, label: fromRel || fallback };
         });
-        if (isMounted) setMapelOptions(filtered);
+        if (isMounted) setFilteredMapelOptions(filtered);
       } catch {
-        if (isMounted) setMapelOptions(allMapelOptions);
+        if (isMounted) setFilteredMapelOptions(null);
       }
     }
     loadMapelForGuru();
