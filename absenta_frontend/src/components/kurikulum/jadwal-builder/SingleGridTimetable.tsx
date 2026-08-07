@@ -368,7 +368,7 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
 
   return (
     <div className="w-full overflow-x-auto max-h-[764px] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-      <div className="min-w-[1000px]">
+      <div className="w-full min-w-full">
         {loadingData ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-3">
             <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
@@ -378,23 +378,23 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
           </div>
         ) : gridOrientation === 'VERTICAL_HARI' ? (
           /* ── KONFIGURASI B: Hari di Kiri (Vertikal), Jam Pelajaran ke Kanan (Horizontal) ── */
-          <div>
+          <div className="w-full">
             {/* Header Row: Jam Slots across top */}
             <div
-              className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 sticky top-0 z-20"
-              style={{ gridTemplateColumns: `110px repeat(${slots.length}, minmax(130px, 1fr))` }}
+              className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 sticky top-0 z-20 w-full"
+              style={{ gridTemplateColumns: `85px repeat(${slots.length}, minmax(0, 1fr))` }}
             >
-              <div className="p-2 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
+              <div className="p-2 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[9px] text-center tracking-wider uppercase shrink-0">
                 HARI / WAKTU
               </div>
               {slots.map((slotIndex) => {
                 return (
                   <div
                     key={slotIndex}
-                    className="p-2 font-black text-slate-800 dark:text-slate-200 text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-wider flex items-center justify-center"
+                    className="py-1.5 px-0.5 font-black text-slate-800 dark:text-slate-200 text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-tight flex items-center justify-center min-w-0"
                   >
-                    <span className="text-[9.5px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase">
-                      JAM {slotIndex}
+                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-extrabold uppercase truncate">
+                      {slotIndex === 0 ? 'JAM 0' : `JAM ${slotIndex}`}
                     </span>
                   </div>
                 );
@@ -402,15 +402,15 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
             </div>
 
             {/* Body Rows: 1 Row per Day */}
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 w-full">
               {hariSekolah.map((day) => (
                 <div
                   key={day}
-                  className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row"
-                  style={{ gridTemplateColumns: `110px repeat(${slots.length}, minmax(130px, 1fr))` }}
+                  className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row w-full"
+                  style={{ gridTemplateColumns: `85px repeat(${slots.length}, minmax(0, 1fr))` }}
                 >
                   {/* Day Label Column */}
-                  <div className="p-2 bg-slate-50/30 dark:bg-slate-900/20 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-slate-800 dark:text-slate-200 text-xs tracking-widest uppercase shrink-0">
+                  <div className="p-2 bg-slate-50/30 dark:bg-slate-900/20 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-slate-800 dark:text-slate-200 text-[11px] tracking-wider uppercase shrink-0">
                     {day}
                   </div>
 
