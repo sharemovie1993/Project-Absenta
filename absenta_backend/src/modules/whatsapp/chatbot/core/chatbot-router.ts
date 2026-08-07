@@ -75,6 +75,14 @@ export class ChatbotRouter {
       if (pendingSession.flowId === 'ORTU_SUBMIT_LEAVE') {
         return OrtuHandler.processSubmitLeave(ctx, pendingSession);
       }
+
+      if (pendingSession.flowId === 'WALIKELAS_UPDATE_HP_SISWA') {
+        return GuruWalikelasHandler.processUpdateHpSiswa(ctx, pendingSession);
+      }
+
+      if (pendingSession.flowId === 'WALIKELAS_UPDATE_HP_ORTU') {
+        return GuruWalikelasHandler.processUpdateHpOrtu(ctx, pendingSession);
+      }
     }
 
     // 2. Routing Persona Guru
@@ -135,7 +143,7 @@ export class ChatbotRouter {
 
     // Menu utama (nomor baru)
     if (choice === '2' || choice === '21' || choice === '22' || choice === '23') return GuruPresensiHandler.handlePresensi(ctx);
-    if (choice === '3' || choice === '31' || choice === '32' || choice === '33' || choice === '34' || choice === '35') return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
+    if (choice === '3' || choice.startsWith('3')) return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
     if (choice === '4') return GuruSupervisiHandler.handleSupervisi(ctx);
     if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
     if (choice === '6') return QuickLoginHandler.handleQuickLogin(ctx);

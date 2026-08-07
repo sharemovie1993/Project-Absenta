@@ -1,7 +1,9 @@
+import bcrypt from 'bcryptjs';
 import { ChatbotContext } from '../../core/chatbot-context';
 import { waliKelasService } from '@/modules/kurikulum/wali-kelas/services/wali-kelas.service';
 import { prisma } from '@/utils/prisma';
 import { getTenantTimezone } from '@/utils/timezone.utils';
+import { chatbotSessionManager, ChatbotDialogSession } from '../../core/session-state-manager';
 
 export class GuruWalikelasHandler {
   /**
@@ -47,7 +49,7 @@ export class GuruWalikelasHandler {
     if (!tenantId) return null;
 
     const rawText = (ctx.messageText || '').trim();
-    const cleanSearch = rawText.replace(/^(31|32|33|34|35|3|walikelas|wali\s*kelas)\s*/i, '').trim();
+    const cleanSearch = rawText.replace(/^(31|32|33|34|35|36|37|38|3|walikelas|wali\s*kelas)\s*/i, '').trim();
 
     if (cleanSearch && cleanSearch.length >= 2) {
       const foundKelas = await prisma.kelas.findFirst({
@@ -83,25 +85,37 @@ export class GuruWalikelasHandler {
     // 3. Resolve target kelas (kelas binaan atau dari pencarian teks)
     const targetKelas = await this.resolveTargetKelas(ctx, kelasBinaan);
 
-    // 4. Sub-menu routing [31] .. [34]
+    // 4. Sub-menu routing [31] .. [38]
     if (cmd.startsWith('31') || cmd === '31') {
-      if (!targetKelas) return this.promptInputKelas(cmd);
+      if (!targetKelas) return this.promptInputKelas('31');
       return this.handlePresensiSiswaKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
     }
 
     if (cmd.startsWith('32') || cmd === '32') {
-      if (!targetKelas) return this.promptInputKelas(cmd);
+      if (!targetKelas) return this.promptInputKelas('32');
       return this.handleIzinSiswaKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
     }
 
     if (cmd.startsWith('33') || cmd === '33') {
-      if (!targetKelas) return this.promptInputKelas(cmd);
+      if (!targetKelas) return this.promptInputKelas('33');
       return this.handleKontakOrtuKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
     }
 
     if (cmd.startsWith('34') || cmd === '34') {
-      if (!targetKelas) return this.promptInputKelas(cmd);
+      if (!targetKelas) return this.promptInputKelas('34');
       return this.handlePoinPelanggaranKelas(ctx, targetKelas.id, targetKelas.nama_kelas);
+    }
+
+    if (cmd.startsWith('36') || cmd === '36') {
+      return this.handleUpdateHpSiswaPrompt(ctx, targetKelas);
+    }
+
+    if (cmd.startsWith('37') || cmd === '37') {
+      return this.handleUpdateHpOrtuPrompt(ctx, targetKelas);
+    }
+
+    if (cmd.startsWith('38') || cmd === '38') {
+      return this.handleResetPasswordSiswaPrompt(ctx, targetKelas);
     }
 
     // 5. Tampilan Utama Menu [3] Wali Kelas (Jika Guru Memiliki Kelas Binaan)
@@ -154,7 +168,10 @@ export class GuruWalikelasHandler {
       msg += `[32] 🟨 Siswa Izin / Sakit / Keluar Hari Ini\n`;
       msg += `[33] 📞 Kontak Orang Tua Siswa\n`;
       msg += `[34] 🏆 Catatan Poin Pelanggaran Kelas\n`;
-      msg += `[35] 🏫 Daftar Wali Kelas Seluruh Sekolah\n\n`;
+      msg += `[35] 🏫 Daftar Wali Kelas Seluruh Sekolah\n`;
+      msg += `[36] 📱 Update No HP Siswa\n`;
+      msg += `[37] 👨‍👩‍👧 Update No HP Ortu\n`;
+      msg += `[38] 🔑 Reset Password Siswa\n\n`;
       msg += `[0]  🔄 Menu Utama`;
 
       return msg;
@@ -169,7 +186,10 @@ export class GuruWalikelasHandler {
       `[32] 🟨 Siswa Izin / Sakit / Keluar Hari Ini\n` +
       `[33] 📞 Kontak Orang Tua Siswa\n` +
       `[34] 🏆 Catatan Poin Pelanggaran Kelas\n` +
-      `[35] 🏫 Daftar Wali Kelas Seluruh Sekolah\n\n` +
+      `[35] 🏫 Daftar Wali Kelas Seluruh Sekolah\n` +
+      `[36] 📱 Update No HP Siswa\n` +
+      `[37] 👨‍👩‍👧 Update No HP Ortu\n` +
+      `[38] 🔑 Reset Password Siswa\n\n` +
       `[0]  🔄 Menu Utama\n\n` +
       `💡 Ketik *walikelas [nama kelas]* untuk lihat info kelas tertentu.\n` +
       `Contoh: ketik *walikelas X TKJ 1*`
@@ -421,5 +441,289 @@ export class GuruWalikelasHandler {
     msg += `\n💡 Ketik *walikelas [nama kelas]* untuk cari wali kelas spesifik.\n`;
     msg += `💡 Ketik *[0]* untuk Menu Utama.`;
     return msg;
+  }
+
+  /**
+   * [36] PROMPT: Update No HP Siswa
+   */
+  static async handleUpdateHpSiswaPrompt(ctx: ChatbotContext, targetKelas: any): Promise<string> {
+    const tenantId = ctx.guru?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
+
+    const rawText = (ctx.messageText || '').trim();
+    const searchName = rawText.replace(/^(36|hp\s*siswa)\s*/i, '').trim();
+
+    if (!searchName || searchName.length < 2) {
+      return (
+        `📱 *Update Nomor HP Siswa*\n\n` +
+        `Ketik *36 [nama siswa]* yang ingin diperbarui HP-nya:\n` +
+        `Contoh: _ketik_ *36 Bobi* atau *36 Siti*\n\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+      );
+    }
+
+    const whereClause: any = {
+      tenant_id: tenantId,
+      nama_siswa: { contains: searchName, mode: 'insensitive' },
+    };
+
+    if (targetKelas?.id) {
+      whereClause.kelas_id = targetKelas.id;
+    }
+
+    const siswaList = await prisma.siswa.findMany({
+      where: whereClause,
+      include: { Kelas: { select: { nama_kelas: true } } },
+      take: 5,
+    });
+
+    if (siswaList.length === 0) {
+      return (
+        `📱 *Update Nomor HP Siswa*\n\n` +
+        `❌ Siswa dengan nama *"${searchName}"* tidak ditemukan.\n\n` +
+        `Coba ketik nama lain. Contoh: *36 Bobi*\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas.`
+      );
+    }
+
+    if (siswaList.length > 1) {
+      let msg = `📱 *Beberapa Siswa Ditemukan:*\n\n`;
+      siswaList.forEach((s, i) => {
+        msg += `${i + 1}. *${s.nama_siswa}* (${s.Kelas?.nama_kelas || '-'})\n`;
+      });
+      msg += `\nKetik nama lebih spesifik. Contoh: *36 ${siswaList[0].nama_siswa}*`;
+      return msg;
+    }
+
+    const s = siswaList[0];
+
+    // Set FSM Session
+    chatbotSessionManager.set(ctx.cleanJid, {
+      flowId: 'WALIKELAS_UPDATE_HP_SISWA',
+      step: 'AWAITING_NEW_HP',
+      payload: {
+        siswaId: s.id,
+        namaSiswa: s.nama_siswa,
+        kelasNama: s.Kelas?.nama_kelas || '-',
+        oldHp: s.no_hp || '-',
+      },
+    });
+
+    return (
+      `📱 *Update Nomor HP Siswa*\n` +
+      `Siswa: *${s.nama_siswa}* (${s.Kelas?.nama_kelas || '-'})\n` +
+      `No. HP Saat Ini: ${s.no_hp || '-'}\n\n` +
+      `Silakan ketik *Nomor HP Baru Siswa* (contoh: 085712345678):\n\n` +
+      `💡 Ketik *[0]* untuk membatalkan.`
+    );
+  }
+
+  /**
+   * PROCESS FSM: Process New HP Siswa Submission
+   */
+  static async processUpdateHpSiswa(ctx: ChatbotContext, session: ChatbotDialogSession): Promise<string> {
+    chatbotSessionManager.delete(ctx.cleanJid);
+
+    const payload = session.payload || {};
+    const newHp = (ctx.messageText || '').trim().replace(/[^0-9+]/g, '');
+
+    if (!payload.siswaId || !newHp || newHp.length < 9) {
+      return `⚠️ Nomor HP tidak valid (minimal 9 digit angka).\n\n💡 Ketik *[3]* untuk Portal Wali Kelas.`;
+    }
+
+    await prisma.siswa.update({
+      where: { id: payload.siswaId },
+      data: { no_hp: newHp },
+    });
+
+    return (
+      `✅ *Nomor HP Siswa Berhasil Diperbarui!*\n\n` +
+      `• Nama Siswa : *${payload.namaSiswa}* (${payload.kelasNama})\n` +
+      `• No. HP Baru: *${newHp}*\n\n` +
+      `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+    );
+  }
+
+  /**
+   * [37] PROMPT: Update No HP Ortu
+   */
+  static async handleUpdateHpOrtuPrompt(ctx: ChatbotContext, targetKelas: any): Promise<string> {
+    const tenantId = ctx.guru?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
+
+    const rawText = (ctx.messageText || '').trim();
+    const searchName = rawText.replace(/^(37|hp\s*ortu)\s*/i, '').trim();
+
+    if (!searchName || searchName.length < 2) {
+      return (
+        `👨‍👩‍👧 *Update Nomor HP Orang Tua*\n\n` +
+        `Ketik *37 [nama siswa]* yang ingin diperbarui HP Orang Tua-nya:\n` +
+        `Contoh: _ketik_ *37 Bobi* atau *37 Siti*\n\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+      );
+    }
+
+    const whereClause: any = {
+      tenant_id: tenantId,
+      nama_siswa: { contains: searchName, mode: 'insensitive' },
+    };
+
+    if (targetKelas?.id) {
+      whereClause.kelas_id = targetKelas.id;
+    }
+
+    const siswaList = await prisma.siswa.findMany({
+      where: whereClause,
+      include: { Kelas: { select: { nama_kelas: true } } },
+      take: 5,
+    });
+
+    if (siswaList.length === 0) {
+      return (
+        `👨‍👩‍👧 *Update Nomor HP Orang Tua*\n\n` +
+        `❌ Siswa dengan nama *"${searchName}"* tidak ditemukan.\n\n` +
+        `Coba ketik nama lain. Contoh: *37 Bobi*\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas.`
+      );
+    }
+
+    if (siswaList.length > 1) {
+      let msg = `👨‍👩‍👧 *Beberapa Siswa Ditemukan:*\n\n`;
+      siswaList.forEach((s, i) => {
+        msg += `${i + 1}. *${s.nama_siswa}* (${s.Kelas?.nama_kelas || '-'})\n`;
+      });
+      msg += `\nKetik nama lebih spesifik. Contoh: *37 ${siswaList[0].nama_siswa}*`;
+      return msg;
+    }
+
+    const s = siswaList[0];
+
+    // Set FSM Session
+    chatbotSessionManager.set(ctx.cleanJid, {
+      flowId: 'WALIKELAS_UPDATE_HP_ORTU',
+      step: 'AWAITING_NEW_HP_ORTU',
+      payload: {
+        siswaId: s.id,
+        namaSiswa: s.nama_siswa,
+        kelasNama: s.Kelas?.nama_kelas || '-',
+        oldHp: s.no_hp || '-',
+      },
+    });
+
+    return (
+      `👨‍👩‍👧 *Update Nomor HP Orang Tua*\n` +
+      `Siswa: *${s.nama_siswa}* (${s.Kelas?.nama_kelas || '-'})\n` +
+      `No. HP Ortu Saat Ini: ${s.no_hp || '-'}\n\n` +
+      `Silakan ketik *Nomor HP Baru Orang Tua* (contoh: 081233445566):\n\n` +
+      `💡 Ketik *[0]* untuk membatalkan.`
+    );
+  }
+
+  /**
+   * PROCESS FSM: Process New HP Ortu Submission
+   */
+  static async processUpdateHpOrtu(ctx: ChatbotContext, session: ChatbotDialogSession): Promise<string> {
+    chatbotSessionManager.delete(ctx.cleanJid);
+
+    const payload = session.payload || {};
+    const newHp = (ctx.messageText || '').trim().replace(/[^0-9+]/g, '');
+
+    if (!payload.siswaId || !newHp || newHp.length < 9) {
+      return `⚠️ Nomor HP Orang Tua tidak valid (minimal 9 digit angka).\n\n💡 Ketik *[3]* untuk Portal Wali Kelas.`;
+    }
+
+    await prisma.siswa.update({
+      where: { id: payload.siswaId },
+      data: { no_hp: newHp },
+    });
+
+    return (
+      `✅ *Nomor HP Orang Tua Berhasil Diperbarui!*\n\n` +
+      `• Nama Siswa : *${payload.namaSiswa}* (${payload.kelasNama})\n` +
+      `• No. HP Ortu Baru: *${newHp}*\n\n` +
+      `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+    );
+  }
+
+  /**
+   * [38] Reset Password Siswa
+   */
+  static async handleResetPasswordSiswaPrompt(ctx: ChatbotContext, targetKelas: any): Promise<string> {
+    const tenantId = ctx.guru?.tenant_id;
+    if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
+
+    const rawText = (ctx.messageText || '').trim();
+    const searchName = rawText.replace(/^(38|reset\s*password)\s*/i, '').trim();
+
+    if (!searchName || searchName.length < 2) {
+      return (
+        `🔑 *Reset Password Siswa*\n\n` +
+        `Ketik *38 [nama siswa]* yang ingin di-reset password-nya:\n` +
+        `Contoh: _ketik_ *38 Bobi* atau *38 Siti*\n\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+      );
+    }
+
+    const whereClause: any = {
+      tenant_id: tenantId,
+      nama_siswa: { contains: searchName, mode: 'insensitive' },
+    };
+
+    if (targetKelas?.id) {
+      whereClause.kelas_id = targetKelas.id;
+    }
+
+    const siswaList = await prisma.siswa.findMany({
+      where: whereClause,
+      include: {
+        Kelas: { select: { nama_kelas: true } },
+        User: { select: { id: true, email: true } },
+      },
+      take: 5,
+    });
+
+    if (siswaList.length === 0) {
+      return (
+        `🔑 *Reset Password Siswa*\n\n` +
+        `❌ Siswa dengan nama *"${searchName}"* tidak ditemukan.\n\n` +
+        `Coba ketik nama lain. Contoh: *38 Bobi*\n` +
+        `💡 Ketik *[3]* untuk Portal Wali Kelas.`
+      );
+    }
+
+    if (siswaList.length > 1) {
+      let msg = `🔑 *Beberapa Siswa Ditemukan:*\n\n`;
+      siswaList.forEach((s: any, i: number) => {
+        msg += `${i + 1}. *${s.nama_siswa}* (${s.Kelas?.nama_kelas || '-'})\n`;
+      });
+      msg += `\nKetik nama lebih spesifik. Contoh: *38 ${siswaList[0].nama_siswa}*`;
+      return msg;
+    }
+
+    const s: any = siswaList[0];
+    const userId = s.user_id || s.User?.id;
+    if (!userId) {
+      return `⚠️ Siswa *${s.nama_siswa}* belum memiliki akun login di sistem.\n\n💡 Ketik *[3]* untuk Portal Wali Kelas.`;
+    }
+
+    const defaultPassword = `siswa123`;
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    const usernameStr = s.User?.email || s.nis || '-';
+    const kelasName = s.Kelas?.nama_kelas || '-';
+
+    return (
+      `✅ *Reset Password Akun Siswa Berhasil!*\n\n` +
+      `• Nama Siswa    : *${s.nama_siswa}* (${kelasName})\n` +
+      `• Username/NIS  : *${usernameStr}*\n` +
+      `• Password Baru : *${defaultPassword}*\n\n` +
+      `📋 Berikan informasi password baru ini kepada siswa/orang tua untuk login ke aplikasi.\n\n` +
+      `💡 Ketik *[3]* untuk Portal Wali Kelas atau *[0]* Menu Utama.`
+    );
   }
 }
