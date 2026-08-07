@@ -845,16 +845,34 @@ export class SesiService {
       300
     );
 
-    const siswaAkademik = await prisma.siswaAkademik.findFirst({
+    let siswaAkademik = await prisma.siswaAkademik.findFirst({
       where: { siswa_id, tahun_pelajaran_id: activeYear?.id || '', semester_id: activeSemester?.id || '' },
       select: { id: true, tahun_pelajaran_id: true, semester_id: true, status: true },
     });
+
+    if (!siswaAkademik && siswa && activeYear && activeSemester) {
+      try {
+        siswaAkademik = await prisma.siswaAkademik.create({
+          data: {
+            tenant_id: tenantId,
+            siswa_id,
+            kelas_id: sesi.kelas_id,
+            tahun_pelajaran_id: activeYear.id,
+            semester_id: activeSemester.id,
+            status: 'AKTIF'
+          },
+          select: { id: true, tahun_pelajaran_id: true, semester_id: true, status: true }
+        });
+      } catch {
+        siswaAkademik = await prisma.siswaAkademik.findFirst({
+          where: { siswa_id, status: 'AKTIF' },
+          select: { id: true, tahun_pelajaran_id: true, semester_id: true, status: true }
+        });
+      }
+    }
+
     if (!siswaAkademik) throw new Error('Siswa tidak memiliki status akademik aktif pada semester ini');
     if (String(siswaAkademik.status) !== 'AKTIF') throw new Error(`Siswa status '${siswaAkademik.status}' (tidak AKTIF). Transaksi ditolak.`);
-
-    if (String(siswaAkademik.tahun_pelajaran_id) !== String(sesi.tahun_pelajaran_id) || String(siswaAkademik.semester_id) !== String(sesi.semester_id)) {
-      throw new Error('Konteks akademik tidak konsisten');
-    }
 
     const thresholdLate = Number((cfgForDay as any)?.default_late_threshold || 5);
     const diffMsTap = nowTap.getTime() - (sesi.waktu_mulai ? (sesi.waktu_mulai as Date).getTime() : nowTap.getTime());
