@@ -150,7 +150,7 @@ async function start() {
   try {
     const isMasterInstance = () => {
       const instanceId = process.env.NODE_APP_INSTANCE;
-      if (instanceId !== undefined && instanceId !== '' && instanceId !== '0' && instanceId !== '1') {
+      if (instanceId !== undefined && instanceId !== '' && instanceId !== '0') {
         return false;
       }
       return true;
