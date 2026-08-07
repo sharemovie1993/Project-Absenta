@@ -7,7 +7,7 @@
     "dev": "node scripts/dev/pre-dev.js && cross-env NODE_OPTIONS=--max-old-space-size=4096 ts-node-dev --transpile-only --respawn --ignore-watch logs --require tsconfig-paths/register src/main.ts",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 node scripts/adhoc/prisma-generate-with-retry.js && cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc && npx tsc-alias -p tsconfig.json",
     "postbuild": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('src','modules','notification','templates');const dest=path.join('dist','modules','notification','templates');try{fs.mkdirSync(dest,{recursive:true});for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dest,f));}console.log('Copied templates to dist');}catch(e){console.error('Copy templates failed:',e.message);process.exitCode=0;}\"",
-    "start": "node --max-old-space-size=4096 dist/main.js",
+    "start": "cross-env NODE_OPTIONS=--max-old-space-size=4096 node -r tsconfig-paths/register dist/main.js",
     "start:stress": "node --max-old-space-size=4096 dist/main.js",
     "load:workers": "ts-node -r tsconfig-paths/register scripts/dev/load-workers.ts",
     "load:burst": "ts-node -r tsconfig-paths/register scripts/dev/load-workers.ts 200 5",

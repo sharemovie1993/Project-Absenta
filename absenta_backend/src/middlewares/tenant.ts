@@ -2,7 +2,7 @@ import { isSystemSuperAdmin } from '../utils/rbac';
 import { subscriptionGuard } from './subscription.guard';
 import { prisma } from '../utils/prisma';
 import * as jwt from 'jsonwebtoken';
-import { getDomainBases } from '@/utils/url-helper';
+import { getDomainBases } from '../utils/url-helper';
 
 export async function tenantMiddleware(
   request: any,

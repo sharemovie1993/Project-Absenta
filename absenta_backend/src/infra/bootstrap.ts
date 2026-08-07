@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { getRedisConnection } from './redis/redisClient';
 import { authMiddleware } from '../middlewares/auth';
 import { storageService } from './storage/storage.service';
-import { getSmartApiBaseUrl, getSmartFrontendBaseUrl, getDomainBases } from '@/utils/url-helper';
+import { getSmartApiBaseUrl, getSmartFrontendBaseUrl, getDomainBases } from '../utils/url-helper';
 
 export async function registerPlugins(fastify: any) {
   // 1. REGISTER CORS PALING ATAS

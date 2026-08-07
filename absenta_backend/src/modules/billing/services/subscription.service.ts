@@ -1,5 +1,5 @@
 import { subscriptionDb as prisma } from './repositories/subscription.db';
-import { getSmartFrontendBaseUrl } from '@/utils/url-helper';
+import { getSmartFrontendBaseUrl } from '../../../utils/url-helper';
 import { SubscriptionStatus, ObservabilityMetricType } from '@prisma/client';
 import { observabilityAggregationService } from '../../observability/services/observabilityAggregation.service';
 import type { CreateSubscriptionInput, SubscriptionResponse, UpdateSubscriptionInput } from './subscription.types';

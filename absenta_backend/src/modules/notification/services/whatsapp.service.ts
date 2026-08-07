@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveBaseUrlFromRequest, getSmartFrontendBaseUrl } from '@/utils/url-helper';
+import { resolveBaseUrlFromRequest, getSmartFrontendBaseUrl } from '../../../utils/url-helper';
 import { cacheService } from '../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../constants/cache-keys';
 import { randomBytes } from 'crypto';

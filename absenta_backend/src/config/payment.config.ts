@@ -1,4 +1,4 @@
-import { getSmartApiBaseUrl, getSmartFrontendBaseUrl } from '@/utils/url-helper';
+import { getSmartApiBaseUrl, getSmartFrontendBaseUrl } from '../utils/url-helper';
 
 export interface PaymentConfig {
   midtrans: {

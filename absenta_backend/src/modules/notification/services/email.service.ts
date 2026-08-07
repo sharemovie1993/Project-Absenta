@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { NotificationEvent } from '../types/notification-event.enum';
-import { DEFAULT_SUPPORT_EMAIL, getSmartFrontendBaseUrl } from '@/utils/url-helper';
+import { DEFAULT_SUPPORT_EMAIL, getSmartFrontendBaseUrl } from '../../../utils/url-helper';
 import { systemConfigService } from '../../system-config/services/system-config.service';
 
 export interface EmailData {

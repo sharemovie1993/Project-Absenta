@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '@/utils/prisma';
-import { getSmartApiBaseUrl, getSmartParentAppUrl, getSmartFrontendBaseUrl } from '@/utils/url-helper';
+import { getSmartApiBaseUrl, getSmartParentAppUrl, getSmartFrontendBaseUrl } from '../../../utils/url-helper';
 import { randomUUID } from 'crypto';
 import { DEFAULT_STRUKTUR_ORGANISASI } from '@/config/organization-structure';
 import { SekolahService } from '@/modules/sekolah/services/sekolah.service';

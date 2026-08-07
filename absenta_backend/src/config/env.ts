@@ -1,4 +1,4 @@
-import { DEFAULT_API_PORT } from '@/utils/url-helper';
+import { DEFAULT_API_PORT } from '../utils/url-helper';
 type Level = 'error' | 'warn' | 'info';
 
 function log(level: Level, msg: string) {

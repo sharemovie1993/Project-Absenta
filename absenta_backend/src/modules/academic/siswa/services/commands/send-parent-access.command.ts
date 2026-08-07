@@ -1,6 +1,6 @@
-import { parentAuthService } from '@/modules/parent-app/services/parent-auth.service';
+import { parentAuthService } from '../../../../parent-app/services/parent-auth.service';
 import { siswaDb } from '../repositories/siswa.db';
-import { getSmartParentAppUrl } from '@/utils/url-helper';
+import { getSmartParentAppUrl } from '../../../../../../utils/url-helper';
 
 export async function sendParentAccessCommand(
   siswaId: string,

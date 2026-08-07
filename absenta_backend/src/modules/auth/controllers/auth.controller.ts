@@ -13,7 +13,7 @@ import { systemConfigService } from '@/modules/system-config/services/system-con
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
-import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@/utils/url-helper';
+import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '../../../utils/url-helper';
 import * as jwt from 'jsonwebtoken';
 
 export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
