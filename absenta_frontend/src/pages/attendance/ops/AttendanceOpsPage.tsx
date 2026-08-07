@@ -11,9 +11,8 @@ import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { OperationalPageLayout } from '../../../components/layout/OperationalPageLayout';
 import { Button } from '../../../components/ui/Button';
 
-// Lazy load mode views to reduce initial bundle size
-const ModeSimpleView = lazy(() => import('./components/ModeSimpleView'));
-const ModeMultiSesiView = lazy(() => import('./components/ModeMultiSesiView'));
+import ModeSimpleView from './components/ModeSimpleView';
+import ModeMultiSesiView from './components/ModeMultiSesiView';
 const CatatPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
