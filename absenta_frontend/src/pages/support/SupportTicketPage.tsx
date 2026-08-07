@@ -43,11 +43,8 @@ export default function SupportTicketPage() {
   // =========================================================================
   // 💾 STATE MANAGEMENT
   // =========================================================================
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
   const [isCsatOpen, setIsCsatOpen] = useState(false);
 
