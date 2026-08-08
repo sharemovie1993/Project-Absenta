@@ -263,7 +263,7 @@ export default function KurikulumDashboard() {
   }, [perangkatR]);
 
   const conflicts = useMemo(() => {
-    return detectConflicts(safeArr<JadwalEntry>(jwR));
+    return detectConflicts(safeArr<JadwalEntry>(jwR)).slice(0, 15);
   }, [jwR]);
 
   const recentSup: SupervisiRecentItem[] = [...supRows]

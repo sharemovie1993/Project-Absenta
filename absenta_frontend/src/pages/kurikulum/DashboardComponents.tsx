@@ -118,7 +118,7 @@ export const STATUS_COLORS: Record<string, string> = {
   BELUM: '#cbd5e1',
 };
 
-export function EmptyState({ text, small }: { text: string; small?: boolean }) {
+export const EmptyState = React.memo(function EmptyState({ text, small }: { text: string; small?: boolean }) {
   return (
     <div className={cn('flex flex-col items-center justify-center text-center gap-2', small ? 'py-4' : 'h-full min-h-[160px]')}>
       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -127,9 +127,9 @@ export function EmptyState({ text, small }: { text: string; small?: boolean }) {
       <p className="text-xs text-slate-400 italic">{text}</p>
     </div>
   );
-}
+});
 
-export function DistribusiChart({ data, loading }: { data: { name: string; jp: number }[]; loading: boolean }) {
+export const DistribusiChart = React.memo(function DistribusiChart({ data, loading }: { data: { name: string; jp: number }[]; loading: boolean }) {
   if (loading) {
     return (
       <div className="h-full flex items-end gap-3 animate-pulse px-2">
@@ -157,7 +157,7 @@ export function DistribusiChart({ data, loading }: { data: { name: string; jp: n
       </BarChart>
     </ResponsiveContainer>
   );
-}
+});
 
 export interface PieDataItem {
   name: string;
@@ -172,7 +172,7 @@ export interface SupervisiRecentItem {
   tanggal: string;
 }
 
-export function SupervisiPanel({
+export const SupervisiPanel = React.memo(function SupervisiPanel({
   pct, pieData, selesai, terjadwal, belum, total, recent, loading, hasPermission = true,
 }: {
   pct: number;
@@ -275,7 +275,7 @@ export function SupervisiPanel({
       </div>
     </div>
   );
-}
+});
 
 export interface PerangkatStatsItem {
   total: number;
@@ -295,7 +295,7 @@ export interface PerangkatRecentItem {
   Mapel?: { nama_mapel: string };
 }
 
-export function PerangkatPanel({
+export const PerangkatPanel = React.memo(function PerangkatPanel({
   stats, recent, loading, teachersCount
 }: {
   stats: PerangkatStatsItem;
@@ -391,7 +391,7 @@ export function PerangkatPanel({
       </div>
     </div>
   );
-}
+});
 
 export interface ConflictResult {
   type: 'GURU' | 'KELAS';
