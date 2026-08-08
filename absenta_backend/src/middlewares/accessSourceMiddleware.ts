@@ -1,5 +1,3 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
-
 interface TunnelStats {
   localHits: number;
   publicHits: number;
@@ -38,7 +36,7 @@ export function resetStatsForSlug(slug: string) {
   }
 }
 
-export async function accessSourceMiddleware(request: any, reply: any) {
+export async function accessSourceMiddleware(request: any, _reply: any) {
   const startTime = Date.now();
 
   // Attach start time to request
@@ -55,7 +53,7 @@ export async function accessSourceMiddleware(request: any, reply: any) {
 export function registerTelemetryHook(fastify: any) {
   fastify.addHook('onRequest', accessSourceMiddleware);
 
-  fastify.addHook('onResponse', async (request: any, reply: any) => {
+  fastify.addHook('onResponse', async (request: any, _reply: any) => {
     const startTime = (request as any)._startTime;
     if (!startTime) return;
 
