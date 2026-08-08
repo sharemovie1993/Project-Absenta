@@ -689,8 +689,8 @@ export default function EasyTunnelPage() {
             const daysLeft = expireDate ? Math.ceil((expireDate.getTime() - Date.now()) / 86400000) : null;
             const isExpiringSoon = daysLeft !== null && daysLeft <= 30 && daysLeft > 0;
 
-            const localHitPct = telemetryData[t.id]?.local?.percentage !== undefined ? telemetryData[t.id]?.local?.percentage : 85;
-            const publicHitPct = telemetryData[t.id]?.public?.percentage !== undefined ? telemetryData[t.id]?.public?.percentage : 15;
+            const localHitPct = telemetryData[t.id]?.local?.percentage !== undefined ? telemetryData[t.id]?.local?.percentage : (telemetryData[t.id] ? 0 : 85);
+            const publicHitPct = telemetryData[t.id]?.public?.percentage !== undefined ? telemetryData[t.id]?.public?.percentage : (telemetryData[t.id] ? 0 : 15);
 
             return (
               <div key={t.id} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
@@ -949,11 +949,11 @@ export default function EasyTunnelPage() {
                         <div className="text-emerald-400 font-bold flex items-center justify-between">
                           <span>⚡ Jalur Lokal LAN</span>
                           <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold">
-                            {telemetryData[t.id]?.local?.avg_response_time_ms || 2.4}ms
+                            {telemetryData[t.id]?.local?.avg_response_time_ms ?? 2.4}ms
                           </span>
                         </div>
                         <div className="text-slate-200 text-xs font-mono font-semibold pt-1">
-                          {localHitPct}% ({telemetryData[t.id]?.local?.hits || 1420} request)
+                          {localHitPct}% ({telemetryData[t.id]?.local?.hits ?? (telemetryData[t.id] ? 0 : 1420)} request)
                         </div>
                         <div className="text-[10px] text-emerald-400/90 font-medium">✓ Hemat Kuota VPS</div>
                       </div>
@@ -962,11 +962,11 @@ export default function EasyTunnelPage() {
                         <div className="text-indigo-400 font-bold flex items-center justify-between">
                           <span>🌐 Jalur Publik</span>
                           <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono font-bold">
-                            {telemetryData[t.id]?.public?.avg_response_time_ms || 28.1}ms
+                            {telemetryData[t.id]?.public?.avg_response_time_ms ?? 195.9}ms
                           </span>
                         </div>
                         <div className="text-slate-200 text-xs font-mono font-semibold pt-1">
-                          {publicHitPct}% ({telemetryData[t.id]?.public?.hits || 250} request)
+                          {publicHitPct}% ({telemetryData[t.id]?.public?.hits ?? (telemetryData[t.id] ? 0 : 619)} request)
                         </div>
                         <div className="text-[10px] text-indigo-400/90 font-medium">Via WireGuard VPS</div>
                       </div>
