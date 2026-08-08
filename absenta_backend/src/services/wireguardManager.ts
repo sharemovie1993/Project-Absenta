@@ -108,6 +108,10 @@ export class WireguardManager {
 
   /** Dapatkan path .conf dari slug */
   static confPath(slug: string): string {
+    if (!this.isWindows()) {
+      const linuxSysConf = `/etc/wireguard/et-${slug}.conf`;
+      if (fs.existsSync(linuxSysConf)) return linuxSysConf;
+    }
     this.ensureTunnelsDir();
     return path.join(TUNNELS_DIR, `et-${slug}.conf`);
   }
@@ -203,36 +207,12 @@ export class WireguardManager {
   }
 
   /**
-   * Menjamin HANYA SATU interface WireGuard (et-<activeSlug>) yang aktif di mesin lokal.
-   * Semua interface et-* lain akan di-down-kan & di-disable dari systemd untuk mencegah konflik rute IP 10.0.0.0/24!
+   * Pengelola Multi-Tunnel Coexistence.
+   * Catatan: Auto-kill switch enforceSingleActiveTunnel telah dinonaktifkan karena subnet mask /32
+   * kini mengizinkan multiple interface et-* berjalan bersamaan secara simultan tanpa bentrok rute.
    */
-  static enforceSingleActiveTunnel(activeSlug: string): void {
-    const activeIf = `et-${activeSlug}`;
-
-    if (this.isWindows()) {
-      const installed = this.listInstalledServices();
-      for (const svc of installed) {
-        const name = svc.name;
-        const shortName = name.includes('$') ? name.split('$')[1] : name;
-        if (shortName !== activeIf && shortName.startsWith('et-')) {
-          console.log(`[WG-Enforce] Stopping conflicting Windows WireGuard service: ${shortName}`);
-          try { execSync(`"${WINDOWS_WG_PATH}" /uninstalltunnelservice "${shortName}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
-        }
-      }
-    } else {
-      try {
-        const out = execSync("ip link show | grep -o 'et-[a-zA-Z0-9-]*'", { stdio: 'pipe', windowsHide: true }).toString();
-        const interfaces = [...new Set(out.split('\n').map(i => i.trim()).filter(Boolean))];
-        for (const ifName of interfaces) {
-          if (ifName !== activeIf) {
-            console.log(`[WG-Enforce] Disabling conflicting Linux WireGuard interface: ${ifName}`);
-            try { execSync(`sudo wg-quick down "${ifName}"`, { stdio: 'pipe' }); } catch {}
-            try { execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' }); } catch {}
-            try { execSync(`sudo systemctl disable wg-quick@${ifName}`, { stdio: 'pipe' }); } catch {}
-          }
-        }
-      } catch {}
-    }
+  static enforceSingleActiveTunnel(_activeSlug: string): void {
+    // No-op: Subnet mask /32 host routing allows concurrent multi-tunnel coexistence cleanly.
   }
 
   /** Aktifkan tunnel */
@@ -246,9 +226,6 @@ export class WireguardManager {
     if (!this.isWireGuardInstalled()) {
       throw new Error('WireGuard belum terinstall. Gunakan tombol "Install WireGuard" terlebih dahulu.');
     }
-
-    // 0. Otomatis bersihkan & matikan semua interface et-* lain untuk mencegah bentrok rute IP 10.0.0.0/24!
-    this.enforceSingleActiveTunnel(slug);
 
     if (this.isWindows()) {
       const svcName = this.serviceName(slug);

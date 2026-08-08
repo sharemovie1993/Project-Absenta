@@ -19,8 +19,8 @@ Middleware & Services:
 - **Nodemailer & Firebase Admin SDK (FCM) & Web-Push**: Pengiriman notifikasi transaksional via email, mobile push notification, dan browser push.
 
 Storage & Documents:
-- **Google Drive API**: Penyimpanan dokumen PKL, MoU, dan portofolio khusus untuk modul Hubin.
-- **AWS SDK for S3 (@aws-sdk/client-s3)**: Driver penyimpanan umum berbasis cloud (S3-compatible) terintegrasi untuk dokumen/invoice platform.
+- **Platform Storage Service (Local / S3-compatible)**: Driver penyimpanan terpadu untuk dokumen/invoice platform, berkas PKL Hubin, MoU, dan pasfoto.
+- **AWS SDK for S3 (@aws-sdk/client-s3)**: Driver penyimpanan umum berbasis cloud (S3-compatible) terintegrasi.
 - **Puppeteer**: Pembuatan dokumen PDF dinamis secara asinkron (kartu pelajar, bundel kelulusan siswa, ekspor dokumen). PDFKit tidak digunakan.
 
 Infrastructure Tools:

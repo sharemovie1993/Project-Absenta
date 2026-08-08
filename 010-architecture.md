@@ -9,7 +9,7 @@ Backend (Node.js):
 Database & Storage:
 - **Primary**: PostgreSQL (Logical multi-tenant isolation via tenant_id columns).
 - **Cache & Queue**: Redis (Entitlement caching, organizational context, and job store for BullMQ background workers).
-- **Files**: Storage Service (supporting Local Storage and AWS S3/S3-compatible Object Storage for general uploads) & Google Drive API (specifically for Hubin PKL documents).
+- **Files**: Storage Service (supporting Local Storage and AWS S3/S3-compatible Object Storage terpadu untuk seluruh modul termasuk Hubin PKL).
 
 Architecture Patterns:
 - **CQS (Command Query Separation)**: Pemisahan logic perubahan data (Commands) dan pengambilan data (Queries) pada modul kritis untuk menjaga performa dan kejelasan alur data.

@@ -39,7 +39,7 @@ Modul HUBIN adalah sistem manajemen hubungan sekolah dengan dunia industri yang 
 - **Sertifikat PKL 2 Halaman**: Preview & cetak Sertifikat PKL resmi berbingkai (Depan: Sertifikat Resmi Pernyataan PKL dengan Nomor Surat Otomatis & Belakang: Transkrip Rincian Nilai Hard/Soft Skill + Deskripsi TP).
 
 ### 6. Integrasi & Utilitas
-- **Google Drive Integration**: Penyimpanan otomatis foto absensi, dokumen MoU, dan jurnal portofolio ke Google Drive tenant.
+- **Platform Storage Integration**: Penyimpanan terpadu foto absensi, dokumen MoU, dan jurnal portofolio via `storageService` (Local Storage / S3-compatible).
 - **Recent Activity Monitoring**: Pemantauan real-time seluruh log aktivitas HUBIN (Mitra, PKL, BKK, TEFA) untuk transparansi operasional.
 - **WA Gateway Integration**: Notifikasi otomatis terkait penempatan, undangan interview, dan pengingat pelaporan PKL.
 
