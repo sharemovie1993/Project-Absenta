@@ -210,8 +210,43 @@ export const heartbeatService = {
         } catch {}
       }
 
+      // 5.5 Collect EasyTunnel telemetry for usage patterns and response time
+      let easyTunnelTelemetry: any[] = [];
+      try {
+        const { getStatsForSlug } = require('@/middlewares/accessSourceMiddleware');
+        const activeTunnels = await prisma.easyTunnel.findMany({
+          where: { status: 'active' }
+        });
+
+        for (const tun of activeTunnels) {
+          const stats = getStatsForSlug(tun.slug);
+          easyTunnelTelemetry.push({
+            slug: tun.slug,
+            networkMode: tun.network_mode || 'HYBRID_SPLIT_DNS',
+            localRequestsToday: stats.localHits,
+            publicRequestsToday: stats.publicHits,
+            localAvgResponseTimeMs: stats.localAvgMs,
+            publicAvgResponseTimeMs: stats.publicAvgMs
+          });
+
+          // Sync to local Prisma EasyTunnel model as well
+          await prisma.easyTunnel.update({
+            where: { id: tun.id },
+            data: {
+              local_requests_today: stats.localHits,
+              public_requests_today: stats.publicHits,
+              local_avg_response_time_ms: stats.localAvgMs,
+              public_avg_response_time_ms: stats.publicAvgMs,
+              last_synced_at: new Date()
+            }
+          }).catch(() => {});
+        }
+      } catch (e: any) {
+        console.warn('[Heartbeat] Gagal mengumpulkan telemetri EasyTunnel:', e.message);
+      }
+
       // 6. Send metrics to License Server
-      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, tenants=${tenantList.length}`);
+      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, tenants=${tenantList.length}, easyTunnels=${easyTunnelTelemetry.length}`);
 
       const payload: any = {
         activeUsers,
@@ -221,6 +256,7 @@ export const heartbeatService = {
         deployMode: process.env.DEPLOY_SCENARIO || 'local',
         schoolName: serverLabel,
         tenants: tenantList,
+        easyTunnelTelemetry,
         appDomain: process.env.PUBLIC_DOMAIN_BASE || undefined,
         hostname: os.hostname(),
         osType: `${os.type()} ${os.release()} (${os.arch()}) | CPU: ${getCpuSpec()} | RAM: ${getRamSpecGB()} | Storage: ${getStorageSpecGB()}`

@@ -122,6 +122,10 @@ const fastify = Fastify({
 // Add prisma to fastify instance
 fastify.decorate('prisma', prisma);
 
+// Register telemetry hooks for response time & access source metrics
+const { registerTelemetryHook } = require('./middlewares/accessSourceMiddleware');
+registerTelemetryHook(fastify);
+
 // Register plugins/middlewares/routes moved to infra
 
 // Start server

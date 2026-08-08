@@ -3953,15 +3953,22 @@ model BullyingReport {
 }
 
 model EasyTunnel {
-  id          String    @id @default(uuid())
-  slug        String    @unique
-  license_key String
-  local_port  Int
-  app_name    String
-  status      String    @default("disconnected") // connected, disconnected, error
-  expires_at  DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  id                          String    @id @default(uuid())
+  slug                        String    @unique
+  license_key                 String
+  local_port                  Int
+  app_name                    String
+  status                      String    @default("disconnected") // connected, disconnected, error
+  network_mode                String    @default("HYBRID_SPLIT_DNS")
+  last_handshake              DateTime?
+  last_synced_at              DateTime?
+  local_requests_today        Int       @default(0)
+  public_requests_today       Int       @default(0)
+  local_avg_response_time_ms  Float     @default(0)
+  public_avg_response_time_ms Float     @default(0)
+  expires_at                  DateTime?
+  created_at                  DateTime  @default(now())
+  updated_at                  DateTime  @updatedAt
 
   @@map("easy_tunnels")
 }

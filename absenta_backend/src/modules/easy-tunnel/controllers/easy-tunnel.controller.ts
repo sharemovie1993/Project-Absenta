@@ -105,6 +105,17 @@ export const easyTunnelController = {
     }
   },
 
+  async getTunnelTelemetry(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      const data = await EasyTunnelService.getTunnelTelemetry(id);
+      return reply.send({ success: true, data });
+    } catch (err: any) {
+      console.error('[EasyTunnel] getTunnelTelemetry error:', err);
+      return reply.status(500).send({ success: false, message: err.message });
+    }
+  },
+
   async removeTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;

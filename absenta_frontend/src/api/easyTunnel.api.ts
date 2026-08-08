@@ -67,6 +67,10 @@ export const easyTunnelApi = {
     return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}/diagnose`);
   },
 
+  async getTelemetry(id: string): Promise<{ success: boolean; data: any }> {
+    return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}/telemetry`);
+  },
+
   async edit(id: string, data: { local_port: number; app_name: string }): Promise<{ success: boolean; message: string; data: any }> {
     return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/edit`, { data });
   },

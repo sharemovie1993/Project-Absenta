@@ -14,6 +14,7 @@ export async function easyTunnelRoutes(fastify: any) {
   fastify.post('/tunnels/:id/start', opts, easyTunnelController.startTunnel.bind(easyTunnelController));
   fastify.post('/tunnels/:id/stop', opts, easyTunnelController.stopTunnel.bind(easyTunnelController));
   fastify.get('/tunnels/:id/diagnose', opts, easyTunnelController.diagnoseTunnel.bind(easyTunnelController));
+  fastify.get('/tunnels/:id/telemetry', opts, easyTunnelController.getTunnelTelemetry.bind(easyTunnelController));
   fastify.post('/tunnels/:id/edit', opts, easyTunnelController.editTunnel.bind(easyTunnelController));
   fastify.delete('/tunnels/:id', opts, easyTunnelController.removeTunnel.bind(easyTunnelController));
   fastify.post('/tunnels/force-release', opts, easyTunnelController.forceRelease.bind(easyTunnelController));
