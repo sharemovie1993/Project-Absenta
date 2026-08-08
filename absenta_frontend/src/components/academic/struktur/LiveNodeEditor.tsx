@@ -33,11 +33,32 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
   const rawOptions = isSiswa ? siswaOptions : guruOptions;
   const searching = isSiswa ? searchingSiswa : searchingGuru;
 
-  const options = useMemo(() => {
-    if (!query.trim()) return rawOptions.slice(0, 40);
+  const [displayLimit, setDisplayLimit] = useState(40);
+
+  // Reset displayLimit whenever search query changes
+  useEffect(() => {
+    setDisplayLimit(40);
+  }, [query]);
+
+  const filteredOptions = useMemo(() => {
+    if (!query.trim()) return rawOptions;
     const q = query.toLowerCase();
-    return rawOptions.filter(o => o.label.toLowerCase().includes(q)).slice(0, 40);
+    return rawOptions.filter(o => o.label.toLowerCase().includes(q));
   }, [rawOptions, query]);
+
+  const options = useMemo(() => {
+    return filteredOptions.slice(0, displayLimit);
+  }, [filteredOptions, displayLimit]);
+
+  const handleScrollList = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+    if (scrollHeight - (scrollTop + clientHeight) < 40) {
+      setDisplayLimit(prev => {
+        if (prev >= filteredOptions.length) return prev;
+        return prev + 40;
+      });
+    }
+  }, [filteredOptions.length]);
 
   useEffect(() => {
     if (anchorEl) {
@@ -125,7 +146,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
         {saving && <Loader2 size={14} className="animate-spin text-amber-500 ml-2" />}
       </div>
 
-      <div className="max-h-[350px] overflow-y-auto custom-scrollbar p-2" style={{ scrollbarWidth: 'thin' }}>
+      <div onScroll={handleScrollList} className="max-h-[350px] overflow-y-auto custom-scrollbar p-2" style={{ scrollbarWidth: 'thin' }}>
         {searching ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <Loader2 size={24} className="animate-spin text-amber-500/40" />
@@ -150,6 +171,11 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
                 </div>
               </button>
             ))}
+            {filteredOptions.length > options.length && (
+              <div className="py-2 text-center text-[9px] font-bold text-amber-600/60 uppercase tracking-wider animate-pulse">
+                Scroll ke bawah untuk memuat ({filteredOptions.length - options.length} lagi)...
+              </div>
+            )}
           </div>
         )}
       </div>
