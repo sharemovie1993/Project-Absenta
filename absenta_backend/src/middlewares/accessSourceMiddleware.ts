@@ -44,19 +44,30 @@ export function resetStatsForSlug(slug: string) {
 }
 
 /**
- * Memeriksa apakah suatu alamat IP tergolong IP Privat LAN (10.x, 192.168.x, 172.16-31.x, 127.0.0.1)
+ * Memeriksa apakah suatu alamat IP tergolong IP Lokal LAN Sekolah (misal 10.10.10.x, 192.168.x.x, 127.0.0.1)
+ * PERHATIAN: IP Subnet WireGuard Tunnel (10.0.0.x, 10.8.0.x, 10.200.0.x) BUKAN LAN lokal, melainkan lalu lintas PUBLIK dari VPS!
  */
-function isPrivateLanIp(ip: string): boolean {
+function isSchoolLanIp(ip: string): boolean {
   if (!ip) return true;
   const clean = ip.replace(/^::ffff:/, '').trim();
   if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') return true;
-  
-  // 10.0.0.0 – 10.255.255.255 (Kecuali jika IP tersebut adalah IP gateway tunnel khusus jika diperlukan)
-  if (clean.startsWith('10.')) return true;
-  // 192.168.0.0 – 192.168.255.255
-  if (clean.startsWith('192.168.')) return true;
-  // 172.16.0.0 – 172.31.255.255
+
+  // IP Interface Subnet WireGuard VPN Tunnel (10.0.0.x, 10.8.0.x, 10.200.0.x) -> PASTI PUBLIK INTERNET!
+  if (
+    clean.startsWith('10.0.0.') || 
+    clean.startsWith('10.8.0.') || 
+    clean.startsWith('10.200.0.') ||
+    clean.startsWith('10.13.13.')
+  ) {
+    return false; // Bukan LAN lokal, melainkan VPN Tunnel Publik
+  }
+
+  // IP Subnet LAN Sekolah (misal 10.10.10.x, 192.168.x.x, 172.16-31.x.x)
+  if (clean.startsWith('10.10.10.') || clean.startsWith('192.168.')) return true;
   if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(clean)) return true;
+
+  // Fallback 10.x jika bukan subnet WireGuard
+  if (clean.startsWith('10.')) return true;
 
   return false;
 }
@@ -69,12 +80,19 @@ export async function accessSourceMiddleware(request: any, _reply: any) {
   const rawSource = request.headers['x-absenta-access-source'];
   const isWgTunnelHeader = request.headers['x-wireguard-tunnel'] === 'true' || request.headers['x-absenta-via-vps'] === 'true';
 
-  // 2. Cek IP klien asli (X-Forwarded-For atau X-Real-IP atau request.ip)
+  // 2. Ambil IP Klien Pertama dari X-Forwarded-For atau X-Real-IP
   const forwardedFor = request.headers['x-forwarded-for'];
-  const clientIp = forwardedFor ? String(forwardedFor).split(',')[0].trim() : (request.headers['x-real-ip'] || request.ip || '');
-  
-  // Jika IP klien adalah IP Publik Internet (bukan IP Private LAN), maka pasti diakses dari luar/publik!
-  const isPublicClientIp = !isPrivateLanIp(clientIp);
+  let clientIp = '';
+  if (forwardedFor) {
+    // Ambil IP pertama di rantai proxy X-Forwarded-For
+    const ips = String(forwardedFor).split(',').map(s => s.trim());
+    clientIp = ips[0] || '';
+  } else {
+    clientIp = request.headers['x-real-ip'] || request.ip || '';
+  }
+
+  // Jika IP Klien pertama bukan IP LAN Sekolah (atau merupakan IP Publik / Subnet WireGuard), maka Publik!
+  const isPublicClientIp = !isSchoolLanIp(clientIp);
 
   const isPublic = rawSource === 'public' || isWgTunnelHeader || isPublicClientIp;
   (request as any).accessSource = isPublic ? 'PUBLIC_INTERNET' : 'LAN_SCHOOL';
