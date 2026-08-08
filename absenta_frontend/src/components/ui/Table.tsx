@@ -150,19 +150,6 @@ export function Table({
     onSelectedRowKeysChange(next);
   };
 
-  if (loading && data.length === 0) {
-    return (
-      <div className="w-full">
-        <div className="animate-pulse">
-          <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded-t-lg mb-2"></div>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800 mb-1 rounded"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={cn('w-full overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-slate-900 relative transition-all duration-300 flex flex-col', className)}>
       {/* Glassmorphic Loading Spinner Overlay */}
@@ -194,7 +181,14 @@ export function Table({
         </div>
       )}
       <div className={cn("overflow-x-auto", data.length > 0 && data.length <= 2 && "min-h-[260px]")}>
-        <table className="min-w-full">
+        {loading && data.length === 0 ? (
+          <div className="p-8 space-y-3 animate-pulse">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800/60 rounded-lg"></div>
+            ))}
+          </div>
+        ) : (
+          <table className="min-w-full">
           {/* Table Header */}
           <thead className="bg-gray-50 dark:bg-slate-950/60 border-b border-gray-200 dark:border-gray-800">
             <tr>
@@ -320,6 +314,7 @@ export function Table({
             )}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* Standardized, Centralized Premium Pagination Footer */}
