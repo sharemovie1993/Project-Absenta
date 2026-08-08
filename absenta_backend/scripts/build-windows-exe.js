@@ -12,13 +12,13 @@ console.log('===========================================================');
 
 try {
   // Step 1: Run local TypeScript build + AST HKI Obfuscation
-  console.log('🔨 [1/3] Mem-build TypeScript & Mengacak Kode HKI...');
+  console.log('🔨 [1/4] Mem-build TypeScript & Mengacak Kode HKI...');
   execSync('npm run build', { stdio: 'inherit', cwd: ROOT_DIR });
-  console.log('✅ [1/3] Build & HKI Obfuscation selesai!');
+  console.log('✅ [1/4] Build & HKI Obfuscation selesai!');
 
   // Step 2: Prepare Windows Bundle Directory
   const BUNDLE_DIR = path.join(ROOT_DIR, 'dist_windows_package');
-  console.log(`📁 [2/3] Menyiapkan Folder Paket Windows: ${BUNDLE_DIR}...`);
+  console.log(`📁 [2/4] Menyiapkan Folder Paket Windows: ${BUNDLE_DIR}...`);
 
   if (fs.existsSync(BUNDLE_DIR)) {
     fs.rmSync(BUNDLE_DIR, { recursive: true, force: true });
@@ -39,21 +39,31 @@ try {
   const batContent = `@echo off
 title Absenta School Engine Desktop
 echo Starting Absenta Windows Desktop Engine...
-node scripts/win-runner.js
+AbsentaSetupEngine.exe
 pause
 `;
   fs.writeFileSync(LAUNCHER_BAT, batContent, 'utf8');
 
-  console.log('✅ [2/3] Paket Windows Desktop berhasil dibuat!');
+  console.log('⚡ [3/4] Mem-package Biner Tunggal Windows: AbsentaSetupEngine.exe...');
+  execSync('npx -y pkg -t node18-win-x64 --out-path dist_windows_package scripts/win-runner.js', { stdio: 'inherit', cwd: ROOT_DIR });
+  
+  // Rename win-runner.exe to AbsentaSetupEngine.exe
+  const oldExe = path.join(BUNDLE_DIR, 'win-runner.exe');
+  const newExe = path.join(BUNDLE_DIR, 'AbsentaSetupEngine.exe');
+  if (fs.existsSync(oldExe)) {
+    fs.renameSync(oldExe, newExe);
+  }
+  console.log('✅ [3/4] Kompilasi Biner AbsentaSetupEngine.exe selesai!');
 
-  // Step 3: Verify Output Structure
-  console.log('🎉 [3/3] VERIFIKASI SELESAI!');
+  // Step 4: Verify Output Structure
+  console.log('🎉 [4/4] VERIFIKASI SELESAI!');
   console.log('===========================================================');
-  console.log('🟢 PAKET WINDOWS READY DI: ' + BUNDLE_DIR);
-  console.log('   Isi Paket:');
-  console.log('   - 🛡️ dist/ (Terenkripsi HKI)');
+  console.log('🟢 FILE BINER .EXE TERBENTUK DI: ' + newExe);
+  console.log('   Isi Paket Windows Desktop:');
+  console.log('   - 🚀 AbsentaSetupEngine.exe (Biner Executable Tunggal Windows)');
+  console.log('   - 🛡️ dist/ (Backend Terenkripsi HKI)');
   console.log('   - 🎨 public/ (React UI + Material Design 3 Setup Wizard)');
-  console.log('   - ⚙️ Launch-Absenta-Engine.bat (Single Launcher)');
+  console.log('   - ⚙️ Launch-Absenta-Engine.bat (Launcher 1x Klik)');
   console.log('===========================================================');
 
 } catch (err) {
