@@ -34,9 +34,9 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
   const searching = isSiswa ? searchingSiswa : searchingGuru;
 
   const options = useMemo(() => {
-    if (!query.trim()) return rawOptions;
+    if (!query.trim()) return rawOptions.slice(0, 40);
     const q = query.toLowerCase();
-    return rawOptions.filter(o => o.label.toLowerCase().includes(q));
+    return rawOptions.filter(o => o.label.toLowerCase().includes(q)).slice(0, 40);
   }, [rawOptions, query]);
 
   useEffect(() => {
