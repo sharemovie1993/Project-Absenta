@@ -43,9 +43,10 @@ export async function accessSourceMiddleware(request: any, _reply: any) {
   (request as any)._startTime = startTime;
 
   // Determine access source
+  // VPS WireGuard proxy adds 'x-absenta-access-source: public' or 'x-wireguard-tunnel: true'
   const rawSource = request.headers['x-absenta-access-source'];
-  const hasWireguardForward = request.headers['x-forwarded-proto'] || request.headers['x-forwarded-host'];
-  const isPublic = rawSource === 'public' || !!hasWireguardForward;
+  const isWgTunnel = request.headers['x-wireguard-tunnel'] === 'true' || request.headers['x-absenta-via-vps'] === 'true';
+  const isPublic = rawSource === 'public' || isWgTunnel;
 
   (request as any).accessSource = isPublic ? 'PUBLIC_INTERNET' : 'LAN_SCHOOL';
 }
