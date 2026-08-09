@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAuth } from './useAuth';
+import type { CapabilityCode } from '../types/capabilities';
 
 /**
  * 🛡️ Centralized Capability & Persona Helper Hook (DRY Single Source of Truth)
@@ -177,10 +178,12 @@ export function useCapabilities() {
       isKoperasiSecretary,
       isKoperasiAuditor,
       isTU,
+      isTuHead: isTUKepala,      // canonical alias
       isKoperasi,
 
       // Level 3
       isWaliKelas,
+      isHomeroomTeacher: isWaliKelas, // canonical alias
       isBpbk,
       isPembinaEskul,
       isKaprog,
@@ -194,13 +197,17 @@ export function useCapabilities() {
       isSarpras,
       isTUKepala,
       isKepsek,
+      isKepalaSekolah: isKepsek,  // canonical alias
       isBillingAdmin,
     };
   }, [can]);
 
+  // Type-safe wrapper so callers get IDE autocompletion on all CapabilityCode values
+  const typedCan = (permission: CapabilityCode): boolean => can(permission as string);
+
   return {
     user,
-    can,
+    can: typedCan,
     isAdmin: isAdmin(),
     isAuthenticated,
     caps,
