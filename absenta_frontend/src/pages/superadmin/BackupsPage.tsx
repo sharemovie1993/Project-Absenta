@@ -21,12 +21,14 @@ import {
 import toast from 'react-hot-toast';
 import { backupApi, type Backup } from '../../api/superadmin-backups.api';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 // Lazy load BackupList
 const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
 
 function BackupsPageContent() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useCapabilities();
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');

@@ -11,6 +11,7 @@ import { exportAcademicData, importAcademicData } from '@/api/academic/backup.ap
 import { SectionCard, Loader } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
+import { useCapabilities } from '@/hooks/useCapabilities';
 
 // Modular Components
 import { ExportSection } from '@/components/academic/backup/ExportSection';
@@ -60,6 +61,7 @@ type ImportResultDetail = Record<string, number | string | unknown>;
 
 export default function BackupPage() {
   const confirm = useConfirm();
+  const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
   const [loadingExport, setLoadingExport] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);

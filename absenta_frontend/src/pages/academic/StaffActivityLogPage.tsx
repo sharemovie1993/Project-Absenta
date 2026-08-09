@@ -28,6 +28,7 @@ import { Timeline, TimelineItem } from '../../components/ui/Timeline';
 import { getTenantActivityLogs, type ActivityLogItem } from '../../api/activityLog.api';
 import { getUsersForDropdown, type User as UserType } from '../../api/user.api';
 import toast from 'react-hot-toast';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { cn } from '../../lib/utils';
 
 // Lazy loading SearchableSelect to pass audit scanner optimization checks
@@ -119,7 +120,8 @@ function getActionBadgeStyle(action: string): string {
 import { getTimezone } from '../../utils/attendance/time';
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export const StaffActivityLogPage: React.FC = () => {
+export function StaffActivityLogPage() {
+  const { isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
   const timezone = getTimezone();
 
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);

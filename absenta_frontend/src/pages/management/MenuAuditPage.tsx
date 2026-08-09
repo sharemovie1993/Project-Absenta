@@ -5,12 +5,14 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, TableCe
 import type { MenuAuditItem, MenuAuditStatus } from '@/api/menu.api';
 import { getMenuAudit } from '@/api/menu.api';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { isSystemSuperAdmin, extractRoleAndTenant } from '@/utils/rbac';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { Activity, ShieldAlert, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 
 export default function MenuAuditPage() {
   const { user } = useAuthStore();
+  const { isAdmin } = useCapabilities();
   const navigate = useNavigate();
   const location = useLocation();
 
