@@ -1,4 +1,3 @@
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useJadwalKontrakKbm } from '../../hooks/kurikulum/useJadwalKontrakKbm';

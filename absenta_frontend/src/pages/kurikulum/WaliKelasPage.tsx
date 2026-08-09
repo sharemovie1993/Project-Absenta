@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import WaliKelasList from '../../components/academic/wali-kelas/WaliKelasList';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { Users, School, GraduationCap, User, Network } from 'lucide-react';

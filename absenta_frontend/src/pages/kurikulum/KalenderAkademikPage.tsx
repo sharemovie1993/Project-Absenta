@@ -19,7 +19,6 @@ import { kurikulumApi } from '../../api/kurikulum.api';
 import { getMyTenant } from '../../api/tenants.api';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import { TahunPelajaranSelect, useTahunPelajaranOptions } from '../../components/common';

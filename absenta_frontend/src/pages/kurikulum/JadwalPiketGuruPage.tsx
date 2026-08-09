@@ -34,7 +34,7 @@ import { getMyTenant } from '../../api/tenants.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { GuruSelect } from '../../components/common/GuruSelect';
 import { useJenjang } from '../../hooks/useJenjang';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
@@ -78,7 +78,7 @@ const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
 import { HARI_LIST } from '../../constants/day.constants';
 
 export default function JadwalPiketGuruPage() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { isKurikulum, isKesiswaan, isAdmin, can } = useCapabilities();
   const currentGuruId = user?.guru_profile?.id;
 

@@ -18,7 +18,6 @@ import { useJenjang }         from '../../hooks/useJenjang';
 import { cn }                 from '../../lib/utils';
 import { z }                  from 'zod';
 import { performStrukturPrint } from '../../utils/kurikulum/masterStrukturHelper';
-import { useAuth }            from '../../hooks/useAuth';
 import { useCapabilities }    from '../../hooks/useCapabilities';
 import { getTenantById }      from '../../api/tenants.api';
 

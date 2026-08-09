@@ -22,7 +22,6 @@ import { Table, Column } from '../../components/ui/Table';
 
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { toast } from 'sonner';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import { useJenjang } from '../../hooks/useJenjang';

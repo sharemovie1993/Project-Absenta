@@ -5,7 +5,6 @@ import { SectionCard } from '../../components/ui';
 import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import GuruMapelList from '../../components/academic/guru-mapel/GuruMapelList';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
