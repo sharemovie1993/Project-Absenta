@@ -23,7 +23,7 @@ const ABSENSI_FIELDS: Array<{ field: 'sakit' | 'izin' | 'alpa'; label: string }>
   { field: 'alpa', label: 'Alpa (Hari)' },
 ];
 
-export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = ({
+export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedStudent,
@@ -204,4 +204,4 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = ({
       </Card>
     </div>
   );
-};
+});

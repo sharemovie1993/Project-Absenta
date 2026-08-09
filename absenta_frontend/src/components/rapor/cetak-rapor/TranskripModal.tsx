@@ -13,7 +13,7 @@ interface TranskripModalProps {
   isLoading: boolean;
 }
 
-export const TranskripModal: React.FC<TranskripModalProps> = ({
+export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedStudent,
@@ -126,4 +126,4 @@ export const TranskripModal: React.FC<TranskripModalProps> = ({
       </Card>
     </div>
   );
-};
+});

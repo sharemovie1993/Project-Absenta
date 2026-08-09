@@ -52,7 +52,7 @@ import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStude
 const PAGE_INSTRUCTION =
   'Pilih Rombel / Kelas untuk merekap ranking leger, mengisi absensi & catatan wali kelas, serta mencetak lembar e-Rapor resmi Kemendikbud.';
 
-export default function CetakRaporPage() {
+export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
 
   // ── State ──
@@ -582,4 +582,4 @@ export default function CetakRaporPage() {
       />
     </AcademicPageLayout>
   );
-}
+});

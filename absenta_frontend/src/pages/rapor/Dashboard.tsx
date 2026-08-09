@@ -21,7 +21,7 @@ const mockRecentReports = [
   { id: 3, kelas: 'X-RPL-1', wali: 'Amalia Rahma, S.Pd', inputStatus: '60% Input', totalSiswa: 32 },
 ];
 
-export default function RaporDashboard() {
+export default React.memo(function RaporDashboard() {
   const [chartData, setChartData] = React.useState(mockChartData);
 
   React.useEffect(() => {
@@ -128,4 +128,4 @@ export default function RaporDashboard() {
       </div>
     </AcademicPageLayout>
   );
-}
+});

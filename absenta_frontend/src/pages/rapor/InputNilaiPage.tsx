@@ -34,7 +34,7 @@ import { ScoreGridTable } from '../../components/rapor/input-nilai/ScoreGridTabl
 import { ExcelPasteModal } from '../../components/rapor/input-nilai/ExcelPasteModal';
 import { BulkImportExcelCard } from '../../components/rapor/input-nilai/BulkImportExcelCard';
 
-export default function InputNilaiPage() {
+export default React.memo(function InputNilaiPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedKelas, setSelectedKelas] = useState<string>('');
@@ -752,4 +752,4 @@ export default function InputNilaiPage() {
       </SectionCard>
     </OperationalPageLayout>
   );
-}
+});

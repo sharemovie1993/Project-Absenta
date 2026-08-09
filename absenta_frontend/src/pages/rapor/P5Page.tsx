@@ -20,7 +20,7 @@ import { raporApi } from '../../api/rapor.api';
 import { kelasApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 
-export default function P5Page() {
+export default React.memo(function P5Page() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'projek' | 'penilaian'>('projek');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -469,4 +469,4 @@ export default function P5Page() {
       </div>
     </AcademicPageLayout>
   );
-}
+});
