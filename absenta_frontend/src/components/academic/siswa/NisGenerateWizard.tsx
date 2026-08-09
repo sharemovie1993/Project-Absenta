@@ -19,7 +19,7 @@ interface WizardResult {
   errors: { siswaId: string; nama: string; reason: string }[];
 }
 
-export const NisGenerateWizard: React.FC<NisGenerateWizardProps> = ({ isOpen, onClose, onSuccess }) => {
+export const NisGenerateWizard: React.FC<NisGenerateWizardProps> = React.memo(({ isOpen, onClose, onSuccess }) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<WizardStep>('loading');
   const [kelasList, setKelasList] = useState<NisWizardKelas[]>([]);
@@ -341,4 +341,4 @@ export const NisGenerateWizard: React.FC<NisGenerateWizardProps> = ({ isOpen, on
       </ModalFooter>
     </Modal>
   );
-};
+});

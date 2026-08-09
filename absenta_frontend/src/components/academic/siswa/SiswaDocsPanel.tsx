@@ -48,7 +48,7 @@ interface SiswaDocsPanelProps {
   canManage?: boolean;
 }
 
-export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = ({
+export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
   siswaId,
   siswaName,
   nis,
@@ -532,6 +532,6 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default SiswaDocsPanel;

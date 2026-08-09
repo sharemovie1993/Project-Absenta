@@ -42,7 +42,7 @@ interface GuruDocsPanelProps {
   canManage?: boolean;
 }
 
-export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = ({
+export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
   guruId,
   guruName,
   mode = 'full',
@@ -521,6 +521,6 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default GuruDocsPanel;

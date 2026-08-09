@@ -70,7 +70,7 @@ const playBeep = (type: 'success' | 'error' | 'shutter') => {
   }
 };
 
-export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = ({
+export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess,
@@ -672,4 +672,4 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
       </div>
     </Modal>
   );
-};
+});

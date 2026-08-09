@@ -59,7 +59,7 @@ const playBeep = (type: 'success' | 'error') => {
   }
 };
 
-export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = ({
+export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess,
@@ -432,4 +432,4 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
       </div>
     </Modal>
   );
-};
+});

@@ -13,7 +13,7 @@ export interface QuickEditCellProps {
   tempBadgePrefix?: string;
 }
 
-export const QuickEditCell: React.FC<QuickEditCellProps> = ({
+export const QuickEditCell: React.FC<QuickEditCellProps> = React.memo(({
   value,
   placeholder = 'Kosong',
   onSave,
@@ -143,4 +143,4 @@ export const QuickEditCell: React.FC<QuickEditCellProps> = ({
       )}
     </div>
   );
-};
+});
