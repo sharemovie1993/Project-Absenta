@@ -87,6 +87,7 @@ interface GuruProfileWithJurusan {
 
 export default function PiketPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const { isKesiswaan, isKurikulum, isGerbang, isTU, isKepsek, isAdmin, can } = useCapabilities();
 
   // Management and Guru roles who ALWAYS have access to Meja Piket
