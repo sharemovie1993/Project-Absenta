@@ -19,6 +19,7 @@ import { cn }                 from '../../lib/utils';
 import { z }                  from 'zod';
 import { performStrukturPrint } from '../../utils/kurikulum/masterStrukturHelper';
 import { useAuth }            from '../../hooks/useAuth';
+import { useCapabilities }    from '../../hooks/useCapabilities';
 import { getTenantById }      from '../../api/tenants.api';
 
 // ─── Theme helpers (Pilar 21B – ekstrak dari God File) ───────────────────────
@@ -65,7 +66,7 @@ function normalizeKelompok(raw: string | undefined): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const StrukturKurikulumPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, can } = useAuth();
+  const { user, can, isKurikulum, isAdmin } = useCapabilities();
   const { tingkatList, kelompokOptions, jenjang } = useJenjang();
 
   const [selectedTingkat,  setSelectedTingkat]  = useState<number | null>(null);
@@ -287,7 +288,7 @@ const StrukturKurikulumPage: React.FC = () => {
             )}
           </div>
 
-          {can('academic.manage.academic') && (
+          {(can('academic.manage.academic') || isKurikulum || isAdmin) && (
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <Button
                 onClick={() => setIsCloneModalOpen(true)}

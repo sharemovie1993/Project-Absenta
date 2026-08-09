@@ -5,6 +5,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import MapelList from '../../components/academic/mapel/MapelList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Mapel } from '../../types/academic';
@@ -34,7 +35,8 @@ interface ModalState {
 }
 
 export const MapelPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isKurikulum, isAdmin, isAuthenticated } = useCapabilities();
+  const authLoading = !isAuthenticated;
 
   const navigate = useNavigate();
   const { tingkatList: hookTingkatList, jenjang } = useJenjang();

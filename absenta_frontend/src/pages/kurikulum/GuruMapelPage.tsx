@@ -6,6 +6,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import GuruMapelList from '../../components/academic/guru-mapel/GuruMapelList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { listGuruMapel, importGuruMapelFromExcel } from '../../api/kurikulum/guru-mapel.api';
@@ -24,7 +25,8 @@ const ExcelImportModal = lazy(() => import('../../components/academic/shared/Exc
 const GuruTimeOffModal = lazy(() => import('../../components/academic/guru-mapel/GuruTimeOffModal').then(module => ({ default: module.GuruTimeOffModal })));
 
 const GuruMapelPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isKurikulum, isAdmin, isAuthenticated } = useCapabilities();
+  const authLoading = !isAuthenticated;
   const [selectionOpen, setSelectionOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
