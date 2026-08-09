@@ -24,7 +24,6 @@ import { piketApi, piketQueryKeys } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { type JadwalPiketGuru } from '../../api/piketGuru.api';
 import { useAuthStore } from '../../store/authStore';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
 import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions';
