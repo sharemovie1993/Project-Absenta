@@ -5,7 +5,7 @@ import { SectionCard } from '../../components/ui';
 import { Factory } from 'lucide-react';
 import { TefaSection } from './components/TefaSection';
 
-export const TefaPage: React.FC = () => {
+export const TefaPage: React.FC = React.memo(() => {
   // useMemo untuk memastikan data statis di-cache dan tidak di-re-create tiap render
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },
@@ -38,6 +38,6 @@ export const TefaPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default TefaPage;

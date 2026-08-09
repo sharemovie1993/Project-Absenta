@@ -56,7 +56,7 @@ const scheduleInterviewFormSchema = z.object({
   narahubung: z.string().optional(),
 });
 
-export const BkkSection: React.FC = () => {
+export const BkkSection: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -500,4 +500,4 @@ export const BkkSection: React.FC = () => {
       )}
     </div>
   );
-};
+});

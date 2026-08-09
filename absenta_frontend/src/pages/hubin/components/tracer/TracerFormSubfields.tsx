@@ -27,7 +27,7 @@ interface TracerFormSubfieldsProps {
   setUsahaBidang: (v: string) => void;
 }
 
-export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = ({
+export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = React.memo(({
   statusAlumni,
   companyName,
   setCompanyName,
@@ -161,4 +161,4 @@ export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = ({
       )}
     </>
   );
-};
+});

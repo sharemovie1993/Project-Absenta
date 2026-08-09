@@ -12,7 +12,7 @@ interface JobCardProps {
   onApply: (job: HubinLowongan) => void;
 }
 
-export const JobCard: React.FC<JobCardProps> = ({
+export const JobCard: React.FC<JobCardProps> = React.memo(({
   job,
   isStudent,
   canManageBkk,
@@ -94,4 +94,4 @@ export const JobCard: React.FC<JobCardProps> = ({
       </div>
     </Card>
   );
-};
+});

@@ -59,7 +59,7 @@ interface JurusanItem {
   kode?: string;
 }
 
-export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
+export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -589,7 +589,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
-const MitraIndustriPage = () => <MitraIndustriSection />;
+const MitraIndustriPage = React.memo(() => <MitraIndustriSection />);
 export default MitraIndustriPage;

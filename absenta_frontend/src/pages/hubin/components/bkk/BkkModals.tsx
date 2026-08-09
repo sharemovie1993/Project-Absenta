@@ -68,11 +68,11 @@ export const STATUS_CONFIG: Record<
 
 /** Modal Jadwalkan Interview */
 export const InterviewModal: React.FC<{
-  lamaran: HubinLamaran;
+  isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { tanggal: string; lokasi?: string; link?: string; pesan?: string; narahubung?: string }) => void;
-  isPending: boolean;
-}> = ({ lamaran, onClose, onSubmit, isPending }) => {
+  onConfirm: (payload: { tanggal_interview: string; lokasi?: string; link_interview?: string; pesan_pelamar?: string; kontak_narahubung?: string }) => void;
+  isPending?: boolean;
+}> = React.memo(({ isOpen, onClose, onConfirm, isPending }) => {
   const [tanggal, setTanggal] = useState('');
   const [lokasi, setLokasi] = useState('');
   const [link, setLink] = useState('');
@@ -87,9 +87,11 @@ export const InterviewModal: React.FC<{
     e.preventDefault();
     if (!tanggal) { toast.error('Tanggal & waktu interview wajib diisi'); return; }
     if (noopMemo) {
-      onSubmit({ tanggal, lokasi: lokasi || undefined, link: link || undefined, pesan: pesan || undefined, narahubung: narahubung || undefined });
+      onConfirm({ tanggal_interview: tanggal, lokasi: lokasi || undefined, link_interview: link || undefined, pesan_pelamar: pesan || undefined, kontak_narahubung: narahubung || undefined });
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -99,7 +101,6 @@ export const InterviewModal: React.FC<{
             <div className="p-1.5 bg-white/20 rounded-lg"><UserCheck size={16} className="text-white" /></div>
             <div>
               <h3 className="text-sm font-black text-white">Jadwalkan Interview</h3>
-              <p className="text-[10px] text-violet-200">{lamaran.Siswa?.nama_siswa} — {lamaran.Lowongan?.judul_posisi}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors" aria-label="Tutup"><X size={18} /></button>
@@ -191,15 +192,15 @@ export const InterviewModal: React.FC<{
       </Card>
     </div>
   );
-};
+});
 
 /** Modal Penolakan */
 export const RejectModal: React.FC<{
-  lamaran: HubinLamaran;
+  isOpen: boolean;
   onClose: () => void;
-  onSubmit: (catatan: string) => void;
-  isPending: boolean;
-}> = ({ lamaran, onClose, onSubmit, isPending }) => {
+  onConfirm: (catatan: string) => void;
+  isPending?: boolean;
+}> = React.memo(({ isOpen, onClose, onConfirm, isPending }) => {
   const [alasan, setAlasan] = useState('');
   const [custom, setCustom] = useState('');
 
@@ -282,10 +283,10 @@ export const RejectModal: React.FC<{
       </Card>
     </div>
   );
-};
+});
 
 /** Timeline Panel */
-export const TimelinePanel: React.FC<{ lamaranId: string; tenantId?: string }> = ({ lamaranId }) => {
+export const TimelinePanel: React.FC<{ lamaranId: string; tenantId?: string }> = React.memo(({ lamaranId }) => {
   const { data, isLoading } = useQuery({
     queryKey: ['lamaran-timeline', lamaranId],
     queryFn: () => hubinApi.getLamaranTimeline(lamaranId),
@@ -339,4 +340,4 @@ export const TimelinePanel: React.FC<{ lamaranId: string; tenantId?: string }> =
       })}
     </div>
   );
-};
+});

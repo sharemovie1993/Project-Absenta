@@ -39,7 +39,7 @@ const tracerSurveySchema = z.object({
   usaha_bidang: z.string().optional(),
 });
 
-export const TracerStudySection: React.FC = () => {
+export const TracerStudySection: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -425,4 +425,4 @@ export const TracerStudySection: React.FC = () => {
 
     </div>
   );
-};
+});

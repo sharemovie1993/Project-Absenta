@@ -19,7 +19,7 @@ const formatDistance = (meters: number | null) => {
   return `${Math.round(meters)} M`;
 };
 
-export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = ({ 
+export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = React.memo(({ 
   mitraName, 
   distanceInfo, 
   location,
@@ -67,4 +67,4 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = ({
       </div>
     </div>
   );
-};
+});

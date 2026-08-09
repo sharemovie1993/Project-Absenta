@@ -16,7 +16,7 @@ interface PresensiActionColumnProps {
   isLoading: boolean;
 }
 
-export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = ({
+export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.memo(({
   type,
   label,
   scheduleTime,
@@ -87,4 +87,4 @@ export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = ({
       )}
     </div>
   );
-};
+});

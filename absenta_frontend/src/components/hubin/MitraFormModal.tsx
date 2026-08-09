@@ -22,7 +22,7 @@ interface MitraFormModalProps {
 
 
 
-export const MitraFormModal: React.FC<MitraFormModalProps> = ({
+export const MitraFormModal: React.FC<MitraFormModalProps> = React.memo(({
   isOpen,
   onClose,
   onSubmit,
@@ -666,6 +666,6 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
       )}
     </>
   );
-};
+});
 
 export default MitraFormModal;

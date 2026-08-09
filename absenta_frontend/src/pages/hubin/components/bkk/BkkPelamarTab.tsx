@@ -20,7 +20,7 @@ interface BkkPelamarTabProps {
   updateStatusPending: boolean;
 }
 
-export const BkkPelamarTab: React.FC<BkkPelamarTabProps> = ({
+export const BkkPelamarTab: React.FC<BkkPelamarTabProps> = React.memo(({
   loadingApplicants,
   applicantsList,
   expandedTimeline,
@@ -147,4 +147,4 @@ export const BkkPelamarTab: React.FC<BkkPelamarTabProps> = ({
       )}
     </Card>
   );
-};
+});

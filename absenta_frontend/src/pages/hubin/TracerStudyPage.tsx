@@ -6,7 +6,7 @@ import { SectionCard } from '../../components/ui';
 import { Users } from 'lucide-react';
 import { TracerStudySection } from './components/TracerStudySection';
 
-export const TracerStudyPage: React.FC = () => {
+export const TracerStudyPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
 
@@ -54,6 +54,6 @@ export const TracerStudyPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default TracerStudyPage;

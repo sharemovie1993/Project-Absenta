@@ -36,7 +36,7 @@ const tefaOrderSchema = z.object({
   deskripsi: z.string().nullable()
 });
 
-export const TefaSection: React.FC = () => {
+export const TefaSection: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -432,4 +432,4 @@ export const TefaSection: React.FC = () => {
 
     </div>
   );
-};
+});

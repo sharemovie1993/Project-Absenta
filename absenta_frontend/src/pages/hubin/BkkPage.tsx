@@ -6,7 +6,7 @@ import { SectionCard } from '../../components/ui';
 import { Briefcase } from 'lucide-react';
 import { BkkSection } from './components/BkkSection';
 
-export const BkkPage: React.FC = () => {
+export const BkkPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
 
@@ -54,6 +54,6 @@ export const BkkPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default BkkPage;
