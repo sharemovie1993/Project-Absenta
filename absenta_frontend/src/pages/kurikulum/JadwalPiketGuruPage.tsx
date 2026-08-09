@@ -35,6 +35,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { GuruSelect } from '../../components/common/GuruSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
@@ -77,14 +78,14 @@ const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
 import { HARI_LIST } from '../../constants/day.constants';
 
 export default function JadwalPiketGuruPage() {
-  const queryClient = useQueryClient();
-  const { user, isAdmin, can } = useAuth();
+  const { user } = useAuth();
+  const { isKurikulum, isKesiswaan, isAdmin, can } = useCapabilities();
   const currentGuruId = user?.guru_profile?.id;
 
   const isKurikulumAdmin = useMemo(() => {
-    if (isAdmin()) return true;
-    return can('curriculum.piket.schedules.manage') || can('attendance.schedules.manage') || can('curriculum.piket.schedules.view') || can('dashboard.view.kurikulum');
-  }, [isAdmin, can]);
+    if (isAdmin) return true;
+    return isKurikulum || isKesiswaan || can('curriculum.piket.schedules.manage') || can('attendance.schedules.manage') || can('curriculum.piket.schedules.view');
+  }, [isAdmin, isKurikulum, isKesiswaan, can]);
 
   const { jenjang } = useJenjang();
   const isSmk = useMemo(() => ['SMK', 'MAK'].includes((jenjang || '').toUpperCase()), [jenjang]);

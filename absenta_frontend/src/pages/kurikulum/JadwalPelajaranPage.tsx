@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
 import { 
@@ -63,19 +64,20 @@ const hardeningModuleKey = 'jadwal_pelajaran_page';
 export default function JadwalPelajaranPage() {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
-  const { user, isLoading, can } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
 
+  const { isKurikulum, isAdmin, can } = useCapabilities();
+
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
-  const isSiswa = !!user?.isStudent || user?.role?.name === 'SISWA';
-  const isGuru = !!user?.isTeacher || user?.role?.name === 'GURU';
+  const isSiswa = !!user?.isStudent;
+  const isGuru = !!user?.isTeacher;
   const myGuruId = user?.guru_profile?.id;
   const myKelasId = (user?.guru_profile as { wali_kelas_di?: { id: string } })?.wali_kelas_di?.id;
-  const isWaliKelas = !!myKelasId;
 
-  const canManage = can('academic.schedules.create') || can('academic.schedules.update') || can('academic.schedules.delete') ||
+  const canManage = isAdmin || isKurikulum || can('academic.schedules.create') || can('academic.schedules.update') || can('academic.schedules.delete') ||
                     can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete');
   
   // ── 2. View State Logic ─────────────────────────────────────────────────────
