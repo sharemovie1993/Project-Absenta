@@ -188,7 +188,7 @@ const highlightAnnualFieldsForMaster = (pagesList: WordEditorPage[]): WordEditor
   });
 };
 
-export default function SKWaliKelasTemplateMasterModal({ isOpen, onClose, onSaved }: Props) {
+const SKWaliKelasTemplateMasterModal = React.memo(({ isOpen, onClose, onSaved }: Props) => {
   const [pages, setPages] = useState<WordEditorPage[]>([]);
   const [templateConfig, setTemplateConfig] = useState<any>(undefined);
   const [isSaving, setIsSaving] = useState(false);
@@ -319,4 +319,6 @@ export default function SKWaliKelasTemplateMasterModal({ isOpen, onClose, onSave
       extraToolbarItems={extraToolbar}
     />
   );
-}
+});
+
+export default SKWaliKelasTemplateMasterModal;

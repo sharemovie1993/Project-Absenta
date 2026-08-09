@@ -19,7 +19,7 @@ interface EventListCardProps {
   onEventClick: (ev: CalendarEvent) => void;
 }
 
-export const EventListCard: React.FC<EventListCardProps> = ({
+export const EventListCard: React.FC<EventListCardProps> = React.memo(({
   events,
   isLoading,
   canManage,
@@ -162,6 +162,6 @@ export const EventListCard: React.FC<EventListCardProps> = ({
       )}
     </SectionCard>
   );
-};
+});
 
 export default EventListCard;

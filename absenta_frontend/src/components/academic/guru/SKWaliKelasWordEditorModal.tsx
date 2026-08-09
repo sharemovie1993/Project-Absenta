@@ -46,7 +46,7 @@ interface Props {
 
 // ─── Component ──────────────────────────────────────────────────────────────────
 
-export default function SKWaliKelasWordEditorModal({ isOpen, onClose, skData }: Props) {
+const SKWaliKelasWordEditorModal = React.memo(({ isOpen, onClose, skData }: Props) => {
   const { user } = useAuth();
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [sekolahInfo, setSekolahInfo] = useState<any>(null);
@@ -216,4 +216,6 @@ export default function SKWaliKelasWordEditorModal({ isOpen, onClose, skData }: 
       onBeforePrint={handleBeforePrint}
     />
   );
-}
+});
+
+export default SKWaliKelasWordEditorModal;

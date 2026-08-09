@@ -20,7 +20,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function SKWaliKelasBulkGenerateModal({ isOpen, onClose }: Props) {
+const SKWaliKelasBulkGenerateModal = React.memo(({ isOpen, onClose }: Props) => {
   const { user } = useAuth();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -441,4 +441,6 @@ export default function SKWaliKelasBulkGenerateModal({ isOpen, onClose }: Props)
       </div>
     </Modal>
   );
-}
+});
+
+export default SKWaliKelasBulkGenerateModal;

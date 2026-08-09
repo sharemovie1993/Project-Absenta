@@ -34,7 +34,7 @@ interface TimelineItemRow {
   breakRef?: BreakItem;
 }
 
-export default function JamKBMShiftPanel({
+export default React.memo(function JamKBMShiftPanel({
   shiftConfig,
   activeSelectedShiftId,
   jenjang,
@@ -814,4 +814,4 @@ export default function JamKBMShiftPanel({
       </div>
     </div>
   );
-}
+});

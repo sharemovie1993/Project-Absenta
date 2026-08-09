@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function SKWaliKelasArsipModal({ isOpen, onClose }: Props) {
+const SKWaliKelasArsipModal = React.memo(({ isOpen, onClose }: Props) => {
   const [arsipList, setArsipList] = useState<SKWaliKelasArsip[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -183,4 +183,6 @@ export default function SKWaliKelasArsipModal({ isOpen, onClose }: Props) {
       )}
     </>
   );
-}
+});
+
+export default SKWaliKelasArsipModal;

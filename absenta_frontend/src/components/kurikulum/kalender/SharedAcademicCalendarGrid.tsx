@@ -61,7 +61,7 @@ function dateInRange(date: Date, mulai: Date | string, selesai: Date | string): 
   return dateFormatted >= mulaiStr && dateFormatted <= selesaiStr;
 }
 
-export const SharedAcademicCalendarGrid: React.FC<SharedAcademicCalendarGridProps> = ({
+export const SharedAcademicCalendarGrid: React.FC<SharedAcademicCalendarGridProps> = React.memo(({
   calYear,
   calMonth,
   onPrevMonth,
@@ -319,6 +319,6 @@ export const SharedAcademicCalendarGrid: React.FC<SharedAcademicCalendarGridProp
       </div>
     </div>
   );
-};
+});
 
 export default SharedAcademicCalendarGrid;

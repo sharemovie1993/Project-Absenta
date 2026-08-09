@@ -34,7 +34,7 @@ const SHIFT_COLORS = [
   { dot: 'bg-amber-500',  badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/40' },
 ];
 
-export default function JamKBMClassAssignmentPanel({
+export default React.memo(function JamKBMClassAssignmentPanel({
   shiftConfig,
   kelasList,
   onShiftConfigChange,
@@ -377,4 +377,4 @@ export default function JamKBMClassAssignmentPanel({
       )}
     </div>
   );
-}
+});

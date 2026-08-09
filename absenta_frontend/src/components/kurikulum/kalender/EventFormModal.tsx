@@ -58,7 +58,7 @@ const eventSchema = z.object({
   path: ['tanggal_selesai'],
 });
 
-export const EventFormModal: React.FC<EventFormModalProps> = ({
+export const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
   isOpen,
   onClose,
   editTarget,
@@ -255,6 +255,6 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
       </div>
     </Modal>
   );
-};
+});
 
 export default EventFormModal;
