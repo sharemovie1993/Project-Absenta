@@ -24,7 +24,7 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavStore } from '../../store/navStore';
-import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -75,7 +75,7 @@ const SarprasLoansPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { activeWorkspaceId } = useNavStore();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
 
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
