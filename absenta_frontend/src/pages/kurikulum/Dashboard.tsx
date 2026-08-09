@@ -23,7 +23,7 @@ import { getJadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { useTvStore } from '@/store/tvStore';
 import { useTvStore as useTvStoreLocal } from '@/store/tvStore'; // unused mapping prevention
 import { useJenjang } from '@/hooks/useJenjang';
-import { useAuth } from '@/hooks/useAuth';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { cn } from '@/lib/utils';
 import {
   EmptyState, DistribusiChart, SupervisiPanel, PerangkatPanel,
@@ -51,7 +51,7 @@ const chartLabelStyle = { fill: '#475569', fontSize: 10, fontWeight: 'bold' };
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function KurikulumDashboard() {
   const { isTvMode } = useTvStore();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   const hasSupervisiAccess = can('curriculum.supervision.view.schedule');
   const [lastRefresh, setLastRefresh] = React.useState(new Date());
   const { jenjang, kelompokOptions, tingkatList } = useJenjang();

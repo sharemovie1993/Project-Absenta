@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
 import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useNavigate } from 'react-router-dom';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
 import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
@@ -59,11 +59,9 @@ import { hubinApi } from '../../../api/hubin.api';
 
 export const SiswaDashboard: React.FC = () => {
   const { user, tenantMode } = useAuthStore();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   const navigate = useNavigate();
   const { menu: groupedMenu } = useSmartMenu();
-  
-  const caps = user?.capabilities || [];
   const isPetugasKelas = can('attendance.sessions.update.attendance');
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
@@ -150,7 +148,7 @@ export const SiswaDashboard: React.FC = () => {
   const { data: myPklRes } = useQuery({
     queryKey: ['hubin-my-penempatan', user?.siswa_id],
     queryFn: () => hubinApi.getMyPenempatan(),
-    enabled: !!user && !!user?.siswa_id && (can('hubin.pkl.view.list') || caps.includes('hubin.pkl.view.list') || can('hubin.pkl.view.list') || caps.includes('hubin.pkl.view.list')),
+    enabled: !!user && !!user?.siswa_id && can('hubin.pkl.view.list'),
   });
 
   const isPklActive = useMemo(() => {
