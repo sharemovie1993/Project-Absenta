@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../api/academic/jenisKegiatanMaster.api';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -33,7 +34,8 @@ export default React.memo(function JenisKegiatanMasterPage() {
 
   const showConfirm = useConfirm();
   
-  const canManage = can('academic.activities.types.manage');
+  const { isKurikulum, isKesiswaan, isAdmin, can: capCan } = useCapabilities();
+  const canManage = isAdmin || isKurikulum || isKesiswaan || can('academic.activities.types.manage');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
   const [modalMode, setModalMode] = useState<ModalMode>(null);

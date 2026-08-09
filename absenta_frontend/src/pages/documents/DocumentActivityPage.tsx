@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Activity, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import {
   Badge,
   Button,
@@ -37,9 +38,8 @@ function badgeVariantForAction(action: DocumentAction) {
 
 export default function DocumentActivityPage() {
   const { user, tenantId } = useAuthStore();
-
-  const roleName = ((user as any)?.role?.name || (user as any)?.role || '') as string;
-  const isSuperAdmin = roleName === 'SUPERADMIN';
+  const { isAdmin } = useCapabilities();
+  const isSuperAdmin = isAdmin;
   const tenantIdValue = ((user as any)?.tenant_id ?? tenantId ?? null) as string | null;
 
   const [items, setItems] = useState<DocumentActivityItem[]>([]);

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useDebounce } from '../../hooks/useDebounce';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui/SectionCard';
@@ -71,11 +72,10 @@ export default function MemberDocsPage() {
   }, [searchTerm]);
 
   // ── Permissions ────────────────────────────────────────────────────────────
+  const { isAdmin, can } = useCapabilities();
   const canManage = useMemo(() =>
-    user?.roleName === 'ADMIN' ||
-    user?.roleName === 'SUPERADMIN' ||
-    user?.capabilities?.includes('academic.students.manage'),
-  [user]);
+    isAdmin || can('academic.students.manage') || can('academic.teachers.manage'),
+  [isAdmin, can]);
 
   // ── Remote: reference data (siswa + guru lists for upload modal) ──────────
   const { data: siswaRes } = useQuery({

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { getUserNotificationPreferences } from '@/api/notifications.api';
 import { fetchActiveSystemConfig, saveSystemConfig, type SystemConfigPayload } from '@/services/systemConfig';
 import { Settings } from 'lucide-react';
@@ -28,8 +29,9 @@ const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user, isLoading, can } = useAuth();
+  const { isAdmin } = useCapabilities();
   const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  const isTenantAdmin = user?.role?.name === 'ADMIN' && !isSuperAdminUser;
+  const isTenantAdmin = isAdmin && !isSuperAdminUser;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') || (isTenantAdmin || !can('core.system.config.view') ? 'tenant_profile' : 'general')).toLowerCase();
