@@ -3,7 +3,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { CasesSection } from './components/CasesSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export default function CasesPage() {
+export default React.memo(function CasesPage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -33,4 +33,4 @@ export default function CasesPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});

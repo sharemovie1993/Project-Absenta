@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export default function BpbkWorkspacePage() {
+export default React.memo(function BpbkWorkspacePage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -12,4 +12,4 @@ export default function BpbkWorkspacePage() {
       <Navigate to="/bpbk/dashboard" replace />
     </PremiumFeatureGate>
   );
-}
+});

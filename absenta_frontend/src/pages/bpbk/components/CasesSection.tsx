@@ -58,7 +58,7 @@ const getVisibilityColor = (vis: string) => {
   }
 };
 
-export const CasesSection: React.FC = () => {
+export const CasesSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -485,4 +485,4 @@ export const CasesSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});

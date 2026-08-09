@@ -3,7 +3,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { AuditSection } from './components/AuditSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export default function AuditPage() {
+export default React.memo(function AuditPage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -33,4 +33,4 @@ export default function AuditPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});

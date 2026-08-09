@@ -14,7 +14,7 @@ interface CaseFormModalProps {
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
-export const CaseFormModal: React.FC<CaseFormModalProps> = ({
+export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
   isOpen,
   onClose,
   onSubmit,
@@ -155,4 +155,4 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = ({
       </form>
     </Modal>
   );
-};
+});

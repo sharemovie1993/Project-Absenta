@@ -17,7 +17,7 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
-export const RujukanSection: React.FC = () => {
+export const RujukanSection: React.FC = React.memo(() => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -362,6 +362,6 @@ export const RujukanSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});
 
 

@@ -6,7 +6,7 @@ import { Loader } from '../../components/ui/Loader';
 
 const AsesmenSection = lazy(() => import('./components/AsesmenSection').then(m => ({ default: m.AsesmenSection })));
 
-export default function AsesmenPage() {
+export default React.memo(function AsesmenPage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -38,4 +38,4 @@ export default function AsesmenPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});

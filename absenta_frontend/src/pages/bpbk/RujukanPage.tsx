@@ -3,7 +3,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { RujukanSection } from './components/RujukanSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export default function RujukanPage() {
+export default React.memo(function RujukanPage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -33,4 +33,4 @@ export default function RujukanPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});

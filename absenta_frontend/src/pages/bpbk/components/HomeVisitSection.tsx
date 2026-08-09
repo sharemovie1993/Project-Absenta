@@ -16,7 +16,7 @@ import { Plus, Edit2, Trash2, Home, Paperclip } from 'lucide-react';
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
-export const HomeVisitSection: React.FC = () => {
+export const HomeVisitSection: React.FC = React.memo(() => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -384,6 +384,6 @@ export const HomeVisitSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});
 
 

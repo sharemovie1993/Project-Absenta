@@ -17,7 +17,7 @@ interface SiswaKasusSectionProps {
   onViewSiswaDetail?: (siswaId: string) => void;
 }
 
-export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = ({ onViewSiswaDetail }) => {
+export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({ onViewSiswaDetail }) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -205,6 +205,6 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = ({ onViewSisw
       )}
     </Card>
   );
-};
+});
 
 

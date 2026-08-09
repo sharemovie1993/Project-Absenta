@@ -13,7 +13,7 @@ interface CaseDetailModalProps {
   getVisibilityColor: (vis: string) => string;
 }
 
-export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
+export const CaseDetailModal: React.FC<CaseDetailModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedCase,
@@ -203,4 +203,4 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

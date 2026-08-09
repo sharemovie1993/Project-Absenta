@@ -41,7 +41,7 @@ interface DashboardSectionProps {
   onViewSiswa?: () => void;
 }
 
-export const DashboardSection: React.FC<DashboardSectionProps> = ({ 
+export const DashboardSection: React.FC<DashboardSectionProps> = React.memo(({ 
   onViewSiswaDetail,
   onViewSiswa 
 }) => {
@@ -258,6 +258,6 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
 
     </div>
   );
-};
+});
 
 

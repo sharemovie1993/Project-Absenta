@@ -7,7 +7,7 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
 
-export default function SiswaKasusPage() {
+export default React.memo(function SiswaKasusPage() {
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -69,4 +69,4 @@ export default function SiswaKasusPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});

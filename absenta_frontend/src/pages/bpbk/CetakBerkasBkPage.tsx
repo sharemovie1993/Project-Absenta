@@ -5,7 +5,7 @@ import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { bpbkApi } from '../../api/bpbk.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export const CetakBerkasBkPage: React.FC = () => {
+export const CetakBerkasBkPage: React.FC = React.memo(() => {
   const docOptions: DocOption[] = [
     { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
     { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true },
@@ -130,4 +130,4 @@ export const CetakBerkasBkPage: React.FC = () => {
       />
     </PremiumFeatureGate>
   );
-};
+});

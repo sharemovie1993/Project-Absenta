@@ -156,7 +156,7 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
   );
 };
 
-export const PemanggilanSection: React.FC = () => {
+export const PemanggilanSection: React.FC = React.memo(() => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { systemConfig } = useSystemConfig();
@@ -1020,6 +1020,6 @@ export const PemanggilanSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});
 
 

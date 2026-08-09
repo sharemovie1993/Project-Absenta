@@ -88,7 +88,7 @@ interface RiskTrendData {
   events: RiskTrendEvent[];
 }
 
-export const ReportsSection: React.FC = () => {
+export const ReportsSection: React.FC = React.memo(() => {
   // Student trend selection states
   const [selectedStudent, setSelectedStudent] = useState<AtRiskStudent | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -661,6 +661,6 @@ export const ReportsSection: React.FC = () => {
 
     </div>
   );
-};
+});
 
 

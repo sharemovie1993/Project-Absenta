@@ -38,7 +38,7 @@ export interface PemanggilanCardProps {
 }
 
 /* ── component ────────────────────────────────────────────── */
-export const PemanggilanCard: React.FC<PemanggilanCardProps> = ({
+export const PemanggilanCard: React.FC<PemanggilanCardProps> = React.memo(({
   item, requireApproval = true, onMarkSent, onEdit, onDelete, onPrint, onOpenDoc, onNavigate
 }) => {
   const status  = item.status;
@@ -382,5 +382,5 @@ export const PemanggilanCard: React.FC<PemanggilanCardProps> = ({
 
     </div>
   );
-};
+});
 

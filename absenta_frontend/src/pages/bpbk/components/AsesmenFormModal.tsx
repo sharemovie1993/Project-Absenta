@@ -38,7 +38,7 @@ const asesmenFormSchema = z.object({
   keterangan: z.string().optional()
 });
 
-export const AsesmenFormModal: React.FC<AsesmenFormModalProps> = ({
+export const AsesmenFormModal: React.FC<AsesmenFormModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess,
@@ -388,4 +388,4 @@ export const AsesmenFormModal: React.FC<AsesmenFormModalProps> = ({
       </Modal>
     </Suspense>
   );
-};
+});

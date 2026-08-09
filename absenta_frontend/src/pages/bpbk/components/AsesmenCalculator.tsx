@@ -10,7 +10,7 @@ interface AsesmenCalculatorProps {
   onApply: (data: { hasil_skor: string; keterangan: string }) => void;
 }
 
-export const AsesmenCalculator: React.FC<AsesmenCalculatorProps> = ({
+export const AsesmenCalculator: React.FC<AsesmenCalculatorProps> = React.memo(({
   calcPreset,
   setCalcPreset,
   onApply
@@ -699,4 +699,4 @@ export const AsesmenCalculator: React.FC<AsesmenCalculatorProps> = ({
       </Button>
     </div>
   );
-};
+});

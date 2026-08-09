@@ -40,7 +40,7 @@ interface KelasItem {
   nama_kelas: string;
 }
 
-export const AsesmenSection: React.FC = () => {
+export const AsesmenSection: React.FC = React.memo(() => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -541,4 +541,4 @@ export const AsesmenSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});

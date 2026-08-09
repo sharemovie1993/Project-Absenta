@@ -30,7 +30,7 @@ interface CaseTableProps {
   getVisibilityColor: (vis: string) => string;
 }
 
-export const CaseTable: React.FC<CaseTableProps> = ({
+export const CaseTable: React.FC<CaseTableProps> = React.memo(({
   data,
   loading,
   page,
@@ -209,4 +209,4 @@ export const CaseTable: React.FC<CaseTableProps> = ({
       }}
     />
   );
-};
+});

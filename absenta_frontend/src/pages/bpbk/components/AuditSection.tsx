@@ -32,7 +32,7 @@ interface DiffMetadata {
 
 type BadgeVariant = 'error' | 'warning' | 'success' | 'outline' | 'default' | 'info';
 
-export const AuditSection: React.FC = () => {
+export const AuditSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -399,6 +399,6 @@ export const AuditSection: React.FC = () => {
       )}
     </Card>
   );
-};
+});
 
 

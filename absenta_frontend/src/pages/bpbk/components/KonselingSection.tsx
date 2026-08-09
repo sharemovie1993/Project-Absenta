@@ -19,7 +19,7 @@ import { useDebounce } from '../../../hooks/useDebounce';
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
-export const KonselingSection: React.FC = () => {
+export const KonselingSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -548,6 +548,6 @@ export const KonselingSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});
 
 

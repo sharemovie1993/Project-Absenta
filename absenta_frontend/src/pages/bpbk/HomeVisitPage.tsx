@@ -3,7 +3,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { HomeVisitSection } from './components/HomeVisitSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
-export default function HomeVisitPage() {
+export default React.memo(function HomeVisitPage() {
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -33,4 +33,4 @@ export default function HomeVisitPage() {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-}
+});
