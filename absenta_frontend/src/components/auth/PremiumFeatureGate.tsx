@@ -125,7 +125,6 @@ export default function PremiumFeatureGate({
               </Button>
             </div>
           </div>
-          </div>
         </motion.div>
    
         {/* Page Content (Fully Visible & Interactive in Trial Mode) */}
