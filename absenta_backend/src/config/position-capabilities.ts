@@ -1,53 +1,201 @@
 import { STRUKTUR_CODES } from './organization-structure';
 
+/**
+ * STRUKTUR_CAPABILITIES
+ * Sumber Kebenaran Kanonikal untuk Alokasi Kapabilitas Jabatan Fungsional (STRUKTUR_CODES).
+ *
+ * Prinsip:
+ * 1. Principle of Least Privilege (PoLP): Hanya memberikan izin yang dibutuhkan untuk operasional harian.
+ * 2. Pemisahan Wewenang (Separation of Duties):
+ *    - Catatan konseling sensitif BK (bk.counseling.view.sensitive) eksklusif untuk Guru BK.
+ *    - Penandatanganan resmi surat keluar (correspondence.outbox.sign) eksklusif untuk Kepsek & TU Kepala.
+ *    - Modul SPP internal sekolah menggunakan namespace tu.finance.* (membedakan dari billing.* SaaS platform).
+ * 3. 100% Kanonikal: Bebas dari string legacy Bahasa Indonesia atau titik dua (:).
+ */
 export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
+  // ═══════════════════════════════════════════════════════════════════
+  // LEVEL 1: OPERASIONAL LAPANGAN & KELAS
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Petugas Absensi Kelas (Sekretaris Kelas / Siswa Piket Kelas)
+  [STRUKTUR_CODES.PETUGAS_KELAS]: [
+    'organization.scope.unit_restricted',
+    'dashboard.view.petugas',
+    'dashboard.view.overview',
+
+    // Referensi Akademik Kelas
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.subjects.view.list',
+    'academic.schedules.view.list',
+
+    // Operasional Presensi & Jurnal Kelas (Buku Absensi Manual Digital)
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.close',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.journal',
+    'attendance.sessions.update.attendance',
+    'attendance.markGateAbsence',         // Input catatan alasan Sakit/Izin/Dispen/Terlambat
+    'attendance.getNotPresentStudents',   // Cek daftar teman belum absen
+    'attendance.sessions.delete',         // Hapus sesi (dengan konfirmasi UI berlapis & syarat sesi OPEN)
+
+    // Rekap & Feed
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+  ],
+
+  // Petugas Absensi Gerbang (Satpam / Guru Piket Depan)
   [STRUKTUR_CODES.GERBANG]: [
     'organization.scope.tenant_wide',
-    'attendance.scan',
     'dashboard.view.gerbang',
     'dashboard.view.overview',
+    'attendance.piket.view',
+
+    // Operasional Gerbang Fisik
+    'attendance.scan',
     'attendance.gate.tap.entry',
     'attendance.gate.tap.exit',
     'attendance.gate.face.verify',
     'attendance.gate.bypass',
-    'attendance.piket.view',
-    'kesiswaan.piket.view',
-    'kesiswaan.pelanggaran.view',
-    'kesiswaan.pelanggaran.manage',
+    'attendance.markGateAbsence',
+    'attendance.getNotPresentStudents',
+
+    // Penindakan Pelanggaran & Hukuman Langsung di Tempat (Push-up / Bending)
     'affairs.violations.report',
-    'affairs.violations.update',
-    'affairs.violations.delete',
-    'affairs.violations.manage',
+    'affairs.violations.update',           // Update status penindakan langsung di tempat
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
     'affairs.violation.types.view.list',
-    'academic.activities.types.view',
-    'academic.teaching.view',
+
+    // Referensi Data
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.teachers.view.list',
-    'attendance.markGateAbsence',
-    'attendance.getNotPresentStudents'
   ],
-  [STRUKTUR_CODES.KURIKULUM]: [
+
+  // Toolman (Teknisi Toolroom / Lab Bengkel Jurusan)
+  [STRUKTUR_CODES.TOOLMAN]: [
+    'organization.scope.unit_restricted',
+    'dashboard.view.sarpras',
+
+    // Inventaris & Lokasi Rak Bengkel
+    'sarpras.inventory.view.list',
+    'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
+
+    // Bon Peminjaman & Pengembalian Alat
+    'sarpras.loans.view.list',
+    'sarpras.loans.manage',
+    'sarpras.loans.request',
+
+    // Servis & Perbaikan Alat
+    'sarpras.repairs.view.list',
+    'sarpras.repairs.manage',
+
+    // Referensi Data
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+    'academic.students.view.list',
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TATA USAHA & KOPERASI)
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Staf TU Persuratan & Agenda Dinas
+  [STRUKTUR_CODES.TU_PERSURATAN]: [
     'organization.scope.tenant_wide',
-    'academic.manage.academic',
-    'dashboard.view.kurikulum',
-    'academic.activities.view.grouped',
-    'academic.teaching.rekap',
-    'curriculum.supervision.manage',
-    'curriculum.supervision.view.report',
-    'curriculum.supervision.view.schedule',
-    'curriculum.supervision.create.record',
-    'curriculum.supervision.update.record',
-    'curriculum.supervision.delete.record',
-    'curriculum.structure.manage',
-    'academic.structure.manage',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+
+    // Surat Masuk & Disposisi
+    'correspondence.inbox.view',
+    'correspondence.inbox.manage',
+
+    // Surat Keluar & Template Dinas
+    'correspondence.outbox.view',
+    'correspondence.outbox.manage',
+    'correspondence.template.manage',
+
+    // Pengarsipan Dokumen Digital
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.upload',
+    'documents.delete',
+  ],
+
+  // Staf TU Keuangan (Internal SPP & Billing Sekolah)
+  [STRUKTUR_CODES.TU_KEUANGAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+
+    // Referensi Data Siswa & Guru
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+
+    // Modul SPP & Keuangan Sekolah (tu.finance.*)
+    'tu.finance.invoices.view.list',
+    'tu.finance.invoices.view.detail',
+    'tu.finance.invoices.generate',
+    'tu.finance.invoices.cancel',
+    'tu.finance.payments.create',
+    'tu.finance.payments.view.history',
+    'tu.finance.reports.view',
+  ],
+
+  // Staf TU Kepegawaian & Dapodik
+  [STRUKTUR_CODES.TU_KEPEGAWAIAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+
+    // Master Data Induk Siswa & Dapodik
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.create',
+    'academic.students.update',
+    'academic.students.delete',
+    'academic.students.manage',
+    'academic.students.send.access.token', // Pengiriman token aktivasi Parent App/Siswa
+    'academic.promotions.manage',          // Kenaikan kelas massal
+    'academic.transitions.manage',         // Mutasi & kelulusan siswa
+    'academic.student.card.view.config',
+    'academic.student.card.update.config',
+
+    // Master Data Induk Guru & Kepegawaian
     'academic.teachers.view.list',
     'academic.teachers.view.detail',
-    'academic.teachers.view.history', // Pantau histori mengajar
+    'academic.teachers.create',
+    'academic.teachers.update',
+    'academic.teachers.delete',
+    'academic.teachers.manage',
+    'tu.staff.view.list',
+    'dashboard.view.teacher.attendance',   // Rekap presensi pegawai/guru
+    'attendance.recap.view.monthly',       // Rekap bulanan untuk kepegawaian/gaji
+
+    // Kelola Akun User Sekolah
+    'core.users.view.list',
+    'core.users.view.detail',
+    'core.users.create',
+    'core.users.update',
+    'core.users.delete',
+    'core.users.reset.password',
+    'core.users.update.email',
+
+    // Profil Sekolah & Struktur Organisasi
+    'core.sekolah.view.profile',
+    'core.sekolah.update.profile',
     'academic.structures.view.list',
-    'academic.structures.view.tree',
+    'academic.structure.manage',
     'academic.structures.create',
     'academic.structures.update',
     'academic.structures.delete',
@@ -55,6 +203,12 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.revoke.teacher',
     'academic.structures.assign.student',
     'academic.structures.revoke.student',
+
+    // Master Mapel, Tahun Ajaran, & Semester
+    'academic.subjects.view.list',
+    'academic.subjects.create',
+    'academic.subjects.update',
+    'academic.subjects.delete',
     'academic.years.view.list',
     'academic.years.create',
     'academic.years.update',
@@ -65,358 +219,138 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.semesters.update',
     'academic.semesters.delete',
     'academic.semesters.set.active',
-    'academic.activities.types.view',
-    'academic.activities.types.manage',
-    'academic.teaching.view',
-    'academic.teaching.manage', // Atur pembagian jam mengajar
-    'academic.subjects.view.list',
-    'academic.subjects.view.detail',
-    'academic.subjects.create',
-    'academic.subjects.update',
-    'academic.subjects.delete',
-    'academic.subjects.manage', // Kelola daftar mapel
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'academic.homeroom.manage', // Penunjukan Wali Kelas
-    'attendance.sessions.view.list',
-    'attendance.sessions.view.detail',
-    'attendance.reports.view',
-    'academic.schedules.view.list',
-    'academic.schedules.manage',
-    'academic.schedules.create',
-    'academic.schedules.update',
-    'academic.schedules.delete',
-    'attendance.schedules.view.list',
-    'attendance.schedules.manage',
-    'attendance.schedules.create',
-    'attendance.schedules.update',
-    'attendance.schedules.delete',
-    'attendance.officers.view',
-    'attendance.officers.manage',
-    'attendance.events.view.list',
-    'attendance.events.create',
-    'attendance.events.delete',
-    'hubin.pkl.view.list',
-    'affairs.violations.view.list',
-    'affairs.violation.types.view.list',
+
+    // Arsip Dokumen Digital
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.upload',
+    'documents.delete',
+  ],
+
+  // Staf TU Sarpras (Pengadministrasi Logistik & Pengurus Barang)
+  [STRUKTUR_CODES.TU_SARPRAS]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+
+    // Administrasi Logistik & Labeling Aset (KIB)
+    'sarpras.inventory.view.list',
+    'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
+
+    // Serah-Terima Peminjaman & Perbaikan
+    'sarpras.loans.view.list',
     'sarpras.loans.manage',
-    'sarpras.loans.view.list',
-    'sarpras.loans.request',
-    'bk.cases.view.list',
-    'bk.cases.view.detail',
-    'bk.assessment.view.list',
-    'kesiswaan.schedules.view.list',
-    'kesiswaan.schedules.create',
-    'kesiswaan.schedules.update',
-    'kesiswaan.schedules.delete',
-    'kesiswaan.kegiatan.view',
-    'kesiswaan.kegiatan.manage',
-    // ─── CRUD Jadwal Piket Guru ───
-    'kurikulum.jadwal-piket.view',
-    'kurikulum.jadwal-piket.create',
-    'kurikulum.jadwal-piket.update',
-    'kurikulum.jadwal-piket.delete',
-    'kurikulum.jadwal-piket.manage',
-    'curriculum.piket.schedules.view',
-    'curriculum.piket.schedules.create',
-    'curriculum.piket.schedules.update',
-    'curriculum.piket.schedules.delete',
-    'curriculum.piket.schedules.manage',
-    'attendance.piket.view',
-    'attendance.piket.manage',
-    'kesiswaan.piket.view',
-    'kesiswaan.piket.manage'
-  ],
-  [STRUKTUR_CODES.KESISWAAN]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.kesiswaan',
-    'kesiswaan.dashboard.view',
-    'kesiswaan.pelanggaran.view',
-    'kesiswaan.pelanggaran.manage',
-    'kesiswaan.prestasi.view',
-    'kesiswaan.prestasi.manage',
-    'kesiswaan.piket.view',
-    'kesiswaan.piket.manage',
-    'kesiswaan.kegiatan.view',
-    'kesiswaan.kegiatan.manage',
-    "dashboard.view.violation.stats",
-    'affairs.violations.report',
-    'affairs.violations.update',
-    'affairs.violations.delete', // Kesiswaan berhak menghapus pelanggaran
-    'affairs.violations.manage', // Hapus/Edit pelanggaran salah input
-    'affairs.violations.view.list',
-    'affairs.violations.view.detail', // Lihat detail pelanggaran
-    "affairs.violation.types.view.list",
-    "affairs.violation.types.create", // Kesiswaan kelola jenis pelanggaran
-    "affairs.violation.types.update",
-    "affairs.violation.types.delete",
-    "affairs.violation.types.manage",
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'academic.students.view.history',
-    'academic.teachers.view.list',
-    'academic.structures.view.list',
-    'attendance.student.view.stats',
-    'attendance.piket.manage',
-    'attendance.piket.view',
-    'attendance.sessions.view.list',
-    'attendance.sessions.update.attendance', // Kesiswaan bisa koreksi absensi massal
-    'attendance.sessions.tap',
-    'attendance.reports.view',
-    'attendance.events.view.list',
-    'attendance.events.create',
-    'attendance.events.delete',
-    'kesiswaan.schedules.view.list',
-    'kesiswaan.schedules.create',
-    'kesiswaan.schedules.update',
-    'kesiswaan.schedules.delete',
-    'academic.schedules.view.list',
-    'attendance.schedules.view.list',
-    'notify.announcements.manage', // Sebar pengumuman kesiswaan
-    'bk.cases.view.list',
-    'bk.cases.view.detail'
-  ],
-  [STRUKTUR_CODES.KEPALA_SEKOLAH]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.kepsek',
-    "dashboard.view.student.stats",
-    "dashboard.view.teacher.attendance",
-    'dashboard.view.sarpras',
-    'sarpras.inventory.view.list',
-    'sarpras.loans.view.list',
     'sarpras.repairs.view.list',
-    "dashboard.view.violation.stats",
-    "dashboard.view.financial.summary",
-    'academic.teachers.view.list',
-    'academic.teachers.view.detail',
-    'academic.structures.view.list',
-    'academic.subjects.view.list',
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'academic.students.view.history',
-    'academic.years.view.list',
-    'academic.semesters.view.list',
-    'curriculum.supervision.view.schedule',
-    'curriculum.supervision.view.report',
-    'curriculum.supervision.create.record', // Kepsek selaku supervisor utama
-    'curriculum.supervision.update.record',
-    'curriculum.supervision.delete.record',
-    'affairs.violations.view.list',
-    'affairs.violations.view.detail',
-    'attendance.piket.view',
-    'attendance.reports.view',
-    'attendance.sessions.view.list',
-    'attendance.sessions.view.detail',
-    'attendance.events.view.list',
-    'attendance.recap.view.daily',
-    'attendance.recap.view.monthly',
-    'attendance.recap.view.global',
-    'sarpras.inventory.view.list',
-    'sarpras.loans.view.list',
-    'sarpras.repairs.view.list',
-    'billing.subscriptions.view.active', // Kepsek pantau status langganan aplikasi
-    'dashboard.view.hubin',
-    'hubin.pkl.view.list',
-    'hubin.absensi.view.history',
-    'hubin.absensi.recap',
-    'hubin.mou.view.list',
-    'hubin.tracer.view',
-    'reports.hubin.view',
-    'affairs.violation.types.view.list',
-    'bk.cases.view.list',
-    'bk.cases.view.detail',
-    'bk.reports.view',
-    'bk.audit.view',
-    'bk.counseling.view.list',
-    'bk.counseling.view.detail',
-    'bk.summons.view.list',
-    'bk.summons.view.detail',
-    'bk.homevisit.view.list',
-    'bk.homevisit.view.detail',
-    'bk.assessment.view.list',
-    'bk.assessment.view.detail',
-    'bk.referrals.view.list',
-    'bk.referrals.view.detail',
-    'correspondence.inbox.view',
-    'correspondence.outbox.view',
-    'correspondence.outbox.sign'
+    'sarpras.repairs.manage',
   ],
+
+  // Manajer Toko Koperasi (Kasir POS Minimarket Koperasi)
+  [STRUKTUR_CODES.MANAJER_TOKO_KOPERASI]: [
+    'organization.scope.tenant_wide',
+    'academic.structures.view.tree',
+    'cooperative.dashboard.view.overview',
+    'cooperative.announcements.view.list',
+    'cooperative.savings.view.history',
+    'cooperative.members.view.list',
+    'cooperative.members.view.detail',
+    'cooperative.points.view',
+    'cooperative.loans.apply',
+
+    // Operasional POS Kasir & Stok Produk
+    'cooperative.store.view.catalog',
+    'cooperative.store.orders.manage',
+    'cooperative.store.orders.view.list',
+    'cooperative.store.inventory.manage',
+    'cooperative.store.products.view.list',
+    'cooperative.store.products.view.detail',
+    'cooperative.store.products.create',
+    'cooperative.store.products.update',
+    'cooperative.store.products.delete',
+    'cooperative.store.categories.manage',
+    'cooperative.store.transactions.view',
+
+    // Promosi, PPOB, & Tiket Bantuan Kasir
+    'cooperative.vouchers.manage',
+    'cooperative.vouchers.view.list',
+    'cooperative.ppob.transact',
+    'cooperative.ppob.manage.products',
+    'cooperative.ppob.view.products',
+    'cooperative.tickets.view.list',
+    'cooperative.tickets.view.detail',
+    'cooperative.tickets.reply',
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LEVEL 3: KOORDINATOR UNIT & PEMBINA
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Wali Kelas
   [STRUKTUR_CODES.WALIKELAS]: [
     'organization.scope.unit_restricted',
     'dashboard.view.walikelas',
     'dashboard.view.overview',
     'core.tenants.view.detail',
+
+    // Referensi Siswa Binaan
     'academic.students.view.list',
-    'academic.students.view.detail', // Tambahan: Lihat detail (termasuk ortu)
-    'attendance.manage.petugas',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+
+    // Input Izin/Sakit/Dispen dari Ortu & Monitoring Presensi
+    'attendance.getNotPresentStudents',   // Cek siswa belum masuk gerbang
+    'attendance.markGateAbsence',         // Input Izin/Sakit/Dispen atas laporan ortu
+    'attendance.sessions.update.attendance',// Validasi presensi jam pelajaran
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.reports.view',
+    'attendance.sessions.view.detail',
+    'attendance.officers.view',
+    'attendance.officers.manage',
+    'attendance.manage.petugas',
+
+    // Pelanggaran & Rujukan BK
     'affairs.violations.view.list',
-    'affairs.violations.report', // Tambahan: Wali kelas bisa lapor pelanggaran anak buahnya
-    'affairs.violation.types.view.list',
     'affairs.violations.view.detail',
+    'affairs.violations.report',
+    'affairs.violation.types.view.list',
+    'bk.cases.view.list',                  // Ringkasan status kasus (tanpa curhat sensitif BK)
+    'bk.referrals.create',                 // Buat rujukan konseling ke BK
+
+    // Akademik & PKL
     'academic.teaching.view',
     'academic.structures.view.list',
     'academic.structures.view.tree',
     'academic.homeroom.manage',
-    'academic.students.view.history',
     'hubin.absensi.view.history',
     'academic.schedules.view.list',
-    'kesiswaan.schedules.view.list',
+    'affairs.schedules.view.list',
     'attendance.schedules.view.list',
-    'attendance.officers.view',
-    'attendance.officers.manage',
-    'attendance.sessions.view.detail',
-    'attendance.sessions.update.attendance', // Tambahan: Validasi Izin/Sakit
-    'attendance.sessions.tap',
-    'attendance.sessions.update.journal',
-    'attendance.scan', // CRUD Absensi Gerbang & POS
-    'attendance.markGateAbsence', // Input Izin, Sakit, Alpa, Dispen, Terlambat
-    'attendance.getNotPresentStudents', // Akses sisa siswa belum hadir gerbang
-    'attendance.gate.tap.entry',
-    'attendance.gate.tap.exit',
-    'attendance.gate.bypass',
-    'bk.cases.view.list',
-    'bk.referrals.create',
-  ],
-  [STRUKTUR_CODES.PEMBINA_ESKUL]: [
-    'organization.scope.unit_restricted',
-    'dashboard.view.overview',
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'kesiswaan.schedules.view.list',
-    'attendance.schedules.view.list',
-    'attendance.sessions.view.list',
-    'attendance.sessions.create',
-    'attendance.sessions.update',
-    'attendance.sessions.delete',
-    'attendance.reports.view',
-    'attendance.recap.view.daily',
-    'attendance.recap.view.monthly',
-    'kesiswaan.prestasi.manage',
-    'kesiswaan.kegiatan.view',
-  ],
-  [STRUKTUR_CODES.PETUGAS_KELAS]: [
-    'organization.scope.unit_restricted',
-    'dashboard.view.petugas',
-    'dashboard.view.overview',
-    // ─── Operasional Akses Cek Manual & Tap Gerbang ───────────────────
-    'attendance.gate.tap.entry',          // Entry gate tap / pencatatan
-    'attendance.markGateAbsence',         // Klik tombol status HADIR/SAKIT/IZIN/ALPA/DISPEN
-    'attendance.getNotPresentStudents',   // Baca daftar siswa belum hadir
-    'attendance.gate.view.logs',          // Lihat log gerbang
-    // ─── Referensi Akademik ───────────────────────────────────────────
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'academic.teachers.view.list',       // Dropdown Guru saat buat jadwal
-    'academic.subjects.view.list',        // Dropdown Mapel saat buat jadwal
-    'academic.structures.view.list',      // Dropdown Kelas saat buat jadwal
-    'academic.teaching.view',
-    // ─── Template Jadwal (Read Only) ────────────────────────────────
-    'academic.schedules.view.list',
-    'attendance.schedules.view.list',
-    // ─── Sesi Absensi Operasional HP Petugas Kelas ───────────────────
-    'attendance.sessions.view.list',
-    'attendance.sessions.view.detail',
-    'attendance.sessions.create',
-    'attendance.sessions.update',
-    'attendance.sessions.delete',
-    'attendance.sessions.close',          // Tutup sesi absensi
-    'attendance.sessions.update.attendance', // Koreksi status kehadiran (Update)
-    'attendance.sessions.tap',            // Scan siswa
-    'attendance.sessions.update.journal', // Isi jurnal KBM
-    // ─── Kejadian Khusus (Read Only) ────────────────────────────────
-    'attendance.events.view.list',        // Lihat daftar kejadian khusus
-    // ─── Notifikasi & Laporan ────────────────────────────────────────
-    'attendance.notifications.send',      // Kirim notif WA saat sesi dibuat
-    'attendance.reports.view',            // Lihat feed & rekap
-    'attendance.recap.view.daily',
-    'attendance.recap.view.monthly',
-    'attendance.monitoring.view.live.status',
-    'dashboard.view.teacher.attendance'
   ],
 
-
-  [STRUKTUR_CODES.HUBIN]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.hubin',
-    'hubin.pkl.view.list',
-    'hubin.pkl.manage',
-    'hubin.mou.view.list',
-    'hubin.mou.manage',
-    'hubin.partners.manage',
-    'hubin.absensi.recap',
-    'hubin.absensi.view.history',
-    'hubin.absensi.verify',
-    'academic.students.view.list',
-    'academic.students.view.detail',
-    'hubin.guidance.manage',
-    'hubin.logbook.manage',
-    'hubin.tefa.manage',
-    'hubin.bkk.manage',
-    'hubin.lamaran.manage',
-    'reports.hubin.view',
-    'academic.structures.view.list',
-    'academic.teachers.view.list',
-    'academic.schedules.view.list',
-    'attendance.schedules.view.list',
-    'affairs.violations.view.list'
-  ],
-  [STRUKTUR_CODES.SARPRAS]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.sarpras',
-    'sarpras.inventory.view.list',
-    'sarpras.inventory.manage',
-    'sarpras.categories.manage',
-    'sarpras.locations.manage',
-    'sarpras.loans.view.list',
-    'sarpras.loans.manage',
-    'sarpras.loans.request',
-    'sarpras.repairs.view.list',
-    'sarpras.repairs.manage',
-    'academic.structures.view.list',
-    'academic.teachers.view.list',
-    'academic.students.view.list'
-  ],
-  [STRUKTUR_CODES.TOOLMAN]: [
-    'organization.scope.unit_restricted',
-    'dashboard.view.sarpras',
-    'sarpras.inventory.view.list',
-    'sarpras.inventory.manage',
-    'sarpras.categories.manage',
-    'sarpras.locations.manage',
-    'sarpras.loans.view.list',
-    'sarpras.loans.manage',
-    'sarpras.loans.request',
-    'sarpras.repairs.view.list',
-    'sarpras.repairs.manage',
-    'academic.structures.view.list',
-    'academic.teachers.view.list',
-    'academic.students.view.list'
-  ],
+  // BPBK (Guru Bimbingan Konseling / Konselor Sekolah)
   [STRUKTUR_CODES.BPBK]: [
     'organization.scope.tenant_wide',
     'dashboard.view.kesiswaan',
     'dashboard.view.violation.stats',
-    'affairs.violations.report',
-    'affairs.violations.update',
-    'affairs.violations.view.list',
-    'affairs.violations.view.detail',
-    'affairs.violation.types.view.list',
+
+    // Referensi Siswa & Presensi
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.students.view.history',
     'academic.structures.view.list',
     'attendance.student.view.stats',
     'attendance.recap.view.daily',
-    'attendance.recap.view.monthly', // Tambahan: Histori bulanan untuk konseling
-    'attendance.reports.view', // Tambahan: Rekap global untuk deteksi dini
+    'attendance.recap.view.monthly',
+    'attendance.reports.view',
+
+    // Modul BK Khusus (Kerahasiaan Tinggi)
     'bk.cases.view.list',
     'bk.cases.view.detail',
     'bk.cases.manage',
     'bk.counseling.manage',
-    'bk.counseling.view.sensitive',
+    'bk.counseling.view.sensitive',        // 🔒 HAK EKSKLUSIF GURU BK
     'bk.counseling.view.list',
     'bk.counseling.view.detail',
     'bk.summons.manage',
@@ -435,19 +369,209 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.audit.view',
     'bk.recyclebin.view',
     'bk.recyclebin.restore',
-    // Piket & Kesiswaan capabilities for BPBK officials
+
+    // Pelanggaran & Piket (Koordinasi)
+    'affairs.violations.report',
+    'affairs.violations.update',
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'affairs.violation.types.view.list',
     'attendance.piket.view',
     'attendance.piket.manage',
-    'kesiswaan.piket.view',
-    'kesiswaan.piket.manage',
-    'kesiswaan.dashboard.view',
-    'kesiswaan.pelanggaran.view',
-    'kesiswaan.pelanggaran.manage',
-    'kesiswaan.prestasi.view',
-    'kesiswaan.prestasi.manage',
-    'kesiswaan.kegiatan.view',
-    'kesiswaan.kegiatan.manage'
   ],
+
+  // Pembina Eskul (Pembina Ekstrakurikuler)
+  [STRUKTUR_CODES.PEMBINA_ESKUL]: [
+    'organization.scope.unit_restricted',
+    'dashboard.view.overview',
+    'academic.students.view.list',
+    'academic.students.view.detail',
+
+    // Sesi Presensi Latihan Eskul
+    'attendance.sessions.view.list',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+
+    // Pencatatan Prestasi Lomba
+    'affairs.achievements.create',
+    'affairs.achievements.view.list',
+  ],
+
+  // Kaprog (Ketua Program Keahlian / Jurusan SMK)
+  [STRUKTUR_CODES.KAPROG]: [
+    'organization.scope.unit_restricted',
+    'academic.teaching.rekap',
+    'academic.students.view.list',
+    'academic.teachers.view.list',
+    'academic.teachers.view.detail',
+
+    // Plotting Draf PKL Siswa Jurusannya
+    'hubin.pkl.view.list',
+    'hubin.pkl.manage',
+    'hubin.absensi.view.history',
+    'hubin.absensi.recap',
+
+    // Monitoring & Supervisi Jurusan
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'bk.cases.view.list',
+    'bk.referrals.create',
+    'curriculum.supervision.view.report',
+  ],
+
+  // Kabeng (Kepala Bengkel / Lab Jurusan)
+  [STRUKTUR_CODES.KABENG]: [
+    'organization.scope.unit_restricted',
+    'dashboard.view.sarpras',
+
+    // Inventaris & Approval Afkir/Penghapusan Barang Rusak
+    'sarpras.inventory.view.list',
+    'sarpras.inventory.manage',
+    'sarpras.inventory.delete',            // Approval afkir barang rusak bengkel
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
+
+    // Peminjaman & Approval Perbaikan Aset Bengkel
+    'sarpras.loans.view.list',
+    'sarpras.loans.manage',
+    'sarpras.loans.request',
+    'sarpras.repairs.view.list',
+    'sarpras.repairs.manage',
+
+    // Referensi Data
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+    'academic.students.view.list',
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LEVEL 4 & LEVEL 5: MANAJEMEN MANAJERIAL & KEPALA SEKOLAH
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Waka Kurikulum & Tim Kurikulum
+  [STRUKTUR_CODES.KURIKULUM]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kurikulum',
+    'academic.manage.academic',
+    'academic.activities.view.grouped',
+    'academic.teaching.rekap',
+
+    // Tahun Ajaran, Semester, & Struktur Sekolah
+    'academic.years.view.list', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active',
+    'academic.semesters.view.list', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active',
+    'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete',
+    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
+
+    // Master Mapel, Plotting Jam Mengajar, & Wali Kelas
+    'academic.subjects.view.list', 'academic.subjects.view.detail', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
+    'academic.teaching.view', 'academic.teaching.manage',
+    'academic.homeroom.manage',
+    'academic.teachers.view.list', 'academic.teachers.view.detail', 'academic.teachers.view.history',
+    'academic.students.view.list', 'academic.students.view.detail',
+
+    // Jadwal KBM Mingguan & Jadwal Piket Guru Harian
+    'academic.schedules.view.list', 'academic.schedules.manage', 'academic.schedules.create', 'academic.schedules.update', 'academic.schedules.delete',
+    'attendance.schedules.view.list', 'attendance.schedules.manage', 'attendance.schedules.create', 'attendance.schedules.update', 'attendance.schedules.delete',
+    'curriculum.piket.schedules.view', 'curriculum.piket.schedules.create', 'curriculum.piket.schedules.update', 'curriculum.piket.schedules.delete', 'curriculum.piket.schedules.manage',
+
+    // Supervisi Akademik Guru
+    'curriculum.supervision.manage', 'curriculum.supervision.view.report', 'curriculum.supervision.view.schedule', 'curriculum.supervision.create.record', 'curriculum.supervision.update.record', 'curriculum.supervision.delete.record',
+
+    // Presensi & Kegiatan Akademik
+    'attendance.sessions.view.list', 'attendance.sessions.view.detail', 'attendance.reports.view',
+    'attendance.events.view.list', 'attendance.events.create', 'attendance.events.delete',
+    'attendance.piket.view', 'attendance.piket.manage',
+
+    // Pencatatan Pinjam Proyektor / Terminal KBM
+    'sarpras.loans.request',
+    'sarpras.loans.view.list',
+
+    // Monitoring Modul Lain
+    'hubin.pkl.view.list',
+    'affairs.violations.view.list',
+    'affairs.violation.types.view.list',
+    'bk.cases.view.list', 'bk.cases.view.detail', 'bk.assessment.view.list',
+  ],
+
+  // Waka Kesiswaan & Tim Kesiswaan
+  [STRUKTUR_CODES.KESISWAAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    'dashboard.view.violation.stats',
+
+    // Tata Tertib & Pelanggaran (Full Management)
+    'affairs.violations.report',
+    'affairs.violations.update',
+    'affairs.violations.delete',            // Hak mengedit/menghapus salah input pelanggaran
+    'affairs.violations.manage',
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'affairs.violation.types.view.list',
+    'affairs.violation.types.create',        // Master jenis & poin pelanggaran
+    'affairs.violation.types.update',
+    'affairs.violation.types.delete',
+    'affairs.violation.types.manage',
+
+    // Pengumuman Massal & Event
+    'notify.announcements.manage',
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
+
+    // Presensi & Data Referensi Siswa
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    'attendance.student.view.stats',
+    'attendance.piket.manage',
+    'attendance.piket.view',
+    'attendance.sessions.view.list',
+    'attendance.sessions.update.attendance',
+    'attendance.sessions.tap',
+    'attendance.reports.view',
+
+    // Monitoring BK
+    'bk.cases.view.list',
+    'bk.cases.view.detail',                // Ringkasan status kasus (tanpa isi curhat sensitif BK)
+  ],
+
+  // Waka Hubin (Hubungan Industri / Humas)
+  [STRUKTUR_CODES.HUBIN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.hubin',
+
+    // Penempatan & Absensi PKL
+    'hubin.pkl.view.list',
+    'hubin.pkl.manage',
+    'hubin.absensi.recap',
+    'hubin.absensi.view.history',
+    'hubin.absensi.verify',
+    'hubin.guidance.manage',
+    'hubin.logbook.manage',
+
+    // Kerjasama Industri, TEFA, & BKK
+    'hubin.mou.view.list',
+    'hubin.mou.manage',
+    'hubin.partners.manage',
+    'hubin.tefa.manage',
+    'hubin.bkk.manage',
+    'hubin.lamaran.manage',
+    'hubin.tracer.view',
+    'reports.hubin.view',
+
+    // Referensi Data
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+  ],
+
+  // BKK (Ketua Bursa Kerja Khusus)
   [STRUKTUR_CODES.BKK]: [
     'organization.scope.tenant_wide',
     'dashboard.view.hubin',
@@ -458,442 +582,174 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.detail',
     'academic.structures.view.list',
     'hubin.pkl.view.list',
-    'hubin.mou.view.list'
+    'hubin.mou.view.list',
   ],
-  [STRUKTUR_CODES.KABENG]: [
-    'organization.scope.unit_restricted',
+
+  // Waka Sarpras (Sarana Prasarana Global Instansi)
+  [STRUKTUR_CODES.SARPRAS]: [
+    'organization.scope.tenant_wide',
     'dashboard.view.sarpras',
+
+    // Master Aset & Approval Afkir/Penghapusan
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
+    'sarpras.inventory.delete',            // Approval pengafkiran/penghapusan aset
     'sarpras.categories.manage',
     'sarpras.locations.manage',
+
+    // Approval Peminjaman & Servis Besar
     'sarpras.loans.view.list',
     'sarpras.loans.manage',
     'sarpras.loans.request',
     'sarpras.repairs.view.list',
     'sarpras.repairs.manage',
+
+    // Referensi Data
     'academic.structures.view.list',
     'academic.teachers.view.list',
-    'academic.students.view.list'
+    'academic.students.view.list',
   ],
-  // ═══════════════════════════════════════════════════════════════════
-  // LINGKUNGAN TATA USAHA (GRANULAR SUB-POSISI)
-  // ═══════════════════════════════════════════════════════════════════
+
+  // Koordinator / Kepala Tata Usaha (TU_KEPALA)
   [STRUKTUR_CODES.TU_KEPALA]: [
     'organization.scope.tenant_wide',
     'dashboard.view.tu',
     'core.tenants.view.detail',
+
+    // Supervisi Staf TU
     'tu.staff.view.list',
-    'tu.staff.manage',                   // Koordinator TU mengelola kepegawaian staf TU
-    'tu.letters.manage',                 // Koordinator TU supervisi persuratan
-    'academic.students.view.list',
-    'academic.students.create',
-    'academic.students.update',
-    'academic.students.delete',
-    'academic.students.manage',
-    'academic.students.manage',
-    'academic.teachers.view.list',
-    'academic.teachers.create',
-    'academic.teachers.update',
-    'academic.teachers.delete',
-    'academic.teachers.manage',
-    'academic.structures.view.list',     // Koordinator TU memantau struktur organisasi
-    'academic.structure.manage',         // Koordinator TU mengelola struktur organisasi (tambah/edit bagan)
-    'academic.structures.manage',
-    'academic.structures.create',
-    'academic.structures.update',
-    'academic.structures.delete',
-    'academic.structures.assign.teacher',
-    'academic.structures.revoke.teacher',
-    'academic.structures.assign.student',
-    'academic.structures.revoke.student',
-    'documents.view.list',               // Koordinator TU melihat arsip digital sekolah
-    'documents.view.detail',
-    'billing.invoices.view.list',        // Koordinator TU memantau arus keuangan / tagihan
-    'billing.invoices.view.detail',
-    'billing.payments.view.history',
-    'correspondence.inbox.view',
-    'correspondence.outbox.view',
-    'sarpras.inventory.view.list',       // Koordinator TU memantau aset/logistik
-    'sarpras.loans.view.list',
-    'academic.promotions.manage',
-    'academic.transitions.manage',
-    'academic.homeroom.manage',
-    'academic.teaching.view',
-    'academic.teaching.rekap',
-    'academic.schedules.view.list',
-    'kesiswaan.schedules.view.list',
-    'kesiswaan.schedules.create',
-    'kesiswaan.schedules.update',
-    'kesiswaan.schedules.delete',
-    'academic.years.view.list',
-    'academic.years.create',
-    'academic.years.update',
-    'academic.years.delete',
-    'academic.years.set.active',
-    'academic.years.manage',
-    'academic.semesters.view.list',
-    'academic.semesters.create',
-    'academic.semesters.update',
-    'academic.semesters.delete',
-    'academic.semesters.set.active',
-    'academic.semesters.manage',
-    'academic.subjects.view.list',
-    'academic.subjects.create',
-    'academic.subjects.update',
-    'academic.subjects.delete',
-    'academic.subjects.manage',
-    'academic.student.card.view.config',
-    'academic.student.card.update.config',
-    'core.sekolah.view.profile',
-    'core.sekolah.update.profile',
-    'core.users.view.list',
-    'core.users.view.detail',
-    'core.users.view.roles',
-    'core.users.permissions.view',
-    'core.users.effective.capabilities.view',
-    'core.users.create',
-    'core.users.update',
-    'core.users.delete',
-    'core.users.reset.password',
-    'core.users.update.email',
-  ],
-  [STRUKTUR_CODES.TU_PERSURATAN]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.tu',
-    'core.tenants.view.detail',
-    'tu.letters.manage',                 // CRUD Surat & Agenda Dinas
+    'tu.staff.manage',
+
+    // Persuratan & TTD Resmi
     'correspondence.inbox.view',
     'correspondence.inbox.manage',
     'correspondence.outbox.view',
     'correspondence.outbox.manage',
-    'documents.view.list',               // Pengarsipan dokumen dinas
-    'documents.view.detail',
-    'documents.upload',
-    'documents.delete',
+    'correspondence.outbox.sign',           // TTD Resmi Surat Dinas
+
+    // Data Induk Siswa & Guru
+    'academic.students.view.list', 'academic.students.view.detail', 'academic.students.create', 'academic.students.update', 'academic.students.delete', 'academic.students.manage',
+    'academic.teachers.view.list', 'academic.teachers.view.detail', 'academic.teachers.create', 'academic.teachers.update', 'academic.teachers.delete', 'academic.teachers.manage',
+    'academic.structures.view.list', 'academic.structure.manage', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete',
+    'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
+
+    // SPP & Keuangan Sekolah (tu.finance.*)
+    'tu.finance.invoices.view.list', 'tu.finance.invoices.view.detail', 'tu.finance.invoices.generate', 'tu.finance.invoices.cancel',
+    'tu.finance.payments.create', 'tu.finance.payments.view.history',
+
+    // Logistik & Arsip
+    'documents.view.list', 'documents.view.detail',
+    'sarpras.inventory.view.list', 'sarpras.loans.view.list',
+    'academic.promotions.manage', 'academic.transitions.manage', 'academic.homeroom.manage',
+    'academic.years.view.list', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active', 'academic.years.manage',
+    'academic.semesters.view.list', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active', 'academic.semesters.manage',
+    'academic.subjects.view.list', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
+    'core.sekolah.view.profile', 'core.sekolah.update.profile',
+    'core.users.view.list', 'core.users.view.detail', 'core.users.view.roles', 'core.users.permissions.view', 'core.users.effective.capabilities.view', 'core.users.create', 'core.users.update', 'core.users.delete', 'core.users.reset.password',
   ],
-  [STRUKTUR_CODES.TU_KEUANGAN]: [
+
+  // Kepala Sekolah (Pimpinan Eksekutif Sekolah — Level 5)
+  [STRUKTUR_CODES.KEPALA_SEKOLAH]: [
     'organization.scope.tenant_wide',
-    'dashboard.view.tu',
-    'core.tenants.view.detail',
-    'academic.students.view.list',       // Referensi data siswa untuk penagihan
-    'billing.invoices.view.list',        // Kelola SPP & Billing
-    'billing.invoices.view.detail',
-    'billing.invoices.generate',
-    'billing.invoices.cancel',
-    'billing.payments.create',           // Input pembayaran / cicilan SPP
-    'billing.payments.view.history',
-    'billing.payments.view.status',
-  ],
-  [STRUKTUR_CODES.TU_KEPEGAWAIAN]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.tu',
-    'core.tenants.view.detail',
-    'academic.students.view.list',
-    'academic.students.manage',          // Kelola data induk siswa (NISN/Dapodik)
-    'academic.students.create',
-    'academic.students.update',
-    'academic.students.delete',
-    'academic.students.manage',
-    'academic.teachers.view.list',
-    'academic.teachers.create',
-    'academic.teachers.update',
-    'academic.teachers.delete',
-    'academic.teachers.manage',          // Kelola data induk guru (NUPTK/NIP)
-    'academic.structures.view.list',     // Staf kepegawaian melihat struktur organisasi
-    'academic.structure.manage',         // Staf kepegawaian mengelola struktur organisasi (tambah/edit bagan)
-    'academic.structures.manage',
-    'academic.structures.create',
-    'academic.structures.update',
-    'academic.structures.delete',
-    'academic.structures.assign.teacher',
-    'academic.structures.revoke.teacher',
-    'academic.structures.assign.student',
-    'academic.structures.revoke.student',
-    'tu.staff.view.list',
-    'documents.view.list',               // Arsip ijazah & surat keterangan dinas
-    'documents.view.detail',
-    'documents.upload',
-    'documents.delete',
-    'academic.promotions.manage',
-    'academic.transitions.manage',
-    'academic.homeroom.manage',
-    'academic.teaching.view',
-    'academic.teaching.rekap',
-    'academic.schedules.view.list',
-    'academic.years.view.list',
-    'academic.years.create',
-    'academic.years.update',
-    'academic.years.delete',
-    'academic.years.set.active',
-    'academic.years.manage',
-    'academic.semesters.view.list',
-    'academic.semesters.create',
-    'academic.semesters.update',
-    'academic.semesters.delete',
-    'academic.semesters.set.active',
-    'academic.semesters.manage',
-    'academic.subjects.view.list',
-    'academic.subjects.create',
-    'academic.subjects.update',
-    'academic.subjects.delete',
-    'academic.subjects.manage',
-    'academic.student.card.view.config',
-    'academic.student.card.update.config',
-    'core.sekolah.view.profile',
-    'core.sekolah.update.profile',
-    'core.users.view.list',
-    'core.users.view.detail',
-    'core.users.view.roles',
-    'core.users.permissions.view',
-    'core.users.effective.capabilities.view',
-    'core.users.create',
-    'core.users.update',
-    'core.users.delete',
-    'core.users.reset.password',
-    'core.users.update.email',
-  ],
-  [STRUKTUR_CODES.TU_SARPRAS]: [
-    'organization.scope.tenant_wide',
-    'dashboard.view.tu',
-    'core.tenants.view.detail',
-    'sarpras.inventory.view.list',
-    'sarpras.inventory.manage',          // Menginput aset / barang belanja modal sekolah
-    'sarpras.categories.manage',
-    'sarpras.locations.manage',
-    'sarpras.loans.view.list',
-    'sarpras.loans.manage',             // Menyetujui pinjam barang / ruang
-    'sarpras.repairs.view.list',
-    'sarpras.repairs.manage',            // Jadwal servis & pemeliharaan aset
-  ],
-  [STRUKTUR_CODES.KAPROG]: [
-    'organization.scope.unit_restricted',
-    'academic.activities.view.grouped',
-    'academic.teaching.rekap',
-    'attendance.piket.manage',
-    'attendance.piket.view',
-    'academic.students.view.list', // Tambahan: Kaprog pantau siswa di jurusannya
-    'dashboard.view.hubin',
-    'hubin.pkl.view.list',
-    'hubin.pkl.manage',
-    'hubin.absensi.view.history',
-    'hubin.absensi.recap',
-    'hubin.mou.view.list',
-    'hubin.tracer.view',
-    'affairs.violations.view.list',
-    'affairs.violations.view.detail',
-    'affairs.violation.types.view.list',
-    'dashboard.view.violation.stats',
-    // Monitoring Akademik
-    'academic.teachers.view.list',
-    'academic.teachers.view.detail',
-    'academic.structures.view.list',
-    'academic.structures.view.tree',
-    // Monitoring Kehadiran
-    'attendance.recap.view.daily',
-    'attendance.recap.view.monthly',
-    'attendance.reports.view',
-    'attendance.sessions.view.list',
-    'attendance.sessions.view.detail',
-    // Monitoring Sarpras
+    'dashboard.view.kepsek',
+    'dashboard.view.student.stats',
+    'dashboard.view.teacher.attendance',
     'dashboard.view.sarpras',
-    'sarpras.inventory.view.list',
-    'sarpras.loans.view.list',
-    'sarpras.repairs.view.list',
-    // Supervisi & Konseling
-    'curriculum.supervision.view.report',
-    'bk.cases.view.list',
-    'bk.referrals.create'
+    'dashboard.view.violation.stats',
+    'dashboard.view.financial.summary',
+    'dashboard.view.hubin',
+
+    // Executive Monitoring Guru & Siswa
+    'academic.teachers.view.list', 'academic.teachers.view.detail',
+    'academic.students.view.list', 'academic.students.view.detail', 'academic.students.view.history',
+
+    // Supervisi Akademik Utama
+    'curriculum.supervision.view.schedule', 'curriculum.supervision.view.report', 'curriculum.supervision.create.record', 'curriculum.supervision.update.record', 'curriculum.supervision.delete.record',
+
+    // Executive Monitoring Modul
+    'affairs.violations.view.list', 'affairs.violations.view.detail',
+    'attendance.piket.view', 'attendance.reports.view',
+    'attendance.sessions.view.list', 'attendance.sessions.view.detail',
+    'attendance.recap.view.daily', 'attendance.recap.view.monthly', 'attendance.recap.view.global',
+    'sarpras.inventory.view.list', 'sarpras.loans.view.list', 'sarpras.repairs.view.list',
+    'billing.subscriptions.view.active',
+    'hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.absensi.recap', 'hubin.mou.view.list', 'hubin.tracer.view',
+    'bk.cases.view.list', 'bk.cases.view.detail', 'bk.reports.view', 'bk.audit.view',
+
+    // Persurat & TTD Elektronik Dokumen Resmi
+    'correspondence.inbox.view',
+    'correspondence.outbox.view',
+    'correspondence.outbox.sign',           // ✍️ Penandatanganan Elektronik Kepsek
   ],
+
+  // ═══════════════════════════════════════════════════════════════════
+  // KOPERASI SEKOLAH (PENGURUS & PENGAWAS)
+  // ═══════════════════════════════════════════════════════════════════
+
   [STRUKTUR_CODES.BENDAHARA_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.members.create',
-    'cooperative.members.update',
-    'cooperative.members.delete',
-    'cooperative.members.manage',
-    'cooperative.savings.create',
-    'cooperative.savings.deposit',
-    'cooperative.savings.withdraw',
-    'cooperative.savings.view.list',
-    'cooperative.savings.view.detail',
-    'cooperative.savings.view.history',
+    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
+    'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw', 'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.view.history',
     'cooperative.points.view',
     'cooperative.store.view.catalog',
-    'cooperative.loans.view.list',
-    'cooperative.loans.apply',
-    'cooperative.loans.repay',
-    'cooperative.reports.view.financial',
-    'cooperative.reports.view.daily',
-    'cooperative.reports.view.monthly',
-    // Kelola Skema/Konfigurasi Simpanan
-    'cooperative.savings.types.manage',
-    'cooperative.savings.manage',
-    // Kelola Skema Pinjaman & Verifikasi Detail
-    'cooperative.loans.view.detail',
-    'cooperative.loans.types.manage',
-    // Rekonsiliasi Toko Koperasi
-    'cooperative.store.orders.view.list',
-    'cooperative.store.transactions.view',
-    'cooperative.store.products.view.list',
-    'cooperative.store.products.view.detail',
-    // Konfigurasi Loyalitas Poin
+    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.repay',
+    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
+    'cooperative.savings.types.manage', 'cooperative.savings.manage',
+    'cooperative.loans.view.detail', 'cooperative.loans.types.manage',
+    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
     'cooperative.points.manage',
-    // Manajemen SHU Dedikatif
-    'cooperative.shu.manage',
-    'cooperative.shu.calculate',
-    'cooperative.shu.view.report',
-    // Manajemen Pengaturan Koperasi
-    'cooperative.settings.view',
-    'cooperative.vouchers.view.list',
-    'cooperative.tickets.view.list',
-    'cooperative.tickets.view.detail'
+    'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.view.report',
+    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.tickets.view.list', 'cooperative.tickets.view.detail'
   ],
+
   [STRUKTUR_CODES.KETUA_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.members.create',
-    'cooperative.members.update',
-    'cooperative.members.delete',
-    'cooperative.members.manage',
-    'cooperative.savings.view.history',
-    'cooperative.points.view',
-    'cooperative.store.view.catalog',
-    'cooperative.loans.view.list',
-    'cooperative.loans.apply',
-    'cooperative.loans.approve',
-    'cooperative.loans.repay',
-    'cooperative.reports.view.financial',
-    'cooperative.reports.view.daily',
-    'cooperative.reports.view.monthly',
-    // Monitoring & Keputusan Pinjaman
-    'cooperative.loans.view.detail',
-    'cooperative.loans.reject',
-    // Monitoring Simpanan
-    'cooperative.savings.view.list',
-    'cooperative.savings.view.detail',
-    // Supervisi Toko
-    'cooperative.store.orders.view.list',
-    'cooperative.store.products.view.list',
-    'cooperative.store.products.view.detail',
-    // Monitoring Keluhan (Tickets)
-    'cooperative.tickets.view.list',
-    'cooperative.tickets.view.detail',
-    // Manajemen SHU Dedikatif
-    'cooperative.shu.approve',
-    'cooperative.shu.view.report',
-    // Manajemen Pengaturan Koperasi
-    'cooperative.settings.view',
-    'cooperative.vouchers.view.list'
+    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
+    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.store.view.catalog',
+    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.approve', 'cooperative.loans.repay',
+    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
+    'cooperative.loans.view.detail', 'cooperative.loans.reject',
+    'cooperative.savings.view.list', 'cooperative.savings.view.detail',
+    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
+    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
+    'cooperative.shu.approve', 'cooperative.shu.view.report',
+    'cooperative.settings.view', 'cooperative.vouchers.view.list'
   ],
+
   [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
-    'cooperative.announcements.view.list',
-    'cooperative.announcements.create',
-    'cooperative.announcements.delete',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.members.create',
-    'cooperative.members.update',
-    'cooperative.members.delete',
-    'cooperative.members.manage',
-    'cooperative.savings.view.history',
-    'cooperative.points.view',
-    'cooperative.store.view.catalog',
-    'cooperative.loans.apply',
-    'cooperative.vouchers.manage',
-    'cooperative.vouchers.view.list',
-    'cooperative.tickets.create',
-    'cooperative.tickets.reply',
-    'cooperative.tickets.update.status',
-    'cooperative.tickets.view.detail',
-    'cooperative.tickets.view.list',
-    // Administrasi Status Keanggotaan
-    'cooperative.members.activate',
-    'cooperative.members.deactivate',
-    'cooperative.members.view.status',
-    // Investigasi Keluhan (Read-Only)
-    'cooperative.savings.view.list',
-    'cooperative.savings.view.detail',
-    'cooperative.loans.view.list',
-    'cooperative.loans.view.detail',
-    'cooperative.store.orders.view.list',
-    'cooperative.store.products.view.list',
-    'cooperative.store.products.view.detail'
+    'cooperative.announcements.view.list', 'cooperative.announcements.create', 'cooperative.announcements.delete',
+    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
+    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.store.view.catalog', 'cooperative.loans.apply',
+    'cooperative.vouchers.manage', 'cooperative.vouchers.view.list',
+    'cooperative.tickets.create', 'cooperative.tickets.reply', 'cooperative.tickets.update.status', 'cooperative.tickets.view.detail', 'cooperative.tickets.view.list',
+    'cooperative.members.activate', 'cooperative.members.deactivate', 'cooperative.members.view.status',
+    'cooperative.savings.view.list', 'cooperative.savings.view.detail',
+    'cooperative.loans.view.list', 'cooperative.loans.view.detail',
+    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail'
   ],
-  [STRUKTUR_CODES.MANAJER_TOKO_KOPERASI]: [
-    'organization.scope.tenant_wide',
-    'academic.structures.view.tree',
-    'cooperative.dashboard.view.overview',
-    'cooperative.announcements.view.list',
-    'cooperative.savings.view.history',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.points.view',
-    'cooperative.loans.apply',
-    'cooperative.store.view.catalog',
-    'cooperative.store.orders.manage',
-    'cooperative.store.orders.view.list',
-    'cooperative.store.inventory.manage',
-    'cooperative.store.products.view.list',
-    'cooperative.store.products.view.detail',
-    'cooperative.store.products.create',
-    'cooperative.store.products.update',
-    'cooperative.store.products.delete',
-    // Kelola Kategori Toko & Riwayat Transaksi POS
-    'cooperative.store.categories.manage',
-    'cooperative.store.transactions.view',
-    // Fitur Promosi Voucer
-    'cooperative.vouchers.manage',
-    'cooperative.vouchers.view.list',
-    // Layanan Produk Digital PPOB di Kasir
-    'cooperative.ppob.transact',
-    'cooperative.ppob.manage.products',
-    'cooperative.ppob.view.products',
-    'cooperative.tickets.view.list',
-    'cooperative.tickets.view.detail',
-    'cooperative.tickets.reply'
-  ],
+
   [STRUKTUR_CODES.PENGAWAS_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.savings.view.list',
-    'cooperative.savings.view.history',
-    'cooperative.points.view',
+    'cooperative.members.view.list', 'cooperative.members.view.detail',
+    'cooperative.savings.view.list', 'cooperative.savings.view.history', 'cooperative.points.view',
     'cooperative.store.view.catalog',
-    'cooperative.loans.view.list',
-    'cooperative.loans.apply',
-    'cooperative.reports.view.financial',
-    'cooperative.reports.view.daily',
-    'cooperative.reports.view.monthly',
-    // Audit Simpanan & Pinjaman (Read-Only Detail)
-    'cooperative.savings.view.detail',
-    'cooperative.loans.view.detail',
-    // Audit Toko Koperasi & Transaksi POS (Read-Only)
-    'cooperative.store.orders.view.list',
-    'cooperative.store.transactions.view',
-    'cooperative.store.products.view.list',
-    'cooperative.store.products.view.detail',
-    // Audit Kualitas Pelayanan (Tickets Read-Only)
-    'cooperative.tickets.view.list',
-    'cooperative.tickets.view.detail',
-    // Audit Laporan SHU & Pengaturan (Read-Only)
-    'cooperative.shu.view.report',
-    'cooperative.settings.view',
-    'cooperative.vouchers.view.list'
+    'cooperative.loans.view.list', 'cooperative.loans.apply',
+    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
+    'cooperative.savings.view.detail', 'cooperative.loans.view.detail',
+    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
+    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
+    'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list'
   ]
 };

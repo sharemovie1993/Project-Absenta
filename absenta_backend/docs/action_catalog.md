@@ -92,6 +92,9 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 
 ## affairs
 
+- affairs.achievements.create
+- affairs.achievements.view.list
+- affairs.schedules.view.list
 - affairs.violation.types.
 - affairs.violation.types.create
 - affairs.violation.types.delete
@@ -118,6 +121,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - attendance.gate.view.face.templates
 - attendance.gate.view.logs
 - attendance.getNotPresentStudents
+- attendance.markGateAbsence
 - attendance.manage.face.templates
 - attendance.manage.petugas
 - attendance.manage.session
@@ -326,6 +330,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - correspondence.outbox.manage
 - correspondence.outbox.sign
 - correspondence.outbox.view
+- correspondence.template.manage
 
 ## curriculum
 
@@ -452,6 +457,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 ## sarpras
 
 - sarpras.categories.manage
+- sarpras.inventory.delete
 - sarpras.inventory.manage
 - sarpras.inventory.view.list
 - sarpras.loans.
@@ -492,6 +498,13 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 
 ## tu
 
+- tu.finance.invoices.cancel
+- tu.finance.invoices.generate
+- tu.finance.invoices.view.detail
+- tu.finance.invoices.view.list
+- tu.finance.payments.create
+- tu.finance.payments.view.history
+- tu.finance.reports.view
 - tu.letters.manage
 - tu.staff.manage
 - tu.staff.view.list
