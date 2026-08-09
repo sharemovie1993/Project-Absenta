@@ -21,7 +21,7 @@ interface OpnameFormModalProps {
   isLoading: boolean;
 }
 
-export const OpnameFormModal: React.FC<OpnameFormModalProps> = ({
+export const OpnameFormModal: React.FC<OpnameFormModalProps> = React.memo(({
   isOpen,
   onClose,
   product,
@@ -107,5 +107,5 @@ export const OpnameFormModal: React.FC<OpnameFormModalProps> = ({
       )}
     </Modal>
   );
-};
+});
 export default OpnameFormModal;

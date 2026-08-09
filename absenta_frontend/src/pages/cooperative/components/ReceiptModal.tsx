@@ -16,7 +16,7 @@ export interface ReceiptModalProps {
   printReceipt: (sale: Sale) => void;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({
+export const ReceiptModal: React.FC<ReceiptModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedSale,
@@ -177,4 +177,4 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       </LazyModal>
     </Suspense>
   );
-};
+});

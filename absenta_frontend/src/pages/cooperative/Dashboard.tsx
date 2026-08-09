@@ -42,7 +42,7 @@ const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
 
 interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC = React.memo(() => {
   const receiptStyles = { backgroundColor: '#FCFBF7' };
   const { user, subscription, isSuperAdmin } = useAuth();
 
@@ -601,7 +601,7 @@ const Dashboard: React.FC = () => {
     </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Dashboard;
 

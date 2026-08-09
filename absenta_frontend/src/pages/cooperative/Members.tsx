@@ -28,7 +28,7 @@ const MemberModals = lazy(() =>
   }))
 );
 
-const Members: React.FC = () => {
+const Members: React.FC = React.memo(() => {
   const { subscription, can } = useAuth();
   const canUpdate = can('cooperative.members.update');
   const canDelete = can('cooperative.members.delete');
@@ -337,6 +337,6 @@ const Members: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Members;

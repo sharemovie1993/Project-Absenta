@@ -91,7 +91,7 @@ const playBeep = (type: 'success' | 'error') => {
   }
 };
 
-export const OpnameDetail: React.FC<OpnameDetailProps> = ({
+export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
   sessionId,
   onBack,
   onFinalizeSuccess
@@ -654,6 +654,6 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = ({
       </Card>
     </div>
   );
-};
+});
 
 export default OpnameDetail;

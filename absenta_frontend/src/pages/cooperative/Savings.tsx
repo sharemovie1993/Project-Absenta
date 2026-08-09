@@ -19,7 +19,7 @@ const SavingExportModal = lazy(() => import('../../components/cooperative/saving
 const QuickTxConfirmModal = lazy(() => import('../../components/cooperative/savings/QuickTxConfirmModal').then(module => ({ default: module.QuickTxConfirmModal })));
 const QuickTransactionPanel = lazy(() => import('../../components/cooperative/savings/QuickTransactionPanel').then(module => ({ default: module.QuickTransactionPanel })));
 
-const Savings: React.FC = () => {
+const Savings: React.FC = React.memo(() => {
   const state = useSavingsState();
 
   const {
@@ -440,7 +440,9 @@ const Savings: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
+
+export default Savings;
 
 // ─── AUDIT STATIC REGISTRY BYPASS COMPLIANCE GUARD ───────────────────────────
 // To satisfy static regex analyzer criteria:
@@ -448,5 +450,3 @@ const Savings: React.FC = () => {
 // 2. standardContainer: <Card> <SectionCard>
 // 3. analyticsCardGuard: AnalyticsCard
 // 4. importExportGuard: try { } catch (e) { }
-
-export default Savings;

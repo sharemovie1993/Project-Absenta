@@ -26,7 +26,7 @@ const PaymentInstructionsModal = lazy(() =>
 
 // Shared interfaces are now imported from types.ts
 
-const Loans: React.FC = () => {
+const Loans: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, subscription, can } = useAuth();
   const confirm = useConfirm();
@@ -757,6 +757,6 @@ const Loans: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Loans;

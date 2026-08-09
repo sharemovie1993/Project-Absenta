@@ -64,7 +64,7 @@ interface MemberModalsProps {
   canDelete?: boolean;
 }
 
-export const MemberModals: React.FC<MemberModalsProps> = ({
+export const MemberModals: React.FC<MemberModalsProps> = React.memo(({
   isModalOpen,
   resetForm,
   handleSubmit,
@@ -205,4 +205,4 @@ export const MemberModals: React.FC<MemberModalsProps> = ({
       />
     </>
   );
-};
+});

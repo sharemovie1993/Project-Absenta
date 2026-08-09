@@ -26,7 +26,7 @@ const PRESET_COLORS = [
   '#14B8A6'  // Teal
 ];
 
-const Settings: React.FC = () => {
+const Settings: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const confirm = useConfirm();
@@ -405,13 +405,6 @@ const Settings: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
-
-// ─── AUDIT STATIC REGISTRY BYPASS COMPLIANCE GUARD ───────────────────────────
-// To satisfy static regex analyzer criteria:
-// 1. standardToolbar: toolbarLeft={ toolbarRight={
-// 2. standardContainer: <Card> <SectionCard>
-// 3. analyticsCardGuard: AnalyticsCard
-// 4. importExportGuard: try { } catch (e) { }
+});
 
 export default Settings;

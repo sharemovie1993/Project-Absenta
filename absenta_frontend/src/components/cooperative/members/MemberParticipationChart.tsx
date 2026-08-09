@@ -11,7 +11,7 @@ interface MemberParticipationChartProps {
   statusData: StatusDataEntry[];
 }
 
-export const MemberParticipationChart: React.FC<MemberParticipationChartProps> = ({
+export const MemberParticipationChart: React.FC<MemberParticipationChartProps> = React.memo(({
   statusData
 }) => {
   return (
@@ -55,4 +55,4 @@ export const MemberParticipationChart: React.FC<MemberParticipationChartProps> =
       </div>
     </div>
   );
-};
+});

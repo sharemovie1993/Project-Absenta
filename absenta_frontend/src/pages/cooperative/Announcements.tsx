@@ -22,7 +22,7 @@ interface Announcement {
   createdAt: string;
 }
 
-const Announcements: React.FC = () => {
+const Announcements: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const confirm = useConfirm();
@@ -243,6 +243,6 @@ const Announcements: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Announcements;

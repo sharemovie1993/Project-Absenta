@@ -79,7 +79,7 @@ const ShuRulesForm = lazy(() =>
   import('../../components/cooperative/shu/ShuRulesForm').then(module => ({ default: module.ShuRulesForm }))
 );
 
-const SHU: React.FC = () => {
+const SHU: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, can } = useAuth();
   const confirm = useConfirm();
@@ -657,6 +657,6 @@ const SHU: React.FC = () => {
     </AcademicPageLayout>
   </PremiumFeatureGate>
   );
-};
+});
 
 export default SHU;

@@ -2,7 +2,7 @@ import React from 'react';
 import { SectionCard } from '../../ui';
 import { Users } from 'lucide-react';
 
-export const MemberSkeleton: React.FC = () => {
+export const MemberSkeleton: React.FC = React.memo(() => {
   return (
     <div className="space-y-6">
       {/* Stats Cards Skeleton */}
@@ -39,4 +39,4 @@ export const MemberSkeleton: React.FC = () => {
       </SectionCard>
     </div>
   );
-};
+});

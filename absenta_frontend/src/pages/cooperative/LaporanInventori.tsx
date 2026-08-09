@@ -48,7 +48,7 @@ const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString('id-ID')}`;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const LaporanInventori: React.FC = () => {
+const LaporanInventori: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'stock' | 'valuation' | 'purchases'>('stock');
 
@@ -611,6 +611,6 @@ const LaporanInventori: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default LaporanInventori;

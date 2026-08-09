@@ -30,7 +30,7 @@ interface ProductFormModalProps {
   existingCategories: string[];
 }
 
-export const ProductFormModal: React.FC<ProductFormModalProps> = ({
+export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   isOpen,
   onClose,
   editingProduct,
@@ -329,5 +329,5 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       </form>
     </Modal>
   );
-};
+});
 export default ProductFormModal;

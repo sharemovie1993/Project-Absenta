@@ -69,7 +69,7 @@ const ReceiptModal = lazy(() =>
   import('../../components/cooperative/vouchers/ReceiptModal').then(module => ({ default: module.ReceiptModal }))
 );
 
-const Vouchers: React.FC = () => {
+const Vouchers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const confirm = useConfirm();
@@ -455,6 +455,6 @@ const Vouchers: React.FC = () => {
       </Suspense>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Vouchers;

@@ -36,7 +36,7 @@ interface ProductCategory {
   order: number;
 }
 
-const Products: React.FC = () => {
+const Products: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { user, can } = useAuth();
   
@@ -243,6 +243,6 @@ const Products: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Products;

@@ -19,7 +19,7 @@ import { PrintLoanReceipt } from '../../components/cooperative/loans/PrintLoanRe
 import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoanRepayment';
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 
-const LoanDetail: React.FC = () => {
+const LoanDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const { id } = useParams<{ id: string }>();
@@ -637,6 +637,6 @@ const LoanDetail: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default LoanDetail;

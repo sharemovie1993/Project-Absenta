@@ -28,7 +28,7 @@ interface TicketDetailData {
   createdAt: string;
 }
 
-const TicketDetail: React.FC = () => {
+const TicketDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { id } = useParams<{ id: string }>();
@@ -225,6 +225,6 @@ const TicketDetail: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default TicketDetail;

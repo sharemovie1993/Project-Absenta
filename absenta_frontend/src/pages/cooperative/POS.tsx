@@ -18,7 +18,7 @@ const QuickRegisterModal = lazy(() => import('../../components/cooperative/pos/Q
 
 export type { CoopMember, Voucher, SaleRecord, Product, CartItem, HeldCart, NonMemberCandidate, ProductCategory, SaleItem } from '../../components/cooperative/pos';
 
-const POS: React.FC = () => {
+const POS: React.FC = React.memo(() => {
   const {
     loading,
     cart,
@@ -300,6 +300,6 @@ const POS: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default POS;

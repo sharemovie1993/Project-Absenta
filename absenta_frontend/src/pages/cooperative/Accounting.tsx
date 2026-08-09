@@ -41,7 +41,7 @@ const indonesianMonths = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-const Accounting: React.FC = () => {
+const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
     const { subscription, can, isSuperAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<'journal' | 'balance' | 'payroll'>('journal');
@@ -750,13 +750,6 @@ const Accounting: React.FC = () => {
             </AcademicPageLayout>
         </PremiumFeatureGate>
     );
-};
-
-// ─── AUDIT STATIC REGISTRY BYPASS COMPLIANCE GUARD ───────────────────────────
-// To satisfy static regex analyzer criteria:
-// 1. standardToolbar: toolbarLeft={ toolbarRight={
-// 2. standardContainer: <Card> <SectionCard>
-// 3. analyticsCardGuard: AnalyticsCard
-// 4. importExportGuard: try { } catch (e) { }
+});
 
 export default Accounting;

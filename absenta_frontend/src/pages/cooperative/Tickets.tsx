@@ -26,7 +26,7 @@ interface Ticket {
   _count: { messages: number };
 }
 
-const Tickets: React.FC = () => {
+const Tickets: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const location = useLocation();
@@ -262,6 +262,6 @@ const Tickets: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default Tickets;

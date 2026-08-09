@@ -46,7 +46,7 @@ const CategoryButton: React.FC<CategoryButtonProps> = ({ type, icon: Icon, label
   </button>
 );
 
-const PPOB: React.FC = () => {
+const PPOB: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const confirm = useConfirm();
@@ -237,6 +237,6 @@ const PPOB: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default PPOB;

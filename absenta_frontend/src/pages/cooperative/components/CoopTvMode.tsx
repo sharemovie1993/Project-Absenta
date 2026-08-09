@@ -77,7 +77,7 @@ export interface CoopTvModeProps {
   criticalStock: CriticalStockItem[];
 }
 
-export const CoopTvMode: React.FC<CoopTvModeProps> = ({
+export const CoopTvMode: React.FC<CoopTvModeProps> = React.memo(({
   isGuruOrSiswa,
   currentScene,
   setCurrentScene,
@@ -500,4 +500,4 @@ export const CoopTvMode: React.FC<CoopTvModeProps> = ({
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
