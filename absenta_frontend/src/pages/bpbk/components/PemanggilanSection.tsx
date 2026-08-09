@@ -7,7 +7,7 @@ import { correspondenceApi } from '../../../api/correspondence.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { getTenantById } from '../../../api/tenants.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../../api/academic/strukturOrganisasi.api';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { Card } from '../../../components/ui/Card';
 import { Table } from '../../../components/ui/Table';
@@ -157,7 +157,7 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
 };
 
 export const PemanggilanSection: React.FC = React.memo(() => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const { systemConfig } = useSystemConfig();
   const requireApproval = systemConfig?.bpbk_summons_require_principal_approval ?? true;

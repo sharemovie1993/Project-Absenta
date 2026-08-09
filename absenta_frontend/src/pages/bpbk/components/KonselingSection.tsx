@@ -12,7 +12,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 
@@ -40,7 +40,7 @@ export const KonselingSection: React.FC = React.memo(() => {
 
 
   const confirm = useConfirm();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   const queryClient = useQueryClient();
   const invalidateBpbkCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });

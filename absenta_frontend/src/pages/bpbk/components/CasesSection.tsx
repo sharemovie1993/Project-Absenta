@@ -9,7 +9,7 @@ import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Search, Plus } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 
@@ -74,7 +74,7 @@ export const CasesSection: React.FC = React.memo(() => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const confirm = useConfirm();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   const queryClient = useQueryClient();
   const invalidateBpbkCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: bpbkQueryKeys.all });
