@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { useActivePklStudents } from '../../hooks/useActivePklStudents';
 
-export default function InputNilaiPklPage() {
+export default React.memo(function InputNilaiPklPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<'nilai' | 'deskripsi'>('nilai');
@@ -671,4 +671,4 @@ export default function InputNilaiPklPage() {
       </div>
     </AcademicPageLayout>
   );
-}
+});

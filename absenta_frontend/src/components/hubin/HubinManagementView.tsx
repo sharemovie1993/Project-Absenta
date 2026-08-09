@@ -51,7 +51,7 @@ interface HubinManagementViewProps {
   isGlobalHubin?: boolean;
 }
 
-export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
+export const HubinManagementView: React.FC<HubinManagementViewProps> = React.memo(({
   rawPenempatan,
   isLoading,
   onVerify,
@@ -364,4 +364,4 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
     </TabsContent>
     </>
   );
-};
+});

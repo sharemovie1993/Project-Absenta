@@ -25,7 +25,7 @@ interface HubinPklNilaiModalProps {
   isPending: boolean;
 }
 
-export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
+export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedPkl,
@@ -125,4 +125,4 @@ export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
       )}
     </Modal>
   );
-};
+});

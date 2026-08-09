@@ -21,7 +21,7 @@ interface HubinTimelineLogbookBuilderProps {
   todayAbsensi: TodayAbsensi | null;
 }
 
-export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderProps> = ({
+export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderProps> = React.memo(({
   parsedTimeline,
   handleDeleteActivity,
   onOpenAddModal,
@@ -125,4 +125,4 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
       </div>
     </div>
   );
-};
+});

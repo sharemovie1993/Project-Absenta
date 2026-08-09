@@ -15,7 +15,7 @@ interface HubinGoogleDriveUploaderProps {
   folderName?: string;
 }
 
-export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> = ({
+export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> = React.memo(({
   value,
   onChange,
   label = 'Foto Bukti Kegiatan',
@@ -255,4 +255,4 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
       )}
     </div>
   );
-};
+});

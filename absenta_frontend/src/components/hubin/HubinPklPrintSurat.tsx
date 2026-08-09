@@ -63,7 +63,7 @@ interface HubinPklPrintSuratProps {
   representativeRow: SiswaPkl | null;
 }
 
-export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = ({
+export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = React.memo(({
   printData,
   printKolektifMitraId,
   tenantData,
@@ -277,4 +277,4 @@ export const HubinPklPrintSurat: React.FC<HubinPklPrintSuratProps> = ({
       `}</style>
     </>
   );
-};
+});

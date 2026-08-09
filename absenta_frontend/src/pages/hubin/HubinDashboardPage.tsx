@@ -19,7 +19,7 @@ import { HubinTvModeLayout } from './components/HubinTvModeLayout';
 
 import { useQuery } from '@tanstack/react-query';
 
-export const HubinDashboardPage: React.FC = () => {
+export const HubinDashboardPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { user, subscription } = useAuthStore();
   const { isTvMode } = useTvStore();
@@ -289,6 +289,6 @@ export const HubinDashboardPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default HubinDashboardPage;

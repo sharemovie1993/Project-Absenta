@@ -40,7 +40,7 @@ interface HubinPklKunjunganModalProps {
   setVisitFotoUrl: (val: string) => void;
 }
 
-export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
+export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedPkl,
@@ -342,4 +342,4 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
       )}
     </Modal>
   );
-};
+});

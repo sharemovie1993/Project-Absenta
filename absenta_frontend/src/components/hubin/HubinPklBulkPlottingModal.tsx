@@ -27,7 +27,7 @@ interface HubinPklBulkPlottingModalProps {
   isLoadingMitra?: boolean;
 }
 
-export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps> = ({
+export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps> = React.memo(({
   isOpen,
   onClose,
   mitraOptions,
@@ -303,6 +303,6 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       </form>
     </Modal>
   );
-};
+});
 
 export default HubinPklBulkPlottingModal;

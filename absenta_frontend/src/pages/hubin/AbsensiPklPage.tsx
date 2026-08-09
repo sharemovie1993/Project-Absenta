@@ -54,7 +54,7 @@ interface SiswaPklWithAbsensi extends SiswaPkl {
 }
 
 
-export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
+export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { user, subscription } = useAuthStore();
   const queryClient = useQueryClient();
   
@@ -659,7 +659,7 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
-const AbsensiPklPage = () => <AbsensiPklSection hideLayout={false} />;
+const AbsensiPklPage = React.memo(() => <AbsensiPklSection hideLayout={false} />);
 export default AbsensiPklPage;

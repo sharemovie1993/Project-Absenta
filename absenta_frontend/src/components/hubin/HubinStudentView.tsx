@@ -91,7 +91,7 @@ interface HubinStudentViewProps {
   onPrint: () => void;
 }
 
-export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
+export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
   user,
   studentPkl,
   todayAbsensi,
@@ -270,4 +270,4 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
       </TabsContent>
     </>
   );
-};
+});

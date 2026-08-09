@@ -63,7 +63,7 @@ const penempatanSchema = z.object({
 });
 type PenempatanFormValues = z.infer<typeof penempatanSchema>;
 
-export const PenempatanPklSection: React.FC = () => {
+export const PenempatanPklSection: React.FC = React.memo(() => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -765,9 +765,9 @@ export const PenempatanPklSection: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
-const PenempatanPklPage = () => <PenempatanPklSection />;
+const PenempatanPklPage = React.memo(() => <PenempatanPklSection />);
 export default PenempatanPklPage;
 // Re-export types for backward compatibility
 export type { SiswaData, MitraData, PembimbingData, SiswaPkl, CreatePenempatanPayload, PenilaianPayload, KunjunganPayload } from './types/penempatan.types';

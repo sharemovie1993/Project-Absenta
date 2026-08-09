@@ -51,7 +51,7 @@ interface HubinTodayPresensiCardsProps {
   onRefreshLocation?: () => void;
 }
 
-export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = ({
+export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = React.memo(({
   todayAbsensi,
   studentPkl,
   location,
@@ -277,4 +277,4 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
       </div>
     </div>
   );
-};
+});

@@ -25,7 +25,7 @@ interface HubinPklPlottingModalProps {
   editingPkl?: any;
 }
 
-export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = ({
+export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React.memo(({
   isOpen,
   onClose,
   mitraOptions,
@@ -200,4 +200,4 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = ({
       </form>
     </Modal>
   );
-};
+});

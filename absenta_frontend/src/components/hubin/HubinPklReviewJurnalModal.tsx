@@ -31,7 +31,7 @@ interface HubinPklReviewJurnalModalProps {
   reviewJurnalMutation: ReviewJurnalMutation;
 }
 
-export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps> = ({
+export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedPkl,
@@ -180,4 +180,4 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
       )}
     </Modal>
   );
-};
+});

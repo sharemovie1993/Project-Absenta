@@ -68,7 +68,7 @@ interface MonitoringItem {
   isVerified: boolean;
 }
 
-export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
+export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { subscription } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -468,7 +468,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
-const MonitoringPklPage = () => <MonitoringPklSection hideLayout={false} />;
+const MonitoringPklPage = React.memo(() => <MonitoringPklSection hideLayout={false} />);
 export default MonitoringPklPage;

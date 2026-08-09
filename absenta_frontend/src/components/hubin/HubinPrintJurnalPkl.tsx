@@ -34,7 +34,7 @@ interface HubinPrintJurnalPklProps {
   renderActivityImagesForPrint: (kegiatanStr: string | undefined, checkInImageUrl?: string, checkOutImageUrl?: string) => React.ReactNode;
 }
 
-export const HubinPrintJurnalPkl: React.FC<HubinPrintJurnalPklProps> = ({
+export const HubinPrintJurnalPkl: React.FC<HubinPrintJurnalPklProps> = React.memo(({
   user,
   studentPkl,
   rawAbsensiHistory,
@@ -171,4 +171,4 @@ export const HubinPrintJurnalPkl: React.FC<HubinPrintJurnalPklProps> = ({
       </div>
     </div>
   );
-};
+});

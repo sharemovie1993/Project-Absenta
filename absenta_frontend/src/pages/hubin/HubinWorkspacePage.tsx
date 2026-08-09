@@ -13,7 +13,7 @@ interface RedirectRoute {
   check: () => boolean;
 }
 
-export const HubinWorkspacePage: React.FC = () => {
+export const HubinWorkspacePage: React.FC = React.memo(() => {
   const { can, canAny } = useAuth();
   const navigate = useNavigate();
 
@@ -98,6 +98,6 @@ export const HubinWorkspacePage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default HubinWorkspacePage;

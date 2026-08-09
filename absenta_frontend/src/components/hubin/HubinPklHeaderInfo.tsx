@@ -9,7 +9,7 @@ interface HubinPklHeaderInfoProps {
   variant?: 'compact' | 'detailed';
 }
 
-export const HubinPklHeaderInfo: React.FC<HubinPklHeaderInfoProps> = ({
+export const HubinPklHeaderInfo: React.FC<HubinPklHeaderInfoProps> = React.memo(({
   siswaName,
   mitraName,
   pembimbingName,
@@ -62,4 +62,4 @@ export const HubinPklHeaderInfo: React.FC<HubinPklHeaderInfoProps> = ({
       </div>
     </div>
   );
-};
+});

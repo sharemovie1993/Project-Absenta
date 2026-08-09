@@ -11,7 +11,7 @@ interface HubinCameraModalProps {
   title?: string;
 }
 
-export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
+export const HubinCameraModal: React.FC<HubinCameraModalProps> = React.memo(({
   isOpen,
   onClose,
   onCapture,
@@ -311,4 +311,4 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

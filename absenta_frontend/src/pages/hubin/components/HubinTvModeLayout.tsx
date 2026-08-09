@@ -19,7 +19,7 @@ interface HubinTvModeLayoutProps {
   statCards: Array<{ label: string; value: number; icon: React.ComponentType<{ size?: number; className?: string }>; color: string; desc: string }>;
 }
 
-export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = ({
+export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = React.memo(({
   currentScene,
   setCurrentScene,
   scenes,
@@ -408,4 +408,4 @@ export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = ({
       {/* AnalyticsCard */}
     </div>
   );
-};
+});

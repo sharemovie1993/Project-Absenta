@@ -23,7 +23,7 @@ const MOU_TYPES = [
   { value: 'LAINNYA', label: 'Lain-lain / Kerja Sama Umum' },
 ];
 
-export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = ({
+export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = React.memo(({
   isOpen,
   onClose,
   mitraId,
@@ -374,4 +374,4 @@ export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = ({
       />
     </Modal>
   );
-};
+});

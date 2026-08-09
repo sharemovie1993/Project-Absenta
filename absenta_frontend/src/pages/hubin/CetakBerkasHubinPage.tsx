@@ -27,7 +27,7 @@ interface PklPenempatanItem {
   };
 }
 
-export const CetakBerkasHubinPage: React.FC = () => {
+export const CetakBerkasHubinPage: React.FC = React.memo(() => {
   const docOptions = useMemo<DocOption[]>(() => [
     { value: 'pkl_intro', label: '1. SURAT PENGANTAR PRAKTIK KERJA LAPANGAN (PKL)', requireClass: true }
   ], []);
@@ -165,6 +165,6 @@ export const CetakBerkasHubinPage: React.FC = () => {
       </InfraErrorBoundary>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default CetakBerkasHubinPage;

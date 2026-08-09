@@ -70,7 +70,7 @@ interface TracerStudyUraianProps {
   onNavigateTab: (tabId: string) => void;
 }
 
-export const TracerStudyUraian: React.FC<TracerStudyUraianProps> = ({ stats, onNavigateTab }) => {
+export const TracerStudyUraian: React.FC<TracerStudyUraianProps> = React.memo(({ stats, onNavigateTab }) => {
   const totalTraced = React.useMemo(() => {
     if (!stats?.tracerStats) return 0;
     return (
@@ -139,14 +139,14 @@ export const TracerStudyUraian: React.FC<TracerStudyUraianProps> = ({ stats, onN
       </div>
     </Card>
   );
-};
+});
 
 // Top Jurusan Terserap List
 interface TopJurusanListProps {
   stats: HubinStats | null;
 }
 
-export const TopJurusanList: React.FC<TopJurusanListProps> = ({ stats }) => {
+export const TopJurusanList: React.FC<TopJurusanListProps> = React.memo(({ stats }) => {
   const topJurusanList = React.useMemo(() => stats?.topJurusanTerserap || [], [stats]);
 
   return (
@@ -166,7 +166,7 @@ export const TopJurusanList: React.FC<TopJurusanListProps> = ({ stats }) => {
       )}
     </Card>
   );
-};
+});
 
 // Recent PKL Placements Table
 interface RecentPklTableProps {
@@ -174,7 +174,7 @@ interface RecentPklTableProps {
   onNavigateTab: (tabId: string) => void;
 }
 
-export const RecentPklTable: React.FC<RecentPklTableProps> = ({ stats, onNavigateTab }) => {
+export const RecentPklTable: React.FC<RecentPklTableProps> = React.memo(({ stats, onNavigateTab }) => {
   const recentPklList = React.useMemo(() => stats?.recentPkl || [], [stats]);
 
   return (
@@ -228,14 +228,14 @@ export const RecentPklTable: React.FC<RecentPklTableProps> = ({ stats, onNavigat
       </div>
     </Card>
   );
-};
+});
 
 // Top Mitra Grid
 interface TopMitraGridProps {
   stats: HubinStats | null;
 }
 
-export const TopMitraGrid: React.FC<TopMitraGridProps> = ({ stats }) => {
+export const TopMitraGrid: React.FC<TopMitraGridProps> = React.memo(({ stats }) => {
   const topMitraList = React.useMemo(() => stats?.topMitra || [], [stats]);
 
   return (
@@ -258,7 +258,7 @@ export const TopMitraGrid: React.FC<TopMitraGridProps> = ({ stats }) => {
       )}
     </Card>
   );
-};
+});
 
 // Timeline Log Aktivitas Hubin
 interface ActivityLogTimelineProps {
@@ -266,7 +266,7 @@ interface ActivityLogTimelineProps {
   activitiesLoading: boolean;
 }
 
-export const ActivityLogTimeline: React.FC<ActivityLogTimelineProps> = ({ activities, activitiesLoading }) => {
+export const ActivityLogTimeline: React.FC<ActivityLogTimelineProps> = React.memo(({ activities, activitiesLoading }) => {
   const getActionLabel = React.useCallback((action: string) => {
     switch (action) {
       case 'HUBIN_MITRA_CREATE': return 'Menambahkan Mitra Industri';
@@ -343,4 +343,4 @@ export const ActivityLogTimeline: React.FC<ActivityLogTimelineProps> = ({ activi
       )}
     </Card>
   );
-};
+});

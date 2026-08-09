@@ -19,7 +19,7 @@ interface HubinLogbookEditModalProps {
   generateActivityFileName: (time: string, text: string) => string;
 }
 
-export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
+export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = React.memo(({
   isOpen,
   onClose,
   editingAbsensi,
@@ -174,4 +174,4 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

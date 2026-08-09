@@ -39,7 +39,7 @@ interface HubinStudentJurnalTabProps {
   rawAbsensiHistory: AbsensiItem[];
 }
 
-export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
+export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = React.memo(({
   studentPkl,
   jurnalUrl,
   setJurnalUrl,
@@ -224,4 +224,4 @@ export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
       </SectionCard>
     </div>
   );
-};
+});

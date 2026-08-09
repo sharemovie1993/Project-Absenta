@@ -66,7 +66,7 @@ interface HubinDashboardSectionProps {
   onNavigateTab: (tabId: string) => void;
 }
 
-export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ onNavigateTab }) => {
+export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = React.memo(({ onNavigateTab }) => {
   const [statsState, setStatsState] = useState<HubinStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -483,4 +483,4 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ on
 
     </div>
   );
-};
+});
