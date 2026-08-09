@@ -95,7 +95,7 @@ const maintenanceSchema = z.object({
   deskripsi: z.string().optional()
 });
 
-const SarprasMaintenancePage: React.FC = () => {
+const SarprasMaintenancePage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -544,6 +544,6 @@ const SarprasMaintenancePage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default SarprasMaintenancePage;

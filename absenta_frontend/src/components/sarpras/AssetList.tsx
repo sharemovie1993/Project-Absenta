@@ -37,7 +37,7 @@ interface AssetListProps {
   refreshTrigger?: number;
 }
 
-const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTrigger }) => {
+const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd, refreshTrigger }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -336,6 +336,6 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
       />
     </div>
   );
-};
+});
 
 export default AssetList;

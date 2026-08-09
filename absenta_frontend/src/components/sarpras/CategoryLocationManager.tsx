@@ -21,7 +21,7 @@ interface Item {
   deskripsi?: string;
 }
 
-const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type, isOpen, onClose }) => {
+const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = React.memo(({ type, isOpen, onClose }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -171,6 +171,6 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
       </div>
     </Modal>
   );
-};
+});
 
 export default CategoryLocationManager;

@@ -71,7 +71,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   OVERDUE: { label: 'Terlambat', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', icon: <XCircle size={12} /> },
 };
 
-const SarprasLoansPage: React.FC = () => {
+const SarprasLoansPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription, user } = useAuthStore();
   const { activeWorkspaceId } = useNavStore();
@@ -474,6 +474,6 @@ const SarprasLoansPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default SarprasLoansPage;

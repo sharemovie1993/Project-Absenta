@@ -27,7 +27,7 @@ interface ScannedAsset {
   serial_number?: string;
 }
 
-export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, onClose }) => {
+export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = React.memo(({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
   
   const [step, setStep] = useState<1 | 2>(1);
@@ -325,4 +325,4 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
       </div>
     </Modal>
   );
-};
+});

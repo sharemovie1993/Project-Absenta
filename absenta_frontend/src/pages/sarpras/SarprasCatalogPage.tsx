@@ -34,7 +34,7 @@ const CATEGORY_OPTIONS = [
   'Umum: Fasilitas & Kebersihan'
 ];
 
-export const SarprasCatalogPage: React.FC = () => {
+export const SarprasCatalogPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -531,4 +531,4 @@ export const SarprasCatalogPage: React.FC = () => {
       </Modal>
     </AcademicPageLayout>
   );
-};
+});

@@ -36,7 +36,7 @@ const getKondisiColor = (cond: string) => {
 
 import { useAuthStore } from '../../store/authStore';
 
-export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ isOpen, onClose, assetId }) => {
+export const AssetDetailModal: React.FC<AssetDetailModalProps> = React.memo(({ isOpen, onClose, assetId }) => {
   const { subscription } = useAuthStore();
 
   // Gating Logic
@@ -228,4 +228,4 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ isOpen, onCl
       )}
     </Modal>
   );
-};
+});

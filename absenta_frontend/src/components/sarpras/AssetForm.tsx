@@ -38,7 +38,7 @@ const SUMBER_DANA_OPTIONS = [
   { value: 'LAINNYA', label: 'Sumber Dana Lainnya' },
 ];
 
-const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) => {
+const AssetForm: React.FC<AssetFormProps> = React.memo(({ assetId, onSuccess, onCancel }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -414,6 +414,6 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
       </form>
     </div>
   );
-};
+});
 
 export default AssetForm;

@@ -29,7 +29,7 @@ interface SubscriptionFeature {
   };
 }
 
-const SarprasInventoryPage: React.FC = () => {
+const SarprasInventoryPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const [modalState, setModalState] = useState<{
@@ -204,6 +204,6 @@ const SarprasInventoryPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default SarprasInventoryPage;

@@ -11,7 +11,7 @@ interface AssetPrintLabelModalProps {
   assetsToPrint: Asset[];
 }
 
-export const AssetPrintLabelModal: React.FC<AssetPrintLabelModalProps> = ({
+export const AssetPrintLabelModal: React.FC<AssetPrintLabelModalProps> = React.memo(({
   isOpen,
   onClose,
   assetsToPrint
@@ -100,4 +100,4 @@ export const AssetPrintLabelModal: React.FC<AssetPrintLabelModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

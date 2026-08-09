@@ -20,7 +20,7 @@ interface Asset {
   jumlah: number;
 }
 
-const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }) => {
+const LoanRequestForm: React.FC<LoanRequestFormProps> = React.memo(({ onSuccess, onCancel }) => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -202,6 +202,6 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
       </form>
     </div>
   );
-};
+});
 
 export default LoanRequestForm;

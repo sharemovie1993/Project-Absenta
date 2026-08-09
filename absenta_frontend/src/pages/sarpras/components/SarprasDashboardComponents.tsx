@@ -64,7 +64,7 @@ export const Divider: React.FC<{ title: string }> = ({ title }) => (
 );
 
 // Unreturned Loans List
-export const UnreturnedLoansList: React.FC<{ loans: LoanRecord[] }> = ({ loans }) => {
+export const UnreturnedLoansList: React.FC<{ loans: LoanRecord[] }> = React.memo(({ loans }) => {
   const unreturned = loans?.filter(l => l.status === 'ACTIVE' || l.status === 'OVERDUE');
 
   return (
@@ -107,10 +107,10 @@ export const UnreturnedLoansList: React.FC<{ loans: LoanRecord[] }> = ({ loans }
       </div>
     </SectionCard>
   );
-};
+});
 
 // Recent Transactions List
-export const RecentTransactionsList: React.FC<{ loans: LoanRecord[] }> = ({ loans }) => {
+export const RecentTransactionsList: React.FC<{ loans: LoanRecord[] }> = React.memo(({ loans }) => {
   return (
     <SectionCard
       title={
@@ -151,10 +151,10 @@ export const RecentTransactionsList: React.FC<{ loans: LoanRecord[] }> = ({ loan
       </div>
     </SectionCard>
   );
-};
+});
 
 // Maintenance Alerts List
-export const MaintenanceAlertsList: React.FC<{ repairs: RepairRecord[] }> = ({ repairs }) => {
+export const MaintenanceAlertsList: React.FC<{ repairs: RepairRecord[] }> = React.memo(({ repairs }) => {
   return (
     <SectionCard
       title={
@@ -195,4 +195,4 @@ export const MaintenanceAlertsList: React.FC<{ repairs: RepairRecord[] }> = ({ r
       </div>
     </SectionCard>
   );
-};
+});

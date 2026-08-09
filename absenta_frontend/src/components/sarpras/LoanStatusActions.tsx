@@ -27,7 +27,7 @@ const CONDITION_OPTIONS = [
   { value: 'HILANG', label: 'Hilang' },
 ];
 
-const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
+const LoanStatusActions: React.FC<LoanStatusActionsProps> = React.memo(({ loan }) => {
   const queryClient = useQueryClient();
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnData, setReturnData] = useState<ReturnDataPayload>({
@@ -187,6 +187,6 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
       </Modal>
     </>
   );
-};
+});
 
 export default LoanStatusActions;

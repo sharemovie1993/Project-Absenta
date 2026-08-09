@@ -28,7 +28,7 @@ interface ImportResult {
   errors: string[];
 }
 
-const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) => {
+const AssetImportModal: React.FC<AssetImportModalProps> = React.memo(({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -258,6 +258,6 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
       </div>
     </Modal>
   );
-};
+});
 
 export default AssetImportModal;

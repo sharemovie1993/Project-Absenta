@@ -58,7 +58,7 @@ interface SubscriptionFeature {
   };
 }
 
-const SarprasDashboard: React.FC = () => {
+const SarprasDashboard: React.FC = React.memo(() => {
   const { user, subscription } = useAuthStore();
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);
@@ -314,6 +314,6 @@ const SarprasDashboard: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default SarprasDashboard;

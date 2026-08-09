@@ -4,7 +4,7 @@ import { CetakFormGeneric, type DocOption } from '../../components/academic/Ceta
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { sarprasApi } from '../../api/sarpras.api';
 
-export const CetakBerkasSarprasPage: React.FC = () => {
+export const CetakBerkasSarprasPage: React.FC = React.memo(() => {
   const docOptions: DocOption[] = [
     { value: 'room_inventory', label: '1. DAFTAR INVENTARIS BARANG & ASET RUANGAN', requireClass: true }
   ];
@@ -113,4 +113,4 @@ export const CetakBerkasSarprasPage: React.FC = () => {
       }}
     />
   );
-};
+});
