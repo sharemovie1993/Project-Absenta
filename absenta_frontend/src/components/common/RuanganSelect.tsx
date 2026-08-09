@@ -14,7 +14,7 @@ export interface RuanganSelectProps {
   triggerClassName?: string;
 }
 
-export const RuanganSelect: React.FC<RuanganSelectProps> = ({
+export const RuanganSelect: React.FC<RuanganSelectProps> = React.memo(({
   id,
   value,
   onValueChange,
@@ -42,4 +42,6 @@ export const RuanganSelect: React.FC<RuanganSelectProps> = ({
       triggerClassName={triggerClassName}
     />
   );
-};
+});
+
+export default RuanganSelect;
