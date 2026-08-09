@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { RekapBulananKelasContent } from './RekapBulananKelasPage';
 import { RekapBulananMapelContent } from './RekapBulananMapelPage';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { FileText, Calendar, BarChart3, Users, BookOpen } from 'lucide-react';
@@ -49,6 +50,7 @@ export default React.memo(function RekapPage({ initialTab }: { initialTab?: Reka
   const memoBreadcrumbs = useMemo(() => rekapBreadcrumbs, []);
 
   const { subscription } = useAuthStore();
+  const { isKurikulum, isKesiswaan, isHomeroomTeacher, isAdmin, can } = useCapabilities();
   const subRecord = subscription as unknown as Record<string, unknown> | null;
   const subFeatures = subRecord?.features || subRecord?.Plan?.features_json || subRecord?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');

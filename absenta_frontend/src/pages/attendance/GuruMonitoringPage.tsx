@@ -16,6 +16,7 @@ import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
 import { kelasApi, guruApi } from '../../api/academic.api';
 import { toLocalDate } from '../../utils/attendance/time';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useSocket } from '../../hooks/useSocket';
 import { 
   Activity, 
@@ -72,9 +73,10 @@ export default React.memo(function GuruMonitoringPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
+  const { isAdmin, isKurikulum, isKepalaSekolah, can: capCan } = useCapabilities();
   const canView = useMemo(
-    () => can('attendance.reports.view') && can('academic.teachers.view.list'),
-    [can],
+    () => isAdmin || isKurikulum || isKepalaSekolah || (can('attendance.reports.view') && can('academic.teachers.view.list')),
+    [isAdmin, isKurikulum, isKepalaSekolah, can],
   );
 
   const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 

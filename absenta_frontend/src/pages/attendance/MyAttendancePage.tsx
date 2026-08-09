@@ -13,6 +13,7 @@ import { SharedVisualAttendanceCalendar } from '../../components/attendance/Shar
 import { SharedAttendanceTimeline } from '../../components/attendance/SharedAttendanceTimeline';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useNavigate } from 'react-router-dom';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
 import { siswaApi } from '../../api/academic.api';
@@ -100,8 +101,8 @@ export const MyAttendancePage: React.FC = React.memo(() => {
 
   const bulanKey = format(currentDate, 'yyyy-MM');
   const { user, tenantId, subscription } = useAuthStore();
-  const userRoleStr = typeof user?.role === 'string' ? user.role : (user?.role?.name || user?.roleName || (user as { role_name?: string })?.role_name || '');
-  const isGuru = userRoleStr.toUpperCase() === 'GURU' || !!(user as { guru_id?: string })?.guru_id;
+  const { isTeacher } = useCapabilities();
+  const isGuru = isTeacher || !!(user as { guru_id?: string })?.guru_id;
 
   const features =
     (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features ||
