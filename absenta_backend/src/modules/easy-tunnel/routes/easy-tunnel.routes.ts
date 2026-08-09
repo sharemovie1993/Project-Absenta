@@ -1,10 +1,11 @@
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { easyTunnelController } from '../controllers/easy-tunnel.controller';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function easyTunnelRoutes(fastify: any) {
   // Semua endpoint ini diamankan dengan hak akses pembaruan konfigurasi sistem
   const opts = {
-    preHandler: [requireCapability('core.system.config.update')]
+    preHandler: [requireCapability('core.system.config.update'), determineDataScope()]
   };
 
   // Tunnels CRUD

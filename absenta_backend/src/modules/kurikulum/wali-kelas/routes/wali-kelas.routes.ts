@@ -8,7 +8,7 @@ export async function waliKelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: waliKelasController.getStrukturAssignments
   });
@@ -17,7 +17,7 @@ export async function waliKelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: waliKelasController.assignStrukturWaliKelas
   });
@@ -26,7 +26,7 @@ export async function waliKelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: waliKelasController.nonaktifStrukturAssignment
   });
@@ -35,7 +35,7 @@ export async function waliKelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: waliKelasController.bySiswa
   });

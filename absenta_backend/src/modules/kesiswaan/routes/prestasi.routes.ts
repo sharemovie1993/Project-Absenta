@@ -9,7 +9,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.createJenisPrestasi);
 
@@ -17,7 +17,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.updateJenisPrestasi);
 
@@ -25,7 +25,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.deleteJenisPrestasi);
 
@@ -33,7 +33,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.getAllJenisPrestasi);
 
@@ -41,7 +41,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.seedDefaults);
 
@@ -50,7 +50,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.createPrestasiSiswa);
 
@@ -58,7 +58,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.updatePrestasiSiswa);
 
@@ -66,14 +66,14 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.deletePrestasiSiswa);
   fastify.get('/prestasi', {
     preHandler: [
       requireCapability('kesiswaan.prestasi.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.getAllPrestasiSiswa);
 
@@ -81,7 +81,7 @@ export async function prestasiRoutes(fastify: any) {
     preHandler: [
       requireCapability('kesiswaan.prestasi.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, PrestasiController.getLeaderboard);
 }

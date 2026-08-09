@@ -10,7 +10,7 @@ export async function guruTimeOffRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.view'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => guruTimeOffController.getByGuru(request, reply)
@@ -22,7 +22,7 @@ export async function guruTimeOffRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.view'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => guruTimeOffController.getAllTenant(request, reply)
@@ -34,7 +34,7 @@ export async function guruTimeOffRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.manage'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => guruTimeOffController.save(request, reply)
@@ -46,7 +46,7 @@ export async function guruTimeOffRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.manage'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => guruTimeOffController.delete(request, reply)

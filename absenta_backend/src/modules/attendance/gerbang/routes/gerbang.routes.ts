@@ -11,7 +11,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.bypass', 'attendance.gate.tap.entry', 'attendance.scan']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.bypass.bind(gerbangController),
     schema: {
@@ -115,7 +115,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.gate.face.enroll'),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.faceEnroll.bind(gerbangController),
     schema: {
@@ -139,7 +139,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability("attendance.gate.view.face.templates"),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getFaceTemplates.bind(gerbangController),
     schema: {
@@ -161,7 +161,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getEmbeddingHealth.bind(gerbangController),
     schema: {
@@ -174,7 +174,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.gate.face.enroll'),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.deleteFaceTemplate.bind(gerbangController),
     schema: {
@@ -196,7 +196,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getSessions.bind(gerbangController),
     schema: {
@@ -217,7 +217,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getSessionById.bind(gerbangController),
     schema: {
@@ -238,7 +238,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getStudentStatus.bind(gerbangController),
     schema: {
@@ -259,7 +259,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getStudentHistory.bind(gerbangController),
     schema: {
@@ -288,7 +288,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getRecords.bind(gerbangController),
     schema: {
@@ -314,7 +314,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getNotPresentStudents.bind(gerbangController),
     schema: {
@@ -337,7 +337,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create'], { exemptRoles: [RoleName.SISWA] }),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.markGateAbsence.bind(gerbangController),
     schema: {
@@ -360,7 +360,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getPresentStudents.bind(gerbangController),
     schema: {
@@ -382,7 +382,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       requireMultiSesiMode,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getIntegrationStatus.bind(gerbangController),
     schema: {
@@ -396,7 +396,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       requireMultiSesiMode,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getActivityPrerequisites.bind(gerbangController),
     schema: {
@@ -416,7 +416,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: gerbangController.getSystemHealth.bind(gerbangController),
     schema: {
@@ -431,7 +431,7 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'dashboard.view.overview'], { exemptRoles: [RoleName.SISWA] }),
-    determineDataScope(),
+      determineDataScope(),
   ],
 
     handler: gerbangController.getStatistics.bind(gerbangController),

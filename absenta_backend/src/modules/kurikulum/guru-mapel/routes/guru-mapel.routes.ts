@@ -10,7 +10,7 @@ export default async function guruMapelRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.view'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => {
@@ -24,7 +24,7 @@ export default async function guruMapelRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.manage'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => {
@@ -38,7 +38,7 @@ export default async function guruMapelRoutes(fastify: any) {
       preHandler: [
         requireCapability('academic.teaching.manage'),
         organizationalScopeMiddleware,
-    determineDataScope(),
+        determineDataScope(),
   ]
     },
     async (request: any, reply: any) => {

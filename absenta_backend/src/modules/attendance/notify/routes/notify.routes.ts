@@ -8,7 +8,7 @@ export async function attendanceNotifyRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.notifications.send'),
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: attendanceNotifyController.sessionCreated,
   });
@@ -17,7 +17,7 @@ export async function attendanceNotifyRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.reports.view'),
-    determineDataScope(),
+      determineDataScope(),
   ],
     schema: {
       querystring: {

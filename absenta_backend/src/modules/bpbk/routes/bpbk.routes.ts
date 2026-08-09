@@ -11,7 +11,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getDashboardStats);
 
@@ -20,7 +20,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createKasusBK);
 
@@ -28,7 +28,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateKasusBK);
 
@@ -36,7 +36,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deleteKasusBK);
 
@@ -44,7 +44,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.closeKasusBK);
 
@@ -52,7 +52,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.reopenKasusBK);
 
@@ -60,7 +60,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restoreKasusBK);
 
@@ -68,7 +68,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.detail'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getKasusBKById);
 
@@ -76,7 +76,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllKasusBK);
 
@@ -85,7 +85,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.counseling.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createKonseling);
 
@@ -93,7 +93,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.counseling.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateKonseling);
 
@@ -101,7 +101,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.counseling.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deleteKonseling);
 
@@ -109,7 +109,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restoreKonseling);
 
@@ -117,7 +117,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.counseling.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllKonseling);
 
@@ -126,7 +126,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.summons.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createPemanggilan);
 
@@ -134,7 +134,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.summons.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updatePemanggilan);
 
@@ -142,7 +142,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.summons.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.sendWhatsAppParent);
 
@@ -150,7 +150,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.summons.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deletePemanggilan);
 
@@ -158,7 +158,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restorePemanggilan);
 
@@ -166,7 +166,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.summons.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllPemanggilan);
 
@@ -175,7 +175,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.homevisit.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createHomeVisit);
 
@@ -183,7 +183,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.homevisit.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateHomeVisit);
 
@@ -191,7 +191,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.homevisit.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deleteHomeVisit);
 
@@ -199,7 +199,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restoreHomeVisit);
 
@@ -207,7 +207,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.homevisit.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllHomeVisits);
 
@@ -216,7 +216,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.assessment.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createAsesmen);
 
@@ -224,7 +224,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.assessment.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateAsesmen);
 
@@ -232,7 +232,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.assessment.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deleteAsesmen);
 
@@ -240,7 +240,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restoreAsesmen);
 
@@ -248,7 +248,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.assessment.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllAsesmen);
 
@@ -257,7 +257,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.referrals.manage'),
       elevatedScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.createRujukan);
 
@@ -265,7 +265,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.referrals.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateRujukan);
 
@@ -273,7 +273,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.referrals.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.deleteRujukan);
 
@@ -281,7 +281,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.recyclebin.restore'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.restoreRujukan);
 
@@ -289,7 +289,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.referrals.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAllRujukan);
 
@@ -298,7 +298,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.reports.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getReports);
 
@@ -306,7 +306,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.reports.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getStudentRiskTrend);
 
@@ -314,14 +314,14 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getWaliKelasReports);
   fastify.get('/audit-logs', {
     preHandler: [
       requireCapability('bk.audit.view'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getAuditLogs);
 
@@ -330,7 +330,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getCalendarEvents);
 
@@ -338,7 +338,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.getEwsWeights);
 
@@ -346,7 +346,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BpbkController.updateEwsWeights);
 
@@ -359,7 +359,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BullyingReportController.getReports);
 
@@ -367,7 +367,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BullyingReportController.updateStatus);
 
@@ -376,7 +376,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BkKonsultasiController.getAll);
 
@@ -384,7 +384,7 @@ export async function bpbkRoutes(fastify: any) {
     preHandler: [
       requireCapability('bk.cases.manage'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, BkKonsultasiController.updateStatus);
 }

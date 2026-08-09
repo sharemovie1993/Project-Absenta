@@ -15,7 +15,7 @@ export async function studentCardConfigRoutes(fastify: any) {
           }
           await requireCapability("academic.student.card.view.config")(request, reply);
         },
-    determineDataScope(),
+        determineDataScope(),
   ],
     },
     studentCardConfigController.getConfig.bind(studentCardConfigController)

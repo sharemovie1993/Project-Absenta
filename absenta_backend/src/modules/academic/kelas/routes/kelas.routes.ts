@@ -10,7 +10,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.view.list'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.exportToExcel(request, reply);
@@ -21,7 +21,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.create'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.getImportTemplate(request, reply);
@@ -32,7 +32,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.create'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.importFromExcel(request, reply);
@@ -43,7 +43,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.view.list', { exemptRoles: [RoleName.SISWA] }),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.getAllKelas(request, reply);
@@ -54,7 +54,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.view.detail', { exemptRoles: [RoleName.SISWA] }),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.getKelasById(request, reply);
@@ -65,7 +65,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.create'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.createKelas(request, reply);
@@ -76,7 +76,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.update'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.updateKelas(request, reply);
@@ -87,7 +87,7 @@ export default async function kelasRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.structures.delete'),
       organizationalScopeMiddleware,
-    determineDataScope(),
+      determineDataScope(),
   ]
   }, async (request: any, reply: any) => {
     return kelasController.deleteKelas(request, reply);

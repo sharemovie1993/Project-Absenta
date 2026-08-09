@@ -35,7 +35,7 @@ export async function sekolahRoutes(fastify: any) {
         }
         await requireCapability('core.sekolah.view.profile')(request, reply);
       },
-    determineDataScope(),
+      determineDataScope(),
   ],
     handler: sekolahController.getCurrent.bind(sekolahController),
   });
