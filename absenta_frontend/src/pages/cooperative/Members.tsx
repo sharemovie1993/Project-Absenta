@@ -2,7 +2,7 @@ import React, { useMemo, useCallback, lazy, Suspense } from 'react';
 import { Table, SectionCard } from '../../components/ui';
 import { Users } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -30,7 +30,7 @@ const MemberModals = lazy(() =>
 );
 
 const Members: React.FC = React.memo(() => {
-  const { subscription } = useAuth();
+  const { subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isAdmin, can } = useCapabilities();
   const canUpdate = isAdmin || isKoperasiHead || isKoperasiSecretary || can('cooperative.members.update');
   const canDelete = isAdmin || isKoperasiHead || can('cooperative.members.delete');

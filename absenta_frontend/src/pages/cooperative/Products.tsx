@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -38,8 +37,8 @@ interface ProductCategory {
 }
 
 const Products: React.FC = React.memo(() => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
   
   // Capability checks

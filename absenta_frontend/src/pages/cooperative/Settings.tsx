@@ -4,7 +4,7 @@ import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui'; // Explicit import to satisfy audit standard UI rule #1
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import useConfirm from '../../hooks/useConfirm';
@@ -29,7 +29,7 @@ const PRESET_COLORS = [
 
 const Settings: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { isKoperasiHead, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   

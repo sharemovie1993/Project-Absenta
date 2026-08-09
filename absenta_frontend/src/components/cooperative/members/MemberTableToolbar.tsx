@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Search, Upload, FileText, CreditCard, Download, Plus } from 'lucide-react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 
 interface MemberTableToolbarLeftProps {
   searchQuery: string;
@@ -98,7 +98,7 @@ export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = R
   setIsBulkAddOpen,
   setIsModalOpen,
 }) => {
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   const canCreate = can('cooperative.members.create');
 
   return (

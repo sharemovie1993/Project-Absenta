@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import type { Saving, SavingCategory, ConfirmTxData, Transaction } from './types';
 import type { Student } from '../../common/SmartStudentPicker';
 import {
@@ -25,7 +26,8 @@ interface SubscriptionWithFeatures {
 
 export const useSavingsState = () => {
   const queryClient = useQueryClient();
-  const { user, subscription, can } = useAuth();
+  const { user, subscription } = useAuthStore();
+  const { can } = useCapabilities();
 
   const isManageMode = window.location.pathname.endsWith('/manage');
   const isOperator = can('cooperative.savings.deposit');

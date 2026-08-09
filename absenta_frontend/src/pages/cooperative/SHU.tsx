@@ -6,7 +6,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
 import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -80,9 +80,9 @@ const ShuRulesForm = lazy(() =>
   import('../../components/cooperative/shu/ShuRulesForm').then(module => ({ default: module.ShuRulesForm }))
 );
 
-const SHU: React.FC = React.memo(() => {
+const SHUPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
 

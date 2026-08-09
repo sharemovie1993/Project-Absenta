@@ -7,7 +7,7 @@ import { id } from 'date-fns/locale';
 import api from '../../lib/axiosInstance';
 import { SectionCard, Table, Button } from '../../components/ui';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -45,7 +45,8 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
 
 const Dashboard: React.FC = React.memo(() => {
   const receiptStyles = { backgroundColor: '#FCFBF7' };
-  const { user, subscription, isSuperAdmin } = useAuth();
+  const { user, subscription } = useAuthStore();
+  const { isSuperAdmin } = useCapabilities();
 
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);

@@ -9,7 +9,7 @@ import { LoanStatsBanner } from '../../components/cooperative/loans/LoanStatsBan
 import { LoanRestrictionsAlerts } from '../../components/cooperative/loans/LoanRestrictionsAlerts';
 import type { Loan, Member, StudentMetrics, OperatorMetrics } from '../../components/cooperative/loans/types';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -29,7 +29,7 @@ const PaymentInstructionsModal = lazy(() =>
 
 const Loans: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { user, subscription } = useAuth();
+  const { user, subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   

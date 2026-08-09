@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { fetchCoopSettings, type CoopSettingsData, printCoopReceipt } from '../../../utils/cooperative/coopDocUtils';
 import type { Subscription } from '../../../types/subscription';
 
@@ -97,7 +98,8 @@ export interface NonMemberCandidate {
 
 export const usePOSState = () => {
   const queryClient = useQueryClient();
-  const { user, subscription, can } = useAuth();
+  const { user, subscription } = useAuthStore();
+  const { can } = useCapabilities();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
 
