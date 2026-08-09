@@ -87,7 +87,7 @@ interface CetakBerkasTemplateProps {
   hardeningModuleKey?: string;
 }
 
-export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
+export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = React.memo(({
   module,
   title,
   description,
@@ -739,4 +739,4 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
       {mainContent}
     </AcademicPageLayout>
   );
-};
+});

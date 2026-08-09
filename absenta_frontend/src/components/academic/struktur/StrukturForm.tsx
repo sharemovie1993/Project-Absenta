@@ -50,7 +50,7 @@ const SCOPE_TYPE_OPTIONS = [
   { value: 'kelas', label: 'Per Kelas' },
 ];
 
-export const StrukturForm: React.FC<StrukturFormProps> = ({ initialData, onSubmit, onCancel, isLoading }) => {
+export const StrukturForm: React.FC<StrukturFormProps> = React.memo(({ initialData, onSubmit, onCancel, isLoading }) => {
   const [jurusans, setJurusans] = useState<Jurusan[]>([]);
   const [kelass, setKelass] = useState<Kelas[]>([]);
   
@@ -231,4 +231,4 @@ export const StrukturForm: React.FC<StrukturFormProps> = ({ initialData, onSubmi
       </div>
     </form>
   );
-};
+});

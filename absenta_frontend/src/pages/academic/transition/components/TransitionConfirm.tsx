@@ -7,7 +7,7 @@ interface Props {
   loading?: boolean;
 }
 
-const TransitionConfirm: React.FC<Props> = ({ onExecute, loading }) => {
+const TransitionConfirm: React.FC<Props> = React.memo(({ onExecute, loading }) => {
   const [confirmed1, setConfirmed1] = useState<boolean>(false);
   const [confirmed2, setConfirmed2] = useState<boolean>(false);
 
@@ -111,6 +111,6 @@ const TransitionConfirm: React.FC<Props> = ({ onExecute, loading }) => {
       </div>
     </div>
   );
-};
+});
 
 export default TransitionConfirm;

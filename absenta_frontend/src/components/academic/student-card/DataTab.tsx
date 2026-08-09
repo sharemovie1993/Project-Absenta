@@ -34,7 +34,7 @@ interface DataTabProps {
     selectAll: () => void;
 }
 
-export const DataTab: React.FC<DataTabProps> = ({
+export const DataTab: React.FC<DataTabProps> = React.memo(({
     isGuru,
     cardTargetMode,
     setCardTargetMode,
@@ -204,4 +204,4 @@ export const DataTab: React.FC<DataTabProps> = ({
             </SectionCard>
         </div>
     );
-};
+});

@@ -13,7 +13,7 @@ interface PrintOverlayProps {
     sekolah: any;
 }
 
-export const PrintOverlay: React.FC<PrintOverlayProps> = ({
+export const PrintOverlay: React.FC<PrintOverlayProps> = React.memo(({
     isPrinting,
     pages,
     printLayout,
@@ -141,4 +141,4 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
         </>,
         document.body
     );
-};
+});

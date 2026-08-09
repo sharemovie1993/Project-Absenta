@@ -10,7 +10,7 @@ interface KelasExpandedPanelProps {
   onRevertAll: (classId: string) => void;
 }
 
-export const KelasExpandedPanel: React.FC<KelasExpandedPanelProps> = ({
+export const KelasExpandedPanel: React.FC<KelasExpandedPanelProps> = React.memo(({
   classId,
   isLoading,
   siswaList,
@@ -63,4 +63,4 @@ export const KelasExpandedPanel: React.FC<KelasExpandedPanelProps> = ({
       </div>
     )}
   </div>
-);
+));

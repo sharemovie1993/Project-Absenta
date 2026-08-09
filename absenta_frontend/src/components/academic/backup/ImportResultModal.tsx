@@ -13,7 +13,7 @@ interface ImportResultModalProps {
   onClose: () => void;
 }
 
-export const ImportResultModal: React.FC<ImportResultModalProps> = ({
+export const ImportResultModal: React.FC<ImportResultModalProps> = React.memo(({
   isOpen,
   result,
   onClose
@@ -115,4 +115,4 @@ export const ImportResultModal: React.FC<ImportResultModalProps> = ({
       </div>
     </div>
   );
-};
+});

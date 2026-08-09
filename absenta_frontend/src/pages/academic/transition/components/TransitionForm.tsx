@@ -15,7 +15,7 @@ interface Props {
   onTahunBaruChange: (val: string) => void;
 }
 
-const TransitionForm: React.FC<Props> = ({ 
+const TransitionForm: React.FC<Props> = React.memo(({ 
   tahunAktif, 
   tahunBelumAktif, 
   selectedTahunLamaId,
@@ -117,6 +117,6 @@ const TransitionForm: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});
 
 export default TransitionForm;

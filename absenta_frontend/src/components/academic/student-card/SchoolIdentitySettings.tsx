@@ -10,7 +10,7 @@ interface SchoolIdentitySettingsProps {
   cardTargetMode: 'SISWA' | 'GURU';
 }
 
-export const SchoolIdentitySettings: React.FC<SchoolIdentitySettingsProps> = ({
+export const SchoolIdentitySettings: React.FC<SchoolIdentitySettingsProps> = React.memo(({
   config,
   setConfig,
   cardTargetMode
@@ -146,4 +146,4 @@ export const SchoolIdentitySettings: React.FC<SchoolIdentitySettingsProps> = ({
       </div>
     </SettingsGroup>
   );
-};
+});

@@ -9,7 +9,7 @@ interface RegistrationSyncCardProps {
   syncLoading: boolean;
 }
 
-export const RegistrationSyncCard: React.FC<RegistrationSyncCardProps> = ({
+export const RegistrationSyncCard: React.FC<RegistrationSyncCardProps> = React.memo(({
   needsSync,
   unregisteredCount,
   onSync,
@@ -50,4 +50,4 @@ export const RegistrationSyncCard: React.FC<RegistrationSyncCardProps> = ({
       </SectionCard>
     </div>
   );
-};
+});

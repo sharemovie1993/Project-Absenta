@@ -11,7 +11,7 @@ interface Props {
   semesterBaruGanjil: boolean;
 }
 
-const TransitionPrerequisites: React.FC<Props> = ({
+const TransitionPrerequisites: React.FC<Props> = React.memo(({
   tahunAktif,
   semesterAktif,
   tahunBaru,
@@ -105,6 +105,6 @@ const TransitionPrerequisites: React.FC<Props> = ({
       ))}
     </div>
   );
-};
+});
 
 export default TransitionPrerequisites;

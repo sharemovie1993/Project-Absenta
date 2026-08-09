@@ -28,7 +28,7 @@ interface FrontSettingsPanelProps {
   setPreviewSide: (side: 'front' | 'back') => void;
 }
 
-export const FrontSettingsPanel: React.FC<FrontSettingsPanelProps> = ({
+export const FrontSettingsPanel: React.FC<FrontSettingsPanelProps> = React.memo(({
   config,
   setConfig,
   applyPreset,
@@ -489,4 +489,4 @@ export const FrontSettingsPanel: React.FC<FrontSettingsPanelProps> = ({
       </SettingsGroup>
     </div>
   );
-};
+});

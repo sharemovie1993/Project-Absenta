@@ -27,7 +27,7 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-const TransitionPreview: React.FC<Props> = ({ data, onNext }) => {
+const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
   const [items, setItems] = useState(data.items);
 
   useEffect(() => {
@@ -185,6 +185,6 @@ const TransitionPreview: React.FC<Props> = ({ data, onNext }) => {
       </div>
     </div>
   );
-};
+});
 
 export default TransitionPreview;

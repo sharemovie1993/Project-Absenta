@@ -16,7 +16,7 @@ interface QuickAssignmentModalProps {
   onSuccess: () => void;
 }
 
-export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = ({
+export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = React.memo(({
   isOpen,
   onClose,
   strukturId,
@@ -109,4 +109,4 @@ export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

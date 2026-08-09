@@ -5,7 +5,7 @@ interface CardBackPrintProps {
     config: StudentCardConfig;
 }
 
-export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
+export const CardBackPrint: React.FC<CardBackPrintProps> = React.memo(({ config }) => {
     const isVertical = config.template === 'vertical';
     const cardW = isVertical ? 54 : 85.6;
     const cardH = isVertical ? 85.6 : 54;
@@ -221,4 +221,4 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
             </div>
         </div>
     );
-};
+});

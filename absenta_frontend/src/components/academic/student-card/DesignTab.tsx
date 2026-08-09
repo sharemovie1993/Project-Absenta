@@ -35,7 +35,7 @@ interface DesignTabProps {
     setCardTargetMode?: (mode: 'SISWA' | 'GURU') => void;
 }
 
-export const DesignTab: React.FC<DesignTabProps> = ({
+export const DesignTab: React.FC<DesignTabProps> = React.memo(({
     config,
     setConfig,
     handleDragEnd,
@@ -473,4 +473,4 @@ export const DesignTab: React.FC<DesignTabProps> = ({
             )}
         </div>
     );
-};
+});

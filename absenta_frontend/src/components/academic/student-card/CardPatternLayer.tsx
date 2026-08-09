@@ -10,7 +10,7 @@ interface CardPatternLayerProps {
     isHeader?: boolean;
 }
 
-export const CardPatternLayer: React.FC<CardPatternLayerProps> = ({ config, width, height, scale = 1, isHeader = false }) => {
+export const CardPatternLayer: React.FC<CardPatternLayerProps> = React.memo(({ config, width, height, scale = 1, isHeader = false }) => {
     const isMinimalHeader = isHeader && config.header_style === 'minimal';
     
     let p = isHeader 
@@ -234,6 +234,6 @@ export const CardPatternLayer: React.FC<CardPatternLayerProps> = ({ config, widt
     };
 
     return <>{renderPattern()}</>;
-};
+});
 
 CardPatternLayer.displayName = 'CardPatternLayer';

@@ -15,7 +15,7 @@ interface ExportSectionProps {
   loading: boolean;
 }
 
-export const ExportSection: React.FC<ExportSectionProps> = ({
+export const ExportSection: React.FC<ExportSectionProps> = React.memo(({
   onExport,
   loading
 }) => {
@@ -82,4 +82,4 @@ export const ExportSection: React.FC<ExportSectionProps> = ({
       </div>
     </div>
   );
-};
+});

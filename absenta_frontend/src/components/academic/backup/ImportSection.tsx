@@ -52,7 +52,7 @@ interface ImportSectionProps {
   onImport: () => void;
 }
 
-export const ImportSection: React.FC<ImportSectionProps> = ({
+export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
   importFile,
   onFileChange,
   isReadingFile,
@@ -201,4 +201,4 @@ export const ImportSection: React.FC<ImportSectionProps> = ({
       </div>
     </div>
   );
-};
+});

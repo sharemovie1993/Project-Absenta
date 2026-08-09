@@ -8,7 +8,7 @@ interface RegistrationSyncResultProps {
   onClear: () => void;
 }
 
-export const RegistrationSyncResult: React.FC<RegistrationSyncResultProps> = ({
+export const RegistrationSyncResult: React.FC<RegistrationSyncResultProps> = React.memo(({
   syncResult,
   syncError,
   onClear
@@ -37,4 +37,4 @@ export const RegistrationSyncResult: React.FC<RegistrationSyncResultProps> = ({
       </Alert>
     </div>
   );
-};
+});

@@ -15,7 +15,7 @@ interface StrukturPermissionTabProps {
   user: any;
 }
 
-export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = ({
+export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = React.memo(({
   structures,
   permissionCatalog,
   searchQuery,
@@ -41,4 +41,4 @@ export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = ({
       </div>
     </SectionCard>
   );
-};
+});

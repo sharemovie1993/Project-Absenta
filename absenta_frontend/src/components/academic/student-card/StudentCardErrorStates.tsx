@@ -6,7 +6,7 @@ interface AccessRestrictedProps {
     onBack: () => void;
 }
 
-export const AccessRestricted: React.FC<AccessRestrictedProps> = ({ onBack }) => {
+export const AccessRestricted: React.FC<AccessRestrictedProps> = React.memo(({ onBack }) => {
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] animate-in fade-in duration-700">
             <SectionCard className="max-w-md w-full p-10 text-center space-y-6">
@@ -25,13 +25,13 @@ export const AccessRestricted: React.FC<AccessRestrictedProps> = ({ onBack }) =>
             </SectionCard>
         </div>
     );
-};
+});
 
 interface ConfigErrorStateProps {
     onBack: () => void;
 }
 
-export const ConfigErrorState: React.FC<ConfigErrorStateProps> = ({ onBack }) => {
+export const ConfigErrorState: React.FC<ConfigErrorStateProps> = React.memo(({ onBack }) => {
     return (
         <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
             <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
@@ -49,4 +49,4 @@ export const ConfigErrorState: React.FC<ConfigErrorStateProps> = ({ onBack }) =>
             </div>
         </div>
     );
-};
+});

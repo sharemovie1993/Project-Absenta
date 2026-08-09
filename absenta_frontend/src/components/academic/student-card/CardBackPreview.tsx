@@ -6,7 +6,7 @@ interface CardBackPreviewProps {
     config: StudentCardConfig;
 }
 
-export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
+export const CardBackPreview: React.FC<CardBackPreviewProps> = React.memo(({ config }) => {
     const isVertical = config.template === 'vertical';
     const cWidth = config.card_width || 85.6;
     const cHeight = config.card_height || 54;
@@ -233,4 +233,4 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             </div>
         </div>
     );
-};
+});

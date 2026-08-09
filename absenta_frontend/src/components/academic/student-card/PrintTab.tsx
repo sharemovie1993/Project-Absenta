@@ -33,7 +33,7 @@ interface PrintTabProps {
     sekolah: any;
 }
 
-export const PrintTab: React.FC<PrintTabProps> = ({
+export const PrintTab: React.FC<PrintTabProps> = React.memo(({
     isSiswa,
     printMode,
     setPrintMode,
@@ -367,4 +367,4 @@ export const PrintTab: React.FC<PrintTabProps> = ({
             </div>
         </div>
     );
-};
+});

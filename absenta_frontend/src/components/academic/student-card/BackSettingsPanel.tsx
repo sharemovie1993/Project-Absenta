@@ -21,7 +21,7 @@ interface BackSettingsPanelProps {
   setPreviewSide: (side: 'front' | 'back') => void;
 }
 
-export const BackSettingsPanel: React.FC<BackSettingsPanelProps> = ({
+export const BackSettingsPanel: React.FC<BackSettingsPanelProps> = React.memo(({
   config,
   setConfig,
   handleImageUpload,
@@ -225,4 +225,4 @@ export const BackSettingsPanel: React.FC<BackSettingsPanelProps> = ({
       )}
     </div>
   );
-};
+});

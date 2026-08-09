@@ -15,7 +15,7 @@ interface RegistrationPeriodControlProps {
   totalCount: number;
 }
 
-export const RegistrationPeriodControl: React.FC<RegistrationPeriodControlProps> = ({
+export const RegistrationPeriodControl: React.FC<RegistrationPeriodControlProps> = React.memo(({
   selectedYearId,
   setSelectedYearId,
   yearOptions,
@@ -70,4 +70,4 @@ export const RegistrationPeriodControl: React.FC<RegistrationPeriodControlProps>
       </div>
     </div>
   );
-};
+});

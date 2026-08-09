@@ -38,7 +38,7 @@ interface GlobalAssignmentModalProps {
   onSuccess: () => void;
 }
 
-export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = ({
+export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = React.memo(({
   isOpen,
   onClose,
   data,
@@ -313,4 +313,4 @@ export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

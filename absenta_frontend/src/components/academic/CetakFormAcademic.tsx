@@ -18,7 +18,7 @@ interface CetakFormAcademicProps {
   uniqueTingkatList: number[];
 }
 
-export const CetakFormAcademic: React.FC<CetakFormAcademicProps> = ({
+export const CetakFormAcademic: React.FC<CetakFormAcademicProps> = React.memo(({
   selectedPrintType,
   setSelectedPrintType,
   selectedClassId,
@@ -128,4 +128,4 @@ export const CetakFormAcademic: React.FC<CetakFormAcademicProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -13,7 +13,7 @@ interface Props {
   onBack: () => void;
 }
 
-const TransitionScope: React.FC<Props> = ({
+const TransitionScope: React.FC<Props> = React.memo(({
   scopeMode,
   onScopeModeChange,
   availableTingkat,
@@ -170,6 +170,6 @@ const TransitionScope: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});
 
 export default TransitionScope;
