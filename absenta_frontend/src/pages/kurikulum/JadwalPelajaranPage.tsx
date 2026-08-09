@@ -668,10 +668,6 @@ export default function JadwalPelajaranPage() {
     </div>
   ), [viewMode, canManage, handlePrint, handleClearSchedule, jadwal, loadingJadwal, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa, handleEditSlot, handleDeleteSlot]);
 
-  if (isLoading) {
-    return <div className="flex justify-center py-20"><Loader /></div>;
-  }
-
   // 🛡️ Premium Lock Check
   if (isLocked) {
     return (
