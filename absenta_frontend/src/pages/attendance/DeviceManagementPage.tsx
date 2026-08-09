@@ -40,6 +40,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
 
@@ -60,6 +61,7 @@ const breadcrumbs = [
 
 export const DeviceManagementPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
+  const { isAdmin, can } = useCapabilities();
   const [devices, setDevices] = useState<AttendanceDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

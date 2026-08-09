@@ -12,6 +12,7 @@ import {
 } from '../../components/ui';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { 
   Settings, 
   CalendarDays, 
@@ -61,6 +62,7 @@ const breadcrumbs = [
 export const AttendanceSettingsPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
   const { can, isLoading: isAuthLoading } = useAuth();
+  const { isAdmin, can: capCan } = useCapabilities();
   const [activeTab, setActiveTab] = useState('general');
 
   const memoStats = useMemo(() => stats, []);

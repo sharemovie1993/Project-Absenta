@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Button, Modal, ModalFooter, Table, Pagination, Badge, Input } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Plus, Trash2, Search } from 'lucide-react';
@@ -37,12 +38,10 @@ export default React.memo(function PetugasList() {
   const [siswaSearch, setSiswaSearch] = useState('');
   const debouncedSiswaSearch = useDebounce(siswaSearch, 500);
 
-  // Check Permissions
+  const { isAdmin, can } = useCapabilities();
   const canManage = useMemo(() => {
-    const role = user?.role?.name;
-    if (role === 'SUPERADMIN' || role === 'ADMIN') return true;
-    return user?.capabilities?.includes('attendance.officers.manage') || false;
-  }, [user]);
+    return isAdmin || can('attendance.officers.manage');
+  }, [isAdmin, can]);
 
   // Fetch Petugas List
   const fetchPetugas = useCallback(async () => {

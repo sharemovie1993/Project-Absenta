@@ -3,6 +3,7 @@ const PetugasList = lazy(() => import('../../components/attendance/petugas/Petug
 import { Loader, Card } from '../../components/ui';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
 
@@ -40,6 +41,7 @@ const breadcrumbs = [
 
 export const PetugasPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
+  const { isAdmin, can } = useCapabilities();
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
   const handleDummy = useCallback(() => {}, []);
