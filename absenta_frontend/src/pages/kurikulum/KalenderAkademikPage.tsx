@@ -20,6 +20,7 @@ import { getMyTenant } from '../../api/tenants.api';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import { TahunPelajaranSelect, useTahunPelajaranOptions } from '../../components/common';
 import { 
@@ -110,16 +111,15 @@ function dateInRange(date: Date, mulai: Date | string, selesai: Date | string): 
 }
 
 export default function KalenderAkademikPage() {
-  const { user } = useAuth();
+  const { user, isKurikulum, isAdmin, can } = useCapabilities();
   const qc = useQueryClient();
   const confirm = useConfirm();
 
   const typedUser = user as unknown as UserAuth | null;
 
   const canManage = useMemo(() => {
-    const caps = typedUser?.capabilities ?? [];
-    return caps.includes('academic.manage.academic');
-  }, [typedUser]);
+    return isAdmin || isKurikulum || can('academic.manage.academic');
+  }, [isAdmin, isKurikulum, can]);
 
   const today = new Date();
   const [calYear, setCalYear] = useState<number>(today.getFullYear());

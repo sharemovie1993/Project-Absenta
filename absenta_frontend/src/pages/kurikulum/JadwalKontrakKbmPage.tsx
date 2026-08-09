@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useJadwalKontrakKbm } from '../../hooks/kurikulum/useJadwalKontrakKbm';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
@@ -28,7 +28,8 @@ const ATURAN_BLOK_COLOR: Record<string, string> = {
 };
 
 const JadwalKontrakKbmPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isKurikulum, isAdmin, isAuthenticated } = useCapabilities();
+  const authLoading = !isAuthenticated;
 
   // === Filter states ===
   const [selectedTahunId, setSelectedTahunId] = useState('');
@@ -38,8 +39,8 @@ const JadwalKontrakKbmPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const canView = useMemo(() => can('academic.teaching.view'), [can]);
-  const canManage = useMemo(() => can('academic.teaching.manage'), [can]);
+  const canView = useMemo(() => isAdmin || isKurikulum || can('academic.teaching.view'), [isAdmin, isKurikulum, can]);
+  const canManage = useMemo(() => isAdmin || isKurikulum || can('academic.teaching.manage'), [isAdmin, isKurikulum, can]);
 
   // === Hooks untuk dropdown filter ===
   const { rawList: tahunList } = useTahunPelajaranOptions();

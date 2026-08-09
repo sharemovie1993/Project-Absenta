@@ -3,17 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import WaliKelasList from '../../components/academic/wali-kelas/WaliKelasList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { Users, School, GraduationCap, User, Network } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui';
 
 const WaliKelasPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isKurikulum, isWaliKelas, isAdmin, isAuthenticated } = useCapabilities();
+  const authLoading = !isAuthenticated;
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Permission: Admin handled by layout, but we need it for stats loading
-  const canView = useMemo(() => can('academic.homeroom.manage'), [can]);
+  const canView = useMemo(() => isAdmin || isKurikulum || isWaliKelas || can('academic.homeroom.manage'), [isAdmin, isKurikulum, isWaliKelas, can]);
 
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({
     queryKey: ['academic-stats', canView, refreshKey],

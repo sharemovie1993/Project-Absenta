@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { Button, SectionCard } from '@/components/ui';
 import { Save, RefreshCw, Clock, Users } from 'lucide-react';
 import { getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
@@ -62,10 +63,10 @@ function PanelLoader() {
 // ─── Component ───────────────────────────────────────────────────────────────
 export const JamKBMPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { user, can } = useAuth();
+  const { user, isKurikulum, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   const { jenjang } = useJenjang();
-  const canManage = can('academic.schedules.manage') || can('academic.manage.academic');
+  const canManage = isAdmin || isKurikulum || can('academic.schedules.manage') || can('academic.manage.academic');
 
   // ── State ──
   const [saving, setSaving] = useState(false);
