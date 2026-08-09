@@ -41,7 +41,7 @@ type Props = {
   onOpenJournal?: () => void;
 };
 
-export function SesiCard({
+export const SesiCard = React.memo(function SesiCard({
   sesi,
   isExpanded,
   counts,
@@ -300,7 +300,7 @@ export function SesiCard({
       </div>
     </div>
   );
-}
+});
 
 // Dummy/Empty wrapper to maintain layout if needed
 const DropdownWrapper = ({ children }: { children: React.ReactNode }) => <>{children}</>;

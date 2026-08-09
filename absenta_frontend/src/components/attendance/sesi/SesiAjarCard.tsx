@@ -42,7 +42,7 @@ interface SesiAjarCardProps {
   isReadOnly?: boolean;
 }
 
-export const SesiAjarCard: React.FC<SesiAjarCardProps> = ({
+export const SesiAjarCard: React.FC<SesiAjarCardProps> = React.memo(({
   sesi,
   onOpenJournal,
   onViewDetail,
@@ -162,4 +162,4 @@ export const SesiAjarCard: React.FC<SesiAjarCardProps> = ({
       </div>
     </SectionCard>
   );
-};
+});

@@ -13,7 +13,7 @@ type Props = {
   kelasLabel: (id?: string) => string;
 };
 
-export function SesiFilterPanel({
+export const SesiFilterPanel = React.memo(function SesiFilterPanel({
   tanggal,
   onChangeTanggal,
   onSetToday,
@@ -78,4 +78,4 @@ export function SesiFilterPanel({
       </div>
     </div>
   );
-}
+});

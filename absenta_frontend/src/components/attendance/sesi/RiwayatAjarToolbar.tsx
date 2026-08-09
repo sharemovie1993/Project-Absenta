@@ -22,7 +22,7 @@ interface RiwayatAjarToolbarProps {
   kelasOptions?: Array<{ id: string; nama_kelas: string }>;
 }
 
-export const RiwayatAjarToolbar: React.FC<RiwayatAjarToolbarProps> = ({
+export const RiwayatAjarToolbar: React.FC<RiwayatAjarToolbarProps> = React.memo(({
   search,
   setSearch,
   selectedMonth,
@@ -129,4 +129,4 @@ export const RiwayatAjarToolbar: React.FC<RiwayatAjarToolbarProps> = ({
       </div>
     </div>
   );
-};
+});
