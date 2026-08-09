@@ -8,6 +8,7 @@ import { Card } from '../../components/cooperative/ui/Card';
 import { Select } from '../../components/cooperative/ui/Select';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
@@ -36,7 +37,8 @@ const TicketDetail: React.FC = React.memo(() => {
   const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
   const navigate = useNavigate();
-  const hasListPermission = useMemo(() => user?.capabilities?.includes('cooperative.tickets.view.list') || user?.role?.name === 'SUPERADMIN', [user]);
+  const { isKoperasi, isAdmin, can } = useCapabilities();
+  const hasListPermission = useMemo(() => isAdmin || isKoperasi || can('cooperative.tickets.view.list'), [isAdmin, isKoperasi, can]);
   const [reply, setReply] = useState('');
 
   const ticketQuery = useQuery({

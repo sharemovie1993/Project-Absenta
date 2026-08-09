@@ -3,6 +3,7 @@ import { Button, SectionCard } from '../../ui';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { ArrowLeft, AlertCircle, RefreshCw, CheckCircle, Send, Eye, Trash2 } from 'lucide-react';
 import PremiumFeatureGate from '../../auth/PremiumFeatureGate';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import type { ShuPeriod, ShuAllocation, ShuConfig } from '../../../pages/cooperative/SHU';
 
 interface ShuPeriodDetailProps {
@@ -177,8 +178,8 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
                   variant="outline"
                   size="sm"
                   className="text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 font-bold flex items-center gap-1.5 rounded-xl text-xs h-9"
-                  disabled={loadingSync || (!canManageShu && user?.role?.name?.toUpperCase() !== 'SUPERADMIN')}
-                  title={(!canManageShu && user?.role?.name?.toUpperCase() !== 'SUPERADMIN') ? "Aksi ini memerlukan hak akses manajemen SHU" : ""}
+                  disabled={loadingSync || !canManageShu}
+                  title={!canManageShu ? "Aksi ini memerlukan hak akses manajemen SHU" : ""}
                 >
                   <RefreshCw size={14} className={loadingSync ? 'animate-spin' : ''} /> Sinkronisasi Keuangan
                 </Button>

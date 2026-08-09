@@ -8,6 +8,7 @@ import api from '../../lib/axiosInstance';
 import { SectionCard, Table, Button } from '../../components/ui';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
@@ -53,10 +54,9 @@ const Dashboard: React.FC = React.memo(() => {
   const [salesPage, setSalesPage] = useState(1);
   const salesPageLimit = 10;
 
-  // Identifikasi role pengguna
-  const userRecord = user as unknown as Record<string, unknown>;
-  const roleName: string = (userRecord?.roleName as string) || ((userRecord?.Role as Record<string, unknown>)?.name as string) || ((userRecord?.role as Record<string, unknown>)?.name as string) || '';
-  const isGuruOrSiswa = (roleName === 'GURU' || roleName === 'SISWA') && !isSuperAdmin();
+  const { isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiStore, isAdmin } = useCapabilities();
+  const isKoperasiStaff = isAdmin || isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiStore;
+  const isGuruOrSiswa = !isKoperasiStaff;
 
   // Gating Logic
   const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);

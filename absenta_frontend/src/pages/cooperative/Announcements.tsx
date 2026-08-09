@@ -7,6 +7,7 @@ import { Plus, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
@@ -35,8 +36,9 @@ const Announcements: React.FC = React.memo(() => {
   const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
-  const canCreate = useMemo(() => user?.capabilities?.includes('cooperative.announcements.create') || user?.role?.name === 'SUPERADMIN', [user]);
-  const canDelete = useMemo(() => user?.capabilities?.includes('cooperative.announcements.delete') || user?.role?.name === 'SUPERADMIN', [user]);
+  const { isKoperasiHead, isAdmin, can } = useCapabilities();
+  const canCreate = useMemo(() => isAdmin || isKoperasiHead || can('cooperative.announcements.create'), [isAdmin, isKoperasiHead, can]);
+  const canDelete = useMemo(() => isAdmin || isKoperasiHead || can('cooperative.announcements.delete'), [isAdmin, isKoperasiHead, can]);
 
   const announcementsQuery = useQuery({
     queryKey: ['koperasi-announcements-list'],
