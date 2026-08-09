@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
@@ -63,8 +62,7 @@ const hardeningModuleKey = 'jadwal_pelajaran_page';
 
 export default function JadwalPelajaranPage() {
   const queryClient = useQueryClient();
-  const { subscription } = useAuthStore();
-  const { user, isLoading } = useAuth();
+  const { user, subscription } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
