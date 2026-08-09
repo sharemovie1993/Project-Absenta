@@ -34,6 +34,7 @@ import { Loader } from '../../components/ui/Loader';
 import { z } from 'zod';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useNavStore } from '../../store/navStore';
 import { useJenisPelanggaranOptions } from '../../hooks/useJenisPelanggaranOptions';
 import { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
@@ -126,20 +127,13 @@ export default function PelanggaranPage() {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const urlContext = searchParams.get('context') || searchParams.get('tab') || searchParams.get('mode');
 
+  const { isKesiswaan, isKurikulum, isKepsek, isAdmin, can } = useCapabilities();
+
   // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
   const isDualRoleUser = useMemo(() => {
     if (!effectiveWaliKelasId) return false;
-    const caps = user?.capabilities || [];
-    const roleName = String(user?.role?.name || '').toUpperCase();
-    const isLeadershipOrStaff =
-      caps.includes('affairs.violations.manage') ||
-      caps.includes('affairs.violation.types.manage') ||
-      caps.includes('dashboard.view.kesiswaan') ||
-      caps.includes('dashboard.view.kurikulum') ||
-      caps.includes('dashboard.view.kepsek') ||
-      ['ADMIN', 'SUPERADMIN'].includes(roleName);
-    return isLeadershipOrStaff;
-  }, [effectiveWaliKelasId, user]);
+    return isAdmin || isKesiswaan || isKurikulum || isKepsek || can('affairs.violations.manage');
+  }, [effectiveWaliKelasId, isAdmin, isKesiswaan, isKurikulum, isKepsek, can]);
 
   const handleContextSwitch = useCallback((targetContext: 'walikelas' | 'kesiswaan') => {
     const params = new URLSearchParams(location.search);
@@ -147,28 +141,18 @@ export default function PelanggaranPage() {
     navigate({ search: params.toString() }, { replace: true });
   }, [location.search, navigate]);
 
-  // Penentuan mode tampilan (URL Context > Active Workspace > Role Default):
-  // 1. Jika URL membawa query ?context=walikelas -> Paksa mode Wali Kelas (filter rombel binaan).
-  // 2. Jika URL membawa query ?context=kesiswaan/kurikulum/sekolah -> Paksa mode Eksekutif Sekolah (lintas rombel).
-  // 3. Fallback: Gunakan activeWorkspaceId atau ketersediaan effectiveWaliKelasId.
   const isWaliKelas = useMemo(() => {
     if (!effectiveWaliKelasId) return false;
 
     if (urlContext === 'walikelas' || urlContext === 'manual') return true;
     if (urlContext === 'kesiswaan' || urlContext === 'kurikulum' || urlContext === 'sekolah') return false;
 
-    const caps = user?.capabilities || [];
-    const roleName = String(user?.role?.name || '').toUpperCase();
-    const isPureAdminOrKesiswaan =
-      caps.includes('affairs.violations.manage') ||
-      caps.includes('affairs.violation.types.manage') ||
-      caps.includes('dashboard.view.kesiswaan') ||
-      ['ADMIN', 'SUPERADMIN'].includes(roleName);
+    const isPureAdminOrKesiswaan = isAdmin || isKesiswaan || can('affairs.violations.manage');
 
     if (activeWorkspaceId === 'WALIKELAS_WORKSPACE') return true;
     if (!isPureAdminOrKesiswaan && isWaliKelasRole) return true;
     return false;
-  }, [effectiveWaliKelasId, urlContext, activeWorkspaceId, user, isWaliKelasRole]);
+  }, [effectiveWaliKelasId, urlContext, activeWorkspaceId, isAdmin, isKesiswaan, can, isWaliKelasRole]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
