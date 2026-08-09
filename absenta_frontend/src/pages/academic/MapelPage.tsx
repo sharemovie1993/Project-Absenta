@@ -50,9 +50,9 @@ export const MapelPage: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
 
   // Permissions
-  const canCreate = can('academic.subjects.create');
-  const canEdit = can('academic.subjects.update');
-  const canView = can('academic.subjects.view.list');
+  const canCreate = isAdmin || isKurikulum || can('academic.subjects.create');
+  const canEdit = isAdmin || isKurikulum || can('academic.subjects.update');
+  const canView = isAdmin || isKurikulum || can('academic.subjects.view.list');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

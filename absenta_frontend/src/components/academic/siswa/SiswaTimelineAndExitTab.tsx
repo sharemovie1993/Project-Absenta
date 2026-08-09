@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   getSiswaTimeline, 
   deleteSiswaDocument, 
@@ -31,9 +32,11 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
   
+  const { isAdmin, isKesiswaan, isKurikulum, can: capCan } = useCapabilities();
+  
   // Permissions
-  const canManage = can('academic.students.manage') || user?.role?.name === 'SUPERADMIN';
-  const canUpload = can('academic.students.manage') || can('affairs.violations.report') || user?.role?.name === 'SUPERADMIN';
+  const canManage = isAdmin || isKesiswaan || isKurikulum || can('academic.students.manage');
+  const canUpload = isAdmin || isKesiswaan || isKurikulum || can('academic.students.manage') || can('affairs.violations.report');
 
   // ── useQuery: Fetch Timeline ─────────────────────────────────────────────
   const { data: rawTimeline, isLoading: loading, error: queryError, refetch: fetchTimeline } = useQuery({

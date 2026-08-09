@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Modal, SectionCard } from '../../components/ui';
 import SiswaList from '../../components/academic/siswa/SiswaList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import type { Siswa } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { Users, CheckCircle2, GraduationCap, UserCheck, UserX } from 'lucide-react';
@@ -57,12 +58,14 @@ const SiswaPage: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
 
+  const { isKesiswaan, isKurikulum, isAdmin, can: capCan } = useCapabilities();
+
   // Permissions
-  const canCreate = can('academic.students.create');
-  const canEdit = can('academic.students.update');
-  const canViewDetail = can('academic.students.read');
-  const canView = can('academic.students.read') || can('academic.students.create') || true;
-  const isIsolatedScope = !can('system.platform.full_access') && user?.role?.name !== 'SUPERADMIN';
+  const canCreate = isAdmin || isKesiswaan || isKurikulum || can('academic.students.create');
+  const canEdit = isAdmin || isKesiswaan || isKurikulum || can('academic.students.update');
+  const canViewDetail = isAdmin || isKesiswaan || isKurikulum || can('academic.students.read');
+  const canView = true;
+  const isIsolatedScope = !can('system.platform.full_access') && !isAdmin;
 
   // ── useQuery: Stats parallel ─────────────────────────────────────────────
   const { data: statsData, isLoading: isLoadingAcStats } = useQuery({

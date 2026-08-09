@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import GuruList from '../../components/academic/guru/GuruList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import type { Guru } from '../../types/academic';
 import { getAcademicStats } from '../../api/academic-stats.api';
@@ -33,13 +34,14 @@ interface ModalState {
 
 export const GuruPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const { isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, isAdmin, can: capCan } = useCapabilities();
 
   const navigate = useNavigate();
 
   // Check permissions — harus di atas useQuery
-  const canCreate = can('academic.teachers.create');
-  const canEdit = can('academic.teachers.update');
-  const canView = can('academic.teachers.view.list');
+  const canCreate = isAdmin || isKurikulum || isTuHead || isTuStaff || can('academic.teachers.create');
+  const canEdit = isAdmin || isKurikulum || isTuHead || isTuStaff || can('academic.teachers.update');
+  const canView = isAdmin || isKurikulum || isKepalaSekolah || isTuHead || isTuStaff || can('academic.teachers.view.list');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

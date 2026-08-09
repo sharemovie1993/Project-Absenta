@@ -9,6 +9,7 @@ import { Plus, FolderOpen, FileText, Image as ImageIcon, Download, Eye, Trash2, 
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Button } from '../../ui/Button';
 import { Skeleton } from '../../ui/Skeleton';
 import { MemberDocsViewer } from '../../documents/MemberDocsViewer';
@@ -52,11 +53,12 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
   const confirm  = useConfirm();
   const queryClient = useQueryClient();
 
+  const { isAdmin, can: capCan } = useCapabilities();
   const canEdit = canManage ??
-    (['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
-     user?.capabilities?.includes('academic.teachers.manage') ||
-     user?.capabilities?.includes('academic.students.manage') ||
-     user?.capabilities?.includes('documents.upload'));
+    (isAdmin ||
+     capCan('academic.teachers.manage') ||
+     capCan('academic.students.manage') ||
+     capCan('documents.upload'));
 
   const [selectedDoc, setSelectedDoc] = useState<MemberDoc | null>(null);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);

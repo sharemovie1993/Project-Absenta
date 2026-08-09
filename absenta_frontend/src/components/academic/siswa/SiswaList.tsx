@@ -22,6 +22,7 @@ import {
 } from '../../ui';
 
 import { SearchableSelect } from '../../ui/SearchableSelect';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
@@ -259,11 +260,12 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     return { id: kelas.id, nama: kelas.nama_kelas || kelas.nama || 'Kelas Binaan' };
   }, [user]);
 
+  const { isKesiswaan, isKurikulum, isKepalaSekolah, isHubin, isAdmin } = useCapabilities();
+
   // Deteksi role manajemen (tidak dibatasi kelas)
   const isManagementRole = useMemo(() => {
-    const role = (user as any)?.roleName || '';
-    return ['ADMIN', 'SUPERADMIN', 'KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN'].includes(role);
-  }, [user]);
+    return isAdmin || isKepalaSekolah || isKurikulum || isKesiswaan || isHubin;
+  }, [isAdmin, isKepalaSekolah, isKurikulum, isKesiswaan, isHubin]);
 
   // Wali kelas tanpa role manajemen → filter dikunci ke kelas binaan
   const isWaliKelasLocked = false; // DISABLED: No longer locked to allow teaching scope access
@@ -321,7 +323,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       caps.includes('dashboard.view.kepsek') ||
       caps.includes('dashboard.view.sarpras') ||
       caps.includes('dashboard.view.hubin') ||
-      ['ADMIN', 'SUPERADMIN'].includes(roleName);
+      isAdmin;
     return isLeadershipOrStaff;
   }, [waliKelasData, user]);
 

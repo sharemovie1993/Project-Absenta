@@ -12,6 +12,7 @@ import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { getGuruList, updateGuruMaxJp } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
@@ -61,9 +62,10 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
 
+  const { isKurikulum, isAdmin, can } = useCapabilities();
   const canManage = useMemo(() => {
-    return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
-  }, [user]);
+    return isAdmin || isKurikulum || can('academic.teaching.manage');
+  }, [isAdmin, isKurikulum, can]);
 
   const [bebanGuruMap, setBebanGuruMap] = useState<Map<string, {
     current_jp: number;

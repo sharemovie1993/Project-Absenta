@@ -23,6 +23,7 @@ import {
   Loader,
   SearchableSelect
 } from '../../ui';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
 import { 
   getMapelList, 
@@ -98,19 +99,19 @@ const MapelList = React.memo<MapelListProps>(({
   const totalPages = listRes?.pagination?.totalPages || 1;
   const totalItems = listRes?.pagination?.total || 0;
   
+  const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
     return (
-      user?.role?.name === 'SUPERADMIN' ||
-      user?.role?.name === 'ADMIN' ||
+      isAdmin ||
+      isKurikulum ||
       can('academic.subjects.create') ||
       can('academic.subjects.update') ||
       can('academic.subjects.delete') ||
       can('academic.subjects.manage') ||
-      can('academic.subjects.manage') ||
       can('academic.manage.academic')
     );
-  }, [user, can]);
+  }, [isAdmin, isKurikulum, can]);
 
   const allVisibleSelected = useMemo(() => {
     if (mapels.length === 0) return false;
