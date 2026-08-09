@@ -22,6 +22,7 @@ import {
 import { toast } from 'react-hot-toast';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button, Input } from '../../components/ui';
@@ -77,14 +78,10 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   const isLocked = !Array.isArray(features) || !features.includes('HUBIN');
 
   // Role & Capability Checks
+  const { isHubin: isHubinRole, isAdmin, can } = useCapabilities();
   const isHubin = useMemo(() => {
-    const roleName = user?.role?.name?.toUpperCase() || '';
-    const caps = user?.capabilities || [];
-    return ['ADMIN', 'SUPERADMIN'].includes(roleName) ||
-           caps.includes('hubin.partners.manage') ||
-           caps.includes('hubin.mou.manage') ||
-           caps.includes('dashboard.view.hubin');
-  }, [user]);
+    return isAdmin || isHubinRole || can('hubin.partners.manage') || can('hubin.mou.manage');
+  }, [isAdmin, isHubinRole, can]);
 
   // Queries
   const { data: penempatanData } = useQuery({

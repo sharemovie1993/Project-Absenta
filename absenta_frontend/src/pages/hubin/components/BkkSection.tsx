@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { TabSwitcher } from '../../../components/ui/TabSwitcher';
 import {
   Briefcase,
@@ -88,15 +89,11 @@ export const BkkSection: React.FC = React.memo(() => {
   // Auto-suggest tracer study banner
   const [showTracerBanner, setShowTracerBanner] = useState(false);
 
-  const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
+  const { isHubin, isBkk, isAdmin, can } = useCapabilities();
+  const isStudent = useMemo(() => !!user?.isStudent, [user]);
   const canManageBkk = useMemo(() => {
-    const roleName = user?.role?.name?.toUpperCase() || '';
-    return (
-      roleName === 'HUBIN' || roleName === 'SUPERADMIN' || roleName === 'ADMIN' ||
-      user?.position_codes?.includes('HUBIN') || user?.position_codes?.includes('BKK') ||
-      user?.capabilities?.includes('hubin.bkk.manage') || user?.capabilities?.includes('hubin.partners.manage')
-    );
-  }, [user]);
+    return isAdmin || isHubin || isBkk || can('hubin.bkk.manage') || can('hubin.partners.manage');
+  }, [isAdmin, isHubin, isBkk, can]);
 
   // ── Queries ──
   const { options: lowonganOptions, rawList: lowonganRawList, isLoading: loadingJobs } = useBkkLowonganOptions(searchTerm);

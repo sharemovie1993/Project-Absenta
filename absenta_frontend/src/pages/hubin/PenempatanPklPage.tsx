@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -74,15 +75,12 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const [mitraSearch, setMitraSearch] = useState('');
   const printTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const isGuru = useMemo(() => user?.role?.name?.toUpperCase() === 'GURU', [user]);
+  const { isHubin, isAdmin, can } = useCapabilities();
+  const isGuru = useMemo(() => !!user?.isTeacher, [user]);
   
   const canManage = useMemo(() => {
-    return !!(user?.role?.name?.toUpperCase() === 'ADMIN' || 
-           user?.role?.name?.toUpperCase() === 'SUPERADMIN' ||
-           user?.position_codes?.includes('HUBIN') ||
-           user?.capabilities?.includes('hubin.partners.manage') ||
-           user?.capabilities?.includes('hubin.pkl.manage'));
-  }, [user]);
+    return isAdmin || isHubin || can('hubin.partners.manage') || can('hubin.pkl.manage');
+  }, [isAdmin, isHubin, can]);
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>(canManage ? 'ALL' : 'MY_GUIDANCE');
   

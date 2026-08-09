@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -149,10 +150,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     return Array.isArray(absensiData?.data) ? (absensiData.data as AbsensiPkl[]) : (absensiData as { data?: AbsensiPkl[] })?.data || [];
   }, [absensiData]);
 
-  const caps = (user as UserAuthStore)?.capabilities || (user as UserAuthStore)?.Role?.rolePermissions?.map((rp) => rp.permission_id) || [];
-  const isGlobalHubin = caps.includes('hubin.partners.manage') || 
-                       user?.role?.name === 'ADMIN' ||
-                       (user as UserAuthStore)?.position_codes?.includes('HUBIN');
+  const { isHubin, isAdmin, can } = useCapabilities();
+  const isGlobalHubin = isAdmin || isHubin || can('hubin.partners.manage');
 
   const visibleTabsCount = useMemo(() => {
     if (isStudent) return 3; // Presensi, Riwayat, Portofolio

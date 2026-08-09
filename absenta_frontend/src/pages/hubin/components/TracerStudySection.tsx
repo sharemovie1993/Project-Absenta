@@ -10,6 +10,7 @@ import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { TracerFormSubfields } from './tracer/TracerFormSubfields';
 import { 
   GraduationCap, 
@@ -58,15 +59,10 @@ export const TracerStudySection: React.FC = React.memo(() => {
   const [usahaNama, setUsahaNama] = useState('');
   const [usahaBidang, setUsahaBidang] = useState('');
 
+  const { isHubin: isHubinRole, isBkk, isAdmin, can } = useCapabilities();
   const isHubin = useMemo(() => {
-    const roleName = user?.role?.name?.toUpperCase() || '';
-    const caps = user?.capabilities || [];
-    return ['ADMIN', 'SUPERADMIN'].includes(roleName) ||
-           caps.includes('hubin.tracer.view') ||
-           caps.includes('hubin.bkk.manage') ||
-           caps.includes('hubin.partners.manage') ||
-           caps.includes('dashboard.view.hubin');
-  }, [user]);
+    return isAdmin || isHubinRole || isBkk || can('hubin.tracer.view') || can('hubin.bkk.manage') || can('hubin.partners.manage');
+  }, [isAdmin, isHubinRole, isBkk, can]);
 
   // Queries
   const { data: tracerListData, isLoading: loadingTracerList } = useQuery({

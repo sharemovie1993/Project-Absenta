@@ -10,6 +10,7 @@ import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   Hammer, 
   Plus, 
@@ -54,14 +55,10 @@ export const TefaSection: React.FC = React.memo(() => {
   const [targetDate, setTargetDate] = useState('');
   const [description, setDescription] = useState('');
 
+  const { isHubin: isHubinRole, isAdmin, can } = useCapabilities();
   const isHubin = useMemo(() => {
-    const roleName = user?.role?.name?.toUpperCase() || '';
-    const caps = user?.capabilities || [];
-    return ['ADMIN', 'SUPERADMIN'].includes(roleName) ||
-           caps.includes('hubin.tefa.manage') ||
-           caps.includes('hubin.partners.manage') ||
-           caps.includes('dashboard.view.hubin');
-  }, [user]);
+    return isAdmin || isHubinRole || can('hubin.tefa.manage') || can('hubin.partners.manage');
+  }, [isAdmin, isHubinRole, can]);
 
   // Queries
   const { data: tefaData, isLoading } = useQuery({
