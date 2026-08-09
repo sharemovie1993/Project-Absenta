@@ -29,7 +29,7 @@ interface CapabilityGroup {
   items: { label: string; icon: any; path?: string }[];
 }
 
-export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = ({ user, subscription }) => {
+export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = React.memo(({ user, subscription }) => {
   const roleName = user?.role?.name || 'USER';
   const caps = user?.capabilities || [];
   const navigate = useNavigate();
@@ -184,4 +184,4 @@ export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = ({ user, su
       </div>
     </motion.div>
   );
-};
+});

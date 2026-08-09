@@ -64,7 +64,7 @@ const safeArr = <T,>(v: unknown): T[] => {
 };
 
 /* ── Piket & Agenda Panel (Real Live API Connected) ── */
-export function PiketAgendaPanel() {
+export const PiketAgendaPanel = React.memo(function PiketAgendaPanel() {
   const { data: piketRes, isLoading: isLoadingPiket } = useQuery({
     queryKey: ['piket-guru-hari-ini'],
     queryFn: () => piketGuruApi.getHariIni().catch(() => null),
@@ -228,10 +228,10 @@ export function PiketAgendaPanel() {
       </div>
     </div>
   );
-}
+});
 
 /* ── Rombel Disiplin & Rawan Panel (Real Live Dynamic Data) ── */
-export function RombelDisiplinPanel({ violations, analytics }: { violations: unknown; analytics?: KesiswaanAnalyticsData }) {
+export const RombelDisiplinPanel = React.memo(function RombelDisiplinPanel({ violations, analytics }: { violations: unknown; analytics?: KesiswaanAnalyticsData }) {
   const list = safeArr<PelanggaranItem>(violations);
   
   // Aggregate points per class dynamically
@@ -313,4 +313,4 @@ export function RombelDisiplinPanel({ violations, analytics }: { violations: unk
       </div>
     </div>
   );
-}
+});

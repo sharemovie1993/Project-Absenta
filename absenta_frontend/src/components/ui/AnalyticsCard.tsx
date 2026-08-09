@@ -24,7 +24,7 @@ export interface AnalyticsCardProps {
   }[];
 }
 
-export function AnalyticsCard({ 
+export function AnalyticsCardBase({ 
   title, 
   value, 
   icon, 
@@ -181,4 +181,5 @@ export function AnalyticsCard({
   );
 }
 
-export const MemoizedAnalyticsCard = React.memo(AnalyticsCard);
+export const AnalyticsCard = React.memo(AnalyticsCardBase);
+export const MemoizedAnalyticsCard = AnalyticsCard;

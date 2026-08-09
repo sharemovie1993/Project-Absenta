@@ -25,7 +25,7 @@ interface LegerStudentTableProps {
   getPdfUkkUrl: (siswaId: string) => string;
 }
 
-export const LegerStudentTable: React.FC<LegerStudentTableProps> = ({
+export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   students,
   isLoading,
   isJenjangSmk,
@@ -208,4 +208,4 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = ({
       </div>
     </Card>
   );
-};
+});

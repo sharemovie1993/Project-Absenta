@@ -16,7 +16,7 @@ interface MyJobdeskWidgetProps {
   alwaysVisible?: boolean;
 }
 
-export const MyJobdeskWidget: React.FC<MyJobdeskWidgetProps> = ({ alwaysVisible = false }) => {
+export const MyJobdeskWidget: React.FC<MyJobdeskWidgetProps> = React.memo(({ alwaysVisible = false }) => {
   const [data, setData] = useState<JobdeskData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -326,4 +326,4 @@ export const MyJobdeskWidget: React.FC<MyJobdeskWidgetProps> = ({ alwaysVisible 
       </div>
     </div>
   );
-};
+});
