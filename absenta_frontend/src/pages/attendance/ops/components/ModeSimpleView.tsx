@@ -10,6 +10,7 @@ import { LogIn, LogOut, Loader, UserCheck, MapPin } from 'lucide-react';
 import { TabSwitcher } from '../../../../components/ui/TabSwitcher';
 
 import { useKelasOptions } from '../../../../hooks/useKelasOptions';
+import { useCapabilities } from '../../../../hooks/useCapabilities';
 
 // Lazy load GateInputModule to avoid loading ZXing library (400KB+) when not needed
 const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
@@ -43,10 +44,8 @@ export default React.memo(function ModeSimpleView({
   isPetugasGuru,
   kelasLabel,
 }: ModeSimpleViewProps) {
-  const isAdmin = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
-  const caps = user?.capabilities || [];
-  const positionCodes = user?.position_codes || [];
-  const isGerbangPos = positionCodes.includes('GERBANG');
+  const { isAdmin, isGateOfficer, can } = useCapabilities();
+  const isGerbangPos = isGateOfficer || can('attendance.gate.tap.entry');
 
   const { tenantId } = useTenant();
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();

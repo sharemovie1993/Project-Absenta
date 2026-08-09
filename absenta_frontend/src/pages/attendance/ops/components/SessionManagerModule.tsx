@@ -5,6 +5,7 @@ import { Loader } from '../../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../../components/ui/Alert';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../../hooks/useAuth';
+import { useCapabilities } from '../../../../hooks/useCapabilities';
 import { 
   getSesiAbsensiList, 
   createSesiAbsensi, 
@@ -93,6 +94,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   canCreateSession,
 }) => {
   const { subscribe, unsubscribe } = useSocket();
+  const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
+  const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
   
   // State
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
@@ -722,9 +725,9 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           guruLabel={getGuruLabel}
                           waktuMulaiText={formatLocalTimeFromISO(session.waktu_mulai) || ''}
                           waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai) || ''}
-                          showScanGuru={userRole !== 'KEPALA_SEKOLAH' && userRole !== 'KURIKULUM' && userRole !== 'KESISWAAN'}
-                          showScanSiswa={userRole !== 'KEPALA_SEKOLAH' && userRole !== 'KURIKULUM' && userRole !== 'KESISWAAN'}
-                          canManage={userRole === 'ADMIN' || userRole === 'PETUGAS_KELAS' || (userRole === 'SISWA' && isPetugasSiswa)}
+                          showScanGuru={!isReadOnlyExecutive}
+                          showScanSiswa={!isReadOnlyExecutive}
+                          canManage={isAdmin || can('attendance.sessions.manage') || (isStudent && isPetugasSiswa)}
                           onOpenJournal={() => handleOpenJournal(session)}
                         />
                         
@@ -787,7 +790,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
             sesiId={journalSesiId}
             initialData={journalInitialData}
             onSuccess={fetchSessions}
-            readOnly={userRole === 'SISWA' || userRole === 'KEPALA_SEKOLAH' || userRole === 'KURIKULUM' || userRole === 'KESISWAAN'}
+            readOnly={!isAdmin && !can('attendance.journals.manage')}
           />
 
           {/* Delete Confirmation Dialog */}

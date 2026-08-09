@@ -15,6 +15,7 @@ import {
 } from '../../components/ui';
 import { getFaceTemplates, enrollFaceTemplate, deleteFaceTemplate } from '../../api/attendanceGerbang.api';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
 import { Camera, Search, Trash, ScanFace, ShieldCheck, Plus } from 'lucide-react';
 
@@ -58,11 +59,12 @@ const breadcrumbs = [
 
 export const FaceTemplatePage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
-  const { user, can, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { isAdmin, can } = useCapabilities();
 
   const canView = useMemo(() => {
-    return can('attendance.manage.face.templates');
-  }, [can]);
+    return isAdmin || can('attendance.manage.face.templates');
+  }, [isAdmin, can]);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');

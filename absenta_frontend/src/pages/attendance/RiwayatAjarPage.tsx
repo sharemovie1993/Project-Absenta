@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { guruApi, kelasApi } from '../../api/academic.api';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../api/attendanceGerbang.api';
 import { 
@@ -59,24 +60,12 @@ interface GroupedRiwayat {
 export const RiwayatAjarPage: React.FC = React.memo(() => {
   const { user, tenantId, subscription } = useAuthStore();
   const { can } = useAuth();
-  
-  const roleName = user?.role?.name || '';
-  const positionCodes = (user as any)?.position_codes || [];
+  const { isAdmin, isKurikulum, isKepalaSekolah, isTuHead, isTuStaff } = useCapabilities();
 
   // Determine if current user is a Supervisor / Manager (Kurikulum, Kepsek, Admin, TU Kepegawaian)
   const isManager = useMemo(() => {
-    // Explicit admin/manager roles
-    if (['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KEPALA_SEKOLAH'].includes(roleName)) {
-      return true;
-    }
-    // Structural manager positions
-    const managerPositions = ['KURIKULUM', 'KEPALA_SEKOLAH', 'TU_KEPALA', 'TU_KEPEGAWAIAN'];
-    if (Array.isArray(positionCodes) && positionCodes.some((c: string) => managerPositions.includes(c))) {
-      return true;
-    }
-    // Standard GURU, WALIKELAS, PETUGAS_KELAS etc. are NOT school-wide managers
-    return false;
-  }, [roleName, positionCodes]);
+    return isAdmin || isKurikulum || isKepalaSekolah || isTuHead || isTuStaff;
+  }, [isAdmin, isKurikulum, isKepalaSekolah, isTuHead, isTuStaff]);
 
   const features = user?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');

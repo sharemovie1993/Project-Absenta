@@ -1,6 +1,7 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useTenant } from '../../../hooks/useTenant';
 import { Loader, Activity, ShieldCheck, Zap, User, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
 import { SectionCard } from '../../../components/ui';
@@ -37,24 +38,22 @@ export default React.memo(function AttendanceOpsPage() {
     managedKelasIds
   } = useGerbangModeAndRole({ user, tenantId, selectedKelasId });
 
-  const roleName = user?.role?.name || '';
-  const caps = (user as any)?.capabilities || [];
+  const { isAdmin, isTeacher, can } = useCapabilities();
   const isPetugasClassOrAdmin = 
-    roleName === 'ADMIN' || 
-    roleName === 'SUPERADMIN' || 
-    roleName === 'GURU' || 
+    isAdmin || 
+    isTeacher || 
     isPetugasSiswaHook || 
     petugasLabel === 'Aktif' ||
-    caps.includes('attendance.markGateAbsence') || 
-    caps.includes('attendance.sessions.create') ||
-    caps.includes('attendance.scan');
+    can('attendance.markGateAbsence') || 
+    can('attendance.sessions.create') ||
+    can('attendance.scan');
 
   // Shared Props
   const sharedProps = {
     user,
     absensiMode,
     isPetugasSiswa: isPetugasClassOrAdmin,
-    isPetugasGuru: roleName === 'GURU' || caps.includes('attendance.sessions.view.list') || isPetugasGuruHook,
+    isPetugasGuru: isTeacher || can('attendance.sessions.view.list') || isPetugasGuruHook,
     kelasLabel: kelasNama,
     roleLabel,
     petugasLabel,

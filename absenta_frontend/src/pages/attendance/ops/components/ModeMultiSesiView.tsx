@@ -6,6 +6,7 @@ import { useGerbangAttendanceData } from '../../../../hooks/attendance/useGerban
 import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { useTenant } from '../../../../hooks/useTenant';
 import { useAuthStore } from '../../../../store/authStore';
+import { useCapabilities } from '../../../../hooks/useCapabilities';
 import { useSocket } from '../../../../hooks/useSocket';
 import { toLocalDate } from '../../../../utils/attendance/time';
 import { 
@@ -104,20 +105,17 @@ export default React.memo(function ModeMultiSesiView({
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
 
   const today = toLocalDate();
-  const isAdmin = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
-  const caps = user?.capabilities || [];
-  const positionCodes = user?.position_codes || [];
-  
-  const isGerbangPos = positionCodes.includes('GERBANG') || user?.role?.name === 'GERBANG' || user?.role?.name === 'PETUGAS_GERBANG';
-  const isWaliKelasPos = positionCodes.includes('WALIKELAS') || !!(user as any)?.guru_profile?.wali_kelas_di;
+  const { isAdmin, isGateOfficer, isHomeroomTeacher, isOperator, can } = useCapabilities();
+  const isGerbangPos = isGateOfficer || can('attendance.gate.tap.entry');
+  const isWaliKelasPos = isHomeroomTeacher || !!(user as any)?.guru_profile?.wali_kelas_di;
 
   // 1. Scanner Gerbang (HANYA Admin, Operator, Satpam/Petugas Gerbang Murni — BUKAN Wali Kelas & BUKAN Petugas Kelas)
   const canAccessInput = !isWaliKelasPos && !isPetugasSiswa && (
     isAdmin ||
     isGerbangPos ||
-    user?.role?.name === 'OPERATOR' ||
-    caps.includes('attendance.gate.tap.entry') ||
-    caps.includes('attendance.scan.gate')
+    isOperator ||
+    can('attendance.gate.tap.entry') ||
+    can('attendance.scan.gate')
   );
   
   // 2. Cek Manual (Wali Kelas, Petugas Kelas, Guru, Admin)
