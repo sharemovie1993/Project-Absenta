@@ -50,7 +50,7 @@ interface ModalProps {
   standardReferences?: any;
 }
 
-export const MasterStrukturModal: React.FC<ModalProps> = ({
+export const MasterStrukturModal: React.FC<ModalProps> = React.memo(({
   isOpen,
   onClose,
   editingItem,
@@ -155,5 +155,5 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
       </form>
     </Modal>
   );
-};
+});
 export default MasterStrukturModal;

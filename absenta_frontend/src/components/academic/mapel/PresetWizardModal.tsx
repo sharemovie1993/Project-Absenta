@@ -20,7 +20,7 @@ interface WizardStep {
   categoryType: 'umum' | 'kejuruan' | 'pilihan' | 'mulok' | 'summary';
 }
 
-export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
+export const PresetWizardModal: React.FC<PresetWizardModalProps> = React.memo(({
   isOpen,
   onClose,
   jenjang,
@@ -942,4 +942,4 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

@@ -19,7 +19,7 @@ const parseStartYear = (tahunStr: string): number => {
   return match ? parseInt(match[0], 10) : 0;
 };
 
-export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
+export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = React.memo(({
   isOpen,
   onClose,
   years,
@@ -252,6 +252,6 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
       </form>
     </Modal>
   );
-};
+});
 
 export default CloneStrukturModal;

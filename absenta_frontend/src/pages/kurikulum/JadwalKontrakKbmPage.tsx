@@ -302,7 +302,7 @@ interface KelasKontrakGroupProps {
   onDelete: (id: string) => void;
 }
 
-const KelasKontrakGroup: React.FC<KelasKontrakGroupProps> = ({
+const KelasKontrakGroup: React.FC<KelasKontrakGroupProps> = React.memo(({
   kelasNama, items, canManage, onDelete,
 }) => (
   <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -345,7 +345,7 @@ const KelasKontrakGroup: React.FC<KelasKontrakGroupProps> = ({
       </table>
     </div>
   </div>
-);
+));
 
 // === Sub-component: Baris Kontrak ===
 interface KontrakRowProps {
@@ -354,7 +354,7 @@ interface KontrakRowProps {
   onDelete: (id: string) => void;
 }
 
-const KontrakRow: React.FC<KontrakRowProps> = ({ item, canManage, onDelete }) => (
+const KontrakRow: React.FC<KontrakRowProps> = React.memo(({ item, canManage, onDelete }) => (
   <tr className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors group">
     {/* Mapel */}
     <td className="py-2.5 px-4">
@@ -446,6 +446,6 @@ const KontrakRow: React.FC<KontrakRowProps> = ({ item, canManage, onDelete }) =>
       </td>
     )}
   </tr>
-);
+));
 
 export default JadwalKontrakKbmPage;
