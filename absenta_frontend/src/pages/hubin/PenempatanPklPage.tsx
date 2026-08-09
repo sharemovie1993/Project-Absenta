@@ -153,6 +153,15 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     return count > 1;
   }, [rawPenempatan]);
 
+  const { data: rawMitraRes } = useQuery({
+    queryKey: ['mitra-industri-raw-penempatan'],
+    queryFn: () => hubinApi.getMitra({ limit: 1000 }).catch(() => null),
+    enabled: isEnabled,
+  });
+  const rawMitra = useMemo(() => {
+    return (Array.isArray(rawMitraRes?.data) ? rawMitraRes.data : []) as MitraData[];
+  }, [rawMitraRes]);
+
   // Integrated Custom Hooks (Pilar 31 Data Layer)
   const { options: mitraOptions, isLoading: isLoadingMitra } = useDudiOptions(mitraSearch);
   const { options: guruOptions, isLoading: isLoadingGuru } = usePembimbingPklOptions();
