@@ -1,10 +1,12 @@
 import { sekolahController } from '../controllers/sekolah.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function sekolahRoutes(fastify: any) {
   // Authentication and tenant middleware are registered at plugin level in main.ts
 
   fastify.get('/lookup-npsn/:npsn', {
+    preHandler: [determineDataScope()],
     schema: {
       params: {
         type: 'object',
@@ -32,13 +34,14 @@ export async function sekolahRoutes(fastify: any) {
           return;
         }
         await requireCapability('core.sekolah.view.profile')(request, reply);
-      }
-    ],
+      },
+    determineDataScope(),
+  ],
     handler: sekolahController.getCurrent.bind(sekolahController),
   });
 
   fastify.post('/', {
-    preHandler: [requireCapability('core.sekolah.update.profile')],
+    preHandler: [requireCapability('core.sekolah.update.profile'), determineDataScope()],
     handler: sekolahController.create.bind(sekolahController),
   });
 

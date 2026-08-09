@@ -1,37 +1,42 @@
 import { waliKelasController } from '../controllers/wali-kelas.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function waliKelasRoutes(fastify: any) {
   fastify.get('/struktur', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
-      organizationalScopeMiddleware
-    ],
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ],
     handler: waliKelasController.getStrukturAssignments
   });
 
   fastify.post('/struktur/assign', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
-      organizationalScopeMiddleware
-    ],
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ],
     handler: waliKelasController.assignStrukturWaliKelas
   });
 
   fastify.put('/struktur/:id/nonaktif', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
-      organizationalScopeMiddleware
-    ],
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ],
     handler: waliKelasController.nonaktifStrukturAssignment
   });
 
   fastify.get('/by-siswa/:siswaId', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),
-      organizationalScopeMiddleware
-    ],
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ],
     handler: waliKelasController.bySiswa
   });
 
@@ -49,7 +54,7 @@ export async function waliKelasRoutes(fastify: any) {
   });
 
   fastify.delete('/sk-arsip/:id', {
-    preHandler: [requireCapability('academic.homeroom.manage')],
+    preHandler: [requireCapability('academic.homeroom.manage'), determineDataScope()],
     handler: waliKelasController.deleteSkArsip
   });
 }

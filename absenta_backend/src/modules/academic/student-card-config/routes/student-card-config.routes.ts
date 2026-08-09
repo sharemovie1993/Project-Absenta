@@ -1,5 +1,6 @@
 import { studentCardConfigController } from '../controllers/student-card-config.controller';
 import { requireCapability } from '../../../../middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 
 export async function studentCardConfigRoutes(fastify: any) {
@@ -13,8 +14,9 @@ export async function studentCardConfigRoutes(fastify: any) {
             return;
           }
           await requireCapability("academic.student.card.view.config")(request, reply);
-        }
-      ],
+        },
+    determineDataScope(),
+  ],
     },
     studentCardConfigController.getConfig.bind(studentCardConfigController)
   );
@@ -22,7 +24,7 @@ export async function studentCardConfigRoutes(fastify: any) {
   fastify.put(
     '/',
     {
-      preHandler: [requireCapability("academic.student.card.update.config")], // Using manage_siswa as proxy for edit config
+      preHandler: [requireCapability("academic.student.card.update.config"), determineDataScope()], // Using manage_siswa as proxy for edit config
     },
     studentCardConfigController.upsertConfig.bind(studentCardConfigController)
   );

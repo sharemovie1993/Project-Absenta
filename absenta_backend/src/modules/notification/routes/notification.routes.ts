@@ -1,11 +1,12 @@
 import { NotificationController } from '../controllers/notification.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function notificationRoutes(fastify: any) {
   const notificationController = new NotificationController();
 
   fastify.post('/test/email', {
-    preHandler: [requireCapability("notify.send.test.email")],
+    preHandler: [requireCapability("notify.send.test.email"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -21,7 +22,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/test/whatsapp', {
-    preHandler: [requireCapability("notify.send.test.whatsapp")],
+    preHandler: [requireCapability("notify.send.test.whatsapp"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -45,7 +46,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/trial-email/welcome', {
-    preHandler: [requireCapability("notify.send.test.email")],
+    preHandler: [requireCapability("notify.send.test.email"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -61,7 +62,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/trial-email/feature', {
-    preHandler: [requireCapability("notify.send.test.email")],
+    preHandler: [requireCapability("notify.send.test.email"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -77,7 +78,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/trial-email/case-study', {
-    preHandler: [requireCapability("notify.send.test.email")],
+    preHandler: [requireCapability("notify.send.test.email"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -93,7 +94,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/trial-email/upgrade-reminder', {
-    preHandler: [requireCapability("notify.send.test.email")],
+    preHandler: [requireCapability("notify.send.test.email"), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -110,7 +111,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.get('/logs', {
-    preHandler: [requireCapability('notify.view.logs')],
+    preHandler: [requireCapability('notify.view.logs'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -126,7 +127,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.get('/stats', {
-    preHandler: [requireCapability('notify.view.stats')],
+    preHandler: [requireCapability('notify.view.stats'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -140,21 +141,21 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.get('/my', {
-    preHandler: [requireCapability('notify.view.my')],
+    preHandler: [requireCapability('notify.view.my'), determineDataScope()],
     handler: notificationController.getUserNotifications.bind(notificationController),
   });
 
   fastify.get('/status', {
-    preHandler: [requireCapability('notify.check.status')],
+    preHandler: [requireCapability('notify.check.status'), determineDataScope()],
     handler: notificationController.checkServiceStatus.bind(notificationController),
   });
 
   fastify.get('/preferences', {
-    preHandler: [requireCapability('notify.view.preferences')],
+    preHandler: [requireCapability('notify.view.preferences'), determineDataScope()],
     handler: notificationController.getUserPreferences.bind(notificationController),
   });
   fastify.put('/preferences', {
-    preHandler: [requireCapability('notify.update.preferences')],
+    preHandler: [requireCapability('notify.update.preferences'), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -181,7 +182,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.post('/resend/:notificationId', {
-    preHandler: [requireCapability('notify.resend')],
+    preHandler: [requireCapability('notify.resend'), determineDataScope()],
     schema: {
       params: {
         type: 'object',
@@ -205,7 +206,7 @@ export async function notificationRoutes(fastify: any) {
   });
 
   fastify.get('/push/subscriptions', {
-    preHandler: [requireCapability('notify.push.view.subscriptions')],
+    preHandler: [requireCapability('notify.push.view.subscriptions'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',

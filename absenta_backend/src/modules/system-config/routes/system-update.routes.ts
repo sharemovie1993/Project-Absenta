@@ -5,12 +5,13 @@ import {
   readProgress,
 } from '../services/system-update.service';
 import { exec } from 'child_process';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function systemUpdateRoutes(fastify: any) {
   // GET /api/system/update/check
   // Cek apakah ada commit baru di GitHub (backend + frontend)
   fastify.get('/check', {
-    preHandler: [requireCapability('core.system.config.update')],
+    preHandler: [requireCapability('core.system.config.update'), determineDataScope()],
     handler: async (_req: any, reply: any) => {
       try {
         const result = await checkUpdates();
@@ -27,7 +28,7 @@ export async function systemUpdateRoutes(fastify: any) {
   // GET /api/system/update/status
   // Baca progres update yang sedang/sudah berjalan
   fastify.get('/status', {
-    preHandler: [requireCapability('core.system.config.update')],
+    preHandler: [requireCapability('core.system.config.update'), determineDataScope()],
     handler: async (_req: any, reply: any) => {
       return reply.send({ success: true, data: readProgress() });
     },
@@ -36,7 +37,7 @@ export async function systemUpdateRoutes(fastify: any) {
   // POST /api/system/update/execute
   // Mulai proses update di background
   fastify.post('/execute', {
-    preHandler: [requireCapability('core.system.config.update')],
+    preHandler: [requireCapability('core.system.config.update'), determineDataScope()],
     handler: async (_req: any, reply: any) => {
       const current = readProgress();
       if (current.status === 'running') {
@@ -57,7 +58,7 @@ export async function systemUpdateRoutes(fastify: any) {
   // POST /api/system/update/restart
   // Paksa restart semua proses PM2 tanpa update kode
   fastify.post('/restart', {
-    preHandler: [requireCapability('core.system.config.update')],
+    preHandler: [requireCapability('core.system.config.update'), determineDataScope()],
     handler: async (_req: any, reply: any) => {
       reply.send({ success: true, message: 'Perintah restart PM2 telah dikirim.' });
       setTimeout(() => {

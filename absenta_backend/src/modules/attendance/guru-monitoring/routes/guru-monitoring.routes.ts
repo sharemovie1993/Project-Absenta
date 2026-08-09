@@ -1,6 +1,7 @@
 import { allowBothModes } from '@/middlewares/attendanceMode';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { getRekapHarianGuru, getStatistikHarian } from '../../rekap/controllers/rekap.controller';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 /**
  * Guru Monitoring routes
@@ -10,7 +11,7 @@ import { getRekapHarianGuru, getStatistikHarian } from '../../rekap/controllers/
 export async function guruMonitoringRoutes(fastify: any) {
   // GET /attendance/guru-monitoring/harian?tanggal=YYYY-MM-DD
   fastify.get('/harian', {
-    preHandler: [allowBothModes, requireCapability(['attendance.reports.view', 'academic.teachers.view.list'])],
+    preHandler: [allowBothModes, requireCapability(['attendance.reports.view', 'academic.teachers.view.list']), determineDataScope()],
     schema: {
       description: 'Get daily teacher attendance recap (alias of rekap guru harian)',
       tags: ['Guru Monitoring'],
@@ -30,7 +31,7 @@ export async function guruMonitoringRoutes(fastify: any) {
 
   // GET /attendance/guru-monitoring/statistik/harian?tanggal=YYYY-MM-DD
   fastify.get('/statistik/harian', {
-    preHandler: [allowBothModes, requireCapability('attendance.reports.view')],
+    preHandler: [allowBothModes, requireCapability('attendance.reports.view'), determineDataScope()],
     schema: {
       description: 'Get daily attendance statistics for dashboard (alias of rekap statistik harian)',
       tags: ['Guru Monitoring'],

@@ -3,6 +3,7 @@ import { allowBothModes, requireMultiSesiMode } from '@/middlewares/attendanceMo
 import { requireCapability } from '@/middlewares/requireCapability';
 import { elevatedScopeMiddleware } from '@/middlewares/organizationalScope';
 import { RoleName } from '@/constants/enums';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function gerbangRoutes(fastify: any) {
   fastify.post('/bypass', {
@@ -10,7 +11,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.bypass', 'attendance.gate.tap.entry', 'attendance.scan']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.bypass.bind(gerbangController),
     schema: {
       description: 'Bypass late attendance (Force HADIR)',
@@ -28,7 +30,7 @@ export async function gerbangRoutes(fastify: any) {
 
   // Tap entry point - Handles all RFID/Face/QR taps
   fastify.post('/tap', {
-    preHandler: [allowBothModes, requireCapability('attendance.gate.tap.entry')],
+    preHandler: [allowBothModes, requireCapability('attendance.gate.tap.entry'), determineDataScope()],
     handler: gerbangController.tap.bind(gerbangController),
     schema: {
       description: 'Record student gate tap (entry/exit)',
@@ -47,7 +49,7 @@ export async function gerbangRoutes(fastify: any) {
   });
 
   fastify.post('/offline-sync', {
-    preHandler: [requireCapability('attendance.gate.tap.entry')],
+    preHandler: [requireCapability('attendance.gate.tap.entry'), determineDataScope()],
     handler: gerbangController.syncOfflineTaps.bind(gerbangController),
     schema: {
       description: 'Sync offline taps from IoT devices',
@@ -76,7 +78,7 @@ export async function gerbangRoutes(fastify: any) {
   });
 
   fastify.post('/stress-test', {
-    preHandler: [requireCapability('system.performance.test')],
+    preHandler: [requireCapability('system.performance.test'), determineDataScope()],
     handler: gerbangController.stressTest.bind(gerbangController),
     schema: {
       description: 'Run stress test for gate taps',
@@ -92,7 +94,7 @@ export async function gerbangRoutes(fastify: any) {
   
   // Face verification + tap (1:1)
   fastify.post('/face-verify', {
-    preHandler: [allowBothModes, requireCapability('attendance.gate.tap.entry')],
+    preHandler: [allowBothModes, requireCapability('attendance.gate.tap.entry'), determineDataScope()],
     handler: gerbangController.faceVerifyTap.bind(gerbangController),
     schema: {
       description: 'Verify face (1:1) and record gate tap',
@@ -113,7 +115,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.gate.face.enroll'),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.faceEnroll.bind(gerbangController),
     schema: {
       description: 'Enroll student face template',
@@ -136,7 +139,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability("attendance.gate.view.face.templates"),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getFaceTemplates.bind(gerbangController),
     schema: {
       description: 'List student face templates',
@@ -157,7 +161,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getEmbeddingHealth.bind(gerbangController),
     schema: {
       description: 'Embedding provider health check',
@@ -169,7 +174,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability('attendance.gate.face.enroll'),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.deleteFaceTemplate.bind(gerbangController),
     schema: {
       description: 'Delete a student face template',
@@ -190,7 +196,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getSessions.bind(gerbangController),
     schema: {
       description: 'Get active gate sessions for current date',
@@ -210,7 +217,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getSessionById.bind(gerbangController),
     schema: {
       description: 'Get specific gate session details',
@@ -230,7 +238,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getStudentStatus.bind(gerbangController),
     schema: {
       description: 'Get current gate status for a specific student',
@@ -250,7 +259,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getStudentHistory.bind(gerbangController),
     schema: {
       description: 'Get gate tap history for a specific student',
@@ -278,7 +288,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getRecords.bind(gerbangController),
     schema: {
       description: 'Get gate attendance records for the current or specified date',
@@ -303,7 +314,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getNotPresentStudents.bind(gerbangController),
     schema: {
       description: 'Get students who have not tapped GERBANG_DATANG for current date',
@@ -325,7 +337,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create'], { exemptRoles: [RoleName.SISWA] }),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.markGateAbsence.bind(gerbangController),
     schema: {
       description: 'Create manual gate absence record with status HADIR/SAKIT/IZIN/ALPA/DISPEN',
@@ -347,7 +360,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getPresentStudents.bind(gerbangController),
     schema: {
       description: 'Get list of students currently present (tapped in but not out)',
@@ -368,7 +382,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       requireMultiSesiMode,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'attendance.gate.tap.entry'], { exemptRoles: [RoleName.SISWA] }),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getIntegrationStatus.bind(gerbangController),
     schema: {
       description: 'Get integration status with activity module (MULTI_SESI mode only)',
@@ -381,7 +396,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       requireMultiSesiMode,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getActivityPrerequisites.bind(gerbangController),
     schema: {
       description: 'Check activity prerequisites for a student (MULTI_SESI mode only)',
@@ -400,7 +416,8 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create']),
-    ],
+    determineDataScope(),
+  ],
     handler: gerbangController.getSystemHealth.bind(gerbangController),
     schema: {
       description: 'Get gate system health status',
@@ -414,7 +431,8 @@ export async function gerbangRoutes(fastify: any) {
       allowBothModes,
       elevatedScopeMiddleware,
       requireCapability(['attendance.reports.view', 'attendance.sessions.create', 'dashboard.view.overview'], { exemptRoles: [RoleName.SISWA] }),
-    ],
+    determineDataScope(),
+  ],
 
     handler: gerbangController.getStatistics.bind(gerbangController),
     schema: {

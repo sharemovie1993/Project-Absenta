@@ -2,14 +2,16 @@ import { kelasController } from '../controllers/kelas.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
 import { RoleName } from '../../../../constants/enums';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export default async function kelasRoutes(fastify: any) {
   // GET /kelas/export - Export kelas to Excel
   fastify.get('/export', {
     preHandler: [
       requireCapability('academic.structures.view.list'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.exportToExcel(request, reply);
   });
@@ -18,8 +20,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.get('/import/template', {
     preHandler: [
       requireCapability('academic.structures.create'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.getImportTemplate(request, reply);
   });
@@ -28,8 +31,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.post('/import', {
     preHandler: [
       requireCapability('academic.structures.create'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.importFromExcel(request, reply);
   });
@@ -38,8 +42,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [
       requireCapability('academic.structures.view.list', { exemptRoles: [RoleName.SISWA] }),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.getAllKelas(request, reply);
   });
@@ -48,8 +53,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.get('/:id', {
     preHandler: [
       requireCapability('academic.structures.view.detail', { exemptRoles: [RoleName.SISWA] }),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.getKelasById(request, reply);
   });
@@ -58,8 +64,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.post('/', {
     preHandler: [
       requireCapability('academic.structures.create'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.createKelas(request, reply);
   });
@@ -68,8 +75,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.put('/:id', {
     preHandler: [
       requireCapability('academic.structures.update'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.updateKelas(request, reply);
   });
@@ -78,8 +86,9 @@ export default async function kelasRoutes(fastify: any) {
   fastify.delete('/:id', {
     preHandler: [
       requireCapability('academic.structures.delete'),
-      organizationalScopeMiddleware
-    ]
+      organizationalScopeMiddleware,
+    determineDataScope(),
+  ]
   }, async (request: any, reply: any) => {
     return kelasController.deleteKelas(request, reply);
   });

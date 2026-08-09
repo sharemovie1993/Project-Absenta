@@ -6,6 +6,7 @@ import {
   SupportTicketStatus, 
   SupportTicketSenderType 
 } from '@prisma/client';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function supportTicketRoutes(fastify: any) {
   
@@ -17,7 +18,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 1. Membuat Tiket Bantuan Baru untuk Sekolah yang Sedang Berjalan
    */
   fastify.post('/', {
-    preHandler: [requireCapability('support.tickets.create')],
+    preHandler: [requireCapability('support.tickets.create'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -58,7 +59,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 2. Mendapatkan Daftar Tiket Milik Sekolah Berjalan
    */
   fastify.get('/', {
-    preHandler: [requireCapability('support.tickets.view')],
+    preHandler: [requireCapability('support.tickets.view'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -87,7 +88,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 3. Mendapatkan Detail Tiket Milik Sekolah Berjalan (Terisolasi Tenant)
    */
   fastify.get('/:id', {
-    preHandler: [requireCapability('support.tickets.view')],
+    preHandler: [requireCapability('support.tickets.view'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -117,7 +118,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 4. Mengirim Pesan Balasan di Thread Keluhan Sekolah (Customer)
    */
   fastify.post('/:id/messages', {
-    preHandler: [requireCapability('support.tickets.reply')],
+    preHandler: [requireCapability('support.tickets.reply'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -152,7 +153,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 5. Menandai Tiket Selesai / Teratasi oleh Sekolah
    */
   fastify.patch('/:id/resolve', {
-    preHandler: [requireCapability('support.tickets.resolve')],
+    preHandler: [requireCapability('support.tickets.resolve'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -177,7 +178,7 @@ export async function supportTicketRoutes(fastify: any) {
    * 5.1. Memberikan Penilaian Layanan CSAT (Rating & Feedback) oleh Sekolah
    */
   fastify.post('/:id/rate', {
-    preHandler: [requireCapability('support.tickets.resolve')],
+    preHandler: [requireCapability('support.tickets.resolve'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;

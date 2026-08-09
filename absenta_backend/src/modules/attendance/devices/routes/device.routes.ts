@@ -1,12 +1,23 @@
 import { deviceController } from '../controllers/device.controller';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export const deviceRoutes = async (fastify: any) => {
   // Device Management (Admin/Staff only)
-  fastify.get('/', deviceController.getDevices);
-  fastify.get('/:id', deviceController.getDeviceDetail);
-  fastify.post('/', deviceController.createDevice);
-  fastify.put('/:id', deviceController.updateDevice);
-  fastify.delete('/:id', deviceController.deleteDevice);
+  fastify.get('/', {
+    preHandler: [determineDataScope()]
+  }, deviceController.getDevices);
+  fastify.get('/:id', {
+    preHandler: [determineDataScope()]
+  }, deviceController.getDeviceDetail);
+  fastify.post('/', {
+    preHandler: [determineDataScope()]
+  }, deviceController.createDevice);
+  fastify.put('/:id', {
+    preHandler: [determineDataScope()]
+  }, deviceController.updateDevice);
+  fastify.delete('/:id', {
+    preHandler: [determineDataScope()]
+  }, deviceController.deleteDevice);
 
   // Heartbeat (IoT/Hardware) - Possibly unsecured or secured with Device Token
   fastify.post('/heartbeat', {

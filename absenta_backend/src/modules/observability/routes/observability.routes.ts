@@ -1,6 +1,7 @@
 import { prisma } from '../../../utils/prisma';
 import { EMAIL_QUEUE_NAME } from '../../../queue/email.queue';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 function utcDayStart(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
@@ -28,7 +29,7 @@ async function sumAggregated(metricKey: string, tenantId: string | null, since: 
 
 export async function observabilityRoutes(fastify: any) {
   fastify.get('/overview', {
-    preHandler: [requireCapability('superadmin.infra.monitoring.view')],
+    preHandler: [requireCapability('superadmin.infra.monitoring.view'), determineDataScope()],
     handler: async (request: any, reply: any) => {
       const query = (request?.query || {}) as any;
       const tenantId = query?.tenant_id ? String(query.tenant_id) : null;

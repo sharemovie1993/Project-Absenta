@@ -1,6 +1,7 @@
 import { parentAppController } from '../controllers/parent-auth.controller';
 import { parentAuthGuard } from '../guards/parent-auth.guard';
 import { initParentAppAttendanceEventConsumer } from '../services/event-handlers/attendance-event-consumer';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function parentAppRoutes(fastify: any) {
   await initParentAppAttendanceEventConsumer();
@@ -30,7 +31,7 @@ export async function parentAppRoutes(fastify: any) {
   // Main Dashboard (Profile + Active Students + Status)
   fastify.get('/me', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: async (request: any, reply: any) => {
       console.log('🔥🔥🔥 /api/parent-app/me HANDLER HIT');
       return parentAppController.getDashboard(request, reply);
@@ -40,49 +41,49 @@ export async function parentAppRoutes(fastify: any) {
   // Student Attendance History (Paginated)
   fastify.get('/siswa/:id/riwayat-kehadiran', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getAttendanceHistory
   });
 
   // Student Notifications (Paginated)
   fastify.get('/siswa/:id/notifikasi', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getNotifications
   });
 
   // Student Monthly Recap
   fastify.get('/siswa/:id/rekap-bulanan', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getMonthlyRecap
   });
 
   // Student Daily Tracking
   fastify.get('/siswa/:id/tracking-harian', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getDailyTracking
   });
 
   // Report Absence (SAKIT/IZIN)
   fastify.post('/siswa/:id/lapor-absen', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.reportAbsence.bind(parentAppController)
   });
 
   // Report Card View (Rapor Online)
   fastify.get('/siswa/:id/rapor', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getRapor.bind(parentAppController)
   });
 
   // P5 Projek View
   fastify.get('/siswa/:id/p5', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: parentAppController.getP5.bind(parentAppController)
   });
 
@@ -93,41 +94,41 @@ export async function parentAppRoutes(fastify: any) {
   // Wali Murid Chat Routes (Stateless Auth Guard)
   fastify.post('/chat/session', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: ParentChatController.startSession
   });
 
   fastify.get('/chat/sessions', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: ParentChatController.getParentSessions
   });
 
   fastify.get('/chat/messages/:sessionId', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: ParentChatController.getParentMessages
   });
 
   fastify.post('/chat/message', {
     config: { skipAuth: true },
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: ParentChatController.sendParentMessage
   });
 
   // Guru / Wali Kelas Chat Routes (User Session Auth)
   fastify.get('/teacher/chat/sessions', {
-    preHandler: requireCapability('academic.teaching.view'),
+    preHandler: [requireCapability('academic.teaching.view'), determineDataScope()],
     handler: ParentChatController.getTeacherSessions
   });
 
   fastify.get('/teacher/chat/messages/:sessionId', {
-    preHandler: requireCapability('academic.teaching.view'),
+    preHandler: [requireCapability('academic.teaching.view'), determineDataScope()],
     handler: ParentChatController.getTeacherMessages
   });
 
   fastify.post('/teacher/chat/message', {
-    preHandler: requireCapability('academic.teaching.view'),
+    preHandler: [requireCapability('academic.teaching.view'), determineDataScope()],
     handler: ParentChatController.sendTeacherMessage
   });
 
@@ -136,19 +137,19 @@ export async function parentAppRoutes(fastify: any) {
 
   // Buat booking konsultasi baru
   fastify.post('/bk/konsultasi', {
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: BkKonsultasiParentController.createBooking
   });
 
   // Riwayat booking milik orang tua
   fastify.get('/bk/konsultasi', {
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: BkKonsultasiParentController.getMyBookings
   });
 
   // Batalkan booking
   fastify.patch('/bk/konsultasi/:id/cancel', {
-    preHandler: parentAuthGuard,
+    preHandler: [parentAuthGuard, determineDataScope()],
     handler: BkKonsultasiParentController.cancelBooking
   });
 }
