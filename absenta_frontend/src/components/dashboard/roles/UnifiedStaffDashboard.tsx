@@ -138,7 +138,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isStrictKesiswaan || 
     caps.includes('dashboard.view.piket') || 
     caps.includes('attendance.piket.manage') || 
-    caps.includes('kesiswaan.piket.manage') || 
     hasRole('PIKET', 'GURU PIKET'), 
   [isStrictKesiswaan, caps, jabatanList, jabatan]); // eslint-disable-line
   const isKepsek    = useMemo(() => caps.includes('dashboard.view.kepsek') || hasRole('KEPALA SEKOLAH', 'KEPALA_SEKOLAH', 'KEPSEK'), [caps, jabatanList, jabatan]); // eslint-disable-line

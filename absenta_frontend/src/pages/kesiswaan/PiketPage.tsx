@@ -95,7 +95,7 @@ export default function PiketPage() {
   // Management and Guru roles who ALWAYS have access to Meja Piket
   const isManagement = useMemo(() => {
     if (isAdmin()) return true;
-    if (can('kesiswaan.piket.manage') || can('kesiswaan.piket.view') || can('kesiswaan.piket.create')) return true;
+    if (can('attendance.piket.manage') || can('attendance.piket.view')) return true;
     return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR', 'GURU'].includes(userRole);
   }, [isAdmin, can, userRole]);
 

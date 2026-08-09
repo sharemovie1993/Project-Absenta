@@ -601,7 +601,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/kesiswaan/prestasi" element={
-                      <ProtectedRoute requiredCapability="kesiswaan.prestasi.view">
+                      <ProtectedRoute requiredCapability="affairs.achievements.view.list">
                         <PrestasiPage />
                       </ProtectedRoute>
                     } />
@@ -1318,12 +1318,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/kesiswaan/jadwal-kegiatan" element={
-                      <ProtectedRoute requiredCapability="kesiswaan.schedules.view.list">
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
                         <JadwalKegiatanPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/anggota-kegiatan-eskul" element={
-                      <ProtectedRoute requiredCapability="kesiswaan.schedules.view.list">
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <AnggotaKegiatanEskulPage />
                         </Suspense>
@@ -1495,7 +1495,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/kesiswaan/piket" element={
-                  <ProtectedRoute requiredCapability={['kesiswaan.piket.view', 'kesiswaan.schedules.view.list']}>
+                  <ProtectedRoute requiredCapability={['attendance.piket.view', 'attendance.schedules.view.list']}>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
@@ -1506,7 +1506,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/kesiswaan/pos-keamanan" element={
-                  <ProtectedRoute requiredCapability={['attendance.gate.scan', 'attendance.scan', 'kesiswaan.piket.view', 'attendance.piket.view', 'kesiswaan.schedules.view.list']}>
+                  <ProtectedRoute requiredCapability={['attendance.gate.scan', 'attendance.scan', 'attendance.piket.view', 'attendance.schedules.view.list']}>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
