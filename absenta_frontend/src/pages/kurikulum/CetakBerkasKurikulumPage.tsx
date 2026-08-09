@@ -11,6 +11,7 @@ import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.a
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '@/components/ui/Loader';
 import { Card } from '../../components/ui/Card';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 // Impor tipe data resmi untuk standardisasi Type Safety
 import type { Kelas, Guru } from '../../types/academic';
@@ -83,6 +84,8 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
   hideHeader = false,
 }) => {
   const queryClient = useQueryClient();
+  const { isKurikulum, isAdmin, can } = useCapabilities();
+  const canPrintDocuments = isAdmin || isKurikulum || can('academic.manage.academic');
 
   // Memoize breadcrumbs & instruction untuk mencegah re-creation
   const breadcrumbs = useMemo(() => [

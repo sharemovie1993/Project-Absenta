@@ -21,12 +21,15 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { Loader } from '../../components/ui/Loader';
 import { TahunPelajaranSelect } from '../../components/common';
 import { useKospBuilderState } from '../../hooks/kurikulum/useKospBuilderState';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { KospMetaConfigModal } from '../../components/kurikulum/kosp/KospMetaConfigModal';
 import useConfirm from '../../hooks/useConfirm';
 
 const KospWordEditorModal = lazy(() => import('../../components/kurikulum/kosp/KospWordEditorModal'));
 
 export const KospBuilderPage: React.FC = React.memo(() => {
+  const { isKurikulum, isKepsek, isAdmin, can } = useCapabilities();
+  const canManageKosp = isAdmin || isKurikulum || isKepsek || can('academic.manage.academic');
   const [selectedPageIndex, setSelectedPageIndex] = React.useState<number>(0);
   const confirm = useConfirm();
 

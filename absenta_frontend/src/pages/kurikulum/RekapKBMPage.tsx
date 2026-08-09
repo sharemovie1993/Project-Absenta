@@ -21,6 +21,7 @@ import { kurikulumApi } from '../../api/kurikulum.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { useGuruOptions } from '../../hooks/useGuruOptions';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { z } from 'zod';
 
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
@@ -100,6 +101,9 @@ function getInitials(name: string) {
 }
 
 export default function RekapKBMPage() {
+  const { isKurikulum, isKaprog, isAdmin, can } = useCapabilities();
+  const canViewAudit = isAdmin || isKurikulum || isKaprog || can('academic.teaching.rekap');
+
   const [tahunPelajaranId, setTahunPelajaranId] = useState<string>('');
   const [semesterId, setSemesterId] = useState<string>('');
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
