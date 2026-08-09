@@ -22,7 +22,7 @@ interface StudentAttendanceLeaderboardModalProps {
   rekapNamaSiswa?: string;
 }
 
-export const StudentAttendanceLeaderboardModal: React.FC<StudentAttendanceLeaderboardModalProps> = ({
+export const StudentAttendanceLeaderboardModal: React.FC<StudentAttendanceLeaderboardModalProps> = React.memo(({
   isOpen,
   onClose,
   leaderboardScope,
@@ -200,6 +200,6 @@ export const StudentAttendanceLeaderboardModal: React.FC<StudentAttendanceLeader
       </div>
     </Modal>
   );
-};
+});
 
 export default StudentAttendanceLeaderboardModal;

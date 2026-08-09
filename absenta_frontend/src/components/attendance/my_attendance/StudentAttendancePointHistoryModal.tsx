@@ -19,7 +19,7 @@ interface StudentAttendancePointHistoryModalProps {
   totalPelanggaran?: number;
 }
 
-export const StudentAttendancePointHistoryModal: React.FC<StudentAttendancePointHistoryModalProps> = ({
+export const StudentAttendancePointHistoryModal: React.FC<StudentAttendancePointHistoryModalProps> = React.memo(({
   isOpen,
   onClose,
   rekapStats,
@@ -176,6 +176,6 @@ export const StudentAttendancePointHistoryModal: React.FC<StudentAttendancePoint
       </div>
     </div>
   );
-};
+});
 
 export default StudentAttendancePointHistoryModal;

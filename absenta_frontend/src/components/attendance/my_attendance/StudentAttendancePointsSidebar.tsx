@@ -27,7 +27,7 @@ interface StudentAttendancePointsSidebarProps {
   top3Classmates: StudentAttendanceRecord[];
 }
 
-export const StudentAttendancePointsSidebar: React.FC<StudentAttendancePointsSidebarProps> = ({
+export const StudentAttendancePointsSidebar: React.FC<StudentAttendancePointsSidebarProps> = React.memo(({
   myRankIndex,
   classmatesCount,
   myTotalPoin,
@@ -242,6 +242,6 @@ export const StudentAttendancePointsSidebar: React.FC<StudentAttendancePointsSid
       </SectionCard>
     </div>
   );
-};
+});
 
 export default StudentAttendancePointsSidebar;

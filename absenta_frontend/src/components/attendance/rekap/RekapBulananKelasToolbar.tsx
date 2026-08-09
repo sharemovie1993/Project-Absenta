@@ -67,7 +67,7 @@ const SuspenseFallback = () => (
   <div className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
 );
 
-export function RekapBulananKelasToolbar({
+export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToolbar({
   kelasId,
   bulan,
   tahunPelajaranId,
@@ -208,4 +208,4 @@ export function RekapBulananKelasToolbar({
       </div>
     </div>
   );
-}
+});

@@ -42,7 +42,7 @@ interface SharedAttendanceTimelineProps {
   emptyDescription?: string;
 }
 
-export const SharedAttendanceTimeline: React.FC<SharedAttendanceTimelineProps> = ({
+export const SharedAttendanceTimeline: React.FC<SharedAttendanceTimelineProps> = React.memo(({
   items = [],
   selectedDate,
   isLoading = false,
@@ -152,4 +152,4 @@ export const SharedAttendanceTimeline: React.FC<SharedAttendanceTimelineProps> =
       )}
     </div>
   );
-};
+});

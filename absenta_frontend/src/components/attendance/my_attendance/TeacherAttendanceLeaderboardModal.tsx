@@ -24,7 +24,7 @@ interface TeacherAttendanceLeaderboardModalProps {
   currentUserName?: string;
 }
 
-export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeaderboardModalProps> = ({
+export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeaderboardModalProps> = React.memo(({
   isOpen,
   onClose,
   teacherLeaderboard: initialData = [],
@@ -224,4 +224,4 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
       </div>
     </div>
   );
-};
+});

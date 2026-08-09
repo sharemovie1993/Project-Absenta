@@ -79,7 +79,7 @@ const STATUS_LABELS: Record<string, string> = {
   BELUM: 'Belum Ada Data'
 };
 
-export const TeacherAttendanceView: React.FC<TeacherAttendanceViewProps> = ({
+export const TeacherAttendanceView: React.FC<TeacherAttendanceViewProps> = React.memo(({
   user,
   currentDate,
   selectedDate,
@@ -526,5 +526,5 @@ export const TeacherAttendanceView: React.FC<TeacherAttendanceViewProps> = ({
       />
     </div>
   );
-};
+});
 

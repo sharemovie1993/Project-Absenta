@@ -17,7 +17,7 @@ const QUICK_NOTES: Record<string, string[]> = {
   DISPEN: ['Tugas Sekolah', 'Lomba / Kompetisi', 'Kegiatan Organisasi', 'Latihan Event'],
 };
 
-export const CatatanAbsensiModal: React.FC<CatatanAbsensiModalProps> = ({
+export const CatatanAbsensiModal: React.FC<CatatanAbsensiModalProps> = React.memo(({
   isOpen,
   onClose,
   studentName,
@@ -194,4 +194,4 @@ export const CatatanAbsensiModal: React.FC<CatatanAbsensiModalProps> = ({
       </div>
     </AnimatePresence>
   );
-};
+});

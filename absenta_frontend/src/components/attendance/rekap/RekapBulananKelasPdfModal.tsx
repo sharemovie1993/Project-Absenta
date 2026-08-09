@@ -8,7 +8,7 @@ interface RekapBulananKelasPdfModalProps {
   onClose: () => void;
 }
 
-export function RekapBulananKelasPdfModal({
+export const RekapBulananKelasPdfModal = React.memo(function RekapBulananKelasPdfModal({
   pdfPreviewUrl,
   pdfFilename,
   onClose,
@@ -77,4 +77,4 @@ export function RekapBulananKelasPdfModal({
       </div>
     </div>
   );
-}
+});

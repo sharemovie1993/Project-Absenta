@@ -20,7 +20,7 @@ interface StudentAttendanceIzinModalProps {
   onSubmitSuccess?: () => void;
 }
 
-export const StudentAttendanceIzinModal: React.FC<StudentAttendanceIzinModalProps> = ({
+export const StudentAttendanceIzinModal: React.FC<StudentAttendanceIzinModalProps> = React.memo(({
   isOpen,
   onClose,
   onSubmitSuccess
@@ -162,6 +162,6 @@ export const StudentAttendanceIzinModal: React.FC<StudentAttendanceIzinModalProp
       </form>
     </Modal>
   );
-};
+});
 
 export default StudentAttendanceIzinModal;

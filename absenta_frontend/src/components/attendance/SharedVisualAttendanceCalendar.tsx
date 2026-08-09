@@ -37,7 +37,7 @@ interface SharedVisualAttendanceCalendarProps {
   className?: string;
 }
 
-export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCalendarProps> = ({
+export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCalendarProps> = React.memo(({
   bulan,
   selectedDate,
   onBulanChange,
@@ -302,4 +302,4 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
       </div>
     </div>
   );
-};
+});
