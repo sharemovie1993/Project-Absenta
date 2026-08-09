@@ -56,11 +56,11 @@ export const TefaSection: React.FC = React.memo(() => {
 
   const isHubin = useMemo(() => {
     const roleName = user?.role?.name?.toUpperCase() || '';
-    return roleName === 'HUBIN' || 
-           roleName === 'SUPERADMIN' || 
-           roleName === 'ADMIN' ||
-           user?.position_codes?.includes('HUBIN') ||
-           user?.capabilities?.includes('hubin.partners.manage');
+    const caps = user?.capabilities || [];
+    return ['ADMIN', 'SUPERADMIN'].includes(roleName) ||
+           caps.includes('hubin.tefa.manage') ||
+           caps.includes('hubin.partners.manage') ||
+           caps.includes('dashboard.view.hubin');
   }, [user]);
 
   // Queries

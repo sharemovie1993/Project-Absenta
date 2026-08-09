@@ -129,9 +129,15 @@ export default function PelanggaranPage() {
   // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
   const isDualRoleUser = useMemo(() => {
     if (!effectiveWaliKelasId) return false;
-    const pos = user?.position_codes || [];
+    const caps = user?.capabilities || [];
     const roleName = String(user?.role?.name || '').toUpperCase();
-    const isLeadershipOrStaff = pos.includes('KURIKULUM') || pos.includes('KESISWAAN') || pos.includes('KEPSEK') || pos.includes('SARPRAS') || pos.includes('HUBIN') || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+    const isLeadershipOrStaff =
+      caps.includes('affairs.violations.manage') ||
+      caps.includes('affairs.violation.types.manage') ||
+      caps.includes('dashboard.view.kesiswaan') ||
+      caps.includes('dashboard.view.kurikulum') ||
+      caps.includes('dashboard.view.kepsek') ||
+      ['ADMIN', 'SUPERADMIN'].includes(roleName);
     return isLeadershipOrStaff;
   }, [effectiveWaliKelasId, user]);
 
@@ -151,8 +157,13 @@ export default function PelanggaranPage() {
     if (urlContext === 'walikelas' || urlContext === 'manual') return true;
     if (urlContext === 'kesiswaan' || urlContext === 'kurikulum' || urlContext === 'sekolah') return false;
 
+    const caps = user?.capabilities || [];
     const roleName = String(user?.role?.name || '').toUpperCase();
-    const isPureAdminOrKesiswaan = roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName === 'KESISWAAN';
+    const isPureAdminOrKesiswaan =
+      caps.includes('affairs.violations.manage') ||
+      caps.includes('affairs.violation.types.manage') ||
+      caps.includes('dashboard.view.kesiswaan') ||
+      ['ADMIN', 'SUPERADMIN'].includes(roleName);
 
     if (activeWorkspaceId === 'WALIKELAS_WORKSPACE') return true;
     if (!isPureAdminOrKesiswaan && isWaliKelasRole) return true;

@@ -60,14 +60,12 @@ export const TracerStudySection: React.FC = React.memo(() => {
 
   const isHubin = useMemo(() => {
     const roleName = user?.role?.name?.toUpperCase() || '';
-    return roleName === 'HUBIN' || 
-           roleName === 'SUPERADMIN' || 
-           roleName === 'ADMIN' ||
-           user?.position_codes?.includes('HUBIN') ||
-           user?.position_codes?.includes('BKK') ||
-           user?.capabilities?.includes('hubin.partners.manage') ||
-           user?.capabilities?.includes('hubin.tracer.view') ||
-           user?.capabilities?.includes('hubin.bkk.manage');
+    const caps = user?.capabilities || [];
+    return ['ADMIN', 'SUPERADMIN'].includes(roleName) ||
+           caps.includes('hubin.tracer.view') ||
+           caps.includes('hubin.bkk.manage') ||
+           caps.includes('hubin.partners.manage') ||
+           caps.includes('dashboard.view.hubin');
   }, [user]);
 
   // Queries

@@ -110,15 +110,15 @@ export default function SupervisiPage() {
 
   // ── Derived permissions ────────────────────────────────────────────────────
   const canViewAnalytics = useMemo(() =>
-    user?.roleName === 'ADMIN' ||
-    user?.roleName === 'SUPERADMIN' ||
-    user?.capabilities?.includes('curriculum.supervision.view.report'),
+    ['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
+    user?.capabilities?.includes('curriculum.supervision.view.report') ||
+    user?.capabilities?.includes('dashboard.view.kurikulum'),
   [user]);
 
   const canManage = useMemo(() =>
-    user?.roleName === 'ADMIN' ||
-    user?.roleName === 'SUPERADMIN' ||
-    user?.capabilities?.includes('academic.structure.manage'),
+    ['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
+    user?.capabilities?.includes('academic.structure.manage') ||
+    user?.capabilities?.includes('curriculum.supervision.manage'),
   [user]);
 
   const currentGuru = useMemo(

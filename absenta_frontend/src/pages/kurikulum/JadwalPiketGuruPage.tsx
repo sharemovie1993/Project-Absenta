@@ -83,10 +83,8 @@ export default function JadwalPiketGuruPage() {
 
   const isKurikulumAdmin = useMemo(() => {
     if (isAdmin()) return true;
-    if (can('curriculum.piket.schedules.manage') || can('attendance.schedules.manage') || can('curriculum.piket.schedules.view')) return true;
-    const roleName = (user?.role?.name || '').toUpperCase();
-    return roleName === 'ADMIN' || roleName === 'KURIKULUM' || roleName === 'SUPERADMIN';
-  }, [user, isAdmin, can]);
+    return can('curriculum.piket.schedules.manage') || can('attendance.schedules.manage') || can('curriculum.piket.schedules.view') || can('dashboard.view.kurikulum');
+  }, [isAdmin, can]);
 
   const { jenjang } = useJenjang();
   const isSmk = useMemo(() => ['SMK', 'MAK'].includes((jenjang || '').toUpperCase()), [jenjang]);

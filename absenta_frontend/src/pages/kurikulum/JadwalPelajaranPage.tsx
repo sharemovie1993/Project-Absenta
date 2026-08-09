@@ -69,9 +69,8 @@ export default function JadwalPelajaranPage() {
   const confirm = useConfirm();
 
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
-  const roleName = user?.role?.name || '';
-  const isSiswa = roleName === 'SISWA';
-  const isGuru = roleName === 'GURU';
+  const isSiswa = !!user?.isStudent || user?.role?.name === 'SISWA';
+  const isGuru = !!user?.isTeacher || user?.role?.name === 'GURU';
   const myGuruId = user?.guru_profile?.id;
   const myKelasId = (user?.guru_profile as { wali_kelas_di?: { id: string } })?.wali_kelas_di?.id;
   const isWaliKelas = !!myKelasId;
