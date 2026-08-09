@@ -42,14 +42,17 @@ export async function waliKelasRoutes(fastify: any) {
 
   // ── SK Wali Kelas Arsip ──
   fastify.post('/sk-arsip', {
+    preHandler: [determineDataScope()],
     handler: waliKelasController.saveSkArsip
   });
 
   fastify.get('/sk-arsip', {
+    preHandler: [determineDataScope()],
     handler: waliKelasController.getSkArsipList
   });
 
   fastify.get('/sk-arsip/:id', {
+    preHandler: [determineDataScope()],
     handler: waliKelasController.getSkArsipById
   });
 

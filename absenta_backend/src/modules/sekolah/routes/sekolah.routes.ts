@@ -46,10 +46,12 @@ export async function sekolahRoutes(fastify: any) {
   });
 
   fastify.put('/me', {
+    preHandler: [determineDataScope()],
     handler: sekolahController.update.bind(sekolahController),
   });
 
   fastify.put('/', {
+    preHandler: [determineDataScope()],
     handler: sekolahController.update.bind(sekolahController),
   });
 }

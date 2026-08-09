@@ -145,7 +145,8 @@ export default async function guruRoutes(fastify: any) {
     preHandler: [
       requireCapability(['academic.teachers.update'], { exemptRoles: [RoleName.GURU] }),
       validateGuruSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return guruController.uploadGuruDocument(request, reply);
@@ -156,7 +157,8 @@ export default async function guruRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] }),
       validateGuruSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return guruController.getGuruDocuments(request, reply);
@@ -167,7 +169,8 @@ export default async function guruRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] }),
       validateGuruSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return guruController.downloadGuruDocument(request, reply);
@@ -178,7 +181,8 @@ export default async function guruRoutes(fastify: any) {
     preHandler: [
       requireCapability(['academic.teachers.update'], { exemptRoles: [RoleName.GURU] }),
       validateGuruSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return guruController.deleteGuruDocument(request, reply);

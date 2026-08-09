@@ -10,7 +10,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [
         requireCapability('academic.students.view.list', { exemptRoles: [RoleName.SISWA] }),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getAllSiswa(request, reply);
@@ -20,7 +21,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/export', {
     preHandler: [
         requireCapability('academic.students.view.list'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.exportToExcel(request, reply);
@@ -30,7 +32,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id/history', {
     preHandler: [
         requireCapability('academic.students.view.history', { exemptRoles: [RoleName.SISWA] }),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getSiswaHistory(request, reply);
@@ -40,7 +43,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id', {
     preHandler: [
         requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getSiswaById(request, reply);
@@ -50,7 +54,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/:id/send-access', {
     preHandler: [
         requireCapability("academic.students.send.access.token"),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.sendParentAccess(request, reply);
@@ -60,7 +65,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/', {
     preHandler: [
         requireCapability('academic.students.create'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.createSiswa(request, reply);
@@ -70,7 +76,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.put('/:id', {
     preHandler: [
         requireCapability('academic.students.update', { exemptRoles: [RoleName.SISWA] }),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.updateSiswa(request, reply);
@@ -80,7 +87,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.delete('/all', {
     preHandler: [
         requireCapability('academic.students.delete'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.deleteAll(request, reply);
@@ -90,7 +98,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.delete('/:id', {
     preHandler: [
         requireCapability('academic.students.delete'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.deleteSiswa(request, reply);
@@ -100,7 +109,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/bulk-status', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.bulkUpdateStatus(request, reply);
@@ -110,7 +120,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/ppdb/map', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.mapPpdbStudents(request, reply);
@@ -120,7 +131,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/import/template', {
     preHandler: [
         requireCapability('academic.students.create'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getImportTemplate(request, reply);
@@ -130,7 +142,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/import', {
     preHandler: [
         requireCapability('academic.students.create'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.importFromExcel(request, reply);
@@ -140,7 +153,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/:id/rfid/generate', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.generateRfidForSiswa(request, reply);
@@ -150,7 +164,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/rfid/generate-bulk', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.generateRfidBulk(request, reply);
@@ -160,7 +175,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/nis/generate-massal', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.generateNisMassal(request, reply);
@@ -170,7 +186,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/nis/wizard-preview', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getNisWizardPreview(request, reply);
@@ -180,7 +197,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/rfid/bulk-pair', {
     preHandler: [
         requireCapability('academic.students.update'),
-        organizationalScopeMiddleware
+        organizationalScopeMiddleware,
+        determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.pairRfidBulk(request, reply);
@@ -247,7 +265,8 @@ export default async function siswaRoutes(fastify: any) {
     preHandler: [
       requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.uploadSiswaDocument(request, reply);
@@ -258,7 +277,8 @@ export default async function siswaRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getSiswaDocuments(request, reply);
@@ -269,7 +289,8 @@ export default async function siswaRoutes(fastify: any) {
     preHandler: [
       requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.downloadSiswaDocument(request, reply);
@@ -280,7 +301,8 @@ export default async function siswaRoutes(fastify: any) {
     preHandler: [
       requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.deleteSiswaDocument(request, reply);
@@ -290,7 +312,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id/timeline', {
     preHandler: [
       requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getSiswaTimeline(request, reply);
@@ -300,7 +323,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.post('/:id/complete-exit', {
     preHandler: [
       requireCapability('academic.students.manage'), // TU/Admin only
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.completeSiswaExit(request, reply);
@@ -310,7 +334,8 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id/exit-bundle', {
     preHandler: [
       requireCapability('academic.students.manage'), // TU/Admin only
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, async (request: any, reply: any) => {
     return siswaController.getSiswaExitBundle(request, reply);
