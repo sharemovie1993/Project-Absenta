@@ -67,7 +67,7 @@ export default function JadwalPelajaranPage() {
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
 
-  const { isKurikulum, isAdmin, can } = useCapabilities();
+  const { isKurikulum, isWaliKelas, isAdmin, can } = useCapabilities();
 
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
   const isSiswa = !!user?.isStudent;
