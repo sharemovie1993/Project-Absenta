@@ -32,6 +32,7 @@ function BackupsPageContent() {
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const backupsQuery = useQuery({
     queryKey: ['superadmin-backups-list'],
@@ -74,7 +75,7 @@ function BackupsPageContent() {
   const confirmRestore = useCallback(async () => {
     if (!selectedBackup || !newTenantId) return;
     
-    setLoading(true);
+    setIsRestoring(true);
     try {
       const res = await backupApi.restore(selectedBackup.id, newTenantId);
       if (res.success) {
@@ -88,7 +89,7 @@ function BackupsPageContent() {
       const err = e as { message?: string };
       toast.error(err?.message || 'Pemulihan data gagal');
     } finally {
-      setLoading(false);
+      setIsRestoring(false);
     }
   }, [selectedBackup, newTenantId, loadBackups]);
 

@@ -105,7 +105,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const handleDelete = useCallback(async (semester: Semester) => {
     // Check related data first
     try {
-      setLoading(true);
+      setDeleting(true);
       const detail = await getSemesterDetail(semester.id);
       const typedDetail = detail as Semester & {
         _count?: {
