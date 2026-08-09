@@ -157,7 +157,7 @@ export function useCapabilities() {
       can('curriculum.supervision.manage');
 
     const isBillingAdmin =
-      can('billing.subscriptions.view.active') ||
+      can('billing.subscriptions.view.active');
 
     return {
       // Level 1

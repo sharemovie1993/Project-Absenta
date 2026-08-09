@@ -93,6 +93,7 @@ export default function PremiumFeatureGate({
                   Uji Coba: Fitur {featureName}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isAdmin ? (
                     <>
                       Penyimpanan dibatasi maks. 10 data. Upgrade modul untuk akses tanpa batas.
                     </>
@@ -104,26 +105,26 @@ export default function PremiumFeatureGate({
                 </p>
               </div>
             </div>
-   
-              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end">
-                <Button 
-                  variant="ghost"
-                  onClick={handleRefresh}
-                  isLoading={isRefreshing}
-                  className="flex-1 md:flex-none text-amber-700 dark:text-amber-500 font-bold text-xs hover:bg-amber-100/50 dark:hover:bg-amber-900/20 px-3.5 py-2 h-9 rounded-lg gap-1.5 border border-amber-200/40 dark:border-amber-900/20 bg-white/50 dark:bg-slate-900/50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  Cek Status
-                </Button>
-                <Button 
-                  onClick={handleUpgradeClick}
-                  className="flex-1 md:flex-none bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-4 py-2 h-9 font-bold text-xs shadow-sm shadow-amber-600/10 border-none gap-1.5"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-current" />
-                  Upgrade Modul
-                </Button>
-              </div>
-            )}
+
+            <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end">
+              <Button 
+                variant="ghost"
+                onClick={handleRefresh}
+                isLoading={isRefreshing}
+                className="flex-1 md:flex-none text-amber-700 dark:text-amber-500 font-bold text-xs hover:bg-amber-100/50 dark:hover:bg-amber-900/20 px-3.5 py-2 h-9 rounded-lg gap-1.5 border border-amber-200/40 dark:border-amber-900/20 bg-white/50 dark:bg-slate-900/50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Cek Status
+              </Button>
+              <Button 
+                onClick={handleUpgradeClick}
+                className="flex-1 md:flex-none bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-4 py-2 h-9 font-bold text-xs shadow-sm shadow-amber-600/10 border-none gap-1.5"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                Upgrade Modul
+              </Button>
+            </div>
+          </div>
           </div>
         </motion.div>
    
