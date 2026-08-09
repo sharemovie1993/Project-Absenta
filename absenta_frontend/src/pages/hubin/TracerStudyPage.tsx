@@ -8,7 +8,7 @@ import { TracerStudySection } from './components/TracerStudySection';
 
 export const TracerStudyPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
+  const isStudent = useMemo(() => !!user?.isStudent, [user]);
 
   const title = useMemo(
     () => isStudent ? "Tracer Study Alumni" : "Tracer Study (Alumni)",

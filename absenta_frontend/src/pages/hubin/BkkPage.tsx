@@ -8,7 +8,7 @@ import { BkkSection } from './components/BkkSection';
 
 export const BkkPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
+  const isStudent = useMemo(() => !!user?.isStudent, [user]);
 
   const title = useMemo(
     () => isStudent ? "Lowongan Kerja (BKK)" : "BKK & Lowongan Kerja",

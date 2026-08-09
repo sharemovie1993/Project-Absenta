@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
@@ -14,7 +14,7 @@ interface RedirectRoute {
 }
 
 export const HubinWorkspacePage: React.FC = React.memo(() => {
-  const { can, canAny } = useAuth();
+  const { can, canAny } = useCapabilities();
   const navigate = useNavigate();
 
   // Callback to execute routing (Pillar 3 & useCallback requirement)

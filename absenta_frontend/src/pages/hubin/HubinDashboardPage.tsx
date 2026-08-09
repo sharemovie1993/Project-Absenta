@@ -26,7 +26,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
 
   const [currentScene, setCurrentScene] = useState(0);
 
-  const isStudent = useMemo(() => user?.role?.name === 'SISWA', [user]);
+  const isStudent = useMemo(() => !!user?.isStudent, [user]);
 
   const title = useMemo(
     () => isStudent ? "Portal Hubungan Industri (HUBIN)" : "Pusat Kendali Hubungan Industri (HUBIN)",

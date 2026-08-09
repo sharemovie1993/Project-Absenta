@@ -98,7 +98,7 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   // Perbaiki logika gating agar tidak mengunci modul jika user memiliki izin HUBIN
   const hasHubinFeature = Array.isArray(features) && features.includes('HUBIN');
   const isEnabled = subscription !== undefined && hasHubinFeature;
-  const isStudent = user?.role?.name === 'SISWA';
+  const isStudent = !!user?.isStudent;
 
   // -- Data Fetching (Tenant Info via React Query) --
   const { data: tenantRes } = useQuery({

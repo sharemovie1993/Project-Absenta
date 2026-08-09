@@ -87,13 +87,13 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   const { data: penempatanData } = useQuery({
     queryKey: ['penempatan-pkl', { limit: 100 }],
     queryFn: () => hubinApi.getPenempatan({ limit: 100 }),
-    enabled: user?.role?.name?.toUpperCase() === 'GURU' || isHubin
+    enabled: !!user?.isTeacher || isHubin
   });
 
   const { data: guruList } = useQuery({
     queryKey: ['guru', { limit: 100 }],
     queryFn: () => guruApi.getAll({ limit: 100 }),
-    enabled: user?.role?.name?.toUpperCase() === 'GURU'
+    enabled: !!user?.isTeacher
   });
 
   const rawGuru = useMemo(() => {
@@ -124,7 +124,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   }, [rawGuru, user]);
 
   const isPembimbing = useMemo(() => {
-    if (!user || user.role?.name?.toUpperCase() !== 'GURU') return false;
+    if (!user || !user.isTeacher) return false;
     const guruId = activeGuruId;
     const dataObj = penempatanData as { data?: unknown[] } | undefined;
     const penempatanList = Array.isArray(penempatanData?.data) ? penempatanData.data : dataObj?.data || [];
