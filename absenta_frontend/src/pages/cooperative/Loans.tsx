@@ -10,6 +10,7 @@ import { LoanRestrictionsAlerts } from '../../components/cooperative/loans/LoanR
 import type { Loan, Member, StudentMetrics, OperatorMetrics } from '../../components/cooperative/loans/types';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { cn } from '../../lib/utils';
@@ -28,11 +29,12 @@ const PaymentInstructionsModal = lazy(() =>
 
 const Loans: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { user, subscription, can } = useAuth();
+  const { user, subscription } = useAuth();
+  const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   
   const isManageMode = window.location.pathname.endsWith('/manage');
-  const canApprove = can('cooperative.loans.approve');
+  const canApprove = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.loans.approve');
   const canReject = can('cooperative.loans.reject');
   const canApply = can('cooperative.loans.apply');
   const canInputOnBehalf = can('cooperative.loans.approve') || 

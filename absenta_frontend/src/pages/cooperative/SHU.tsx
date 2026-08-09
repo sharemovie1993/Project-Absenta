@@ -7,6 +7,7 @@ import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBa
 import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
@@ -81,7 +82,8 @@ const ShuRulesForm = lazy(() =>
 
 const SHU: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { user, can } = useAuth();
+  const { user } = useAuth();
+  const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
 
   const adminInstruction = {

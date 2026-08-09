@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, Suspense, lazy } from 'react';
 import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
 import { formatTerbilangIndonesian } from '../../utils/cooperative/coopDocUtils';
@@ -20,6 +21,7 @@ const QuickTxConfirmModal = lazy(() => import('../../components/cooperative/savi
 const QuickTransactionPanel = lazy(() => import('../../components/cooperative/savings/QuickTransactionPanel').then(module => ({ default: module.QuickTransactionPanel })));
 
 const Savings: React.FC = React.memo(() => {
+  const { isKoperasiFinance, isKoperasiHead, isAdmin, can } = useCapabilities();
   const state = useSavingsState();
 
   const {

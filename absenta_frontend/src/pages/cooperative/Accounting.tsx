@@ -10,6 +10,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
@@ -43,7 +44,8 @@ const indonesianMonths = [
 
 const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
-    const { subscription, can, isSuperAdmin } = useAuth();
+    const { subscription, isSuperAdmin } = useAuth();
+    const { isKoperasiFinance, isKoperasiHead, isAdmin, can } = useCapabilities();
     const [activeTab, setActiveTab] = useState<'journal' | 'balance' | 'payroll'>('journal');
     
     // Payroll recap states
