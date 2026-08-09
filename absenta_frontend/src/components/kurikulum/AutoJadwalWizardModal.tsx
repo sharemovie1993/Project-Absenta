@@ -17,7 +17,7 @@ interface AutoJadwalWizardModalProps {
   onSuccess?: () => void;
 }
 
-export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
+export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = React.memo(({
   isOpen,
   onClose,
   tahunPelajaranId,
@@ -369,4 +369,4 @@ export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

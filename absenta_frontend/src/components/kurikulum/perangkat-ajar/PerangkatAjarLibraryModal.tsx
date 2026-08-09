@@ -58,7 +58,7 @@ interface PerangkatAjarLibraryModalProps {
   }) => void;
 }
 
-export default function PerangkatAjarLibraryModal({
+export default React.memo(function PerangkatAjarLibraryModal({
   isOpen,
   onClose,
   librarySearch,
@@ -285,4 +285,4 @@ export default function PerangkatAjarLibraryModal({
       </div>
     </Modal>
   );
-}
+});

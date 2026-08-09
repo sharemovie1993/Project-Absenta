@@ -11,7 +11,7 @@ export interface PiketJurusanPanelProps {
   onRefresh: () => void;
 }
 
-export const PiketJurusanPanel: React.FC<PiketJurusanPanelProps> = ({
+export const PiketJurusanPanel: React.FC<PiketJurusanPanelProps> = React.memo(({
   jurusanFilteredPermits,
   exitedGateIds,
   namaJurusan,
@@ -183,4 +183,4 @@ export const PiketJurusanPanel: React.FC<PiketJurusanPanelProps> = ({
       )}
     </Card>
   );
-};
+});

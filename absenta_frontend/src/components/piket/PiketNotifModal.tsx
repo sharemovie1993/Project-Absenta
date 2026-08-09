@@ -20,7 +20,7 @@ interface PiketNotifModalProps {
   onClose: () => void;
 }
 
-export const PiketNotifModal: React.FC<PiketNotifModalProps> = ({ isOpen, onClose }) => {
+export const PiketNotifModal: React.FC<PiketNotifModalProps> = React.memo(({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -382,4 +382,4 @@ export const PiketNotifModal: React.FC<PiketNotifModalProps> = ({ isOpen, onClos
       </div>
     </div>
   );
-};
+});

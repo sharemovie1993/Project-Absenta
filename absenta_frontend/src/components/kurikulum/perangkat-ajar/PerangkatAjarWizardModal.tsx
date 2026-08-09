@@ -63,7 +63,7 @@ const MACRO_JENIS_OPTIONS = [
   { value: 'PROMES', label: 'Program Semester (PROMES)' },
 ];
 
-export default function PerangkatAjarWizardModal({
+export default React.memo(function PerangkatAjarWizardModal({
   isOpen,
   onClose,
   aiForm,
@@ -692,4 +692,4 @@ export default function PerangkatAjarWizardModal({
       </form>
     </Modal>
   );
-}
+});

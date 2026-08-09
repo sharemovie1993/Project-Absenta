@@ -52,7 +52,7 @@ const JENIS_LABELS: Record<string, string> = {
   SILABUS: 'Silabus Legacy',
 };
 
-export default function PerangkatAjarPdfPreviewModal({
+export default React.memo(function PerangkatAjarPdfPreviewModal({
   previewPdfState,
   onClose,
   onDownload,
@@ -821,5 +821,5 @@ export default function PerangkatAjarPdfPreviewModal({
       </div>
     </Modal>
   );
-}
+});
 

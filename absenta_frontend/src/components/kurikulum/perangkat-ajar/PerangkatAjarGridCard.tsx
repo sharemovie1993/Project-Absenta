@@ -40,7 +40,7 @@ interface PerangkatAjarGridCardProps {
   onEdit?: (item: PerangkatAjar) => void;
 }
 
-export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = ({
+export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React.memo(({
   item,
   jenisLabels,
   isKurikulumOrAdmin,
@@ -139,4 +139,4 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = ({
       </div>
     </Card>
   );
-};
+});

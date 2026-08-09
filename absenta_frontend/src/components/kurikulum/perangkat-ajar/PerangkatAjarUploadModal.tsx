@@ -42,7 +42,7 @@ interface PerangkatAjarUploadModalProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export default function PerangkatAjarUploadModal({
+export default React.memo(function PerangkatAjarUploadModal({
   isOpen,
   onClose,
   uploadForm,
@@ -148,4 +148,4 @@ export default function PerangkatAjarUploadModal({
       </form>
     </Modal>
   );
-}
+});

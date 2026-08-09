@@ -25,7 +25,7 @@ export interface PiketFormModalProps {
   accentColor: string;
 }
 
-export const PiketFormModal: React.FC<PiketFormModalProps> = ({
+export const PiketFormModal: React.FC<PiketFormModalProps> = React.memo(({
   isOpen,
   onClose,
   selectedStudent,
@@ -211,4 +211,4 @@ export const PiketFormModal: React.FC<PiketFormModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

@@ -138,7 +138,7 @@ const JENIS_LABELS: Record<string, string> = {
   SILABUS: 'Silabus Legacy',
 };
 
-export default function PerangkatAjarAIModal({
+export default React.memo(function PerangkatAjarAIModal({
   isOpen,
   onClose,
   aiForm,
@@ -736,4 +736,4 @@ export default function PerangkatAjarAIModal({
       </div>
     </Modal>
   );
-}
+});

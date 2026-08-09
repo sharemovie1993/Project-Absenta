@@ -24,7 +24,7 @@ interface PerangkatAjarReviewModalProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
-export default function PerangkatAjarReviewModal({
+export default React.memo(function PerangkatAjarReviewModal({
   isOpen,
   onClose,
   reviewForm,
@@ -85,4 +85,4 @@ export default function PerangkatAjarReviewModal({
       </form>
     </Modal>
   );
-}
+});

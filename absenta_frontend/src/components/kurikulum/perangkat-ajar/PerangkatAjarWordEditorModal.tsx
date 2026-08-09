@@ -49,7 +49,7 @@ interface PerangkatAjarWordEditorModalProps {
   onSaveSuccess: () => void;
 }
 
-export default function PerangkatAjarWordEditorModal({
+export default React.memo(function PerangkatAjarWordEditorModal({
   isOpen,
   onClose,
   itemData,
@@ -751,4 +751,4 @@ export default function PerangkatAjarWordEditorModal({
       </div>
     </Modal>
   );
-}
+});

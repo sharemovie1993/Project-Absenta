@@ -14,7 +14,7 @@ export interface PiketUtamaPanelProps {
   onReprintExecute: (permit: IzinKeluarSiswa) => void;
 }
 
-export const PiketUtamaPanel: React.FC<PiketUtamaPanelProps> = ({
+export const PiketUtamaPanel: React.FC<PiketUtamaPanelProps> = React.memo(({
   pendingJurusanPermits,
   issuedPermits,
   dailyPermits,
@@ -220,4 +220,4 @@ export const PiketUtamaPanel: React.FC<PiketUtamaPanelProps> = ({
       )}
     </Card>
   );
-};
+});
