@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Wand2, Sparkles, Save, BookOpen, Loader2, Eye, Code2, Terminal, ChevronDown, ChevronUp, Zap, CheckCircle2, FileText } from 'lucide-react';
 import { Modal, Button, SearchableSelect, Badge } from '../../ui';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useJenjang } from '../../../hooks/useJenjang';
 
 interface Option {
@@ -157,7 +157,7 @@ export default React.memo(function PerangkatAjarAIModal({
   onSubmitAI,
   onSaveAI,
 }: PerangkatAjarAIModalProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { jenjang, kurikulum, config, tingkatList } = useJenjang();
   const [editorMode, setEditorMode] = useState<'VISUAL' | 'CODE' | 'RAW'>('VISUAL');
   const [showPromptDetails, setShowPromptDetails] = useState(true);

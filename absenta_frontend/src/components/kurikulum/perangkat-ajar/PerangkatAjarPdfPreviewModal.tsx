@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Download, Loader2, Printer, CheckCircle2, ShieldCheck, FileText, FileSpreadsheet, CheckSquare } from 'lucide-react';
 import { Modal, Button, Badge } from '../../ui';
 import { PrintHeader } from '../../ui/PrintHeader';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
 import { getTenantById } from '../../../api/tenants.api';
 import html2canvas from 'html2canvas-pro';
@@ -57,7 +57,7 @@ export default React.memo(function PerangkatAjarPdfPreviewModal({
   onClose,
   onDownload,
 }: PerangkatAjarPdfPreviewModalProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [viewMode, setViewMode] = useState<'PDF_NATIVE' | 'NASKAH_RESMI'>('PDF_NATIVE');
   const [tenantData, setTenantData] = useState<any>(user?.tenant || null);
   const [isRenderingPdf, setIsRenderingPdf] = useState(false);

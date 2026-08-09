@@ -27,7 +27,7 @@ import {
 import { Modal, Button, Badge } from '../../ui';
 import { toast } from 'sonner';
 import { kurikulumApi } from '../../../api/kurikulum.api';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { getTenantById } from '../../../api/tenants.api';
 
 export interface PerangkatAjarItemForEdit {
@@ -56,7 +56,7 @@ export default React.memo(function PerangkatAjarWordEditorModal({
   onSaveSuccess,
 }: PerangkatAjarWordEditorModalProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

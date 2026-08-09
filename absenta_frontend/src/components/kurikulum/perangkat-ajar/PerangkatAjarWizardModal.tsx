@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/authStore';
 import { useJenjang } from '@/hooks/useJenjang';
 import {
   Sparkles,
@@ -77,7 +77,7 @@ export default React.memo(function PerangkatAjarWizardModal({
   isGeneratingAI,
   onSubmitAI,
 }: PerangkatAjarWizardModalProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { jenjang, kurikulum, config, tingkatList, sekolah } = useJenjang();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [topicTab, setTopicTab] = useState<'MY_REPO' | 'GLOBAL_MASTER'>('MY_REPO');
