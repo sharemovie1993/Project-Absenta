@@ -23,6 +23,7 @@ import { Table, Column } from '../../components/ui/Table';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useMapelOptions, useGuruOptions } from '../../components/common';
@@ -90,11 +91,11 @@ const JENIS_LABELS: Record<string, string> = {
 export default function PerangkatAjarPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const { user, can } = useAuth();
+  const { isKurikulum, isAdmin, can } = useCapabilities();
 
   const isKurikulumOrAdmin = useMemo(() => {
-    return (typeof can === 'function' && can('academic.manage.academic')) || user?.role?.name === 'ADMIN' || user?.role?.name === 'KURIKULUM';
-  }, [user, can]);
+    return isAdmin || isKurikulum || (typeof can === 'function' && can('academic.manage.academic'));
+  }, [isAdmin, isKurikulum, can]);
 
   // Modal States
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);

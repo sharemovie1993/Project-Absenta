@@ -15,6 +15,7 @@ import { cn } from '../../lib/utils';
 import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2 } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { SupervisiSelfAssessmentModal } from '../../components/kurikulum/SupervisiSelfAssessmentModal';
 import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../../components/kurikulum/SupervisiFormModal';
@@ -108,18 +109,16 @@ export default function SupervisiPage() {
   const data = useMemo(() => supervisiRes?.data?.list ?? [], [supervisiRes]);
   const totalData = supervisiRes?.data?.total ?? 0;
 
+  const { isKurikulum, isKepsek, isAdmin, can } = useCapabilities();
+
   // ── Derived permissions ────────────────────────────────────────────────────
   const canViewAnalytics = useMemo(() =>
-    ['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
-    user?.capabilities?.includes('curriculum.supervision.view.report') ||
-    user?.capabilities?.includes('dashboard.view.kurikulum'),
-  [user]);
+    isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.view.report'),
+  [isAdmin, isKurikulum, isKepsek, can]);
 
   const canManage = useMemo(() =>
-    ['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
-    user?.capabilities?.includes('academic.structure.manage') ||
-    user?.capabilities?.includes('curriculum.supervision.manage'),
-  [user]);
+    isAdmin || isKurikulum || isKepsek || can('curriculum.supervision.manage'),
+  [isAdmin, isKurikulum, isKepsek, can]);
 
   const currentGuru = useMemo(
     () => guruItems.find(g => g.user_id === user?.id),
