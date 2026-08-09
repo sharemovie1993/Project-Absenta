@@ -352,7 +352,7 @@ export function RekapBulananMapelContent() {
   );
 }
 
-export default function RekapBulananMapelPage() {
+export default React.memo(function RekapBulananMapelPage() {
   return (
     <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
       <PremiumFeatureGate
@@ -364,4 +364,4 @@ export default function RekapBulananMapelPage() {
       </PremiumFeatureGate>
     </Suspense>
   );
-}
+});

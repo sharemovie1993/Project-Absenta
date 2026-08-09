@@ -354,7 +354,7 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
 }
 
 // ─── Page wrapper (standalone route) ─────────────────────────────────────────
-export default function RekapBulananKelasPage() {
+export default React.memo(function RekapBulananKelasPage() {
   const [searchParams] = useSearchParams();
   const kelasIdParam = searchParams.get('kelas_id') || undefined;
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
@@ -378,4 +378,4 @@ export default function RekapBulananKelasPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

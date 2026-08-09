@@ -56,7 +56,7 @@ interface GroupedRiwayat {
   sessions: SesiAjar[];
 }
 
-export const RiwayatAjarPage: React.FC = () => {
+export const RiwayatAjarPage: React.FC = React.memo(() => {
   const { user, tenantId, subscription } = useAuthStore();
   const { can } = useAuth();
   
@@ -454,6 +454,6 @@ export const RiwayatAjarPage: React.FC = () => {
       </PremiumFeatureGate>
     </PageLayout>
   );
-};
+});
 
 export default RiwayatAjarPage;

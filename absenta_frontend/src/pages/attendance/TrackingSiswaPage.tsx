@@ -428,6 +428,6 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
   );
 }
 
-export default function TrackingSiswaPage() {
+export default React.memo(function TrackingSiswaPage() {
   return <TrackingSiswaContent />;
-}
+});

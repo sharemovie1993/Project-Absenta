@@ -29,7 +29,7 @@ const breadcrumbs = [
   { label: 'Monitoring Live KBM', active: true }
 ];
 
-const MonitoringKbmPage: React.FC = () => {
+const MonitoringKbmPage: React.FC = React.memo(() => {
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
   const handleDummy = useCallback(() => {}, []);
@@ -56,6 +56,6 @@ const MonitoringKbmPage: React.FC = () => {
       </PremiumFeatureGate>
     </PageLayout>
   );
-};
+});
 
 export default MonitoringKbmPage;

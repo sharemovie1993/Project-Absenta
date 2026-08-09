@@ -37,7 +37,7 @@ interface ModeSimpleViewProps {
   petugasVariant?: 'success' | 'destructive' | 'outline';
 }
 
-export default function ModeSimpleView({ 
+export default React.memo(function ModeSimpleView({ 
   user, 
   isPetugasSiswa, 
   isPetugasGuru,
@@ -181,4 +181,4 @@ export default function ModeSimpleView({
       )}
     </div>
   );
-}
+});

@@ -89,7 +89,7 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   BELUM: ''
 };
 
-export const MyAttendancePage: React.FC = () => {
+export const MyAttendancePage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(toLocalDate());
@@ -588,6 +588,6 @@ export const MyAttendancePage: React.FC = () => {
       </Suspense>
     </AcademicPageLayout>
   );
-};
+});
 
 export default MyAttendancePage;

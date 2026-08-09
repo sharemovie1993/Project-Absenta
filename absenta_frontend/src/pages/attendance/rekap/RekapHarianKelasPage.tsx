@@ -668,7 +668,7 @@ export function RekapHarianKelasContent({
   );
 }
 
-export default function RekapHarianKelasPage() {
+export default React.memo(function RekapHarianKelasPage() {
   const { subscription } = useAuthStore();
   const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
                       subscription?.Plan?.features_json || 
@@ -698,4 +698,4 @@ export default function RekapHarianKelasPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

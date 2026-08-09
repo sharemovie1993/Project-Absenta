@@ -64,7 +64,7 @@ interface StudentResponseItem {
   user_id?: string;
 }
 
-export default function RekapBulananSiswaPage() {
+export default React.memo(function RekapBulananSiswaPage() {
   const { subscription } = useAuthStore();
   const { can, isLoading, user } = useAuth();
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
@@ -372,4 +372,4 @@ export default function RekapBulananSiswaPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

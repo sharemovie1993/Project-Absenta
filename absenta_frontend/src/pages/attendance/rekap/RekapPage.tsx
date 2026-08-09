@@ -39,7 +39,7 @@ const rekapStats = [
 
 type RekapTab = 'BULANAN_KELAS' | 'BULANAN_MAPEL';
 
-export default function RekapPage({ initialTab }: { initialTab?: RekapTab }) {
+export default React.memo(function RekapPage({ initialTab }: { initialTab?: RekapTab }) {
   const [searchParams] = useSearchParams();
   const tabFromQuery = searchParams.get('tab');
   const defaultTab: RekapTab = tabFromQuery === 'mapel' || initialTab === 'BULANAN_MAPEL' ? 'BULANAN_MAPEL' : 'BULANAN_KELAS';
@@ -115,4 +115,4 @@ export default function RekapPage({ initialTab }: { initialTab?: RekapTab }) {
       </PremiumFeatureGate>
     </AcademicPageLayout>
   );
-}
+});

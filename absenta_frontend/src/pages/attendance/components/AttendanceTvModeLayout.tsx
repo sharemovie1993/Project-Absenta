@@ -27,7 +27,7 @@ interface AttendanceTvModeLayoutProps {
   sekolah: { name: string } | null;
 }
 
-export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = ({
+export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = React.memo(({
   currentScene,
   setCurrentScene,
   scenes,
@@ -342,4 +342,4 @@ export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -16,7 +16,7 @@ import ModeMultiSesiView from './components/ModeMultiSesiView';
 const CatatPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
-export default function AttendanceOpsPage() {
+export default React.memo(function AttendanceOpsPage() {
   const navigate = useNavigate();
   const { subscription } = useAuthStore();
   const { user } = useAuth();
@@ -124,4 +124,4 @@ export default function AttendanceOpsPage() {
       </PremiumFeatureGate>
     </OperationalPageLayout>
   );
-}
+});

@@ -77,7 +77,7 @@ interface SubscriptionData {
   plan?: { features_json?: string[] };
 }
 
-const AttendanceDashboardPage: React.FC = () => {
+const AttendanceDashboardPage: React.FC = React.memo(() => {
   const { user, subscription } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -528,6 +528,6 @@ const AttendanceDashboardPage: React.FC = () => {
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
 
 export default AttendanceDashboardPage;

@@ -43,7 +43,7 @@ interface StudentResponseItem {
   user_id?: string;
 }
 
-export default function RekapHarianSiswaPage() {
+export default React.memo(function RekapHarianSiswaPage() {
   const { subscription } = useAuthStore();
   const { can, isLoading, user } = useAuth();
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
@@ -368,4 +368,4 @@ export default function RekapHarianSiswaPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

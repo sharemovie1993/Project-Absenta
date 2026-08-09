@@ -32,7 +32,7 @@ export interface SectorItem {
 }
 
 // Custom Divider
-export const Divider: React.FC<{ title: string }> = ({ title }) => (
+export const Divider: React.FC<{ title: string }> = React.memo(({ title }) => (
   <div className="relative py-4 shrink-0 select-none">
     <div className="absolute inset-0 flex items-center" aria-hidden="true">
       <div className="w-full border-t border-slate-200 dark:border-slate-800" />
@@ -43,13 +43,13 @@ export const Divider: React.FC<{ title: string }> = ({ title }) => (
       </span>
     </div>
   </div>
-);
+));
 
 // Sektor Kehadiran List (Jurusan/Tingkat)
 export const SektorKehadiranList: React.FC<{
   statsBySector: SectorItem[];
   sectorName: string;
-}> = ({ statsBySector, sectorName }) => {
+}> = React.memo(({ statsBySector, sectorName }) => {
   return (
     <SectionCard
       title={
@@ -89,10 +89,10 @@ export const SektorKehadiranList: React.FC<{
       </div>
     </SectionCard>
   );
-};
+});
 
 // KBM Feed List
-export const KbmFeedPanel: React.FC<{ feed: FeedItem[] }> = ({ feed }) => {
+export const KbmFeedPanel: React.FC<{ feed: FeedItem[] }> = React.memo(({ feed }) => {
   return (
     <SectionCard
       title={
@@ -139,10 +139,10 @@ export const KbmFeedPanel: React.FC<{ feed: FeedItem[] }> = ({ feed }) => {
       </div>
     </SectionCard>
   );
-};
+});
 
 // Terminal Devices Panel
-export const TerminalDevicesPanel: React.FC<{ terminalDevices: DeviceInfo[] }> = ({ terminalDevices }) => {
+export const TerminalDevicesPanel: React.FC<{ terminalDevices: DeviceInfo[] }> = React.memo(({ terminalDevices }) => {
   return (
     <SectionCard
       title={
@@ -174,4 +174,4 @@ export const TerminalDevicesPanel: React.FC<{ terminalDevices: DeviceInfo[] }> =
       </div>
     </SectionCard>
   );
-};
+});

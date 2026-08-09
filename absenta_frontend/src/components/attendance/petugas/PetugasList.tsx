@@ -13,7 +13,7 @@ import type { Siswa } from '../../../types/academic';
 import type { Column } from '../../ui/Table';
 import { useDebounce } from '../../../hooks/useDebounce';
 
-export default function PetugasList() {
+export default React.memo(function PetugasList() {
   const { user } = useAuthStore();
   const confirm = useConfirm();
 
@@ -328,4 +328,4 @@ export default function PetugasList() {
       </Modal>
     </div>
   );
-}
+});

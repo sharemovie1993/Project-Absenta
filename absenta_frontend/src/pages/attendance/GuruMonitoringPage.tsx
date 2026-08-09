@@ -58,7 +58,7 @@ const breadcrumbs = [
   { label: 'Monitoring Mengajar Guru', active: true }
 ];
 
-export default function GuruMonitoringPage() {
+export default React.memo(function GuruMonitoringPage() {
   const { subscription } = useAuthStore();
   const { can, isLoading } = useAuth();
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
@@ -357,4 +357,4 @@ export default function GuruMonitoringPage() {
       </PremiumFeatureGate>
     </AcademicPageLayout>
   );
-}
+});

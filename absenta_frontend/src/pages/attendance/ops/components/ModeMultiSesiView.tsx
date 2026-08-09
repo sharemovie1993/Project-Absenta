@@ -49,7 +49,7 @@ interface ModeMultiSesiViewProps {
 
 type TabType = 'gerbang' | 'manual' | 'sesi';
 
-export default function ModeMultiSesiView({ 
+export default React.memo(function ModeMultiSesiView({ 
   user, 
   isPetugasSiswa, 
   isPetugasGuru,
@@ -303,4 +303,4 @@ export default function ModeMultiSesiView({
       </main>
     </div>
   );
-}
+});

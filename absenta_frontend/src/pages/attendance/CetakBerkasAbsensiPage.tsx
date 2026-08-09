@@ -6,7 +6,7 @@ import { getRekapKelasBulanan, getRekapHarianGuru } from '../../api/attendance/r
 import { siswaApi } from '../../api/academic.api';
 import { toLocalDate, toLocalMonth } from '../../utils/attendance/time';
 
-export const CetakBerkasAbsensiPage: React.FC = () => {
+export const CetakBerkasAbsensiPage: React.FC = React.memo(() => {
   const docOptions: DocOption[] = [
     { value: 'monthly_recap', label: '1. REKAP KEHADIRAN & ABSENSI BULANAN KELAS', requireClass: true },
     { value: 'semester_recap', label: '2. REKAP KEHADIRAN SEMESTER KELAS (LEGER ABSENSI)', requireClass: true },
@@ -236,4 +236,4 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
       }}
     />
   );
-};
+});
