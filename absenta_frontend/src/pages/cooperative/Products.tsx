@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Package, Plus, History, Tag, BarChart2 } from 'lucide-react';
@@ -38,13 +39,14 @@ interface ProductCategory {
 
 const Products: React.FC = React.memo(() => {
   const navigate = useNavigate();
-  const { user, can } = useAuth();
+  const { user } = useAuth();
+  const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
   
   // Capability checks
-  const canUpdateProducts = can('cooperative.store.products.update');
-  const canManageCategories = can('cooperative.store.categories.manage');
-  const canManageInventory = can('cooperative.store.inventory.manage');
-  const canViewReports = can('cooperative.reports.view.financial');
+  const canUpdateProducts = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.products.update');
+  const canManageCategories = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.categories.manage');
+  const canManageInventory = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.inventory.manage');
+  const canViewReports = isAdmin || isKoperasiHead || can('cooperative.reports.view.financial');
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'stock-in' | 'history' | 'categories' | 'opname'>('catalog');
   

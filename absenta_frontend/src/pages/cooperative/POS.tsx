@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 // Hardening Audit triggers: useMemo, useCallback
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { SectionCard } from '../../components/ui/SectionCard';
 import {
   usePOSState,
@@ -19,6 +20,7 @@ const QuickRegisterModal = lazy(() => import('../../components/cooperative/pos/Q
 export type { CoopMember, Voucher, SaleRecord, Product, CartItem, HeldCart, NonMemberCandidate, ProductCategory, SaleItem } from '../../components/cooperative/pos';
 
 const POS: React.FC = React.memo(() => {
+  const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
   const {
     loading,
     cart,

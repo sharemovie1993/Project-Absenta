@@ -9,6 +9,7 @@ import { Card } from '../../components/cooperative/ui/Card';
 import { Plus, Trash, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -72,6 +73,7 @@ const ReceiptModal = lazy(() =>
 const Vouchers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
+  const { isKoperasiHead, isKoperasiStore, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   const location = useLocation();
   const isManageRoute = location.pathname.endsWith('/manage');
