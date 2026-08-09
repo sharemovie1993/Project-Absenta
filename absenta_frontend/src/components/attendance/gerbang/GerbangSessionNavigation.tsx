@@ -11,7 +11,7 @@ export interface GerbangSessionNavigationProps {
   createDisabledReason?: string;
 }
 
-export function GerbangSessionNavigation({
+export const GerbangSessionNavigation = React.memo(function GerbangSessionNavigation({
   show,
   canCreate,
   modeLabel,
@@ -59,4 +59,4 @@ export function GerbangSessionNavigation({
       </CardContent>
     </Card>
   );
-}
+});

@@ -6,7 +6,7 @@ import { User, MapPin, Activity, CheckCircle2 } from 'lucide-react';
  * Komponen presentational.
  * Tidak mengandung logic bisnis atau fetch data.
  */
-export function GerbangHeaderContext({
+export const GerbangHeaderContext = React.memo(function GerbangHeaderContext({
   modeLabel,
   roleLabel,
   petugasLabel,
@@ -75,4 +75,4 @@ export function GerbangHeaderContext({
       </div>
     </div>
   );
-}
+});

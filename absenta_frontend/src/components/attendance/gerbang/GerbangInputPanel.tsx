@@ -22,7 +22,7 @@ export interface GerbangInputPanelProps {
   disabled?: boolean;
 }
 
-export function GerbangInputPanel({
+export const GerbangInputPanel = React.memo(function GerbangInputPanel({
   activeTab,
   onTabChange,
   hidValue,
@@ -89,4 +89,4 @@ export function GerbangInputPanel({
       </CardContent>
     </Card>
   );
-}
+});

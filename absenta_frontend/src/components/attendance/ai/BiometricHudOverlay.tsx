@@ -7,7 +7,7 @@ interface BiometricHudOverlayProps {
   isGathering?: boolean;
 }
 
-export const BiometricHudOverlay: React.FC<BiometricHudOverlayProps> = ({
+export const BiometricHudOverlay: React.FC<BiometricHudOverlayProps> = React.memo(({
   detections,
   displaySize,
   status = 'READY',
@@ -221,4 +221,4 @@ export const BiometricHudOverlay: React.FC<BiometricHudOverlayProps> = ({
       className="absolute inset-0 w-full h-full object-cover scale-x-[-1] z-20 pointer-events-none"
     />
   );
-};
+});
