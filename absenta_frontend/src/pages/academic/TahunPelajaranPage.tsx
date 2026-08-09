@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal, SectionCard } from '../../components/ui';
 import TahunPelajaranList from '../../components/academic/tahun-pelajaran/TahunPelajaranList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import type { TahunPelajaran } from '../../types/academic';
 import { useQuery } from '@tanstack/react-query';
 import { getAcademicStats } from '../../api/academic-stats.api';
@@ -16,13 +17,14 @@ const TahunPelajaranForm = lazy(() => import('../../components/academic/tahun-pe
 
 export const TahunPelajaranPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   const queryClient = useQueryClient();
   const { modal, openCreate, openEdit, openView, close } = useModalState();
 
   // Permissions
-  const canCreate = can('academic.years.create');
-  const canEdit = can('academic.years.update');
-  const canView = can('academic.years.view.list');
+  const canCreate = isAdmin || isKurikulum || can('academic.years.create');
+  const canEdit = isAdmin || isKurikulum || can('academic.years.update');
+  const canView = isAdmin || isKurikulum || can('academic.years.view.list');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

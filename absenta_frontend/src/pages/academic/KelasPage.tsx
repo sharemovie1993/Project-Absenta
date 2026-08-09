@@ -5,6 +5,7 @@ import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { BulkClassModal } from '../../components/academic/kelas/BulkClassModal';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Kelas } from '../../types/academic';
@@ -63,10 +64,12 @@ export const KelasPage: React.FC = () => {
   const { tingkatList: hookTingkatList } = useJenjang();
   const guruIdFromUrl = searchParams.get('guru_id') || '';
 
+  const { isKurikulum, isHomeroomTeacher, isTeacher, isAdmin, can: capCan } = useCapabilities();
+
   // Permissions — harus di atas useQuery agar 'canView' sudah terdefinisi saat dipakai di 'enabled'
-  const canCreate = can('academic.structures.create');
-  const canEdit = can('academic.structures.update');
-  const canView = can('academic.structures.view.list');
+  const canCreate = isAdmin || isKurikulum || can('academic.structures.create');
+  const canEdit = isAdmin || isKurikulum || can('academic.structures.update');
+  const canView = isAdmin || isKurikulum || isHomeroomTeacher || isTeacher || can('academic.structures.view.list');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

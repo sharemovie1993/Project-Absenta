@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Modal, SectionCard } from '../../components/ui';
 import SemesterList from '../../components/academic/semester/SemesterList';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import type { Semester } from '../../types/academic';
 import { useQuery } from '@tanstack/react-query';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
@@ -23,15 +24,16 @@ interface ModalState {
 
 export const SemesterPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   // Permissions
-  const canCreate = can('academic.semesters.create');
-  const canEdit = can('academic.semesters.update');
-  const canView = can('academic.semesters.view.list');
-  const canSetActive = can('academic.semesters.set_active');
+  const canCreate = isAdmin || isKurikulum || can('academic.semesters.create');
+  const canEdit = isAdmin || isKurikulum || can('academic.semesters.update');
+  const canView = isAdmin || isKurikulum || can('academic.semesters.view.list');
+  const canSetActive = isAdmin || isKurikulum || can('academic.semesters.set_active');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

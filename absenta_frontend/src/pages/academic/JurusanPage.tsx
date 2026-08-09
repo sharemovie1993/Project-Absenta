@@ -6,6 +6,7 @@ import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import JurusanList from '../../components/academic/jurusan/JurusanList';
 import { ProgramKeahlianPanel } from '../../components/academic/jurusan/ProgramKeahlianPanel';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import type { Jurusan } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
@@ -35,6 +36,7 @@ interface ModalState {
 // v1.1.0 - Added Program Keahlian Tab (Kurikulum Merdeka)
 export const JurusanPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const { isKurikulum, isProgramHead, isAdmin, can: capCan } = useCapabilities();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -48,9 +50,9 @@ export const JurusanPage: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
 
   // Permissions
-  const canCreate = can('academic.structures.create');
-  const canEdit = can('academic.structures.update');
-  const canView = can('academic.structures.view.list');
+  const canCreate = isAdmin || isKurikulum || isProgramHead || can('academic.structures.create');
+  const canEdit = isAdmin || isKurikulum || isProgramHead || can('academic.structures.update');
+  const canView = isAdmin || isKurikulum || isProgramHead || can('academic.structures.view.list');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({
