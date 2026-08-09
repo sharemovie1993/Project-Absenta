@@ -91,7 +91,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const { timelineItems, isLoading: timelineLoading, impact } = useStaffTimeline(guruId);
 
   // ── 2. Role Detection ─────────────────────────────────────────────────────────
-  const caps = user?.capabilities || [];
   // jabatan_list: gabungan dari endpoint /me dan authStore user.position_codes agar super robust
   const jabatanList: string[] = useMemo(() => {
     const list = [...(guruProfile?.jabatan_list || [])];
@@ -104,34 +103,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return list;
   }, [guruProfile?.jabatan_list, user]);
 
-  // jabatan: string gabungan untuk backward-compat
+  // jabatan: string gabungan untuk backward-compat (untuk display jabatanLabel)
   const jabatan: string = guruProfile?.jabatan || (user?.guru_profile as any)?.jabatan || '';
 
-
-  // Cek kode di jabatan_list ATAU substring di jabatan string
-  const hasRole = (...keywords: string[]): boolean => {
-    const j = jabatan.toUpperCase();
-    return jabatanList.some(code => keywords.some(k => code.toUpperCase().includes(k.toUpperCase())))
-        || keywords.some(k => j.includes(k.toUpperCase()));
-  };
-
-  const isWaliKelas = useMemo(() =>
-    caps.includes('dashboard.view.walikelas') ||
-    !!guruProfile?.wali_kelas_di?.id ||
-    !!((user?.guru_profile as any)?.wali_kelas_di?.id) ||
-    hasRole('WALI', 'HOMEROOM'),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [caps, guruProfile, user, jabatanList, jabatan]);
-
-  const isKurikulum = useMemo(() => 
-    caps.includes('dashboard.view.kurikulum') || 
-    caps.includes('academic.manage.academic') || 
-    user?.role?.name === 'KURIKULUM' || 
-    hasRole('KURIKULUM'), 
-  [caps, user, jabatanList, jabatan]);
   const {
+    can,
     isSarpras,
     isHubin,
+    isKurikulum,
     isToolman,
     isKaprog,
     isKabeng,
@@ -140,11 +119,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isGerbang,
     isTU,
     isKepsek,
-    isKesiswaan: isStrictKesiswaan
+    isWaliKelas: isWaliKelasFromCaps,
+    isKesiswaan,
   } = useCapabilities();
 
-  const isKesiswaan = isStrictKesiswaan || caps.includes('dashboard.view.piket') || caps.includes('attendance.piket.manage');
-  const isGlobalHubin = isHubin || caps.includes('hubin.partners.manage');
+  // isWaliKelas: gabungkan capability hook + data-driven (wali_kelas_di dari profil guru)
+  const isWaliKelas = isWaliKelasFromCaps ||
+    !!guruProfile?.wali_kelas_di?.id ||
+    !!((user?.guru_profile as any)?.wali_kelas_di?.id);
+
+  // isHubin dari hook sudah mencakup hubin.partners.manage
+  const isGlobalHubin = isHubin;
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
@@ -438,37 +423,37 @@ export const UnifiedStaffDashboard: React.FC = () => {
       ];
 
       // Gerbang / Satpam / Operasional
-      if (isGerbang || caps.includes('attendance.scan') || hasRole('GERBANG')) {
+      if (isGerbang || can('attendance.scan')) {
         actions.push({ label: 'Scan Gerbang', icon: Activity, onClick: () => navigate('/attendance/ops'), color: 'indigo' });
       }
 
       // TU Persuratan / Koordinator TU
-      if (caps.includes('correspondence.inbox.view') || hasRole('TU_PERSURATAN', 'TU_KEPALA')) {
+      if (can('correspondence.inbox.view')) {
         actions.push({ label: 'Surat Masuk', icon: Mail, onClick: () => navigate('/correspondence/inbox'), color: 'blue' });
         actions.push({ label: 'Surat Keluar', icon: FileText, onClick: () => navigate('/correspondence/outbox'), color: 'indigo' });
       }
 
       // TU Keuangan
-      if (caps.includes('billing.invoices.view.list') || hasRole('TU_KEUANGAN', 'TU_KEPALA')) {
+      if (can('billing.invoices.view.list')) {
         actions.push({ label: 'Tagihan SPP', icon: Wallet, onClick: () => navigate('/billing/invoices'), color: 'amber', path: '/billing/invoices' });
       }
 
       // TU Sarpras
-      if (caps.includes('sarpras.inventory.view.list') || hasRole('TU_SARPRAS', 'TU_KEPALA')) {
+      if (can('sarpras.inventory.view.list')) {
         actions.push({ label: 'Inventaris Aset', icon: Package, onClick: () => navigate('/sarpras/inventory'), color: 'purple', path: '/sarpras/inventory' });
       }
 
       // TU Kepegawaian / Koordinator TU
-      if (caps.includes('academic.students.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
+      if (can('academic.students.view.list')) {
         actions.push({ label: 'Data Siswa', icon: GraduationCap, onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
       }
-      if (caps.includes('academic.teachers.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
+      if (can('academic.teachers.view.list')) {
         actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange', path: '/academic/guru' });
       }
 
-      const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
+      const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng;
 
-      if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.tap.entry')) {
+      if (isGerbang || isPiketOrKesiswaanOrIndustrial || can('attendance.gate.tap.entry')) {
         actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
       }
 
@@ -491,9 +476,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa?context=walikelas'), color: 'rose', path: '/academic/siswa?context=walikelas' });
     
     // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
-    const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
+    const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng;
     
-    if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.tap.entry')) {
+    if (isGerbang || isPiketOrKesiswaanOrIndustrial || can('attendance.gate.tap.entry')) {
       actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
     }
 
@@ -507,7 +492,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
     
     return actions;
-  }, [isWaliKelas, isKurikulum, isKesiswaan, isGerbang, isKaprog, isKabeng, hasRole, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);
+  }, [isWaliKelas, isKurikulum, isKesiswaan, isGerbang, isKaprog, isKabeng, navigate, guruId, user, guruProfile, jabatanList, jabatan, can]);
 
   // ── 7. Dynamic Structural Panels Ordering ───────────────────────────────────
   const structuralPanels = useMemo(() => {

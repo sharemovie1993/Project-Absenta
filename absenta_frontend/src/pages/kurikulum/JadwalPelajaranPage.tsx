@@ -215,11 +215,11 @@ export default function JadwalPelajaranPage() {
   }, [activeSemRes, selectedSemesterId]);
 
   useEffect(() => {
-    if (user?.role?.name === 'GURU' && !selectedGuruId) {
+    if (isGuru && !selectedGuruId) {
       const mId = user?.guru_profile?.id;
       if (mId) setSelectedGuruId(mId);
     }
-  }, [user, selectedGuruId]);
+  }, [isGuru, user, selectedGuruId]);
 
   // ── useQuery: Grid View Schedule & Duty Items ──────────────────────────────
   const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
