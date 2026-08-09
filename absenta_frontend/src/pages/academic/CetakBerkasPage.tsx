@@ -66,7 +66,7 @@ const AcademicFormWrapper: React.FC<AcademicFormWrapperProps> = ({
   );
 };
 
-export const CetakBerkasPage: React.FC = () => {
+export const CetakBerkasPage: React.FC = React.memo(() => {
   const [uniqueTingkatList, setUniqueTingkatList] = React.useState<number[]>([]);
   const [guruMapelList, setGuruMapelList] = React.useState<GuruMapel[]>([]);
 
@@ -134,5 +134,5 @@ export const CetakBerkasPage: React.FC = () => {
       }}
     />
   );
-};
+});
 

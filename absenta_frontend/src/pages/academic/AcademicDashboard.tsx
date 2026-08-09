@@ -27,7 +27,7 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 
-const AcademicDashboard: React.FC = () => {
+const AcademicDashboard: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [checklistData, setChecklistData] = useState<PrepChecklistData | null>(null);
@@ -376,6 +376,6 @@ const AcademicDashboard: React.FC = () => {
       </div>
     </AcademicPageLayout>
   );
-};
+});
 
 export default AcademicDashboard;
