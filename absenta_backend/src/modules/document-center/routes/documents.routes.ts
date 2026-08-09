@@ -4,6 +4,7 @@ import { requireCapability } from '../../../middlewares/requireCapability';
 import { authorizationService } from '../../auth/services/authorization.service';
 import { prisma } from '../../../utils/prisma';
 import { DocumentCategory } from '@prisma/client';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 const CATEGORY_CAPABILITIES: Record<DocumentCategory, string | null> = {
   ADMINISTRATIVE: 'documents.view.list',
@@ -152,17 +153,17 @@ async function enforceDocumentAccessById(request: any, reply: any) {
 
 export async function documentsRoutes(fastify: any) {
   fastify.post('/', {
-    preHandler: [requireCapability('documents.upload')],
+    preHandler: [requireCapability('documents.upload'), determineDataScope()],
     handler: documentsController.upload,
   });
 
   fastify.post('/mou', {
-    preHandler: [requireCapability('documents.upload')],
+    preHandler: [requireCapability('documents.upload'), determineDataScope()],
     handler: documentsController.generateMou,
   });
 
   fastify.get('/', {
-    preHandler: [requireCapability('documents.view.list'), attachAllowedCategories, enforceCategoryQuery],
+    preHandler: [requireCapability('documents.view.list'), attachAllowedCategories, enforceCategoryQuery, determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -178,7 +179,7 @@ export async function documentsRoutes(fastify: any) {
   });
 
   fastify.get('/activities', {
-    preHandler: [requireCapability('documents.view.list')],
+    preHandler: [requireCapability('documents.view.list'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -198,12 +199,12 @@ export async function documentsRoutes(fastify: any) {
   });
 
   fastify.get('/:id/download', {
-    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById],
+    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById, determineDataScope()],
     handler: documentsController.download,
   });
 
   fastify.get('/:id/signed-url', {
-    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById],
+    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById, determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -216,17 +217,17 @@ export async function documentsRoutes(fastify: any) {
   });
 
   fastify.get('/:id/versions', {
-    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById],
+    preHandler: [requireCapability('documents.view.detail'), attachAllowedCategories, enforceDocumentAccessById, determineDataScope()],
     handler: documentsController.listVersions,
   });
 
   fastify.post('/:id/versions', {
-    preHandler: [requireCapability('documents.upload')],
+    preHandler: [requireCapability('documents.upload'), determineDataScope()],
     handler: documentsController.uploadVersion,
   });
 
   fastify.patch('/:id', {
-    preHandler: [requireCapability('documents.upload')],
+    preHandler: [requireCapability('documents.upload'), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -241,7 +242,7 @@ export async function documentsRoutes(fastify: any) {
   });
 
   fastify.delete('/:id', {
-    preHandler: [requireCapability('documents.delete')],
+    preHandler: [requireCapability('documents.delete'), determineDataScope()],
     handler: documentsController.softDelete,
   });
 }

@@ -1,5 +1,6 @@
 import { DashboardController } from '../controllers/dashboard.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function dashboardRoutes(fastify: any) {
   const dashboardController = new DashboardController();
@@ -10,7 +11,7 @@ export async function dashboardRoutes(fastify: any) {
    * Query params: tanggal (optional, format: YYYY-MM-DD)
    */
   fastify.get('/overview', {
-    preHandler: [requireCapability('dashboard.view.overview')],
+    preHandler: [requireCapability('dashboard.view.overview'), determineDataScope()],
     schema: {
       description: 'Get dashboard overview with daily statistics',
       tags: ['Dashboard'],
@@ -57,7 +58,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/guru/attendance
    */
   fastify.get('/guru/attendance', {
-    preHandler: [requireCapability("dashboard.view.teacher.attendance")],
+    preHandler: [requireCapability("dashboard.view.teacher.attendance"), determineDataScope()],
     schema: {
       description: 'Get current guru attendance status',
       tags: ['Dashboard'],
@@ -86,7 +87,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/kesiswaan/violations
    */
   fastify.get('/kesiswaan/violations', {
-    preHandler: [requireCapability("dashboard.view.violation.stats")],
+    preHandler: [requireCapability("dashboard.view.violation.stats"), determineDataScope()],
     schema: {
       description: 'Get latest violation reports',
       tags: ['Dashboard'],
@@ -122,7 +123,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/kurikulum/supervision
    */
   fastify.get('/kurikulum/supervision', {
-    preHandler: [requireCapability('curriculum.supervision.view.schedule')],
+    preHandler: [requireCapability('curriculum.supervision.view.schedule'), determineDataScope()],
     schema: {
       description: 'Get today supervision schedule',
       tags: ['Dashboard'],
@@ -153,7 +154,7 @@ export async function dashboardRoutes(fastify: any) {
   }, dashboardController.getSupervisionSchedule.bind(dashboardController));
 
   fastify.get('/kepsek/escalations', {
-    preHandler: [requireCapability('dashboard.view.overview')],
+    preHandler: [requireCapability('dashboard.view.overview'), determineDataScope()],
     schema: {
       description: 'Get escalation inbox for principal dashboard',
       tags: ['Dashboard'],
@@ -195,7 +196,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/kurikulum/monitoring-global
    */
   fastify.get('/kurikulum/monitoring-global', {
-    preHandler: [requireCapability(['dashboard.view.kurikulum', 'attendance.sessions.view.list'])],
+    preHandler: [requireCapability(['dashboard.view.kurikulum', 'attendance.sessions.view.list']), determineDataScope()],
     schema: {
       description: 'Get global KBM monitoring stats for Kurikulum',
       tags: ['Dashboard'],
@@ -213,7 +214,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/statistik/kelas/:tanggal
    */
   fastify.get('/statistik/kelas/:tanggal', {
-    preHandler: [requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'])],
+    preHandler: [requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap']), determineDataScope()],
     schema: {
       description: 'Get daily attendance statistics per class',
       tags: ['Dashboard'],
@@ -269,7 +270,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/statistik/kelas/:kelas_id/bulan/:bulan
    */
   fastify.get('/statistik/kelas/:kelas_id/bulan/:bulan', {
-    preHandler: [requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap'])],
+    preHandler: [requireCapability(['attendance.reports.view', 'academic.structures.view.list', 'academic.teaching.rekap']), determineDataScope()],
     schema: {
       description: 'Get monthly attendance statistics for specific class',
       tags: ['Dashboard'],
@@ -325,7 +326,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/statistik/guru/:tanggal
    */
   fastify.get('/statistik/guru/:tanggal', {
-    preHandler: [requireCapability(['academic.teaching.rekap', 'attendance.reports.view'])],
+    preHandler: [requireCapability(['academic.teaching.rekap', 'attendance.reports.view']), determineDataScope()],
     schema: {
       description: 'Get daily teacher attendance statistics',
       tags: ['Dashboard'],
@@ -381,7 +382,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/grafik/siswa/:bulan
    */
   fastify.get('/grafik/siswa/:bulan', {
-    preHandler: [requireCapability('attendance.reports.view')],
+    preHandler: [requireCapability('attendance.reports.view'), determineDataScope()],
     schema: {
       description: 'Get monthly student attendance chart data',
       tags: ['Dashboard'],
@@ -435,7 +436,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/grafik/guru/:bulan
    */
   fastify.get('/grafik/guru/:bulan', {
-    preHandler: [requireCapability("dashboard.view.guru")],
+    preHandler: [requireCapability("dashboard.view.guru"), determineDataScope()],
     schema: {
       description: 'Get monthly teacher attendance chart data',
       tags: ['Dashboard'],
@@ -489,7 +490,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/stats
    */
   fastify.get('/stats', {
-    preHandler: [requireCapability("dashboard.view.financial.summary")],
+    preHandler: [requireCapability("dashboard.view.financial.summary"), determineDataScope()],
     schema: {
       description: 'Get dashboard analytics statistics',
       tags: ['Dashboard'],
@@ -523,7 +524,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/recent-payments
    */
   fastify.get('/recent-payments', {
-    preHandler: [requireCapability("dashboard.view.financial.summary")],
+    preHandler: [requireCapability("dashboard.view.financial.summary"), determineDataScope()],
     schema: {
       description: 'Get recent payments for analytics',
       tags: ['Dashboard'],
@@ -557,7 +558,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/payment-chart
    */
   fastify.get('/payment-chart', {
-    preHandler: [requireCapability("dashboard.view.financial.summary")],
+    preHandler: [requireCapability("dashboard.view.financial.summary"), determineDataScope()],
     schema: {
       description: 'Get payment chart data for analytics',
       tags: ['Dashboard'],
@@ -588,7 +589,7 @@ export async function dashboardRoutes(fastify: any) {
    * GET /dashboard/guru/:guruId/capabilities
    */
   fastify.get('/guru/:guruId/capabilities', {
-    preHandler: [requireCapability(['academic.teachers.view.detail', 'academic.teachers.update'])],
+    preHandler: [requireCapability(['academic.teachers.view.detail', 'academic.teachers.update']), determineDataScope()],
     schema: {
       description: 'Get effective capabilities for a guru based on active structures',
       tags: ['Dashboard'],
@@ -652,7 +653,7 @@ export async function dashboardRoutes(fastify: any) {
   // Recent tenant registrations (SUPERADMIN only)
   // Hubin Stats
   fastify.get('/hubin/stats', {
-    preHandler: [requireCapability('dashboard.view.hubin')],
+    preHandler: [requireCapability('dashboard.view.hubin'), determineDataScope()],
     schema: {
       description: 'Get Hubin/PKL statistics',
       tags: ['Dashboard'],
@@ -727,7 +728,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Sarpras Stats
   fastify.get('/sarpras/stats', {
-    preHandler: [requireCapability('dashboard.view.sarpras')],
+    preHandler: [requireCapability('dashboard.view.sarpras'), determineDataScope()],
     schema: {
       description: 'Get Sarpras/Inventory statistics',
       tags: ['Dashboard'],
@@ -765,7 +766,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // TU Stats
   fastify.get('/tu/stats', {
-    preHandler: [requireCapability('dashboard.view.tu')],
+    preHandler: [requireCapability('dashboard.view.tu'), determineDataScope()],
     schema: {
       description: 'Get TU/Administration statistics',
       tags: ['Dashboard'],
@@ -802,7 +803,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Gerbang Stats
   fastify.get('/gerbang/stats', {
-    preHandler: [requireCapability('attendance.reports.view')],
+    preHandler: [requireCapability('attendance.reports.view'), determineDataScope()],
     schema: {
       description: 'Get Gerbang/Gate statistics',
       tags: ['Dashboard'],
@@ -841,7 +842,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Petugas Stats
   fastify.get('/petugas/stats', {
-    preHandler: [requireCapability('dashboard.view.overview')],
+    preHandler: [requireCapability('dashboard.view.overview'), determineDataScope()],
     schema: {
       description: 'Get Petugas/Officer statistics',
       tags: ['Dashboard'],
@@ -867,7 +868,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Guru Leaderboard
   fastify.get('/leaderboard-guru', {
-    preHandler: [requireCapability('dashboard.view.guru')],
+    preHandler: [requireCapability('dashboard.view.guru'), determineDataScope()],
     schema: {
       description: 'Get teacher leaderboard based on attendance points',
       tags: ['Dashboard'],
@@ -904,7 +905,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Kaprog Stats
   fastify.get('/kaprog/stats', {
-    preHandler: [requireCapability('dashboard.view.kurikulum')],
+    preHandler: [requireCapability('dashboard.view.kurikulum'), determineDataScope()],
     schema: {
       description: 'Get Kaprog/Kepala Program statistics',
       tags: ['Dashboard'],
@@ -930,7 +931,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Toolman Stats
   fastify.get('/toolman/stats', {
-    preHandler: [requireCapability('dashboard.view.sarpras')],
+    preHandler: [requireCapability('dashboard.view.sarpras'), determineDataScope()],
     schema: {
       description: 'Get Toolman/Lab Tool statistics',
       tags: ['Dashboard'],
@@ -955,7 +956,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // Kabeng Stats
   fastify.get('/kabeng/stats', {
-    preHandler: [requireCapability('dashboard.view.sarpras')],
+    preHandler: [requireCapability('dashboard.view.sarpras'), determineDataScope()],
     schema: {
       description: 'Get Kabeng/Kepala Bengkel statistics',
       tags: ['Dashboard'],
@@ -981,7 +982,7 @@ export async function dashboardRoutes(fastify: any) {
 
   // BKK Stats
   fastify.get('/bkk/stats', {
-    preHandler: [requireCapability('dashboard.view.hubin')],
+    preHandler: [requireCapability('dashboard.view.hubin'), determineDataScope()],
     schema: {
       description: 'Get BKK (Bursa Kerja Khusus) statistics',
       tags: ['Dashboard'],

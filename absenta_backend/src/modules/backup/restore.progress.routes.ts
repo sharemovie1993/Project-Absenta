@@ -1,9 +1,10 @@
 import { prisma } from '@/utils/prisma';
 import { RedisSubscriber } from '@/infra/redis/redis-subscriber';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function restoreProgressRoutes(app: any) {
-  app.get('/:id/progress/stream', { preHandler: [requireCapability("academic.backups.restore")] }, async (req: any, reply: any) => {
+  app.get('/:id/progress/stream', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, async (req: any, reply: any) => {
     const { id } = req.params;
 
     // 1. Validation

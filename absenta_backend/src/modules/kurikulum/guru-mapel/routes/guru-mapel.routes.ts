@@ -1,6 +1,7 @@
 import { guruMapelController } from '../controllers/guru-mapel.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export default async function guruMapelRoutes(fastify: any) {
   fastify.get(
@@ -8,8 +9,9 @@ export default async function guruMapelRoutes(fastify: any) {
     {
       preHandler: [
         requireCapability('academic.teaching.view'),
-        organizationalScopeMiddleware
-      ]
+        organizationalScopeMiddleware,
+        determineDataScope(),
+  ]
     },
     async (request: any, reply: any) => {
       return guruMapelController.list(request, reply);
@@ -21,8 +23,9 @@ export default async function guruMapelRoutes(fastify: any) {
     {
       preHandler: [
         requireCapability('academic.teaching.manage'),
-        organizationalScopeMiddleware
-      ]
+        organizationalScopeMiddleware,
+        determineDataScope(),
+  ]
     },
     async (request: any, reply: any) => {
       return guruMapelController.create(request, reply);
@@ -34,8 +37,9 @@ export default async function guruMapelRoutes(fastify: any) {
     {
       preHandler: [
         requireCapability('academic.teaching.manage'),
-        organizationalScopeMiddleware
-      ]
+        organizationalScopeMiddleware,
+        determineDataScope(),
+  ]
     },
     async (request: any, reply: any) => {
       return guruMapelController.remove(request, reply);
@@ -45,7 +49,7 @@ export default async function guruMapelRoutes(fastify: any) {
   fastify.get(
     '/import/template',
     {
-      preHandler: [requireCapability('academic.teaching.manage')]
+      preHandler: [requireCapability('academic.teaching.manage'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return guruMapelController.getImportTemplate(request, reply);
@@ -55,7 +59,7 @@ export default async function guruMapelRoutes(fastify: any) {
   fastify.post(
     '/import',
     {
-      preHandler: [requireCapability('academic.teaching.manage')]
+      preHandler: [requireCapability('academic.teaching.manage'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return guruMapelController.importFromExcel(request, reply);

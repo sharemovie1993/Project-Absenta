@@ -1,11 +1,12 @@
 import { semesterController } from '../controllers/semester.controller';
 import { requireCapability } from '../../../../middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export default async function semesterRoutes(fastify: any) {
   fastify.get(
     '/',
     {
-      preHandler: [requireCapability('academic.semesters.view.list')]
+      preHandler: [requireCapability('academic.semesters.view.list'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.getAllSemester(request, reply);
@@ -15,7 +16,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.get(
     '/active',
     {
-      preHandler: [requireCapability('academic.semesters.view.list')]
+      preHandler: [requireCapability('academic.semesters.view.list'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.getActiveSemester(request, reply);
@@ -25,7 +26,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.get(
     '/tahun-pelajaran/:tahunPelajaranId',
     {
-      preHandler: [requireCapability('academic.semesters.view.list')]
+      preHandler: [requireCapability('academic.semesters.view.list'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.getSemesterByTahunPelajaran(request, reply);
@@ -35,7 +36,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.get(
     '/:id',
     {
-      preHandler: [requireCapability('academic.semesters.view.detail')]
+      preHandler: [requireCapability('academic.semesters.view.detail'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.getSemesterById(request, reply);
@@ -45,7 +46,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.post(
     '/',
     {
-      preHandler: [requireCapability('academic.semesters.create')]
+      preHandler: [requireCapability('academic.semesters.create'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.createSemester(request, reply);
@@ -55,7 +56,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.put(
     '/:id',
     {
-      preHandler: [requireCapability('academic.semesters.update')]
+      preHandler: [requireCapability('academic.semesters.update'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.updateSemester(request, reply);
@@ -65,7 +66,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.put(
     '/:id/activate',
     {
-      preHandler: [requireCapability('academic.semesters.update')]
+      preHandler: [requireCapability('academic.semesters.update'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.setActiveSemester(request, reply);
@@ -75,7 +76,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.put(
     '/:id/deactivate',
     {
-      preHandler: [requireCapability('academic.semesters.update')]
+      preHandler: [requireCapability('academic.semesters.update'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.deactivateSemester(request, reply);
@@ -85,7 +86,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.delete(
     '/:id',
     {
-      preHandler: [requireCapability('academic.semesters.delete')]
+      preHandler: [requireCapability('academic.semesters.delete'), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.deleteSemester(request, reply);

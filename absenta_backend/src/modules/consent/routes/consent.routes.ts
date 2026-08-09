@@ -1,9 +1,10 @@
 import { consentLogService, ConsentType } from '../services/consent-log.service';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function consentRoutes(fastify: any) {
   fastify.post('/log', {
-    preHandler: [requireCapability('consent.logs.create')],
+    preHandler: [requireCapability('consent.logs.create'), determineDataScope()],
     schema: {
       description: 'Create consent log',
       tags: ['Consent'],
@@ -34,7 +35,7 @@ export async function consentRoutes(fastify: any) {
   });
 
   fastify.get('/logs', {
-    preHandler: [requireCapability('consent.logs.view.list')],
+    preHandler: [requireCapability('consent.logs.view.list'), determineDataScope()],
     schema: {
       description: 'List consent logs',
       tags: ['Consent'],

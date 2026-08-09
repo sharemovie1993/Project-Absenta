@@ -1,12 +1,13 @@
 import { ReportingController } from '../controllers/reporting.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function reportingRoutes(fastify: any) {
   const reportingController = new ReportingController();
 
   // Generate financial report
   fastify.post('/financial/generate', {
-    preHandler: [requireCapability('reports.financial.generate')],
+    preHandler: [requireCapability('reports.financial.generate'), determineDataScope()],
     schema: {
       body: {
         type: 'object',
@@ -22,7 +23,7 @@ export async function reportingRoutes(fastify: any) {
 
   // Get financial reports list
   fastify.get('/financial', {
-    preHandler: [requireCapability('reports.financial.view.list')],
+    preHandler: [requireCapability('reports.financial.view.list'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -37,13 +38,13 @@ export async function reportingRoutes(fastify: any) {
 
   // Get dashboard statistics
   fastify.get('/dashboard/stats', {
-    preHandler: [requireCapability('reports.dashboard.view.stats')],
+    preHandler: [requireCapability('reports.dashboard.view.stats'), determineDataScope()],
     handler: reportingController.getDashboardStats.bind(reportingController),
   });
 
   // Export financial report
   fastify.get('/financial/export', {
-    preHandler: [requireCapability('reports.financial.export')],
+    preHandler: [requireCapability('reports.financial.export'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -60,7 +61,7 @@ export async function reportingRoutes(fastify: any) {
 
   // Get monthly report
   fastify.get('/financial/monthly/:year/:month', {
-    preHandler: [requireCapability('reports.financial.view.monthly')],
+    preHandler: [requireCapability('reports.financial.view.monthly'), determineDataScope()],
     schema: {
       params: {
         type: 'object',
@@ -76,7 +77,7 @@ export async function reportingRoutes(fastify: any) {
 
   // Get yearly report
   fastify.get('/financial/yearly/:year', {
-    preHandler: [requireCapability('reports.financial.view.yearly')],
+    preHandler: [requireCapability('reports.financial.view.yearly'), determineDataScope()],
     schema: {
       params: {
         type: 'object',
@@ -90,7 +91,7 @@ export async function reportingRoutes(fastify: any) {
   });
 
   fastify.get('/owner/summary', {
-    preHandler: [requireCapability('reports.owner.view.summary')],
+    preHandler: [requireCapability('reports.owner.view.summary'), determineDataScope()],
     schema: {
       response: {
         200: {
@@ -133,7 +134,7 @@ export async function reportingRoutes(fastify: any) {
 
   // Kesiswaan Report
   fastify.get('/kesiswaan', {
-    preHandler: [requireCapability('reports.violation.view')],
+    preHandler: [requireCapability('reports.violation.view'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -148,13 +149,13 @@ export async function reportingRoutes(fastify: any) {
 
   // Hubin Report
   fastify.get('/hubin', {
-    preHandler: [requireCapability('reports.hubin.view')],
+    preHandler: [requireCapability('reports.hubin.view'), determineDataScope()],
     handler: reportingController.getHubinReport.bind(reportingController),
   });
 
   // Kurikulum Report
   fastify.get('/kurikulum', {
-    preHandler: [requireCapability('reports.attendance.view')],
+    preHandler: [requireCapability('reports.attendance.view'), determineDataScope()],
     schema: {
       querystring: {
         type: 'object',
@@ -169,57 +170,57 @@ export async function reportingRoutes(fastify: any) {
 
   // --- PDF Reports (Reporting Engine) ---
   fastify.get('/pdf/certificate/:siswaId', {
-    preHandler: [requireCapability('reports.violation.view')],
+    preHandler: [requireCapability('reports.violation.view'), determineDataScope()],
     handler: reportingController.printCertificate.bind(reportingController),
   });
 
   fastify.get('/pdf/certificate/class/:kelasId/zip', {
-    preHandler: [requireCapability('reports.violation.view')],
+    preHandler: [requireCapability('reports.violation.view'), determineDataScope()],
     handler: reportingController.printCertificateClassZip.bind(reportingController),
   });
 
   fastify.get('/pdf/invoice/:invoiceNumber', {
-    preHandler: [requireCapability('reports.financial.view.monthly')],
+    preHandler: [requireCapability('reports.financial.view.monthly'), determineDataScope()],
     handler: reportingController.printInvoice.bind(reportingController),
   });
 
   fastify.get('/pdf/supervision/:supervisionId', {
-    preHandler: [requireCapability('curriculum.supervision.view.report')],
+    preHandler: [requireCapability('curriculum.supervision.view.report'), determineDataScope()],
     handler: reportingController.printSupervision.bind(reportingController),
   });
 
   fastify.get('/pdf/izin-keluar/:izinId', {
-    preHandler: [requireCapability('reports.violation.view')],
+    preHandler: [requireCapability('reports.violation.view'), determineDataScope()],
     handler: reportingController.printIzinKeluar.bind(reportingController),
   });
 
   fastify.get('/pdf/kesiswaan-bulanan', {
-    preHandler: [requireCapability('reports.violation.view')],
+    preHandler: [requireCapability('reports.violation.view'), determineDataScope()],
     handler: reportingController.printKesiswaanBulanan.bind(reportingController),
   });
 
   fastify.get('/pdf/rapor/:siswaId', {
-    preHandler: [requireCapability('academic.view.wali.kelas')],
+    preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()],
     handler: reportingController.printRapor.bind(reportingController),
   });
 
   fastify.get('/pdf/skl/:siswaId', {
-    preHandler: [requireCapability('academic.students.view.list')],
+    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
     handler: reportingController.printSkl.bind(reportingController),
   });
 
   fastify.get('/pdf/ukk/:siswaId', {
-    preHandler: [requireCapability('academic.students.view.list')],
+    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
     handler: reportingController.printUkk.bind(reportingController),
   });
 
   fastify.get('/pdf/pkl/:siswaPklId', {
-    preHandler: [requireCapability('academic.students.view.list')],
+    preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
     handler: reportingController.printPkl.bind(reportingController),
   });
 
   fastify.get('/pdf/p5/:siswaId', {
-    preHandler: [requireCapability('academic.view.wali.kelas')],
+    preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()],
     handler: reportingController.printP5Rapor.bind(reportingController),
   });
 }
