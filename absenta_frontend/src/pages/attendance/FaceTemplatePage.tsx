@@ -14,7 +14,6 @@ import {
   Label
 } from '../../components/ui';
 import { getFaceTemplates, enrollFaceTemplate, deleteFaceTemplate } from '../../api/attendanceGerbang.api';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndRole';
 import { Camera, Search, Trash, ScanFace, ShieldCheck, Plus } from 'lucide-react';
@@ -58,8 +57,7 @@ const breadcrumbs = [
 ];
 
 export const FaceTemplatePage: React.FC = React.memo(() => {
-  const { subscription } = useAuthStore();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, subscription } = useAuthStore();
   const { isAdmin, can } = useCapabilities();
 
   const canView = useMemo(() => {

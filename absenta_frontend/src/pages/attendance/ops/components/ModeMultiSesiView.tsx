@@ -114,16 +114,15 @@ export default React.memo(function ModeMultiSesiView({
     isAdmin ||
     isGerbangPos ||
     isOperator ||
-    can('attendance.gate.tap.entry') ||
     can('attendance.gate.tap.entry')
   );
   
   // 2. Cek Manual (Wali Kelas, Petugas Kelas, Guru, Admin)
-  const canAccessManual = isAdmin || isPetugasSiswa || isWaliKelasPos || isPetugasGuru || caps.includes('attendance.sessions.update.attendance');
+  const canAccessManual = isAdmin || isPetugasSiswa || isWaliKelasPos || isPetugasGuru || can('attendance.sessions.update.attendance');
 
   // 3. Manajemen Sesi (Admin, Petugas Kelas, Guru Mapel)
-  const canAccessSesi = isAdmin || isPetugasSiswa || isPetugasGuru || caps.includes('attendance.sessions.view.list');
-  const canCreateSession = isAdmin || isPetugasSiswa || caps.includes('attendance.sessions.create');
+  const canAccessSesi = isAdmin || isPetugasSiswa || isPetugasGuru || can('attendance.sessions.view.list');
+  const canCreateSession = isAdmin || isPetugasSiswa || can('attendance.sessions.create');
   
   const canAccessAny = canAccessInput || canAccessManual || canAccessSesi;
 

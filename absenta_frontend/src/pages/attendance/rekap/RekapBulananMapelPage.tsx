@@ -12,7 +12,7 @@ import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { toLocalMonth } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
 
 import { useAuthStore } from '../../../store/authStore';
@@ -43,7 +43,7 @@ interface SubscriptionRecord {
 
 export function RekapBulananMapelContent() {
   const { user, subscription } = useAuthStore();
-  const { can, isLoading } = useAuth();
+  const { can } = useCapabilities();
 
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');

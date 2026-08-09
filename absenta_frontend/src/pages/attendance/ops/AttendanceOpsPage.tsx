@@ -1,6 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../hooks/useAuth';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useTenant } from '../../../hooks/useTenant';
 import { Loader, Activity, ShieldCheck, Zap, User, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
@@ -19,8 +18,7 @@ const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesis
 
 export default React.memo(function AttendanceOpsPage() {
   const navigate = useNavigate();
-  const { subscription } = useAuthStore();
-  const { user } = useAuth();
+  const { user, subscription } = useAuthStore();
   const { tenantId } = useTenant();
 
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');

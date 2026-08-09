@@ -13,7 +13,8 @@ import { getJadwalKegiatan, type JadwalKegiatanItem } from '../../../api/attenda
 import { formatErrorMessage } from '../../../api/apiUtils';
 import { LogService } from '../../../utils/LogService';
 import { Plus, Trash2, Calendar, Clock, BookOpen, User, Edit2 } from 'lucide-react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
@@ -43,7 +44,8 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = React.memo(({ kelas
   const queryClient = useQueryClient();
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'KBM' | 'KEGIATAN'>('ALL');
   const [refreshKey, setRefreshKey] = useState(0);
-  const { user, can } = useAuth();
+  const { user } = useAuthStore();
+  const { isAdmin, can } = useCapabilities();
 
   // ── Canonical Reference Options Hooks ─────────────────────────────────────
   const { options: kelasOptions, rawList: kelasRawList } = useKelasOptions();
@@ -315,7 +317,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = React.memo(({ kelas
               </button>
             </div>
 
-            {!kelasId && (user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('academic.schedules.view.list') || can('attendance.schedules.view.list')) && (
+            {!kelasId && (isAdmin || can('academic.schedules.view.list') || can('attendance.schedules.view.list')) && (
               <div className="w-[200px]">
                   <SearchableSelect
                     value={selectedKelasId}

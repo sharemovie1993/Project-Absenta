@@ -14,7 +14,7 @@ import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { toLocalMonth } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Users } from 'lucide-react';
 
 import { useAuthStore } from '../../../store/authStore';
@@ -80,8 +80,8 @@ const breadcrumbs = [
 // ─── Content Component ────────────────────────────────────────────────────────
 export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: string }) {
   const { user, subscription } = useAuthStore();
+  const { can } = useCapabilities();
   const navigate = useNavigate();
-  const { can, isLoading } = useAuth();
 
   const customUser = (user as unknown as CustomUser) ?? null;
   const waliKelasId =

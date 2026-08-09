@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { guruApi, kelasApi } from '../../api/academic.api';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../api/attendanceGerbang.api';
@@ -59,8 +58,7 @@ interface GroupedRiwayat {
 
 export const RiwayatAjarPage: React.FC = React.memo(() => {
   const { user, tenantId, subscription } = useAuthStore();
-  const { can } = useAuth();
-  const { isAdmin, isKurikulum, isKepalaSekolah, isTuHead, isTuStaff } = useCapabilities();
+  const { isAdmin, isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, can } = useCapabilities();
 
   // Determine if current user is a Supervisor / Manager (Kurikulum, Kepsek, Admin, TU Kepegawaian)
   const isManager = useMemo(() => {

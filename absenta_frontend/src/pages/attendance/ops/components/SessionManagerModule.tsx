@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../../components/ui/Alert';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../../hooks/useAuth';
 import { useCapabilities } from '../../../../hooks/useCapabilities';
 import { 
   getSesiAbsensiList, 

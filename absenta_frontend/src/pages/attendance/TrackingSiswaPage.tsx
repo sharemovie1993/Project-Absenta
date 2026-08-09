@@ -20,7 +20,7 @@ import {
   Alert, 
   AlertDescription
 } from '../../components/ui';
-import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { dropdownApi, type DropdownOption } from '../../api/dropdown.api';
 import { getTrackingHarianSiswa, getRekapBulananSiswa } from '../../api/attendanceGerbang.api';
 import { siswaApi } from '../../api/academic.api';
@@ -161,7 +161,7 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
 
   const { subscription } = useAuthStore();
   const navigate = useNavigate();
-  const { can, isLoading } = useAuth();
+  const { can } = useCapabilities();
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>(paramSiswaId);

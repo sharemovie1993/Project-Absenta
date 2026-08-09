@@ -101,11 +101,11 @@ const AttendanceDashboardPage: React.FC = React.memo(() => {
   }, [isTvMode]);
 
   const isSiswa = useMemo(() => {
-    return String(user?.role?.name || '').toUpperCase() === 'SISWA';
+    return !!user?.isStudent;
   }, [user]);
 
-  const isTeacher = useMemo(() => {
-    return String(user?.role?.name || '').toUpperCase() === 'GURU';
+  const isGuru = useMemo(() => {
+    return !!user?.isTeacher;
   }, [user]);
 
   // Premium gating config check

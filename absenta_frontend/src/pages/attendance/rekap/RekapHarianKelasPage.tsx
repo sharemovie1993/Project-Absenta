@@ -23,7 +23,7 @@ import { toLocalDate } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   Search, 
   RefreshCw, 
@@ -95,7 +95,7 @@ export function RekapHarianKelasContent({
 }) {
   const { user, subscription } = useAuthStore();
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can } = useCapabilities();
   
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');

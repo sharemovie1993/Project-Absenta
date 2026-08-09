@@ -15,7 +15,7 @@ import { getRekapBulananSiswa } from '../../../api/attendanceGerbang.api';
 import { siswaApi, kelasApi } from '../../../api/academic.api';
 import { formatDate } from '../../../utils/layoutUtils';
 import { getTimezone } from '../../../utils/attendance/time';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
 import { 
@@ -65,8 +65,8 @@ interface StudentResponseItem {
 }
 
 export default React.memo(function RekapBulananSiswaPage() {
-  const { subscription } = useAuthStore();
-  const { can, isLoading, user } = useAuth();
+  const { user, subscription } = useAuthStore();
+  const { can } = useCapabilities();
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');
   const [bulan, setBulan] = useState<string>(new Date().toISOString().slice(0, 7));
@@ -79,7 +79,7 @@ export default React.memo(function RekapBulananSiswaPage() {
     return new Date(parseInt(y), parseInt(m) - 1, 15);
   }, [bulan]);
   
-  const isSiswa = user?.role?.name === 'SISWA';
+  const isSiswa = !!user?.isStudent;
 
   const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
                       subscription?.Plan?.features_json || 

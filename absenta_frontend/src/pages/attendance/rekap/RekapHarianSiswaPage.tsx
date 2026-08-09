@@ -13,7 +13,7 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapHarianSiswa } from '../../../api/attendanceGerbang.api';
 import { formatDate } from '../../../utils/layoutUtils';
-import { useAuth } from '../../../hooks/useAuth';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { siswaApi } from '../../../api/academic.api';
 import { toLocalDate, getTimezone } from '../../../utils/attendance/time';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
@@ -44,8 +44,8 @@ interface StudentResponseItem {
 }
 
 export default React.memo(function RekapHarianSiswaPage() {
-  const { subscription } = useAuthStore();
-  const { can, isLoading, user } = useAuth();
+  const { user, subscription } = useAuthStore();
+  const { can } = useCapabilities();
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
@@ -53,7 +53,7 @@ export default React.memo(function RekapHarianSiswaPage() {
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
   
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
-  const isSiswa = user?.role?.name === 'SISWA';
+  const isSiswa = !!user?.isStudent;
 
   const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
                       subscription?.Plan?.features_json || 

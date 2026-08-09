@@ -15,7 +15,6 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
 import { kelasApi, guruApi } from '../../api/academic.api';
 import { toLocalDate } from '../../utils/attendance/time';
-import { useAuth } from '../../hooks/useAuth';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useSocket } from '../../hooks/useSocket';
 import { 
@@ -61,7 +60,6 @@ const breadcrumbs = [
 
 export default React.memo(function GuruMonitoringPage() {
   const { subscription } = useAuthStore();
-  const { can, isLoading } = useAuth();
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
@@ -73,7 +71,7 @@ export default React.memo(function GuruMonitoringPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  const { isAdmin, isKurikulum, isKepalaSekolah, can: capCan } = useCapabilities();
+  const { isAdmin, isKurikulum, isKepalaSekolah, can } = useCapabilities();
   const canView = useMemo(
     () => isAdmin || isKurikulum || isKepalaSekolah || (can('attendance.reports.view') && can('academic.teachers.view.list')),
     [isAdmin, isKurikulum, isKepalaSekolah, can],
