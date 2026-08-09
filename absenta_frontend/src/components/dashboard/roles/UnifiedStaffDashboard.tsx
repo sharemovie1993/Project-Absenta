@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { cn } from '../../../lib/utils';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -128,29 +129,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
     user?.role?.name === 'KURIKULUM' || 
     hasRole('KURIKULUM'), 
   [caps, user, jabatanList, jabatan]);
-  const isStrictKesiswaan = useMemo(() => 
-    caps.includes('dashboard.view.kesiswaan') || 
-    user?.role?.name === 'KESISWAAN' || 
-    hasRole('KESISWAAN'), 
-  [caps, user, jabatanList, jabatan]);
+  const {
+    isSarpras,
+    isHubin,
+    isToolman,
+    isKaprog,
+    isKabeng,
+    isBpbk,
+    isBkk,
+    isGerbang,
+    isTU,
+    isKepsek,
+    isKesiswaan: isStrictKesiswaan
+  } = useCapabilities();
 
-  const isKesiswaan = useMemo(() => 
-    isStrictKesiswaan || 
-    caps.includes('dashboard.view.piket') || 
-    caps.includes('attendance.piket.manage') || 
-    hasRole('PIKET', 'GURU PIKET'), 
-  [isStrictKesiswaan, caps, jabatanList, jabatan]); // eslint-disable-line
-  const isKepsek    = useMemo(() => caps.includes('dashboard.view.kepsek') || caps.includes('correspondence.outbox.sign') || hasRole('KEPALA SEKOLAH', 'KEPALA_SEKOLAH', 'KEPSEK'), [caps, jabatanList, jabatan]); // eslint-disable-line
-  const isSarpras   = useMemo(() => caps.includes('dashboard.view.sarpras') || caps.includes('sarpras.inventory.manage') || user?.role?.name === 'SARPRAS', [caps, user, jabatanList, jabatan]); // eslint-disable-line
-  const isHubin     = useMemo(() => caps.includes('dashboard.view.hubin') || caps.includes('hubin.pkl.manage') || caps.includes('hubin.partners.manage') || user?.role?.name === 'HUBIN', [caps, user, jabatanList, jabatan]); // eslint-disable-line
-  const isGlobalHubin = useMemo(() => caps.includes('hubin.partners.manage') || caps.includes('hubin.pkl.manage') || user?.role?.name === 'ADMIN', [caps, user, jabatanList, jabatan]); // eslint-disable-line
-  const isToolman   = useMemo(() => caps.includes('sarpras.loans.request') && !caps.includes('sarpras.inventory.manage'), [caps, jabatanList, jabatan]); // eslint-disable-line
-  const isKaprog    = useMemo(() => caps.includes('academic.teaching.rekap') || (caps.includes('hubin.pkl.manage') && !caps.includes('hubin.partners.manage')), [caps, user, jabatanList, jabatan]); // eslint-disable-line
-  const isKabeng    = useMemo(() => caps.includes('sarpras.inventory.delete') && !caps.includes('sarpras.inventory.manage'), [caps, jabatanList, jabatan]); // eslint-disable-line
-  const isBpbk      = useMemo(() => caps.includes('bk.counseling.view.sensitive') || caps.includes('bk.cases.manage'), [caps, jabatanList, jabatan]); // eslint-disable-line
-  const isBkk       = useMemo(() => caps.includes('hubin.tracer.view') || caps.includes('hubin.bkk.manage'), [caps, jabatanList, jabatan]); // eslint-disable-line
-  const isGerbang   = useMemo(() => caps.includes('dashboard.view.gerbang') || caps.includes('attendance.gate.scan') || user?.role?.name === 'GERBANG' || user?.role?.name === 'PETUGAS_GERBANG', [caps, user, jabatanList, jabatan]); // eslint-disable-line
-  const isTU        = useMemo(() => caps.includes('tu.staff.manage') || caps.includes('correspondence.inbox.view') || caps.includes('tu.finance.invoices.view') || user?.role?.name === 'TU', [caps, user, jabatanList, jabatan]); // eslint-disable-line
+  const isKesiswaan = isStrictKesiswaan || caps.includes('dashboard.view.piket') || caps.includes('attendance.piket.manage');
+  const isGlobalHubin = isHubin || caps.includes('hubin.partners.manage');
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng

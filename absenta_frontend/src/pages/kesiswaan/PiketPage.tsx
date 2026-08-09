@@ -25,6 +25,7 @@ import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { type JadwalPiketGuru } from '../../api/piketGuru.api';
 import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
 import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions';
 import { usePiketGateStore } from '../../hooks/usePiketGateStore';
@@ -87,17 +88,14 @@ interface GuruProfileWithJurusan {
 
 export default function PiketPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
-  const { isAdmin, can } = useAuth();
-  const currentGuruId = user?.guru_profile?.id;
-  const userRole = (user?.role?.name || '').toUpperCase();
+  const { isKesiswaan, isKurikulum, isGerbang, isTU, isKepsek, isAdmin, can } = useCapabilities();
 
   // Management and Guru roles who ALWAYS have access to Meja Piket
   const isManagement = useMemo(() => {
-    if (isAdmin()) return true;
+    if (isAdmin) return true;
     if (can('attendance.piket.manage') || can('attendance.piket.view')) return true;
-    return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR', 'GURU'].includes(userRole);
-  }, [isAdmin, can, userRole]);
+    return isKesiswaan || isKurikulum || isGerbang || isTU || isKepsek || !!user?.isTeacher;
+  }, [isAdmin, can, isKesiswaan, isKurikulum, isGerbang, isTU, isKepsek, user?.isTeacher]);
 
   // ── Custom Hook: Guru Piket Hari Ini (Jadwal Piket Guru) ───────────────────
   const { guruPiketHariIni } = usePiketGuruOptions();

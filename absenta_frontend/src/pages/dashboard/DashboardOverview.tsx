@@ -6,6 +6,7 @@ import { getAcademicStats, type AcademicStats } from "../../api/academic-stats.a
 import { getAcademicRegistrationStats } from "../../api/academic/siswa.api";
 import type { DashboardOverviewStats, ChartData } from "../../types/dashboard";
 import { useAuthStore } from "../../store/authStore";
+import { useCapabilities } from "../../hooks/useCapabilities";
 import { isSystemSuperAdmin, isPlatformUser } from "../../utils/rbac";
 import { cn } from "../../lib/utils";
 
@@ -80,15 +81,7 @@ export default function DashboardOverview() {
   const isAdminOrSuperadmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN' || isSystemSuperAdmin(roleName, user?.tenant_id);
   const canOverview = isAdminOrSuperadmin && caps.includes('dashboard.view.overview');
   
-  const isHubin = 
-    caps.includes('hubin.view.pkl') || 
-    caps.includes('hubin.self.pkl') || 
-    caps.includes('hubin.pkl.view.list') || 
-    caps.includes('hubin.bkk.manage') || 
-    caps.includes('hubin.tracer.view') || 
-    caps.includes('dashboard.view.hubin');
-  const isSarpras = caps.includes('sarpras.inventory.view.list') || caps.includes('dashboard.view.sarpras');
-  const isTU = caps.includes('tu.manage_surat') || caps.includes('dashboard.view.tu');
+  const { isHubin, isSarpras, isTU } = useCapabilities();
   
   // Logic Onboarding: tampilkan untuk ADMIN/GURU/SISWA yang memiliki tenant
   const shouldOnboard = false; // Disabled
