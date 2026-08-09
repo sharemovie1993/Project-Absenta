@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
@@ -30,6 +31,7 @@ interface Props {
 }
 
 const SemesterTransitionWizard: React.FC<Props> = React.memo(({ onDone, onClose }) => {
+  const { isKurikulum, isAdmin, can } = useCapabilities();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

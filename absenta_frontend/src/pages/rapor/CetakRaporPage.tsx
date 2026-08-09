@@ -25,6 +25,7 @@ import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
@@ -54,6 +55,7 @@ const PAGE_INSTRUCTION =
 
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
+  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
 
   // ── State ──
   const [selectedKelas, setSelectedKelas] = useState('');

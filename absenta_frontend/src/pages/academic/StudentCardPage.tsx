@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Settings,
@@ -63,14 +64,14 @@ import { AccessRestricted, ConfigErrorState } from '../../components/academic/st
 
 
 const StudentCardPage = () => {
-    const { user, isAdmin } = useAuth();
+    const { user, isAdmin: checkIsAdmin } = useAuth();
+    const { isStudent, isTeacher, isHomeroomTeacher, isAdmin, can } = useCapabilities();
 
-    const role = user?.role?.name;
-    const isSiswa = role === 'SISWA';
-    const isGuru = role === 'GURU' || role === 'WALIKELAS';
+    const isSiswa = isStudent;
+    const isGuru = isTeacher || isHomeroomTeacher;
 
-    const canView = user?.capabilities?.includes('academic.student.card.view.config') || isAdmin();
-    const canEdit = user?.capabilities?.includes('academic.student.card.update.config') || isAdmin();
+    const canView = can('academic.student.card.view.config') || isAdmin;
+    const canEdit = can('academic.student.card.update.config') || isAdmin;
 
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(isSiswa ? 'print' : ((isGuru && !canView) ? 'data' : 'design'));

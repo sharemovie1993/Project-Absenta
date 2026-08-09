@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormAcademic } from '../../components/academic/CetakFormAcademic';
 import { generateAcademicPdf } from '../../utils/print/pdfAcademic';
@@ -67,6 +68,7 @@ const AcademicFormWrapper: React.FC<AcademicFormWrapperProps> = ({
 };
 
 export const CetakBerkasPage: React.FC = React.memo(() => {
+  const { isKurikulum, isTuHead, isTuStaff, isAdmin, can } = useCapabilities();
   const [uniqueTingkatList, setUniqueTingkatList] = React.useState<number[]>([]);
   const [guruMapelList, setGuruMapelList] = React.useState<GuruMapel[]>([]);
 
