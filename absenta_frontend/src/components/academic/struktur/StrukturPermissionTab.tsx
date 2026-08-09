@@ -3,6 +3,7 @@ import { Shield } from 'lucide-react';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { StrukturPermissionMatrix } from '@/components/academic/struktur/StrukturPermissionMatrix';
 import type { PermissionCatalogItem } from '@/api/user.api';
+import { useCapabilities } from '@/hooks/useCapabilities';
 
 interface StrukturPermissionTabProps {
   structures: any[];
@@ -25,6 +26,7 @@ export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = React
   hasUnsavedChanges,
   user
 }) => {
+  const { isAdmin, can } = useCapabilities();
   return (
     <SectionCard noPadding fullWidth title="Matriks Izin Akses Jabatan" icon={Shield}>
       <div className="p-4 md:p-8">
@@ -36,7 +38,7 @@ export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = React
           onSave={onSave}
           isSaving={isSaving}
           hasUnsavedChanges={hasUnsavedChanges}
-          canDistribute={['SUPERADMIN', 'ADMIN'].includes(String((user as any)?.role?.name || (user as any)?.role || '')) || (user as any)?.capabilities?.includes('academic.structures.manage')}
+          canDistribute={isAdmin || can('academic.structures.manage')}
         />
       </div>
     </SectionCard>

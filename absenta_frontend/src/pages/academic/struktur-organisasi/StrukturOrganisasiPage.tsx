@@ -13,6 +13,7 @@ import {
 import { Loader } from '@/components/ui/Loader';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button } from '@/components/ui/Button';
@@ -50,10 +51,11 @@ const StrukturOrganisasiPage: React.FC = () => {
 
   const { confirm } = useConfirm();
   const { user, can, isLoading: authLoading } = useAuth();
+  const { isKurikulum, isKepalaSekolah, isAdmin, can: capCan } = useCapabilities();
   const { jenjang, sekolah } = useJenjang();
 
-  const isGlobalStrukturAdmin = can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
-  const canManageAcademic = can('academic.structures.view.tree') || can('academic.structures.view.list');
+  const isGlobalStrukturAdmin = isAdmin || isKurikulum || can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
+  const canManageAcademic = isAdmin || isKurikulum || isKepalaSekolah || can('academic.structures.view.tree') || can('academic.structures.view.list');
 
   const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
 

@@ -21,6 +21,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import { useMasterStrukturState } from '../../hooks/kurikulum/useMasterStrukturState';
 import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
 import type { Mapel } from '../../types/academic';
 
@@ -38,7 +39,8 @@ const masterStrukturFilterSchema = z.object({
 
 const MasterStrukturPage: React.FC = () => {
     const { can } = useAuth();
-    const canManage = can('academic.manage.academic');
+    const { isKurikulum, isAdmin } = useCapabilities();
+    const canManage = isAdmin || isKurikulum || can('academic.manage.academic');
     const [isCloneModalOpen, setIsCloneModalOpen] = React.useState(false);
 
     const {
