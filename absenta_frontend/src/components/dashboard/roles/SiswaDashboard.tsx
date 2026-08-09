@@ -150,7 +150,7 @@ export const SiswaDashboard: React.FC = () => {
   const { data: myPklRes } = useQuery({
     queryKey: ['hubin-my-penempatan', user?.siswa_id],
     queryFn: () => hubinApi.getMyPenempatan(),
-    enabled: !!user && !!user?.siswa_id && (can('hubin.self.pkl') || caps.includes('hubin.self.pkl') || can('hubin.view.pkl') || caps.includes('hubin.view.pkl')),
+    enabled: !!user && !!user?.siswa_id && (can('hubin.pkl.view.list') || caps.includes('hubin.pkl.view.list') || can('hubin.pkl.view.list') || caps.includes('hubin.pkl.view.list')),
   });
 
   const isPklActive = useMemo(() => {

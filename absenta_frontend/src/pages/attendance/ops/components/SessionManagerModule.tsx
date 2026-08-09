@@ -727,7 +727,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai) || ''}
                           showScanGuru={!isReadOnlyExecutive}
                           showScanSiswa={!isReadOnlyExecutive}
-                          canManage={isAdmin || can('attendance.sessions.manage') || (isStudent && isPetugasSiswa)}
+                          canManage={isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa)}
                           onOpenJournal={() => handleOpenJournal(session)}
                         />
                         
@@ -790,7 +790,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
             sesiId={journalSesiId}
             initialData={journalInitialData}
             onSuccess={fetchSessions}
-            readOnly={!isAdmin && !can('attendance.journals.manage')}
+            readOnly={!isAdmin && !can('attendance.sessions.update.journal')}
           />
 
           {/* Delete Confirmation Dialog */}

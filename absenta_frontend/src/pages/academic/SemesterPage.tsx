@@ -33,7 +33,7 @@ export const SemesterPage: React.FC = () => {
   const canCreate = isAdmin || isKurikulum || can('academic.semesters.create');
   const canEdit = isAdmin || isKurikulum || can('academic.semesters.update');
   const canView = isAdmin || isKurikulum || can('academic.semesters.view.list');
-  const canSetActive = isAdmin || isKurikulum || can('academic.semesters.set_active');
+  const canSetActive = isAdmin || isKurikulum || can('academic.semesters.set.active');
 
   // Queries using React Query
   const { data: statsRes, isLoading: isLoadingStats } = useQuery({

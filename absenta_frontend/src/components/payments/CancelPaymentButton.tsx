@@ -25,7 +25,7 @@ export default function CancelPaymentButton({
   const { user, can, isLoading: isAuthLoading } = useAuth();
 
   // Check if user has permission to cancel payments
-  const hasPermission = can('billing.invoices.cancel');
+  const hasPermission = can('tu.finance.invoices.cancel');
   
   // Check if payment can be cancelled based on status
   const canCancel = CANCELLABLE_STATUSES.includes(currentStatus);

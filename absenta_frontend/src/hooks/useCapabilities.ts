@@ -28,8 +28,8 @@ export function useCapabilities() {
 
     const isGerbang =
       can('dashboard.view.gerbang') ||
-      can('attendance.gate.scan') ||
-      can('attendance.markGateAbsence');
+      can('attendance.gate.tap.entry') ||
+      can('attendance.gate.tap.exit');
 
     const isToolman =
       can('sarpras.loans.request') &&
@@ -44,9 +44,9 @@ export function useCapabilities() {
       can('correspondence.template.manage');
 
     const isTUKeuangan =
-      can('tu.finance.invoices.view') ||
+      can('tu.finance.invoices.view.list') ||
       can('tu.finance.payments.create') ||
-      can('tu.finance.recap.view');
+      can('tu.finance.reports.view');
 
     const isTUKepegawaian =
       can('academic.students.send.access.token') ||
@@ -62,20 +62,20 @@ export function useCapabilities() {
       can('cooperative.store.inventory.manage');
 
     const isKoperasiFinance =
-      can('cooperative.savings.view') ||
-      can('cooperative.finance.recap.view');
+      can('cooperative.savings.view.list') ||
+      can('cooperative.reports.view.financial');
 
     const isKoperasiHead =
       can('cooperative.loans.approve') ||
-      can('cooperative.reports.export');
+      can('cooperative.reports.view.financial');
 
     const isKoperasiSecretary =
       can('cooperative.members.manage') ||
-      can('cooperative.announcements.manage');
+      can('cooperative.announcements.create');
 
     const isKoperasiAuditor =
-      can('cooperative.audit.view') ||
-      can('cooperative.reports.export');
+      can('cooperative.settings.view') ||
+      can('cooperative.reports.view.financial');
 
     const isTU =
       isTUPersuratan ||
@@ -97,7 +97,7 @@ export function useCapabilities() {
     const isWaliKelas =
       can('dashboard.view.walikelas') ||
       can('academic.homeroom.manage') ||
-      can('attendance.markGateAbsence');
+      can('attendance.gate.tap.exit');
 
     const isBpbk =
       can('bk.counseling.view.sensitive') ||
@@ -106,7 +106,7 @@ export function useCapabilities() {
 
     const isPembinaEskul =
       can('affairs.achievements.create') ||
-      can('affairs.achievements.manage') ||
+      can('affairs.achievements.create') ||
       can('attendance.schedules.view.list');
 
     const isKaprog =
@@ -154,12 +154,10 @@ export function useCapabilities() {
     const isKepsek =
       can('dashboard.view.kepsek') ||
       can('correspondence.outbox.sign') ||
-      can('academic.supervision.manage');
+      can('curriculum.supervision.manage');
 
     const isBillingAdmin =
-      can('billing.subscriptions.select.plan') ||
       can('billing.subscriptions.view.active') ||
-      can('billing.license.activate');
 
     return {
       // Level 1

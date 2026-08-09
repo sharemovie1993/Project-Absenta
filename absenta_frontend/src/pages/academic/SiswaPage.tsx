@@ -63,9 +63,8 @@ const SiswaPage: React.FC = () => {
   // Permissions
   const canCreate = isAdmin || isKesiswaan || isKurikulum || can('academic.students.create');
   const canEdit = isAdmin || isKesiswaan || isKurikulum || can('academic.students.update');
-  const canViewDetail = isAdmin || isKesiswaan || isKurikulum || can('academic.students.read');
+  const canViewDetail = isAdmin || isKesiswaan || isKurikulum || can('academic.students.view.list');
   const canView = true;
-  const isIsolatedScope = !can('system.platform.full_access') && !isAdmin;
 
   // ── useQuery: Stats parallel ─────────────────────────────────────────────
   const { data: statsData, isLoading: isLoadingAcStats } = useQuery({

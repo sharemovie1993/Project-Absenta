@@ -63,7 +63,7 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
   const { isAdmin, can } = useCapabilities();
 
   const canView = useMemo(() => {
-    return isAdmin || can('attendance.manage.face.templates');
+    return isAdmin || can('attendance.gate.face.verify');
   }, [isAdmin, can]);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];

@@ -38,7 +38,7 @@ export const HubinWorkspacePage: React.FC = React.memo(() => {
     },
     {
       path: '/hubin/absensi',
-      check: () => canAny(['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list'])
+      check: () => canAny(['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.pkl.view.list'])
     },
     {
       path: '/hubin/monitoring',

@@ -47,7 +47,7 @@ const PaymentsPage: React.FC = () => {
   const confirm = useConfirm();
   const { user, tenantId, isLoading: isAuthLoading, can } = useAuth();
   const isSuperAdmin = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  const canManagePayments = can('billing.payments.view.history');
+  const canManagePayments = can('tu.finance.payments.view.history');
   const location = useLocation();
   const navigate = useNavigate();
 

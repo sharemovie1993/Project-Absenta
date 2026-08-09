@@ -34,13 +34,13 @@ const SettingsPage: React.FC = () => {
   const isTenantAdmin = isAdmin && !isSuperAdminUser;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') || (isTenantAdmin || !can('core.system.config.view') ? 'tenant_profile' : 'general')).toLowerCase();
+  const initialTab = (searchParams.get('tab') || (isTenantAdmin || !can('core.sekolah.view.profile') ? 'tenant_profile' : 'general')).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
   useEffect(() => {
-    if (!can('core.system.config.view') && !isSuperAdminUser) return;
+    if (!can('core.sekolah.view.profile') && !isSuperAdminUser) return;
 
     let active = true;
     easyTunnelApi.info().then(res => {
@@ -60,8 +60,8 @@ const SettingsPage: React.FC = () => {
     { label: 'Pengaturan', path: '/settings' }
   ], []);
 
-  const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.view') || can('core.sekolah.view.profile'), [isSuperAdminUser, isTenantAdmin, can]);
-  const canEdit = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.update'), [isSuperAdminUser, isTenantAdmin, can]);
+  const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.sekolah.view.profile') || can('core.sekolah.view.profile'), [isSuperAdminUser, isTenantAdmin, can]);
+  const canEdit = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.sekolah.update.profile'), [isSuperAdminUser, isTenantAdmin, can]);
 
   const [config, setConfig] = useState<SystemConfigPayload>({
     app_name: '',
@@ -141,7 +141,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    const canViewSystemConfig = can('core.system.config.view') || isSuperAdminUser;
+    const canViewSystemConfig = can('core.sekolah.view.profile') || isSuperAdminUser;
     if (canViewSystemConfig && !isTenantAdmin) {
         setLoadingConfig(true);
         fetchActiveSystemConfig()
@@ -222,7 +222,7 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   const tabs = useMemo(() => {
-    const list = (isTenantAdmin || !can('core.system.config.view'))
+    const list = (isTenantAdmin || !can('core.sekolah.view.profile'))
       ? [
           { id: 'tenant_profile', label: 'Profil Sekolah' },
           { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
@@ -239,7 +239,7 @@ const SettingsPage: React.FC = () => {
           { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
         ];
 
-    if (can('core.system.config.update') || isSuperAdminUser) {
+    if (can('core.sekolah.update.profile') || isSuperAdminUser) {
       list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
     }
     return list;

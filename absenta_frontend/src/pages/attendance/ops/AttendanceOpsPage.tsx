@@ -44,7 +44,7 @@ export default React.memo(function AttendanceOpsPage() {
     isTeacher || 
     isPetugasSiswaHook || 
     petugasLabel === 'Aktif' ||
-    can('attendance.markGateAbsence') || 
+    can('attendance.gate.tap.exit') || 
     can('attendance.sessions.create') ||
     can('attendance.scan');
 

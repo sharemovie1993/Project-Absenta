@@ -35,7 +35,7 @@ export default React.memo(function JenisKegiatanMasterPage() {
   const showConfirm = useConfirm();
   
   const { isKurikulum, isKesiswaan, isAdmin, can: capCan } = useCapabilities();
-  const canManage = isAdmin || isKurikulum || isKesiswaan || can('academic.activities.types.manage');
+  const canManage = isAdmin || isKurikulum || isKesiswaan || can('academic.subjects.manage');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
   const [modalMode, setModalMode] = useState<ModalMode>(null);

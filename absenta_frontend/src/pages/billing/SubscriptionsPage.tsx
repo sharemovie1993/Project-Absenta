@@ -116,7 +116,7 @@ export default function SubscriptionsPage() {
   }
 
   const isSA = isSuperAdmin();
-  const canManageSubscriptions = useMemo(() => can('billing.subscriptions.update'), [can]);
+  const canManageSubscriptions = useMemo(() => can('billing.subscriptions.view.active'), [can]);
 
   const loadPlans = useCallback(async () => {
     try {

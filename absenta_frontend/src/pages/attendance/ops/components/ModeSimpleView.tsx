@@ -97,7 +97,7 @@ export default React.memo(function ModeSimpleView({
     isGerbangPos ||
     user?.role?.name === 'OPERATOR' ||
     caps.includes('attendance.gate.tap.entry') ||
-    caps.includes('attendance.scan.gate');
+    caps.includes('attendance.gate.tap.entry');
   const canAccessManual = isAdmin || isPetugasSiswa || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
 
   const totalArrived = miniStats?.masuk || 0;

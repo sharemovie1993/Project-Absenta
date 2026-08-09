@@ -548,7 +548,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/jenis-kegiatan" element={
-                      <ProtectedRoute requiredCapability="academic.activities.types.manage">
+                      <ProtectedRoute requiredCapability="academic.subjects.manage">
                         <JenisKegiatanMasterPage />
                       </ProtectedRoute>
                     } />
@@ -720,7 +720,7 @@ function App() {
 
                     {/* Hubin Module */}
                     <Route path="/hubin" element={
-                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list', 'hubin.tefa.manage']}>
+                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.pkl.view.list', 'hubin.pkl.view.list', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list', 'hubin.tefa.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <HubinWorkspacePage />
                         </Suspense>
@@ -755,7 +755,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/absensi" element={
-                      <ProtectedRoute requiredCapability={['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list']}>
+                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.pkl.view.list']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <AbsensiPklPage />
                         </Suspense>
@@ -1084,14 +1084,14 @@ function App() {
                     } />
                     {/* Owner-only: Billing Settings */}
                     <Route path="/billing/settings" element={
-                      <ProtectedRoute requiredCapability="core.system.config.view">
+                      <ProtectedRoute requiredCapability="core.sekolah.view.profile">
                         <BillingSettingsPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/billing/tripay-health" element={<Navigate to="/superadmin/infra/tripay-health" replace />} />
                     <Route path="/billing/tripay-simulator" element={<Navigate to="/superadmin/infra/tripay-simulator" replace />} />
                     <Route path="/billing/payments" element={
-                      <ProtectedRoute requiredCapability="billing.payments.view.history">
+                      <ProtectedRoute requiredCapability="tu.finance.payments.view.history">
                         <PaymentsPageBilling />
                       </ProtectedRoute>
                     } />
@@ -1384,7 +1384,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/rekam-wajah" element={
-                      <ProtectedRoute requiredCapability="attendance.manage.face.templates">
+                      <ProtectedRoute requiredCapability="attendance.gate.face.verify">
                         <FaceTemplatePage />
                       </ProtectedRoute>
                     } />
@@ -1404,7 +1404,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/settings" element={
-                      <ProtectedRoute requiredCapability={['core.system.config.view', 'core.sekolah.view.profile']}>
+                      <ProtectedRoute requiredCapability={['core.sekolah.view.profile', 'core.sekolah.view.profile']}>
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
@@ -1414,12 +1414,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/settings/system-update" element={
-                      <ProtectedRoute requiredCapability="core.system.config.update">
+                      <ProtectedRoute requiredCapability="core.sekolah.update.profile">
                         <SystemUpdatePage />
                       </ProtectedRoute>
                     } />
                     <Route path="/settings/easy-tunnel" element={
-                      <ProtectedRoute requiredCapability="core.system.config.update">
+                      <ProtectedRoute requiredCapability="core.sekolah.update.profile">
                         <EasyTunnelPage />
                       </ProtectedRoute>
                     } />
@@ -1482,7 +1482,7 @@ function App() {
                 } />
                 <Route path="/attendance/sesi" element={<Navigate to="/attendance/ops?tab=sesi" replace />} />
                 <Route path="/attendance/ops" element={
-                  <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.markGateAbsence', 'attendance.sessions.create']}>
+                  <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.gate.tap.exit', 'attendance.sessions.create']}>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
@@ -1506,7 +1506,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/kesiswaan/pos-keamanan" element={
-                  <ProtectedRoute requiredCapability={['attendance.gate.scan', 'attendance.scan', 'attendance.piket.view', 'attendance.schedules.view.list']}>
+                  <ProtectedRoute requiredCapability={['attendance.gate.tap.entry', 'attendance.scan', 'attendance.piket.view', 'attendance.schedules.view.list']}>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />

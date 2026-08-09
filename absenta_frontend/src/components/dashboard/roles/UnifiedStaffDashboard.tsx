@@ -468,7 +468,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
       const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
 
-      if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.scan')) {
+      if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.tap.entry')) {
         actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
       }
 
@@ -493,7 +493,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
     const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
     
-    if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.scan')) {
+    if (isGerbang || isPiketOrKesiswaanOrIndustrial || caps.includes('attendance.gate.tap.entry')) {
       actions.push({ label: 'Pos Satpam Gerbang', icon: ShieldCheck, onClick: () => navigate('/kesiswaan/pos-keamanan'), color: 'indigo', path: '/kesiswaan/pos-keamanan' });
     }
 

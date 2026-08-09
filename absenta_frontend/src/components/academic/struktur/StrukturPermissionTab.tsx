@@ -38,7 +38,7 @@ export const StrukturPermissionTab: React.FC<StrukturPermissionTabProps> = React
           onSave={onSave}
           isSaving={isSaving}
           hasUnsavedChanges={hasUnsavedChanges}
-          canDistribute={isAdmin || can('academic.structures.manage')}
+          canDistribute={isAdmin || can('academic.structure.manage')}
         />
       </div>
     </SectionCard>

@@ -281,7 +281,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   }, [can]);
 
   // Check if user can send parent access
-  const canSendAccess = can('academic.students.send.access_token');
+  const canSendAccess = can('academic.students.send.access.token');
 
 
   // Fetch kelas list for filter

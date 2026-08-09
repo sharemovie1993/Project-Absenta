@@ -115,7 +115,7 @@ export default React.memo(function ModeMultiSesiView({
     isGerbangPos ||
     isOperator ||
     can('attendance.gate.tap.entry') ||
-    can('attendance.scan.gate')
+    can('attendance.gate.tap.entry')
   );
   
   // 2. Cek Manual (Wali Kelas, Petugas Kelas, Guru, Admin)

@@ -64,8 +64,8 @@ export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = React.memo(
     const opItems = [];
     if (caps.includes('sarpras.inventory.view.list') || caps.includes('dashboard.view.sarpras')) opItems.push({ label: 'Manajemen Sarpras', icon: Warehouse, path: '/sarpras/dashboard' });
     if (
-      caps.includes('hubin.view.pkl') || 
-      caps.includes('hubin.self.pkl') || 
+      caps.includes('hubin.pkl.view.list') || 
+      caps.includes('hubin.pkl.view.list') || 
       caps.includes('hubin.pkl.view.list') || 
       caps.includes('hubin.bkk.manage') || 
       caps.includes('hubin.tracer.view') || 
