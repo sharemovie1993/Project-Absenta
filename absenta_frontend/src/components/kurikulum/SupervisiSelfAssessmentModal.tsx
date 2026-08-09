@@ -18,7 +18,7 @@ interface SupervisiSelfAssessmentModalProps {
   onSuccess: () => void;
 }
 
-export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModalProps> = ({
+export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModalProps> = React.memo(({
   isOpen,
   onClose,
   supervisiId,
@@ -150,4 +150,4 @@ export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModal
       </form>
     </Modal>
   );
-};
+});

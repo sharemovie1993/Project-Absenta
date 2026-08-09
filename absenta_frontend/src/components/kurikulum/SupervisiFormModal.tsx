@@ -61,7 +61,7 @@ interface SupervisiFormModalProps {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
+export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = React.memo(({
   isOpen,
   isEditMode,
   formData,
@@ -294,6 +294,6 @@ export const SupervisiFormModal: React.FC<SupervisiFormModalProps> = ({
       </Modal>
     </Suspense>
   );
-};
+});
 
 export default SupervisiFormModal;

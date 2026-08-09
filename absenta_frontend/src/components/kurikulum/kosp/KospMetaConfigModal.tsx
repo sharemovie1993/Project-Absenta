@@ -31,7 +31,7 @@ interface KospMetaConfigModalProps {
   isSaving?: boolean;
 }
 
-export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
+export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = React.memo(({
   isOpen,
   onClose,
   initialData,
@@ -359,4 +359,4 @@ export const KospMetaConfigModal: React.FC<KospMetaConfigModalProps> = ({
       </form>
     </Modal>
   );
-};
+});

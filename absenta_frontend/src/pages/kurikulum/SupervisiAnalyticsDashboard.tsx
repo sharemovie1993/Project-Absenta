@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export const SupervisiAnalyticsDashboard: React.FC = () => {
+export const SupervisiAnalyticsDashboard: React.FC = React.memo(() => {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['supervisi-analytics'],
     queryFn: () => kurikulumApi.getSupervisiAnalytics()
@@ -201,4 +201,4 @@ export const SupervisiAnalyticsDashboard: React.FC = () => {
       </div>
     </div>
   );
-};
+});

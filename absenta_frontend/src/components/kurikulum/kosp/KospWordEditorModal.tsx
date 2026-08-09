@@ -12,7 +12,7 @@ interface KospWordEditorModalProps {
   isSaving?: boolean;
 }
 
-export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
+export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = React.memo(({
   isOpen,
   onClose,
   documentTitle = 'Dokumen KOSP',
@@ -39,7 +39,6 @@ export const KospWordEditorModal: React.FC<KospWordEditorModalProps> = ({
       onSave={onSavePages}
     />
   );
-};
-
+});
 
 export default KospWordEditorModal;

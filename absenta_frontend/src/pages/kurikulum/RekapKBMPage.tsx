@@ -62,13 +62,13 @@ const searchSchema = z.object({
   query: z.string().optional()
 });
 
-function ProgressBar({ pct, color }: { pct: number; color: string }) {
+const ProgressBar = React.memo(function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
     <div style={{ height: 8, borderRadius: 99, background: 'var(--border-color, #e5e7eb)', overflow: 'hidden', flex: 1, display: 'flex' }}>
       <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, borderRadius: 99, background: color, transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }} />
     </div>
   );
-}
+});
 
 function pctColor(pct: number) {
   if (pct >= 90) return '#10b981'; // Emerald

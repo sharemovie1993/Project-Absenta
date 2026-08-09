@@ -31,7 +31,7 @@ const formatTanggal = (str: string) => {
   } catch { return str; }
 };
 
-export const SupervisiProgressWidget: React.FC<SupervisiProgressWidgetProps> = ({
+export const SupervisiProgressWidget: React.FC<SupervisiProgressWidgetProps> = React.memo(({
   items, isLoading = false,
 }) => {
   const selesai    = items.filter(i => i.status?.toUpperCase() === 'COMPLETED' || i.status?.toUpperCase() === 'SELESAI').length;
@@ -126,4 +126,4 @@ export const SupervisiProgressWidget: React.FC<SupervisiProgressWidgetProps> = (
       </div>
     </div>
   );
-};
+});

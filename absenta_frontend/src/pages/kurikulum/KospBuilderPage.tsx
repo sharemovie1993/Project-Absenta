@@ -26,7 +26,7 @@ import useConfirm from '../../hooks/useConfirm';
 
 const KospWordEditorModal = lazy(() => import('../../components/kurikulum/kosp/KospWordEditorModal'));
 
-export const KospBuilderPage: React.FC = () => {
+export const KospBuilderPage: React.FC = React.memo(() => {
   const [selectedPageIndex, setSelectedPageIndex] = React.useState<number>(0);
   const confirm = useConfirm();
 
@@ -278,6 +278,6 @@ export const KospBuilderPage: React.FC = () => {
 
     </AcademicPageLayout>
   );
-};
+});
 
 export default KospBuilderPage;
