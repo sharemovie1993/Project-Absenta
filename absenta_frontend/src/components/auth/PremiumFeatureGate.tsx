@@ -93,7 +93,7 @@ export default function PremiumFeatureGate({
                   Uji Coba: Fitur {featureName}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {user?.role?.name === 'ADMIN' ? (
+                  {user?.capabilities?.includes('billing.subscriptions.select.plan') || ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '') ? (
                     <>
                       Penyimpanan dibatasi maks. 10 data. Upgrade modul untuk akses tanpa batas.
                     </>
@@ -106,7 +106,7 @@ export default function PremiumFeatureGate({
               </div>
             </div>
    
-            {user?.role?.name === 'ADMIN' && (
+            {(user?.capabilities?.includes('billing.subscriptions.select.plan') || ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '')) && (
               <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end">
                 <Button 
                   variant="ghost"

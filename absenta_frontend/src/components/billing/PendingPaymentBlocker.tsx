@@ -27,15 +27,15 @@ export const PendingPaymentBlocker = () => {
         const userRole = user?.role?.name?.toUpperCase();
         
         const handleUpdate = () => {
-            if (isAuthenticated && (userRole === 'ADMIN' || userRole === 'SUPERADMIN')) {
+            if (isAuthenticated && (user?.capabilities?.includes('billing.subscriptions.view.active') || ['ADMIN', 'SUPERADMIN'].includes(userRole || ''))) {
                 checkPendingSubscription();
             }
         };
 
         window.addEventListener('subscription-updated', handleUpdate);
 
-        // Cek hanya untuk ADMIN
-        if (isAuthenticated && (userRole === 'ADMIN' || userRole === 'SUPERADMIN') && !isExcludedPage) {
+        // Cek untuk pengelola langganan & admin
+        if (isAuthenticated && (user?.capabilities?.includes('billing.subscriptions.view.active') || ['ADMIN', 'SUPERADMIN'].includes(userRole || '')) && !isExcludedPage) {
             checkPendingSubscription();
         } else {
             setPendingSubs([]);
