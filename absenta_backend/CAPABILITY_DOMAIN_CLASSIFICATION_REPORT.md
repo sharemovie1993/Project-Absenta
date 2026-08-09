@@ -1,21 +1,21 @@
 # Capability Domain Classification Report
-Generated on: 2026-08-09T04:22:12.849Z
+Generated on: 2026-08-09T07:57:25.282Z
 
 ## Summary Statistics
-Total Catalog: 418
+Total Catalog: 407
 
 - PLATFORM: 27
-- TENANT: 83
-- SHARED: 65
-- ORGANIZATIONAL: 228
+- TENANT: 84
+- SHARED: 72
+- ORGANIZATIONAL: 209
 - UNCLASSIFIED: 15
 
 ## Validation Results
 - Conflicts: 7
-- academic.years.view.list (Multiple Rule Domains: TENANT, SHARED)
-- attendance.student.view.stats (Multiple Rule Domains: TENANT, SHARED)
 - core.tenants.view.detail (Multiple Rule Domains: PLATFORM, SHARED)
+- academic.years.view.list (Multiple Rule Domains: TENANT, SHARED)
 - cooperative.announcements.view.list (Multiple Rule Domains: TENANT, SHARED)
+- attendance.student.view.stats (Multiple Rule Domains: TENANT, SHARED)
 - core.system.config.view (Multiple Rule Domains: PLATFORM, SHARED)
 - core.system.config.update (Multiple Rule Domains: PLATFORM, SHARED)
 - core.tenants.view.list (Multiple Rule Domains: PLATFORM, SHARED)

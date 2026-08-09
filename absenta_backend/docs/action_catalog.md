@@ -39,7 +39,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.structures.assign.teacher
 - academic.structures.create
 - academic.structures.delete
-- academic.structures.manage
 - academic.structures.revoke.student
 - academic.structures.revoke.teacher
 - academic.structures.update
@@ -121,13 +120,11 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - attendance.gate.view.face.templates
 - attendance.gate.view.logs
 - attendance.getNotPresentStudents
-- attendance.markGateAbsence
 - attendance.manage.face.templates
 - attendance.manage.petugas
 - attendance.manage.session
 - attendance.markGateAbsence
 - attendance.monitoring.view.live.status
-- attendance.notifications.send
 - attendance.officers.
 - attendance.officers.manage
 - attendance.officers.view
@@ -339,7 +336,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - curriculum.piket.schedules.manage
 - curriculum.piket.schedules.update
 - curriculum.piket.schedules.view
-- curriculum.structure.manage
 - curriculum.supervision.create.record
 - curriculum.supervision.delete.record
 - curriculum.supervision.manage
@@ -393,31 +389,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - hubin.self.tracer
 - hubin.tefa.manage
 - hubin.tracer.view
-
-## kesiswaan
-
-- kesiswaan.dashboard.view
-- kesiswaan.kegiatan.manage
-- kesiswaan.kegiatan.view
-- kesiswaan.pelanggaran.manage
-- kesiswaan.pelanggaran.view
-- kesiswaan.piket.manage
-- kesiswaan.piket.view
-- kesiswaan.prestasi.manage
-- kesiswaan.prestasi.view
-- kesiswaan.schedules.
-- kesiswaan.schedules.create
-- kesiswaan.schedules.delete
-- kesiswaan.schedules.update
-- kesiswaan.schedules.view.list
-
-## kurikulum
-
-- kurikulum.jadwal-piket.create
-- kurikulum.jadwal-piket.delete
-- kurikulum.jadwal-piket.manage
-- kurikulum.jadwal-piket.update
-- kurikulum.jadwal-piket.view
 
 ## notify
 
@@ -505,7 +476,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - tu.finance.payments.create
 - tu.finance.payments.view.history
 - tu.finance.reports.view
-- tu.letters.manage
 - tu.staff.manage
 - tu.staff.view.list
 

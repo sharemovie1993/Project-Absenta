@@ -44,7 +44,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.homeroom.manage',
     'attendance.reports.view',
     'academic.schedules.view.list',
-    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'attendance.sessions.view.detail',
     'attendance.recap.view.daily',
@@ -80,9 +79,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
     'affairs.violation.types.view.list',
-    'kesiswaan.pelanggaran.view',
-    'kesiswaan.pelanggaran.manage',
-    'kesiswaan.prestasi.view',
     'hubin.guidance.manage',
     'hubin.logbook.manage',
     'sarpras.loans.view.list',
@@ -90,8 +86,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'correspondence.inbox.view',
     'correspondence.outbox.view',
     'academic.schedules.manage',
-    'kesiswaan.schedules.view.list',
-    'kesiswaan.piket.view',
+    'attendance.piket.view',
     'academic.student.card.view.config',
     'academic.view.student.card',
     'bk.assessment.view.list',
@@ -114,7 +109,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.structures.view.detail',
     'academic.structures.view.tree',
     'academic.schedules.view.list',
-    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'academic.student.card.view.config',
     'academic.view.student.card',
@@ -384,10 +378,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.schedules.delete',
     'academic.schedules.view.list',
     'academic.schedules.manage',
-    'kesiswaan.schedules.create',
-    'kesiswaan.schedules.update',
-    'kesiswaan.schedules.delete',
-    'kesiswaan.schedules.view.list',
     'attendance.schedules.create',
     'attendance.schedules.update',
     'attendance.schedules.delete',
@@ -517,16 +507,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'support.tickets.resolve',
     'attendance.piket.manage',
     'attendance.piket.view',
-    'kesiswaan.dashboard.view',
-    'kesiswaan.pelanggaran.view',
-    'kesiswaan.pelanggaran.manage',
-    'kesiswaan.prestasi.view',
-    'kesiswaan.prestasi.manage',
-    'kesiswaan.piket.view',
-    'kesiswaan.piket.manage',
-    'kesiswaan.kegiatan.view',
-    'kesiswaan.kegiatan.manage',
-    'kesiswaan.schedules.view.list',
     'reports.hubin.view',
     'bk.cases.view.list',
     'bk.cases.view.detail',
@@ -552,14 +532,12 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
       // Allow specific features as baseline even if they are marked ORGANIZATIONAL in catalog
       if ((role === 'GURU' || role === 'SISWA') && (
         id.startsWith('academic.schedules.') ||
-        id.startsWith('kesiswaan.schedules.') ||
         id.startsWith('attendance.schedules.') ||
         id.startsWith('attendance.sessions.') ||
         id.startsWith('attendance.officers.') ||
         id.startsWith('affairs.violations.') || 
         id.startsWith('affairs.violation.types.') ||
         id.startsWith('hubin.') ||
-        id.startsWith('kesiswaan.') ||
         id.startsWith('correspondence.') ||
         id.startsWith('sarpras.loans.') ||
         id === 'dashboard.view.hubin' ||

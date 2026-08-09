@@ -269,7 +269,7 @@ async function main() {
         { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Pengaturan Jam KBM', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
-        { label: 'Jadwal Piket Guru', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, kesiswaan.piket.view' },
+        { label: 'Jadwal Piket Guru', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, attendance.piket.view' },
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Audit Realisasi JP Mengajar', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
@@ -281,14 +281,14 @@ async function main() {
     // --- KESISWAAN ---
     {
       label: 'KESISWAAN', icon: 'Users', path: null, required_features: ['CORE'], order: 15, children: [
-        { label: 'Dashboard Kesiswaan', icon: 'LayoutDashboard', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.kesiswaan, kesiswaan.dashboard.view' },
-        { label: 'Piket & Izin Keluar', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, kesiswaan.piket.manage' },
-        { label: 'Kasus Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, kesiswaan.pelanggaran.manage' },
-        { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'kesiswaan.prestasi.view, kesiswaan.prestasi.manage' },
-        { label: 'Jadwal Kegiatan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'kesiswaan.schedules.view.list, kesiswaan.dashboard.view' },
-        { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, kesiswaan.dashboard.view' },
-        { label: 'Pengaturan Poin', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, kesiswaan.dashboard.view' },
-        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'dashboard.view.kesiswaan, kesiswaan.dashboard.view' },
+        { label: 'Dashboard Kesiswaan', icon: 'LayoutDashboard', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.kesiswaan' },
+        { label: 'Piket & Izin Keluar', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, attendance.piket.manage' },
+        { label: 'Kasus Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, affairs.violations.manage' },
+        { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'affairs.achievements.view.list, affairs.achievements.create' },
+        { label: 'Jadwal Kegiatan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'attendance.schedules.view.list, dashboard.view.kesiswaan' },
+        { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
+        { label: 'Pengaturan Poin', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'dashboard.view.kesiswaan' },
       ]
     },
 

@@ -33,8 +33,6 @@ export const organizationalScopeMiddleware = async (request: any, _reply: any) =
     [
       'attendance.piket.view', 
       'attendance.piket.manage',
-      'kesiswaan.piket.view',
-      'kesiswaan.piket.manage',
       'attendance.gate.tap.entry',
       'attendance.gate.view.logs',
       'attendance.gate.bypass',

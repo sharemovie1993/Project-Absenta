@@ -156,8 +156,8 @@ export class OrganizationalAuthorizationEngine {
       });
 
       if (isGuruPiketToday) {
-        capSet.add('kesiswaan.piket.view');
-        capSet.add('kesiswaan.piket.manage');
+        capSet.add('attendance.piket.view');
+        capSet.add('attendance.piket.manage');
       }
     }
 
