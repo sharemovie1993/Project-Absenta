@@ -5,6 +5,7 @@ import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader }
 import { sarprasApi } from '../../api/sarpras.api';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { useSarprasAsetOptions } from '../../hooks/useSarprasAsetOptions';
 
@@ -32,11 +33,11 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = React.memo(({ onSuccess,
 
   const [selectedBorrower, setSelectedBorrower] = useState<Student | null>(null);
 
+  const { isSarpras, isToolman, isKabeng, isAdmin, can } = useCapabilities();
+
   const isAdminOrStaff = useMemo(() => {
-    const roleName = user?.role?.name || '';
-    const hasManageCapability = user?.capabilities?.includes('sarpras.loans.manage') || false;
-    return ['SUPERADMIN', 'ADMIN', 'SARPRAS', 'TOOLMAN', 'KABENG'].includes(roleName) || hasManageCapability;
-  }, [user]);
+    return isAdmin || isSarpras || isToolman || isKabeng || can('sarpras.loans.manage');
+  }, [isAdmin, isSarpras, isToolman, isKabeng, can]);
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';

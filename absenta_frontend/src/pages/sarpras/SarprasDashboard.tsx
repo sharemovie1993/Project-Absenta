@@ -20,6 +20,7 @@ import type { StandardApiResponse } from '@/api/apiUtils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { SectionCard } from '@/components/ui/SectionCard';
@@ -60,6 +61,7 @@ interface SubscriptionFeature {
 
 const SarprasDashboard: React.FC = React.memo(() => {
   const { user, subscription } = useAuthStore();
+  const { isSarpras, isAdmin, can } = useCapabilities();
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);
 
