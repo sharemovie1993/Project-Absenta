@@ -89,6 +89,7 @@ export default function PiketPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isKesiswaan, isKurikulum, isGerbang, isTU, isKepsek, isAdmin, can } = useCapabilities();
+  const currentGuruId = (user?.guru_profile as { id?: string })?.id;
 
   // Management and Guru roles who ALWAYS have access to Meja Piket
   const isManagement = useMemo(() => {
