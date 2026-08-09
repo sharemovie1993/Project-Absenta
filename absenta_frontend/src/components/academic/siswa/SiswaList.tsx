@@ -311,9 +311,17 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
   const isDualRoleUser = useMemo(() => {
     if (!waliKelasData?.id) return false;
-    const pos = (user as any)?.position_codes || [];
+    const caps = user?.capabilities || [];
     const roleName = String((user as any)?.role?.name || (user as any)?.roleName || '').toUpperCase();
-    const isLeadershipOrStaff = pos.includes('KURIKULUM') || pos.includes('KESISWAAN') || pos.includes('KEPSEK') || pos.includes('SARPRAS') || pos.includes('HUBIN') || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+    const isLeadershipOrStaff =
+      caps.includes('academic.students.manage') ||
+      caps.includes('academic.students.create') ||
+      caps.includes('dashboard.view.kesiswaan') ||
+      caps.includes('dashboard.view.kurikulum') ||
+      caps.includes('dashboard.view.kepsek') ||
+      caps.includes('dashboard.view.sarpras') ||
+      caps.includes('dashboard.view.hubin') ||
+      ['ADMIN', 'SUPERADMIN'].includes(roleName);
     return isLeadershipOrStaff;
   }, [waliKelasData, user]);
 

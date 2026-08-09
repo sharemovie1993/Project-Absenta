@@ -53,8 +53,10 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
   const queryClient = useQueryClient();
 
   const canEdit = canManage ??
-    (user?.roleName === 'ADMIN' || user?.roleName === 'SUPERADMIN' ||
-     user?.capabilities?.includes('academic.students.manage')); // or custom capability for staff manage
+    (['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
+     user?.capabilities?.includes('academic.teachers.manage') ||
+     user?.capabilities?.includes('academic.students.manage') ||
+     user?.capabilities?.includes('documents.upload'));
 
   const [selectedDoc, setSelectedDoc] = useState<MemberDoc | null>(null);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);

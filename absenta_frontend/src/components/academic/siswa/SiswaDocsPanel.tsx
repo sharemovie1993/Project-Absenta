@@ -61,8 +61,9 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
   const queryClient = useQueryClient();
 
   const canEdit = canManage ??
-    (user?.roleName === 'ADMIN' || user?.roleName === 'SUPERADMIN' ||
-     user?.capabilities?.includes('academic.students.manage'));
+    (['ADMIN', 'SUPERADMIN'].includes(user?.roleName || user?.role?.name || '') ||
+     user?.capabilities?.includes('academic.students.manage') ||
+     user?.capabilities?.includes('documents.upload'));
 
   const [selectedDoc, setSelectedDoc] = useState<MemberDoc | null>(null);
   const [uploadingCategory, setUploadingCategory] = useState<string | null>(null);
