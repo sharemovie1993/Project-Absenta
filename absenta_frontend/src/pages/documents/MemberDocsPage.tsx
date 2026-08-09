@@ -4,9 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import useConfirm from '../../hooks/useConfirm';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useDebounce } from '../../hooks/useDebounce';
+import { getTimezone } from '../../utils/attendance/time';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { Button } from '../../components/ui/Button';
@@ -49,7 +50,7 @@ const searchSchema = z.object({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MemberDocsPage() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
