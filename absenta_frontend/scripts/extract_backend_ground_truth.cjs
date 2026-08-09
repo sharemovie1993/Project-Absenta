@@ -6,19 +6,23 @@ const catalogPath = 'd:/BarayaProject/Project Absenta/absenta_backend/docs/actio
 const caps = new Set();
 
 function extractFromContent(content) {
-  const re = /'([a-z][a-z0-9.]{4,})'/g;
+  // Tangkap string dalam kutip tunggal/ganda
+  const re1 = /'([a-z][a-z0-9.]{4,})'/g;
   let m;
-  while ((m = re.exec(content)) !== null) {
+  while ((m = re1.exec(content)) !== null) {
     const val = m[1];
-    if (val.includes('.') && val.split('.').length >= 2) {
-      caps.add(val);
-    }
+    if (val.includes('.') && val.split('.').length >= 2) caps.add(val);
   }
-  // Also extract from backtick code in markdown
-  const re2 = /`([a-z][a-z0-9.]{4,})`/g;
+  // Tangkap dotted strings yang muncul sebagai kata mandiri (untuk action_catalog.md)
+  const re2 = /\b([a-z][a-z0-9]+(?:\.[a-z][a-z0-9_]+){1,})\b/g;
   while ((m = re2.exec(content)) !== null) {
     const val = m[1];
-    if (val.includes('.') && val.split('.').length >= 2) {
+    // Filter noise: harus mengandung minimal 1 titik dan bukan nama file/path
+    if (val.includes('.') && val.split('.').length >= 2
+        && !val.endsWith('.ts') && !val.endsWith('.js')
+        && !val.endsWith('.md') && !val.endsWith('.json')
+        && !val.startsWith('http') && val !== 'capabilities.ts'
+        && val !== 'seed.ts') {
       caps.add(val);
     }
   }
