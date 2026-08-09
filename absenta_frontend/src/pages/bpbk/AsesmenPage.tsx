@@ -3,10 +3,12 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { SectionCard } from '../../components/ui';
 import { Loader } from '../../components/ui/Loader';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 const AsesmenSection = lazy(() => import('./components/AsesmenSection').then(m => ({ default: m.AsesmenSection })));
 
 export default React.memo(function AsesmenPage() {
+  const { isBpbk, isAdmin, can } = useCapabilities();
   return (
     <PremiumFeatureGate
       moduleName="BPBK"

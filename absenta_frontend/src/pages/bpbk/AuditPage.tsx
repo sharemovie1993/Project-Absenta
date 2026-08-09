@@ -2,8 +2,10 @@ import React from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { AuditSection } from './components/AuditSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 export default React.memo(function AuditPage() {
+  const { isBpbk, isAdmin, can } = useCapabilities();
   return (
     <PremiumFeatureGate
       moduleName="BPBK"

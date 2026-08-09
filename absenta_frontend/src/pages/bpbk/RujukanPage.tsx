@@ -2,8 +2,10 @@ import React from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { RujukanSection } from './components/RujukanSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 export default React.memo(function RujukanPage() {
+  const { isBpbk, isAdmin, can } = useCapabilities();
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
