@@ -23,6 +23,7 @@ import { Table, Column } from '../../components/ui/Table';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { toast } from 'sonner';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { useAuthStore } from '../../store/authStore';
 import useConfirm from '../../hooks/useConfirm';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useMapelOptions, useGuruOptions } from '../../components/common';
@@ -90,6 +91,7 @@ const JENIS_LABELS: Record<string, string> = {
 export default function PerangkatAjarPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const { user, subscription } = useAuthStore();
   const { isKurikulum, isAdmin, can } = useCapabilities();
 
   const isKurikulumOrAdmin = useMemo(() => {
