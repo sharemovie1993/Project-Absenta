@@ -62,7 +62,7 @@ export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = React.memo(
 
     // 4. Operasional Lainnya
     const opItems = [];
-    if (caps.includes('sarpras.view_inventory') || caps.includes('dashboard.view.sarpras')) opItems.push({ label: 'Manajemen Sarpras', icon: Warehouse, path: '/sarpras/dashboard' });
+    if (caps.includes('sarpras.inventory.view.list') || caps.includes('dashboard.view.sarpras')) opItems.push({ label: 'Manajemen Sarpras', icon: Warehouse, path: '/sarpras/dashboard' });
     if (
       caps.includes('hubin.view.pkl') || 
       caps.includes('hubin.self.pkl') || 

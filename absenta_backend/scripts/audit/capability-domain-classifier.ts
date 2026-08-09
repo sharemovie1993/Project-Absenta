@@ -158,15 +158,78 @@ const organizationalCapsStrict = new Set<string>(
   Array.from(organizationalCaps).filter((cap) => !ORGANIZATIONAL_ALLOWLIST_NON_ORG_DOMAIN.has(cap))
 );
 
-// 2. Parse Action Catalog
+// Helper to extract capability strings from seed files
+function extractCapsFromFile(filePath: string): string[] {
+  if (!fs.existsSync(filePath)) return [];
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const caps: string[] = [];
+  const regex = /['"`]([a-z0-9_-]+\.[a-z0-9_.-]+)['"`]/gi;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    const cap = match[1];
+    if (!cap.includes('node_modules') && !cap.includes('http') && !cap.includes('/') && !cap.includes('\\')) {
+      caps.push(cap);
+    }
+  }
+  return caps;
+}
+
+// 2. Parse & Generate Action Catalog
 function parseCatalog(): string[] {
-  if (!fs.existsSync(CATALOG_FILE)) return [];
-  const content = fs.readFileSync(CATALOG_FILE, 'utf-8');
-  return content.split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('- '))
-    .map(line => line.replace('- ', '').trim())
-    .filter(cap => cap.includes('.'));
+  const allCapsSet = new Set<string>();
+
+  // A. Add from STRUKTUR_CAPABILITIES
+  Object.values(STRUKTUR_CAPABILITIES).forEach(caps => {
+    caps.forEach(cap => allCapsSet.add(cap));
+  });
+
+  // B. Add from seed_policies.ts & seed.ts
+  const seedPoliciesPath = path.join(SRC_DIR, 'database/seeds/seed_policies.ts');
+  const seedPath = path.join(SRC_DIR, 'database/seeds/seed.ts');
+  extractCapsFromFile(seedPoliciesPath).forEach(cap => allCapsSet.add(cap));
+  extractCapsFromFile(seedPath).forEach(cap => allCapsSet.add(cap));
+
+  // Legacy exclusions
+  const legacyExclusions = new Set([
+    'academic.manage.mapel', 'academic.view.mapel',
+    'academic.manage.siswa', 'academic.view.siswa',
+    'academic.manage.guru', 'academic.view.guru',
+    'academic.manage.kelas', 'academic.view.kelas',
+    'academic.manage.semester', 'academic.view.semester',
+    'academic.manage.tahun.pelajaran', 'academic.view.tahun.pelajaran',
+    'academic.manage.jenis.kegiatan', 'academic.view.jenis.kegiatan',
+    'academic.manage.kbm', 'academic.view.kbm',
+    'academic.manage.wali.kelas', 'academic.view.wali.kelas',
+    'cadangan.manage.cadangan', 'cadangan.view.cadangan',
+    'kesiswaan.manage.pelanggaran', 'kesiswaan.view.pelanggaran',
+    'kurikulum.manage.supervisi', 'kurikulum.view.supervisi',
+    'sarpras.view_inventory'
+  ]);
+
+  const cleanCaps = Array.from(allCapsSet).filter(c => !legacyExclusions.has(c) && !c.includes(':'));
+
+  // Group by domain
+  const domainGroups: Record<string, string[]> = {};
+  cleanCaps.forEach(cap => {
+    const domain = cap.split('.')[0];
+    if (!domainGroups[domain]) domainGroups[domain] = [];
+    domainGroups[domain].push(cap);
+  });
+
+  // Generate markdown string for action_catalog.md
+  let catalogMd = '# Action Catalog (Generated)\n\nSource: seed_policies.ts + capabilities.ts + seed.ts\n\n';
+  Object.keys(domainGroups).sort().forEach(domain => {
+    catalogMd += `## ${domain}\n\n`;
+    domainGroups[domain].sort().forEach(cap => {
+      catalogMd += `- ${cap}\n`;
+    });
+    catalogMd += '\n';
+  });
+
+  fs.writeFileSync(CATALOG_FILE, catalogMd, 'utf-8');
+  console.log(`✅ Regenerated Canonical Action Catalog: ${CATALOG_FILE} (${cleanCaps.length} capabilities)`);
+
+  return cleanCaps;
 }
 
 async function classify() {

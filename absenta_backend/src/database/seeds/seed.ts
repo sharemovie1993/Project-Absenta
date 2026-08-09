@@ -245,7 +245,7 @@ async function main() {
           label: 'Persiapan Akademik', icon: 'Settings', path: null, children: [
             { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
             { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
-            { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
+            { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.students.manage' },
             { label: 'Kelulusan & Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.promotions.manage' },
             { label: 'Struktur Organisasi', icon: 'Network', path: '/academic/struktur-organisasi', required_capability: 'academic.structures.view.list' },
             { label: 'Backup', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
@@ -506,7 +506,7 @@ async function main() {
       children: [
         { label: 'Status Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
         { label: 'Job & Scheduler Control', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
-        { label: 'Arsip & Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'cadangan.view.cadangan' },
+        { label: 'Arsip & Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'academic.backups.view.list' },
       ],
     },
     {

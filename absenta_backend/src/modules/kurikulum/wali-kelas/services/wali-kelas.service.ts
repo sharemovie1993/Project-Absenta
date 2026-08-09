@@ -348,8 +348,8 @@ export class WaliKelasService {
       'attendance.reports.view',
       'attendance.manage.session',
       'academic.students.view.list',
-      'academic.view.kelas',
-      'academic.manage.kelas'
+      'academic.structures.view.list',
+      'academic.structures.manage'
     ];
     
     // Convert to the DB IDs assuming capabilities exactly match Permission IDs in schema.

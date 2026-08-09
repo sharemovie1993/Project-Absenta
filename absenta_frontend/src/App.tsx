@@ -1170,7 +1170,7 @@ function App() {
                           </ProtectedRoute>
                         } />
                         <Route path="/superadmin/backups" element={
-                          <ProtectedRoute requiredCapability="cadangan.view.cadangan">
+                          <ProtectedRoute requiredCapability="academic.backups.view.list">
                             <BackupsPage />
                           </ProtectedRoute>
                         } />

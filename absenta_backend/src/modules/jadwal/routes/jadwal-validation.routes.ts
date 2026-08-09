@@ -2,5 +2,5 @@ import { JadwalValidationController } from '../controllers/jadwal-validation.con
 import { requireCapability } from '../../../middlewares/requireCapability';
 
 export default async function jadwalValidationRoutes(fastify: any) {
-  fastify.post('/validate', { preHandler: requireCapability('academic.manage.kbm') }, JadwalValidationController.validateConflict);
+  fastify.post('/validate', { preHandler: requireCapability('academic.schedules.manage') }, JadwalValidationController.validateConflict);
 }

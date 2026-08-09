@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Wizard - Absenta School Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --accent: #06B6D4;
+      --bg-dark: #0F172A;
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --success: #10B981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top left, #1E1B4B, #0F172A 70%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .wizard-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 520px;
+      padding: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(79, 70, 229, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #818CF8;
+      margin-bottom: 12px;
+    }
+
+    .brand-title {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #FFFFFF, #94A3B8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .brand-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #CBD5E1;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: #FFF;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #4F46E5, #06B6D4);
+      border: none;
+      border-radius: 12px;
+      color: #FFF;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 12px;
+      box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px -5px rgba(79, 70, 229, 0.6);
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wizard-card">
+    <div class="brand-header">
+      <div class="brand-badge">🛡️ HKI Protected Edition</div>
+      <h1 class="brand-title">Absenta Setup Wizard</h1>
+      <p class="brand-subtitle">Selamat datang! Silakan atur konfigurasi server sekolah Anda sebelum memulai aplikasi.</p>
+    </div>
+
+    <form id="setup-form">
+      <div class="form-group">
+        <label class="form-label">🏫 Nama Sekolah</label>
+        <input type="text" id="schoolName" class="form-input" placeholder="Contoh: SMK Negeri 1 Plered" required value="SMK Negeri 1 Plered">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">🔑 Kunci Lisensi (License Key)</label>
+        <input type="text" id="licenseKey" class="form-input" placeholder="ABSENTA-SMK1-XXXX-YYYY-ZZZZ" required value="ABSENTA-ENTERPRISE-PROD-2026">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">🔌 Port Server</label>
+        <input type="number" id="serverPort" class="form-input" placeholder="5000" required value="5000">
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-save">✨ Simpan & Aktifkan Server</button>
+    </form>
+
+    <div class="footer-note">
+      Google Advanced Engineering Standard • HKI Anti-Piracy Active
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('setup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save');
+      btn.innerText = '⚙️ Mengonfigurasi Server...';
+      btn.disabled = true;
+
+      const payload = {
+        schoolName: document.getElementById('schoolName').value,
+        licenseKey: document.getElementById('licenseKey').value,
+        serverPort: document.getElementById('serverPort').value
+      };
+
+      try {
+        const res = await fetch('/api/setup/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          btn.innerText = '🟢 Berhasil! Membuka Dashboard...';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        } else {
+          alert('Gagal menyimpan konfigurasi. Periksa koneksi backend.');
+          btn.innerText = '✨ Simpan & Aktifkan Server';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan: ' + err.message);
+        btn.innerText = '✨ Simpan & Aktifkan Server';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

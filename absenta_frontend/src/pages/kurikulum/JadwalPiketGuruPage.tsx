@@ -83,7 +83,7 @@ export default function JadwalPiketGuruPage() {
 
   const isKurikulumAdmin = useMemo(() => {
     if (isAdmin()) return true;
-    if (can('kurikulum:jadwal-piket:manage') || can('kurikulum:jadwal-piket:create')) return true;
+    if (can('kurikulum.jadwal-piket.manage') || can('kurikulum.jadwal-piket.create')) return true;
     const roleName = (user?.role?.name || '').toUpperCase();
     return roleName === 'ADMIN' || roleName === 'KURIKULUM' || roleName === 'SUPERADMIN';
   }, [user, isAdmin, can]);

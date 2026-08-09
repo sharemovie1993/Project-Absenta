@@ -25,7 +25,7 @@ interface MitraDetailModalProps {
   mitra: MitraIndustri | null;
 }
 
-export const MitraDetailModal: React.FC<MitraDetailModalProps> = ({
+export const MitraDetailModal: React.FC<MitraDetailModalProps> = React.memo(({
   isOpen,
   onClose,
   mitra
@@ -275,4 +275,4 @@ export const MitraDetailModal: React.FC<MitraDetailModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

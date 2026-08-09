@@ -3,7 +3,7 @@ import { RedisSubscriber } from '@/infra/redis/redis-subscriber';
 import { requireCapability } from '@/middlewares/requireCapability';
 
 export async function restoreProgressRoutes(app: any) {
-  app.get('/:id/progress/stream', { preHandler: [requireCapability("cadangan.manage.cadangan")] }, async (req: any, reply: any) => {
+  app.get('/:id/progress/stream', { preHandler: [requireCapability("academic.backups.restore")] }, async (req: any, reply: any) => {
     const { id } = req.params;
 
     // 1. Validation

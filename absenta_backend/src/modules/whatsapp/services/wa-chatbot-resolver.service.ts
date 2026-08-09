@@ -20,7 +20,7 @@ export async function persistLidMapping(key: string, value: string, tenantId?: s
     const redis = getRedisConnection();
     if (redis) {
       try {
-        await redis.hset('wa:lid:mappings', key, value);
+        await redis.hset('wa.lid.mappings', key, value);
       } catch (_) {}
     }
 
@@ -57,11 +57,11 @@ export async function removeLidMappingByPhone(phone: string) {
     const redis = getRedisConnection();
     if (redis) {
       try {
-        const keys = await redis.hkeys('wa:lid:mappings');
+        const keys = await redis.hkeys('wa.lid.mappings');
         for (const k of keys) {
-          const val = await redis.hget('wa:lid:mappings', k);
+          const val = await redis.hget('wa.lid.mappings', k);
           if (val && (val.includes(rawDigits) || rawDigits.includes(val))) {
-            await redis.hdel('wa:lid:mappings', k);
+            await redis.hdel('wa.lid.mappings', k);
           }
         }
       } catch (_) {}
@@ -291,7 +291,7 @@ export class WaChatbotResolverService {
         const redis = getRedisConnection();
         if (redis) {
           try {
-            await redis.hdel('wa:lid:mappings', cleanJid, fullJid);
+            await redis.hdel('wa.lid.mappings', cleanJid, fullJid);
           } catch (_) {}
         }
       } catch (_) {}

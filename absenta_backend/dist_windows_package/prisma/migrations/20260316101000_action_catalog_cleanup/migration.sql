@@ -1,0 +1,6 @@
+BEGIN;
+
+TRUNCATE TABLE "Permission" CASCADE;
+
+COMMIT;
+

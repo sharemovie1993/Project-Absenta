@@ -1,26 +1,28 @@
 # Capability Domain Classification Report
-Generated on: 2026-07-11T17:45:38.184Z
+Generated on: 2026-08-09T04:22:12.849Z
 
 ## Summary Statistics
-Total Catalog: 433
+Total Catalog: 418
 
-- PLATFORM: 33
-- TENANT: 134
-- SHARED: 86
-- ORGANIZATIONAL: 162
-- UNCLASSIFIED: 18
+- PLATFORM: 27
+- TENANT: 83
+- SHARED: 65
+- ORGANIZATIONAL: 228
+- UNCLASSIFIED: 15
 
 ## Validation Results
 - Conflicts: 7
 - academic.years.view.list (Multiple Rule Domains: TENANT, SHARED)
 - attendance.student.view.stats (Multiple Rule Domains: TENANT, SHARED)
-- cooperative.announcements.view.list (Multiple Rule Domains: TENANT, SHARED)
-- core.system.config.update (Multiple Rule Domains: PLATFORM, SHARED)
-- core.system.config.view (Multiple Rule Domains: PLATFORM, SHARED)
 - core.tenants.view.detail (Multiple Rule Domains: PLATFORM, SHARED)
+- cooperative.announcements.view.list (Multiple Rule Domains: TENANT, SHARED)
+- core.system.config.view (Multiple Rule Domains: PLATFORM, SHARED)
+- core.system.config.update (Multiple Rule Domains: PLATFORM, SHARED)
 - core.tenants.view.list (Multiple Rule Domains: PLATFORM, SHARED)
 
 ## Unclassified Capabilities
+- organization.scope.
+- organization.scope.teaching_restricted
 - payments.test.simulate
 - admin.tickets.view.list
 - admin.tickets.view.detail
@@ -31,14 +33,9 @@ Total Catalog: 433
 - support.tickets.view
 - support.tickets.reply
 - support.tickets.resolve
-- external.device.check.status
-- external.device.register
-- external.device.update.heartbeat
-- files.upload.public
-- files.view.my
-- organization.scope.teaching_restricted
 - whatsapp.manage.config
 - whatsapp.send.test
+- Absenta.id
 
 ---
 *End of Report*

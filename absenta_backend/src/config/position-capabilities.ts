@@ -2,6 +2,7 @@ import { STRUKTUR_CODES } from './organization-structure';
 
 export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   [STRUKTUR_CODES.GERBANG]: [
+    'organization.scope.tenant_wide',
     'attendance.scan',
     'dashboard.view.gerbang',
     'dashboard.view.overview',
@@ -74,8 +75,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.subjects.update',
     'academic.subjects.delete',
     'academic.subjects.manage', // Kelola daftar mapel
-    'academic.manage.mapel',
-    'academic.view.mapel',
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.homeroom.manage', // Penunjukan Wali Kelas
@@ -118,11 +117,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'kurikulum.jadwal-piket.update',
     'kurikulum.jadwal-piket.delete',
     'kurikulum.jadwal-piket.manage',
-    'kurikulum:jadwal-piket:view',
-    'kurikulum:jadwal-piket:create',
-    'kurikulum:jadwal-piket:update',
-    'kurikulum:jadwal-piket:delete',
-    'kurikulum:jadwal-piket:manage',
     'curriculum.piket.schedules.view',
     'curriculum.piket.schedules.create',
     'curriculum.piket.schedules.update',
@@ -497,7 +491,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.update',
     'academic.students.delete',
     'academic.students.manage',
-    'academic.manage.siswa',
+    'academic.students.manage',
     'academic.teachers.view.list',
     'academic.teachers.create',
     'academic.teachers.update',
@@ -551,7 +545,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.subjects.manage',
     'academic.student.card.view.config',
     'academic.student.card.update.config',
-    'academic.view.student.card',
     'core.sekolah.view.profile',
     'core.sekolah.update.profile',
     'core.users.view.list',
@@ -601,7 +594,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.create',
     'academic.students.update',
     'academic.students.delete',
-    'academic.manage.siswa',
+    'academic.students.manage',
     'academic.teachers.view.list',
     'academic.teachers.create',
     'academic.teachers.update',
@@ -647,7 +640,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.subjects.manage',
     'academic.student.card.view.config',
     'academic.student.card.update.config',
-    'academic.view.student.card',
     'core.sekolah.view.profile',
     'core.sekolah.update.profile',
     'core.users.view.list',
@@ -714,6 +706,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.referrals.create'
   ],
   [STRUKTUR_CODES.BENDAHARA_KOPERASI]: [
+    'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
@@ -761,6 +754,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.view.detail'
   ],
   [STRUKTUR_CODES.KETUA_KOPERASI]: [
+    'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
@@ -801,6 +795,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.vouchers.view.list'
   ],
   [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: [
+    'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
@@ -837,6 +832,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.store.products.view.detail'
   ],
   [STRUKTUR_CODES.MANAJER_TOKO_KOPERASI]: [
+    'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
@@ -869,6 +865,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.reply'
   ],
   [STRUKTUR_CODES.PENGAWAS_KOPERASI]: [
+    'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',

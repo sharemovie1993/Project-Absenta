@@ -87,7 +87,7 @@ export default function DashboardOverview() {
     caps.includes('hubin.bkk.manage') || 
     caps.includes('hubin.tracer.view') || 
     caps.includes('dashboard.view.hubin');
-  const isSarpras = caps.includes('sarpras.view_inventory') || caps.includes('dashboard.view.sarpras');
+  const isSarpras = caps.includes('sarpras.inventory.view.list') || caps.includes('dashboard.view.sarpras');
   const isTU = caps.includes('tu.manage_surat') || caps.includes('dashboard.view.tu');
   
   // Logic Onboarding: tampilkan untuk ADMIN/GURU/SISWA yang memiliki tenant

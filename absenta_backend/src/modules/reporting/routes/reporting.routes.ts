@@ -204,17 +204,17 @@ export async function reportingRoutes(fastify: any) {
   });
 
   fastify.get('/pdf/skl/:siswaId', {
-    preHandler: [requireCapability('academic.view.siswa')],
+    preHandler: [requireCapability('academic.students.view.list')],
     handler: reportingController.printSkl.bind(reportingController),
   });
 
   fastify.get('/pdf/ukk/:siswaId', {
-    preHandler: [requireCapability('academic.view.siswa')],
+    preHandler: [requireCapability('academic.students.view.list')],
     handler: reportingController.printUkk.bind(reportingController),
   });
 
   fastify.get('/pdf/pkl/:siswaPklId', {
-    preHandler: [requireCapability('academic.view.siswa')],
+    preHandler: [requireCapability('academic.students.view.list')],
     handler: reportingController.printPkl.bind(reportingController),
   });
 

@@ -107,7 +107,7 @@ const MapelList = React.memo<MapelListProps>(({
       can('academic.subjects.update') ||
       can('academic.subjects.delete') ||
       can('academic.subjects.manage') ||
-      can('academic.manage.mapel') ||
+      can('academic.subjects.manage') ||
       can('academic.manage.academic')
     );
   }, [user, can]);

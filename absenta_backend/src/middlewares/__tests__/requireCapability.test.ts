@@ -92,12 +92,12 @@ describe('requireCapability Middleware (GURU Cut-off)', () => {
       userId: 'user-id',
       email: 'test@example.com',
       roleName: RoleName.SISWA,
-      capabilities: ['academic.view.guru'],
+      capabilities: ['academic.teachers.view.list'],
       tenantId: 'tenant-id',
     };
     (authorizationService.isUserAuthorized as jest.Mock).mockResolvedValue({ allowed: true });
 
-    const middleware = requireCapability("academic.view.guru");
+    const middleware = requireCapability("academic.teachers.view.list");
     await middleware(req, reply);
 
     expect(reply.status).not.toHaveBeenCalled();

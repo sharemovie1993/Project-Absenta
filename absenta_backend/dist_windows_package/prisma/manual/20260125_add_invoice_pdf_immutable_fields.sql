@@ -1,0 +1,10 @@
+BEGIN;
+
+ALTER TABLE "Invoice"
+  ADD COLUMN IF NOT EXISTS "pdf_storage_provider" TEXT,
+  ADD COLUMN IF NOT EXISTS "pdf_storage_key" TEXT,
+  ADD COLUMN IF NOT EXISTS "pdf_sha256" TEXT,
+  ADD COLUMN IF NOT EXISTS "pdf_generated_at" TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "pdf_size_bytes" INTEGER;
+
+COMMIT;

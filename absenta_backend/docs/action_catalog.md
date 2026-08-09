@@ -2,6 +2,10 @@
 
 Source: seed_policies.ts + capabilities.ts + seed.ts
 
+## Absenta
+
+- Absenta.id
+
 ## academic
 
 - academic.activities.create
@@ -16,17 +20,8 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.backups.view.list
 - academic.homeroom.manage
 - academic.manage.academic
-- academic.manage.guru
-- academic.manage.jenis.kegiatan
-- academic.manage.kbm
-- academic.manage.tahun.pelajaran
-- academic.manage.semester
-- academic.manage.kelas
-- academic.manage.mapel
-- academic.manage.siswa
-- academic.manage.wali.kelas
 - academic.promotions.manage
-- academic.rekap.kbm
+- academic.schedules.
 - academic.schedules.create
 - academic.schedules.delete
 - academic.schedules.manage
@@ -34,6 +29,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.schedules.view.list
 - academic.semesters.create
 - academic.semesters.delete
+- academic.semesters.manage
 - academic.semesters.set.active
 - academic.semesters.update
 - academic.semesters.view.detail
@@ -43,6 +39,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.structures.assign.teacher
 - academic.structures.create
 - academic.structures.delete
+- academic.structures.manage
 - academic.structures.revoke.student
 - academic.structures.revoke.teacher
 - academic.structures.update
@@ -53,6 +50,7 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.student.card.view.config
 - academic.students.create
 - academic.students.delete
+- academic.students.manage
 - academic.students.send.access.token
 - academic.students.update
 - academic.students.view.detail
@@ -60,84 +58,100 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.students.view.list
 - academic.subjects.create
 - academic.subjects.delete
+- academic.subjects.manage
 - academic.subjects.update
 - academic.subjects.view.detail
 - academic.subjects.view.list
 - academic.teachers.create
 - academic.teachers.delete
+- academic.teachers.manage
 - academic.teachers.update
 - academic.teachers.view.detail
-- academic.teachers.view.list
 - academic.teachers.view.history
+- academic.teachers.view.list
 - academic.teaching.manage
 - academic.teaching.rekap
 - academic.teaching.view
 - academic.transitions.manage
-- academic.view.guru
-- academic.view.jenis.kegiatan
-- academic.view.kbm
-- academic.view.kelas
-- academic.view.mapel
-- academic.view.semester
-- academic.view.siswa
-- academic.view.struktur.organisasi
 - academic.view.student.card
-- academic.view.tahun.pelajaran
-- academic.view.wali.kelas
 - academic.years.create
 - academic.years.delete
+- academic.years.manage
 - academic.years.set.active
 - academic.years.update
 - academic.years.view.detail
 - academic.years.view.list
 
+## admin
+
+- admin.tickets.manage.assign
+- admin.tickets.manage.status
+- admin.tickets.reply
+- admin.tickets.view.detail
+- admin.tickets.view.list
+
+## affairs
+
+- affairs.violation.types.
+- affairs.violation.types.create
+- affairs.violation.types.delete
+- affairs.violation.types.manage
+- affairs.violation.types.update
+- affairs.violation.types.view.list
+- affairs.violations.
+- affairs.violations.delete
+- affairs.violations.manage
+- affairs.violations.report
+- affairs.violations.update
+- affairs.violations.view.detail
+- affairs.violations.view.list
+
 ## attendance
 
-- attendance.create.session
 - attendance.events.create
 - attendance.events.delete
 - attendance.events.view.list
 - attendance.gate.bypass
-- attendance.gate.face.enroll
 - attendance.gate.face.verify
 - attendance.gate.tap.entry
 - attendance.gate.tap.exit
-- attendance.gate.view.logs
 - attendance.gate.view.face.templates
-- attendance.manage.attendance
+- attendance.gate.view.logs
+- attendance.getNotPresentStudents
 - attendance.manage.face.templates
 - attendance.manage.petugas
 - attendance.manage.session
+- attendance.markGateAbsence
 - attendance.monitoring.view.live.status
+- attendance.notifications.send
+- attendance.officers.
 - attendance.officers.manage
 - attendance.officers.view
+- attendance.piket.manage
+- attendance.piket.view
 - attendance.recap.view.daily
+- attendance.recap.view.global
 - attendance.recap.view.monthly
 - attendance.recap.view.tracking
-- attendance.recap.view.global
 - attendance.reports.view
+- attendance.scan
+- attendance.schedules.
 - attendance.schedules.create
 - attendance.schedules.delete
 - attendance.schedules.manage
 - attendance.schedules.update
 - attendance.schedules.view.list
+- attendance.sessions.
 - attendance.sessions.close
 - attendance.sessions.create
 - attendance.sessions.delete
+- attendance.sessions.tap
 - attendance.sessions.update
 - attendance.sessions.update.attendance
 - attendance.sessions.update.journal
 - attendance.sessions.view.detail
 - attendance.sessions.view.list
-- attendance.sessions.tap
 - attendance.student.view.stats
-- attendance.piket.manage
-- attendance.piket.view
-- attendance.notifications.send
-- attendance.scan
-- attendance.view.attendance
-- attendance.markGateAbsence
-- attendance.getNotPresentStudents
 
 ## billing
 
@@ -157,9 +171,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - billing.manage.plans
 - billing.manage.subscriptions
 - billing.monitoring.view.live.status
-- billing.monitoring.view.teacher.status
-- billing.my.invoice.view
-- billing.my.invoice.pay
 - billing.my.subscription.create
 - billing.my.subscription.upgrade
 - billing.my.subscription.view
@@ -181,7 +192,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - billing.subscriptions.create
 - billing.subscriptions.renew
 - billing.subscriptions.resume
-- billing.subscriptions.order
 - billing.subscriptions.update
 - billing.subscriptions.upgrade.cancel
 - billing.subscriptions.upgrade.wizard
@@ -190,120 +200,80 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - billing.subscriptions.view.available
 - billing.subscriptions.view.detail
 - billing.subscriptions.view.list
-- billing.subscriptions.view
-- billing.view.billings
-- billing.view.monitoring
-- billing.view.subscriptions
-- billing.revenue.view
-- payments.test.simulate
-
-## tickets
-
-- admin.tickets.view.list
-- admin.tickets.view.detail
-- admin.tickets.manage.assign
-- admin.tickets.manage.status
-- admin.tickets.reply
-- support.tickets.create
-- support.tickets.view
-- support.tickets.reply
-- support.tickets.resolve
-
-## cadangan
-
-- cadangan.manage.cadangan
-- cadangan.view.cadangan
-
-## dashboard
-
-- dashboard.view.kesekolahan
-- dashboard.view.kesiswaan
-- dashboard.view.overview
-- dashboard.view.student.stats
-- dashboard.view.teacher.attendance
-- dashboard.view.violation.stats
-- dashboard.view.guru
-- dashboard.view.siswa
-- dashboard.view.sarpras
-
-## documents
-
-- documents.delete
-- documents.upload
-- documents.view.detail
-- documents.view.list
-
-## affairs
-
-- affairs.violation.types.create
-- affairs.violation.types.delete
-- affairs.violation.types.manage
-- affairs.violation.types.update
-- affairs.violation.types.view.list
-- affairs.violations.delete
-- affairs.violations.report
-- affairs.violations.update
-- affairs.violations.manage
-- affairs.violations.view.detail
-- affairs.violations.view.list
 
 ## bk
 
-- bk.cases.view.list
-- bk.cases.view.detail
-- bk.cases.manage
-- bk.counseling.manage
-- bk.counseling.view.sensitive
-- bk.counseling.view.list
-- bk.counseling.view.detail
-- bk.summons.manage
-- bk.summons.view.list
-- bk.summons.view.detail
-- bk.homevisit.manage
-- bk.homevisit.view.list
-- bk.homevisit.view.detail
 - bk.assessment.manage
-- bk.assessment.view.list
 - bk.assessment.view.detail
-- bk.referrals.manage
-- bk.referrals.view.list
-- bk.referrals.view.detail
-- bk.reports.view
+- bk.assessment.view.list
 - bk.audit.view
-- bk.recyclebin.view
+- bk.cases.manage
+- bk.cases.view.detail
+- bk.cases.view.list
+- bk.counseling.manage
+- bk.counseling.view.detail
+- bk.counseling.view.list
+- bk.counseling.view.sensitive
+- bk.homevisit.manage
+- bk.homevisit.view.detail
+- bk.homevisit.view.list
 - bk.recyclebin.restore
-
+- bk.recyclebin.view
+- bk.referrals.create
+- bk.referrals.manage
+- bk.referrals.view.detail
+- bk.referrals.view.list
+- bk.reports.view
+- bk.summons.manage
+- bk.summons.view.detail
+- bk.summons.view.list
 
 ## cooperative
 
+- cooperative.announcements.create
+- cooperative.announcements.delete
+- cooperative.announcements.view.list
 - cooperative.dashboard.view.overview
-- cooperative.members.view.list
-- cooperative.members.view.detail
+- cooperative.loans.apply
+- cooperative.loans.approve
+- cooperative.loans.reject
+- cooperative.loans.repay
+- cooperative.loans.types.manage
+- cooperative.loans.view.detail
+- cooperative.loans.view.list
+- cooperative.members.activate
 - cooperative.members.create
-- cooperative.members.update
+- cooperative.members.deactivate
 - cooperative.members.delete
 - cooperative.members.manage
-- cooperative.points.view
+- cooperative.members.update
+- cooperative.members.view.detail
+- cooperative.members.view.list
+- cooperative.members.view.status
 - cooperative.points.manage
-- cooperative.ppob.transact
+- cooperative.points.view
 - cooperative.ppob.manage.products
+- cooperative.ppob.transact
 - cooperative.ppob.view.products
-- cooperative.reports.view.financial
 - cooperative.reports.view.daily
+- cooperative.reports.view.financial
 - cooperative.reports.view.monthly
 - cooperative.savings.create
 - cooperative.savings.deposit
 - cooperative.savings.manage
 - cooperative.savings.types.manage
-- cooperative.savings.types.view
 - cooperative.savings.view.detail
 - cooperative.savings.view.history
 - cooperative.savings.view.list
-- cooperative.store.view.catalog
-- cooperative.store.orders.manage
-- cooperative.store.inventory.manage
 - cooperative.savings.withdraw
+- cooperative.settings.view
+- cooperative.shu.approve
+- cooperative.shu.calculate
+- cooperative.shu.manage
+- cooperative.shu.view.report
 - cooperative.store.categories.manage
+- cooperative.store.inventory.manage
+- cooperative.store.orders.manage
 - cooperative.store.orders.view.list
 - cooperative.store.products.create
 - cooperative.store.products.delete
@@ -311,45 +281,21 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.store.products.view.detail
 - cooperative.store.products.view.list
 - cooperative.store.transactions.view
+- cooperative.store.view.catalog
+- cooperative.tickets.
 - cooperative.tickets.create
 - cooperative.tickets.reply
 - cooperative.tickets.update.status
 - cooperative.tickets.view.detail
 - cooperative.tickets.view.list
-- cooperative.announcements.create
-- cooperative.announcements.delete
-- cooperative.announcements.view.list
 - cooperative.vouchers.manage
 - cooperative.vouchers.view.list
-- cooperative.loans.apply
-- cooperative.loans.approve
-- cooperative.loans.reject
-- cooperative.loans.repay
-- cooperative.loans.types.manage
-- cooperative.loans.types.view
-- cooperative.loans.view.detail
-- cooperative.loans.view.list
-- cooperative.members.activate
-- cooperative.members.deactivate
-- cooperative.members.view.status
-- cooperative.shu.manage
-- cooperative.shu.calculate
-- cooperative.shu.approve
-- cooperative.shu.view.report
-- cooperative.settings.view
-
-## consent
-
-- consent.logs.create
-- consent.logs.view.list
 
 ## core
 
 - core.auth.logout
-- core.menu.audit
-- core.menu.create
-- core.menu.delete
 - core.menu.roles.update
+- core.menu.view.list
 - core.sekolah.update.profile
 - core.sekolah.view.profile
 - core.system.config.update
@@ -373,52 +319,88 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - core.users.view.list
 - core.users.view.roles
 
-## external
+## correspondence
 
-- external.device.check.status
-- external.device.register
-- external.device.update.heartbeat
+- correspondence.inbox.manage
+- correspondence.inbox.view
+- correspondence.outbox.manage
+- correspondence.outbox.sign
+- correspondence.outbox.view
 
-## files
+## curriculum
 
-- files.upload.public
-- files.view.my
+- curriculum.piket.schedules.create
+- curriculum.piket.schedules.delete
+- curriculum.piket.schedules.manage
+- curriculum.piket.schedules.update
+- curriculum.piket.schedules.view
+- curriculum.structure.manage
+- curriculum.supervision.create.record
+- curriculum.supervision.delete.record
+- curriculum.supervision.manage
+- curriculum.supervision.update.record
+- curriculum.supervision.view.report
+- curriculum.supervision.view.schedule
+
+## dashboard
+
+- dashboard.view.financial.summary
+- dashboard.view.gerbang
+- dashboard.view.guru
+- dashboard.view.hubin
+- dashboard.view.kepsek
+- dashboard.view.kesiswaan
+- dashboard.view.kurikulum
+- dashboard.view.overview
+- dashboard.view.petugas
+- dashboard.view.sarpras
+- dashboard.view.siswa
+- dashboard.view.student.stats
+- dashboard.view.teacher.attendance
+- dashboard.view.tu
+- dashboard.view.violation.stats
+- dashboard.view.walikelas
+
+## documents
+
+- documents.delete
+- documents.upload
+- documents.view.detail
+- documents.view.list
 
 ## hubin
 
-- hubin.partners.manage
-- hubin.mou.manage
-- hubin.mou.view.list
-- hubin.pkl.manage
-- hubin.pkl.view.list
+- hubin.absensi.recap
 - hubin.absensi.verify
 - hubin.absensi.view.history
-- hubin.absensi.recap
-- hubin.logbook.manage
-- hubin.guidance.manage
-- hubin.tefa.manage
 - hubin.bkk.manage
+- hubin.guidance.manage
 - hubin.lamaran.manage
-- hubin.tracer.view
-- hubin.self.pkl
-- hubin.self.logbook
-- hubin.self.tracer
+- hubin.logbook.manage
+- hubin.mou.manage
+- hubin.mou.view.list
+- hubin.partners.manage
+- hubin.pkl.manage
+- hubin.pkl.view.list
 - hubin.self.bkk
-- dashboard.view.hubin
+- hubin.self.logbook
+- hubin.self.pkl
+- hubin.self.tracer
+- hubin.tefa.manage
+- hubin.tracer.view
 
 ## kesiswaan
 
-- kesiswaan.manage.pelanggaran
-- kesiswaan.view.pelanggaran
 - kesiswaan.dashboard.view
-- kesiswaan.pelanggaran.view
-- kesiswaan.pelanggaran.manage
-- kesiswaan.prestasi.view
-- kesiswaan.prestasi.manage
-- kesiswaan.piket.view
-- kesiswaan.piket.manage
-- kesiswaan.kegiatan.view
 - kesiswaan.kegiatan.manage
+- kesiswaan.kegiatan.view
+- kesiswaan.pelanggaran.manage
+- kesiswaan.pelanggaran.view
+- kesiswaan.piket.manage
+- kesiswaan.piket.view
+- kesiswaan.prestasi.manage
+- kesiswaan.prestasi.view
+- kesiswaan.schedules.
 - kesiswaan.schedules.create
 - kesiswaan.schedules.delete
 - kesiswaan.schedules.update
@@ -426,17 +408,15 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 
 ## kurikulum
 
-- kurikulum.manage.supervisi
-- kurikulum.view.supervisi
-- curriculum.supervision.view.schedule
-- curriculum.supervision.create.record
-- curriculum.supervision.update.record
-- curriculum.supervision.delete.record
-- curriculum.supervision.view.report
-- curriculum.supervision.manage
+- kurikulum.jadwal-piket.create
+- kurikulum.jadwal-piket.delete
+- kurikulum.jadwal-piket.manage
+- kurikulum.jadwal-piket.update
+- kurikulum.jadwal-piket.view
 
 ## notify
 
+- notify.announcements.manage
 - notify.check.status
 - notify.push.view.subscriptions
 - notify.resend
@@ -447,61 +427,40 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - notify.view.my
 - notify.view.preferences
 - notify.view.stats
-- notify.announcements.manage
 
 ## organization
 
+- organization.scope.
 - organization.scope.teaching_restricted
+- organization.scope.tenant_wide
+- organization.scope.unit_restricted
 
-## whatsapp
+## payments
 
-- whatsapp.manage.config
-- whatsapp.send.test
-
-## payment
-
-- payment.manage.payments
-- payment.view.payments
-
-## reports
-
-- reports.view.dashboard
-- reports.dashboard.view.stats
-- reports.financial.export
-- reports.financial.generate
-- reports.financial.view.list
-- reports.financial.view.monthly
-- reports.financial.view.yearly
-- reports.owner.view.summary
-- reports.generate
-- reports.attendance.view
-- reports.violation.view
-- reports.hubin.view
-
-## sarpras
-
-- sarpras.inventory.manage
-- sarpras.inventory.view.list
-- sarpras.view_inventory
-- sarpras.loans.manage
-- sarpras.loans.view.list
-- sarpras.loans.request
-- sarpras.categories.manage
-- sarpras.locations.manage
-- sarpras.repairs.manage
-- sarpras.repairs.view.list
+- payments.test.simulate
 
 ## platform
 
-- dashboard.view.platform
 - platform.tenants.view.list
 
-## system
+## reports
 
-- system.workers.view
-- system.health.view
-- system.logs.view
-- system.feature.flags.manage
+- reports.attendance.view
+- reports.hubin.view
+- reports.violation.view
+
+## sarpras
+
+- sarpras.categories.manage
+- sarpras.inventory.manage
+- sarpras.inventory.view.list
+- sarpras.loans.
+- sarpras.loans.manage
+- sarpras.loans.request
+- sarpras.loans.view.list
+- sarpras.locations.manage
+- sarpras.repairs.manage
+- sarpras.repairs.view.list
 
 ## superadmin
 
@@ -509,20 +468,36 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - superadmin.infra.monitoring.view
 - superadmin.infra.view.socket.global
 - superadmin.infra.view.socket.tenants
-- superadmin.payments.test
 - superadmin.platform.intelligence.view
 - superadmin.revenue.view.overview
-- superadmin.security.roles.view
 - superadmin.risk.view
-- superadmin.tenants.manage
+- superadmin.security.roles.view
 - superadmin.tenants.impersonate
+- superadmin.tenants.manage
 - superadmin.upgrade.intelligence.view
 
-## correspondence
+## support
 
-- correspondence.inbox.view
-- correspondence.inbox.manage
-- correspondence.outbox.view
-- correspondence.outbox.manage
-- correspondence.outbox.sign
+- support.tickets.create
+- support.tickets.reply
+- support.tickets.resolve
+- support.tickets.view
+
+## system
+
+- system.feature.flags.manage
+- system.health.view
+- system.logs.view
+- system.workers.view
+
+## tu
+
+- tu.letters.manage
+- tu.staff.manage
+- tu.staff.view.list
+
+## whatsapp
+
+- whatsapp.manage.config
+- whatsapp.send.test
 
