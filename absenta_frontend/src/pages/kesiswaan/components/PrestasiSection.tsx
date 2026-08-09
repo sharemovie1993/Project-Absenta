@@ -27,7 +27,7 @@ interface Student {
   };
 }
 
-export const PrestasiSection: React.FC = () => {
+export const PrestasiSection: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
@@ -446,6 +446,6 @@ export const PrestasiSection: React.FC = () => {
       </Suspense>
     </Card>
   );
-};
+});
 
 

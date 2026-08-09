@@ -26,7 +26,7 @@ interface CareSpotlightSectionProps {
   onNavigateToPelanggaran: () => void;
 }
 
-export const CareSpotlightSection: React.FC<CareSpotlightSectionProps> = ({
+export const CareSpotlightSection: React.FC<CareSpotlightSectionProps> = React.memo(({
   spotlightTab,
   setSpotlightTab,
   careStudents,
@@ -137,4 +137,4 @@ export const CareSpotlightSection: React.FC<CareSpotlightSectionProps> = ({
       )}
     </Card>
   );
-};
+});

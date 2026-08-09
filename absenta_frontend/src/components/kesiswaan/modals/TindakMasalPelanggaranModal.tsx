@@ -49,7 +49,7 @@ const playSuccessBeep = () => {
   }
 };
 
-export const TindakMasalPelanggaranModal: React.FC<TindakMasalPelanggaranModalProps> = ({
+export const TindakMasalPelanggaranModal: React.FC<TindakMasalPelanggaranModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess
@@ -331,4 +331,4 @@ export const TindakMasalPelanggaranModal: React.FC<TindakMasalPelanggaranModalPr
       </Modal>
     </Suspense>
   );
-};
+});

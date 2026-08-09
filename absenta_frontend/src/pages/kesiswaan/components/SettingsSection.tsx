@@ -18,7 +18,7 @@ import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, ShieldAlert, Trophy } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 
-export const SettingsSection: React.FC = () => {
+export const SettingsSection: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
   
@@ -421,4 +421,4 @@ export const SettingsSection: React.FC = () => {
       </Modal>
     </Card>
   );
-};
+});

@@ -50,7 +50,7 @@ const catatSchema = z.object({
   status: z.string().default('BARU')
 });
 
-export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = ({
+export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess,
@@ -420,4 +420,4 @@ export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = ({
       </Modal>
     </Suspense>
   );
-};
+});

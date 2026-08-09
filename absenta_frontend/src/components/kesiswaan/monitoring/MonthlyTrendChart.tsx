@@ -15,7 +15,7 @@ interface MonthlyTrendChartProps {
   isLoadingAnalytics: boolean;
 }
 
-export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = ({
+export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = React.memo(({
   monthlyTrend,
   maxCases,
   isLoadingAnalytics,
@@ -74,4 +74,4 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = ({
       )}
     </Card>
   );
-};
+});
