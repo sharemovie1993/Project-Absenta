@@ -7,21 +7,24 @@ export async function pelanggaranRoutes(fastify: any) {
   fastify.post('/', { 
     preHandler: [
       requireCapability('affairs.violations.report'),
-      elevatedScopeMiddleware // Allow reporting any student
+      elevatedScopeMiddleware, // Allow reporting any student
+      determineDataScope()
     ] 
   }, PelanggaranController.create);
 
   fastify.put('/:id', { 
     preHandler: [
       requireCapability('affairs.violations.update'),
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ] 
   }, PelanggaranController.update);
 
   fastify.delete('/:id', { 
     preHandler: [
       requireCapability('affairs.violations.delete'),
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ] 
   }, PelanggaranController.delete);
 
@@ -35,14 +38,16 @@ export async function pelanggaranRoutes(fastify: any) {
   fastify.get('/:id', { 
     preHandler: [
       requireCapability('affairs.violations.view.detail'),
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ] 
   }, PelanggaranController.getById);
 
   fastify.get('/analytics', {
     preHandler: [
       requireCapability('affairs.violations.view.list'),
-      organizationalScopeMiddleware
+      organizationalScopeMiddleware,
+      determineDataScope()
     ]
   }, PelanggaranController.getAnalytics);
 }
