@@ -25,7 +25,7 @@ interface Props {
   semesterId?: string;
 }
 
-export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialData, kelasId, tahunPelajaranId, semesterId }) => {
+export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel, initialData, kelasId, tahunPelajaranId, semesterId }) => {
   const queryClient = useQueryClient();
   const [mapelOptions, setMapelOptions] = useState<{ value: string; label: string }[]>([]);
   const [guruOptions, setGuruOptions] = useState<{ value: string; label: string }[]>([]);
@@ -366,4 +366,4 @@ export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialDat
       </form>
     </div>
   );
-};
+});

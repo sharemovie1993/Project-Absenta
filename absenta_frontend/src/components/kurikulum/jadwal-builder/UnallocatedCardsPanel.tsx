@@ -23,7 +23,7 @@ interface Props {
   onCardClick?: (item: UnallocatedCardItem) => void;
 }
 
-export const UnallocatedCardsPanel: React.FC<Props> = ({
+export const UnallocatedCardsPanel: React.FC<Props> = React.memo(({
   selectedKelasId,
   selectedGuruId,
   unallocatedList,
@@ -108,4 +108,4 @@ export const UnallocatedCardsPanel: React.FC<Props> = ({
       </div>
     </Card>
   );
-};
+});

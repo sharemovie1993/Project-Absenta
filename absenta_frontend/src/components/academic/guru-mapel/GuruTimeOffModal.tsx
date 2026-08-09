@@ -19,7 +19,7 @@ const HARI_LIST = ALL_HARI_LIST.slice(0, 5);
 
 const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-export const GuruTimeOffModal: React.FC<GuruTimeOffModalProps> = ({
+export const GuruTimeOffModal: React.FC<GuruTimeOffModalProps> = React.memo(({
   isOpen,
   onClose,
   guruId,
@@ -308,4 +308,4 @@ export const GuruTimeOffModal: React.FC<GuruTimeOffModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

@@ -41,7 +41,7 @@ interface ConflictResolverModalProps {
   onDeleteConflictSlot?: () => void;
 }
 
-export const ConflictResolverModal: React.FC<ConflictResolverModalProps> = ({
+export const ConflictResolverModal: React.FC<ConflictResolverModalProps> = React.memo(({
   isOpen,
   onClose,
   conflict,
@@ -172,4 +172,4 @@ export const ConflictResolverModal: React.FC<ConflictResolverModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

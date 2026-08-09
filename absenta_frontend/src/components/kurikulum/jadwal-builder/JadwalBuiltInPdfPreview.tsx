@@ -17,7 +17,7 @@ interface Props {
   initialGuruId?: string;
 }
 
-export const JadwalBuiltInPdfPreview: React.FC<Props> = ({
+export const JadwalBuiltInPdfPreview: React.FC<Props> = React.memo(({
   initialMode = 'KELAS',
   initialKelasId = '',
   initialGuruId = '',
@@ -291,4 +291,4 @@ export const JadwalBuiltInPdfPreview: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});

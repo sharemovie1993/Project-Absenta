@@ -40,7 +40,7 @@ const SLOT_TIME_MAP: Record<number, { start: string; end: string }> = {
   12: { start: "16:15", end: "17:00" },
 };
 
-export const JadwalPrintPreviewModal: React.FC<Props> = ({
+export const JadwalPrintPreviewModal: React.FC<Props> = React.memo(({
   isOpen,
   onClose,
   initialMode = 'KELAS',
@@ -548,4 +548,4 @@ export const JadwalPrintPreviewModal: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});

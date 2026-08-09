@@ -38,7 +38,7 @@ const SLOT_TIME: Record<number, string> = {
   12: "16:15 - 17:00",
 };
 
-export const JadwalGrid: React.FC<JadwalGridProps> = ({ 
+export const JadwalGrid: React.FC<JadwalGridProps> = React.memo(({ 
   jadwal, 
   onAddSlot, 
   onEditSlot, 
@@ -357,4 +357,4 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
       )}
     </div>
   );
-};
+});

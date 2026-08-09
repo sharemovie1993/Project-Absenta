@@ -18,7 +18,7 @@ interface TableProps {
   readOnly?: boolean;
 }
 
-export const StrukturKurikulumTable: React.FC<TableProps> = ({
+export const StrukturKurikulumTable: React.FC<TableProps> = React.memo(({
   isLoadingMapping,
   mappingFiltered,
   selectedRowIds,
@@ -199,5 +199,5 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
       </table>
     </div>
   );
-};
+});
 export default StrukturKurikulumTable;

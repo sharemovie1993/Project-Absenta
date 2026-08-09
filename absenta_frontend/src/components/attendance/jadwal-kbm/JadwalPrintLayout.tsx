@@ -40,7 +40,7 @@ const SLOT_TIME: Record<number, string> = {
   12: "16:15 - 17:00",
 };
 
-export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
+export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = React.memo(({
   jadwal,
   guruName,
   subjectName,
@@ -324,4 +324,4 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
   );
 
   return createPortal(content, document.body);
-};
+});

@@ -17,7 +17,7 @@ interface Props {
   semesterId?: string;
 }
 
-export const BebanGuruSummaryModal: React.FC<Props> = ({
+export const BebanGuruSummaryModal: React.FC<Props> = React.memo(({
   isOpen,
   onClose,
   loadingBeban: externalLoading,
@@ -159,4 +159,4 @@ export const BebanGuruSummaryModal: React.FC<Props> = ({
       </div>
     </Modal>
   );
-};
+});

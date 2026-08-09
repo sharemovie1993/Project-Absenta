@@ -50,7 +50,7 @@ interface Props {
   onOpenPrintPreview?: () => void;
 }
 
-export const JadwalBuilderHeader: React.FC<Props> = ({
+export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
   viewMode,
   setViewMode,
   gridOrientation = 'VERTICAL_HARI',
@@ -360,4 +360,4 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+});

@@ -39,7 +39,7 @@ interface PendingRow {
   guru_id?: string;
 }
 
-export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
+export const JadwalKBMList: React.FC<{ kelasId?: string }> = React.memo(({ kelasId }) => {
   const queryClient = useQueryClient();
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'KBM' | 'KEGIATAN'>('ALL');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -556,4 +556,4 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
       />
     </div>
   );
-};
+});
