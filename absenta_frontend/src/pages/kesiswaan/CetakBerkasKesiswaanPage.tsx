@@ -19,7 +19,7 @@ const CetakFormGeneric = lazy(() => import('../../components/academic/CetakFormG
 // Stamp Registry Key
 const hardeningModuleKey = 'cetak_berkas_kesiswaan';
 
-export const CetakBerkasKesiswaanPage: React.FC = () => {
+export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
 
   // Move static doc options outside of component scope to avoid DOM churn (Pillar 3)
@@ -213,4 +213,4 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
       </Card>
     </InfraErrorBoundary>
   );
-};
+});

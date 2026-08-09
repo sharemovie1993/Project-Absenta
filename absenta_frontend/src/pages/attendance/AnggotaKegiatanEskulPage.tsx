@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/Label';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
-export default function AnggotaKegiatanEskulPage() {
+export default React.memo(function AnggotaKegiatanEskulPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -861,4 +861,4 @@ export default function AnggotaKegiatanEskulPage() {
       )}
     </AcademicPageLayout>
   );
-}
+});

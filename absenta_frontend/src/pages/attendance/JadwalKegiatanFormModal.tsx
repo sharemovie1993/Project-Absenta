@@ -54,8 +54,7 @@ interface JadwalKegiatanFormModalProps {
 import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
 
-// ─── Component ───────────────────────────────────────────────────────────────
-export default function JadwalKegiatanFormModal({
+export default React.memo(function JadwalKegiatanFormModal({
   editingItem,
   masterKegiatans: propMasterKegiatans,
   classes: propClasses,
@@ -742,4 +741,4 @@ export default function JadwalKegiatanFormModal({
       </div>
     </div>
   );
-}
+});

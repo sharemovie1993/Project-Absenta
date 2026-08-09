@@ -27,7 +27,7 @@ const jenisPelanggaranSchema = z.object({
   poin: z.number().min(0, 'Bobot poin minimal 0')
 });
 
-export default function JenisPelanggaranPage() {
+export default React.memo(function JenisPelanggaranPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
@@ -292,4 +292,4 @@ export default function JenisPelanggaranPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

@@ -21,7 +21,7 @@ const JenisKegiatanForm = lazy(() => import('../../components/academic/jenis-keg
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
 
-export default function JenisKegiatanMasterPage() {
+export default React.memo(function JenisKegiatanMasterPage() {
   const queryClient = useQueryClient();
   const { can, isLoading: authLoading } = useAuth();
 
@@ -212,4 +212,4 @@ export default function JenisKegiatanMasterPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

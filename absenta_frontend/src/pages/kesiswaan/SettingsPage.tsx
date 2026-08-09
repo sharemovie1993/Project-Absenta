@@ -3,7 +3,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { SettingsSection } from './components/SettingsSection';
 import { Card } from '../../components/ui/Card';
 
-export default function SettingsPage() {
+export default React.memo(function SettingsPage() {
   return (
     <AcademicPageLayout
       title="Pengaturan Kategori & Poin Kesiswaan"
@@ -28,4 +28,4 @@ export default function SettingsPage() {
       </Card>
     </AcademicPageLayout>
   );
-}
+});

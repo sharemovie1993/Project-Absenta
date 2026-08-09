@@ -72,8 +72,7 @@ const parseArrayField = (field: any): string[] => {
   return [];
 };
 
-// ─── Component ───────────────────────────────────────────────────────────────
-export default function JadwalKegiatanPage() {
+export default React.memo(function JadwalKegiatanPage() {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
 
@@ -472,4 +471,4 @@ export default function JadwalKegiatanPage() {
       )}
     </AcademicPageLayout>
   );
-}
+});
