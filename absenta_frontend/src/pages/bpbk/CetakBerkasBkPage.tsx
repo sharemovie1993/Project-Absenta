@@ -4,8 +4,10 @@ import { CetakFormGeneric, type DocOption } from '../../components/academic/Ceta
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { bpbkApi } from '../../api/bpbk.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 export const CetakBerkasBkPage: React.FC = React.memo(() => {
+  const { isBpbk, isAdmin, can } = useCapabilities();
   const docOptions: DocOption[] = [
     { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
     { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true },
