@@ -234,6 +234,32 @@ export function normalizePhone(val: any): string {
   return digits;
 }
 
+export function formatStandardIndonesianPhone(val: any): string | null {
+  if (val === null || val === undefined) return null;
+  let raw = String(val).trim();
+  if (!raw) return null;
+
+  raw = raw.split('@')[0];
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+
+  if (digits.startsWith('62')) {
+    digits = '0' + digits.slice(2);
+  } else if (digits.startsWith('8')) {
+    digits = '0' + digits;
+  }
+
+  if (digits.startsWith('08') && digits.length >= 10 && digits.length <= 15) {
+    return digits;
+  }
+
+  if (digits.length >= 7 && digits.length <= 15) {
+    return digits.startsWith('0') ? digits : '0' + digits;
+  }
+
+  return null;
+}
+
 export function formatWAJid(val: any): string {
   const phone = normalizePhone(val);
   if (!phone) return '';

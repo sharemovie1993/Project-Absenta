@@ -146,3 +146,11 @@ export const importGuruFromExcel = async (
 export const exportGuruToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/guru/export');
 };
+
+export const normalizeGuruWaPhones = async (): Promise<{
+  success: boolean;
+  message: string;
+  data: { total: number; updated: number; unchanged: number; invalid: number };
+}> => {
+  return requestWithFallback('post', '/academic/guru/normalize-wa-phones');
+};

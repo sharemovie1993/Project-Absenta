@@ -635,6 +635,28 @@ export class GuruController {
       return reply.status(400).send({ success: false, message: error.message || 'Gagal mengubah max JP' });
     }
   }
+
+  async normalizeWaPhones(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.dataScope?.tenantId;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Context Tenant tidak ditemukan' });
+      }
+
+      const result = await guruService.normalizeWaPhones(tenantId);
+      return reply.status(200).send({
+        success: true,
+        message: 'Normalisasi nomor WhatsApp guru berhasil dijalankan',
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('Error normalizing guru WA phones:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal melakukan normalisasi nomor WhatsApp guru',
+      });
+    }
+  }
 }
 
 export const guruController = new GuruController();

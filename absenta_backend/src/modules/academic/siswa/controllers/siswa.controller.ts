@@ -1504,5 +1504,27 @@ export const siswaController = {
       console.error('PPDB mapping error:', error);
       return reply.status(500).send({ success: false, message: error.message || 'Failed to map PPDB students' });
     }
+  },
+
+  async normalizeWaPhones(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+
+      const result = await siswaService.normalizeWaPhones(tenantId);
+      return reply.status(200).send({
+        success: true,
+        message: 'Normalisasi nomor WhatsApp siswa & ortu berhasil dijalankan',
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('Error normalizing siswa WA phones:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal melakukan normalisasi nomor WhatsApp siswa',
+      });
+    }
   }
 };

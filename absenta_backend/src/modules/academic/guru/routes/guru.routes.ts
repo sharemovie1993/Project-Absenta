@@ -27,6 +27,17 @@ export default async function guruRoutes(fastify: any) {
     return guruController.getGuruMe(request, reply);
   });
 
+  // POST /guru/normalize-wa-phones - Normalize WA phone numbers mass
+  fastify.post('/normalize-wa-phones', {
+    preHandler: [
+      requireCapability('academic.teachers.edit.profile'),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.normalizeWaPhones(request, reply);
+  });
+
   // GET /guru/:id - Get guru by ID
   fastify.get('/:id', {
     preHandler: [

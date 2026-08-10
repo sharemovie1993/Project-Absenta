@@ -28,6 +28,17 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.exportToExcel(request, reply);
   });
 
+  // POST /siswa/normalize-wa-phones - Normalize WA phone numbers mass
+  fastify.post('/normalize-wa-phones', {
+    preHandler: [
+        requireCapability('academic.students.edit.profile'),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.normalizeWaPhones(request, reply);
+  });
+
   // GET /siswa/:id/history - Get siswa academic history
   fastify.get('/:id/history', {
     preHandler: [

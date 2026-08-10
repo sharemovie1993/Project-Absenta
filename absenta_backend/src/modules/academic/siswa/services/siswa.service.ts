@@ -333,6 +333,99 @@ export class SiswaService {
 
     return { bulanStr, hadir, terlambat, izinSakit, alpa };
   }
+
+  /**
+   * Mass WA Phone Normalization for Siswa & Parents with Cache Invalidation
+   */
+  async normalizeWaPhones(tenantId: string): Promise<{ total: number; updated: number; unchanged: number; invalid: number }> {
+    const { formatStandardIndonesianPhone } = await import('@/utils/normalization');
+    const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+
+    const allSiswa = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId },
+      include: { OrangTuaSiswa: { include: { OrangTua: true } } },
+    });
+
+    let total = 0;
+    let updated = 0;
+    let unchanged = 0;
+    let invalid = 0;
+
+    for (const siswa of allSiswa) {
+      total++;
+      let isChanged = false;
+      const updateData: any = {};
+
+      if (siswa.no_hp) {
+        const cleaned = formatStandardIndonesianPhone(siswa.no_hp);
+        if (cleaned) {
+          if (cleaned !== siswa.no_hp) {
+            updateData.no_hp = cleaned;
+            isChanged = true;
+          }
+        } else {
+          invalid++;
+        }
+      }
+
+      if ((siswa as any).no_hp_ortu) {
+        const cleaned = formatStandardIndonesianPhone((siswa as any).no_hp_ortu);
+        if (cleaned && cleaned !== (siswa as any).no_hp_ortu) {
+          updateData.no_hp_ortu = cleaned;
+          isChanged = true;
+        }
+      }
+
+      if (siswa.nama_ayah || (siswa as any).no_hp_ayah) {
+        const hpAyah = (siswa as any).no_hp_ayah;
+        if (hpAyah) {
+          const cleaned = formatStandardIndonesianPhone(hpAyah);
+          if (cleaned && cleaned !== hpAyah) {
+            updateData.no_hp_ayah = cleaned;
+            isChanged = true;
+          }
+        }
+      }
+
+      if (siswa.nama_ibu || (siswa as any).no_hp_ibu) {
+        const hpIbu = (siswa as any).no_hp_ibu;
+        if (hpIbu) {
+          const cleaned = formatStandardIndonesianPhone(hpIbu);
+          if (cleaned && cleaned !== hpIbu) {
+            updateData.no_hp_ibu = cleaned;
+            isChanged = true;
+          }
+        }
+      }
+
+      if (isChanged) {
+        await prisma.siswa.update({
+          where: { id: siswa.id },
+          data: updateData,
+        });
+        updated++;
+      } else {
+        unchanged++;
+      }
+
+      for (const ots of (siswa as any).OrangTuaSiswa || []) {
+        if (ots.OrangTua && ots.OrangTua.no_hp) {
+          const cleanedOrtuHp = formatStandardIndonesianPhone(ots.OrangTua.no_hp);
+          if (cleanedOrtuHp && cleanedOrtuHp !== ots.OrangTua.no_hp) {
+            await prisma.orangTua.update({
+              where: { id: ots.OrangTua.id },
+              data: { no_hp: cleanedOrtuHp },
+            });
+          }
+        }
+      }
+    }
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    await cacheInvalidationService.invalidateUserCache(tenantId);
+
+    return { total, updated, unchanged, invalid };
+  }
 }
 
 export const siswaService = new SiswaService();

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -27,8 +27,10 @@ import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
+import { ToolsModal, type ToolKey } from '../../shared/ToolsModal';
+import { WaNormalizationModal } from '../../shared/WaNormalizationModal';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
+import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa, siswaQueryKeys, normalizeSiswaWaPhones } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
@@ -88,6 +90,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
   const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
 
   // Bulk Class Change States
   const [isBulkClassModalOpen, setIsBulkClassModalOpen] = useState(false);
@@ -1254,41 +1258,11 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     <Button
                       variant="toolbarOutline"
                       size="toolbar"
-                      onClick={handleRunAnalysis}
-                      className="rounded-xl border-indigo-100 hover:bg-indigo-50 dark:border-indigo-950/40 dark:hover:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 font-bold"
+                      onClick={() => setIsToolsOpen(true)}
+                      className="rounded-xl border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/40 dark:hover:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-bold"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
-                      Analisis Data
-                    </Button>
-
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => setIsNisWizardOpen(true)}
-                      className="rounded-xl border-violet-200 hover:bg-violet-50 dark:border-violet-950/40 dark:hover:bg-violet-950/20 text-violet-600 dark:text-violet-400 font-bold"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                      Generate NIS
-                    </Button>
-
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => setIsRfidPairingOpen(true)}
-                      className="rounded-xl border-emerald-200 hover:bg-emerald-50 dark:border-emerald-950/40 dark:hover:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold"
-                    >
-                      <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
-                      Pairing RFID Express
-                    </Button>
-
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => setIsPhotoStudioOpen(true)}
-                      className="rounded-xl border-sky-200 hover:bg-sky-50 dark:border-sky-950/40 dark:hover:bg-sky-950/20 text-sky-600 dark:text-sky-400 font-bold"
-                    >
-                      <Camera className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
-                      Foto Massal (Studio)
+                      <Wrench className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                      Tools
                     </Button>
         
                     <Button
@@ -2096,6 +2070,27 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           </ModalFooter>
         </div>
       </Modal>
+
+      <ToolsModal
+        isOpen={isToolsOpen}
+        onClose={() => setIsToolsOpen(false)}
+        targetType="siswa"
+        onSelectTool={(key: ToolKey) => {
+          if (key === 'analysis') handleRunAnalysis();
+          else if (key === 'generateCode') setIsNisWizardOpen(true);
+          else if (key === 'rfidPairing') setIsRfidPairingOpen(true);
+          else if (key === 'photoStudio') setIsPhotoStudioOpen(true);
+          else if (key === 'waNormalize') setIsWaNormalizeOpen(true);
+        }}
+      />
+
+      <WaNormalizationModal
+        isOpen={isWaNormalizeOpen}
+        onClose={() => setIsWaNormalizeOpen(false)}
+        targetType="siswa"
+        onRunNormalization={normalizeSiswaWaPhones}
+        onSuccessRefresh={() => fetchSiswas(currentPage, searchTerm)}
+      />
     </div>
   );
 });

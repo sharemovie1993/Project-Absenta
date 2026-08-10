@@ -859,6 +859,59 @@ export class GuruService {
       data: { email: cleanEmail },
     });
   }
+
+  /**
+   * Mass WA Phone Normalization for Guru with Cache Invalidation
+   */
+  async normalizeWaPhones(tenantId: string): Promise<{ total: number; updated: number; unchanged: number; invalid: number }> {
+    const { formatStandardIndonesianPhone } = await import('@/utils/normalization');
+    const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+
+    const allGuru = await prisma.guru.findMany({
+      where: { tenant_id: tenantId },
+    });
+
+    let total = 0;
+    let updated = 0;
+    let unchanged = 0;
+    let invalid = 0;
+
+    for (const guru of allGuru) {
+      total++;
+      if (!guru.no_hp) {
+        invalid++;
+        unchanged++;
+        continue;
+      }
+
+      const cleaned = formatStandardIndonesianPhone(guru.no_hp);
+      if (cleaned) {
+        if (cleaned !== guru.no_hp) {
+          await prisma.guru.update({
+            where: { id: guru.id },
+            data: { no_hp: cleaned },
+          });
+          if (guru.user_id) {
+            await prisma.user.update({
+              where: { id: guru.user_id },
+              data: { no_hp: cleaned },
+            }).catch(() => {});
+          }
+          updated++;
+        } else {
+          unchanged++;
+        }
+      } else {
+        invalid++;
+        unchanged++;
+      }
+    }
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    await cacheInvalidationService.invalidateUserCache(tenantId);
+
+    return { total, updated, unchanged, invalid };
+  }
 }
 
 export const guruService = new GuruService();

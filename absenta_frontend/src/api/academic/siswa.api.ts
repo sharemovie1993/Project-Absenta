@@ -277,3 +277,11 @@ export const mapPpdbStudents = async (
     data: { siswa_ids, target_kelas_id }
   });
 };
+
+export const normalizeSiswaWaPhones = async (): Promise<{
+  success: boolean;
+  message: string;
+  data: { total: number; updated: number; unchanged: number; invalid: number };
+}> => {
+  return requestWithFallback('post', '/academic/siswa/normalize-wa-phones');
+};
