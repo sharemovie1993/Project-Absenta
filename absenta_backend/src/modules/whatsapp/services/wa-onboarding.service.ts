@@ -684,155 +684,86 @@ export class WaOnboardingService {
     const detail = String(user.detailInfo || '').trim();
     const detailUpper = detail.toUpperCase();
 
-    // 1. KEPALA SEKOLAH
-    if (detailUpper.includes('KEPALA SEKOLAH') || detailUpper.includes('KEPSEK')) {
-      return (
-        `👋 *Yth. Bapak/Ibu Kepala Sekolah ${user.nama}*\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Pimpinan Satuan Pendidikan, Anda dapat memantau & mengawasi operasional sekolah secara langsung via WhatsApp Bot:\n\n` +
-        `[1] 📊 Ringkasan & Monitoring Kehadiran Siswa Global\n` +
-        `[2] ⏰ Presensi & Rekap Kehadiran Guru/Staf\n` +
-        `[3] 📚 Monitoring Jadwal KBM & Posisi Guru Saat Ini\n` +
-        `[4] 📋 Laporan Rekapitulasi Presensi Harian\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah* untuk notifikasi pimpinan.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
+    // Position Flags
+    const isKepsek = detailUpper.includes('KEPALA SEKOLAH') || detailUpper.includes('KEPSEK');
+    const isWaliKelas = detailUpper.includes('WALI KELAS') || detailUpper.includes('WALIKELAS');
+    const isBpBk = detailUpper.includes('BP') || detailUpper.includes('BK') || detailUpper.includes('KONSELING');
+    const isKoperasi = detailUpper.includes('KOPERASI');
+    const isWaka = detailUpper.includes('WAKA') || detailUpper.includes('KURIKULUM') || detailUpper.includes('KESISWAAN') || detailUpper.includes('HUBIN') || detailUpper.includes('SARPRAS');
+    const isKaprog = detailUpper.includes('KAPROG');
+    const isGerbang = detailUpper.includes('GERBANG') || detailUpper.includes('SATPAM');
+    const isPetugasKelas = detailUpper.includes('PETUGAS') && user.userType === 'SISWA';
 
-    // 2. WALI KELAS
-    if (detailUpper.includes('WALI KELAS') || detailUpper.includes('WALIKELAS')) {
-      return (
-        `👋 *Halo Bapak/Ibu ${user.nama}* (${detail})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Wali Kelas, Anda dapat memantau & mengelola kelas binaan Anda secara langsung:\n\n` +
-        `[1] 📚 Jadwal KBM & Sesi Pembelajaran Kelas\n` +
-        `[2] ⏰ Presensi & Rekap Kehadiran Guru\n` +
-        `[3] 🏫 Portal Wali Kelas (Cek Absensi, Poin, & Kontak Ortu Siswa Binaan)\n` +
-        `[4] ✉️ Verifikasi Surat Izin / Sakit Siswa Binaan\n` +
-        `[8] 📍 Posisi & Status Mengajar Guru\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // 3. GURU BP/BK
-    if (detailUpper.includes('BP') || detailUpper.includes('BK') || detailUpper.includes('KONSELING')) {
-      return (
-        `👋 *Halo Bapak/Ibu ${user.nama}* (${detail || 'Guru BP/BK Konseling'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Guru BP/BK, Anda dapat memantau kedisiplinan & bimbingan siswa via WhatsApp Bot:\n\n` +
-        `[1] 📚 Jadwal KBM & Rekap Kehadiran\n` +
-        `[2] ⏰ Presensi Guru\n` +
-        `[3] 🏆 Portal BP/BK (Poin Pelanggaran, Prestasi, & Bimbingan Konseling Siswa)\n` +
-        `[4] 📞 Kontak Orang Tua Siswa untuk Pembinaan\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // 4. KOPERASI
-    if (detailUpper.includes('KOPERASI')) {
-      return (
-        `👋 *Halo Bapak/Ibu ${user.nama}* (${detail || 'Pengurus Koperasi'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Pengurus/Anggota Koperasi Sekolah, Anda dapat mengakses layanan koperasi via WhatsApp Bot:\n\n` +
-        `[1] 🏪 Portal Koperasi (Cek Saldo, Transaksi POS, & Simpanan Anggota)\n` +
-        `[2] 📊 Rekap Transaksi & Poin Koperasi\n` +
-        `[3] 📚 Jadwal KBM & Presensi Guru\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // 5. WAKA SEKOLAH
-    if (detailUpper.includes('WAKA') || detailUpper.includes('KURIKULUM') || detailUpper.includes('KESISWAAN') || detailUpper.includes('HUBIN') || detailUpper.includes('SARPRAS')) {
-      return (
-        `👋 *Yth. Bapak/Ibu ${user.nama}* (${detail || 'Waka Sekolah'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Waka Sekolah, Anda dapat mengakses menu manajerial sekolah secara langsung:\n\n` +
-        `[1] 📚 Jadwal KBM & Monitoring Pembelajaran\n` +
-        `[2] 🏆 Rekap Kedisiplinan & Presensi Siswa\n` +
-        `[3] 📍 Posisi & Status Mengajar Guru\n` +
-        `[4] 📋 Laporan Transisi & Operasional Sekolah\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // 6. PETUGAS GERBANG / SATPAM
-    if (detailUpper.includes('GERBANG') || detailUpper.includes('SATPAM')) {
-      return (
-        `👋 *Halo Bapak/Ibu ${user.nama}* (${detail || 'Petugas Gerbang'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Petugas Gerbang/Satpam, Anda dapat menggunakan layanan presensi & kedisiplinan gerbang:\n\n` +
-        `[1] 🛡️ Scan RFID / QR Code Gate Masuk & Pulang\n` +
-        `[2] 🟨 Penindakan Kedisiplinan Langsung di Gerbang\n` +
-        `[3] 📋 Cek Daftar Siswa Belum Absen / Terlambat\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // 7. PETUGAS ABSENSI KELAS (SISWA)
-    if (detailUpper.includes('PETUGAS') && user.userType === 'SISWA') {
-      return (
-        `👋 *Halo ${user.nama}* (${detail || 'Petugas Absensi Kelas'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Sebagai Petugas Absensi Kelas, kamu bertugas mengentri kehadiran & jurnal KBM di kelasmu:\n\n` +
-        `[1] 📋 Presensi Sesi KBM Kelas (Input Hadir/Sakit/Izin & Jurnal Guru)\n` +
-        `[2] 👤 Profil & Data RFID\n` +
-        `[3] ⏰ Status Presensi Gate Masuk/Pulang\n` +
-        `[4] 📅 Jadwal Pelajaran Kelas\n\n` +
-        `💡 *Himbauan*: Jangan lupa simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // GURU UMUM
-    if (user.userType === 'GURU') {
-      return (
-        `👋 *Halo Bapak/Ibu ${user.nama}* (${detail || 'Guru'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Bapak/Ibu dapat menggunakan layanan informasi cepat WA Bot ini dengan mengetik perintah berikut:\n\n` +
-        `[1] 📚 Jadwal KBM (Hari Ini, 1 Minggu & Jadwal Kelas)\n` +
-        `[2] ⏰ Presensi & Rekap Kehadiran Guru\n` +
-        `[3] 🏫 Portal Wali Kelas & Kontak Ortu Siswa\n` +
-        `[8] 📍 Posisi & Status Mengajar Guru saat ini\n` +
-        `[9] 🟨 Siswa Izin Keluar (Khusus Guru Piket)\n\n` +
-        `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah* agar notifikasi & informasi penting sekolah dapat diterima dengan lancar.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
-    }
-
-    // SISWA UMUM
+    // Salutation & Header
+    let salutation = 'Halo';
+    let honorific = 'Bapak/Ibu ';
     if (user.userType === 'SISWA') {
-      return (
-        `👋 *Halo ${user.nama}* (${detail || 'Siswa'})\n\n` +
-        `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-        `Kamu dapat mengecek informasi sekolahmu secara langsung di sini:\n\n` +
-        `[1] 👤 Profil & Data RFID\n` +
-        `[2] ⏰ Status Presensi Gate Masuk/Pulang\n` +
-        `[3] 🏆 Catatan Poin Pelanggaran & Prestasi\n` +
-        `[4] 📅 Jadwal Pelajaran Hari Ini & 1 Minggu\n` +
-        `[5] 📊 Rekap Bulanan Kehadiran\n\n` +
-        `💡 *Himbauan*: Jangan lupa simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-        `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-      );
+      honorific = '';
+    } else if (isKepsek || isWaka) {
+      salutation = 'Yth.';
     }
 
-    // ORTU
-    return (
-      `👋 *Halo Bapak/Ibu ${user.nama}* (${detail || 'Orang Tua'})\n\n` +
-      `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n` +
-      `Bapak/Ibu dapat memantau kehadiran & perkembangan Ananda di sekolah secara langsung via WhatsApp Bot:\n\n` +
-      `[1] ⏰ Status Presensi Gate & KBM Ananda Hari Ini\n` +
-      `[2] 📊 Rekapitulasi Kehadiran Bulanan\n` +
-      `[3] 🏆 Catatan Poin Kedisiplinan & Prestasi\n` +
-      `[4] 📞 Kontak Info Wali Kelas Ananda\n` +
-      `[5] ✉️ Pengajuan Surat Izin / Sakit Ananda via WA\n\n` +
-      `💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
-      `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
-    );
+    const titleSuffix = detail ? ` (${detail})` : (user.userType === 'GURU' ? ' (Guru)' : user.userType === 'SISWA' ? ' (Siswa)' : ' (Orang Tua)');
+    let header = `👋 *${salutation} ${honorific}${user.nama}*${titleSuffix}\n\n` +
+      `Selamat datang di Layanan WhatsApp Bot Resmi *Absenta* (${schoolName}).\n\n`;
+
+    const menuItems: string[] = [];
+
+    if (isPetugasKelas) {
+      header += `Sebagai *Petugas Absensi Kelas*, kamu dapat mengentri presensi & jurnal KBM di kelasmu via WA Bot:\n\n`;
+      menuItems.push(`[1] 📋 Presensi Sesi KBM Kelas (Input Hadir/Sakit/Izin & Jurnal Guru)`);
+      menuItems.push(`[2] 👤 Profil & Data RFID`);
+      menuItems.push(`[3] ⏰ Status Presensi Gate Masuk/Pulang`);
+      menuItems.push(`[4] 📅 Jadwal Pelajaran Kelas`);
+    } else if (isGerbang) {
+      header += `Sebagai *Petugas Gerbang*, Anda dapat mengawasi presensi gate & kedisiplinan gerbang:\n\n`;
+      menuItems.push(`[1] 🛡️ Scan RFID / QR Code Gate Masuk & Pulang`);
+      menuItems.push(`[2] 🟨 Penindakan Kedisiplinan Langsung di Gerbang`);
+      menuItems.push(`[3] 📋 Cek Daftar Siswa Belum Absen / Terlambat`);
+    } else if (user.userType === 'GURU') {
+      header += `Bapak/Ibu dapat menggunakan layanan WA Bot sesuai dengan persona & jabatan Anda:\n\n`;
+      menuItems.push(`[1] 📚 Jadwal KBM (Hari Ini, 1 Minggu & Jadwal Kelas)`);
+      menuItems.push(`[2] ⏰ Presensi & Rekap Kehadiran Guru`);
+
+      if (isWaliKelas) {
+        menuItems.push(`[3] 🏫 Portal Wali Kelas (Monitoring Absensi, Poin, & Kontak Ortu Siswa Binaan)`);
+      } else if (isBpBk) {
+        menuItems.push(`[3] 🏆 Portal BP/BK (Poin Pelanggaran, Prestasi, & Bimbingan Konseling)`);
+      } else {
+        menuItems.push(`[3] 🏫 Portal Wali Kelas & Kontak Ortu Siswa`);
+      }
+
+      if (isKepsek || isWaka || isKaprog) {
+        menuItems.push(`[4] 📊 Supervisi & Monitoring Operasional Manajerial`);
+      }
+
+      if (isKoperasi) {
+        menuItems.push(`[7] 🏪 Portal Koperasi (Saldo, Transaksi POS, & Simpanan Anggota)`);
+      }
+
+      menuItems.push(`[8] 📍 Posisi & Status Mengajar Guru Saat Ini`);
+      menuItems.push(`[9] 🟨 Siswa Izin Keluar (Khusus Guru Piket)`);
+    } else if (user.userType === 'SISWA') {
+      header += `Kamu dapat mengecek informasi sekolahmu secara langsung di sini:\n\n`;
+      menuItems.push(`[1] 👤 Profil & Data RFID`);
+      menuItems.push(`[2] ⏰ Status Presensi Gate Masuk/Pulang`);
+      menuItems.push(`[3] 🏆 Catatan Poin Pelanggaran & Prestasi`);
+      menuItems.push(`[4] 📅 Jadwal Pelajaran Hari Ini & 1 Minggu`);
+      menuItems.push(`[5] 📊 Rekap Bulanan Kehadiran`);
+    } else {
+      // ORTU
+      header += `Bapak/Ibu dapat memantau kehadiran & perkembangan Ananda di sekolah via WA Bot:\n\n`;
+      menuItems.push(`[1] ⏰ Status Presensi Gate & KBM Ananda Hari Ini`);
+      menuItems.push(`[2] 📊 Rekapitulasi Kehadiran Bulanan`);
+      menuItems.push(`[3] 🏆 Catatan Poin Kedisiplinan & Prestasi`);
+      menuItems.push(`[4] 📞 Kontak Info Wali Kelas Ananda`);
+      menuItems.push(`[5] ✉️ Pengajuan Surat Izin / Sakit Ananda via WA`);
+    }
+
+    const footer = `\n\n💡 *Himbauan*: Mohon simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah* agar informasi penting sekolah dapat diterima dengan lancar.\n\n` +
+      `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`;
+
+    return header + menuItems.join('\n') + footer;
   }
 
   /**
