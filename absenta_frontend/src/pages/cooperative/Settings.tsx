@@ -55,6 +55,7 @@ const Settings: React.FC = React.memo(() => {
   // Category Modal State
   const [showCatModal, setShowCatModal] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<SavingCategory | null>(null);
+  const [savingCat, setSavingCat] = useState(false);
   
   // Category Form State
   const [catFormData, setCatFormData] = useState({
