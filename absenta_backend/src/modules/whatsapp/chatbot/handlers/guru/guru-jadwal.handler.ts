@@ -519,10 +519,13 @@ export class GuruJadwalHandler {
    */
   /** Hapus gelar akademik dari nama guru agar tampil singkat di WA */
   private static pruneGelar(nama: string): string {
-    return nama
-      .replace(/,?\s*(S\.Pd\.I?|S\.Pd|S\.T\.I?|S\.T|M\.Pd\.I?|M\.Pd|S\.Kom|S\.E|M\.M|M\.Si|M\.T|S\.Si|S\.Ag|S\.H|M\.Ag|Dr\.|Prof\.|Drs\.|Dra\.|A\.Md\.Kep|A\.Md|Ir\.)\s*/gi, '')
+    // Panjang variants diurutkan terdahulu agar tidak partial-match (S.ST sebelum S.T)
+    const stripped = nama
+      .replace(/,?\s*(Prof\.|Dr\.|Drs\.|Dra\.|Ir\.|H\.|Hj\.|S\.ST\.?|S\.Tr\.?|S\.Pd\.I|S\.Pd|S\.T\.I|S\.T|M\.Pd\.I|M\.Pd|S\.Kom|S\.Gz|S\.Sos|S\.IP|S\.STP|S\.Si|S\.Ag|S\.H|S\.E|M\.Kom|M\.Si|M\.T|M\.M|M\.Ag|M\.H|A\.Md\.Kep|A\.Md)\s*/gi, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
+    // Truncate maksimal 12 karakter, tambah ellipsis jika terpotong
+    return stripped.length > 12 ? stripped.slice(0, 12) + '…' : stripped;
   }
 
   static async handlePosisiGuru(ctx: ChatbotContext): Promise<string> {
