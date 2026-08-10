@@ -42,18 +42,32 @@ export class WaOnboardingService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
 
-    // 1. Get all INBOUND chat logs for this tenant to index communicated phone numbers
-    const chatLogs = await prisma.waChatLog.findMany({
-      where: { tenant_id: tenantId },
-      select: { phone: true, created_at: true, direction: true },
-      orderBy: { created_at: 'desc' },
-    });
+    // 1. Get all chat logs & LID mappings for this tenant to index communicated phone numbers
+    const [chatLogs, lidMappings] = await Promise.all([
+      prisma.waChatLog.findMany({
+        where: { tenant_id: tenantId },
+        select: { phone: true, created_at: true },
+        orderBy: { created_at: 'desc' },
+      }),
+      prisma.waLidMapping.findMany({
+        where: { tenant_id: tenantId },
+        select: { phone: true, created_at: true },
+        orderBy: { created_at: 'desc' },
+      }),
+    ]);
 
     const commMap = new Map<string, Date>();
     chatLogs.forEach((log) => {
       const norm = this.normalizePhone(log.phone);
       if (norm && !commMap.has(norm)) {
         commMap.set(norm, log.created_at);
+      }
+    });
+
+    lidMappings.forEach((mapping) => {
+      const norm = this.normalizePhone(mapping.phone);
+      if (norm && !commMap.has(norm)) {
+        commMap.set(norm, mapping.created_at || new Date());
       }
     });
 
@@ -159,44 +173,6 @@ export class WaOnboardingService {
           lastCommAt: lastComm,
         });
       });
-
-      // Additional Ortu from Siswa model (nama_ayah / nama_ibu / no_hp)
-      const siswaWithOrtuHp = await prisma.siswa.findMany({
-        where: {
-          tenant_id: tenantId,
-          no_hp: { not: null },
-        },
-        select: {
-          id: true,
-          nama_siswa: true,
-          nama_ayah: true,
-          nama_ibu: true,
-          no_hp: true,
-          Kelas: { select: { nama_kelas: true } },
-        },
-      });
-
-      // Filter out duplicate phone numbers already added from OrangTua table
-      const existingPhones = new Set(allUsers.map((u) => this.normalizePhone(u.no_hp)));
-      siswaWithOrtuHp.forEach((s) => {
-        if (!s.no_hp) return;
-        const norm = this.normalizePhone(s.no_hp);
-        if (existingPhones.has(norm)) return;
-        existingPhones.add(norm);
-
-        const ortuNama = s.nama_ayah || s.nama_ibu || `Ortu ${s.nama_siswa}`;
-        const lastComm = commMap.get(norm) || null;
-
-        allUsers.push({
-          id: `siswa-ortu-${s.id}`,
-          userType: 'ORTU',
-          nama: ortuNama,
-          no_hp: s.no_hp,
-          detailInfo: `Ortu dari ${s.nama_siswa} (${s.Kelas?.nama_kelas || '-'})`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
     }
 
     // 5. Calculate summary statistics
@@ -285,7 +261,8 @@ export class WaOnboardingService {
         `[2] ⏰ Status Presensi Gate Masuk/Pulang\n` +
         `[3] 🏆 Catatan Poin Pelanggaran & Prestasi\n` +
         `[4] 📅 Jadwal Pelajaran Hari Ini & 1 Minggu\n` +
-        `[5] 📊 Rekap Bulanan Kehadiran\n\n` +
+        `[5] 📊 Rekap Bulanan Kehadiran\n` +
+        `[6] 📋 Presensi Guru KBM (Khusus Petugas Absensi Kelas)\n\n` +
         `💡 *Himbauan*: Jangan lupa simpan nomor WhatsApp ini sebagai *WA Bot Absenta Sekolah*.\n\n` +
         `Ketik *[0]* atau *MENU* untuk mencoba layanan bot! 😊`
       );

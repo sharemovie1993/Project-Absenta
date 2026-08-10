@@ -5,6 +5,7 @@ import { authorizationService } from '@/modules/auth/services/authorization.serv
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { DataScope } from '@/types/fastify';
 import { applyDataScope } from '@/utils/applyDataScope';
+import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 
 export class DashboardService {
   
@@ -381,18 +382,23 @@ export class DashboardService {
   /**
    * 🆕 Get Kurikulum Global Monitoring Data
    */
+  /**
+   * 🆕 Get Kurikulum Global Monitoring Data
+   */
   async getKurikulumMonitoringGlobal(tenantId: string | null, tanggal?: string) {
-    const dateStr = tanggal || new Date().toISOString().split('T')[0];
+    const tz = await getTenantTimezone(tenantId);
+    const dateStr = tanggal || new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
+    const offsetStr = getTenantOffsetString(tz);
     const cacheKey = CACHE_KEYS.DASHBOARD.KURIKULUM_MONITORING(tenantId, dateStr);
 
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
-        const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-        startOfDay.setHours(startOfDay.getHours() - 12);
+        const startOfDay = new Date(`${dateStr}T00:00:00.000${offsetStr}`);
+        const endOfDay = new Date(`${dateStr}T23:59:59.999${offsetStr}`);
 
-        const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
-        endOfDay.setHours(endOfDay.getHours() + 12);
+        const rangeStart = new Date(startOfDay.getTime() - 12 * 3600 * 1000);
+        const rangeEnd = new Date(endOfDay.getTime() + 12 * 3600 * 1000);
 
         const where: any = { tenant_id: tenantId || undefined };
 
@@ -402,7 +408,7 @@ export class DashboardService {
         const allSessionsInExtendedRange = await prisma.sesiAbsensi.findMany({
           where: {
             ...where,
-            tanggal: { gte: startOfDay, lte: endOfDay }
+            tanggal: { gte: rangeStart, lte: rangeEnd }
           },
           include: {
             AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
@@ -411,18 +417,8 @@ export class DashboardService {
         });
 
         const sessionList = allSessionsInExtendedRange.filter(s => {
-          const sDate = new Date(s.tanggal);
-          const y = sDate.getFullYear();
-          const m = sDate.getMonth() + 1;
-          const d = sDate.getDate();
-          
-          const utcDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          
-          const sDatePlus7 = new Date(sDate);
-          sDatePlus7.setHours(sDatePlus7.getHours() + 7);
-          const wibDate = sDatePlus7.toISOString().split('T')[0];
-          
-          return utcDate === dateStr || wibDate === dateStr;
+          const sDateStr = new Date(s.tanggal).toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
+          return sDateStr === dateStr;
         });
 
         const activeClasses = sessionList.filter(s => s.status === 'BERLANGSUNG').length;
@@ -454,7 +450,9 @@ export class DashboardService {
           teacherOnTime: 0,
           teacherLate: 0,
           teacherNotArrived: 0,
-          teacherAlpa: 0
+          teacherAlpa: 0,
+          teacherIzin: 0,
+          teacherSakit: 0,
         };
 
         sessionList.forEach(s => {
@@ -470,22 +468,26 @@ export class DashboardService {
           if (s.ProgresMateri) sessionStats.withJournal++;
 
           const absenGuru = s.AbsenGuru?.[0];
-          const hasTap = !!absenGuru?.waktu_tap;
-
           const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
-          const isPresent = sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap;
+          const isExplicitNonHadir = ['IZIN', 'SAKIT', 'ALPA'].includes(sStatus);
+          const hasTap = !isExplicitNonHadir && !!absenGuru?.waktu_tap;
+          const isPresent = (sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap) && !isExplicitNonHadir;
 
           if (isPresent) {
             if (absenGuru?.is_terlambat) sessionStats.teacherLate++;
             else sessionStats.teacherOnTime++;
+          } else if (sStatus === 'IZIN') {
+            sessionStats.teacherIzin++;
+          } else if (sStatus === 'SAKIT') {
+            sessionStats.teacherSakit++;
+          } else if (sStatus === 'ALPA') {
+            sessionStats.teacherAlpa++;
           } else if (sStatus === 'BELUM_HADIR' || sStatus === 'BELUM_TAP' || sStatus === '' || !absenGuru) {
             if (isLive) {
               sessionStats.teacherNotArrived++;
             } else if (isFinished) {
               sessionStats.teacherAlpa++;
             }
-          } else if (sStatus === 'ALPA') {
-            sessionStats.teacherAlpa++;
           }
         });
 
