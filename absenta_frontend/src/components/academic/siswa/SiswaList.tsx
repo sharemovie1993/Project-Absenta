@@ -1030,7 +1030,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     </div>
   ), [onView, getStatusBadge]);
 
-  if (isLoading) {
+  if (isListLoading) {
     return (
       <div className="flex justify-center p-8">
         <Loader size="lg" />
