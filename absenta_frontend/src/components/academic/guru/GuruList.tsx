@@ -45,6 +45,7 @@ import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { ToolsModal, type ToolKey } from '../../shared/ToolsModal';
 import { WaNormalizationModal } from '../../shared/WaNormalizationModal';
+import { GuruBulkPasswordModal } from './GuruBulkPasswordModal';
 import { getGuruList, deleteGuru, updateGuru, guruQueryKeys, normalizeGuruWaPhones } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -97,6 +98,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
+  const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
   
   // States untuk Analitis & Validasi Data NIP Guru
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -1066,6 +1068,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           else if (key === 'rfidPairing') setIsRfidPairingOpen(true);
           else if (key === 'photoStudio') setIsPhotoStudioOpen(true);
           else if (key === 'waNormalize') setIsWaNormalizeOpen(true);
+          else if (key === 'bulkPassword') setIsBulkPasswordOpen(true);
         }}
       />
 
@@ -1075,6 +1078,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         targetType="guru"
         onRunNormalization={normalizeGuruWaPhones}
         onSuccessRefresh={() => fetchGurus(currentPage, debouncedSearchTerm)}
+      />
+
+      <GuruBulkPasswordModal
+        isOpen={isBulkPasswordOpen}
+        onClose={() => setIsBulkPasswordOpen(false)}
+        selectedGuruIds={Array.from(selectedIds)}
+        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
       />
     </div>
   );

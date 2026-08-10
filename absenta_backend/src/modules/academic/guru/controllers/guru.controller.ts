@@ -21,6 +21,29 @@ interface ApiResponse<T = any> {
 }
 
 export class GuruController {
+  async bulkResetPassword(request: any, reply: any): Promise<ApiResponse> {
+    try {
+      const scope = request.dataScope;
+      const tenantId = request.tenantId;
+      const payload = request.body;
+
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id tidak ditemukan.' };
+      }
+
+      const result = await guruService.bulkResetPassword(tenantId, scope, payload);
+      return reply.send(result);
+    } catch (error: any) {
+      console.error('Error in bulkResetPassword guru:', error);
+      reply.status(400);
+      return {
+        success: false,
+        message: error?.message || 'Gagal memproses reset password massal guru.',
+      };
+    }
+  }
+
   async getAllGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
       const scope = request.dataScope;

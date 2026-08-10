@@ -41,6 +41,8 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useJenjang } from '../../../hooks/useJenjang';
 
+import { SiswaBulkPasswordModal } from './SiswaBulkPasswordModal';
+
 // Lazy load Table to improve mobile performance (TBT)
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 
@@ -92,6 +94,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
+  const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
 
   // Bulk Class Change States
   const [isBulkClassModalOpen, setIsBulkClassModalOpen] = useState(false);
@@ -2081,6 +2084,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           else if (key === 'rfidPairing') setIsRfidPairingOpen(true);
           else if (key === 'photoStudio') setIsPhotoStudioOpen(true);
           else if (key === 'waNormalize') setIsWaNormalizeOpen(true);
+          else if (key === 'bulkPassword') setIsBulkPasswordOpen(true);
         }}
       />
 
@@ -2090,6 +2094,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         targetType="siswa"
         onRunNormalization={normalizeSiswaWaPhones}
         onSuccessRefresh={() => fetchSiswas(currentPage, searchTerm)}
+      />
+
+      <SiswaBulkPasswordModal
+        isOpen={isBulkPasswordOpen}
+        onClose={() => setIsBulkPasswordOpen(false)}
+        selectedSiswaIds={Array.from(selectedIds)}
+        selectedKelasId={selectedKelasFilter}
+        kelasOptions={kelasList.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
+        onSuccess={() => fetchSiswas(currentPage, searchTerm)}
       />
     </div>
   );

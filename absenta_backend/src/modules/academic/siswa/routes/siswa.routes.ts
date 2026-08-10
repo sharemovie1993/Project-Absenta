@@ -39,6 +39,17 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.normalizeWaPhones(request, reply);
   });
 
+  // POST /siswa/bulk-reset-password - Mass reset/generate student passwords
+  fastify.post('/bulk-reset-password', {
+    preHandler: [
+        requireCapability('academic.students.manage'),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.bulkResetPassword(request, reply);
+  });
+
   // GET /siswa/:id/history - Get siswa academic history
   fastify.get('/:id/history', {
     preHandler: [

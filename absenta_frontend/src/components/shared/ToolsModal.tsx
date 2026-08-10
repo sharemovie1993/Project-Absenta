@@ -8,10 +8,11 @@ import {
   Camera, 
   PhoneCall, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 
-export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize';
+export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize' | 'bulkPassword';
 
 interface ToolsModalProps {
   isOpen: boolean;
@@ -29,6 +30,16 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
   const isSiswa = targetType === 'siswa';
 
   const tools = [
+    {
+      key: 'bulkPassword' as ToolKey,
+      title: isSiswa ? 'Reset Password Massal (NISN)' : 'Reset Password Massal (NIP)',
+      description: isSiswa 
+        ? 'Generate / reset password akun siswa massal dari NISN/NIS & buat akun User otomatis.'
+        : 'Generate / reset password akun guru massal dari NIP & buat akun User otomatis.',
+      icon: KeyRound,
+      color: 'text-rose-500 bg-rose-500/10 border-rose-500/20 dark:bg-rose-500/20',
+      badge: 'Keamanan',
+    },
     {
       key: 'analysis' as ToolKey,
       title: isSiswa ? 'Analisis Data Siswa' : 'Analisis Data NIP Guru',

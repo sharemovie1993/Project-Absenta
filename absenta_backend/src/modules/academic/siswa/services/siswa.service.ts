@@ -29,9 +29,21 @@ import { mapPpdbStudentsCommand } from './commands/map-ppdb-students.command';
 
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
+import { bulkResetSiswaPasswordCommand } from './commands/bulk-reset-siswa-password.command';
+
 export type { PaginationParams, SiswaResponse, PaginatedSiswaResponse, CreateSiswaInput, UpdateSiswaInput } from './siswa.types';
 
 export class SiswaService {
+  async bulkResetPassword(
+    tenantId: string,
+    org: any,
+    payload: any,
+  ): Promise<any> {
+    const res = await bulkResetSiswaPasswordCommand({ tenantId, org }, payload);
+    await cacheInvalidationService.invalidateSiswaCache(tenantId);
+    return res;
+  }
+
   async getAllSiswa(tenantId: string, org: any, params: PaginationParams): Promise<PaginatedSiswaResponse> {
     return getAllSiswaQuery({ tenantId, org }, params);
   }

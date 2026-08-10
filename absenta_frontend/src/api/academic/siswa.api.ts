@@ -285,3 +285,23 @@ export const normalizeSiswaWaPhones = async (): Promise<{
 }> => {
   return requestWithFallback('post', '/academic/siswa/normalize-wa-phones');
 };
+
+export interface BulkResetSiswaPasswordPayload {
+  mode: 'NISN' | 'NIS' | 'CUSTOM';
+  customPassword?: string;
+  targetScope: 'ALL' | 'KELAS' | 'SELECTED';
+  kelas_id?: string;
+  siswa_ids?: string[];
+}
+
+export const bulkResetSiswaPassword = async (payload: BulkResetSiswaPasswordPayload): Promise<{
+  success: boolean;
+  message: string;
+  total: number;
+  updated: number;
+  created: number;
+  failed: number;
+  errors?: any[];
+}> => {
+  return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload });
+};

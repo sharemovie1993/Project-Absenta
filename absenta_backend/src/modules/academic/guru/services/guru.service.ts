@@ -9,6 +9,7 @@ import { getGuruDocumentsQuery } from './queries/get-guru-documents.query';
 import { MultipartFile } from '@fastify/multipart';
 import { removeLidMappingByPhone } from '../../../whatsapp/services/wa-chatbot-resolver.service';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { bulkResetGuruPasswordCommand } from './commands/bulk-reset-guru-password.command';
 
 export interface CreateGuruInput {
   user_id?: string | null;
@@ -98,6 +99,16 @@ export interface PaginatedGuruResponse {
 }
 
 export class GuruService {
+  async bulkResetPassword(
+    tenantId: string,
+    org: any,
+    payload: any
+  ): Promise<any> {
+    const res = await bulkResetGuruPasswordCommand({ tenantId, org }, payload);
+    await cacheInvalidationService.invalidateTenantCache(tenantId);
+    return res;
+  }
+
   async getAllGuru(scope: DataScope, params?: PaginationParams): Promise<PaginatedGuruResponse> {
     let whereClause: any = {};
 

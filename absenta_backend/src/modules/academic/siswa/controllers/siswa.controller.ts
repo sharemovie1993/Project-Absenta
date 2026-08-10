@@ -11,6 +11,27 @@ import { RoleName } from '../../../../constants/enums';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export const siswaController = {
+  async bulkResetPassword(request: any, reply: any) {
+    try {
+      const scope = (request as any).organizationalScope;
+      const tenantId = request.tenantId;
+      const payload = request.body;
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+
+      const result = await siswaService.bulkResetPassword(tenantId, scope, payload);
+      return reply.send(result);
+    } catch (error: any) {
+      console.error('Error in bulkResetPassword siswa:', error);
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal memproses reset password massal siswa.',
+      });
+    }
+  },
+
   async getAllSiswa(request: any, reply: any) {
     try {
       const scope = (request as any).organizationalScope;

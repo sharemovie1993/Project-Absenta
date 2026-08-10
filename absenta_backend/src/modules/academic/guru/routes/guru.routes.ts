@@ -38,6 +38,17 @@ export default async function guruRoutes(fastify: any) {
     return guruController.normalizeWaPhones(request, reply);
   });
 
+  // POST /guru/bulk-reset-password - Mass reset/generate teacher passwords
+  fastify.post('/bulk-reset-password', {
+    preHandler: [
+      requireCapability('academic.teachers.manage'),
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.bulkResetPassword(request, reply);
+  });
+
   // GET /guru/:id - Get guru by ID
   fastify.get('/:id', {
     preHandler: [

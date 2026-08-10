@@ -154,3 +154,22 @@ export const normalizeGuruWaPhones = async (): Promise<{
 }> => {
   return requestWithFallback('post', '/academic/guru/normalize-wa-phones');
 };
+
+export interface BulkResetGuruPasswordPayload {
+  mode: 'NIP' | 'CUSTOM';
+  customPassword?: string;
+  targetScope: 'ALL' | 'SELECTED';
+  guru_ids?: string[];
+}
+
+export const bulkResetGuruPassword = async (payload: BulkResetGuruPasswordPayload): Promise<{
+  success: boolean;
+  message: string;
+  total: number;
+  updated: number;
+  created: number;
+  failed: number;
+  errors?: any[];
+}> => {
+  return requestWithFallback('post', '/academic/guru/bulk-reset-password', { data: payload });
+};
