@@ -369,7 +369,188 @@ export class WaOnboardingService {
       });
     }
 
-    // 9. Calculate summary statistics
+    // 9. Fetch Toolman / Laboran
+    if (roleFilter === 'TOOLMAN') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: 'TOOLMAN' },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Position: { select: { name: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Toolman';
+        const posTitle = asg.Position?.name || 'Toolman Bengkel / Lab';
+
+        const itemKey = `toolman-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Staf: ${posTitle}`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 10. Fetch Staf Tata Usaha (TU*)
+    if (roleFilter === 'TU') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: {
+            OR: [
+              { code: { in: ['TU', 'TU_KEPALA', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] } },
+              { code: { startsWith: 'TU_' } },
+            ],
+          },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Position: { select: { name: true, code: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Staf Tata Usaha';
+        const posTitle = asg.Position?.name || `TU (${asg.Position?.code})`;
+
+        const itemKey = `tu-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Tata Usaha: ${posTitle}`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 11. Fetch Guru BP/BK
+    if (roleFilter === 'BPBK') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: 'BPBK' },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Position: { select: { name: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Guru BP/BK';
+
+        const itemKey = `bpbk-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Guru BP/BK Konseling`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 12. Fetch Pengurus & Staf Koperasi
+    if (roleFilter === 'KOPERASI') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: {
+            OR: [
+              { code: { in: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI', 'KOPERASI'] } },
+              { code: { contains: 'KOPERASI' } },
+            ],
+          },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Position: { select: { name: true, code: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Pengurus Koperasi';
+        const posTitle = asg.Position?.name || `Koperasi (${asg.Position?.code})`;
+
+        const itemKey = `koperasi-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Koperasi: ${posTitle}`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 13. Calculate summary statistics
     const totalGuru = allUsers.filter((u) => u.userType === 'GURU').length;
     const totalSiswa = allUsers.filter((u) => u.userType === 'SISWA').length;
     const totalOrtu = allUsers.filter((u) => u.userType === 'ORTU').length;
