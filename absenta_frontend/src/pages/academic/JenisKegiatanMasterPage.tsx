@@ -160,7 +160,6 @@ export default React.memo(function JenisKegiatanMasterPage() {
         ]
       }}
       canView={true}
-      isLoading={authLoading}
       hardeningModuleKey="jeniskegiatanmasterpage"
     >
       <SectionCard

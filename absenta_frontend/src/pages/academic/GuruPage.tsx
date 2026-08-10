@@ -177,7 +177,6 @@ export const GuruPage: React.FC = () => {
         ]
       }}
       canView={canView}
-      isLoading={authLoading}
       permissionMessage="Anda tidak memiliki izin untuk mengakses data guru."
       hardeningModuleKey="academic_guru"
     >

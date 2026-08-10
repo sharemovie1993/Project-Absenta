@@ -138,7 +138,6 @@ export const SemesterPage: React.FC = () => {
         ]
       }}
       canView={canView}
-      isLoading={authLoading}
       permissionMessage="Anda tidak memiliki izin untuk mengakses halaman data semester."
       hardeningModuleKey="semesterpage"
     >

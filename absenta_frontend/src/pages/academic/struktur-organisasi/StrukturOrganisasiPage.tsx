@@ -132,14 +132,6 @@ const StrukturOrganisasiPage: React.FC = () => {
     { label: 'Struktur Organisasi' }
   ], []);
 
-  if (authLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader size="lg" />
-      </div>
-    );
-  }
-
   if (!canManageAcademic) {
     return (
       <div className="container mx-auto px-4 py-8">

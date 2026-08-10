@@ -197,7 +197,6 @@ export const JurusanPage: React.FC = () => {
         ]
       }}
       canView={canView}
-      isLoading={authLoading}
       permissionMessage="Anda tidak memiliki izin untuk mengakses data jurusan."
       hardeningModuleKey="jurusanpage"
     >
