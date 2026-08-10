@@ -810,7 +810,7 @@ export class GuruJadwalHandler {
     // Ambil semua jadwal hari ini
     const jadwalList: any[] = await (prisma as any).jadwalKBM.findMany({
       where: { tenant_id: tenantId, semester_id: activeSem.id, hari: currentDay as any },
-      include: { Guru: { select: { nama_guru: true } }, Kelas: { select: { nama_kelas: true } }, MataPelajaran: { select: { nama_mapel: true } } },
+      include: { Guru: { select: { nama_guru: true } }, Kelas: { select: { nama_kelas: true } }, Mapel: { select: { nama_mapel: true } } },
       orderBy: [{ jam_mulai: 'asc' }],
     });
 
