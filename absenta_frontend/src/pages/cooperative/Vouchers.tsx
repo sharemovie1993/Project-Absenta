@@ -124,6 +124,7 @@ const Vouchers: React.FC = React.memo(() => {
   const [memberInfo, setMemberInfo] = useState<any>(null);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   // Gating Logic
   const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
