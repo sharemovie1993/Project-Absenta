@@ -91,34 +91,52 @@ export async function createSiswaCommand(
   }
 
   let nisToUse = String(validatedInput.nis ?? '').trim();
-  let existingSiswaByNis: any = null;
+  let nisnInput = validatedInput.nisn ? String(validatedInput.nisn).trim() : '';
+  let nikInput = validatedInput.nik ? String(validatedInput.nik).trim() : '';
+  let existingSiswa: any = null;
 
+  // 1. Try matching by NIS if provided
   if (nisToUse) {
-    existingSiswaByNis = await siswaDb.siswa.findFirst({
+    existingSiswa = await siswaDb.siswa.findFirst({
       where: { tenant_id: tenantId, nis: nisToUse },
     });
+  }
 
-    if (existingSiswaByNis) {
-      if (String(existingSiswaByNis.nama_siswa || '').toLowerCase().trim() === String(validatedInput.nama_siswa || '').toLowerCase().trim()) {
-        return updateSiswaCommand(existingSiswaByNis.id, { ...(validatedInput as any), nis: nisToUse }, scope);
-      } else {
-        const suffix = Math.floor(Math.random() * 10000).toString();
-        nisToUse = `${nisToUse}-${suffix}`;
-      }
-    }
-  } else {
-    const existingSiswaByName = await siswaDb.siswa.findFirst({
+  // 2. Try matching by NISN if provided (and not a temp 9999 string)
+  if (!existingSiswa && nisnInput && !nisnInput.startsWith('9999')) {
+    existingSiswa = await siswaDb.siswa.findFirst({
+      where: { tenant_id: tenantId, nisn: nisnInput },
+    });
+  }
+
+  // 3. Try matching by NIK if provided
+  if (!existingSiswa && nikInput) {
+    existingSiswa = await siswaDb.siswa.findFirst({
+      where: { tenant_id: tenantId, nik: nikInput },
+    });
+  }
+
+  // 4. Try matching by Nama + Kelas (case insensitive)
+  if (!existingSiswa && validatedInput.nama_siswa) {
+    existingSiswa = await siswaDb.siswa.findFirst({
       where: {
         tenant_id: tenantId,
         kelas_id: validatedInput.kelas_id || null,
-        nama_siswa: { equals: validatedInput.nama_siswa, mode: 'insensitive' },
+        nama_siswa: { equals: String(validatedInput.nama_siswa).trim(), mode: 'insensitive' },
       } as any,
     });
+  }
 
-    if (existingSiswaByName) {
-      return updateSiswaCommand((existingSiswaByName as any).id, validatedInput as any, scope);
-    }
+  // IF AN EXISTING SISWA RECORD IS FOUND, UPDATE IT (IDEMPOTENT UPSERT)
+  if (existingSiswa) {
+    return updateSiswaCommand(existingSiswa.id, {
+      ...(validatedInput as any),
+      nis: nisToUse || existingSiswa.nis,
+    }, scope);
+  }
 
+  // IF NEW STUDENT: Generate temporary NIS if empty
+  if (!nisToUse) {
     const generateTempNis = () => {
       let s = '1111';
       for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
