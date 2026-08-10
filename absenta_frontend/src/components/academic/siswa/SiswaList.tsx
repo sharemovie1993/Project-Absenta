@@ -1271,7 +1271,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     <Button
                         variant="toolbarOutline"
                         size="toolbarIcon"
-                        onClick={() => fetchSiswas(currentPage, searchTerm)}
+                        onClick={() => refetch()}
                         aria-label="Refresh Data"
                         className="rounded-xl"
                       >
@@ -1993,7 +1993,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         isOpen={isNisWizardOpen}
         onClose={() => setIsNisWizardOpen(false)}
         onSuccess={() => {
-          fetchSiswas(currentPage, searchTerm);
+          refetch();
         }}
       />
 
@@ -2003,7 +2003,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         defaultMode="SISWA"
         onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => {
-          fetchSiswas(currentPage, searchTerm);
+          refetch();
         }}
       />
 
@@ -2013,7 +2013,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         defaultMode="SISWA"
         onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => {
-          fetchSiswas(currentPage, searchTerm);
+          refetch();
         }}
       />
 
@@ -2093,7 +2093,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         onClose={() => setIsWaNormalizeOpen(false)}
         targetType="siswa"
         onRunNormalization={normalizeSiswaWaPhones}
-        onSuccessRefresh={() => fetchSiswas(currentPage, searchTerm)}
+        onSuccessRefresh={() => refetch()}
       />
 
       <SiswaBulkPasswordModal
@@ -2102,7 +2102,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         selectedSiswaIds={Array.from(selectedIds)}
         selectedKelasId={filterKelas}
         kelasOptions={kelasList.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
-        onSuccess={() => fetchSiswas(currentPage, searchTerm)}
+        onSuccess={() => refetch()}
       />
     </div>
   );
