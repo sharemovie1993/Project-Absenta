@@ -152,6 +152,7 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['siswa-profile-me'] });
+      queryClient.invalidateQueries({ queryKey: ['profile-me'] });
       toast.success('Profil berhasil diperbarui!');
       onSuccess?.();
     },
