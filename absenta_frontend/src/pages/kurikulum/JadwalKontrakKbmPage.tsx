@@ -75,8 +75,6 @@ const JadwalKontrakKbmPage: React.FC = () => {
     });
   }, [deleteConfirmId, deleteKontrak]);
 
-  if (authLoading) return null;
-
   if (!canView) return (
     <AcademicPageLayout title="Kontrak KBM" subtitle="Anda tidak memiliki akses ke halaman ini.">
       <div className="flex items-center justify-center h-40 gap-3">
