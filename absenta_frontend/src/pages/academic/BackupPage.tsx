@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportAcademicData, importAcademicData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
-import { SectionCard, Loader, Button } from '@/components/ui';
+import { SectionCard, Loader, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
 import { useCapabilities } from '@/hooks/useCapabilities';
