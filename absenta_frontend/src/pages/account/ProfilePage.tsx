@@ -118,14 +118,43 @@ export default function ProfilePage() {
       setLoading(true);
       setErrorMsg(null);
       try {
-        if (roleName === 'GURU') {
+        if (isGuru) {
+          if ((user as any)?.guru_profile && (user as any).guru_profile.nama_guru) {
+            if (mounted) setGuruProfile((user as any).guru_profile);
+          }
+          const targetId = (user as any)?.guru_id || (user as any)?.guru_profile?.id;
+          if (targetId) {
+            try {
+              const item = await guruApi.getById(targetId);
+              if (mounted && item) {
+                setGuruProfile(item as any);
+                return;
+              }
+            } catch (e) {
+              console.warn('Failed getGuruById:', e);
+            }
+          }
           const res = await guruApi.getAll({ limit: 1, ...({ user_id: userId } as any) });
           const item = res.data?.[0] || null;
-          if (mounted) setGuruProfile(item as any);
-        } else if (roleName === 'SISWA') {
+          if (mounted && item) setGuruProfile(item as any);
+        } else if (isSiswa) {
+          if ((user as any)?.siswa_profile && (user as any).siswa_profile.nama_siswa) {
+            if (mounted) setSiswaProfile((user as any).siswa_profile);
+          }
+          if (user?.siswa_id) {
+            try {
+              const item = await siswaApi.getById(user.siswa_id);
+              if (mounted && item) {
+                setSiswaProfile(item as any);
+                return;
+              }
+            } catch (e) {
+              console.warn('Failed getSiswaById:', e);
+            }
+          }
           const res = await siswaApi.getAll({ limit: 1, ...({ user_id: userId } as any) });
           const item = res.data?.[0] || null;
-          if (mounted) setSiswaProfile(item as any);
+          if (mounted && item) setSiswaProfile(item as any);
         }
       } catch (e) {
         const err = e as { response?: { data?: { message?: string } } };
@@ -136,14 +165,11 @@ export default function ProfilePage() {
     }
     fetchProfile();
     return () => { mounted = false; };
-  }, [userId, roleName]);
-
-  const isGuru = roleName === 'GURU';
-  const isSiswa = roleName === 'SISWA';
+  }, [userId, isGuru, isSiswa, user]);
 
   const entityId = useMemo(() => {
-    if (isSiswa) return siswaProfile?.id || user?.siswa_id || '';
-    if (isGuru) return guruProfile?.id || user?.guru_profile?.id || '';
+    if (isSiswa) return siswaProfile?.id || user?.siswa_id || (user as any)?.siswa_profile?.id || '';
+    if (isGuru) return guruProfile?.id || (user as any)?.guru_profile?.id || '';
     return '';
   }, [isSiswa, isGuru, siswaProfile, guruProfile, user]);
 
@@ -269,50 +295,53 @@ export default function ProfilePage() {
 
   // Memoize details card computation
   const details = useMemo(() => {
-    if (isGuru && guruProfile) {
+    const gp = guruProfile || (user as any)?.guru_profile;
+    if (isGuru && gp) {
       return {
         utama1Label: 'Nama Guru',
-        utama1: guruProfile.nama_guru || summaryName,
+        utama1: gp.nama_guru || summaryName,
         utama2Label: 'NIP',
-        utama2: guruProfile.nip || '-',
+        utama2: gp.nip || '-',
         kontakLabel: 'No HP',
-        kontak: guruProfile.no_hp || '-',
+        kontak: gp.no_hp || '-',
         alamatLabel: 'Alamat',
-        alamat: guruProfile.alamat || '-',
+        alamat: gp.alamat || '-',
         lahirLabel: 'Tanggal Lahir',
-        lahir: guruProfile.tanggal_lahir ? new Date(guruProfile.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
+        lahir: gp.tanggal_lahir ? new Date(gp.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
         jkLabel: 'Jenis Kelamin',
-        jk: guruProfile.jenis_kelamin === 'L' ? 'Laki-laki' : (guruProfile.jenis_kelamin === 'P' ? 'Perempuan' : '-'),
+        jk: gp.jenis_kelamin === 'L' ? 'Laki-laki' : (gp.jenis_kelamin === 'P' ? 'Perempuan' : '-'),
         
         // Tambahan Kepegawaian Guru
-        statusPegawai: guruProfile.status_kepegawaian || '-',
-        pendidikan: guruProfile.pendidikan_terakhir || '-',
-        agama: guruProfile.agama || '-',
+        statusPegawai: gp.status_kepegawaian || '-',
+        pendidikan: gp.pendidikan_terakhir || '-',
+        agama: gp.agama || '-',
       };
     }
-    if (isSiswa && siswaProfile) {
+
+    const sp = siswaProfile || (user as any)?.siswa_profile;
+    if (isSiswa && sp) {
       return {
         utama1Label: 'Nama Siswa',
-        utama1: siswaProfile.nama_siswa || summaryName,
+        utama1: sp.nama_siswa || summaryName,
         utama2Label: 'NIS',
-        utama2: siswaProfile.nis || '-',
+        utama2: sp.nis || sp.nisn || '-',
         kontakLabel: 'No HP',
-        kontak: siswaProfile.no_hp || '-',
+        kontak: sp.no_hp || sp.telepon_ortu || sp.no_hp_ortu || '-',
         alamatLabel: 'Alamat',
-        alamat: siswaProfile.alamat || '-',
+        alamat: sp.alamat || '-',
         lahirLabel: 'Tanggal Lahir',
-        lahir: siswaProfile.tanggal_lahir ? new Date(siswaProfile.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
+        lahir: sp.tanggal_lahir ? new Date(sp.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
         jkLabel: 'Jenis Kelamin',
-        jk: siswaProfile.jenis_kelamin === 'L' ? 'Laki-laki' : (siswaProfile.jenis_kelamin === 'P' ? 'Perempuan' : '-'),
+        jk: sp.jenis_kelamin === 'L' ? 'Laki-laki' : (sp.jenis_kelamin === 'P' ? 'Perempuan' : '-'),
         
         // Tambahan Akademik Siswa
-        kelas: siswaProfile.Kelas?.nama_kelas || '-',
-        tingkat: siswaProfile.Kelas?.tingkat ? `Tingkat ${siswaProfile.Kelas.tingkat}` : '-',
-        jurusan: siswaProfile.Jurusan?.nama || '-',
-        nisn: siswaProfile.nisn || '-',
-        nik: siswaProfile.nik || '-',
-        tinggiBadan: siswaProfile.tinggi_badan ? `${siswaProfile.tinggi_badan} cm` : '-',
-        beratBadan: siswaProfile.berat_badan ? `${siswaProfile.berat_badan} kg` : '-',
+        kelas: sp.Kelas?.nama_kelas || (sp as any)?.kelas_nama || (sp as any)?.kelas_nama_snapshot || '-',
+        tingkat: sp.Kelas?.tingkat ? `Tingkat ${sp.Kelas.tingkat}` : ((sp as any)?.tingkat_snapshot ? `Tingkat ${(sp as any).tingkat_snapshot}` : '-'),
+        jurusan: sp.Jurusan?.nama || (sp as any)?.jurusan_nama || (sp as any)?.Jurusan?.nama_jurusan || '-',
+        nisn: sp.nisn || '-',
+        nik: sp.nik || '-',
+        tinggiBadan: sp.tinggi_badan ? `${sp.tinggi_badan} cm` : '-',
+        beratBadan: sp.berat_badan ? `${sp.berat_badan} kg` : '-',
       };
     }
     return {
