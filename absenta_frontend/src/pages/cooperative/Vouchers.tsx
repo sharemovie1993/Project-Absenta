@@ -122,6 +122,8 @@ const Vouchers: React.FC = React.memo(() => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
   const [memberInfo, setMemberInfo] = useState<any>(null);
+  const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
 
   // Gating Logic
   const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
@@ -171,6 +173,22 @@ const Vouchers: React.FC = React.memo(() => {
   const myPoints = pointsQuery.data?.balance || 0;
   const pointHistory = pointsQuery.data?.history || [];
   const pointsLoading = pointsQuery.isLoading;
+
+  const savingsQuery = useQuery({
+    queryKey: ['koperasi-my-savings-summary'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/savings/my-summary');
+        return (res.data?.total || res.data?.data?.total || 0) as number;
+      } catch {
+        return 0;
+      }
+    },
+    enabled: !isLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const mySavingsSum = savingsQuery.data || 0;
 
   const redeemPointsMutation = useMutation({
     mutationFn: async (pointsToRedeem: number) => {
