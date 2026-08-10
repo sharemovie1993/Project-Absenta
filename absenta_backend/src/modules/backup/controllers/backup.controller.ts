@@ -1,11 +1,56 @@
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
+import { Prisma } from '@prisma/client';
+
+function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, tenantId: string): Record<string, any> {
+  const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+  if (!dmmfModel) return rawRow;
+
+  const cleanData: Record<string, any> = {};
+
+  for (const field of dmmfModel.fields) {
+    // Only accept scalar and enum fields (kind === 'scalar' || kind === 'enum')
+    if (field.kind !== 'scalar' && field.kind !== 'enum') continue;
+
+    const val = rawRow[field.name];
+    if (val === undefined || val === null) {
+      if (field.name === 'tenant_id') {
+        cleanData.tenant_id = tenantId;
+      }
+      continue;
+    }
+
+    if (field.name === 'tenant_id') {
+      cleanData.tenant_id = tenantId;
+    } else if (field.name === 'actor_tenant_id') {
+      cleanData.actor_tenant_id = tenantId;
+    } else if (field.type === 'DateTime') {
+      try {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          cleanData[field.name] = d;
+        }
+      } catch {
+        // Skip invalid date
+      }
+    } else if (field.type === 'BigInt') {
+      try {
+        cleanData[field.name] = BigInt(val);
+      } catch {
+        // Skip invalid bigint
+      }
+    } else {
+      cleanData[field.name] = val;
+    }
+  }
+
+  return cleanData;
+}
 
 export class BackupController {
   static async list(_req: any, reply: any) {
       const backups = await backupService.listRecentBackups();
-      // Handle BigInt serialization
       const data = JSON.parse(JSON.stringify(backups, (_key, value) => 
           typeof value === 'bigint' ? value.toString() : value
       ));
@@ -35,7 +80,6 @@ export class BackupController {
       if (!newTenantId) return reply.status(400).send({ success: false, message: 'newTenantId is required' });
 
       try {
-          // Guard: Check if backup is already being restored
           const backup = await backupService.getBackupById(id);
           if (!backup) return reply.status(404).send({ success: false, message: 'Backup not found' });
           
@@ -45,7 +89,6 @@ export class BackupController {
 
           const restoreQueue = getRestoreQueue();
           
-          // Deduplication: Use backupId as jobId to prevent duplicate queuing
           const job = await restoreQueue.getJob(id);
           if (job) {
               const state = await job.getState();
@@ -59,7 +102,7 @@ export class BackupController {
               targetTenantId: newTenantId,
               initiatedBy: req.user?.id ?? 'system'
           }, {
-              jobId: id, // Explicit Job ID for deduplication
+              jobId: id,
               attempts: 3,
               backoff: { type: 'exponential', delay: 5000 }
           });
@@ -152,14 +195,26 @@ export class BackupController {
 
       const body = req.body || {};
       const payload = body.data || body;
-      const dataTables = payload.data || payload.tables || {};
-      const models = getDynamicTenantModels();
 
+      let dataTables: Record<string, any[]> = {};
+      if (payload.data && typeof payload.data === 'object') {
+        dataTables = payload.data;
+      } else if (payload.tables && typeof payload.tables === 'object') {
+        dataTables = payload.tables;
+      } else {
+        dataTables = payload;
+      }
+
+      const models = getDynamicTenantModels();
       const details: Record<string, number> = {};
       let totalInserted = 0;
 
       for (const modelName of models) {
-        const rows = dataTables[modelName];
+        let rows: any[] | undefined = dataTables[modelName];
+        if (!rows) {
+          const matchedKey = Object.keys(dataTables).find(k => k.toLowerCase() === modelName.toLowerCase());
+          if (matchedKey) rows = dataTables[matchedKey];
+        }
         if (!Array.isArray(rows) || rows.length === 0) continue;
 
         // @ts-ignore
@@ -167,24 +222,21 @@ export class BackupController {
         if (!prismaModel) continue;
 
         let insertedCount = 0;
-        for (const row of rows) {
+        for (const rawRow of rows) {
           try {
-            const rowData = { ...row, tenant_id: tenantId };
-            delete rowData.created_at;
-            delete rowData.updated_at;
-
-            if (rowData.id) {
+            const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
+            if (cleanData.id) {
               await prismaModel.upsert({
-                where: { id: rowData.id },
-                create: rowData,
-                update: rowData,
+                where: { id: cleanData.id },
+                create: cleanData,
+                update: cleanData,
               });
             } else {
-              await prismaModel.create({ data: rowData });
+              await prismaModel.create({ data: cleanData });
             }
             insertedCount++;
-          } catch (err) {
-            // Idempotent skip for duplicates
+          } catch (err: any) {
+            console.warn(`[Restore Skip] ${modelName} row error:`, err?.message);
           }
         }
         details[modelName] = insertedCount;
