@@ -6,6 +6,17 @@ export const TZ_OFFSET: Record<string, number> = {
   'Asia/Jayapura': 9,
 };
 
+export const TZ_OFFSET_STR: Record<string, string> = {
+  'Asia/Jakarta': '+07:00',
+  'Asia/Makassar': '+08:00',
+  'Asia/Jayapura': '+09:00',
+};
+
+export function getTenantOffsetString(timezone?: string | null): string {
+  const tz = String(timezone || 'Asia/Jakarta').trim();
+  return TZ_OFFSET_STR[tz] || '+07:00';
+}
+
 export const TZ_LABEL: Record<string, string> = {
   'Asia/Jakarta': 'WIB',
   'Asia/Makassar': 'WITA',

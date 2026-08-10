@@ -1,5 +1,5 @@
 import { ChatbotContext } from '../../core/chatbot-context';
-import { getTenantTimezone } from '@/utils/timezone.utils';
+import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { prisma } from '@/utils/prisma';
 
 export class GuruPiketHandler {
@@ -12,8 +12,9 @@ export class GuruPiketHandler {
     if (!tenantId) return '⚠️ Data tenant sekolah tidak ditemukan.';
 
     const tz = await getTenantTimezone(tenantId);
+    const offsetStr = getTenantOffsetString(tz);
 
-    // Waktu WIB & Tanggal Hari Ini
+    // Tanggal Hari Ini Sesuai Timezone Tenant
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' }); // YYYY-MM-DD
     const tglFormatted = new Date().toLocaleDateString('id-ID', {
       timeZone: tz || 'Asia/Jakarta',
@@ -23,8 +24,8 @@ export class GuruPiketHandler {
       year: 'numeric',
     });
 
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+    const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
     const rawText = (ctx.messageText || '').trim();
     let filterName = '';

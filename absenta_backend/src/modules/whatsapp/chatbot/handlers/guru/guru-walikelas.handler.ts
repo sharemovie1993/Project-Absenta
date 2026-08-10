@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { ChatbotContext } from '../../core/chatbot-context';
 import { waliKelasService } from '@/modules/kurikulum/wali-kelas/services/wali-kelas.service';
 import { prisma } from '@/utils/prisma';
-import { getTenantTimezone } from '@/utils/timezone.utils';
+import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { chatbotSessionManager, ChatbotDialogSession } from '../../core/session-state-manager';
 
 export class GuruWalikelasHandler {
@@ -130,8 +130,9 @@ export class GuruWalikelasHandler {
         year: 'numeric',
       });
 
-      const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-      const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+      const offsetStr = getTenantOffsetString(tz);
+      const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
+      const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
       const siswaList = await prisma.siswaAkademik.findMany({
         where: { kelas_id: kelasBinaan.id, status: 'AKTIF' },
@@ -224,8 +225,9 @@ export class GuruWalikelasHandler {
       month: 'short',
     });
 
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+    const offsetStr = getTenantOffsetString(tz);
+    const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
     const siswaList = await prisma.siswaAkademik.findMany({
       where: { kelas_id: kelasId, status: 'AKTIF' },
@@ -288,8 +290,9 @@ export class GuruWalikelasHandler {
 
     const tz = await getTenantTimezone(tenantId);
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+    const offsetStr = getTenantOffsetString(tz);
+    const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
+    const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
     const izinList = await prisma.izinKeluarSiswa.findMany({
       where: {
