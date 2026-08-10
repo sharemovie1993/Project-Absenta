@@ -683,18 +683,20 @@ export class GuruJadwalHandler {
           (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
         );
 
-        let icon = '🔴';
+        let statusStr = 'Belum Masuk Kelas';
         if (matchedSesi) {
           if (matchedSesi.status === 'BERLANGSUNG') {
-            icon = '🟢';
+            statusStr = 'Mengajar';
           } else if (matchedSesi.status === 'SELESAI') {
-            icon = '✅';
+            statusStr = 'Selesai';
+          } else if (matchedSesi.status === 'IZIN') {
+            statusStr = 'Izin';
           } else {
-            icon = '🟡';
+            statusStr = matchedSesi.status;
           }
         }
 
-        section += `• ${icon} *${teacherName}* (${kelasName}) │ ${mapelName} │ ${jp} (${timeRange})\n`;
+        section += `${teacherName} di ${kelasName} : ${statusStr}\n`;
       });
       formattedSections.push(section);
     });
