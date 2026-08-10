@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
