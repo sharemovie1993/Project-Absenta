@@ -674,9 +674,6 @@ export class GuruJadwalHandler {
       group.items.forEach(j => {
         const teacherName = j.Guru?.nama_guru || 'Guru';
         const kelasName = j.Kelas?.nama_kelas || '-';
-        const mapelName = j.Mapel?.nama_mapel || '-';
-        const timeRange = `${j.jam_mulai}–${j.jam_selesai}`;
-        const jp = j.slot_index ? `JP ${j.slot_index}` : '';
 
         const matchedSesi = sesiList.find(s => 
           (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
