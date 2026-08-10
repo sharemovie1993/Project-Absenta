@@ -27,7 +27,7 @@ export interface BottomNavItem {
   label: string;
   path: string;
   icon: LucideIcon;
-  isAction?: boolean; // e.g. Open QR Modal or Open Drawer Sheet
+  isAction?: boolean;
   badgeCount?: number;
 }
 
@@ -56,46 +56,47 @@ export function useBottomNavPersona() {
     return can('academic.homeroom.manage') || !!(user as any)?.wali_kelas || !!(user as any)?.guru_profile?.is_wali_kelas;
   }, [can, user]);
 
+  // Synchronized Canonical Route Paths matching App.tsx
   const navItems = useMemo<BottomNavItem[]>(() => {
     switch (persona) {
       case 'SISWA':
         return [
           { id: 'beranda', label: 'Beranda', path: '/dashboard', icon: Home },
-          { id: 'jadwal', label: 'Jadwal', path: '/akademik/jadwal-pelajaran', icon: Calendar },
+          { id: 'jadwal', label: 'Jadwal', path: '/kurikulum/jadwal', icon: Calendar },
           { id: 'qr', label: 'Kartu/QR', path: '/account/profile', icon: QrCode, isAction: true },
-          { id: 'izin', label: 'Izin', path: '/kesiswaan/perizinan-siswa', icon: FileText },
+          { id: 'izin', label: 'Pelanggaran', path: '/kesiswaan/pelanggaran', icon: FileText },
           { id: 'profil', label: 'Profil', path: '/account/profile', icon: User },
         ];
 
       case 'GURU':
         const guruItems: BottomNavItem[] = [
           { id: 'beranda', label: 'Beranda', path: '/dashboard', icon: Home },
-          { id: 'kbm', label: 'KBM & Absen', path: '/absensi/sesi-kbm', icon: BookOpen },
+          { id: 'kbm', label: 'KBM & Absen', path: '/attendance/ops', icon: BookOpen },
         ];
 
         if (isWaliKelas) {
-          guruItems.push({ id: 'walas', label: 'Wali Kelas', path: '/akademik/siswa', icon: Users });
+          guruItems.push({ id: 'walas', label: 'Wali Kelas', path: '/academic/siswa', icon: Users });
         }
 
         guruItems.push(
-          { id: 'piket', label: 'Piket', path: '/absensi/piket-harian', icon: Clock },
+          { id: 'piket', label: 'Piket', path: '/kesiswaan/piket', icon: Clock },
           { id: 'profil', label: 'Profil', path: '/account/profile', icon: User }
         );
         return guruItems;
 
       case 'PARENT':
         return [
-          { id: 'beranda', label: 'Beranda', path: '/parent/dashboard', icon: Home },
-          { id: 'presensi', label: 'Presensi', path: '/parent/presensi', icon: Clock },
-          { id: 'izin', label: 'Perizinan', path: '/parent/perizinan', icon: FileText },
-          { id: 'poin', label: 'Pelanggaran', path: '/parent/poin-pelanggaran', icon: AlertTriangle },
+          { id: 'beranda', label: 'Beranda', path: '/parent-app/dashboard', icon: Home },
+          { id: 'presensi', label: 'Presensi', path: '/parent-app/presensi', icon: Clock },
+          { id: 'izin', label: 'Perizinan', path: '/parent-app/perizinan', icon: FileText },
+          { id: 'poin', label: 'Pelanggaran', path: '/parent-app/poin-pelanggaran', icon: AlertTriangle },
           { id: 'profil', label: 'Profil', path: '/account/profile', icon: User },
         ];
 
       case 'GERBANG':
         return [
-          { id: 'scan', label: 'Scan', path: '/absensi/terminal-gate', icon: ScanLine },
-          { id: 'belum', label: 'Belum Absen', path: '/absensi/monitoring', icon: UserX },
+          { id: 'scan', label: 'Scan', path: '/kesiswaan/pos-keamanan', icon: ScanLine },
+          { id: 'belum', label: 'Belum Absen', path: '/attendance/monitoring', icon: UserX },
           { id: 'penindakan', label: 'Penindakan', path: '/kesiswaan/pelanggaran', icon: ShieldAlert },
           { id: 'profil', label: 'Profil', path: '/account/profile', icon: User },
         ];
@@ -104,8 +105,8 @@ export function useBottomNavPersona() {
       default:
         return [
           { id: 'beranda', label: 'Beranda', path: '/dashboard', icon: Home },
-          { id: 'monitoring', label: 'Monitoring', path: '/absensi/monitoring', icon: Activity },
-          { id: 'surat', label: 'Persuratan', path: '/persuratan/surat-masuk', icon: Mail },
+          { id: 'monitoring', label: 'Monitoring', path: '/attendance/monitoring', icon: Activity },
+          { id: 'surat', label: 'Persuratan', path: '/correspondence/surat-masuk', icon: Mail },
           { id: 'kelola', label: 'Kelola', path: '#drawer', icon: LayoutGrid, isAction: true },
           { id: 'profil', label: 'Profil', path: '/account/profile', icon: User },
         ];
