@@ -22,7 +22,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['ui-sans-serif', 'system-ui', 'sans-serif', 'Montserrat']
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
       },
       borderRadius: {
         'sm': '2px',

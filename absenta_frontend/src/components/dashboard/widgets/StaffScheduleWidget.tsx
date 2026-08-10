@@ -38,7 +38,7 @@ interface TimelineItem {
 
 interface StaffScheduleWidgetProps {
   className?: string;
-  timelineItems: TimelineItem[];
+  timelineItems?: TimelineItem[];
   isLoading?: boolean;
   processingId?: string | null;
   onAction?: (item: TimelineItem) => void;
@@ -47,13 +47,14 @@ interface StaffScheduleWidgetProps {
 
 export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
   className,
-  timelineItems,
+  timelineItems = [],
   isLoading,
   processingId,
   onAction,
   onOpenJournal
 }) => {
-  const activeSession = useMemo(() => timelineItems.find(item => item.isLive), [timelineItems]);
+  const safeItems = useMemo(() => Array.isArray(timelineItems) ? timelineItems : [], [timelineItems]);
+  const activeSession = useMemo(() => safeItems.find(item => item?.isLive), [safeItems]);
   const isProcessing = (id: string) => processingId === id;
 
   const formattedDate = useMemo(() => {
@@ -93,9 +94,9 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
             </span>
           </div>
         </div>
-        {timelineItems.length > 0 && (
+        {safeItems.length > 0 && (
           <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full border border-indigo-100/50 dark:border-indigo-950/20 uppercase tracking-tight">
-            {timelineItems.length} Sesi
+            {safeItems.length} Sesi
           </span>
         )}
       </div>
@@ -127,41 +128,31 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
                 </span>
               )}
               {activeSession.teacherStatus === 'TERLAMBAT' && (
-                <span className="text-[8px] font-black bg-amber-500/20 text-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-400/30 uppercase tracking-tighter">
-                  <Clock size={10} /> Terlambat
+                <span className="text-[8px] font-black bg-rose-500/20 text-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-400/30 uppercase tracking-tighter">
+                  <AlertCircle size={10} /> Terlambat
                 </span>
               )}
             </div>
             
-            <h3 className="text-sm font-black mb-1 leading-tight">{activeSession.kegiatan}</h3>
-            <div className="flex items-center gap-3 text-[11px] opacity-90 mb-3 font-semibold">
-              <span className="flex items-center gap-1"><Users size={12} /> {activeSession.kelas_nama}</span>
-              <span className="flex items-center gap-1"><Clock size={12} /> {activeSession.jam_mulai} - {activeSession.jam_selesai}</span>
-            </div>
+            <h4 className="text-base font-extrabold tracking-tight leading-snug">{activeSession.kegiatan}</h4>
+            <p className="text-xs text-indigo-100 font-medium">Kelas {activeSession.kelas_nama}</p>
 
-            <div className="flex items-center gap-2">
-              <Button 
-                size="sm" 
-                variant="white" 
-                className="text-[9px] font-black uppercase h-7 px-3 text-blue-700 bg-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAction?.(activeSession);
-                }}
-              >
-                Dashboard Sesi
-              </Button>
-              {activeSession.isGuruHadir && onOpenJournal && (
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="text-[9px] font-black uppercase h-7 px-3 text-white hover:bg-white/10"
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-200">
+                {activeSession.jam_mulai} - {activeSession.jam_selesai} WIB
+              </span>
+
+              {onOpenJournal && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-bold bg-white/20 hover:bg-white/30 text-white border-white/30"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenJournal(activeSession.session?.id, activeSession.session);
                   }}
                 >
-                  Jurnal KBM
+                  Jurnal
                 </Button>
               )}
             </div>
@@ -171,7 +162,7 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
 
       {/* Timeline List */}
       <div className="space-y-2">
-        {timelineItems.length === 0 ? (
+        {safeItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-slate-700/50 flex items-center justify-center text-gray-400">
               <BookOpen size={18} />
@@ -182,7 +173,7 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
             <p className="text-[8px] text-gray-400 text-center">Jadwal mengajar Anda hari ini kosong.</p>
           </div>
         ) : (
-          timelineItems
+          safeItems
             .filter(item => !item.isLive) // Sembunyikan sesi yang sedang berlangsung agar tidak redundan dengan Spotlight
             .map((item, idx) => {
               if (item.isPiket) {
