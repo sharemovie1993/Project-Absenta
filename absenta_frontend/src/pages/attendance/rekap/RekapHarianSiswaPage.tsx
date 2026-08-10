@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   SectionCard, 
   Button, 
