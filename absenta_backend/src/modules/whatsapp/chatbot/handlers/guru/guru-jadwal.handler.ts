@@ -517,6 +517,14 @@ export class GuruJadwalHandler {
    * 83 / 153 -> Semua hari ini
    * "posisi firman" / "82 firman" -> Search teacher name
    */
+  /** Hapus gelar akademik dari nama guru agar tampil singkat di WA */
+  private static pruneGelar(nama: string): string {
+    return nama
+      .replace(/,?\s*(S\.Pd\.I?|S\.Pd|S\.T\.I?|S\.T|M\.Pd\.I?|M\.Pd|S\.Kom|S\.E|M\.M|M\.Si|M\.T|S\.Si|S\.Ag|S\.H|M\.Ag|Dr\.|Prof\.|Drs\.|Dra\.|A\.Md\.Kep|A\.Md|Ir\.)\s*/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
   static async handlePosisiGuru(ctx: ChatbotContext): Promise<string> {
     const tenantId = ctx.guru?.tenant_id || ctx.siswa?.tenant_id || ctx.ortu?.tenant_id;
     if (!tenantId) return '⚠️ Data tenant sekolah tidak ditemukan.';
@@ -657,28 +665,30 @@ export class GuruJadwalHandler {
     });
 
     targetJadwal.forEach((j: any) => {
-      const teacherName = j.Guru?.nama_guru || 'Guru';
+      const rawName   = j.Guru?.nama_guru || 'Guru';
+      const shortName = GuruJadwalHandler.pruneGelar(rawName);
       const kelasName = j.Kelas?.nama_kelas || '-';
 
-      const matchedSesi = sesiList.find(s => 
-        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
+      const matchedSesi = sesiList.find(s =>
+        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) ||
         (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
       );
 
-      let statusStr = 'Belum Masuk Kelas';
+      let statusIcon = '🔴';
+      let statusStr  = 'Belum Masuk';
       if (matchedSesi) {
         if (matchedSesi.status === 'BERLANGSUNG') {
-          statusStr = 'Mengajar';
+          statusIcon = '🟢'; statusStr = 'Mengajar';
         } else if (matchedSesi.status === 'SELESAI') {
-          statusStr = 'Selesai';
+          statusIcon = '✅'; statusStr = 'Selesai';
         } else if (matchedSesi.status === 'IZIN') {
-          statusStr = 'Izin';
+          statusIcon = '🟡'; statusStr = 'Izin';
         } else {
-          statusStr = matchedSesi.status;
+          statusIcon = '🟡'; statusStr = matchedSesi.status;
         }
       }
 
-      msg += `${teacherName} di ${kelasName} : ${statusStr}\n`;
+      msg += `${statusIcon} *${shortName}* | ${kelasName} — ${statusStr}\n`;
     });
 
     if (filterMode === 'NOW' && targetJadwal.length === 0) {
