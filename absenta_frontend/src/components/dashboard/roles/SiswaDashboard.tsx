@@ -40,7 +40,8 @@ import {
   Briefcase,
   Crown,
   FileText,
-  Megaphone
+  Megaphone,
+  Sparkles
 } from 'lucide-react';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { Badge } from '../../../components/ui/Badge';
