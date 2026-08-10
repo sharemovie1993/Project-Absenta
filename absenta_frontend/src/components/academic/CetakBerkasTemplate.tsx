@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { AcademicPageLayout } from './AcademicPageLayout';
 import { SectionCard, Button, Card, CardContent } from '../ui';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { getTenantById, type Tenant } from '../../api/tenants.api';
 import { sekolahApi, type Sekolah } from '../../api/academic/sekolah.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';

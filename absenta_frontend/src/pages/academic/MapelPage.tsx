@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import MapelList from '../../components/academic/mapel/MapelList';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';

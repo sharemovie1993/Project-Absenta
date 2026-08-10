@@ -4,7 +4,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { BulkClassModal } from '../../components/academic/kelas/BulkClassModal';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';

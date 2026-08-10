@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { 
   Edit, 
   Trash2, 

@@ -13,7 +13,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { CheckSquare, Square, Download, RefreshCw, Printer, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 
 interface Props {
   isOpen: boolean;

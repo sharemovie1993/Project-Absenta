@@ -22,7 +22,7 @@ import {
 } from '../../../api/academic/tahunPelajaran.api';
 import type { TahunPelajaran } from '../../../types/academic';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { useBulkAction } from '../../../hooks/useBulkAction';

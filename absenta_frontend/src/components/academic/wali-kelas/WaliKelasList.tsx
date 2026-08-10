@@ -8,7 +8,7 @@ import { MethodPickerModal } from '../../common/MethodPickerModal';
 import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import WaliKelasForm from './WaliKelasForm';

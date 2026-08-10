@@ -6,7 +6,7 @@ import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check, ChevronDown, ChevronUp, Compass, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useJenjang } from '../../../hooks/useJenjang';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 
 interface PresetWizardModalProps {
   isOpen: boolean;

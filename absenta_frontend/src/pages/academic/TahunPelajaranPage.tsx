@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useNavigate } from 'react-router-dom';
 import { Modal, SectionCard } from '../../components/ui';
 import TahunPelajaranList from '../../components/academic/tahun-pelajaran/TahunPelajaranList';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import type { TahunPelajaran } from '../../types/academic';
 import { useQuery } from '@tanstack/react-query';

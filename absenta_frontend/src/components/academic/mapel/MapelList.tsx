@@ -33,7 +33,7 @@ import {
 import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useJenjang } from '../../../hooks/useJenjang';
 

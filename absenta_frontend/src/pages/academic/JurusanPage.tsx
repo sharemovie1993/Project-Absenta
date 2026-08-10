@@ -5,7 +5,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import JurusanList from '../../components/academic/jurusan/JurusanList';
 import { ProgramKeahlianPanel } from '../../components/academic/jurusan/ProgramKeahlianPanel';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import type { Jurusan } from '../../types/academic';

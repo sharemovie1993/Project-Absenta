@@ -10,7 +10,7 @@
  *   src/components/common/WordEditorModal.tsx
  */
 import React, { useState, useEffect } from 'react';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { getTenantById } from '../../../api/tenants.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { tahunPelajaranApi } from '../../../api/academic.api';

@@ -7,7 +7,7 @@ import {
   ListChecks 
 } from 'lucide-react';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../api/academic/jenisKegiatanMaster.api';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import { useDebounce } from '../../hooks/useDebounce';

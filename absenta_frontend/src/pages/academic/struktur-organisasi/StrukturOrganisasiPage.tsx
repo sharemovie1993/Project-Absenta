@@ -12,7 +12,7 @@ import {
 } from '@/api/academic/strukturOrganisasi.api';
 import { Loader } from '@/components/ui/Loader';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';

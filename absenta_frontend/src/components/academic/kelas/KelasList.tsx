@@ -32,7 +32,7 @@ import { getKelasList, deleteKelas, updateKelas, kelasQueryKeys } from '../../..
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Kelas, Jurusan } from '../../../types/academic';
-import { useAuthStore } from '../../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
