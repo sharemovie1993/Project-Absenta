@@ -550,6 +550,50 @@ export class WaOnboardingService {
       });
     }
 
+    // 13. Fetch Wali Kelas (dari Struktur Organisasi)
+    if (roleFilter === 'WALIKELAS') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: 'WALIKELAS' },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Kelas: { select: { nama_kelas: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Wali Kelas';
+        const kelasStr = asg.Kelas?.nama_kelas || '-';
+
+        const itemKey = `walikelas-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Wali Kelas (${kelasStr})`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
     // 13. Calculate summary statistics
     const totalGuru = allUsers.filter((u) => u.userType === 'GURU').length;
     const totalSiswa = allUsers.filter((u) => u.userType === 'SISWA').length;
