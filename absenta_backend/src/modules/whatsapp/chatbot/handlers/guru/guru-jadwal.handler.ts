@@ -501,9 +501,12 @@ export class GuruJadwalHandler {
     return (
       `📍 *Posisi & Keberadaan Guru — ${nama}*\n\n` +
       `Pilih sub-menu:\n\n` +
-      `[81] ⏱️ Posisi Guru Jam Ini (Saat Ini)\n` +
-      `[82] 🔍 Cari Posisi Guru (By Nama)\n` +
-      `[83] 📋 Semua Posisi Guru Hari Ini\n\n` +
+      `[81] ⏱️ Posisi Guru Jam Ini\n` +
+      `[82] 🔍 Cari Guru by Nama\n` +
+      `[83] 📋 Semua Jadwal Guru Hari Ini\n` +
+      `[84] 🚨 Guru Belum Masuk (Jam Ini)\n` +
+      `[85] 📊 Rekap KBM Hari Ini\n` +
+      `[86] 🏫 Kelas Kosong Sekarang\n\n` +
       `[0] 🔄 Menu Utama`
     );
   }
@@ -550,6 +553,11 @@ export class GuruJadwalHandler {
       );
     }
 
+    // 3. Menu 84 / 85 / 86 — butuh query sendiri, return early
+    if (cmd === '84' || cmd === '85' || cmd === '86') {
+      return GuruJadwalHandler.handleRekapKBM(cmd, tenantId);
+    }
+
     const activeSem = await getWhatsappActiveSemester(tenantId);
     if (!activeSem) return '⚠️ Semester aktif sekolah belum diatur.';
 
@@ -579,7 +587,7 @@ export class GuruJadwalHandler {
     } else {
       filterMode = 'SEARCH';
       // Strip command prefixes if any e.g. "82 firman", "posisi firman", "15 firman"
-      filterName = rawText.replace(/^(82|152|81|151|83|153|15|8|posisi\s*guru|posisi)\s*/i, '').trim();
+      filterName = rawText.replace(/^(82|152|81|151|83|153|84|85|86|15|8|posisi\s*guru|posisi)\s*/i, '').trim();
     }
 
     // Query JadwalKBM hari ini
@@ -781,5 +789,159 @@ export class GuruJadwalHandler {
     }
 
     return msg;
+  }
+
+  /** ─────────────────────────────────────────────────────────────
+   *  Menu 84 / 85 / 86: Rekap & Monitoring KBM untuk Kurikulum
+   * ──────────────────────────────────────────────────────────── */
+  static async handleRekapKBM(cmd: string, tenantId: string): Promise<string> {
+    const activeSem = await getWhatsappActiveSemester(tenantId);
+    if (!activeSem) return '⚠️ Semester aktif sekolah belum diatur.';
+
+    const tz = await getTenantTimezone(tenantId);
+    const currentDay = getHariByTimezone(tz);
+    const nowWibStr  = new Date().toLocaleTimeString('en-US', {
+      timeZone: tz || 'Asia/Jakarta', hour12: false, hour: '2-digit', minute: '2-digit',
+    });
+    const todayStr   = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
+    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+    const endOfDay   = new Date(`${todayStr}T23:59:59.999Z`);
+
+    // Ambil semua jadwal hari ini
+    const jadwalList: any[] = await (prisma as any).jadwalKBM.findMany({
+      where: { tenant_id: tenantId, semester_id: activeSem.id, hari: currentDay as any },
+      include: { Guru: { select: { nama_guru: true } }, Kelas: { select: { nama_kelas: true } }, MataPelajaran: { select: { nama_mapel: true } } },
+      orderBy: [{ jam_mulai: 'asc' }],
+    });
+
+    // Ambil sesi absensi hari ini
+    const sesiList: any[] = await (prisma as any).sesiAbsensiKBM.findMany({
+      where: { tenant_id: tenantId, tanggal: { gte: startOfDay, lte: endOfDay } },
+    });
+
+    const resolveStatus = (j: any): { icon: string; label: string } => {
+      const sesi = sesiList.find((s: any) =>
+        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) ||
+        (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
+      );
+      if (!sesi) return { icon: '🔴', label: 'Belum Masuk' };
+      if (sesi.status === 'BERLANGSUNG') return { icon: '🟢', label: 'Mengajar' };
+      if (sesi.status === 'SELESAI')     return { icon: '✅', label: 'Selesai' };
+      if (sesi.status === 'IZIN')        return { icon: '🟡', label: 'Izin' };
+      return { icon: '🟡', label: sesi.status };
+    };
+
+    // ── MENU 84: Guru Belum Masuk Jam Ini ──────────────────────
+    if (cmd === '84') {
+      const activeNow = jadwalList.filter((j: any) =>
+        j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr
+      );
+      const belumMasuk = activeNow.filter((j: any) => resolveStatus(j).icon === '🔴');
+
+      let msg = `🚨 *Guru Belum Masuk — ${currentDay}, ${nowWibStr} WIB*\n\n`;
+
+      if (belumMasuk.length === 0) {
+        msg += `✅ _Semua guru yang dijadwalkan jam ini sudah masuk kelas._\n`;
+      } else {
+        msg += `⚠️ *${belumMasuk.length} guru* belum masuk saat ini:\n\n`;
+        // Agregasi per guru
+        const byGuru = new Map<string, { nama: string; kelasList: string[] }>();
+        belumMasuk.forEach((j: any) => {
+          const gId   = j.guru_id;
+          const nama  = GuruJadwalHandler.pruneGelar(j.Guru?.nama_guru || 'Guru');
+          const kelas = `${j.Kelas?.nama_kelas || '-'} (${j.jam_mulai}–${j.jam_selesai})`;
+          if (!byGuru.has(gId)) byGuru.set(gId, { nama, kelasList: [] });
+          byGuru.get(gId)!.kelasList.push(kelas);
+        });
+        Array.from(byGuru.values())
+          .sort((a, b) => a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base' }))
+          .forEach(({ nama, kelasList }) => {
+            msg += `🔴 *${nama}*\n`;
+            kelasList.forEach(k => { msg += `  📚 ${k}\n`; });
+            msg += `\n`;
+          });
+      }
+
+      msg += `\n💡 Ketik *[85]* Rekap KBM | *[86]* Kelas Kosong | *[8]* Sub-menu`;
+      return msg;
+    }
+
+    // ── MENU 85: Rekap KBM Hari Ini ────────────────────────────
+    if (cmd === '85') {
+      const total     = jadwalList.length;
+      let mengajar    = 0, selesai = 0, izin = 0, belumMasuk = 0;
+
+      jadwalList.forEach((j: any) => {
+        const { icon } = resolveStatus(j);
+        if (icon === '🟢') mengajar++;
+        else if (icon === '✅') selesai++;
+        else if (icon === '🟡') izin++;
+        else belumMasuk++;
+      });
+
+      const pct = (n: number) => total > 0 ? `${Math.round((n / total) * 100)}%` : '0%';
+
+      // Hitung slot aktif jam ini
+      const activeNow    = jadwalList.filter((j: any) => j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr);
+      const belumJamIni  = activeNow.filter((j: any) => resolveStatus(j).icon === '🔴').length;
+
+      let msg  = `📊 *Rekap KBM Hari Ini — ${currentDay}*\n`;
+          msg += `🕐 Per pukul: ${nowWibStr} WIB\n\n`;
+          msg += `📋 Total slot jadwal : *${total}*\n`;
+          msg += `🟢 Mengajar          : *${mengajar}* (${pct(mengajar)})\n`;
+          msg += `✅ Selesai           : *${selesai}* (${pct(selesai)})\n`;
+          msg += `🔴 Belum Masuk       : *${belumMasuk}* (${pct(belumMasuk)})\n`;
+          msg += `🟡 Izin              : *${izin}* (${pct(izin)})\n`;
+
+      if (belumJamIni > 0) {
+        msg += `\n⚠️ *${belumJamIni} guru* belum masuk di jam aktif sekarang!\n`;
+        msg += `💡 Ketik *[84]* untuk lihat daftarnya.\n`;
+      } else if (activeNow.length > 0) {
+        msg += `\n✅ _Semua guru jam ini sudah masuk kelas._\n`;
+      }
+
+      msg += `\n💡 Ketik *[84]* Belum Masuk | *[86]* Kelas Kosong | *[8]* Sub-menu`;
+      return msg;
+    }
+
+    // ── MENU 86: Kelas Kosong Sekarang ─────────────────────────
+    if (cmd === '86') {
+      const activeNow  = jadwalList.filter((j: any) =>
+        j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr
+      );
+      const kosong = activeNow.filter((j: any) => resolveStatus(j).icon === '🔴');
+
+      let msg = `🏫 *Kelas Kosong Sekarang — ${currentDay}, ${nowWibStr} WIB*\n\n`;
+
+      if (kosong.length === 0) {
+        msg += `✅ _Tidak ada kelas kosong saat ini. Semua kelas terisi._\n`;
+      } else {
+        msg += `⚠️ *${kosong.length} kelas* tidak ada guru saat ini:\n\n`;
+        // Urutkan per kelas
+        const byKelas = new Map<string, { namaKelas: string; slots: any[] }>();
+        kosong.forEach((j: any) => {
+          const kId = j.kelas_id;
+          const namaKelas = j.Kelas?.nama_kelas || '-';
+          if (!byKelas.has(kId)) byKelas.set(kId, { namaKelas, slots: [] });
+          byKelas.get(kId)!.slots.push(j);
+        });
+        Array.from(byKelas.values())
+          .sort((a, b) => a.namaKelas.localeCompare(b.namaKelas, 'id', { sensitivity: 'base' }))
+          .forEach(({ namaKelas, slots }) => {
+            msg += `🏫 *${namaKelas}*\n`;
+            slots.forEach((j: any) => {
+              const guru  = GuruJadwalHandler.pruneGelar(j.Guru?.nama_guru || 'Guru');
+              const mapel = j.MataPelajaran?.nama_mapel || '-';
+              msg += `  🔴 ${mapel} — ${guru} (${j.jam_mulai}–${j.jam_selesai})\n`;
+            });
+            msg += `\n`;
+          });
+      }
+
+      msg += `\n💡 Ketik *[84]* Guru Belum Masuk | *[85]* Rekap | *[8]* Sub-menu`;
+      return msg;
+    }
+
+    return '⚠️ Perintah tidak dikenali.';
   }
 }
