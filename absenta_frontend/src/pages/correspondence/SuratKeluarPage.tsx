@@ -116,7 +116,21 @@ export default function SuratKeluarPage() {
     await deleteSuratKeluarMutation.mutateAsync(id);
   }, [confirm, deleteSuratKeluarMutation]);
 
-  const handleOpenSign = useCallback((item: SuratKeluar) => {
+  const handleEdit = useCallback((item: any) => {
+    setSelectedId(item.id);
+    setFormData({
+      nomor_surat: item.nomor_surat || '',
+      judul: item.judul || '',
+      tujuan_surat: item.tujuan_surat || item.tujuan || '',
+      tanggal_surat: item.tanggal_surat ? item.tanggal_surat.split('T')[0] : new Date().toISOString().split('T')[0],
+      isi_ringkas: item.isi_ringkas || item.ringkasan || '',
+      kategori_surat: item.kategori_surat || 'Dinas',
+      siswa_id: item.siswa_id || ''
+    });
+    setModalOpen(true);
+  }, []);
+
+  const handleOpenSign = useCallback((item: any) => {
     setSelectedId(item.id);
     setSignModalOpen(true);
   }, []);

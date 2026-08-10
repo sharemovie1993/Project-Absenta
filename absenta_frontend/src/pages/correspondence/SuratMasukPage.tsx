@@ -120,6 +120,20 @@ export default function SuratMasukPage() {
     await deleteSuratMasukMutation.mutateAsync(id);
   }, [confirm, deleteSuratMasukMutation]);
 
+  const handleEdit = useCallback((item: SuratMasuk) => {
+    setSelectedId(item.id);
+    setFormData({
+      nomor_surat: item.nomor_surat || '',
+      judul: item.judul || '',
+      asal_surat: item.asal_surat || '',
+      tanggal_surat: item.tanggal_surat ? item.tanggal_surat.split('T')[0] : new Date().toISOString().split('T')[0],
+      tanggal_terima: item.tanggal_terima ? item.tanggal_terima.split('T')[0] : new Date().toISOString().split('T')[0],
+      ringkasan: item.ringkasan || '',
+      dokumen_url: item.dokumen_url || ''
+    });
+    setModalOpen(true);
+  }, []);
+
   const handleOpenDisposisi = useCallback((item: SuratMasuk) => {
     setSelectedId(item.id);
     setDispoData({
