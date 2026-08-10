@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   Edit, 
   Trash2, 
@@ -53,6 +54,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const { can } = useCapabilities();
   const queryClient = useQueryClient();
   const invalidateJurusanCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jurusan-options-list'] });

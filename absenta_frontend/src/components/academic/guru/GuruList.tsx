@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   Edit, 
   Trash2, 
@@ -69,6 +70,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const { can } = useCapabilities();
   const [loading, setLoading] = useState(false); // hanya untuk operasi delete/toggle
   const [searchTerm, setSearchTerm] = useState('');
   const queryClient = useQueryClient();

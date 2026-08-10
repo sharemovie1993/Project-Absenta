@@ -9,6 +9,7 @@ import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStr
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import WaliKelasForm from './WaliKelasForm';
@@ -32,6 +33,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   }, [queryClient]);
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { can, isAdmin } = useCapabilities();
   const [items, setItems] = useState<WaliKelasStrukturAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

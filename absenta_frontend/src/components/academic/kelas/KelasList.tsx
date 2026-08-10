@@ -33,6 +33,7 @@ import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Kelas, Jurusan } from '../../../types/academic';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -64,6 +65,7 @@ const KelasList = React.memo<KelasListProps>(({
   activeTahunPelajaran
 }) => {
   const confirm = useConfirm();
+  const { can } = useCapabilities();
   const queryClient = useQueryClient();
   const invalidateKelasCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
