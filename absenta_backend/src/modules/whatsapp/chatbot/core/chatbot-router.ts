@@ -117,6 +117,20 @@ export class ChatbotRouter {
   private static async routeGuru(ctx: ChatbotContext): Promise<string> {
     const choice = ctx.commandUpper;
 
+    // Check for MENU / 0 / RESET / HELP first before free text matcher
+    if (
+      choice === '' ||
+      choice === '0' ||
+      choice === 'MENU' ||
+      choice === 'MENU UTAMA' ||
+      choice === 'BOT' ||
+      choice === 'HELP' ||
+      choice === 'UTAMA' ||
+      choice === 'KEMBALI'
+    ) {
+      return formatGuruMenu(ctx.guru.nama_guru);
+    }
+
     // [1] Jadwal KBM → masuk sub-menu
     if (choice === '1') return GuruJadwalHandler.handleJadwalKBMMenu(ctx);
 
@@ -136,7 +150,7 @@ export class ChatbotRouter {
     // Pesan teks bebas — kemungkinan input nama guru (konteks [13]) atau nama kelas (konteks [14])
     const isNumericMenu = /^\d{1,2}$/.test(choice);
     if (!isNumericMenu && choice.length >= 2) {
-      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI','IZIN','PIKET'].some(c => choice.includes(c));
+      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI','IZIN','PIKET','MENU'].some(c => choice.includes(c));
       if (!isKnownCommand) {
         // Coba jadual kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
         const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');
@@ -159,10 +173,6 @@ export class ChatbotRouter {
 
     if (choice.startsWith('51') || choice.startsWith('41')) return GuruProfileHandler.handleEditNip(ctx);
     if (choice.startsWith('52') || choice.startsWith('42')) return GuruProfileHandler.handleEditEmail(ctx);
-
-    if (choice === '' || choice === '0') {
-      return formatGuruMenu(ctx.guru.nama_guru);
-    }
 
     return formatGuruMenu(ctx.guru.nama_guru);
   }
