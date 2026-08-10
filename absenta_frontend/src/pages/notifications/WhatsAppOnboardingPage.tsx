@@ -48,7 +48,7 @@ export function WhatsAppOnboardingPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
 
   // Filters
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'GURU' | 'SISWA' | 'ORTU'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'GURU' | 'SISWA' | 'ORTU' | 'PETUGAS_KELAS' | 'PETUGAS_GERBANG' | 'KAPROG'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'BELUM' | 'SUDAH'>('ALL');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -277,13 +277,16 @@ export function WhatsAppOnboardingPage() {
               <span className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5" /> Peran:
               </span>
-              {(['ALL', 'GURU', 'SISWA', 'ORTU'] as const).map((r) => {
+              {(['ALL', 'GURU', 'SISWA', 'ORTU', 'PETUGAS_KELAS', 'PETUGAS_GERBANG', 'KAPROG'] as const).map((r) => {
                 const active = roleFilter === r;
-                const labels = {
+                const labels: Record<string, string> = {
                   ALL: 'Semua Peran',
                   GURU: '📚 Guru',
                   SISWA: '🎓 Siswa',
                   ORTU: '👨‍👩‍👧 Ortu',
+                  PETUGAS_KELAS: '📋 Petugas Kelas',
+                  PETUGAS_GERBANG: '🛡️ Petugas Gerbang',
+                  KAPROG: '👨‍🏫 Kaprog',
                 };
                 return (
                   <button
