@@ -108,6 +108,25 @@ export default function BackupPage() {
     };
   }, []);
 
+  const [historyList, setHistoryList] = useState<BackupHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      setIsLoadingHistory(true);
+      const data = await getBackupHistory();
+      setHistoryList(data);
+    } catch (err) {
+      console.error('Failed to load backup history:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
   const executeExport = useCallback(async () => {
     try {
       setLoadingExport(true);
@@ -123,13 +142,14 @@ export default function BackupPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Ekspor Berhasil: File cadangan telah diunduh.');
+      loadHistory();
     } catch (err: unknown) {
       console.error('Export failed:', err);
       toast.error('Ekspor Gagal: Gagal mengekspor data akademik.');
     } finally {
       setLoadingExport(false);
     }
-  }, []);
+  }, [loadHistory]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -259,6 +279,7 @@ export default function BackupPage() {
         setImportFile(null);
         setPreviewStats(null);
         setParsedData(null);
+        loadHistory();
       } else {
         toast(`Peringatan Impor: ${res.message}`, { icon: '⚠️' });
       }
@@ -268,13 +289,12 @@ export default function BackupPage() {
       setProcessingStage('idle');
     } finally {
       setLoadingImport(false);
-      // Simpan timeout reset ke ref agar dapat di-cleanup saat unmount
       resetTimeoutRef.current = setTimeout(() => {
         setImportProgress(0);
         setProcessingStage('idle');
       }, 1000);
     }
-  }, [parsedData, confirm]);
+  }, [parsedData, confirm, loadHistory]);
 
   // headerStats dibungkus useMemo agar tidak memicu re-render yang tidak perlu
   const headerStats = useMemo(() => [
@@ -365,19 +385,99 @@ export default function BackupPage() {
           </SectionCard>
         </div>
 
-        {/* Audit History Placeholder */}
+        {/* Real-time Dynamic Backup & Restore Audit History Table */}
         <SectionCard
-          title="Riwayat Aktivitas Backup"
+          title="Riwayat Aktivitas Backup & Pemulihan"
           icon={History}
           fullWidth
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadHistory}
+              disabled={isLoadingHistory}
+              className="text-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+              Muat Ulang
+            </Button>
+          }
         >
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-300 dark:text-slate-700 mb-4 border border-slate-100 dark:border-slate-800">
-               <History size={32} />
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-xs font-bold text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              Memuat riwayat aktivitas backup...
             </div>
-            <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Belum Ada Riwayat Tersedia</h3>
-            <p className="text-xs text-slate-400 mt-1">Sistem hanya mencatat riwayat untuk sesi aktif saat ini.</p>
-          </div>
+          ) : historyList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-14 h-14 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 mb-3">
+                <History size={28} />
+              </div>
+              <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                Belum Ada Riwayat Aktivitas Backup
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-1 max-w-sm">
+                Riwayat ekspor dan pemulihan data akan tercatat secara otomatis di sini setelah Anda melakukan aktivitas backup/restore.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-black uppercase text-[9px] tracking-wider border-b border-slate-200/80 dark:border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">Waktu Snapshot</th>
+                    <th className="py-3 px-4">Jenis Aktivitas</th>
+                    <th className="py-3 px-4">Ukuran File</th>
+                    <th className="py-3 px-4">Checksum SHA-256</th>
+                    <th className="py-3 px-4 text-center">Status Pemulihan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                  {historyList.map((item) => {
+                    const isRestore = item.restore_status === 'COMPLETED' || item.file_path.includes('restore');
+                    const bytes = Number(item.file_size_bytes) || 0;
+                    const sizeFormatted = bytes > 1024 * 1024 
+                      ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` 
+                      : `${(bytes / 1024).toFixed(1)} KB`;
+
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {new Date(item.snapshot_date).toLocaleString('id-ID', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            isRestore 
+                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' 
+                              : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                          }`}>
+                            {isRestore ? 'Pemulihan Data (Restore)' : 'Ekspor Snapshot Full'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-slate-600 dark:text-slate-400">
+                          {sizeFormatted}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[10px] text-slate-400">
+                          {item.checksum_sha256 ? `${item.checksum_sha256.substring(0, 16)}...` : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge 
+                            variant={item.restore_status === 'COMPLETED' ? 'success' : item.status === 'READY' ? 'info' : 'secondary'}
+                            className="font-black text-[10px]"
+                          >
+                            {item.restore_status === 'COMPLETED' ? 'DISINKRONKAN' : item.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </SectionCard>
       </div>
 

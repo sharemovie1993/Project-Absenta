@@ -21,10 +21,14 @@ export class BackupService {
     this.storage = new LocalDiskStorage();
   }
 
-  async listRecentBackups() {
+  async listRecentBackups(tenantId?: string) {
+    const where: any = {};
+    if (tenantId) where.tenant_id = tenantId;
+
     return this.prisma.tenantBackup.findMany({
+      where,
       orderBy: { snapshot_date: 'desc' },
-      take: 100,
+      take: 50,
       include: { Tenant: { select: { name: true, subdomain: true } } }
     });
   }

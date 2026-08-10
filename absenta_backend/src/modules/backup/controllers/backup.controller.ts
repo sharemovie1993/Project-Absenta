@@ -2,6 +2,7 @@ import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
 
 function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, tenantId: string): Record<string, any> {
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
@@ -55,8 +56,9 @@ export interface ModelRestoreSummary {
 }
 
 export class BackupController {
-  static async list(_req: any, reply: any) {
-      const backups = await backupService.listRecentBackups();
+  static async list(req: any, reply: any) {
+      const tenantId = req.tenantId || req.dataScope?.tenantId;
+      const backups = await backupService.listRecentBackups(tenantId);
       const data = JSON.parse(JSON.stringify(backups, (_key, value) => 
           typeof value === 'bigint' ? value.toString() : value
       ));
@@ -179,7 +181,26 @@ export class BackupController {
         typeof value === 'bigint' ? value.toString() : value
       );
 
+      const fileSize = Buffer.byteLength(jsonString);
+      const checksum = crypto.createHash('sha256').update(jsonString).digest('hex');
       const timestamp = new Date().toISOString().split('T')[0];
+
+      // Record snapshot entry into TenantBackup table
+      try {
+        await prisma.tenantBackup.create({
+          data: {
+            tenant_id: tenantId,
+            file_path: `exports/backup-${tenantId}-${timestamp}.json`,
+            file_size_bytes: BigInt(fileSize),
+            checksum_sha256: checksum,
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: 'READY',
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to record TenantBackup log entry:', err);
+      }
+
       reply.header('Content-Type', 'application/json');
       reply.header('Content-Disposition', `attachment; filename="academic-backup-${timestamp}.json"`);
       return reply.send(jsonString);
@@ -275,6 +296,26 @@ export class BackupController {
 
       const totalGap = Math.max(0, grandTarget - grandRestored);
       const matchRate = grandTarget > 0 ? Math.round((grandRestored / grandTarget) * 100) : 100;
+      const jsonStr = JSON.stringify(body);
+
+      // Record restore history entry in TenantBackup table
+      try {
+        await prisma.tenantBackup.create({
+          data: {
+            tenant_id: tenantId,
+            file_path: `imports/restore-${tenantId}-${new Date().toISOString().split('T')[0]}.json`,
+            file_size_bytes: BigInt(Buffer.byteLength(jsonStr)),
+            checksum_sha256: crypto.createHash('sha256').update(jsonStr).digest('hex'),
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            status: 'READY',
+            restore_status: 'COMPLETED',
+            restored_at: new Date(),
+            restored_to_tenant_id: tenantId
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to record TenantBackup restore log entry:', err);
+      }
 
       return reply.send({
         success: true,
