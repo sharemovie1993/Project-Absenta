@@ -275,6 +275,9 @@ function MainLayoutContent() {
         </footer>
       </div>
 
+      {/* Navigasi Bawah Seluler Berbasis 5 Varian Persona */}
+      <BottomNavigation />
+
       {/* Floating Support Messenger Widget */}
       <FloatingMessenger />
     </div>
