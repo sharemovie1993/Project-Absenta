@@ -1,5 +1,5 @@
 import React from 'react';
-import { School, CalendarRange, Clock, Settings2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { School, CalendarRange, Clock, Settings2, ShieldCheck, AlertCircle, Lock } from 'lucide-react';
 import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Input } from '../../../ui/Input';
@@ -7,6 +7,7 @@ import { Controller, UseFormRegister, Control, FieldErrors, UseFormWatch } from 
 import { DropdownOption } from '../../../../api/dropdown.api';
 import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
+import { useCapabilities } from '../../../../hooks/useCapabilities';
 
 interface AcademicSectionProps {
     control: Control<SiswaFormValues>;
@@ -39,6 +40,8 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
     semesterOptions,
     loadingDropdowns
 }) => {
+    const { user, can, isAdmin, isSiswa } = useCapabilities();
+    const isAcademicRestricted = isSiswa || (!can('academic.students.manage') && !isAdmin);
     const watchStatus = watch('status');
 
     if (isViewMode) {
@@ -67,6 +70,12 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
 
     return (
         <SectionCard title="Penempatan & Status Akademik" icon={School}>
+            {isAcademicRestricted && !isViewMode && (
+                <div className="md:col-span-2 p-3.5 mb-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3 text-amber-800 dark:text-amber-300 text-xs font-medium">
+                    <Lock size={16} className="text-amber-500 shrink-0" />
+                    <span>Informasi penempatan kelas, tahun pelajaran, semester, dan status keaktifan dikunci untuk akun Siswa. Perubahan data akademik hanya dapat dilakukan oleh Staf TU / Admin Sekolah.</span>
+                </div>
+            )}
             <div className="space-y-2 group">
                 <div className="flex items-center justify-between px-1">
                     <Label htmlFor="kelas_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -83,7 +92,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={kelasOptions}
                             placeholder={loadingDropdowns ? 'Memuat...' : 'Pilih Kelas'}
-                            disabled={isViewMode || loadingDropdowns}
+                            disabled={isViewMode || loadingDropdowns || isAcademicRestricted}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.kelas_id ? 'border-red-500' : ''}`}
                         />
                     )}
@@ -109,7 +118,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={tahunPelajaranOptions}
                             placeholder={loadingDropdowns ? 'Memuat...' : 'Pilih Tahun'}
-                            disabled={isViewMode || loadingDropdowns}
+                            disabled={isViewMode || loadingDropdowns || isAcademicRestricted}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.tahun_pelajaran_id ? 'border-red-500' : ''}`}
                         />
                     )}
@@ -135,7 +144,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={semesterOptions}
                             placeholder="Pilih Semester"
-                            disabled={isViewMode || !watch('tahun_pelajaran_id')}
+                            disabled={isViewMode || !watch('tahun_pelajaran_id') || isAcademicRestricted}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.semester_id ? 'border-red-500' : ''}`}
                         />
                     )}
@@ -191,7 +200,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                             onValueChange={field.onChange}
                             options={STATUS_SISWA_OPTIONS}
                             placeholder="Pilih Status"
-                            disabled={isViewMode}
+                            disabled={isViewMode || isAcademicRestricted}
                             triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.status ? 'border-red-500' : ''}`}
                         />
                     )}

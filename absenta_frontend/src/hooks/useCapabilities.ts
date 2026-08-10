@@ -159,11 +159,14 @@ export function useCapabilities() {
     const isBillingAdmin =
       can('billing.subscriptions.view.active');
 
+    const isSiswa = user?.role === 'SISWA';
+
     return {
       // Level 1
       isPetugasKelas,
       isGerbang,
       isToolman,
+      isSiswa,
 
       // Level 2
       isTUPersuratan,
