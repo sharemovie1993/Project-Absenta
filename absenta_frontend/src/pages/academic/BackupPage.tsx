@@ -249,16 +249,28 @@ export default function BackupPage() {
   // headerStats dibungkus useMemo agar tidak memicu re-render yang tidak perlu
   const headerStats = useMemo(() => [
     {
-      title: "Data Backup",
-      value: "JSON",
+      title: "Format Backup",
+      value: "JSON (GZIP)",
       icon: <Database size={14} />,
       gradient: "from-blue-500 to-indigo-600"
     },
     {
-      title: "Security",
-      value: "AES-256",
+      title: "Enkripsi Data",
+      value: "SHA-256 HMAC",
       icon: <ShieldCheck size={14} />,
       gradient: "from-emerald-500 to-teal-600"
+    },
+    {
+      title: "Skema Model",
+      value: "Dynamic DMMF",
+      icon: <Database size={14} />,
+      gradient: "from-violet-500 to-purple-600"
+    },
+    {
+      title: "Proteksi Duplikasi",
+      value: "Idempotent Skip",
+      icon: <ShieldCheck size={14} />,
+      gradient: "from-amber-500 to-orange-600"
     }
   ], []);
 
@@ -270,7 +282,7 @@ export default function BackupPage() {
   return (
     <AcademicPageLayout
       title="Pusat Cadangan Data"
-      description="Kelola ekspor cadangan data dan pemulihan data sistem akademik secara aman dan terintegrasi."
+      description="Kelola ekspor cadangan data dan pemulihan data sistem akademik secara aman, dinamis, dan terintegrasi."
       breadcrumbs={breadcrumbs}
       stats={headerStats}
       isLoadingStats={false}
@@ -286,14 +298,15 @@ export default function BackupPage() {
       hardeningModuleKey="backuppage"
       // compliance dummy comment to pass static audit toolbar check: toolbarLeft={undefined}
     >
-      <div className="flex flex-col gap-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Export Card */}
           <SectionCard
             title="Export Pusat Data"
             icon={Download}
             noPadding
-            className="flex flex-col h-full"
+            fullWidth
+            className="flex flex-col h-full overflow-hidden"
           >
             <ExportSection 
               onExport={executeExport}
@@ -306,7 +319,8 @@ export default function BackupPage() {
             title="Pemulihan Data (Restore)"
             icon={UploadCloud}
             noPadding
-            className="flex flex-col h-full"
+            fullWidth
+            className="flex flex-col h-full overflow-hidden"
           >
             <ImportSection 
               importFile={importFile}
