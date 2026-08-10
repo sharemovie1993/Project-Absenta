@@ -508,6 +508,47 @@ export class JadwalKBMService {
     const shiftConfig = await this.loadShiftConfig(tenantId);
     return this.enrichJadwalWithDayTimes(list as any[], shiftConfig);
   }
+
+  /** Ambil jadwal KBM hari ini untuk daftar ID guru — chatbot WA menu 13 */
+  async getJadwalByGuruIds(tenantId: string, hari: string, semesterId: string, guruIds: string[]) {
+    const list = await prisma.jadwalKBM.findMany({
+      where: {
+        tenant_id: tenantId,
+        semester_id: semesterId,
+        hari: hari as Hari,
+        guru_id: { in: guruIds },
+      },
+      include: {
+        Guru: { select: { nama_guru: true } },
+        Mapel: { select: { nama_mapel: true } },
+        Kelas: { select: { nama_kelas: true } },
+      },
+      orderBy: { slot_index: 'asc' },
+    });
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    return this.enrichJadwalWithDayTimes(list as any[], shiftConfig);
+  }
+
+  /** Ambil jadwal KBM untuk 1 kelas (hari ini atau 1 minggu) — chatbot WA menu 14 */
+  async getJadwalKelas(tenantId: string, semesterId: string, kelasId: string, hari?: string) {
+    const where: any = {
+      tenant_id: tenantId,
+      semester_id: semesterId,
+      kelas_id: kelasId,
+    };
+    if (hari) where.hari = hari as Hari;
+
+    const list = await prisma.jadwalKBM.findMany({
+      where,
+      include: {
+        Guru: { select: { nama_guru: true } },
+        Mapel: { select: { nama_mapel: true } },
+      },
+      orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+    });
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    return this.enrichJadwalWithDayTimes(list as any[], shiftConfig);
+  }
 }
 
 export const jadwalKBMService = new JadwalKBMService();

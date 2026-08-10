@@ -254,21 +254,22 @@ export class GuruJadwalHandler {
 
   /**
    * MENU 13: Lihat Jadwal KBM Guru Lain (hari ini)
-   * User mengetik nama / sebagian nama guru
+   * User mengetik nama / sebagian nama guru (misal "13 budi" atau "budi")
    */
   static async handleJadwalGuruLain(ctx: ChatbotContext): Promise<string> {
     const tenantId = ctx.guru?.tenant_id;
     if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
 
-    const input = (ctx.messageText || '').trim();
+    const rawText = (ctx.messageText || '').trim();
+    // Strip command prefix agar pencarian nama guru tidak terganggu angka '13'
+    const input = rawText.replace(/^(?:!|#|\/)?(?:131|132|13|jadwal\s*guru|guru)\s*/i, '').trim();
 
-    // Jika hanya mengetik "13" tanpa nama, minta input nama
-    const isJustCommand = /^13$/.test(ctx.commandUpper.trim());
-    if (isJustCommand || input.length < 2) {
+    // Jika input nama kosong/terlalu pendek, minta input nama
+    if (input.length < 2) {
       return (
         `🔍 *Cari Jadwal Guru Lain*\n\n` +
         `Ketik *nama guru* yang ingin dicari (minimal 2 huruf):\n` +
-        `Contoh: _ketik_ *budi* atau *siti*\n\n` +
+        `Contoh: _ketik_ *budi* atau *13 siti*\n\n` +
         `💡 Atau ketik *[0]* untuk kembali ke Menu Utama.`
       );
     }
@@ -296,21 +297,13 @@ export class GuruJadwalHandler {
       );
     }
 
-    // Ambil jadwal hari ini untuk semua guru yang ditemukan
-    const jadwalList = await prisma.jadwalKBM.findMany({
-      where: {
-        tenant_id: tenantId,
-        semester_id: activeSem.id,
-        hari: currentDay as any,
-        guru_id: { in: guruList.map(g => g.id) },
-      },
-      include: {
-        Guru: { select: { nama_guru: true } },
-        Mapel: { select: { nama_mapel: true } },
-        Kelas: { select: { nama_kelas: true } },
-      },
-      orderBy: { slot_index: 'asc' },
-    });
+    // Ambil jadwal hari ini via service layer (ter-enrich jam per hari)
+    const jadwalList = await jadwalKBMService.getJadwalByGuruIds(
+      tenantId,
+      currentDay,
+      activeSem.id,
+      guruList.map(g => g.id),
+    );
 
     if (jadwalList.length === 0) {
       const namaGuru = guruList.map(g => g.nama_guru).join(', ');
@@ -351,21 +344,27 @@ export class GuruJadwalHandler {
   /**
    * MENU 14: Jadwal Kelas (Guru lihat jadwal kelas tertentu)
    * Ketik [14] → prompt input nama kelas
-   * Ketik [141] atau [14 hari ini] → hari ini, [142] atau [14 minggu] → 1 minggu
+   * Ketik [14 X TKJ] atau [14 X TKJ minggu]
    */
   static async handleJadwalKelas(ctx: ChatbotContext): Promise<string> {
     const tenantId = ctx.guru?.tenant_id;
     if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
 
-    const input = (ctx.messageText || '').trim();
-    const cmd = ctx.commandUpper.trim();
+    const rawText = (ctx.messageText || '').trim();
 
-    // Jika hanya ketik "14" tanpa parameter → tampilkan prompt
-    if (cmd === '14' || input.length < 2) {
+    // Strip prefix 14 / 141 / 142 / jadwal kelas
+    const cleanText = rawText.replace(/^(?:!|#|\/)?(?:141|142|14|jadwal\s*kelas|kelas)\s*/i, '').trim();
+
+    // Cek apakah minta 1 minggu
+    const wantWeekly = /minggu|week|semua|7 hari/i.test(cleanText);
+    const searchClassName = cleanText.replace(/minggu|week|semua|7 hari/gi, '').trim();
+
+    // Jika hanya ketik "14" tanpa nama kelas → tampilkan prompt
+    if (searchClassName.length < 2) {
       return (
         `🏫 *Jadwal Kelas*\n\n` +
         `Ketik *nama kelas* yang ingin dilihat:\n` +
-        `Contoh: _ketik_ *XI IPA 1* atau *X TKJ*\n\n` +
+        `Contoh: _ketik_ *XI IPA 1* atau *14 X TKJ*\n\n` +
         `💡 Ketik *[0]* untuk kembali ke Menu Utama.`
       );
     }
@@ -377,7 +376,7 @@ export class GuruJadwalHandler {
     const kelasList = await prisma.kelas.findMany({
       where: {
         tenant_id: tenantId,
-        nama_kelas: { contains: input, mode: 'insensitive' },
+        nama_kelas: { contains: searchClassName, mode: 'insensitive' },
       },
       select: { id: true, nama_kelas: true },
       take: 3,
@@ -386,7 +385,7 @@ export class GuruJadwalHandler {
     if (kelasList.length === 0) {
       return (
         `🏫 *Jadwal Kelas*\n\n` +
-        `❌ Kelas dengan nama *"${input}"* tidak ditemukan.\n\n` +
+        `❌ Kelas dengan nama *"${searchClassName}"* tidak ditemukan.\n\n` +
         `Coba ketik nama lain. Contoh: *XI IPA* atau *X TKJ*\n` +
         `Atau ketik *[14]* untuk coba lagi.`
       );
@@ -402,25 +401,15 @@ export class GuruJadwalHandler {
       kelasList.forEach((k, i) => {
         msg += `[${i + 1}] ${k.nama_kelas}\n`;
       });
-      msg += `\nKetik nama kelas lebih spesifik untuk melihat jadwalnya.`;
+      msg += `\nKetik nama kelas lebih spesifik (contoh: *14 ${kelasList[0].nama_kelas}*) untuk melihat jadwalnya.`;
       return msg;
     }
 
     const kelas = kelasList[0];
 
-    // Cek apakah minta hari ini atau 1 minggu (default: hari ini)
-    const wantWeekly = /minggu|week|semua|7 hari/i.test(input);
-
     if (wantWeekly) {
-      // Jadwal 1 Minggu
-      const jadwalMinggu = await prisma.jadwalKBM.findMany({
-        where: { tenant_id: tenantId, semester_id: activeSem.id, kelas_id: kelas.id },
-        include: {
-          Guru: { select: { nama_guru: true } },
-          Mapel: { select: { nama_mapel: true } },
-        },
-        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
-      });
+      // Jadwal 1 Minggu via service layer (ter-enrich jam per hari)
+      const jadwalMinggu = await jadwalKBMService.getJadwalKelas(tenantId, activeSem.id, kelas.id);
 
       if (jadwalMinggu.length === 0) {
         return `🏫 *Jadwal ${kelas.nama_kelas}*\n\nBelum ada jadwal KBM untuk kelas ini.\n\n💡 Ketik *[0]* untuk Menu Utama.`;
@@ -454,27 +443,15 @@ export class GuruJadwalHandler {
       return msg;
     }
 
-    // Default: Jadwal Hari Ini
-    const jadwalHariIni = await prisma.jadwalKBM.findMany({
-      where: {
-        tenant_id: tenantId,
-        semester_id: activeSem.id,
-        kelas_id: kelas.id,
-        hari: currentDay as any,
-      },
-      include: {
-        Guru: { select: { nama_guru: true } },
-        Mapel: { select: { nama_mapel: true } },
-      },
-      orderBy: { slot_index: 'asc' },
-    });
+    // Default: Jadwal Hari Ini via service layer (ter-enrich jam per hari)
+    const jadwalHariIni = await jadwalKBMService.getJadwalKelas(tenantId, activeSem.id, kelas.id, currentDay);
 
     if (jadwalHariIni.length === 0) {
       return (
         `🏫 *Jadwal ${kelas.nama_kelas} — ${currentDay}*\n\n` +
         `Tidak ada jadwal KBM hari ini. 😊\n\n` +
         `💡 Tambahkan kata _minggu_ untuk lihat 1 minggu\n` +
-        `Contoh: ketik *${input} minggu*\n` +
+        `Contoh: ketik *14 ${kelas.nama_kelas} minggu*\n` +
         `Atau ketik *[0]* untuk Menu Utama.`
       );
     }
@@ -488,7 +465,7 @@ export class GuruJadwalHandler {
     });
 
     msg += `💡 Tambah kata _minggu_ untuk 1 minggu penuh\n`;
-    msg += `Contoh: ketik *${input} minggu*\n`;
+    msg += `Contoh: ketik *14 ${kelas.nama_kelas} minggu*\n`;
     msg += `Atau ketik *[0]* untuk Menu Utama.`;
     return msg;
   }

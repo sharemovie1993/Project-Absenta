@@ -122,7 +122,9 @@ export class ChatbotRouter {
     if (choice === '13' || (choice.startsWith('13') && choice.length > 2)) {
       return GuruJadwalHandler.handleJadwalGuruLain(ctx);
     }
-    if (choice === '14') return GuruJadwalHandler.handleJadwalKelas(ctx);
+    if (choice === '14' || (choice.startsWith('14') && choice.length > 2)) {
+      return GuruJadwalHandler.handleJadwalKelas(ctx);
+    }
     if (choice === '15' || (choice.startsWith('15') && choice.length > 2)) {
       return GuruJadwalHandler.handlePosisiGuru(ctx);
     }
