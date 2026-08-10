@@ -108,7 +108,7 @@ export const kurikulumApi = {
   // Dashboard Monitoring
   getKbmGlobalMonitoring: async (tanggal?: string) => {
     // Pastikan tanggal dikirim dalam format YYYY-MM-DD murni tanpa konversi zona waktu yang salah
-    const dateParam = tanggal || new Date().toISOString().split('T')[0];
+    const dateParam = tanggal || new Date().toLocaleDateString('sv-SE');
     const response = await api.get('/dashboard/kurikulum/monitoring-global', {
       params: { tanggal: dateParam }
     });
