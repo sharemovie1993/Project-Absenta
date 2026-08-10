@@ -275,9 +275,6 @@ function MainLayoutContent() {
         </footer>
       </div>
 
-      {/* Navigasi Bawah untuk Mobile ALA MyASN */}
-      <BottomNavigation onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-
       {/* Floating Support Messenger Widget */}
       <FloatingMessenger />
     </div>
