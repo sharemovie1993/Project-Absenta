@@ -100,12 +100,21 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                     setCurrentFoto(res.data.url);
                     toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
                 } else {
-                    toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
+                    toast.error(res?.message || 'Gagal mengunggah foto. Layanan penyimpanan media belum siap.', { id: 'upload-photo', duration: 5000 });
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error uploading photo:', err);
-            toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
+            const status = err?.response?.status;
+            const backendMsg = err?.response?.data?.message || err?.message || '';
+
+            if (status === 500 || backendMsg.includes('storage') || backendMsg.includes('500') || backendMsg.includes('Internal Server Error')) {
+                toast.error('Layanan Penyimpanan File (Storage Server) belum aktif atau mengalami kendala internal. Harap hubungi Administrator.', { id: 'upload-photo', duration: 6000 });
+            } else if (status === 413 || backendMsg.includes('too large')) {
+                toast.error('Ukuran file terlalu besar. Maksimum ukuran file foto adalah 5MB.', { id: 'upload-photo', duration: 5000 });
+            } else {
+                toast.error(`Gagal mengunggah foto: ${backendMsg || 'Koneksi ke server terputus.'}`, { id: 'upload-photo', duration: 5000 });
+            }
         }
     };
 
