@@ -33,6 +33,79 @@ export class WaOnboardingService {
   }
 
   /**
+   * Helper: Fetch users by structural role assignments in a DRY, clean manner
+   */
+  private async fetchStructuralRoleUsers(
+    tenantId: string,
+    positionQuery: any,
+    commMap: Map<string, Date>,
+    defaultRoleTitle: string,
+    defaultUserType: 'GURU' | 'SISWA' = 'GURU',
+    itemPrefix: string = 'asg'
+  ): Promise<OnboardingUserItem[]> {
+    const assignments = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        Position: positionQuery,
+      },
+      include: {
+        User: {
+          include: {
+            Guru: true,
+            Siswa: { include: { Kelas: { select: { nama_kelas: true } } } },
+          },
+        },
+        Position: { select: { name: true, code: true } },
+        Kelas: { select: { nama_kelas: true } },
+        Unit: { select: { nama: true } },
+      },
+    });
+
+    const items: OnboardingUserItem[] = [];
+    const processedUserKeys = new Set<string>();
+
+    assignments.forEach((asg) => {
+      const user = asg.User;
+      if (!user) return;
+      const guru = user.Guru;
+      const siswa = user.Siswa;
+      const phone = guru?.no_hp || siswa?.no_hp || user.no_hp;
+      if (!phone) return;
+
+      const norm = this.normalizePhone(phone);
+      const lastComm = commMap.get(norm) || null;
+      const nama = guru?.nama_guru || siswa?.nama_siswa || user.full_name || defaultRoleTitle;
+
+      let detailInfo = defaultRoleTitle;
+      const kelasName = asg.Kelas?.nama_kelas || siswa?.Kelas?.nama_kelas;
+      if (kelasName) {
+        detailInfo = `${defaultRoleTitle} (${kelasName})`;
+      } else if (asg.Unit?.nama) {
+        detailInfo = `${defaultRoleTitle} (${asg.Unit.nama})`;
+      } else if (asg.Position?.name) {
+        detailInfo = `${asg.Position.name}`;
+      }
+
+      const itemKey = `${itemPrefix}-${asg.id}`;
+      if (processedUserKeys.has(itemKey)) return;
+      processedUserKeys.add(itemKey);
+
+      items.push({
+        id: itemKey,
+        userType: guru ? 'GURU' : siswa ? 'SISWA' : defaultUserType,
+        nama,
+        no_hp: phone,
+        detailInfo,
+        statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+        lastCommAt: lastComm,
+      });
+    });
+
+    return items;
+  }
+
+  /**
    * Fetch all users (Guru, Siswa, Ortu) with WA Chatbot communication status
    */
   async getOnboardingUsers(tenantId: string, query: GetOnboardingQuery) {
@@ -175,499 +248,66 @@ export class WaOnboardingService {
       });
     }
 
-    // 5. Fetch Petugas Kelas
+    // 5. Fetch Structural Roles (DRY pattern helper)
     if (roleFilter === 'PETUGAS_KELAS') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: 'PETUGAS_KELAS' },
-        },
-        include: {
-          User: {
-            include: {
-              Siswa: { include: { Kelas: { select: { nama_kelas: true } } } },
-              Guru: true,
-            },
-          },
-          Kelas: { select: { nama_kelas: true } },
-        },
-      });
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'PETUGAS_KELAS' }, commMap, 'Petugas Absensi Kelas', 'SISWA', 'petugas-kelas');
+      allUsers.push(...items);
+    } else if (roleFilter === 'PETUGAS_GERBANG') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: ['GERBANG', 'PETUGAS_GERBANG', 'SATPAM'] } }, commMap, 'Petugas Gerbang Satpam', 'GURU', 'petugas-gerbang');
+      allUsers.push(...items);
+    } else if (roleFilter === 'KAPROG') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'KAPROG' }, commMap, 'Kaprog', 'GURU', 'kaprog');
+      allUsers.push(...items);
+    } else if (roleFilter === 'WAKA') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WAKASEK', 'WAKA'] } }, commMap, 'Waka Sekolah', 'GURU', 'waka');
+      allUsers.push(...items);
+    } else if (roleFilter === 'TOOLMAN') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'TOOLMAN' }, commMap, 'Toolman Bengkel / Lab', 'GURU', 'toolman');
+      allUsers.push(...items);
+    } else if (roleFilter === 'TU') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { OR: [{ code: { in: ['TU', 'TU_KEPALA', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] } }, { code: { startsWith: 'TU_' } }] }, commMap, 'Tata Usaha', 'GURU', 'tu');
+      allUsers.push(...items);
+    } else if (roleFilter === 'BPBK') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'BPBK' }, commMap, 'Guru BP/BK Konseling', 'GURU', 'bpbk');
+      allUsers.push(...items);
+    } else if (roleFilter === 'KOPERASI') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { OR: [{ code: { in: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI', 'KOPERASI'] } }, { code: { contains: 'KOPERASI' } }] }, commMap, 'Pengurus Koperasi', 'GURU', 'koperasi');
+      allUsers.push(...items);
+    } else if (roleFilter === 'KEPALA_SEKOLAH') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: ['KEPALA_SEKOLAH', 'KEPSEK'] } }, commMap, 'Kepala Sekolah', 'GURU', 'kepsek');
+      allUsers.push(...items);
 
-      const processedUserIds = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const siswa = user.Siswa;
-        const guru = user.Guru;
-        const phone = siswa?.no_hp || guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = siswa?.nama_siswa || guru?.nama_guru || user.full_name || 'Petugas Kelas';
-        const kelasStr = asg.Kelas?.nama_kelas || siswa?.Kelas?.nama_kelas || '-';
-
-        const itemKey = `petugas-kelas-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: siswa ? 'SISWA' : 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Petugas Absensi Kelas (${kelasStr})`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 6. Fetch Petugas Gerbang
-    if (roleFilter === 'PETUGAS_GERBANG') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: { in: ['GERBANG', 'PETUGAS_GERBANG', 'SATPAM'] } },
-        },
-        include: {
-          User: {
-            include: {
-              Guru: true,
-              Siswa: { include: { Kelas: { select: { nama_kelas: true } } } },
-            },
-          },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const siswa = user.Siswa;
-        const phone = guru?.no_hp || siswa?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || siswa?.nama_siswa || user.full_name || 'Petugas Gerbang';
-
-        const itemKey = `petugas-gerbang-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: guru ? 'GURU' : 'SISWA',
-          nama,
-          no_hp: phone,
-          detailInfo: `Petugas Gerbang Satpam`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 7. Fetch Kaprog
-    if (roleFilter === 'KAPROG') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: 'KAPROG' },
-        },
-        include: {
-          User: {
-            include: {
-              Guru: true,
-            },
-          },
-          Unit: { select: { nama: true } },
-        },
-      });
-
-      const processedPhones = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const guru = asg.User?.Guru;
-        const phone = guru?.no_hp || asg.User?.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        if (processedPhones.has(norm)) return;
-        processedPhones.add(norm);
-
-        const lastComm = commMap.get(norm) || null;
-        const jurusanStr = asg.Unit?.nama || 'Kaprog';
-
-        allUsers.push({
-          id: `kaprog-asg-${asg.id}`,
-          userType: 'GURU',
-          nama: guru?.nama_guru || asg.User?.full_name || 'Kaprog',
-          no_hp: phone,
-          detailInfo: `Kaprog (${jurusanStr})`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 8. Fetch Para Waka
-    if (roleFilter === 'WAKA') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: {
-            code: {
-              in: ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WAKASEK', 'WAKA'],
-            },
-          },
-        },
-        include: {
-          User: {
-            include: {
-              Guru: true,
-            },
-          },
-          Position: { select: { name: true, code: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Waka Sekolah';
-        const posTitle = asg.Position?.name || `Waka (${asg.Position?.code})`;
-
-        const itemKey = `waka-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Waka: ${posTitle}`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 9. Fetch Toolman / Laboran
-    if (roleFilter === 'TOOLMAN') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: 'TOOLMAN' },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Position: { select: { name: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Toolman';
-        const posTitle = asg.Position?.name || 'Toolman Bengkel / Lab';
-
-        const itemKey = `toolman-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Staf: ${posTitle}`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 10. Fetch Staf Tata Usaha (TU*)
-    if (roleFilter === 'TU') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: {
-            OR: [
-              { code: { in: ['TU', 'TU_KEPALA', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] } },
-              { code: { startsWith: 'TU_' } },
-            ],
-          },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Position: { select: { name: true, code: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Staf Tata Usaha';
-        const posTitle = asg.Position?.name || `TU (${asg.Position?.code})`;
-
-        const itemKey = `tu-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Tata Usaha: ${posTitle}`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 11. Fetch Guru BP/BK
-    if (roleFilter === 'BPBK') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: 'BPBK' },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Position: { select: { name: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Guru BP/BK';
-
-        const itemKey = `bpbk-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Guru BP/BK Konseling`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 12. Fetch Pengurus & Staf Koperasi
-    if (roleFilter === 'KOPERASI') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: {
-            OR: [
-              { code: { in: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI', 'KOPERASI'] } },
-              { code: { contains: 'KOPERASI' } },
-            ],
-          },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Position: { select: { name: true, code: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Pengurus Koperasi';
-        const posTitle = asg.Position?.name || `Koperasi (${asg.Position?.code})`;
-
-        const itemKey = `koperasi-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Koperasi: ${posTitle}`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-    }
-
-    // 13. Fetch Kepala Sekolah
-    if (roleFilter === 'KEPALA_SEKOLAH') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: {
-            code: { in: ['KEPALA_SEKOLAH', 'KEPSEK'] },
-          },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Position: { select: { name: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Kepala Sekolah';
-
-        const itemKey = `kepsek-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Kepala Sekolah`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
-
+      // Fallback for role-based Kepala Sekolah users
       const kepsekUsers = await prisma.user.findMany({
         where: {
           tenant_id: tenantId,
-          Role: {
-            name: { in: ['KEPALA_SEKOLAH', 'Kepala Sekolah', 'KEPSEK'] },
-          },
+          Role: { name: { in: ['KEPALA_SEKOLAH', 'Kepala Sekolah', 'KEPSEK'] } },
         },
         include: { Guru: true },
       });
 
+      const processedKeys = new Set(items.map((i) => i.no_hp));
       kepsekUsers.forEach((u) => {
         const phone = u.Guru?.no_hp || u.no_hp;
         if (!phone) return;
         const norm = this.normalizePhone(phone);
+        if (processedKeys.has(phone) || processedKeys.has(norm)) return;
+        processedKeys.add(norm);
+
         const lastComm = commMap.get(norm) || null;
-
-        const itemKey = `kepsek-user-${u.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
         allUsers.push({
-          id: itemKey,
+          id: `kepsek-user-${u.id}`,
           userType: 'GURU',
           nama: u.Guru?.nama_guru || u.full_name || 'Kepala Sekolah',
           no_hp: phone,
-          detailInfo: `Kepala Sekolah`,
+          detailInfo: 'Kepala Sekolah',
           statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
           lastCommAt: lastComm,
         });
       });
-    }
-
-    // 14. Fetch Wali Kelas (dari Struktur Organisasi)
-    if (roleFilter === 'WALIKELAS') {
-      const assignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          Position: { code: 'WALIKELAS' },
-        },
-        include: {
-          User: { include: { Guru: true } },
-          Kelas: { select: { nama_kelas: true } },
-        },
-      });
-
-      const processedUserIds = new Set<string>();
-
-      assignments.forEach((asg) => {
-        const user = asg.User;
-        if (!user) return;
-        const guru = user.Guru;
-        const phone = guru?.no_hp || user.no_hp;
-        if (!phone) return;
-
-        const norm = this.normalizePhone(phone);
-        const lastComm = commMap.get(norm) || null;
-        const nama = guru?.nama_guru || user.full_name || 'Wali Kelas';
-        const kelasStr = asg.Kelas?.nama_kelas || '-';
-
-        const itemKey = `walikelas-${asg.id}`;
-        if (processedUserIds.has(itemKey)) return;
-        processedUserIds.add(itemKey);
-
-        allUsers.push({
-          id: itemKey,
-          userType: 'GURU',
-          nama,
-          no_hp: phone,
-          detailInfo: `Wali Kelas (${kelasStr})`,
-          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
-          lastCommAt: lastComm,
-        });
-      });
+    } else if (roleFilter === 'WALIKELAS') {
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'WALIKELAS' }, commMap, 'Wali Kelas', 'GURU', 'walikelas');
+      allUsers.push(...items);
     }
 
     // 13. Calculate summary statistics

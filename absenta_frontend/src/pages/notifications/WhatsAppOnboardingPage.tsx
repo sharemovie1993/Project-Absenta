@@ -1,15 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
 import {
-  Search,
-  Users,
-  BookOpen,
-  GraduationCap,
-  HeartHandshake,
   MessageSquare,
-  Send,
-  Sparkles,
   RefreshCw,
   CheckCircle2,
   XCircle,
@@ -17,45 +10,34 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  Filter,
-  Check,
-  Smartphone,
+  BookOpen,
+  GraduationCap,
+  HeartHandshake,
+  Send,
 } from 'lucide-react';
 import {
-  getWaOnboardingUsers,
-  sendWaGreeting,
-  sendWaGreetingBulk,
   type WaOnboardingUser,
-  type WaOnboardingSummary,
 } from '@/api/whatsapp.api';
-import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+
+import { useWaOnboarding, type RoleFilterType, type StatusFilterType } from '@/hooks/useWaOnboarding';
+import { WaOnboardingStatsCards } from './components/WaOnboardingStatsCards';
+import { WaOnboardingFilterBar } from './components/WaOnboardingFilterBar';
+import { WaOnboardingPreviewModal } from './components/WaOnboardingPreviewModal';
+import { WaOnboardingBulkModal } from './components/WaOnboardingBulkModal';
 
 export function WhatsAppOnboardingPage() {
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<WaOnboardingUser[]>([]);
-  const [summary, setSummary] = useState<WaOnboardingSummary>({
-    totalTotal: 0,
-    totalGuru: 0,
-    totalSiswa: 0,
-    totalOrtu: 0,
-    totalBelum: 0,
-    totalSudah: 0,
-  });
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
-
-  // Filters
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'GURU' | 'SISWA' | 'ORTU' | 'KEPALA_SEKOLAH' | 'WALIKELAS' | 'PETUGAS_KELAS' | 'PETUGAS_GERBANG' | 'KAPROG' | 'WAKA' | 'TOOLMAN' | 'TU' | 'BPBK' | 'KOPERASI'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'BELUM' | 'SUDAH'>('ALL');
+  // Filters & State
+  const [roleFilter, setRoleFilter] = useState<RoleFilterType>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterType>('ALL');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  // Modals & Action states
-  const [sendingId, setSendingId] = useState<string | null>(null);
-  const [bulkSending, setBulkSending] = useState(false);
+  // Modals state
   const [previewUser, setPreviewUser] = useState<WaOnboardingUser | null>(null);
   const [customMsg, setCustomMsg] = useState('');
   const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
@@ -64,38 +46,29 @@ export function WhatsAppOnboardingPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPagination((prev) => ({ ...prev, page: 1 }));
+      setPage(1);
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Load Data
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getWaOnboardingUsers({
-        role: roleFilter,
-        status: statusFilter,
-        search: debouncedSearch,
-        page: pagination.page,
-        limit: pagination.limit,
-      });
-
-      if (res.success) {
-        setUsers(res.data);
-        setSummary(res.summary);
-        setPagination(res.pagination);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memuat data onboarding pengguna WA.');
-    } finally {
-      setLoading(false);
-    }
-  }, [roleFilter, statusFilter, debouncedSearch, pagination.page, pagination.limit]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // React Query Custom Hook
+  const {
+    users,
+    summary,
+    pagination,
+    isLoading,
+    isRefetching,
+    refetch,
+    sendSingle,
+    isSendingSingle,
+    sendBulk,
+    isSendingBulk,
+  } = useWaOnboarding({
+    role: roleFilter,
+    status: statusFilter,
+    search: debouncedSearch,
+    page,
+  });
 
   // Open Preview Modal
   const handleOpenPreview = (u: WaOnboardingUser) => {
@@ -141,233 +114,91 @@ export function WhatsAppOnboardingPage() {
     setCustomMsg(defaultMsg);
   };
 
-  // Send Single Greeting
+  // Dispatch Single Greeting
   const handleSendSingle = async () => {
     if (!previewUser) return;
     try {
-      setSendingId(previewUser.id);
-      const res = await sendWaGreeting({
+      await sendSingle({
         userType: previewUser.userType,
         nama: previewUser.nama,
         no_hp: previewUser.no_hp,
         detailInfo: previewUser.detailInfo,
         customMessage: customMsg,
       });
-
-      if (res.success) {
-        toast.success(`Pesan sapaan berhasil dijadwalkan ke ${previewUser.nama}`);
-        setPreviewUser(null);
-        loadData();
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengirim pesan sapaan WA.');
-    } finally {
-      setSendingId(null);
+      setPreviewUser(null);
+    } catch {
+      // Toast handles error automatically in mutation hook
     }
   };
 
-  // Send Bulk Greeting
+  // Dispatch Bulk Greeting
   const handleSendBulk = async () => {
     try {
-      setBulkSending(true);
-      setShowBulkConfirmModal(false);
-      const res = await sendWaGreetingBulk({
+      await sendBulk({
         role: roleFilter,
         search: debouncedSearch,
       });
-
-      if (res.success) {
-        toast.success(res.message);
-        loadData();
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengirim pesan sapaan masif.');
-    } finally {
-      setBulkSending(false);
+      setShowBulkConfirmModal(false);
+    } catch {
+      // Toast handles error automatically in mutation hook
     }
   };
 
   return (
-    <OperationalPageLayout
-      title="Monitoring & Sapa Pengguna WA Bot"
-      subtitle="Pantau status komunikasi Guru, Siswa, dan Orang Tua dengan WA Bot serta kirimkan pesan sapaan onboarding instan."
-      headerActions={
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/notifications/wa-chat-logs')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition border border-slate-700"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Riwayat Chat Log</span>
-          </button>
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition border border-slate-700"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      }
-    >
-      <div className="p-4 space-y-6">
-        {/* STATS CARDS GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Total Total */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-xs font-medium">Total Kontak</span>
-              <Users className="w-4 h-4 text-slate-400" />
-            </div>
-            <div className="text-xl font-bold text-white">{summary.totalTotal}</div>
-          </div>
-
-          {/* Guru */}
-          <div className="bg-slate-900/80 border border-blue-900/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between text-blue-400 mb-1">
-              <span className="text-xs font-medium">Guru</span>
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-blue-400">{summary.totalGuru}</div>
-          </div>
-
-          {/* Siswa */}
-          <div className="bg-slate-900/80 border border-emerald-900/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between text-emerald-400 mb-1">
-              <span className="text-xs font-medium">Siswa</span>
-              <GraduationCap className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-emerald-400">{summary.totalSiswa}</div>
-          </div>
-
-          {/* Ortu */}
-          <div className="bg-slate-900/80 border border-amber-900/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between text-amber-400 mb-1">
-              <span className="text-xs font-medium">Orang Tua</span>
-              <HeartHandshake className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-amber-400">{summary.totalOrtu}</div>
-          </div>
-
-          {/* Belum Komunikasi (Highlight) */}
-          <div className="bg-rose-950/40 border border-rose-800/60 rounded-xl p-3.5 flex flex-col justify-between shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between text-rose-400 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-wider">Belum Sapa</span>
-              <XCircle className="w-4 h-4 text-rose-400 animate-pulse" />
-            </div>
-            <div className="text-xl font-extrabold text-rose-300">{summary.totalBelum}</div>
-          </div>
-
-          {/* Sudah Komunikasi */}
-          <div className="bg-emerald-950/40 border border-emerald-800/50 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between text-emerald-400 mb-1">
-              <span className="text-xs font-medium">Sudah Sapa</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-xl font-bold text-emerald-300">{summary.totalSudah}</div>
-          </div>
-        </div>
-
-        {/* FILTER BAR & ACTION BUTTON */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Filter Role Pills */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5" /> Peran:
-              </span>
-              {(['ALL', 'GURU', 'SISWA', 'ORTU', 'KEPALA_SEKOLAH', 'WALIKELAS', 'PETUGAS_KELAS', 'PETUGAS_GERBANG', 'KAPROG', 'WAKA', 'TOOLMAN', 'TU', 'BPBK', 'KOPERASI'] as const).map((r) => {
-                const active = roleFilter === r;
-                const labels: Record<string, string> = {
-                  ALL: 'Semua Peran',
-                  GURU: '📚 Guru',
-                  SISWA: '🎓 Siswa',
-                  ORTU: '👨‍👩‍👧 Ortu',
-                  KEPALA_SEKOLAH: '👨‍💼 Kepala Sekolah',
-                  WALIKELAS: '🏫 Wali Kelas',
-                  PETUGAS_KELAS: '📋 Petugas Kelas',
-                  PETUGAS_GERBANG: '🛡️ Petugas Gerbang',
-                  KAPROG: '👨‍🏫 Kaprog',
-                  WAKA: '👔 Para Waka',
-                  TOOLMAN: '🔧 Toolman',
-                  TU: '📁 Tata Usaha',
-                  BPBK: '💬 Guru BP/BK',
-                  KOPERASI: '🏪 Koperasi',
-                };
-                return (
-                  <button
-                    key={r}
-                    onClick={() => {
-                      setRoleFilter(r);
-                      setPagination((p) => ({ ...p, page: 1 }));
-                    }}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                      active
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40 font-semibold'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/60'
-                    }`}
-                  >
-                    {labels[r]}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Action Bulk Button */}
+    <OperationalPageLayout>
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        {/* HEADER BAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => setShowBulkConfirmModal(true)}
-              disabled={bulkSending || summary.totalBelum === 0}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-900/30 hover:from-emerald-500 hover:to-teal-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => navigate('/notifications')}
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow-sm"
+              title="Kembali ke Pengaturan Notifikasi"
             >
-              <Sparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '3s' }} />
-              <span>Sapa Semua yang Belum Komunikasi ({summary.totalBelum})</span>
+              <ArrowLeft className="w-5 h-5" />
             </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
-            {/* Filter Status Pills */}
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <span className="text-xs font-medium text-slate-400 mr-1">Status:</span>
-              {(['ALL', 'BELUM', 'SUDAH'] as const).map((st) => {
-                const active = statusFilter === st;
-                const labels = {
-                  ALL: 'Semua',
-                  BELUM: '🔴 Belum Komunikasi',
-                  SUDAH: '🟢 Sudah Komunikasi',
-                };
-                return (
-                  <button
-                    key={st}
-                    onClick={() => {
-                      setStatusFilter(st);
-                      setPagination((p) => ({ ...p, page: 1 }));
-                    }}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition ${
-                      active
-                        ? 'bg-slate-700 text-white border border-slate-600'
-                        : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {labels[st]}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-72">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama, no. HP, NIP, kelas..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/60"
-              />
+            <div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-emerald-400" />
+                <h1 className="text-lg font-bold text-white tracking-tight">Onboarding & Sapaan WA Bot</h1>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Monitoring status komunikasi & kirim sapaan resmi WA Bot ke Guru, Staf, Siswa, dan Ortu
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700/60 shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefetching ? 'animate-spin' : ''}`} />
+            <span>{isRefetching ? 'Memutakhirkan...' : 'Refresh Data'}</span>
+          </button>
         </div>
+
+        {/* SUMMARY STATS CARDS */}
+        <WaOnboardingStatsCards summary={summary} />
+
+        {/* FILTER BAR & SEARCH */}
+        <WaOnboardingFilterBar
+          roleFilter={roleFilter}
+          onSelectRole={(r) => {
+            setRoleFilter(r);
+            setPage(1);
+          }}
+          statusFilter={statusFilter}
+          onSelectStatus={(s) => {
+            setStatusFilter(s);
+            setPage(1);
+          }}
+          search={search}
+          onSearchChange={setSearch}
+          totalBelum={summary.totalBelum}
+          bulkSending={isSendingBulk}
+          onOpenBulkModal={() => setShowBulkConfirmModal(true)}
+        />
 
         {/* DATA TABLE */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
@@ -385,7 +216,7 @@ export function WhatsAppOnboardingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {loading ? (
+                {isLoading ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -475,14 +306,14 @@ export function WhatsAppOnboardingPage() {
               <div className="flex items-center gap-2">
                 <button
                   disabled={pagination.page <= 1}
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+                  onClick={() => setPage((p) => p - 1)}
                   className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+                  onClick={() => setPage((p) => p + 1)}
                   className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -493,98 +324,25 @@ export function WhatsAppOnboardingPage() {
         </div>
       </div>
 
-      {/* PREVIEW & SEND SINGLE GREETING MODAL */}
-      {previewUser && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-white text-sm">Pratinjau Pesan Sapaan WA</h3>
-              </div>
-              <button onClick={() => setPreviewUser(null)} className="text-slate-400 hover:text-white">
-                ✕
-              </button>
-            </div>
+      {/* PREVIEW MODAL */}
+      <WaOnboardingPreviewModal
+        user={previewUser}
+        customMsg={customMsg}
+        onCustomMsgChange={setCustomMsg}
+        onClose={() => setPreviewUser(null)}
+        onSend={handleSendSingle}
+        isSending={isSendingSingle}
+      />
 
-            <div className="space-y-2 text-xs">
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex justify-between">
-                <div>
-                  <span className="text-slate-400">Penerima:</span>{' '}
-                  <span className="font-bold text-white">{previewUser.nama}</span>
-                </div>
-                <div className="font-mono text-emerald-400">{previewUser.no_hp}</div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1 font-medium">Teks Pesan (Dapat Disesuaikan):</label>
-                <textarea
-                  rows={10}
-                  value={customMsg}
-                  onChange={(e) => setCustomMsg(e.target.value)}
-                  className="w-full p-3 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setPreviewUser(null)}
-                className="px-4 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSendSingle}
-                disabled={sendingId !== null}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 transition disabled:opacity-50"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>{sendingId !== null ? 'Mengirim...' : 'Kirim Sapaan WA'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* BULK GREETING CONFIRMATION MODAL */}
-      {showBulkConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-amber-400">
-              <Sparkles className="w-6 h-6 animate-spin" style={{ animationDuration: '4s' }} />
-              <h3 className="font-bold text-white text-base">Konfirmasi Sapa Masif</h3>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Anda akan mengirimkan pesan sapaan WA personal ke{' '}
-              <strong className="text-emerald-400 font-bold">{summary.totalBelum} pengguna</strong> yang saat ini memiliki status{' '}
-              <strong className="text-rose-400 font-bold">Belum Komunikasi</strong>.
-            </p>
-
-            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
-              <div>• Pengiriman menggunakan antrean WA Queue otomatis dengan jeda aman.</div>
-              <div>• Pengguna akan diajak mencoba menu bot & menyimpan nomor WA sekolah.</div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setShowBulkConfirmModal(false)}
-                className="px-4 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSendBulk}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 transition"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Ya, Kirim Sapaan Masif</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* BULK CONFIRM MODAL */}
+      <WaOnboardingBulkModal
+        isOpen={showBulkConfirmModal}
+        onClose={() => setShowBulkConfirmModal(false)}
+        onConfirm={handleSendBulk}
+        isSending={isSendingBulk}
+        totalBelum={summary.totalBelum}
+        roleFilterLabel={roleFilter}
+      />
     </OperationalPageLayout>
   );
 }
