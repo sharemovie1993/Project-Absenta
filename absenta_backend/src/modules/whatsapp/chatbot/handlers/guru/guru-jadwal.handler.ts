@@ -680,10 +680,10 @@ export class GuruJadwalHandler {
       return { icon: '🟡', label: sesi.status };
     };
 
-    if (filterMode === 'SEARCH') {
-      // ── MODE 82: Agregasi per guru — nama tampil sekali, slot di-indent ──
+    // Helper: build agregasi per guru (untuk mode 82 dan 83)
+    const buildAggregated = (list: any[]): string => {
       const grouped = new Map<string, { shortName: string; slots: any[] }>();
-      targetJadwal.forEach((j: any) => {
+      list.forEach((j: any) => {
         const guruId    = j.guru_id || j.Guru?.id || j.id;
         const rawName   = j.Guru?.nama_guru || 'Guru';
         const shortName = GuruJadwalHandler.pruneGelar(rawName);
@@ -691,42 +691,55 @@ export class GuruJadwalHandler {
         grouped.get(guruId)!.slots.push(j);
       });
 
-      // Sort guru A-Z
       const sortedGuru = Array.from(grouped.values()).sort((a, b) =>
         a.shortName.localeCompare(b.shortName, 'id', { sensitivity: 'base' })
       );
 
-      if (sortedGuru.length === 0) {
-        msg += `❌ Tidak ada jadwal ditemukan untuk *"${filterName}"* hari ini.\n\n`;
-        msg += `💡 Ketik *[82]* untuk cari nama lain atau *[8]* untuk Sub-menu.`;
-        return msg;
-      }
-
+      let out = '';
       sortedGuru.forEach(({ shortName, slots }) => {
-        // Tentukan status dominan (prioritas: BERLANGSUNG > Belum Masuk > IZIN > SELESAI)
-        const statuses = slots.map(s => resolveStatus(s));
+        // Sort slot by jam_mulai
+        slots.sort((a: any, b: any) => (a.jam_mulai || '').localeCompare(b.jam_mulai || ''));
+        // Status dominan: BERLANGSUNG > Belum Masuk > IZIN > SELESAI
+        const statuses = slots.map((s: any) => resolveStatus(s));
         const dominant = statuses.find(s => s.icon === '🟢') ??
                          statuses.find(s => s.icon === '🔴') ??
                          statuses.find(s => s.icon === '🟡') ??
                          statuses[0];
-        msg += `${dominant.icon} *${shortName}*\n`;
+        out += `${dominant.icon} *${shortName}*\n`;
         slots.forEach((j: any) => {
-          const kelas  = j.Kelas?.nama_kelas || '-';
-          const jam    = `${j.jam_mulai}–${j.jam_selesai}`;
+          const kelas = j.Kelas?.nama_kelas || '-';
+          const jam   = `${j.jam_mulai}–${j.jam_selesai}`;
           const { icon, label } = resolveStatus(j);
-          msg += `  ${icon} ${kelas} (${jam}) — ${label}\n`;
+          out += `  ${icon} ${kelas} (${jam}) — ${label}\n`;
         });
-        msg += `\n`;
+        out += `\n`;
       });
+      return out;
+    };
+
+    if (filterMode === 'SEARCH') {
+      // ── MODE 82: Agregasi per guru + slot indent ──
+      const aggregated = buildAggregated(targetJadwal);
+      if (!aggregated) {
+        msg += `❌ Tidak ada jadwal ditemukan untuk *"${filterName}"* hari ini.\n\n`;
+        msg += `💡 Ketik *[82]* untuk cari nama lain atau *[8]* untuk Sub-menu.`;
+        return msg;
+      }
+      msg += aggregated;
+
+    } else if (filterMode === 'ALL') {
+      // ── MODE 83: Agregasi semua guru hari ini + slot+jam ──
+      msg += buildAggregated(targetJadwal);
 
     } else {
-      // ── MODE 81 / 83: Compact single-line per slot ──
+      // ── MODE 81 (NOW): Compact single-line per slot — ringkas karena hanya jam aktif ──
       targetJadwal.forEach((j: any) => {
         const rawName   = j.Guru?.nama_guru || 'Guru';
         const shortName = GuruJadwalHandler.pruneGelar(rawName);
         const kelasName = j.Kelas?.nama_kelas || '-';
+        const jam       = `${j.jam_mulai}–${j.jam_selesai}`;
         const { icon, label } = resolveStatus(j);
-        msg += `${icon} *${shortName}* | ${kelasName} — ${label}\n`;
+        msg += `${icon} *${shortName}* | ${kelasName} (${jam}) — ${label}\n`;
       });
     }
 
