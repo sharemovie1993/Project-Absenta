@@ -79,11 +79,9 @@ export class SiswaHandler {
       return (
         `📏 *Update Tinggi & Berat Badan*\n` +
         `👤 Siswa: *${siswa.nama_siswa}*\n\n` +
-        `Silakan balas pesan ini dengan format:\n` +
-        `*<Tinggi Badan (cm)> <Berat Badan (kg)>*\n\n` +
-        `*Contoh:* \`170 65\` (Tinggi 170 cm, Berat 65 kg)\n` +
-        `Atau bisa juga tulis \`170cm 65kg\`\n\n` +
-        `💡 Ketik *[0]* atau *BATAL* untuk membatalkan.`
+        `Balas dengan format: *TB/BB*\n` +
+        `Contoh: *170/65* (Tinggi 170 cm, Berat 65 kg)\n\n` +
+        `💡 Ketik *BATAL* untuk membatalkan.`
       );
     }
 
@@ -628,28 +626,33 @@ export class SiswaHandler {
       return '❌ Sesi update telah kadaluarsa. Silakan ulangi dari menu profil (*ketik 1*).';
     }
 
-    const matches = text.match(/\d+/g);
-    if (!matches || matches.length === 0) {
-      return (
-        `⚠️ *Format Tidak Valid*\n\n` +
-        `Silakan masukkan angka Tinggi & Berat Badan.\n` +
-        `*Contoh:* \`170 65\` (Tinggi 170 cm, Berat 65 kg)\n\n` +
-        `💡 Ketik *[0]* atau *BATAL* untuk membatalkan.`
-      );
-    }
-
+    // Parse format: "170/65", "170 65", "170cm 65kg", dsb.
     let tb: number | null = null;
     let bb: number | null = null;
 
-    if (matches.length >= 2) {
-      tb = parseInt(matches[0], 10);
-      bb = parseInt(matches[1], 10);
+    // Prioritas 1: format slash "170/65"
+    const slashMatch = text.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (slashMatch) {
+      tb = parseInt(slashMatch[1], 10);
+      bb = parseInt(slashMatch[2], 10);
     } else {
-      const val = parseInt(matches[0], 10);
-      if (val >= 100) {
-        tb = val;
+      // Prioritas 2: ambil semua angka dari teks
+      const matches = text.match(/\d+/g);
+      if (!matches || matches.length === 0) {
+        return (
+          `⚠️ *Format Tidak Valid*\n\n` +
+          `Balas dengan format: *TB/BB*\n` +
+          `Contoh: *170/65* (Tinggi 170 cm, Berat 65 kg)\n\n` +
+          `💡 Ketik *BATAL* untuk membatalkan.`
+        );
+      }
+      if (matches.length >= 2) {
+        tb = parseInt(matches[0], 10);
+        bb = parseInt(matches[1], 10);
       } else {
-        bb = val;
+        const val = parseInt(matches[0], 10);
+        if (val >= 100) tb = val;
+        else bb = val;
       }
     }
 
