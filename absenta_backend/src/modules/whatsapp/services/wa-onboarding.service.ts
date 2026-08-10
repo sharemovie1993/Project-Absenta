@@ -317,7 +317,59 @@ export class WaOnboardingService {
       });
     }
 
-    // 8. Calculate summary statistics
+    // 8. Fetch Para Waka
+    if (roleFilter === 'WAKA') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: {
+            code: {
+              in: ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WAKASEK', 'WAKA'],
+            },
+          },
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true,
+            },
+          },
+          Position: { select: { name: true, code: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Waka Sekolah';
+        const posTitle = asg.Position?.name || `Waka (${asg.Position?.code})`;
+
+        const itemKey = `waka-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Waka: ${posTitle}`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 9. Calculate summary statistics
     const totalGuru = allUsers.filter((u) => u.userType === 'GURU').length;
     const totalSiswa = allUsers.filter((u) => u.userType === 'SISWA').length;
     const totalOrtu = allUsers.filter((u) => u.userType === 'ORTU').length;
