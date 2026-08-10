@@ -2100,7 +2100,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         isOpen={isBulkPasswordOpen}
         onClose={() => setIsBulkPasswordOpen(false)}
         selectedSiswaIds={Array.from(selectedIds)}
-        selectedKelasId={selectedKelasFilter}
+        selectedKelasId={filterKelas}
         kelasOptions={kelasList.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
         onSuccess={() => fetchSiswas(currentPage, searchTerm)}
       />
