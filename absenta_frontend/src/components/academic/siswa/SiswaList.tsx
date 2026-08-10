@@ -246,7 +246,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
 
   const { user } = useAuthStore();
-  const { can, isAdmin } = useCapabilities();
+  const { can, isAdmin, isKesiswaan, isKurikulum, isKepalaSekolah, isHubin } = useCapabilities();
   const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -260,8 +260,6 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     if (!kelas?.id) return null;
     return { id: kelas.id, nama: kelas.nama_kelas || kelas.nama || 'Kelas Binaan' };
   }, [user]);
-
-  const { isKesiswaan, isKurikulum, isKepalaSekolah, isHubin, isAdmin } = useCapabilities();
 
   // Deteksi role manajemen (tidak dibatasi kelas)
   const isManagementRole = useMemo(() => {
