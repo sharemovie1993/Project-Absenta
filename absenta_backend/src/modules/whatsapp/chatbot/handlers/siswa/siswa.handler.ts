@@ -455,6 +455,17 @@ export class SiswaHandler {
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
     const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
 
+    // Parse jamRange e.g. "07:15–08:35"
+    let waktuMulai = new Date();
+    let waktuSelesai: Date | null = null;
+    if (payload.jamRange) {
+      const parts = String(payload.jamRange).split('–').map(p => p.trim());
+      if (parts[0]) waktuMulai = new Date(`${todayStr}T${parts[0]}:00.000Z`);
+      if (parts[1]) waktuSelesai = new Date(`${todayStr}T${parts[1]}:00.000Z`);
+    }
+
+    const waktuTap = chosenStatus === 'HADIR' ? new Date() : null;
+
     try {
       // 1. Find or create SesiAbsensi
       let sesi = await prisma.sesiAbsensi.findFirst({
@@ -476,7 +487,8 @@ export class SiswaHandler {
             mapel_id: payload.mapelId || null,
             jadwal_kbm_id: payload.jadwalId,
             tanggal: new Date(),
-            waktu_mulai: new Date(),
+            waktu_mulai: waktuMulai,
+            waktu_selesai: waktuSelesai,
             jenis_kegiatan: 'KBM',
             status: sesiStatus,
             created_by_user_id: siswa.user_id || null,
@@ -503,14 +515,14 @@ export class SiswaHandler {
             sesi_id: sesi.id,
             guru_id: payload.guruId,
             status: statusLabel,
-            waktu_tap: new Date(),
+            waktu_tap: waktuTap,
             catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
             tahun_pelajaran_id: activeYear?.id || '',
             semester_id: activeSem.id,
           },
           update: {
             status: statusLabel,
-            waktu_tap: new Date(),
+            waktu_tap: waktuTap,
             catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
           },
         });

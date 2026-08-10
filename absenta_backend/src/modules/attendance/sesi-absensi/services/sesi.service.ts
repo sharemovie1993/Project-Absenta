@@ -1724,9 +1724,9 @@ export class SesiService {
 
       // Extra check: If we have a tap time, they are definitely present/late, 
       // regardless of the status string in AbsenGuru
-      const hasTap = !!(absenGuru?.waktu_tap);
-
       const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
+      const isExplicitNonHadir = ['IZIN', 'SAKIT', 'ALPA'].includes(sStatus);
+      const hasTap = !isExplicitNonHadir && !!(absenGuru?.waktu_tap);
 
       if (sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap) {
         teacherStatus = (absenGuru?.is_terlambat || false) ? 'TERLAMBAT' : 'TEPAT_WAKTU';
