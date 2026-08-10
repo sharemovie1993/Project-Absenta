@@ -52,6 +52,7 @@ export function RekapBulananMapelContent() {
   const [kelasId, setKelasId] = useState('');
   const [mapelOptions, setMapelOptions] = useState<DropdownOption[]>([]);
   const [mapelId, setMapelId] = useState('');
+  const [rows, setRows] = useState<any[]>([]);
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
