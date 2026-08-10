@@ -174,6 +174,8 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         nama_wali: getRowValue(row, 'nama_wali', 'Wali', 'Nama Wali'),
         nik_wali: getRowValue(row, 'nik_wali', 'NIK Wali', 'NIK_Wali'),
         email: getRowValue(row, 'email', 'Email'),
+        sekolah_asal: getRowValue(row, 'sekolah_asal', 'Sekolah Asal', 'Asal Sekolah', 'Sekolah_Asal', 'Asal_Sekolah'),
+        no_ijazah_smp: getRowValue(row, 'no_ijazah_smp', 'No Ijazah SMP', 'No. Ijazah', 'No Ijazah', 'No_Ijazah_SMP'),
         status: statusInput,
         tanggal_masuk: parseSmartDate(getRowValue(row, 'tanggal_masuk', 'Tanggal_Masuk', 'Tanggal Masuk (YYYY-MM-DD)', 'Tanggal Masuk')),
         tanggal_keluar: parseSmartDate(getRowValue(row, 'tanggal_keluar', 'Tanggal_Keluar', 'Tanggal Keluar (YYYY-MM-DD)', 'Tanggal Keluar'))

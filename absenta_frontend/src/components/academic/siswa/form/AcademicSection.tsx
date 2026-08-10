@@ -47,6 +47,8 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                 <DetailRow icon={<School size={16} />} label="Kelas" value={(kelasOptions || []).find(o => o.value === watch('kelas_id'))?.label} />
                 <DetailRow icon={<CalendarRange size={16} />} label="Tahun Pelajaran" value={(tahunPelajaranOptions || []).find(o => o.value === watch('tahun_pelajaran_id'))?.label} />
                 <DetailRow icon={<Clock size={16} />} label="Semester" value={(semesterOptions || []).find(o => o.value === watch('semester_id'))?.label} />
+                <DetailRow icon={<School size={16} />} label="Sekolah Asal" value={watch('sekolah_asal')} />
+                <DetailRow icon={<School size={16} />} label="No. Ijazah SMP" value={watch('no_ijazah_smp')} />
                 <DetailRow 
                     icon={<ShieldCheck size={16} />} 
                     label="Status Siswa" 
@@ -141,6 +143,36 @@ export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
                 {errors.semester_id && (
                     <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.semester_id.message}</p>
                 )}
+            </div>
+
+            <div className="space-y-2 group">
+                <div className="flex items-center justify-between px-1">
+                    <Label htmlFor="sekolah_asal" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                        Sekolah Asal (SMP / MTs)
+                    </Label>
+                </div>
+                <Input
+                    id="sekolah_asal"
+                    {...register('sekolah_asal')}
+                    placeholder="Nama SMP / MTs asal..."
+                    disabled={isViewMode}
+                    className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                />
+            </div>
+
+            <div className="space-y-2 group">
+                <div className="flex items-center justify-between px-1">
+                    <Label htmlFor="no_ijazah_smp" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                        No. Ijazah SMP / MTs
+                    </Label>
+                </div>
+                <Input
+                    id="no_ijazah_smp"
+                    {...register('no_ijazah_smp')}
+                    placeholder="Nomor Ijazah..."
+                    disabled={isViewMode}
+                    className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                />
             </div>
 
             <div className="space-y-2 group">
