@@ -667,32 +667,68 @@ export class GuruJadwalHandler {
       return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
     });
 
-    targetJadwal.forEach((j: any) => {
-      const rawName   = j.Guru?.nama_guru || 'Guru';
-      const shortName = GuruJadwalHandler.pruneGelar(rawName);
-      const kelasName = j.Kelas?.nama_kelas || '-';
-
-      const matchedSesi = sesiList.find(s =>
+    // Helper: resolve status icon + label dari sesiList
+    const resolveStatus = (j: any): { icon: string; label: string } => {
+      const sesi = sesiList.find(s =>
         (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) ||
         (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
       );
+      if (!sesi) return { icon: '🔴', label: 'Belum Masuk' };
+      if (sesi.status === 'BERLANGSUNG') return { icon: '🟢', label: 'Mengajar' };
+      if (sesi.status === 'SELESAI')     return { icon: '✅', label: 'Selesai' };
+      if (sesi.status === 'IZIN')        return { icon: '🟡', label: 'Izin' };
+      return { icon: '🟡', label: sesi.status };
+    };
 
-      let statusIcon = '🔴';
-      let statusStr  = 'Belum Masuk';
-      if (matchedSesi) {
-        if (matchedSesi.status === 'BERLANGSUNG') {
-          statusIcon = '🟢'; statusStr = 'Mengajar';
-        } else if (matchedSesi.status === 'SELESAI') {
-          statusIcon = '✅'; statusStr = 'Selesai';
-        } else if (matchedSesi.status === 'IZIN') {
-          statusIcon = '🟡'; statusStr = 'Izin';
-        } else {
-          statusIcon = '🟡'; statusStr = matchedSesi.status;
-        }
+    if (filterMode === 'SEARCH') {
+      // ── MODE 82: Agregasi per guru — nama tampil sekali, slot di-indent ──
+      const grouped = new Map<string, { shortName: string; slots: any[] }>();
+      targetJadwal.forEach((j: any) => {
+        const guruId    = j.guru_id || j.Guru?.id || j.id;
+        const rawName   = j.Guru?.nama_guru || 'Guru';
+        const shortName = GuruJadwalHandler.pruneGelar(rawName);
+        if (!grouped.has(guruId)) grouped.set(guruId, { shortName, slots: [] });
+        grouped.get(guruId)!.slots.push(j);
+      });
+
+      // Sort guru A-Z
+      const sortedGuru = Array.from(grouped.values()).sort((a, b) =>
+        a.shortName.localeCompare(b.shortName, 'id', { sensitivity: 'base' })
+      );
+
+      if (sortedGuru.length === 0) {
+        msg += `❌ Tidak ada jadwal ditemukan untuk *"${filterName}"* hari ini.\n\n`;
+        msg += `💡 Ketik *[82]* untuk cari nama lain atau *[8]* untuk Sub-menu.`;
+        return msg;
       }
 
-      msg += `${statusIcon} *${shortName}* | ${kelasName} — ${statusStr}\n`;
-    });
+      sortedGuru.forEach(({ shortName, slots }) => {
+        // Tentukan status dominan (prioritas: BERLANGSUNG > Belum Masuk > IZIN > SELESAI)
+        const statuses = slots.map(s => resolveStatus(s));
+        const dominant = statuses.find(s => s.icon === '🟢') ??
+                         statuses.find(s => s.icon === '🔴') ??
+                         statuses.find(s => s.icon === '🟡') ??
+                         statuses[0];
+        msg += `${dominant.icon} *${shortName}*\n`;
+        slots.forEach((j: any) => {
+          const kelas  = j.Kelas?.nama_kelas || '-';
+          const jam    = `${j.jam_mulai}–${j.jam_selesai}`;
+          const { icon, label } = resolveStatus(j);
+          msg += `  ${icon} ${kelas} (${jam}) — ${label}\n`;
+        });
+        msg += `\n`;
+      });
+
+    } else {
+      // ── MODE 81 / 83: Compact single-line per slot ──
+      targetJadwal.forEach((j: any) => {
+        const rawName   = j.Guru?.nama_guru || 'Guru';
+        const shortName = GuruJadwalHandler.pruneGelar(rawName);
+        const kelasName = j.Kelas?.nama_kelas || '-';
+        const { icon, label } = resolveStatus(j);
+        msg += `${icon} *${shortName}* | ${kelasName} — ${label}\n`;
+      });
+    }
 
     if (filterMode === 'NOW' && targetJadwal.length === 0) {
       msg += `ℹ️ _Saat ini tidak ada slot mengajar aktif pada jam ini (${nowWibStr} WIB)._\n\n`;
