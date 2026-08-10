@@ -266,18 +266,22 @@ export function formatPosisiGuruSubMenu(nama: string): string {
   );
 }
 
-export function formatSiswaMenu(nama: string): string {
-  return (
-    `👦 *Halo ${nama}!*\n` +
+export function formatSiswaMenu(nama: string, isPetugas = false): string {
+  let msg = `👦 *Halo ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
     `[1] 👤 Profil Saya\n` +
     `[2] ⏰ Presensi Harian\n` +
     `[3] 🏆 Catatan Poin\n` +
     `[4] 📅 Jadwal Pelajaran\n` +
-    `[5] 📊 Rekap Bulanan\n` +
-    `[0] 🔄 Menu Utama`
-  );
+    `[5] 📊 Rekap Bulanan\n`;
+
+  if (isPetugas) {
+    msg += `[6] 📋 Presensi Guru KBM (Petugas Kelas)\n`;
+  }
+
+  msg += `[0] 🔄 Menu Utama`;
+  return msg;
 }
 
 export function formatOrtuMenu(nama: string): string {

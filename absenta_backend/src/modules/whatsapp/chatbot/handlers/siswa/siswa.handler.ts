@@ -1,8 +1,12 @@
 import { ChatbotContext } from '../../core/chatbot-context';
 import { siswaService } from '@/modules/academic/siswa/services/siswa.service';
-import { formatSiswaMenu, getWhatsappActiveSemester } from '../../../services/wa-chatbot-commands';
+import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
+import { sesiService } from '@/modules/attendance/sesi-absensi/services/sesi.service';
+import { formatSiswaMenu, getWhatsappActiveSemester, aggregateJadwal } from '../../../services/wa-chatbot-commands';
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '@/utils/prisma';
+import { chatbotSessionManager } from '../../core/session-state-manager';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
   const localDay = new Intl.DateTimeFormat('en-US', {
@@ -14,6 +18,22 @@ function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
     Wednesday: 'RABU', Thursday: 'KAMIS', Friday: 'JUMAT', Saturday: 'SABTU',
   };
   return map[localDay] ?? 'SENIN';
+}
+
+/** Helper: Cek apakah siswa terdaftar sebagai Petugas Absensi Kelas */
+export async function isPetugasKelas(tenantId: string, userId?: string | null, kelasId?: string | null): Promise<boolean> {
+  if (!userId || !kelasId) return false;
+  const assignment = await prisma.organizationalAssignment.findFirst({
+    where: {
+      tenant_id: tenantId,
+      user_id: userId,
+      kelas_id: kelasId,
+      is_active: true,
+      Position: { code: 'PETUGAS_KELAS' },
+    },
+    select: { id: true },
+  });
+  return !!assignment;
 }
 
 export class SiswaHandler {
@@ -102,19 +122,13 @@ export class SiswaHandler {
       }
 
       const activeSem = await getWhatsappActiveSemester(siswa.tenant_id);
-      const jadwalHariIni = await prisma.jadwalKBM.findMany({
-        where: {
-          tenant_id: siswa.tenant_id,
-          kelas_id: siswa.kelas_id,
-          hari: currentDay as any,
-          ...(activeSem ? { semester_id: activeSem.id } : {}),
-        },
-        include: {
-          Mapel: { select: { nama_mapel: true } },
-          Guru: { select: { nama_guru: true } },
-        },
-        orderBy: { slot_index: 'asc' },
-      });
+      const rawJadwal = await jadwalKBMService.getJadwalKelas(
+        siswa.tenant_id,
+        activeSem ? activeSem.id : '',
+        siswa.kelas_id,
+        currentDay
+      );
+      const jadwalHariIni = aggregateJadwal(rawJadwal);
 
       if (jadwalHariIni.length === 0) {
         return (
@@ -130,7 +144,10 @@ export class SiswaHandler {
       jadwalHariIni.forEach((j, idx) => {
         const mapel = (j as any).Mapel?.nama_mapel || '-';
         const guru = (j as any).Guru?.nama_guru || '-';
-        msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel}\n`;
+        const slotInfo = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+          ? ` (Jam ${j.startSlot}–${j.endSlot})`
+          : (j.startSlot ? ` (Jam ${j.startSlot})` : '');
+        msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai}${slotInfo} │ 📖 ${mapel}\n`;
         msg += `   👨‍🏫 ${guru}\n\n`;
       });
       msg += `💡 Ketik *[42]* untuk jadwal 1 minggu atau *[0]* Menu Utama.`;
@@ -146,20 +163,13 @@ export class SiswaHandler {
       const activeSem = await getWhatsappActiveSemester(siswa.tenant_id);
       const hariUrut = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
 
-      const jadwalMinggu = await prisma.jadwalKBM.findMany({
-        where: {
-          tenant_id: siswa.tenant_id,
-          kelas_id: siswa.kelas_id,
-          ...(activeSem ? { semester_id: activeSem.id } : {}),
-        },
-        include: {
-          Mapel: { select: { nama_mapel: true } },
-          Guru: { select: { nama_guru: true } },
-        },
-        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
-      });
+      const rawJadwal = await jadwalKBMService.getJadwalKelas(
+        siswa.tenant_id,
+        activeSem ? activeSem.id : '',
+        siswa.kelas_id
+      );
 
-      if (jadwalMinggu.length === 0) {
+      if (rawJadwal.length === 0) {
         return (
           `📅 *Jadwal 1 Minggu*\n` +
           `🏫 Kelas: *${siswa.Kelas?.nama_kelas || '-'}*\n\n` +
@@ -168,8 +178,8 @@ export class SiswaHandler {
         );
       }
 
-      const grouped: Record<string, typeof jadwalMinggu> = {};
-      jadwalMinggu.forEach(j => {
+      const grouped: Record<string, typeof rawJadwal> = {};
+      rawJadwal.forEach(j => {
         const h = j.hari as string;
         if (!grouped[h]) grouped[h] = [];
         grouped[h].push(j);
@@ -182,12 +192,16 @@ export class SiswaHandler {
         const items = grouped[hari];
         if (!items || items.length === 0) return;
         msg += `📌 *${hari}*\n`;
-        items.forEach((j, idx) => {
-          const isLast = idx === items.length - 1;
+        const aggregatedItems = aggregateJadwal(items);
+        aggregatedItems.forEach((j, idx) => {
+          const isLast = idx === aggregatedItems.length - 1;
           const branch = isLast ? '└' : '├';
           const mapel = (j as any).Mapel?.nama_mapel || '-';
           const guru = (j as any).Guru?.nama_guru || '-';
-          msg += ` ${branch} ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel} (${guru})\n`;
+          const slotInfo = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+            ? ` (Jam ${j.startSlot}–${j.endSlot})`
+            : (j.startSlot ? ` (Jam ${j.startSlot})` : '');
+          msg += ` ${branch} ⏱️ ${j.jam_mulai}–${j.jam_selesai}${slotInfo} │ 📖 ${mapel} (${guru})\n`;
         });
         msg += `\n`;
       });
@@ -209,6 +223,292 @@ export class SiswaHandler {
       return msg;
     }
 
-    return formatSiswaMenu(siswa.nama_siswa);
+    // [6] Presensi Guru KBM — khusus Petugas Kelas
+    if (choice === '6' || choice === '60' || choice.startsWith('6') || choice.includes('PETUGAS') || choice.includes('ABSEN GURU')) {
+      return SiswaHandler.handlePetugasMenu(ctx);
+    }
+
+    const isPetugas = await isPetugasKelas(siswa.tenant_id, siswa.user_id, siswa.kelas_id);
+    return formatSiswaMenu(siswa.nama_siswa, isPetugas);
+  }
+
+  /**
+   * MENU 6: Daftar Presensi Guru KBM Hari Ini untuk Petugas Kelas
+   */
+  static async handlePetugasMenu(ctx: ChatbotContext): Promise<string> {
+    const siswa = ctx.siswa;
+    if (!siswa) return '⚠️ Data Siswa tidak ditemukan.';
+    if (!siswa.kelas_id) return '⚠️ Data kelas Siswa belum diset. Hubungi Admin Sekolah.';
+
+    const tenantId = siswa.tenant_id;
+
+    // Cek Otorisasi Petugas Kelas
+    const isPetugas = await isPetugasKelas(tenantId, siswa.user_id, siswa.kelas_id);
+    if (!isPetugas) {
+      return (
+        `⚠️ *Akses Terbatas*\n\n` +
+        `Fitur ini khusus untuk *Petugas Absensi Kelas* yang telah ditugaskan oleh sekolah.\n` +
+        `Nama Anda (*${siswa.nama_siswa}*) belum terdaftar sebagai Petugas Absensi di kelas *${siswa.Kelas?.nama_kelas || '-'}*.\n\n` +
+        `💡 Silakan hubungi Wali Kelas atau Admin Sekolah untuk didaftarkan sebagai Petugas Kelas.`
+      );
+    }
+
+    const choice = ctx.commandUpper.trim();
+    const tz = await getTenantTimezone(tenantId);
+    const currentDay = getHariByTimezone(tz);
+    const activeSem = await getWhatsappActiveSemester(tenantId);
+    if (!activeSem) return '⚠️ Semester aktif sekolah belum diatur.';
+
+    // Ambil jadwal KBM kelas hari ini (ter-enrich jam per hari & ter-agregasi)
+    const rawJadwalList = await jadwalKBMService.getJadwalKelas(tenantId, activeSem.id, siswa.kelas_id, currentDay);
+    const jadwalList = aggregateJadwal(rawJadwalList);
+
+    if (jadwalList.length === 0) {
+      return (
+        `📋 *Presensi Guru KBM — ${siswa.Kelas?.nama_kelas || '-'}*\n` +
+        `📅 Hari ini: ${currentDay}\n\n` +
+        `Tidak ada jadwal KBM kelas hari ini. 😊\n\n` +
+        `💡 Ketik *[0]* untuk Menu Utama.`
+      );
+    }
+
+    // Ambil sesi absensi & absen guru hari ini
+    const sesiList = await sesiService.listByTanggal(tenantId, new Date());
+
+    // Cek jika pengguna memilih nomor slot spesifik e.g. "61", "62", atau "1" jika ada dalam opsi
+    const slotChoiceMatch = choice.match(/^6([1-9])$/) || (choice.length === 1 && choice !== '6' && choice !== '0' ? choice.match(/^([1-9])$/) : null);
+    
+    if (slotChoiceMatch) {
+      const targetIndex = parseInt(slotChoiceMatch[1], 10) - 1;
+      if (targetIndex >= 0 && targetIndex < jadwalList.length) {
+        const selected = jadwalList[targetIndex];
+        return SiswaHandler.promptUpdateGuruStatus(ctx, selected);
+      }
+    }
+
+    // Tampilkan daftar jadwal & status guru saat ini
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
+    let msg = `📋 *Presensi Guru KBM — ${siswa.Kelas?.nama_kelas || '-'}*\n`;
+    msg += `📅 ${currentDay}, ${todayStr}\n\n`;
+    msg += `Pilih jam pelajaran yang ingin diupdate status gurunya:\n\n`;
+
+    jadwalList.forEach((j: any, idx: number) => {
+      const num = idx + 1;
+      const jamRange = `${j.jam_mulai}–${j.jam_selesai}`;
+      const slotLabel = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+        ? `Jam ${j.startSlot}–${j.endSlot}`
+        : (j.startSlot ? `Jam ${j.startSlot}` : `Slot ${num}`);
+      const mapel = j.Mapel?.nama_mapel || '-';
+      const guru = j.Guru?.nama_guru || 'Guru';
+
+      // Find matching session
+      const sesi = sesiList.find((s: any) =>
+        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) ||
+        (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
+      );
+
+      let statusBadge = '🔴 Belum Masuk';
+      if (sesi) {
+        if (sesi.status === 'BERLANGSUNG') statusBadge = '🟢 Mengajar / Hadir';
+        else if (sesi.status === 'SELESAI') statusBadge = '✅ Selesai';
+        else if (sesi.status === 'IZIN') statusBadge = '🟡 Izin / Tugas';
+        else if (sesi.status === 'SAKIT') statusBadge = '🟠 Sakit';
+        else if (sesi.status === 'ALPA') statusBadge = '🔴 Alpa';
+        else statusBadge = `🟡 ${sesi.status}`;
+      }
+
+      msg += `[*6${num}*] ⏱️ ${jamRange} (${slotLabel})\n`;
+      msg += `      📖 ${mapel} — ${guru}\n`;
+      msg += `      Status: ${statusBadge}\n\n`;
+    });
+
+    msg += `💡 Ketik nomor opsi (contoh: *61*) untuk update status guru.\n`;
+    msg += `💡 Ketik *[0]* untuk Menu Utama.`;
+    return msg;
+  }
+
+  /**
+   * Prompt Pilihan Status Guru setelah Petugas memilih Slot
+   */
+  static promptUpdateGuruStatus(ctx: ChatbotContext, selectedJadwal: any): string {
+    const siswa = ctx.siswa!;
+    const mapel = selectedJadwal.Mapel?.nama_mapel || '-';
+    const guru = selectedJadwal.Guru?.nama_guru || 'Guru';
+    const jamRange = `${selectedJadwal.jam_mulai}–${selectedJadwal.jam_selesai}`;
+    const slotLabel = (selectedJadwal.startSlot && selectedJadwal.endSlot && selectedJadwal.startSlot !== selectedJadwal.endSlot)
+      ? `Jam ${selectedJadwal.startSlot}–${selectedJadwal.endSlot}`
+      : `Jam ${selectedJadwal.startSlot || 1}`;
+
+    // Simpan dialog session FSM
+    chatbotSessionManager.set(ctx.cleanJid, {
+      flowId: 'PETUGAS_UPDATE_STATUS',
+      step: 'AWAITING_STATUS_CHOICE',
+      payload: {
+        jadwalId: selectedJadwal.id,
+        guruId: selectedJadwal.guru_id,
+        mapelId: selectedJadwal.mapel_id,
+        mapelName: mapel,
+        guruName: guru,
+        jamRange,
+        slotLabel,
+        kelasName: siswa.Kelas?.nama_kelas || '-',
+        kelasId: siswa.kelas_id,
+      },
+    });
+
+    return (
+      `✏️ *Update Status Guru KBM*\n\n` +
+      `🏫 Kelas : *${siswa.Kelas?.nama_kelas || '-'}*\n` +
+      `📖 Mapel : *${mapel}*\n` +
+      `👨‍🏫 Guru  : *${guru}*\n` +
+      `⏱️ Waktu : ${jamRange} (${slotLabel})\n\n` +
+      `Pilih status kehadiran guru:\n\n` +
+      `[1] 🟢 HADIR / MENGAJAR\n` +
+      `[2] 🟡 IZIN / TUGAS\n` +
+      `[3] 🟠 SAKIT\n` +
+      `[4] 🔴 ALPA / TANPA KETERANGAN\n\n` +
+      `💡 Ketik nomor *1*, *2*, *3*, atau *4* untuk menyimpan.\n` +
+      `💡 Ketik *batal* untuk membatalkan.`
+    );
+  }
+
+  /**
+   * Eksekusi Simpan Status Guru dari Dialog FSM
+   */
+  static async processPetugasUpdateStatus(ctx: ChatbotContext, pendingSession: any): Promise<string> {
+    const siswa = ctx.siswa;
+    if (!siswa) return '⚠️ Data Siswa tidak ditemukan.';
+
+    const text = (ctx.messageText || '').trim().toUpperCase();
+    const payload = pendingSession.payload || {};
+
+    let chosenStatus = '';
+    let statusLabel = '';
+    let sesiStatus = 'BERLANGSUNG';
+
+    if (text === '1' || text.includes('HADIR') || text.includes('MENGAJAR')) {
+      chosenStatus = 'HADIR';
+      statusLabel = 'Hadir / Mengajar';
+      sesiStatus = 'BERLANGSUNG';
+    } else if (text === '2' || text.includes('IZIN') || text.includes('TUGAS')) {
+      chosenStatus = 'IZIN';
+      statusLabel = 'IZIN';
+      sesiStatus = 'IZIN';
+    } else if (text === '3' || text.includes('SAKIT')) {
+      chosenStatus = 'SAKIT';
+      statusLabel = 'SAKIT';
+      sesiStatus = 'SAKIT';
+    } else if (text === '4' || text.includes('ALPA') || text.includes('ALPHA')) {
+      chosenStatus = 'ALPA';
+      statusLabel = 'ALPA';
+      sesiStatus = 'ALPA';
+    } else {
+      return (
+        `⚠️ Pilihan tidak valid. Silakan ketik angka status:\n\n` +
+        `[1] 🟢 HADIR / MENGAJAR\n` +
+        `[2] 🟡 IZIN / TUGAS\n` +
+        `[3] 🟠 SAKIT\n` +
+        `[4] 🔴 ALPA / TANPA KETERANGAN\n\n` +
+        `Atau ketik *batal* untuk membatalkan.`
+      );
+    }
+
+    const tenantId = siswa.tenant_id;
+    const activeSem = await getWhatsappActiveSemester(tenantId);
+    if (!activeSem) {
+      chatbotSessionManager.delete(ctx.cleanJid);
+      return '⚠️ Semester aktif sekolah belum diatur.';
+    }
+
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+    });
+
+    const tz = await getTenantTimezone(tenantId);
+    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
+    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+
+    // 1. Find or create SesiAbsensi
+    let sesi = await prisma.sesiAbsensi.findFirst({
+      where: {
+        tenant_id: tenantId,
+        jadwal_kbm_id: payload.jadwalId,
+        tanggal: { gte: startOfDay },
+      },
+    });
+
+    if (!sesi) {
+      sesi = await prisma.sesiAbsensi.create({
+        data: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: activeYear?.id || '',
+          semester_id: activeSem.id,
+          kelas_id: payload.kelasId,
+          guru_id: payload.guruId || null,
+          mapel_id: payload.mapelId || null,
+          jadwal_kbm_id: payload.jadwalId,
+          tanggal: new Date(),
+          waktu_mulai: new Date(),
+          jenis_kegiatan: 'KBM',
+          status: sesiStatus,
+          created_by_user_id: siswa.user_id || null,
+        },
+      });
+    } else {
+      await prisma.sesiAbsensi.update({
+        where: { id: sesi.id },
+        data: { status: sesiStatus },
+      });
+    }
+
+    // 2. Upsert AbsenGuru (if guru_id exists)
+    if (payload.guruId) {
+      await prisma.absenGuru.upsert({
+        where: {
+          sesi_id_guru_id: {
+            sesi_id: sesi.id,
+            guru_id: payload.guruId,
+          },
+        },
+        create: {
+          tenant_id: tenantId,
+          sesi_id: sesi.id,
+          guru_id: payload.guruId,
+          status: statusLabel,
+          waktu_tap: new Date(),
+          catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
+          tahun_pelajaran_id: activeYear?.id || '',
+          semester_id: activeSem.id,
+        },
+        update: {
+          status: statusLabel,
+          waktu_tap: new Date(),
+          catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
+        },
+      });
+    }
+
+    // Clear cache & clear session
+    void cacheInvalidationService.invalidateAttendanceCache(tenantId);
+    chatbotSessionManager.delete(ctx.cleanJid);
+
+    const iconMap: Record<string, string> = {
+      HADIR: '🟢 HADIR / MENGAJAR',
+      IZIN: '🟡 IZIN / TUGAS',
+      SAKIT: '🟠 SAKIT',
+      ALPA: '🔴 ALPA / TANPA KETERANGAN',
+    };
+
+    return (
+      `✅ *Berhasil Update Status Guru!*\n\n` +
+      `🏫 Kelas : *${payload.kelasName}*\n` +
+      `📖 Mapel : *${payload.mapelName}*\n` +
+      `👨‍🏫 Guru  : *${payload.guruName}*\n` +
+      `⏱️ Waktu : ${payload.jamRange} (${payload.slotLabel})\n` +
+      `📌 Status Baru : *${iconMap[chosenStatus]}*\n` +
+      `👤 Petugas : ${siswa.nama_siswa}\n\n` +
+      `💡 Ketik *[6]* untuk kembali ke presensi guru kelas atau *[0]* Menu Utama.`
+    );
   }
 }
+
