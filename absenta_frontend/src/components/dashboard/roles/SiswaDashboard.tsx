@@ -56,6 +56,7 @@ import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { siswaApi } from '../../../api/academic.api';
 import { hubinApi } from '../../../api/hubin.api';
+import { SiswaOnboardingModal, calculateProfileCompleteness } from '@/components/academic/siswa/SiswaOnboardingModal';
 
 export const SiswaDashboard: React.FC = () => {
   const { user, tenantMode } = useAuthStore();
@@ -102,6 +103,22 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const siswaProfile = siswaProfileRes?.data;
+
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+
+  const completeness = useMemo(() => {
+    return calculateProfileCompleteness(siswaProfile);
+  }, [siswaProfile]);
+
+  useEffect(() => {
+    if (siswaProfile) {
+      const comp = calculateProfileCompleteness(siswaProfile);
+      const hasDismissed = sessionStorage.getItem(`onboarding_dismissed_${user?.siswa_id || user?.id}`);
+      if (!comp.isComplete && !hasDismissed) {
+        setShowOnboardingModal(true);
+      }
+    }
+  }, [siswaProfile, user?.siswa_id, user?.id]);
 
   // 2. Attendance & Schedule Data
   const { data: dailyRecapRes, isLoading: isDailyRecapLoading } = useQuery({
@@ -352,6 +369,37 @@ export const SiswaDashboard: React.FC = () => {
         badge={studentStatus.isPresent ? { label: 'Hadir', color: 'green' } : { label: 'Belum Presensi', color: 'amber' }}
       />
 
+      {/* Banner Kelengkapan Profil Siswa */}
+      {siswaProfile && !completeness.isComplete && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-blue-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs my-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-400 uppercase tracking-wider">Onboarding Data Siswa</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {completeness.percent}% Terisi
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Profil Anda belum 100% lengkap ({completeness.missingFields.slice(0, 3).join(', ')}...). Lengkapi sekarang untuk pencatatan DAPODIK & kartu pelajar digital!
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={() => setShowOnboardingModal(true)}
+            className="shrink-0 h-9 px-4 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 flex items-center gap-1.5 border-none"
+          >
+            <Sparkles size={14} />
+            <span>Lengkapi Profil</span>
+          </Button>
+        </div>
+      )}
+
       {/* Strip Tugas Petugas Kelas */}
       {isPetugasKelas && (
         <div className="bg-amber-500/10 border border-amber-200 dark:border-amber-900/50 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
@@ -561,6 +609,15 @@ export const SiswaDashboard: React.FC = () => {
            <p className="text-[11px] font-medium">Sesi perlu diperbarui. Silakan Logout dan Login kembali.</p>
         </div>
       )}
+
+      <SiswaOnboardingModal
+        isOpen={showOnboardingModal}
+        onClose={() => {
+          sessionStorage.setItem(`onboarding_dismissed_${user?.siswa_id || user?.id}`, 'true');
+          setShowOnboardingModal(false);
+        }}
+        siswa={siswaProfile}
+      />
     </>
   );
 };
