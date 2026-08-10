@@ -74,8 +74,6 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
-  
-  const { can } = useAuthStore();
 
   // Queries using React Query
   const { data: listRes, isLoading: loading, refetch } = useQuery({
