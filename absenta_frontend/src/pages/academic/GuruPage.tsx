@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import GuruList from '../../components/academic/guru/GuruList';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import type { Guru } from '../../types/academic';
@@ -33,7 +33,7 @@ interface ModalState {
 }
 
 export const GuruPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isLoading: authLoading } = useAuthStore();
   const { isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, isAdmin, can: capCan } = useCapabilities();
 
   const navigate = useNavigate();

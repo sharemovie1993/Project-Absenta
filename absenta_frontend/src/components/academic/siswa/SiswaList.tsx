@@ -34,7 +34,7 @@ import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
 import { resetUserPassword, updateUser } from '../../../api/user.api';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useJenjang } from '../../../hooks/useJenjang';
@@ -245,7 +245,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
 
-  const { can, user, hasPermissionCode, isLoading } = useAuth();
+  const { can, user, hasPermissionCode, isLoading } = useAuthStore();
   const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -313,19 +313,17 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   // Deteksi apakah user memegang Double Jabatan (Wali Kelas + Pimpinan/Struktur Sekolah)
   const isDualRoleUser = useMemo(() => {
     if (!waliKelasData?.id) return false;
-    const caps = user?.capabilities || [];
-    const roleName = String((user as any)?.role?.name || (user as any)?.roleName || '').toUpperCase();
     const isLeadershipOrStaff =
-      caps.includes('academic.students.manage') ||
-      caps.includes('academic.students.create') ||
-      caps.includes('dashboard.view.kesiswaan') ||
-      caps.includes('dashboard.view.kurikulum') ||
-      caps.includes('dashboard.view.kepsek') ||
-      caps.includes('dashboard.view.sarpras') ||
-      caps.includes('dashboard.view.hubin') ||
+      can('academic.students.manage') ||
+      can('academic.students.create') ||
+      can('dashboard.view.kesiswaan') ||
+      can('dashboard.view.kurikulum') ||
+      can('dashboard.view.kepsek') ||
+      can('dashboard.view.sarpras') ||
+      can('dashboard.view.hubin') ||
       isAdmin;
     return isLeadershipOrStaff;
-  }, [waliKelasData, user]);
+  }, [waliKelasData, can, isAdmin]);
 
   const isWaliKelasMode = useMemo(() => {
     if (urlContext === 'walikelas') return true;

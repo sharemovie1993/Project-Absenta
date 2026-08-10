@@ -10,7 +10,7 @@
  *   src/components/common/WordEditorModal.tsx
  */
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { getTenantById } from '../../../api/tenants.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { tahunPelajaranApi } from '../../../api/academic.api';
@@ -47,7 +47,7 @@ interface Props {
 // ─── Component ──────────────────────────────────────────────────────────────────
 
 const SKWaliKelasWordEditorModal = React.memo(({ isOpen, onClose, skData }: Props) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [tenantInfo, setTenantInfo] = useState<any>(null);
   const [sekolahInfo, setSekolahInfo] = useState<any>(null);
   const [activeTa, setActiveTa] = useState<string>('');

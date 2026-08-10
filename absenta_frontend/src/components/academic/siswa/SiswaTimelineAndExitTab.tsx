@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
   getSiswaTimeline, 
@@ -24,7 +24,7 @@ interface SiswaTimelineAndExitTabProps {
 }
 
 export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = React.memo(({ siswa }) => {
-  const { can, user } = useAuth();
+  const { can, user } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);

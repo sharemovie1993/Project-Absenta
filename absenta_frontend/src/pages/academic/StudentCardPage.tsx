@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { z } from 'zod';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -64,7 +64,7 @@ import { AccessRestricted, ConfigErrorState } from '../../components/academic/st
 
 
 const StudentCardPage = () => {
-    const { user, isAdmin: checkIsAdmin } = useAuth();
+    const { user, isAdmin: checkIsAdmin } = useAuthStore();
     const { isStudent, isTeacher, isHomeroomTeacher, isAdmin, can } = useCapabilities();
 
     const isSiswa = isStudent;

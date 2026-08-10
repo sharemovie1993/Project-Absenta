@@ -4,7 +4,7 @@ import { Modal } from '../../components/ui/Modal';
 import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { BulkClassModal } from '../../components/academic/kelas/BulkClassModal';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
@@ -57,7 +57,7 @@ const toRoman = (num: number): string => {
 };
 
 export const KelasPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isLoading: authLoading } = useAuthStore();
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

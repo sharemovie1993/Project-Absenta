@@ -33,7 +33,7 @@ import {
 import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useJenjang } from '../../../hooks/useJenjang';
 
@@ -78,7 +78,7 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
-  const { user, can } = useAuth();
+  const { user, can } = useAuthStore();
   const { jenjang, config, tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);

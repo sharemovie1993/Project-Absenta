@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { 
   Edit, 
   Trash2, 
@@ -166,7 +166,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     }
   };
   
-  const { user, can } = useAuth();
+  const { user, can } = useAuthStore();
   
   const isFiltered = useMemo(() => {
     return searchTerm !== '' || filterStatusKepegawaian !== 'ALL' || filterGender !== 'ALL' || filterJenisPtk !== 'ALL';

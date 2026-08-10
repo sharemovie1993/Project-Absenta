@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { 
   Edit, 
   Trash2, 
@@ -73,7 +73,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   
-  const { can } = useAuth();
+  const { can } = useAuthStore();
 
   // Queries using React Query
   const { data: listRes, isLoading: loading, refetch } = useQuery({

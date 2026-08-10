@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, FolderOpen, FileText, Image as ImageIcon, Download, Eye, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Button } from '../../ui/Button';
 import { Skeleton } from '../../ui/Skeleton';
@@ -57,7 +57,7 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
   mode = 'full',
   canManage,
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const confirm  = useConfirm();
   const queryClient = useQueryClient();
 

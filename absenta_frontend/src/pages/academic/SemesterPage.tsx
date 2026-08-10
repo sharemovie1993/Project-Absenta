@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Modal, SectionCard } from '../../components/ui';
 import SemesterList from '../../components/academic/semester/SemesterList';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import type { Semester } from '../../types/academic';
 import { useQuery } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ interface ModalState {
 }
 
 export const SemesterPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isLoading: authLoading } = useAuthStore();
   const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);

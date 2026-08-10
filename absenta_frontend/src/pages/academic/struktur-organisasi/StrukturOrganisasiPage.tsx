@@ -12,7 +12,7 @@ import {
 } from '@/api/academic/strukturOrganisasi.api';
 import { Loader } from '@/components/ui/Loader';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -50,7 +50,7 @@ const StrukturOrganisasiPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const { confirm } = useConfirm();
-  const { user, can, isLoading: authLoading } = useAuth();
+  const { user, can, isLoading: authLoading } = useAuthStore();
   const { isKurikulum, isKepalaSekolah, isAdmin, can: capCan } = useCapabilities();
   const { jenjang, sekolah } = useJenjang();
 

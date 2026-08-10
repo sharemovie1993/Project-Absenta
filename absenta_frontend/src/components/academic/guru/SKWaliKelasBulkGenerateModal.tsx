@@ -13,7 +13,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { CheckSquare, Square, Download, RefreshCw, Printer, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 
 interface Props {
   isOpen: boolean;
@@ -21,7 +21,7 @@ interface Props {
 }
 
 const SKWaliKelasBulkGenerateModal = React.memo(({ isOpen, onClose }: Props) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number; statusText: string }>({

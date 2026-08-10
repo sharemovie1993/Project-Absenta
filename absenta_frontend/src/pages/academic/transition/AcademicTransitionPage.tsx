@@ -10,6 +10,7 @@ import { getSemesterList as fetchSemester } from '../../../api/academic/semester
 import { getGuruList as fetchGuru } from '../../../api/academic/guru.api';
 import { getKelasList as fetchKelasList } from '../../../api/academic/kelas.api';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import type { TahunPelajaran, Semester, Kelas } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import type { ScopeMode } from './components/TransitionForm';
@@ -24,6 +25,7 @@ const TransitionPrerequisites = lazy(() => import('./components/TransitionPrereq
 
 const AcademicTransitionPage: React.FC = () => {
   const { user } = useAuthStore();
+  const { isTeacher } = useCapabilities();
   const [managedClassId, setManagedClassId] = useState<string | undefined>(undefined);
 
   // Timer ref untuk mencegah kebocoran memori saat unmount
@@ -109,7 +111,7 @@ const AcademicTransitionPage: React.FC = () => {
   // Check for Wali Kelas status and managed class
   useEffect(() => {
     const checkWaliKelas = async () => {
-      if (user?.role?.name === 'GURU' && user?.email) {
+      if ((isTeacher || !!user?.isTeacher) && user?.email) {
         try {
           const guruRes = await fetchGuru(1, 1, user.email);
           const guru = guruRes.data?.[0];

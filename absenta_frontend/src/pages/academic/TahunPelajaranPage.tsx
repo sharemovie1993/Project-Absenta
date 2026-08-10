@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useNavigate } from 'react-router-dom';
 import { Modal, SectionCard } from '../../components/ui';
 import TahunPelajaranList from '../../components/academic/tahun-pelajaran/TahunPelajaranList';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import type { TahunPelajaran } from '../../types/academic';
 import { useQuery } from '@tanstack/react-query';
@@ -16,7 +16,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 const TahunPelajaranForm = lazy(() => import('../../components/academic/tahun-pelajaran/TahunPelajaranForm').then(m => ({ default: m.TahunPelajaranForm })));
 
 export const TahunPelajaranPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isLoading: authLoading } = useAuthStore();
   const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   const queryClient = useQueryClient();
   const { modal, openCreate, openEdit, openView, close } = useModalState();

@@ -7,7 +7,7 @@ import {
   ListChecks 
 } from 'lucide-react';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../api/academic/jenisKegiatanMaster.api';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import toast from 'react-hot-toast';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -24,7 +24,7 @@ type ModalMode = 'create' | 'edit' | 'view' | null;
 
 export default React.memo(function JenisKegiatanMasterPage() {
   const queryClient = useQueryClient();
-  const { can, isLoading: authLoading } = useAuth();
+  const { can, isLoading: authLoading } = useAuthStore();
 
   const invalidateJenisKegiatanCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-list'] });

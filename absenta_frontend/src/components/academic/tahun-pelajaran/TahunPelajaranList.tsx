@@ -22,7 +22,7 @@ import {
 } from '../../../api/academic/tahunPelajaran.api';
 import type { TahunPelajaran } from '../../../types/academic';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { useBulkAction } from '../../../hooks/useBulkAction';
@@ -48,7 +48,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   // Queries
   const { data: listRes, isLoading: loading } = useQuery({

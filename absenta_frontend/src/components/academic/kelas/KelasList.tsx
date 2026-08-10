@@ -32,7 +32,7 @@ import { getKelasList, deleteKelas, updateKelas, kelasQueryKeys } from '../../..
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import type { Kelas, Jurusan } from '../../../types/academic';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -94,7 +94,7 @@ const KelasList = React.memo<KelasListProps>(({
   // Jurusan options hook
   const { rawList: jurusanList } = useJurusanOptions();
 
-  const { user, can } = useAuth();
+  const { user, can } = useAuthStore();
   const { tingkatList, jenjang } = useJenjang();
   const hasJurusan = ['SMA', 'MA', 'SMK', 'MAK'].includes(String(jenjang || '').toUpperCase());
 

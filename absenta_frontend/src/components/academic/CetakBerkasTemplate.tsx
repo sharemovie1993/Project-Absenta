@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { AcademicPageLayout } from './AcademicPageLayout';
 import { SectionCard, Button, Card, CardContent } from '../ui';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, type Tenant } from '../../api/tenants.api';
 import { sekolahApi, type Sekolah } from '../../api/academic/sekolah.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
@@ -133,7 +133,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = React.mem
   const [checklistData, setChecklistData] = useState<PrepChecklistData | null>(null);
   const [loadingChecklist, setLoadingChecklist] = useState<boolean>(false);
 
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   // ── useQuery Hooks with Offline Cache ─────────────────────────────────────
   const { data: sekolahData } = useQuery({

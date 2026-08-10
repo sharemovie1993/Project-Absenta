@@ -6,7 +6,7 @@ import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check, ChevronDown, ChevronUp, Compass, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useJenjang } from '../../../hooks/useJenjang';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuthStore } from '../../../../store/authStore';
 
 interface PresetWizardModalProps {
   isOpen: boolean;
@@ -45,7 +45,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = React.memo(({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { kurikulum } = useJenjang();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   
   // Existing mapels state
   const [existingMapels, setExistingMapels] = useState<any[]>([]);

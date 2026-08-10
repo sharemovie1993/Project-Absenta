@@ -6,7 +6,7 @@ import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
 import toast from 'react-hot-toast';
 import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../../store/authStore';
 import Breadcrumb, { type BreadcrumbItem } from '@/components/ui/Breadcrumb';
 
 // Impor komponen standardisasi hardening terpusat tingkat layout
@@ -63,7 +63,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   hardeningModuleKey
 }) => {
   const { setInstructionData } = useInstruction();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user } = useAuthStore();
   const { isTvMode } = useTvStore();
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
