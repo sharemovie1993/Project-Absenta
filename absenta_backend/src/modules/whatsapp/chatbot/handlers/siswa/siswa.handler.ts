@@ -272,10 +272,37 @@ export class SiswaHandler {
       );
     }
 
+    // 🚀 Support pintasan 3-digit langsung e.g. "611", "612", "621"
+    const direct3DigitMatch = choice.match(/^6([1-9])([1-4])$/);
+    if (direct3DigitMatch) {
+      const slotIdx = parseInt(direct3DigitMatch[1], 10) - 1;
+      const statusCode = direct3DigitMatch[2]; // '1', '2', '3', '4'
+      if (slotIdx >= 0 && slotIdx < jadwalList.length) {
+        const selectedJadwal = jadwalList[slotIdx];
+        const dummySession = {
+          payload: {
+            jadwalId: selectedJadwal.id,
+            guruId: selectedJadwal.guru_id,
+            mapelId: selectedJadwal.mapel_id,
+            mapelName: selectedJadwal.Mapel?.nama_mapel || '-',
+            guruName: selectedJadwal.Guru?.nama_guru || 'Guru',
+            jamRange: `${selectedJadwal.jam_mulai}–${selectedJadwal.jam_selesai}`,
+            slotLabel: (selectedJadwal.startSlot && selectedJadwal.endSlot && selectedJadwal.startSlot !== selectedJadwal.endSlot)
+              ? `Jam ${selectedJadwal.startSlot}–${selectedJadwal.endSlot}`
+              : `Jam ${selectedJadwal.startSlot || 1}`,
+            kelasName: siswa.Kelas?.nama_kelas || '-',
+            kelasId: siswa.kelas_id,
+          }
+        };
+        const newCtx = { ...ctx, messageText: statusCode, commandUpper: statusCode };
+        return SiswaHandler.processPetugasUpdateStatus(newCtx, dummySession);
+      }
+    }
+
     // Ambil sesi absensi & absen guru hari ini
     const sesiList = await sesiService.listByTanggal(tenantId, new Date());
 
-    // Cek jika pengguna memilih nomor slot spesifik e.g. "61", "62", atau "1" jika ada dalam opsi
+    // Cek jika pengguna memilih nomor slot spesifik e.g. "61", "62", atau "1"
     const slotChoiceMatch = choice.match(/^6([1-9])$/) || (choice.length === 1 && choice !== '6' && choice !== '0' ? choice.match(/^([1-9])$/) : null);
     
     if (slotChoiceMatch) {
@@ -386,19 +413,19 @@ export class SiswaHandler {
     let statusLabel = '';
     let sesiStatus = 'BERLANGSUNG';
 
-    if (text === '1' || text.includes('HADIR') || text.includes('MENGAJAR')) {
+    if (text === '1' || text === '611' || text.endsWith('1') || text.includes('HADIR') || text.includes('MENGAJAR')) {
       chosenStatus = 'HADIR';
       statusLabel = 'Hadir / Mengajar';
       sesiStatus = 'BERLANGSUNG';
-    } else if (text === '2' || text.includes('IZIN') || text.includes('TUGAS')) {
+    } else if (text === '2' || text === '612' || text.endsWith('2') || text.includes('IZIN') || text.includes('TUGAS')) {
       chosenStatus = 'IZIN';
       statusLabel = 'IZIN';
       sesiStatus = 'IZIN';
-    } else if (text === '3' || text.includes('SAKIT')) {
+    } else if (text === '3' || text === '613' || text.endsWith('3') || text.includes('SAKIT')) {
       chosenStatus = 'SAKIT';
       statusLabel = 'SAKIT';
       sesiStatus = 'SAKIT';
-    } else if (text === '4' || text.includes('ALPA') || text.includes('ALPHA')) {
+    } else if (text === '4' || text === '614' || text.endsWith('4') || text.includes('ALPA') || text.includes('ALPHA')) {
       chosenStatus = 'ALPA';
       statusLabel = 'ALPA';
       sesiStatus = 'ALPA';
@@ -428,64 +455,70 @@ export class SiswaHandler {
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
     const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
 
-    // 1. Find or create SesiAbsensi
-    let sesi = await prisma.sesiAbsensi.findFirst({
-      where: {
-        tenant_id: tenantId,
-        jadwal_kbm_id: payload.jadwalId,
-        tanggal: { gte: startOfDay },
-      },
-    });
-
-    if (!sesi) {
-      sesi = await prisma.sesiAbsensi.create({
-        data: {
+    try {
+      // 1. Find or create SesiAbsensi
+      let sesi = await prisma.sesiAbsensi.findFirst({
+        where: {
           tenant_id: tenantId,
-          tahun_pelajaran_id: activeYear?.id || '',
-          semester_id: activeSem.id,
-          kelas_id: payload.kelasId,
-          guru_id: payload.guruId || null,
-          mapel_id: payload.mapelId || null,
           jadwal_kbm_id: payload.jadwalId,
-          tanggal: new Date(),
-          waktu_mulai: new Date(),
-          jenis_kegiatan: 'KBM',
-          status: sesiStatus,
-          created_by_user_id: siswa.user_id || null,
+          tanggal: { gte: startOfDay },
         },
       });
-    } else {
-      await prisma.sesiAbsensi.update({
-        where: { id: sesi.id },
-        data: { status: sesiStatus },
-      });
-    }
 
-    // 2. Upsert AbsenGuru (if guru_id exists)
-    if (payload.guruId) {
-      await prisma.absenGuru.upsert({
-        where: {
-          sesi_id_guru_id: {
+      if (!sesi) {
+        sesi = await prisma.sesiAbsensi.create({
+          data: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: activeYear?.id || '',
+            semester_id: activeSem.id,
+            kelas_id: payload.kelasId,
+            guru_id: payload.guruId || null,
+            mapel_id: payload.mapelId || null,
+            jadwal_kbm_id: payload.jadwalId,
+            tanggal: new Date(),
+            waktu_mulai: new Date(),
+            jenis_kegiatan: 'KBM',
+            status: sesiStatus,
+            created_by_user_id: siswa.user_id || null,
+          },
+        });
+      } else {
+        await prisma.sesiAbsensi.update({
+          where: { id: sesi.id },
+          data: { status: sesiStatus },
+        });
+      }
+
+      // 2. Upsert AbsenGuru (if guru_id exists)
+      if (payload.guruId) {
+        await prisma.absenGuru.upsert({
+          where: {
+            sesi_id_guru_id: {
+              sesi_id: sesi.id,
+              guru_id: payload.guruId,
+            },
+          },
+          create: {
+            tenant_id: tenantId,
             sesi_id: sesi.id,
             guru_id: payload.guruId,
+            status: statusLabel,
+            waktu_tap: new Date(),
+            catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
+            tahun_pelajaran_id: activeYear?.id || '',
+            semester_id: activeSem.id,
           },
-        },
-        create: {
-          tenant_id: tenantId,
-          sesi_id: sesi.id,
-          guru_id: payload.guruId,
-          status: statusLabel,
-          waktu_tap: new Date(),
-          catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
-          tahun_pelajaran_id: activeYear?.id || '',
-          semester_id: activeSem.id,
-        },
-        update: {
-          status: statusLabel,
-          waktu_tap: new Date(),
-          catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
-        },
-      });
+          update: {
+            status: statusLabel,
+            waktu_tap: new Date(),
+            catatan: `Diupdate via WA oleh Petugas Kelas (${siswa.nama_siswa})`,
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error('[PETUGAS_WA_UPDATE_ERROR]', err);
+      chatbotSessionManager.delete(ctx.cleanJid);
+      return `❌ *Gagal Update Status Guru*\n\nTerjadi kesalahan: ${err.message || 'Error database'}\n\n💡 Ketik *[6]* untuk coba lagi.`;
     }
 
     // Clear cache & clear session
