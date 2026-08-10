@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Lock, Sparkles, ArrowRight, Zap, RefreshCw } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { toast } from 'react-hot-toast';
 
 export const PremiumFeatureGateContext = createContext<boolean>(false);
@@ -27,6 +28,7 @@ export default function PremiumFeatureGate({
 }: PremiumFeatureGateProps) {
   const navigate = useNavigate();
   const { user, subscription, refreshSubscription } = useAuthStore();
+  const { isAdmin } = useCapabilities();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const hasParentGate = useContext(PremiumFeatureGateContext);
 
