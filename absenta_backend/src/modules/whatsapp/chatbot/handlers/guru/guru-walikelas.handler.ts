@@ -134,13 +134,17 @@ export class GuruWalikelasHandler {
       const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
       const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
-      const siswaList = await prisma.siswaAkademik.findMany({
-        where: { kelas_id: kelasBinaan.id, status: 'AKTIF' },
-        select: { siswa_id: true },
+      const siswaList = await prisma.siswa.findMany({
+        where: {
+          tenant_id: guru.tenant_id,
+          kelas_id: kelasBinaan.id,
+          status: 'AKTIF',
+        },
+        select: { id: true, nama_siswa: true },
       });
 
       const totalSiswa = siswaList.length;
-      const siswaIds = siswaList.map(s => s.siswa_id);
+      const siswaIds = siswaList.map(s => s.id);
 
       const gerbangToday = await prisma.absenGerbangSiswa.findMany({
         where: {
@@ -229,17 +233,21 @@ export class GuruWalikelasHandler {
     const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
     const endOfDay = new Date(`${todayStr}T23:59:59.999${offsetStr}`);
 
-    const siswaList = await prisma.siswaAkademik.findMany({
-      where: { kelas_id: kelasId, status: 'AKTIF' },
-      include: { siswa: { select: { id: true, nama_siswa: true, nis: true } } },
-      orderBy: { siswa: { nama_siswa: 'asc' } },
+    const siswaList = await prisma.siswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: kelasId,
+        status: 'AKTIF',
+      },
+      select: { id: true, nama_siswa: true, nis: true },
+      orderBy: { nama_siswa: 'asc' },
     });
 
     if (siswaList.length === 0) {
       return `📋 *Presensi Kelas ${kelasNama}*\n\nBelum ada siswa terdaftar di kelas ini.\n\n💡 Ketik *[3]* untuk Kembali.`;
     }
 
-    const siswaIds = siswaList.map(s => s.siswa_id);
+    const siswaIds = siswaList.map(s => s.id);
     const gerbangToday = await prisma.absenGerbangSiswa.findMany({
       where: {
         tenant_id: tenantId,
@@ -259,9 +267,9 @@ export class GuruWalikelasHandler {
     let msg = `📋 *Presensi Siswa Kelas ${kelasNama} (${tglFormatted})*\n`;
     msg += `Total: ${siswaList.length} Siswa\n\n`;
 
-    siswaList.forEach((sa, idx) => {
-      const sName = sa.siswa?.nama_siswa || 'Siswa';
-      const log = gerbangMap.get(sa.siswa_id);
+    siswaList.forEach((s, idx) => {
+      const sName = s.nama_siswa || 'Siswa';
+      const log = gerbangMap.get(s.id);
 
       if (log) {
         const jamStr = new Date(log.waktu_tap || log.created_at).toLocaleTimeString('id-ID', {
@@ -338,20 +346,24 @@ export class GuruWalikelasHandler {
     const tenantId = ctx.guru?.tenant_id;
     if (!tenantId) return '⚠️ Data tenant tidak ditemukan.';
 
-    const siswaList = await prisma.siswaAkademik.findMany({
-      where: { kelas_id: kelasId, status: 'AKTIF' },
-      include: {
-        siswa: {
-          select: {
-            nama_siswa: true,
-            nis: true,
-            no_hp: true,
-            nama_ayah: true,
-            nama_ibu: true,
-          },
-        },
+    const siswaList = await prisma.siswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: kelasId,
+        status: 'AKTIF',
       },
-      orderBy: { siswa: { nama_siswa: 'asc' } },
+      select: {
+        id: true,
+        nama_siswa: true,
+        nis: true,
+        no_hp: true,
+        nama_ayah: true,
+        nama_ibu: true,
+        OrangTuaSiswa: {
+          select: { OrangTua: { select: { no_hp: true, nama: true } } }
+        }
+      },
+      orderBy: { nama_siswa: 'asc' },
     });
 
     if (siswaList.length === 0) {
@@ -361,14 +373,14 @@ export class GuruWalikelasHandler {
     let msg = `📞 *Daftar Kontak Orang Tua — ${kelasNama}*\n`;
     msg += `Total: ${siswaList.length} Siswa\n\n`;
 
-    siswaList.forEach((sa, idx) => {
-      const s = sa.siswa;
-      const sName = s?.nama_siswa || 'Siswa';
-      const hpOrtu = s?.no_hp || '-';
-      const namaOrtu = s?.nama_ayah || s?.nama_ibu || 'Ortu';
+    siswaList.forEach((s, idx) => {
+      const sName = s.nama_siswa || 'Siswa';
+      const hpOrtu = s.OrangTuaSiswa?.[0]?.OrangTua?.no_hp || s.no_hp || '-';
+      const namaOrtu = s.OrangTuaSiswa?.[0]?.OrangTua?.nama || s.nama_ayah || s.nama_ibu || 'Ortu';
 
       msg += `${idx + 1}. *${sName}*\n`;
-      msg += `   └ 📱 ${namaOrtu}: ${hpOrtu}\n\n`;
+      msg += `   ├ Ortu: ${namaOrtu}\n`;
+      msg += `   └ HP: ${hpOrtu}\n\n`;
     });
 
     msg += `💡 Ketik *[3]* untuk Kembali atau *[0]* Menu Utama.`;
