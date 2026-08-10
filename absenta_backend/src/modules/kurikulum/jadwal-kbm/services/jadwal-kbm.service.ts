@@ -415,6 +415,37 @@ export class JadwalKBMService {
     await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
     return { success, failed, errors };
   }
+
+  /** Ambil semua jadwal KBM hari ini untuk seluruh guru — chatbot WA menu monitoring 81/83/84/85/86 */
+  async getJadwalHariIniSemua(tenantId: string, hari: string, semesterId: string) {
+    return prisma.jadwalKBM.findMany({
+      where: { tenant_id: tenantId, semester_id: semesterId, hari: hari as Hari },
+      include: {
+        Guru:  { select: { id: true, nama_guru: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Mapel: { select: { id: true, nama_mapel: true } },
+      },
+      orderBy: { slot_index: 'asc' },
+    });
+  }
+
+  /** Ambil jadwal KBM hari ini filter by nama guru — chatbot WA menu 82 cari guru */
+  async getJadwalHariIniByNama(tenantId: string, hari: string, semesterId: string, namaGuru: string) {
+    return prisma.jadwalKBM.findMany({
+      where: {
+        tenant_id: tenantId,
+        semester_id: semesterId,
+        hari: hari as Hari,
+        Guru: { nama_guru: { contains: namaGuru, mode: 'insensitive' } },
+      },
+      include: {
+        Guru:  { select: { id: true, nama_guru: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Mapel: { select: { id: true, nama_mapel: true } },
+      },
+      orderBy: { slot_index: 'asc' },
+    });
+  }
 }
 
 export const jadwalKBMService = new JadwalKBMService();

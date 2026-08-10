@@ -1,7 +1,8 @@
 import { ChatbotContext } from '../../core/chatbot-context';
 import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
-import { getTenantTimezone } from '@/utils/timezone.utils';
+import { sesiService } from '@/modules/attendance/sesi-absensi/services/sesi.service';
 import { prisma } from '@/utils/prisma';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 import { getWhatsappActiveSemester } from '@/modules/whatsapp/services/wa-chatbot-commands';
 
 function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
@@ -426,7 +427,7 @@ export class GuruJadwalHandler {
       }
 
       const grouped: Record<string, typeof jadwalMinggu> = {};
-      jadwalMinggu.forEach(j => {
+      jadwalMinggu.forEach((j: any) => {
         const h = j.hari as string;
         if (!grouped[h]) grouped[h] = [];
         grouped[h].push(j);
@@ -439,7 +440,7 @@ export class GuruJadwalHandler {
         const items = grouped[hari];
         if (!items || items.length === 0) return;
         msg += `📌 *${hari}*\n`;
-        items.forEach((j, idx) => {
+        items.forEach((j: any, idx: number) => {
           const isLast = idx === items.length - 1;
           const branch = isLast ? '└' : '├';
           const mapel = (j as any).Mapel?.nama_mapel || '-';
@@ -479,7 +480,7 @@ export class GuruJadwalHandler {
     }
 
     let msg = `🏫 *Jadwal KBM ${kelas.nama_kelas} — ${currentDay}*\n\n`;
-    jadwalHariIni.forEach((j, idx) => {
+    jadwalHariIni.forEach((j: any, idx: number) => {
       const mapel = (j as any).Mapel?.nama_mapel || '-';
       const guru = (j as any).Guru?.nama_guru || '-';
       msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel}\n`;
@@ -572,10 +573,7 @@ export class GuruJadwalHandler {
       minute: '2-digit',
     });
 
-    // Tanggal WIB hari ini
-    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' }); // YYYY-MM-DD
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${todayStr}T23:59:59.999Z`);
+
 
     let filterMode: 'NOW' | 'ALL' | 'SEARCH' = 'ALL';
     let filterName = '';
@@ -590,67 +588,12 @@ export class GuruJadwalHandler {
       filterName = rawText.replace(/^(82|152|81|151|83|153|84|85|86|15|8|posisi\s*guru|posisi)\s*/i, '').trim();
     }
 
-    // Query JadwalKBM hari ini
-    const whereJadwal: any = {
-      tenant_id: tenantId,
-      semester_id: activeSem.id,
-      hari: currentDay as any,
-    };
+    // ── Query menggunakan service layer (bukan direct Prisma) ──
+    const jadwalList = (filterMode === 'SEARCH' && filterName && filterName.length >= 2)
+      ? await jadwalKBMService.getJadwalHariIniByNama(tenantId, currentDay, activeSem.id, filterName)
+      : await jadwalKBMService.getJadwalHariIniSemua(tenantId, currentDay, activeSem.id);
 
-    if (filterMode === 'SEARCH' && filterName && filterName.length >= 2) {
-      whereJadwal.Guru = {
-        nama_guru: { contains: filterName, mode: 'insensitive' },
-      };
-    }
-
-    const jadwalList = await prisma.jadwalKBM.findMany({
-      where: whereJadwal,
-      include: {
-        Guru: { select: { id: true, nama_guru: true } },
-        Kelas: { 
-          select: { 
-            id: true, 
-            nama_kelas: true,
-            tingkat: true,
-            Jurusan: { select: { id: true, nama: true, kode: true } }
-          } 
-        },
-        Mapel: { select: { id: true, nama_mapel: true } },
-      },
-      orderBy: [
-        { slot_index: 'asc' }
-      ],
-    });
-
-    if (jadwalList.length === 0) {
-      if (filterMode === 'SEARCH' && filterName) {
-        return (
-          `📍 *Posisi & Status Guru*\n\n` +
-          `❌ Tidak ada jadwal KBM hari ini (${currentDay}) untuk guru dengan nama *"${filterName}"*.\n\n` +
-          `💡 Ketik *[82]* untuk cari guru lain atau *[8]* untuk Sub-menu Posisi Guru.`
-        );
-      }
-      return (
-        `📍 *Posisi & Status Guru Hari Ini (${currentDay})*\n\n` +
-        `Belum ada jadwal KBM yang tercatat untuk hari ini. 😊\n\n` +
-        `💡 Ketik *[0]* untuk Menu Utama.`
-      );
-    }
-
-    // Query SesiAbsensi hari ini
-    const sesiList = await prisma.sesiAbsensi.findMany({
-      where: {
-        tenant_id: tenantId,
-        tanggal: { gte: startOfDay, lte: endOfDay },
-      },
-      select: {
-        id: true,
-        guru_id: true,
-        kelas_id: true,
-        jadwal_kbm_id: true,
-        status: true,
-      },
-    });
+    const sesiList = await sesiService.listByTanggal(tenantId, new Date());
 
     let targetJadwal = jadwalList;
 
@@ -803,21 +746,12 @@ export class GuruJadwalHandler {
     const nowWibStr  = new Date().toLocaleTimeString('en-US', {
       timeZone: tz || 'Asia/Jakarta', hour12: false, hour: '2-digit', minute: '2-digit',
     });
-    const todayStr   = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
-    const endOfDay   = new Date(`${todayStr}T23:59:59.999Z`);
 
-    // Ambil semua jadwal hari ini
-    const jadwalList: any[] = await (prisma as any).jadwalKBM.findMany({
-      where: { tenant_id: tenantId, semester_id: activeSem.id, hari: currentDay as any },
-      include: { Guru: { select: { nama_guru: true } }, Kelas: { select: { nama_kelas: true } }, Mapel: { select: { nama_mapel: true } } },
-      orderBy: [{ jam_mulai: 'asc' }],
-    });
 
-    // Ambil sesi absensi hari ini
-    const sesiList: any[] = await (prisma as any).sesiAbsensiKBM.findMany({
-      where: { tenant_id: tenantId, tanggal: { gte: startOfDay, lte: endOfDay } },
-    });
+    // ── Query menggunakan service layer ──
+    const jadwalList: any[] = await jadwalKBMService.getJadwalHariIniSemua(tenantId, currentDay, activeSem.id);
+    const sesiList: any[]   = await sesiService.listByTanggal(tenantId, new Date());
+
 
     const resolveStatus = (j: any): { icon: string; label: string } => {
       const sesi = sesiList.find((s: any) =>

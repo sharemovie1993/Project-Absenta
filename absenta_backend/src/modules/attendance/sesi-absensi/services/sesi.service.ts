@@ -2109,6 +2109,26 @@ export class SesiService {
       console.warn('finalizeSessionAndNotify failed', e);
     }
   }
+
+  /** Ambil semua sesi absensi berdasarkan tanggal — chatbot WA menu monitoring KBM (tanpa org scope) */
+  async listByTanggal(tenantId: string, tanggal: Date) {
+    const dateStr = tanggal.toISOString().split('T')[0];
+    const start   = new Date(`${dateStr}T00:00:00.000Z`);
+    const end     = new Date(`${dateStr}T23:59:59.999Z`);
+    return prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: start, lte: end },
+      },
+      select: {
+        id:            true,
+        guru_id:       true,
+        kelas_id:      true,
+        jadwal_kbm_id: true,
+        status:        true,
+      },
+    });
+  }
 }
 
 export const sesiService = new SesiService();
