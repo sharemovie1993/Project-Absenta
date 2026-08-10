@@ -208,13 +208,11 @@ const Vouchers: React.FC = React.memo(() => {
     if (subscription === undefined) return;
     fetchVouchers();
     if (!isManageRoute || !hasViewListAccess) {
-      fetchMemberData();
-      fetchPointsData();
       fetchSalesHistory();
       loadCoopSettings();
       fetchMemberInfo();
     }
-  }, [subscription, isLocked, isManageRoute, hasViewListAccess, fetchVouchers, fetchMemberData, fetchPointsData, fetchSalesHistory, loadCoopSettings, fetchMemberInfo]);
+  }, [subscription, isLocked, isManageRoute, hasViewListAccess, fetchVouchers, fetchSalesHistory, loadCoopSettings, fetchMemberInfo]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
