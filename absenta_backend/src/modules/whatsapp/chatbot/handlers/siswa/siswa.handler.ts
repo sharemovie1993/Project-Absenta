@@ -453,15 +453,49 @@ export class SiswaHandler {
 
     const tz = await getTenantTimezone(tenantId);
     const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
-    const startOfDay = new Date(`${todayStr}T00:00:00.000Z`);
+
+    const TZ_OFFSET_MAP: Record<string, string> = {
+      'Asia/Jakarta': '+07:00',
+      'Asia/Makassar': '+08:00',
+      'Asia/Jayapura': '+09:00'
+    };
+    const offsetStr = TZ_OFFSET_MAP[tz || 'Asia/Jakarta'] || '+07:00';
+    const startOfDay = new Date(`${todayStr}T00:00:00.000${offsetStr}`);
 
     // Parse jamRange e.g. "07:15–08:35"
-    let waktuMulai = new Date();
+    let waktuMulai: Date | null = null;
     let waktuSelesai: Date | null = null;
     if (payload.jamRange) {
       const parts = String(payload.jamRange).split('–').map(p => p.trim());
-      if (parts[0]) waktuMulai = new Date(`${todayStr}T${parts[0]}:00.000Z`);
-      if (parts[1]) waktuSelesai = new Date(`${todayStr}T${parts[1]}:00.000Z`);
+      if (parts[0]) waktuMulai = new Date(`${todayStr}T${parts[0]}:00.000${offsetStr}`);
+      if (parts[1]) waktuSelesai = new Date(`${todayStr}T${parts[1]}:00.000${offsetStr}`);
+    }
+
+    const now = new Date();
+
+    // 1. Validasi Batas Awal: Maksimal 15 menit sebelum kelas dimulai
+    if (waktuMulai) {
+      const earlyThreshold = waktuMulai.getTime() - 15 * 60 * 1000;
+      if (now.getTime() < earlyThreshold) {
+        chatbotSessionManager.delete(ctx.cleanJid);
+        return (
+          `⚠️ *Presensi Ditolak*\n\n` +
+          `Sesi KBM *${payload.mapelName}* (${payload.jamRange}) belum dimulai.\n` +
+          `Absensi hanya dapat diisi maksimal 15 menit sebelum kelas dimulai.\n\n` +
+          `💡 Ketik *[6]* untuk kembali ke daftar presensi kelas.`
+        );
+      }
+    }
+
+    // 2. Validasi Batas Akhir: Jam KBM sudah selesai
+    if (waktuSelesai && now.getTime() > waktuSelesai.getTime()) {
+      chatbotSessionManager.delete(ctx.cleanJid);
+      return (
+        `⚠️ *Presensi Ditolak*\n\n` +
+        `Jam pelajaran KBM untuk *${payload.mapelName}* (${payload.jamRange}) sudah selesai.\n` +
+        `Presensi tidak dapat diubah setelah jam KBM berakhir.\n\n` +
+        `💡 Ketik *[6]* untuk kembali ke daftar presensi kelas.`
+      );
     }
 
     const waktuTap = chosenStatus === 'HADIR' ? new Date() : null;
@@ -487,7 +521,7 @@ export class SiswaHandler {
             mapel_id: payload.mapelId || null,
             jadwal_kbm_id: payload.jadwalId,
             tanggal: new Date(),
-            waktu_mulai: waktuMulai,
+            waktu_mulai: waktuMulai || new Date(),
             waktu_selesai: waktuSelesai,
             jenis_kegiatan: 'KBM',
             status: sesiStatus,
