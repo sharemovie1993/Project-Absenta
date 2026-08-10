@@ -266,9 +266,32 @@ export class BackupController {
         for (const rawRow of rows) {
           try {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
-            if (cleanData.id) {
+            const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+
+            let whereInput: any = null;
+            if (dmmfModel?.primaryKey) {
+              const pkName = dmmfModel.primaryKey.name || dmmfModel.primaryKey.fields.join('_');
+              const pkValue: Record<string, any> = {};
+              let validPk = true;
+
+              for (const fieldName of dmmfModel.primaryKey.fields) {
+                if (cleanData[fieldName] !== undefined && cleanData[fieldName] !== null) {
+                  pkValue[fieldName] = cleanData[fieldName];
+                } else {
+                  validPk = false;
+                }
+              }
+
+              if (validPk) {
+                whereInput = { [pkName]: pkValue };
+              }
+            } else if (cleanData.id) {
+              whereInput = { id: cleanData.id };
+            }
+
+            if (whereInput) {
               await prismaModel.upsert({
-                where: { id: cleanData.id },
+                where: whereInput,
                 create: cleanData,
                 update: cleanData,
               });

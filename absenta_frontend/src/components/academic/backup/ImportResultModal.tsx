@@ -70,6 +70,7 @@ export const ImportResultModal: React.FC<ImportResultModalProps> = React.memo(({
   onClose
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [onlyShowGaps, setOnlyShowGaps] = useState(false);
 
   if (!isOpen || !result) return null;
 
@@ -118,9 +119,11 @@ export const ImportResultModal: React.FC<ImportResultModalProps> = React.memo(({
 
   const matchRate = result.matchRate ?? (grandTarget > 0 ? Math.round((grandRestored / grandTarget) * 100) : 100);
 
-  const filteredRows = modelRows.filter(r => 
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRows = modelRows.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGap = onlyShowGaps ? r.gap > 0 : true;
+    return matchesSearch && matchesGap;
+  });
 
   const masterItems = [
     { label: 'Sekolah', ...getItemMetrics(details, 'Sekolah', 'sekolah') },
@@ -352,15 +355,32 @@ export const ImportResultModal: React.FC<ImportResultModalProps> = React.memo(({
                   </p>
                 </div>
 
-                <div className="relative w-full sm:w-60">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari nama tabel/modul..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-                  />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {grandGap > 0 && (
+                    <Button
+                      variant={onlyShowGaps ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setOnlyShowGaps(!onlyShowGaps)}
+                      className={`text-[10px] font-black h-8 px-3 rounded-xl border transition-all cursor-pointer ${
+                        onlyShowGaps 
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20' 
+                          : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/40 hover:bg-amber-500 hover:text-white'
+                      }`}
+                    >
+                      <AlertTriangle size={12} className="mr-1" />
+                      {onlyShowGaps ? 'Tampilkan Semua Modul' : `Tampilkan ${grandGap} Gap Saja`}
+                    </Button>
+                  )}
+                  <div className="relative w-full sm:w-52">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari nama tabel/modul..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
                 </div>
               </div>
 
