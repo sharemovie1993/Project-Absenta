@@ -310,6 +310,9 @@ export default function ProfilePage() {
         tingkat: siswaProfile.Kelas?.tingkat ? `Tingkat ${siswaProfile.Kelas.tingkat}` : '-',
         jurusan: siswaProfile.Jurusan?.nama || '-',
         nisn: siswaProfile.nisn || '-',
+        nik: siswaProfile.nik || '-',
+        tinggiBadan: siswaProfile.tinggi_badan ? `${siswaProfile.tinggi_badan} cm` : '-',
+        beratBadan: siswaProfile.berat_badan ? `${siswaProfile.berat_badan} kg` : '-',
       };
     }
     return {
@@ -332,6 +335,9 @@ export default function ProfilePage() {
       tingkat: '-',
       jurusan: '-',
       nisn: '-',
+      nik: '-',
+      tinggiBadan: '-',
+      beratBadan: '-',
     };
   }, [isGuru, isSiswa, guruProfile, siswaProfile, summaryName, summaryEmail, roleName]);
 
@@ -922,12 +928,32 @@ export default function ProfilePage() {
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.utama2}</p>
                   </div>
                   {isSiswa && (
-                    <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
-                        <Award size={11} className="text-indigo-500" /> NISN
-                      </span>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.nisn}</p>
-                    </div>
+                    <>
+                      <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                          <Award size={11} className="text-indigo-500" /> NISN
+                        </span>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.nisn}</p>
+                      </div>
+                      <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                          <Award size={11} className="text-indigo-500" /> NIK
+                        </span>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.nik}</p>
+                      </div>
+                      <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                          <UserIcon size={11} className="text-indigo-500" /> Tinggi Badan
+                        </span>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.tinggiBadan}</p>
+                      </div>
+                      <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                          <UserIcon size={11} className="text-indigo-500" /> Berat Badan
+                        </span>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.beratBadan}</p>
+                      </div>
+                    </>
                   )}
                   <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
