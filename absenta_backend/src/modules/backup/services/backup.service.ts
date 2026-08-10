@@ -4,16 +4,17 @@ import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { Readable } from 'stream';
 import { BackupStorage } from '@/infra/storage/BackupStorage';
 import { auditLogService } from '@/modules/audit/services/audit-log.service';
-import { TENANT_MODELS } from '@/constants/backup.constants';
+import { TENANT_MODELS, getDynamicTenantModels } from '@/constants/backup.constants';
 import crypto from 'crypto';
 
 export class BackupService {
   private prisma: PrismaClient;
   private storage: BackupStorage;
 
-  // List of models to backup (must have tenant_id)
-  // Ordered by dependency for restore (parent first)
-  private readonly tenantModels = TENANT_MODELS;
+  // Dynamically retrieved list of models to backup (ordered by dependency)
+  private get tenantModels() {
+    return getDynamicTenantModels();
+  }
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
