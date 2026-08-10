@@ -588,10 +588,19 @@ export class GuruJadwalHandler {
       where: whereJadwal,
       include: {
         Guru: { select: { id: true, nama_guru: true } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: { 
+          select: { 
+            id: true, 
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, nama_jurusan: true, kode_jurusan: true } }
+          } 
+        },
         Mapel: { select: { id: true, nama_mapel: true } },
       },
-      orderBy: { slot_index: 'asc' },
+      orderBy: [
+        { slot_index: 'asc' }
+      ],
     });
 
     if (jadwalList.length === 0) {
@@ -627,10 +636,7 @@ export class GuruJadwalHandler {
     let targetJadwal = jadwalList;
 
     if (filterMode === 'NOW') {
-      const activeSlotItems = jadwalList.filter(j => j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr);
-      if (activeSlotItems.length > 0) {
-        targetJadwal = activeSlotItems;
-      }
+      targetJadwal = jadwalList.filter(j => j.jam_mulai <= nowWibStr && j.jam_selesai >= nowWibStr);
     }
 
     // Header message
@@ -643,38 +649,57 @@ export class GuruJadwalHandler {
       msg += `📋 *Daftar Jadwal Mengajar Guru Hari Ini:*\n\n`;
     }
 
-    const formattedRows: string[] = [];
+    // Grouping berdasarkan Tingkat & Jurusan
+    const groupedByTingkatJurusan: Record<string, { groupName: string; tingkatNum: number; items: any[] }> = {};
 
     targetJadwal.forEach((j: any) => {
-      const teacherName = j.Guru?.nama_guru || 'Guru (Belum Diatur)';
-      const kelasName = j.Kelas?.nama_kelas || '-';
-      const mapelName = j.Mapel?.nama_mapel || '-';
-      const timeRange = `${j.jam_mulai}–${j.jam_selesai}`;
+      const tingkat = j.Kelas?.tingkat || 0;
+      const jurusanName = j.Kelas?.Jurusan?.nama_jurusan || j.Kelas?.Jurusan?.kode_jurusan || 'Umum';
+      const groupKey = `tingkat_${tingkat}_${jurusanName}`;
+      const groupHeader = tingkat > 0
+        ? `🏫 *Tingkat ${tingkat} — ${jurusanName}*`
+        : `🏫 *Kelompok ${jurusanName}*`;
 
-      const matchedSesi = sesiList.find(s => 
-        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
-        (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
-      );
-
-      let statusBadge = '🔴 Belum Hadir / Mengajar';
-      if (matchedSesi) {
-        if (matchedSesi.status === 'BERLANGSUNG') {
-          statusBadge = '🟢 Sedang Mengajar (Sesi Aktif)';
-        } else if (matchedSesi.status === 'SELESAI') {
-          statusBadge = '✅ Selesai Mengajar';
-        } else {
-          statusBadge = `🟡 Sesi ${matchedSesi.status}`;
-        }
+      if (!groupedByTingkatJurusan[groupKey]) {
+        groupedByTingkatJurusan[groupKey] = { groupName: groupHeader, tingkatNum: tingkat, items: [] };
       }
-
-      let row = `👨‍🏫 *${teacherName}* (${kelasName})\n`;
-      row += `   ├ 📖 *Mapel*: ${mapelName} (${timeRange})\n`;
-      row += `   └ 📊 *Status*: ${statusBadge}\n`;
-
-      formattedRows.push(row);
+      groupedByTingkatJurusan[groupKey].items.push(j);
     });
 
-    msg += formattedRows.join('\n');
+    const groups = Object.values(groupedByTingkatJurusan).sort((a, b) => a.tingkatNum - b.tingkatNum);
+    const formattedSections: string[] = [];
+
+    groups.forEach(group => {
+      let section = `${group.groupName}\n`;
+      group.items.forEach(j => {
+        const teacherName = j.Guru?.nama_guru || 'Guru';
+        const kelasName = j.Kelas?.nama_kelas || '-';
+        const mapelName = j.Mapel?.nama_mapel || '-';
+        const timeRange = `${j.jam_mulai}–${j.jam_selesai}`;
+        const jp = j.slot_index ? `JP ${j.slot_index}` : '';
+
+        const matchedSesi = sesiList.find(s => 
+          (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
+          (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
+        );
+
+        let icon = '🔴';
+        if (matchedSesi) {
+          if (matchedSesi.status === 'BERLANGSUNG') {
+            icon = '🟢';
+          } else if (matchedSesi.status === 'SELESAI') {
+            icon = '✅';
+          } else {
+            icon = '🟡';
+          }
+        }
+
+        section += `• ${icon} *${teacherName}* (${kelasName}) │ ${mapelName} │ ${jp} (${timeRange})\n`;
+      });
+      formattedSections.push(section);
+    });
+
+    msg += formattedSections.join('\n');
 
     if (filterMode === 'NOW' && targetJadwal.length === 0) {
       msg += `ℹ️ _Saat ini tidak ada slot mengajar aktif pada jam ini (${nowWibStr} WIB)._\n\n`;

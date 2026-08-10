@@ -144,4 +144,39 @@ function preDevCleanup() {
   }
 }
 
+function ensureMinioRunning() {
+  const minioPort = 9000;
+  const activeMinioPids = getListeningPids(minioPort);
+  
+  if (activeMinioPids.length === 0) {
+    const minioPath = 'd:\\BarayaProject\\MiniIO\\minio.exe';
+    const minioData = 'd:\\BarayaProject\\MiniIO\\data';
+
+    if (fs.existsSync(minioPath)) {
+      console.log('\n======================================================================');
+      console.log(' [MinIO Storage] Memulai MinIO S3 Storage Server otomatis pada port 9000...');
+      console.log('======================================================================\n');
+      
+      try {
+        const { spawn } = require('child_process');
+        const minioProc = spawn('powershell.exe', [
+          '-NoProfile',
+          '-Command',
+          `Start-Process '${minioPath}' -ArgumentList 'server', '${minioData}', '--console-address', ':9001' -WindowStyle Minimized`
+        ], { detached: true, stdio: 'ignore' });
+        minioProc.unref();
+
+        console.log('[MinIO Storage] MinIO Server berhasil dijalankan di latar belakang.');
+      } catch (err) {
+        console.error('[MinIO Storage] Gagal menjalankan MinIO otomatis:', err.message);
+      }
+    } else {
+      console.warn('[MinIO Storage] File minio.exe tidak ditemukan di: ' + minioPath);
+    }
+  } else {
+    console.log('[MinIO Storage] Server MinIO S3 sudah aktif berjalan pada port 9000.');
+  }
+}
+
 preDevCleanup();
+ensureMinioRunning();

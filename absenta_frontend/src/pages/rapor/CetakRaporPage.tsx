@@ -24,7 +24,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
@@ -74,7 +74,7 @@ export default React.memo(function CetakRaporPage() {
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
 
   // ── User Auth & Wali Kelas Operational Context ──
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const userKelasId = useMemo(() => {
     return user?.wali_kelas_kelas_id || (user as any)?.kelas_id || (user as any)?.assigned_kelas_id || null;
   }, [user]);
