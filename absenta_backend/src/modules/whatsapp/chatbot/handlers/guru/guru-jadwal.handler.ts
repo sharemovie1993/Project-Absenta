@@ -3,7 +3,7 @@ import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal
 import { sesiService } from '@/modules/attendance/sesi-absensi/services/sesi.service';
 import { prisma } from '@/utils/prisma';
 import { getTenantTimezone } from '@/utils/timezone.utils';
-import { getWhatsappActiveSemester } from '@/modules/whatsapp/services/wa-chatbot-commands';
+import { getWhatsappActiveSemester, aggregateJadwal } from '@/modules/whatsapp/services/wa-chatbot-commands';
 
 function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
   const localDay = new Intl.DateTimeFormat('en-US', {
@@ -327,12 +327,16 @@ export class GuruJadwalHandler {
 
     grouped.forEach((items, namaGuru) => {
       msg += `👨‍🏫 *${namaGuru}*\n`;
-      items.forEach((j, idx) => {
+      const aggregatedItems = aggregateJadwal(items);
+      aggregatedItems.forEach((j: any, idx: number) => {
         const jamMulai = j.jam_mulai || '-';
         const jamSelesai = j.jam_selesai || '-';
         const mapel = (j as any).Mapel?.nama_mapel || '-';
         const kelas = (j as any).Kelas?.nama_kelas || '-';
-        msg += `  ${idx + 1}. ⏱️ ${jamMulai}–${jamSelesai} │ 📖 ${mapel} (${kelas})\n`;
+        const slotInfo = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+          ? ` (Jam ${j.startSlot}–${j.endSlot})`
+          : (j.startSlot ? ` (Jam ${j.startSlot})` : '');
+        msg += `  ${idx + 1}. ⏱️ ${jamMulai}–${jamSelesai}${slotInfo} │ 📖 ${mapel} (${kelas})\n`;
       });
       msg += `\n`;
     });
@@ -429,12 +433,16 @@ export class GuruJadwalHandler {
         const items = grouped[hari];
         if (!items || items.length === 0) return;
         msg += `📌 *${hari}*\n`;
-        items.forEach((j: any, idx: number) => {
-          const isLast = idx === items.length - 1;
+        const aggregatedItems = aggregateJadwal(items);
+        aggregatedItems.forEach((j: any, idx: number) => {
+          const isLast = idx === aggregatedItems.length - 1;
           const branch = isLast ? '└' : '├';
           const mapel = (j as any).Mapel?.nama_mapel || '-';
           const guru = (j as any).Guru?.nama_guru || '-';
-          msg += ` ${branch} ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel} (${guru})\n`;
+          const slotInfo = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+            ? ` (Jam ${j.startSlot}–${j.endSlot})`
+            : (j.startSlot ? ` (Jam ${j.startSlot})` : '');
+          msg += ` ${branch} ⏱️ ${j.jam_mulai}–${j.jam_selesai}${slotInfo} │ 📖 ${mapel} (${guru})\n`;
         });
         msg += `\n`;
       });
@@ -457,10 +465,14 @@ export class GuruJadwalHandler {
     }
 
     let msg = `🏫 *Jadwal KBM ${kelas.nama_kelas} — ${currentDay}*\n\n`;
-    jadwalHariIni.forEach((j: any, idx: number) => {
+    const aggregatedHariIni = aggregateJadwal(jadwalHariIni);
+    aggregatedHariIni.forEach((j: any, idx: number) => {
       const mapel = (j as any).Mapel?.nama_mapel || '-';
       const guru = (j as any).Guru?.nama_guru || '-';
-      msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai} │ 📖 ${mapel}\n`;
+      const slotInfo = (j.startSlot && j.endSlot && j.startSlot !== j.endSlot)
+        ? ` (Jam ${j.startSlot} s/d ${j.endSlot})`
+        : (j.startSlot ? ` (Jam ke-${j.startSlot})` : '');
+      msg += `${idx + 1}. ⏱️ ${j.jam_mulai}–${j.jam_selesai}${slotInfo} │ 📖 ${mapel}\n`;
       msg += `   👨‍🏫 Guru: ${guru}\n\n`;
     });
 
