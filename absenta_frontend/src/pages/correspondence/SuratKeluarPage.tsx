@@ -13,7 +13,7 @@ import { correspondenceApi, type SuratKeluar } from '../../api/correspondence.ap
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
 import { getTenantById } from '../../api/tenants.api';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../store/authStore';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { useDebounce } from '../../hooks/useDebounce';
 import useConfirm from '../../hooks/useConfirm';
@@ -25,7 +25,7 @@ const SmartStudentPicker = lazy(() => import('../../components/common/SmartStude
 
 export default function SuratKeluarPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
