@@ -32,6 +32,56 @@ export interface GuruWeeklyScheduleResult {
 }
 
 export class JadwalKBMService {
+
+  // ─── Private Helpers: Resolusi Waktu Per Hari (sama dengan getSlotsForDay di frontend) ───
+
+  /** Load shift_jam_pelajaran config dari Config table untuk satu tenant */
+  private async loadShiftConfig(tenantId: string): Promise<any | null> {
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' },
+    });
+    if (!config?.value) return null;
+    try { return JSON.parse(config.value); } catch { return null; }
+  }
+
+  /**
+   * Resolve jam_mulai & jam_selesai per-hari dari shift config.
+   * Mengutamakan day_patterns[hari] jika ada, fallback ke shift.slots.
+   * Identik dengan fungsi getSlotsForDay di frontend (JamKBMTypes.ts).
+   */
+  private resolveSlotTime(
+    shiftConfig: any,
+    kelasId: string,
+    hari: string,
+    slotIndex: number,
+  ): { start: string; end: string } | null {
+    if (!shiftConfig?.shifts) return null;
+    const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+    const shift = shiftConfig.shifts.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts[0];
+    if (!shift) return null;
+    const upperHari = (hari || '').toUpperCase();
+    // Prioritaskan day_patterns[hari] jika punya slots
+    const daySlots =
+      (shift.day_patterns?.[upperHari]?.slots?.length > 0)
+        ? shift.day_patterns[upperHari].slots
+        : (shift.slots || []);
+    const found = daySlots.find((sl: any) => sl.slot === slotIndex);
+    return found ? { start: found.start, end: found.end } : null;
+  }
+
+  /**
+   * Enrich array JadwalKBM dengan jam_mulai & jam_selesai yang benar per hari.
+   * Membaca field j.hari dari item itu sendiri (support multi-hari sekaligus).
+   */
+  private enrichJadwalWithDayTimes(jadwalList: any[], shiftConfig: any | null): any[] {
+    if (!shiftConfig) return jadwalList;
+    return jadwalList.map((j: any) => {
+      const resolved = this.resolveSlotTime(shiftConfig, j.kelas_id, j.hari || '', j.slot_index);
+      if (resolved) return { ...j, jam_mulai: resolved.start, jam_selesai: resolved.end };
+      return j;
+    });
+  }
+
   /**
    * SHARED DOMAIN SERVICE METHOD:
    * Mengambil timeline jadwal KBM & Piket Guru untuk 1 hari tertentu.
@@ -91,6 +141,10 @@ export class JadwalKBMService {
         }).catch(() => []),
       ]);
     }
+
+    // Enrich jam per hari dari shift_jam_pelajaran config
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    jadwalList = this.enrichJadwalWithDayTimes(jadwalList as any[], shiftConfig) as any[];
 
     const items: GuruScheduleTimelineItem[] = [];
 
@@ -202,6 +256,10 @@ export class JadwalKBMService {
         }).catch(() => []),
       ]);
     }
+
+    // Enrich jam per hari dari shift_jam_pelajaran config
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    semuaJadwal = this.enrichJadwalWithDayTimes(semuaJadwal as any[], shiftConfig) as any[];
 
     const groupedKbm: Record<string, any[]> = {};
     const groupedPiket: Record<string, any[]> = {};
@@ -418,7 +476,7 @@ export class JadwalKBMService {
 
   /** Ambil semua jadwal KBM hari ini untuk seluruh guru — chatbot WA menu monitoring 81/83/84/85/86 */
   async getJadwalHariIniSemua(tenantId: string, hari: string, semesterId: string) {
-    return prisma.jadwalKBM.findMany({
+    const list = await prisma.jadwalKBM.findMany({
       where: { tenant_id: tenantId, semester_id: semesterId, hari: hari as Hari },
       include: {
         Guru:  { select: { id: true, nama_guru: true } },
@@ -427,11 +485,13 @@ export class JadwalKBMService {
       },
       orderBy: { slot_index: 'asc' },
     });
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    return this.enrichJadwalWithDayTimes(list as any[], shiftConfig);
   }
 
   /** Ambil jadwal KBM hari ini filter by nama guru — chatbot WA menu 82 cari guru */
   async getJadwalHariIniByNama(tenantId: string, hari: string, semesterId: string, namaGuru: string) {
-    return prisma.jadwalKBM.findMany({
+    const list = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
         semester_id: semesterId,
@@ -445,6 +505,8 @@ export class JadwalKBMService {
       },
       orderBy: { slot_index: 'asc' },
     });
+    const shiftConfig = await this.loadShiftConfig(tenantId);
+    return this.enrichJadwalWithDayTimes(list as any[], shiftConfig);
   }
 }
 
