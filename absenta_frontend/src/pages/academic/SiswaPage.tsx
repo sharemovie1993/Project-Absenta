@@ -487,7 +487,7 @@ const SiswaPage: React.FC = () => {
   const handleExport = useCallback(async () => {
     try {
       setIsExporting(true);
-      const response = await getSiswaList(1, 5000);
+      const response = await getSiswaList(1, 100000);
       if (!response.success || response.data.length === 0) {
         toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
         return;
