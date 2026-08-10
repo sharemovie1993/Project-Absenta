@@ -19,28 +19,29 @@ interface BackupStats {
     semester: number;
     jurusan: number;
     mapel: number;
-    jenisKegiatan: number;
-    strukturOrganisasi: number;
+    kelas: number;
   };
   users: {
     guru: number;
     siswa: number;
+    orangTua: number;
+    user: number;
   };
   academic: {
-    kelas: number;
-    waliKelas: number;
-    guruMapel: number;
-    kelasMapel: number;
-    siswaAkademik: number;
-  };
-  operational: {
     jadwalKBM: number;
-    guruStruktur: number;
-    siswaStruktur: number;
-    pelanggaran: number;
-    supervisi: number;
+    absenSiswa: number;
+    absenGuru: number;
+    absenGerbang: number;
+  };
+  modules: {
+    suratDigital: number;
+    pelanggaranPrestasi: number;
+    bkKonseling: number;
+    sarprasAsset: number;
+    koperasi: number;
   };
   total: number;
+  tableCount: number;
 }
 
 interface ImportSectionProps {
@@ -157,37 +158,83 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
           {previewStats && !loadingImport && (
             <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-5 space-y-4 border border-slate-200/80 dark:border-slate-800/80 shadow-inner animate-in fade-in duration-300">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Info size={13} className="text-blue-500" /> Hasil Analisis File
-                </h4>
-                <Badge variant="info" className="font-black text-[10px] px-2.5 py-0.5">
-                  {previewStats.total} Record
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Info size={14} className="text-blue-500" />
+                  <h4 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">
+                    Hasil Analisis File Cadangan
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-bold text-[10px] px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                    {previewStats.tableCount || 0} Modul/Tabel
+                  </Badge>
+                  <Badge variant="info" className="font-black text-[10px] px-2.5 py-0.5">
+                    {previewStats.total} Record
+                  </Badge>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <p className="font-black text-[9px] text-slate-400 uppercase tracking-widest">Struktur</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Master */}
+                <div className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                  <p className="font-black text-[9px] text-blue-500 uppercase tracking-wider">Kelembagaan</p>
                   {[
                     { label: 'Sekolah', val: previewStats.master.sekolah },
-                    { label: 'Mapel', val: previewStats.master.mapel },
+                    { label: 'Tahun / Sem', val: previewStats.master.tahunPelajaran + previewStats.master.semester },
+                    { label: 'Jurusan', val: previewStats.master.jurusan },
+                    { label: 'Mapel & Kelas', val: previewStats.master.mapel + previewStats.master.kelas },
                   ].map((item, i) => (
-                    <div key={i} className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 dark:text-slate-400 font-medium">{item.label}</span>
-                      <span className="font-black text-slate-900 dark:text-slate-100">{item.val}</span>
+                    <div key={i} className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate">{item.label}</span>
+                      <span className="font-black text-slate-800 dark:text-slate-100 ml-1">{item.val}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-1.5">
-                  <p className="font-black text-[9px] text-slate-400 uppercase tracking-widest">Pengguna</p>
+                {/* Users */}
+                <div className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                  <p className="font-black text-[9px] text-emerald-500 uppercase tracking-wider">Pengguna</p>
                   {[
                     { label: 'Guru', val: previewStats.users.guru },
                     { label: 'Siswa', val: previewStats.users.siswa },
+                    { label: 'Orang Tua', val: previewStats.users.orangTua },
+                    { label: 'Akun User', val: previewStats.users.user },
                   ].map((item, i) => (
-                    <div key={i} className="flex justify-between items-center text-xs">
-                      <span className="text-slate-600 dark:text-slate-400 font-medium">{item.label}</span>
-                      <span className="font-black text-slate-900 dark:text-slate-100">{item.val}</span>
+                    <div key={i} className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate">{item.label}</span>
+                      <span className="font-black text-slate-800 dark:text-slate-100 ml-1">{item.val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Academic */}
+                <div className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                  <p className="font-black text-[9px] text-violet-500 uppercase tracking-wider">Presensi & KBM</p>
+                  {[
+                    { label: 'Jadwal KBM', val: previewStats.academic.jadwalKBM },
+                    { label: 'Absen Siswa', val: previewStats.academic.absenSiswa },
+                    { label: 'Absen Guru', val: previewStats.academic.absenGuru },
+                    { label: 'Tap Gerbang', val: previewStats.academic.absenGerbang },
+                  ].map((item, i) => (
+                    <div key={i} className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate">{item.label}</span>
+                      <span className="font-black text-slate-800 dark:text-slate-100 ml-1">{item.val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Modules */}
+                <div className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                  <p className="font-black text-[9px] text-amber-500 uppercase tracking-wider">Modul Terintegrasi</p>
+                  {[
+                    { label: 'Surat Digital', val: previewStats.modules.suratDigital },
+                    { label: 'Pelanggaran', val: previewStats.modules.pelanggaranPrestasi },
+                    { label: 'BK / Kasus', val: previewStats.modules.bkKonseling },
+                    { label: 'Sarpras & Coop', val: previewStats.modules.sarprasAsset + previewStats.modules.koperasi },
+                  ].map((item, i) => (
+                    <div key={i} className="flex justify-between items-center text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate">{item.label}</span>
+                      <span className="font-black text-slate-800 dark:text-slate-100 ml-1">{item.val}</span>
                     </div>
                   ))}
                 </div>

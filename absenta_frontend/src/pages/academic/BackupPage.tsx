@@ -26,38 +26,59 @@ interface BackupStats {
     semester: number;
     jurusan: number;
     mapel: number;
-    jenisKegiatan: number;
-    strukturOrganisasi: number;
+    kelas: number;
   };
   users: {
     guru: number;
     siswa: number;
+    orangTua: number;
+    user: number;
   };
   academic: {
-    kelas: number;
-    waliKelas: number;
-    guruMapel: number;
-    kelasMapel: number;
-    siswaAkademik: number;
-  };
-  operational: {
     jadwalKBM: number;
-    guruStruktur: number;
-    siswaStruktur: number;
-    pelanggaran: number;
-    supervisi: number;
+    absenSiswa: number;
+    absenGuru: number;
+    absenGerbang: number;
+  };
+  modules: {
+    suratDigital: number;
+    pelanggaranPrestasi: number;
+    bkKonseling: number;
+    sarprasAsset: number;
+    koperasi: number;
   };
   total: number;
+  tableCount: number;
 }
 
 // Tipe eksplisit untuk data JSON backup
 type BackupJsonData = {
   data?: Record<string, unknown[]>;
+  tables?: Record<string, unknown[]>;
+  meta?: {
+    total_rows?: number;
+    table_row_counts?: Record<string, number>;
+  };
   [key: string]: unknown;
 };
 
 // Tipe eksplisit untuk hasil import
 type ImportResultDetail = Record<string, number | string | unknown>;
+
+function getRecordCount(data: Record<string, any>, ...possibleKeys: string[]): number {
+  if (!data) return 0;
+  for (const k of possibleKeys) {
+    if (Array.isArray(data[k])) return data[k].length;
+  }
+  const dataKeys = Object.keys(data);
+  for (const k of possibleKeys) {
+    const matchedKey = dataKeys.find(dk => dk.toLowerCase() === k.toLowerCase());
+    if (matchedKey && Array.isArray(data[matchedKey])) {
+      return data[matchedKey].length;
+    }
+  }
+  return 0;
+}
 
 export default function BackupPage() {
   const confirm = useConfirm();
@@ -127,43 +148,50 @@ export default function BackupPage() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string) as BackupJsonData;
-        const data = (json.data || {}) as Record<string, unknown[]>;
+        const data = (json.data || json.tables || {}) as Record<string, unknown[]>;
+
+        const allTableKeys = Object.keys(data);
+        let grandTotal = 0;
+        let validTablesCount = 0;
+
+        for (const tk of allTableKeys) {
+          if (Array.isArray(data[tk])) {
+            grandTotal += data[tk].length;
+            if (data[tk].length > 0) validTablesCount++;
+          }
+        }
 
         const stats: BackupStats = {
           master: {
-            sekolah: data.sekolah?.length || 0,
-            tahunPelajaran: data.tahunPelajaran?.length || 0,
-            semester: data.semester?.length || 0,
-            jurusan: data.jurusan?.length || 0,
-            mapel: data.mapel?.length || 0,
-            jenisKegiatan: data.jenisKegiatanMaster?.length || 0,
-            strukturOrganisasi: data.strukturOrganisasi?.length || 0,
+            sekolah: getRecordCount(data, 'Sekolah', 'sekolah'),
+            tahunPelajaran: getRecordCount(data, 'TahunPelajaran', 'tahunPelajaran', 'tahun_pelajaran'),
+            semester: getRecordCount(data, 'Semester', 'semester'),
+            jurusan: getRecordCount(data, 'Jurusan', 'jurusan'),
+            mapel: getRecordCount(data, 'Mapel', 'mapel'),
+            kelas: getRecordCount(data, 'Kelas', 'kelas'),
           },
           users: {
-            guru: data.guru?.length || 0,
-            siswa: data.siswa?.length || 0,
+            guru: getRecordCount(data, 'Guru', 'guru'),
+            siswa: getRecordCount(data, 'Siswa', 'siswa'),
+            orangTua: getRecordCount(data, 'OrangTua', 'orangTua', 'orang_tua'),
+            user: getRecordCount(data, 'User', 'user'),
           },
           academic: {
-            kelas: data.kelas?.length || 0,
-            waliKelas: data.waliKelas?.length || 0,
-            guruMapel: data.guruMapel?.length || 0,
-            kelasMapel: data.kelasMapel?.length || 0,
-            siswaAkademik: data.siswaAkademik?.length || 0,
+            jadwalKBM: getRecordCount(data, 'JadwalKBM', 'jadwalKBM', 'jadwal_kbm'),
+            absenSiswa: getRecordCount(data, 'AbsenSiswa', 'absenSiswa'),
+            absenGuru: getRecordCount(data, 'AbsenGuru', 'absenGuru'),
+            absenGerbang: getRecordCount(data, 'AbsenGerbangSiswa', 'absenGerbangSiswa') + getRecordCount(data, 'AbsenGerbangGuru', 'absenGerbangGuru'),
           },
-          operational: {
-            jadwalKBM: data.jadwalKBM?.length || 0,
-            guruStruktur: data.guruStrukturOrganisasi?.length || 0,
-            siswaStruktur: data.siswaStrukturOrganisasi?.length || 0,
-            pelanggaran: data.pelanggaranSiswa?.length || 0,
-            supervisi: data.supervisiGuru?.length || 0,
+          modules: {
+            suratDigital: getRecordCount(data, 'SuratMasuk', 'suratMasuk') + getRecordCount(data, 'SuratKeluar', 'suratKeluar') + getRecordCount(data, 'TemplateSurat'),
+            pelanggaranPrestasi: getRecordCount(data, 'PelanggaranSiswa', 'pelanggaranSiswa') + getRecordCount(data, 'PrestasiSiswa', 'prestasiSiswa'),
+            bkKonseling: getRecordCount(data, 'KonselingSiswa', 'konselingSiswa') + getRecordCount(data, 'KasusBK', 'kasusBK'),
+            sarprasAsset: getRecordCount(data, 'SarprasAsset', 'sarprasAsset') + getRecordCount(data, 'SarprasLoan', 'sarprasLoan'),
+            koperasi: getRecordCount(data, 'Member', 'member') + getRecordCount(data, 'SavingTransaction', 'savingTransaction') + getRecordCount(data, 'Sale', 'sale'),
           },
-          total: 0
+          total: (json.meta as any)?.total_rows || grandTotal,
+          tableCount: validTablesCount,
         };
-
-        stats.total = Object.values(stats.master).reduce((a, b) => a + b, 0) +
-          Object.values(stats.users).reduce((a, b) => a + b, 0) +
-          Object.values(stats.academic).reduce((a, b) => a + b, 0) +
-          Object.values(stats.operational).reduce((a, b) => a + b, 0);
 
         setPreviewStats(stats);
         setParsedData(json);
