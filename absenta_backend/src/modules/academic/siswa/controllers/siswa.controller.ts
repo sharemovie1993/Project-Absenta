@@ -1111,7 +1111,7 @@ export const siswaController = {
 
       const rawData = [...(result.data || [])];
 
-      // Sort: 1. Kelas (nama_kelas), 2. NIS (numeric/natural order), 3. Nama Siswa
+      // Sort MURNI: 1. Kelas (nama_kelas), 2. NIS (Tanpa sorting Nama Siswa)
       rawData.sort((a: any, b: any) => {
         const kelasA = (a.Kelas?.nama_kelas || '').trim();
         const kelasB = (b.Kelas?.nama_kelas || '').trim();
@@ -1131,13 +1131,10 @@ export const siswaController = {
         if (!nisA && nisB) return 1;
 
         if (nisA !== nisB) {
-          const nComp = nisA.localeCompare(nisB, 'id', { numeric: true, sensitivity: 'base' });
-          if (nComp !== 0) return nComp;
+          return nisA.localeCompare(nisB, 'id', { numeric: true, sensitivity: 'base' });
         }
 
-        const namaA = String(a.nama_siswa || '').trim();
-        const namaB = String(b.nama_siswa || '').trim();
-        return namaA.localeCompare(namaB, 'id', { sensitivity: 'base' });
+        return 0;
       });
 
       const data = rawData.map((s, index) => ({
