@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { waQueueService } from '@/services/wa-queue.service';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 
 export interface OnboardingUserItem {
   id: string;
@@ -250,22 +251,22 @@ export class WaOnboardingService {
 
     // 5. Fetch Structural Roles (DRY pattern helper)
     if (roleFilter === 'PETUGAS_KELAS') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'PETUGAS_KELAS' }, commMap, 'Petugas Absensi Kelas', 'SISWA', 'petugas-kelas');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: STRUKTUR_CODES.PETUGAS_KELAS }, commMap, 'Petugas Absensi Kelas', 'SISWA', 'petugas-kelas');
       allUsers.push(...items);
     } else if (roleFilter === 'PETUGAS_GERBANG') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: ['GERBANG', 'PETUGAS_GERBANG', 'SATPAM'] } }, commMap, 'Petugas Gerbang Satpam', 'GURU', 'petugas-gerbang');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: [STRUKTUR_CODES.GERBANG, 'PETUGAS_GERBANG', 'SATPAM'] } }, commMap, 'Petugas Gerbang Satpam', 'GURU', 'petugas-gerbang');
       allUsers.push(...items);
     } else if (roleFilter === 'KAPROG') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'KAPROG' }, commMap, 'Kaprog', 'GURU', 'kaprog');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: STRUKTUR_CODES.KAPROG }, commMap, 'Kaprog', 'GURU', 'kaprog');
       allUsers.push(...items);
     } else if (roleFilter === 'WAKA') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WAKASEK', 'WAKA'] } }, commMap, 'Waka Sekolah', 'GURU', 'waka');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: { in: [STRUKTUR_CODES.KURIKULUM, STRUKTUR_CODES.KESISWAAN, STRUKTUR_CODES.HUBIN, STRUKTUR_CODES.SARPRAS, 'WAKASEK', 'WAKA'] } }, commMap, 'Waka Sekolah', 'GURU', 'waka');
       allUsers.push(...items);
     } else if (roleFilter === 'TOOLMAN') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { code: 'TOOLMAN' }, commMap, 'Toolman Bengkel / Lab', 'GURU', 'toolman');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { code: STRUKTUR_CODES.TOOLMAN }, commMap, 'Toolman Bengkel / Lab', 'GURU', 'toolman');
       allUsers.push(...items);
     } else if (roleFilter === 'TU') {
-      const items = await this.fetchStructuralRoleUsers(tenantId, { OR: [{ code: { in: ['TU', 'TU_KEPALA', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] } }, { code: { startsWith: 'TU_' } }] }, commMap, 'Tata Usaha', 'GURU', 'tu');
+      const items = await this.fetchStructuralRoleUsers(tenantId, { OR: [{ code: { in: [STRUKTUR_CODES.TU, STRUKTUR_CODES.TU_KEPALA, STRUKTUR_CODES.TU_PERSURATAN, STRUKTUR_CODES.TU_KEUANGAN, STRUKTUR_CODES.TU_KEPEGAWAIAN, STRUKTUR_CODES.TU_SARPRAS] } }, { code: { startsWith: 'TU_' } }] }, commMap, 'Tata Usaha', 'GURU', 'tu');
       allUsers.push(...items);
     } else if (roleFilter === 'BPBK') {
       const items = await this.fetchStructuralRoleUsers(
