@@ -1105,10 +1105,42 @@ export const siswaController = {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      // Get all students (large limit)
-      const result = await siswaService.getAllSiswa(tenantId, scope, { page: 1, limit: 100000 });
+      // Get all students with query filters applied (large limit for full export)
+      const queryParams = { ...(request.query || {}), page: 1, limit: 100000 };
+      const result = await siswaService.getAllSiswa(tenantId, scope, queryParams);
 
-      const data = result.data.map((s, index) => ({
+      const rawData = [...(result.data || [])];
+
+      // Sort: 1. Kelas (nama_kelas), 2. NIS (numeric/natural order), 3. Nama Siswa
+      rawData.sort((a: any, b: any) => {
+        const kelasA = (a.Kelas?.nama_kelas || '').trim();
+        const kelasB = (b.Kelas?.nama_kelas || '').trim();
+
+        if (kelasA && !kelasB) return -1;
+        if (!kelasA && kelasB) return 1;
+
+        if (kelasA !== kelasB) {
+          const kComp = kelasA.localeCompare(kelasB, 'id', { numeric: true, sensitivity: 'base' });
+          if (kComp !== 0) return kComp;
+        }
+
+        const nisA = String(a.nis || '').trim();
+        const nisB = String(b.nis || '').trim();
+
+        if (nisA && !nisB) return -1;
+        if (!nisA && nisB) return 1;
+
+        if (nisA !== nisB) {
+          const nComp = nisA.localeCompare(nisB, 'id', { numeric: true, sensitivity: 'base' });
+          if (nComp !== 0) return nComp;
+        }
+
+        const namaA = String(a.nama_siswa || '').trim();
+        const namaB = String(b.nama_siswa || '').trim();
+        return namaA.localeCompare(namaB, 'id', { sensitivity: 'base' });
+      });
+
+      const data = rawData.map((s, index) => ({
         No: index + 1,
         'Nama Siswa': s.nama_siswa,
         NIS: s.nis || '',
