@@ -158,7 +158,6 @@ export default React.memo(function RekapBulananSiswaPage() {
     window.open(url, '_blank', 'width=900,height=800');
   }, [siswaId, bulan, tahunPelajaranId]);
 
-  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const statCards = useMemo(() => {

@@ -288,7 +288,6 @@ export function RekapBulananMapelContent() {
     }
   }, [rows, selectedKelasLabel, selectedMapelLabel, kelasId, bulan, viewMode, sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64, guruMapelInfo, waliKelasInfo, kelasOptions]);
 
-  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const safeRows = Array.isArray(rows) ? rows : [];

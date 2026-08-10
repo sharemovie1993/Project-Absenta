@@ -118,7 +118,7 @@ export default React.memo(function RekapHarianSiswaPage() {
     await rekapQuery.refetch();
   }, [rekapQuery]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
         <Loader size="lg" />

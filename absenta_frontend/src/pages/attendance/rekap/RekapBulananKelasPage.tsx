@@ -293,7 +293,6 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
     }
   }, [rows, kelasOptions, kelasId, bulan, viewMode, sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64, waliKelasName, waliKelasNip]);
 
-  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const safeRows = Array.isArray(rows) ? rows : [];
