@@ -81,6 +81,8 @@ export interface CreateSiswaInput {
   pekerjaan_wali?: string;
   penghasilan_wali?: string;
   anak_ke?: number;
+  tinggi_badan?: number | null;
+  berat_badan?: number | null;
   penerima_kps?: boolean;
   penerima_kip?: boolean;
   no_kip?: string;

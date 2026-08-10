@@ -59,6 +59,8 @@ export interface Siswa {
   nis: string;
   nisn?: string;
   nik?: string;
+  tinggi_badan?: number | null;
+  berat_badan?: number | null;
   nama_siswa: string;
   jenis_kelamin: 'L' | 'P';
   tempat_lahir?: string;

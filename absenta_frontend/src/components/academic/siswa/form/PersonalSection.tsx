@@ -435,6 +435,56 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="nik" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            NIK (Nomor Induk Kependudukan)
+                        </Label>
+                    </div>
+                    <Input
+                        id="nik"
+                        {...register('nik')}
+                        placeholder="16 digit NIK..."
+                        disabled={isViewMode}
+                        className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nik ? 'border-red-500' : ''}`}
+                    />
+                    {errors.nik && (
+                        <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nik.message}</p>
+                    )}
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="tinggi_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Tinggi Badan (cm)
+                        </Label>
+                    </div>
+                    <Input
+                        id="tinggi_badan"
+                        type="number"
+                        {...register('tinggi_badan')}
+                        placeholder="Contoh: 165"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="berat_badan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Berat Badan (kg)
+                        </Label>
+                    </div>
+                    <Input
+                        id="berat_badan"
+                        type="number"
+                        {...register('berat_badan')}
+                        placeholder="Contoh: 55"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
                         <Label htmlFor="nama_siswa" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             Nama Lengkap <span className="text-rose-500">*</span>
                         </Label>

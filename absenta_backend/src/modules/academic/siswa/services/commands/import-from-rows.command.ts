@@ -151,6 +151,8 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         alamat: getRowValue(row, 'alamat', 'Alamat'),
         no_hp: normalizePhone(getRowValue(row, 'no_hp', 'hp', 'HP', 'Telepon', 'No. HP')),
         nik: getRowValue(row, 'nik', 'NIK'),
+        tinggi_badan: getRowValue(row, 'tinggi_badan', 'Tinggi_Badan', 'Tinggi Badan', 'TB'),
+        berat_badan: getRowValue(row, 'berat_badan', 'Berat_Badan', 'Berat Badan', 'BB'),
         kelas_id: kelasId,
         jurusan_id: matchedJurusanId,
         tahun_pelajaran_id: tahunPelajaranId,

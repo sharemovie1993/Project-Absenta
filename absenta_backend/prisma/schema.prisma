@@ -977,6 +977,8 @@ model Siswa {
   pekerjaan_wali      String?
   penghasilan_wali    String?
   anak_ke             Int?
+  tinggi_badan        Int?
+  berat_badan         Int?
   kebutuhan_khusus    String?
   penerima_kps        Boolean?              @default(false)
   penerima_kip        Boolean?              @default(false)

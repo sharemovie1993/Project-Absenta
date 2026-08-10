@@ -74,6 +74,16 @@ export const createSiswaSchema = z.object({
     const num = Number(val);
     return isNaN(num) ? null : num;
   }),
+  tinggi_badan: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  }),
+  berat_badan: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  }),
   kebutuhan_khusus: coerceString,
   penerima_kps: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
     if (typeof val === 'boolean') return val;
