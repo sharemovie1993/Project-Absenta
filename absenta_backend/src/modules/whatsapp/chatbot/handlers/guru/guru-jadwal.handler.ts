@@ -593,7 +593,7 @@ export class GuruJadwalHandler {
             id: true, 
             nama_kelas: true,
             tingkat: true,
-            Jurusan: { select: { id: true, nama_jurusan: true, kode_jurusan: true } }
+            Jurusan: { select: { id: true, nama: true, kode: true } }
           } 
         },
         Mapel: { select: { id: true, nama_mapel: true } },
@@ -654,7 +654,7 @@ export class GuruJadwalHandler {
 
     targetJadwal.forEach((j: any) => {
       const tingkat = j.Kelas?.tingkat || 0;
-      const jurusanName = j.Kelas?.Jurusan?.nama_jurusan || j.Kelas?.Jurusan?.kode_jurusan || 'Umum';
+      const jurusanName = j.Kelas?.Jurusan?.nama || j.Kelas?.Jurusan?.kode || 'Umum';
       const groupKey = `tingkat_${tingkat}_${jurusanName}`;
       const groupHeader = tingkat > 0
         ? `🏫 *Tingkat ${tingkat} — ${jurusanName}*`
