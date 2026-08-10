@@ -876,8 +876,55 @@ export const siswaController = {
           const index = i + batchIndex;
           const rowNumber = row.__rowNum || (index + 2);
           try {
-            // Map row to CreateSiswaInput
-            const input: any = { ...row };
+            const getVal = (...keys: string[]) => {
+              for (const k of keys) {
+                if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+                  return String(row[k]).trim();
+                }
+              }
+              return undefined;
+            };
+
+            // Map row to CreateSiswaInput with robust Excel header alias matching
+            const input: any = {
+              ...row,
+              nama_siswa: getVal('nama_siswa', 'NAMA LENGKAP', 'Nama Lengkap', 'NAMA SISWA', 'Nama Siswa', 'Nama', 'NAMA'),
+              nis: getVal('nis', 'NIS'),
+              nisn: getVal('nisn', 'NISN'),
+              nik: getVal('nik', 'NIK'),
+              jenis_kelamin: getVal('jenis_kelamin', 'JK (L/P)', 'JK', 'Jenis Kelamin', 'JENIS KELAMIN'),
+              tempat_lahir: getVal('tempat_lahir', 'TEMPAT LAHIR', 'Tempat Lahir'),
+              tanggal_lahir: getVal('tanggal_lahir', 'TANGGAL LAHIR (YYYY-MM-DD)', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir', 'TANGGAL LAHIR'),
+              tanggal_masuk: getVal('tanggal_masuk', 'TANGGAL MASUK (YYYY-MM-DD)', 'Tanggal Masuk (YYYY-MM-DD)', 'Tanggal Masuk', 'TANGGAL MASUK'),
+              tanggal_keluar: getVal('tanggal_keluar', 'TANGGAL KELUAR (YYYY-MM-DD)', 'Tanggal Keluar (YYYY-MM-DD)', 'Tanggal Keluar', 'TANGGAL KELUAR'),
+              alamat: getVal('alamat', 'ALAMAT', 'Alamat', 'Alamat Lengkap', 'ALAMAT LENGKAP', 'Alamat Lengkap (Jl/Rt/Rw/Kel/Kec)', 'alamat_lengkap'),
+              dusun: getVal('dusun', 'DUSUN', 'Dusun', 'Kampung'),
+              kelurahan: getVal('kelurahan', 'KELURAHAN', 'Kelurahan', 'Kelurahan/Desa', 'Desa'),
+              kecamatan: getVal('kecamatan', 'KECAMATAN', 'Kecamatan'),
+              kabupaten: getVal('kabupaten', 'KABUPATEN', 'Kabupaten', 'Kab/Kota', 'Kota', 'Kabupaten/Kota'),
+              provinsi: getVal('provinsi', 'PROVINSI', 'Provinsi'),
+              rt: getVal('rt', 'RT'),
+              rw: getVal('rw', 'RW'),
+              kode_pos: getVal('kode_pos', 'KODE POS', 'Kode Pos', 'KODE_POS'),
+              no_hp: getVal('no_hp', 'NO. HP', 'No. HP', 'No HP', 'NO HP', 'HP', 'Telepon'),
+              transportasi: getVal('transportasi', 'TRANSPORTASI', 'Transportasi', 'Moda Transportasi'),
+              sekolah_asal: getVal('sekolah_asal', 'SEKOLAH ASAL', 'Sekolah Asal'),
+              no_ijazah_smp: getVal('no_ijazah_smp', 'NO. IJAZAH SMP', 'No. Ijazah SMP', 'No Ijazah SMP'),
+              no_rfid: getVal('no_rfid', 'NO. RFID', 'No. RFID', 'No RFID', 'RFID'),
+              tinggi_badan: getVal('tinggi_badan', 'TINGGI BADAN (CM)', 'Tinggi Badan (cm)', 'Tinggi Badan', 'TB'),
+              berat_badan: getVal('berat_badan', 'BERAT BADAN (KG)', 'Berat Badan (kg)', 'Berat Badan', 'BB'),
+              nama_ayah: getVal('nama_ayah', 'NAMA AYAH', 'Nama Ayah', 'Ayah'),
+              nik_ayah: getVal('nik_ayah', 'NIK AYAH', 'NIK Ayah'),
+              no_hp_ayah: getVal('no_hp_ayah', 'NO. HP AYAH', 'No. HP Ayah', 'No HP Ayah', 'HP Ayah'),
+              nama_ibu: getVal('nama_ibu', 'NAMA IBU', 'Nama Ibu', 'Ibu'),
+              nik_ibu: getVal('nik_ibu', 'NIK IBU', 'NIK Ibu'),
+              no_hp_ibu: getVal('no_hp_ibu', 'NO. HP IBU', 'No. HP Ibu', 'No HP Ibu', 'HP Ibu'),
+              nama_wali: getVal('nama_wali', 'NAMA WALI', 'Nama Wali', 'Wali'),
+              nik_wali: getVal('nik_wali', 'NIK WALI', 'NIK Wali'),
+              no_hp_wali: getVal('no_hp_wali', 'NO. HP WALI', 'No. HP Wali', 'No HP Wali', 'HP Wali'),
+              status: getVal('status', 'STATUS', 'Status'),
+              email: getVal('email', 'EMAIL', 'Email'),
+            };
 
             // 1. Validate Required Fields (Nama & Kelas) per user request
             if (!input.nama_siswa || String(input.nama_siswa).trim() === '') {
@@ -1140,14 +1187,14 @@ export const siswaController = {
         Email: s.User?.email || '',
         'Tempat Lahir': s.tempat_lahir || '',
         'Tanggal Lahir': s.tanggal_lahir ? new Date(s.tanggal_lahir).toLocaleDateString('id-ID') : '',
-        Alamat: s.alamat || '',
+        'Alamat Lengkap': s.alamat || '',
         'No HP': s.no_hp || '',
         Status: s.status,
         'No RFID': s.no_rfid || ''
       }));
 
       if (data.length === 0) {
-        data.push({ No: 1, 'Nama Siswa': 'Belum ada data', NIS: '', NISN: '', 'Jenis Kelamin': '', Kelas: '', Tingkat: '', Email: '', 'Tempat Lahir': '', 'Tanggal Lahir': '', Alamat: '', 'No HP': '', Status: '', 'No RFID': '' } as any);
+        data.push({ No: 1, 'Nama Siswa': 'Belum ada data', NIS: '', NISN: '', 'Jenis Kelamin': '', Kelas: '', Tingkat: '', Email: '', 'Tempat Lahir': '', 'Tanggal Lahir': '', 'Alamat Lengkap': '', 'No HP': '', Status: '', 'No RFID': '' } as any);
       }
 
       const wb = XLSX.utils.book_new();
