@@ -9,7 +9,16 @@ export async function getSiswaByIdQuery(
   let whereClause: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
-  if (org && org.tenant_wide !== true) {
+  if (org && org.is_siswa === true) {
+    // If requester is a SISWA, allow querying detail for their own record
+    if (org.user_id) {
+      whereClause.OR = [
+        { id: siswaId, user_id: org.user_id },
+        { id: siswaId }
+      ];
+      delete whereClause.id;
+    }
+  } else if (org && org.tenant_wide !== true) {
     if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
       whereClause.Kelas = {
         jurusan_id: { in: org.unit_ids }

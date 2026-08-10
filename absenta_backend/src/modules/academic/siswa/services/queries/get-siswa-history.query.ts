@@ -10,7 +10,9 @@ export async function getSiswaHistoryQuery(
   let siswaWhere: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
-  if (org && org.tenant_wide !== true) {
+  if (org && org.is_siswa === true) {
+    // Allow siswa to view their own academic history
+  } else if (org && org.tenant_wide !== true) {
     if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
       siswaWhere.Kelas = {
         jurusan_id: { in: org.unit_ids }
