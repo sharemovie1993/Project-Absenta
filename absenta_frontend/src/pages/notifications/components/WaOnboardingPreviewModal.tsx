@@ -1,5 +1,6 @@
 import React from 'react';
-import { Send, RefreshCw, Smartphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Send, RefreshCw, Smartphone, MessageSquare } from 'lucide-react';
 import type { WaOnboardingUser } from '@/api/whatsapp.api';
 
 interface WaOnboardingPreviewModalProps {
@@ -19,6 +20,7 @@ export function WaOnboardingPreviewModal({
   onSend,
   isSending,
 }: WaOnboardingPreviewModalProps) {
+  const navigate = useNavigate();
   if (!user) return null;
 
   return (
@@ -52,25 +54,39 @@ export function WaOnboardingPreviewModal({
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white rounded-lg bg-slate-800 transition"
+            onClick={() => {
+              const searchQ = encodeURIComponent(user.nama);
+              const phoneQ = encodeURIComponent(user.no_hp);
+              navigate(`/notifications/wa-chat-logs?search=${searchQ}&phone=${phoneQ}`);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/40 transition"
           >
-            Batal
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Lihat Percakapan</span>
           </button>
-          <button
-            onClick={onSend}
-            disabled={isSending}
-            className="flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition disabled:opacity-50"
-          >
-            {isSending ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            <span>Kirim Pesan Sapaan WA</span>
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white rounded-lg bg-slate-800 transition"
+            >
+              Batal
+            </button>
+            <button
+              onClick={onSend}
+              disabled={isSending}
+              className="flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition disabled:opacity-50"
+            >
+              {isSending ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              <span>Kirim Pesan Sapaan WA</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

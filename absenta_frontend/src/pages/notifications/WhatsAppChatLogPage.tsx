@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
 import {
   Search,
@@ -256,6 +256,11 @@ const EmptyChat: React.FC = () => (
 // MAIN PAGE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 const WhatsAppChatLogPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const urlPhone = useMemo(() => searchParams.get('phone') || '', [searchParams]);
+  const urlSearch = useMemo(() => searchParams.get('search') || searchParams.get('nama') || '', [searchParams]);
+  const initialTerm = urlSearch || urlPhone;
+
   const [viewMode, setViewMode] = useState<'chats' | 'groups'>('chats');
   const [tarikGuruModalOpen, setTarikGuruModalOpen] = useState(false);
 
@@ -272,11 +277,19 @@ const WhatsAppChatLogPage: React.FC = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState(initialTerm);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialTerm);
   const [contactPage, setContactPage] = useState(1);
   const [msgPage, setMsgPage] = useState(1);
   const [mobilePanel, setMobilePanel] = useState<'contacts' | 'chat'>('contacts');
+
+  // Sync state if searchParams change dynamically
+  useEffect(() => {
+    if (initialTerm) {
+      setSearch(initialTerm);
+      setDebouncedSearch(initialTerm);
+    }
+  }, [initialTerm]);
 
   // Groups state
   const [groups, setGroups] = useState<WaGroupInfo[]>([]);
@@ -300,10 +313,35 @@ const WhatsAppChatLogPage: React.FC = () => {
       if (res.success) {
         setContacts(prev => append ? [...prev, ...res.data] : res.data);
         setTotalContacts(res.total);
+
+        // Auto-select target contact if navigated via shortcut
+        if (res.data.length > 0) {
+          let matched: WaChatContact | undefined;
+          if (urlPhone) {
+            const cleanPhone = urlPhone.replace(/\D/g, '');
+            matched = res.data.find(c => {
+              const cClean = c.phone.replace(/\D/g, '');
+              return cClean.endsWith(cleanPhone) || cleanPhone.endsWith(cClean);
+            });
+          }
+          if (!matched && urlSearch) {
+            const sLower = urlSearch.toLowerCase();
+            matched = res.data.find(c => c.nama?.toLowerCase().includes(sLower));
+          }
+          // Fallback to first search result if navigated via url filter
+          if (!matched && (urlPhone || urlSearch)) {
+            matched = res.data[0];
+          }
+
+          if (matched) {
+            setSelected(matched);
+            setMobilePanel('chat');
+          }
+        }
       }
     } catch { toast.error('Gagal memuat daftar kontak'); }
     finally { setLoadingContacts(false); }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, urlPhone, urlSearch]);
 
   // ── Fetch groups ────────────────────────────────────────────────────────
   const fetchGroups = useCallback(async () => {

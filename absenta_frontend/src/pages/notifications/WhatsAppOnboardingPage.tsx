@@ -324,13 +324,28 @@ export function WhatsAppOnboardingPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleOpenPreview(u)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-600/40 transition shadow-sm"
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>Sapa WA</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                const searchQ = encodeURIComponent(u.nama);
+                                const phoneQ = encodeURIComponent(u.no_hp);
+                                navigate(`/notifications/wa-chat-logs?search=${searchQ}&phone=${phoneQ}`);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/40 transition shadow-sm"
+                              title={`Lihat riwayat percakapan WA ${u.nama}`}
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Lihat Percakapan</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenPreview(u)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-600/40 transition shadow-sm"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>Sapa WA</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
