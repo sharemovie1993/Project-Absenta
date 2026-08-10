@@ -246,6 +246,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
 
   const { user } = useAuthStore();
+  const { can, isAdmin } = useCapabilities();
   const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
