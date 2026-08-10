@@ -23,23 +23,47 @@ export const siswaSchema = z.object({
   no_rfid: z.string().optional().or(z.literal('')),
   foto: z.string().optional().or(z.literal('')),
   
+  // Detail Alamat & Domisili
+  dusun: z.string().optional().or(z.literal('')),
+  rt: z.string().optional().or(z.literal('')),
+  rw: z.string().optional().or(z.literal('')),
+  kelurahan: z.string().optional().or(z.literal('')),
+  kecamatan: z.string().optional().or(z.literal('')),
+  kabupaten: z.string().optional().or(z.literal('')),
+  provinsi: z.string().optional().or(z.literal('')),
+  kode_pos: z.string().optional().or(z.literal('')),
+  lintang: z.string().optional().or(z.literal('')),
+  bujur: z.string().optional().or(z.literal('')),
+  koordinat: z.string().optional().or(z.literal('')),
+
+  // Sekolah Asal
+  sekolah_asal: z.string().optional().or(z.literal('')),
+  no_ijazah_smp: z.string().optional().or(z.literal('')),
+
   // Data Ayah
   nama_ayah: z.string().optional().or(z.literal('')),
+  nik_ayah: z.string().optional().or(z.literal('')),
+  no_hp_ayah: z.string().optional().or(z.literal('')),
   pekerjaan_ayah: z.string().optional().or(z.literal('')),
   pendidikan_ayah: z.string().optional().or(z.literal('')),
   penghasilan_ayah: z.string().optional().or(z.literal('')),
   
   // Data Ibu
   nama_ibu: z.string().optional().or(z.literal('')),
+  nik_ibu: z.string().optional().or(z.literal('')),
+  no_hp_ibu: z.string().optional().or(z.literal('')),
   pekerjaan_ibu: z.string().optional().or(z.literal('')),
   pendidikan_ibu: z.string().optional().or(z.literal('')),
   penghasilan_ibu: z.string().optional().or(z.literal('')),
   
   // Data Wali
   nama_wali: z.string().optional().or(z.literal('')),
+  nik_wali: z.string().optional().or(z.literal('')),
+  no_hp_wali: z.string().optional().or(z.literal('')),
   hubungan_wali: z.string().optional().or(z.literal('')),
   pekerjaan_wali: z.string().optional().or(z.literal('')),
   penghasilan_wali: z.string().optional().or(z.literal('')),
+  no_hp_ortu: z.string().optional().or(z.literal('')),
   
   // Kontak Orang Tua (Array)
   orang_tua: z.array(z.object({
