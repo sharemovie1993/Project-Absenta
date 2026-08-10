@@ -249,11 +249,13 @@ export default function BackupPage() {
       setImportProgress(100);
       setProcessingStage('done');
 
+      // Gunakan audit report lengkap jika tersedia, atau fallback ke res
+      const auditPayload = (res as any)?.audit ? (res as any).audit : (res as any)?.details || res;
+      setImportResult(auditPayload as ImportResultDetail);
+      setShowResultModal(true);
+
       if (res.success) {
         toast.success(`Impor Berhasil: ${res.message}`);
-        setImportResult(res.details as ImportResultDetail);
-        setShowResultModal(true);
-
         setImportFile(null);
         setPreviewStats(null);
         setParsedData(null);

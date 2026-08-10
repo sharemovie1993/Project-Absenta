@@ -10,7 +10,6 @@ function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, ten
   const cleanData: Record<string, any> = {};
 
   for (const field of dmmfModel.fields) {
-    // Only accept scalar and enum fields (kind === 'scalar' || kind === 'enum')
     if (field.kind !== 'scalar' && field.kind !== 'enum') continue;
 
     const val = rawRow[field.name];
@@ -46,6 +45,13 @@ function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, ten
   }
 
   return cleanData;
+}
+
+export interface ModelRestoreSummary {
+  target: number;
+  restored: number;
+  skipped: number;
+  gap: number;
 }
 
 export class BackupController {
@@ -206,8 +212,12 @@ export class BackupController {
       }
 
       const models = getDynamicTenantModels();
-      const details: Record<string, number> = {};
-      let totalInserted = 0;
+      const auditReport: Record<string, ModelRestoreSummary> = {};
+      const legacyDetails: Record<string, number> = {};
+      
+      let grandTarget = 0;
+      let grandRestored = 0;
+      let grandSkipped = 0;
 
       for (const modelName of models) {
         let rows: any[] | undefined = dataTables[modelName];
@@ -217,11 +227,21 @@ export class BackupController {
         }
         if (!Array.isArray(rows) || rows.length === 0) continue;
 
+        const targetCount = rows.length;
+        grandTarget += targetCount;
+
         // @ts-ignore
         const prismaModel = prisma[modelName];
-        if (!prismaModel) continue;
+        if (!prismaModel) {
+          auditReport[modelName] = { target: targetCount, restored: 0, skipped: targetCount, gap: targetCount };
+          legacyDetails[modelName] = 0;
+          grandSkipped += targetCount;
+          continue;
+        }
 
-        let insertedCount = 0;
+        let restoredCount = 0;
+        let skippedCount = 0;
+
         for (const rawRow of rows) {
           try {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
@@ -234,19 +254,40 @@ export class BackupController {
             } else {
               await prismaModel.create({ data: cleanData });
             }
-            insertedCount++;
+            restoredCount++;
           } catch (err: any) {
+            skippedCount++;
             console.warn(`[Restore Skip] ${modelName} row error:`, err?.message);
           }
         }
-        details[modelName] = insertedCount;
-        totalInserted += insertedCount;
+
+        const gap = Math.max(0, targetCount - restoredCount);
+        auditReport[modelName] = {
+          target: targetCount,
+          restored: restoredCount,
+          skipped: skippedCount,
+          gap: gap
+        };
+        legacyDetails[modelName] = restoredCount;
+        grandRestored += restoredCount;
+        grandSkipped += skippedCount;
       }
+
+      const totalGap = Math.max(0, grandTarget - grandRestored);
+      const matchRate = grandTarget > 0 ? Math.round((grandRestored / grandTarget) * 100) : 100;
 
       return reply.send({
         success: true,
-        message: `Pemulihan data selesai. Berhasil menyinkronkan ${totalInserted} record.`,
-        details,
+        message: `Pemulihan data selesai. Target: ${grandTarget}, Berhasil: ${grandRestored}, Gap: ${totalGap}.`,
+        details: legacyDetails,
+        audit: {
+          totalTarget: grandTarget,
+          totalRestored: grandRestored,
+          totalSkipped: grandSkipped,
+          totalGap: totalGap,
+          matchRate: matchRate,
+          details: auditReport
+        }
       });
     } catch (error: any) {
       console.error('Error importing tenant backup:', error);
