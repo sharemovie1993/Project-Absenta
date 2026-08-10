@@ -140,8 +140,16 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
       });
       toast.success(`Berkas ${KATEGORI_LABELS[category]} berhasil diupload`);
       queryClient.invalidateQueries({ queryKey: ['guru-docs', guruId] });
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengupload berkas');
+    } catch (err: any) {
+      console.error('Error uploading guru doc:', err);
+      const status = err?.response?.status;
+      const backendMsg = err?.response?.data?.message || err?.message || '';
+
+      if (status === 500 || backendMsg.includes('storage') || backendMsg.includes('500') || backendMsg.includes('Internal Server Error')) {
+        toast.error('Layanan Penyimpanan File (Storage Server) belum aktif atau mengalami kendala internal. Harap hubungi Administrator.', { duration: 6000 });
+      } else {
+        toast.error(backendMsg || 'Gagal mengupload berkas.');
+      }
     } finally {
       setUploadingCategory(null);
     }
@@ -169,8 +177,16 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
       setOtherJudul('');
       setShowOtherUpload(false);
       queryClient.invalidateQueries({ queryKey: ['guru-docs', guruId] });
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Gagal mengupload berkas');
+    } catch (err: any) {
+      console.error('Error uploading other guru doc:', err);
+      const status = err?.response?.status;
+      const backendMsg = err?.response?.data?.message || err?.message || '';
+
+      if (status === 500 || backendMsg.includes('storage') || backendMsg.includes('500') || backendMsg.includes('Internal Server Error')) {
+        toast.error('Layanan Penyimpanan File (Storage Server) belum aktif atau mengalami kendala internal. Harap hubungi Administrator.', { duration: 6000 });
+      } else {
+        toast.error(backendMsg || 'Gagal mengupload berkas.');
+      }
     } finally {
       setOtherLoading(false);
     }

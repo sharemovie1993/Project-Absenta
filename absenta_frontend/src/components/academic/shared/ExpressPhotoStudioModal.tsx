@@ -346,9 +346,17 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = R
           playBeep('error');
         }
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan foto.';
-      toast.error(msg);
+    } catch (err: any) {
+      console.error('Error saving photo studio upload:', err);
+      const status = err?.response?.status;
+      const backendMsg = err?.response?.data?.message || err?.message || '';
+
+      if (status === 500 || backendMsg.includes('storage') || backendMsg.includes('500') || backendMsg.includes('Internal Server Error')) {
+        toast.error('Layanan Penyimpanan File (Storage Server) belum aktif atau mengalami kendala internal. Harap hubungi Administrator.', { duration: 6000 });
+      } else {
+        const msg = backendMsg || 'Terjadi kesalahan saat menyimpan foto.';
+        toast.error(msg);
+      }
       playBeep('error');
     } finally {
       setIsSaving(false);
