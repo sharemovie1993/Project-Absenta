@@ -553,7 +553,12 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id === 'attendance.recap.view.global' ||
         id === 'attendance.monitoring.view.live.status' ||
         id === 'academic.view.wali.kelas' ||
-        id === 'academic.homeroom.manage'
+        id === 'academic.homeroom.manage' ||
+        id === 'core.sekolah.view.profile' ||
+        id === 'documents.upload' ||
+        id === 'documents.view.list' ||
+        id === 'documents.view.detail' ||
+        id === 'academic.student.card.view.config'
       )) return false;
       return domainOf(id) === 'ORGANIZATIONAL';
     });
