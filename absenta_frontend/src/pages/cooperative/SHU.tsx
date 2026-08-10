@@ -661,4 +661,4 @@ const SHUPage: React.FC = React.memo(() => {
   );
 });
 
-export default SHU;
+export default SHUPage;
