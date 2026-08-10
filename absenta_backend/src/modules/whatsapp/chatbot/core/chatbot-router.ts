@@ -152,22 +152,8 @@ export class ChatbotRouter {
       return GuruJadwalHandler.handlePosisiGuru(ctx);
     }
 
-    // Pesan teks bebas — kemungkinan input nama guru (konteks [13]) atau nama kelas (konteks [14])
-    const isNumericMenu = /^\d{1,2}$/.test(choice);
-    if (!isNumericMenu && choice.length >= 2) {
-      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI','IZIN','PIKET','MENU'].some(c => choice.includes(c));
-      if (!isKnownCommand) {
-        // Coba jadual kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
-        const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');
-        if (looksLikeKelas) {
-          return GuruJadwalHandler.handleJadwalKelas(ctx);
-        }
-        return GuruJadwalHandler.handleJadwalGuruLain(ctx);
-      }
-    }
-
-    // Menu utama (nomor baru)
-    if (choice === '2' || choice === '21' || choice === '22' || choice === '23') return GuruPresensiHandler.handlePresensi(ctx);
+    // Menu utama & sub-menu berawalan angka (2x, 3x, 4x, 5x, 6, 7x, 8x, 9x)
+    if (choice === '2' || choice.startsWith('2')) return GuruPresensiHandler.handlePresensi(ctx);
     if (choice === '3' || choice.startsWith('3')) return GuruWalikelasHandler.handleDaftarWaliKelas(ctx);
     if (choice === '4') return GuruSupervisiHandler.handleSupervisi(ctx);
     if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
@@ -178,6 +164,20 @@ export class ChatbotRouter {
 
     if (choice.startsWith('51') || choice.startsWith('41')) return GuruProfileHandler.handleEditNip(ctx);
     if (choice.startsWith('52') || choice.startsWith('42')) return GuruProfileHandler.handleEditEmail(ctx);
+
+    // Pesan teks bebas — HANYA jika bukan input murni angka (seperti 3606, 3601, dll)
+    const isPureNumeric = /^\d+$/.test(choice);
+    if (!isPureNumeric && choice.length >= 2) {
+      const isKnownCommand = ['LOGIN','QUICK LOGIN','TARIK GURU','TARIKGURU','TARIK JP','TARIK JADWAL','POSISI','IZIN','PIKET','MENU'].some(c => choice.includes(c));
+      if (!isKnownCommand) {
+        // Coba jadwal kelas dulu jika input mirip nama kelas (ada huruf + angka/romawi)
+        const looksLikeKelas = /[XIVLCD]{1,3}\s|kelas|IPA|IPS|TKJ|RPL|AK|MM|TKR/i.test(ctx.messageText || '');
+        if (looksLikeKelas) {
+          return GuruJadwalHandler.handleJadwalKelas(ctx);
+        }
+        return GuruJadwalHandler.handleJadwalGuruLain(ctx);
+      }
+    }
 
     return formatGuruMenu(ctx.guru.nama_guru);
   }
