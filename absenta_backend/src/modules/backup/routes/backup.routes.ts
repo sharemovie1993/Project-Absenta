@@ -7,10 +7,11 @@ export async function backupRoutes(fastify: any) {
     fastify.get('/admin/backups', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.list);
     fastify.get('/admin/backups/:id/download', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.download);
     fastify.post('/admin/backups/:id/restore', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.restore);
+
+    // Academic Tenant Export & Import endpoints
+    fastify.get('/academic/backup/export', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportTenantData);
+    fastify.post('/academic/backup/import', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importTenantData);
     
     // SSE Endpoint (Must be registered)
-    // Note: SSE endpoints might need special handling for auth if using standard EventSource in browser which doesn't support headers easily.
-    // For now, we protect it. Frontend can use EventSourcePolyfill or query param token if needed.
-    // Assuming cookie-based auth or similar for now, or just same protection.
     fastify.register(restoreProgressRoutes, { prefix: '/admin/backups' }); 
 }
