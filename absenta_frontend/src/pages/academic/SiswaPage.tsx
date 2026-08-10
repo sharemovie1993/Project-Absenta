@@ -176,11 +176,16 @@ const SiswaPage: React.FC = () => {
             { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15 },
             { header: 'NISN', key: 'nisn', width: 15 },
+            { header: 'NIK', key: 'nik', width: 20 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
             { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
+            { header: 'Tinggi Badan (cm)', key: 'tinggi_badan', width: 18 },
+            { header: 'Berat Badan (kg)', key: 'berat_badan', width: 18 },
             { header: 'Alamat', key: 'alamat', width: 40 },
-            { header: 'No. HP', key: 'no_hp', width: 15 }
+            { header: 'No. HP', key: 'no_hp', width: 15 },
+            { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
+            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 }
           ],
           {
             fileName: 'template_impor_siswa_lama_alumni',
@@ -206,12 +211,16 @@ const SiswaPage: React.FC = () => {
             { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
             { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NISN', key: 'nisn', width: 15 },
-            { header: 'NIK', key: 'nik', width: 15 },
+            { header: 'NIK', key: 'nik', width: 20 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
             { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
+            { header: 'Tinggi Badan (cm)', key: 'tinggi_badan', width: 18 },
+            { header: 'Berat Badan (kg)', key: 'berat_badan', width: 18 },
             { header: 'No. HP', key: 'no_hp', width: 15 },
-            { header: 'Alamat', key: 'alamat', width: 40 }
+            { header: 'Alamat', key: 'alamat', width: 40 },
+            { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
+            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 }
           ],
           {
             fileName: 'template_impor_siswa_ppdb_calon',
@@ -235,12 +244,18 @@ const SiswaPage: React.FC = () => {
             { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15, required: false },
             { header: 'NISN', key: 'nisn', width: 15 },
+            { header: 'NIK', key: 'nik', width: 20 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
             { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
+            { header: 'Tinggi Badan (cm)', key: 'tinggi_badan', width: 18 },
+            { header: 'Berat Badan (kg)', key: 'berat_badan', width: 18 },
             { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25, isDate: true },
             { header: 'Alamat', key: 'alamat', width: 40 },
-            { header: 'No. HP', key: 'no_hp', width: 15 }
+            { header: 'No. HP', key: 'no_hp', width: 15 },
+            { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
+            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 },
+            { header: 'No. RFID', key: 'no_rfid', width: 20 }
           ],
           {
             fileName: 'template_impor_siswa_aktif',
@@ -274,12 +289,19 @@ const SiswaPage: React.FC = () => {
         exportDataToExcel<Siswa>(response.data, [
           { header: 'NIS', accessor: (row: Siswa) => row.nis, width: 15 },
           { header: 'NISN', accessor: (row: Siswa) => row.nisn || '-', width: 15 },
+          { header: 'NIK', accessor: (row: Siswa) => row.nik || '-', width: 20 },
           { header: 'Nama Lengkap', accessor: (row: Siswa) => row.nama_siswa, width: 30 },
           { header: 'JK', accessor: (row: Siswa) => row.jenis_kelamin, width: 5 },
           { header: 'Kelas', accessor: (row: Siswa) => row.Kelas?.nama_kelas || '-', width: 15 },
+          { header: 'Tinggi Badan (cm)', accessor: (row: Siswa) => row.tinggi_badan ? `${row.tinggi_badan} cm` : '-', width: 18 },
+          { header: 'Berat Badan (kg)', accessor: (row: Siswa) => row.berat_badan ? `${row.berat_badan} kg` : '-', width: 18 },
           { header: 'Tempat Lahir', accessor: (row: Siswa) => row.tempat_lahir || '-', width: 20 },
           { header: 'Tanggal Lahir', accessor: (row: Siswa) => row.tanggal_lahir || '-', width: 15 },
           { header: 'Alamat', accessor: (row: Siswa) => row.alamat || '-', width: 40 },
+          { header: 'No HP', accessor: (row: Siswa) => row.no_hp || '-', width: 15 },
+          { header: 'Nama Ayah', accessor: (row: Siswa) => row.nama_ayah || '-', width: 25 },
+          { header: 'Nama Ibu', accessor: (row: Siswa) => row.nama_ibu || '-', width: 25 },
+          { header: 'No RFID', accessor: (row: Siswa) => row.no_rfid || '-', width: 18 },
           { header: 'Status', accessor: (row: Siswa) => row.status, width: 10 }
         ], 'Laporan_Siswa', 'DATA MASTER PESERTA DIDIK');
         toast.success('Data siswa berhasil diekspor.');
