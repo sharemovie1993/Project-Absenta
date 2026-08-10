@@ -156,6 +156,8 @@ export function RekapBulananMapelContent() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const loading = rekapQuery.isLoading;
+
   useEffect(() => {
     if (rekapQuery.data) {
       setRows(rekapQuery.data.rows);
