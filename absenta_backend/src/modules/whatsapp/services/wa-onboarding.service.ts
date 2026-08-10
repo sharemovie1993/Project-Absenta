@@ -175,7 +175,149 @@ export class WaOnboardingService {
       });
     }
 
-    // 5. Calculate summary statistics
+    // 5. Fetch Petugas Kelas
+    if (roleFilter === 'PETUGAS_KELAS') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: 'PETUGAS_KELAS' },
+        },
+        include: {
+          User: {
+            include: {
+              Siswa: { include: { Kelas: { select: { nama_kelas: true } } } },
+              Guru: true,
+            },
+          },
+          Kelas: { select: { nama_kelas: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const siswa = user.Siswa;
+        const guru = user.Guru;
+        const phone = siswa?.no_hp || guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = siswa?.nama_siswa || guru?.nama_guru || user.full_name || 'Petugas Kelas';
+        const kelasStr = asg.Kelas?.nama_kelas || siswa?.Kelas?.nama_kelas || '-';
+
+        const itemKey = `petugas-kelas-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: siswa ? 'SISWA' : 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Petugas Absensi Kelas (${kelasStr})`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 6. Fetch Petugas Gerbang
+    if (roleFilter === 'PETUGAS_GERBANG') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: { in: ['GERBANG', 'PETUGAS_GERBANG', 'SATPAM'] } },
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true,
+              Siswa: { include: { Kelas: { select: { nama_kelas: true } } } },
+            },
+          },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const siswa = user.Siswa;
+        const phone = guru?.no_hp || siswa?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || siswa?.nama_siswa || user.full_name || 'Petugas Gerbang';
+
+        const itemKey = `petugas-gerbang-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: guru ? 'GURU' : 'SISWA',
+          nama,
+          no_hp: phone,
+          detailInfo: `Petugas Gerbang Satpam`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 7. Fetch Kaprog
+    if (roleFilter === 'KAPROG') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: { code: 'KAPROG' },
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true,
+            },
+          },
+          Unit: { select: { nama: true } },
+        },
+      });
+
+      const processedPhones = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const guru = asg.User?.Guru;
+        const phone = guru?.no_hp || asg.User?.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        if (processedPhones.has(norm)) return;
+        processedPhones.add(norm);
+
+        const lastComm = commMap.get(norm) || null;
+        const jurusanStr = asg.Unit?.nama || 'Kaprog';
+
+        allUsers.push({
+          id: `kaprog-asg-${asg.id}`,
+          userType: 'GURU',
+          nama: guru?.nama_guru || asg.User?.full_name || 'Kaprog',
+          no_hp: phone,
+          detailInfo: `Kaprog (${jurusanStr})`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 8. Calculate summary statistics
     const totalGuru = allUsers.filter((u) => u.userType === 'GURU').length;
     const totalSiswa = allUsers.filter((u) => u.userType === 'SISWA').length;
     const totalOrtu = allUsers.filter((u) => u.userType === 'ORTU').length;
