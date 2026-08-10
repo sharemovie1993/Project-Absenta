@@ -90,7 +90,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
         const formData = new FormData();
         formData.append('file', file);
         
-        const res = await requestWithFallback<{ success: boolean; message: string; data: { url: string } }>('post', '/upload/file', {
+        const res = await requestWithFallback<{ success: boolean; message: string; data: { url: string } }>('post', '/upload', {
           data: formData,
           headers: {
             'Content-Type': 'multipart/form-data'

@@ -73,7 +73,7 @@ export const DesignTab: React.FC<DesignTabProps> = React.memo(({
         else setUploadingSign(true);
 
         try {
-            const res = await axiosInstance.post('/upload/file', formData, {
+            const res = await axiosInstance.post('/upload', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
