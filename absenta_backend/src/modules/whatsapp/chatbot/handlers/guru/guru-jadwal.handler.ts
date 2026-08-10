@@ -649,56 +649,37 @@ export class GuruJadwalHandler {
       msg += `📋 *Daftar Jadwal Mengajar Guru Hari Ini:*\n\n`;
     }
 
-    // Grouping berdasarkan Tingkat & Jurusan
-    const groupedByTingkatJurusan: Record<string, { groupName: string; tingkatNum: number; items: any[] }> = {};
+    // Urutkan daftar guru secara alfabetis A-Z berdasarkan nama_guru
+    targetJadwal.sort((a: any, b: any) => {
+      const nameA = (a.Guru?.nama_guru || '').toUpperCase();
+      const nameB = (b.Guru?.nama_guru || '').toUpperCase();
+      return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
+    });
 
     targetJadwal.forEach((j: any) => {
-      const tingkat = j.Kelas?.tingkat || 0;
-      const jurusanName = j.Kelas?.Jurusan?.nama || j.Kelas?.Jurusan?.kode || 'Umum';
-      const groupKey = `tingkat_${tingkat}_${jurusanName}`;
-      const groupHeader = tingkat > 0
-        ? `🏫 *Tingkat ${tingkat} — ${jurusanName}*`
-        : `🏫 *Kelompok ${jurusanName}*`;
+      const teacherName = j.Guru?.nama_guru || 'Guru';
+      const kelasName = j.Kelas?.nama_kelas || '-';
 
-      if (!groupedByTingkatJurusan[groupKey]) {
-        groupedByTingkatJurusan[groupKey] = { groupName: groupHeader, tingkatNum: tingkat, items: [] };
-      }
-      groupedByTingkatJurusan[groupKey].items.push(j);
-    });
+      const matchedSesi = sesiList.find(s => 
+        (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
+        (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
+      );
 
-    const groups = Object.values(groupedByTingkatJurusan).sort((a, b) => a.tingkatNum - b.tingkatNum);
-    const formattedSections: string[] = [];
-
-    groups.forEach(group => {
-      let section = `${group.groupName}\n`;
-      group.items.forEach(j => {
-        const teacherName = j.Guru?.nama_guru || 'Guru';
-        const kelasName = j.Kelas?.nama_kelas || '-';
-
-        const matchedSesi = sesiList.find(s => 
-          (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) || 
-          (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
-        );
-
-        let statusStr = 'Belum Masuk Kelas';
-        if (matchedSesi) {
-          if (matchedSesi.status === 'BERLANGSUNG') {
-            statusStr = 'Mengajar';
-          } else if (matchedSesi.status === 'SELESAI') {
-            statusStr = 'Selesai';
-          } else if (matchedSesi.status === 'IZIN') {
-            statusStr = 'Izin';
-          } else {
-            statusStr = matchedSesi.status;
-          }
+      let statusStr = 'Belum Masuk Kelas';
+      if (matchedSesi) {
+        if (matchedSesi.status === 'BERLANGSUNG') {
+          statusStr = 'Mengajar';
+        } else if (matchedSesi.status === 'SELESAI') {
+          statusStr = 'Selesai';
+        } else if (matchedSesi.status === 'IZIN') {
+          statusStr = 'Izin';
+        } else {
+          statusStr = matchedSesi.status;
         }
+      }
 
-        section += `${teacherName} di ${kelasName} : ${statusStr}\n`;
-      });
-      formattedSections.push(section);
+      msg += `${teacherName} di ${kelasName} : ${statusStr}\n`;
     });
-
-    msg += formattedSections.join('\n');
 
     if (filterMode === 'NOW' && targetJadwal.length === 0) {
       msg += `ℹ️ _Saat ini tidak ada slot mengajar aktif pada jam ini (${nowWibStr} WIB)._\n\n`;
