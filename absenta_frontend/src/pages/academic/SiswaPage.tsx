@@ -10,7 +10,8 @@ import { Users, CheckCircle2, GraduationCap, UserCheck, UserX } from 'lucide-rea
 import { getActiveTahunPelajaran, getActiveSemester } from '../../api/dropdown.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate, type ExcelColumnConfig } from '../../utils/export.utils';
+import * as XLSX from 'xlsx-js-style';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { useQuery } from '@tanstack/react-query';
 import { getAcademicRegistrationStats, getSiswaList, importSiswaFromExcel } from '../../api/academic/siswa.api';
@@ -346,55 +347,193 @@ const SiswaPage: React.FC = () => {
     }
   }, [importConfig.scenario]);
 
+  // ─── Helper: sort siswa per kelas (tingkat → nama kelas → nama siswa) ─────────
+  const sortSiswaPerKelas = (list: Siswa[]): Siswa[] => {
+    return [...list].sort((a, b) => {
+      const kelasA = a.Kelas?.nama_kelas || 'ZZZ';
+      const kelasB = b.Kelas?.nama_kelas || 'ZZZ';
+      // Ekstrak tingkat (angka) dari depan nama kelas: "X", "XI", "XII" → 10, 11, 12
+      const getTingkat = (nama: string): number => {
+        const m = nama.match(/^(XII|XI|X|\d+)/i);
+        if (!m) return 99;
+        const s = m[1].toUpperCase();
+        if (s === 'XII') return 12;
+        if (s === 'XI') return 11;
+        if (s === 'X') return 10;
+        return parseInt(s, 10) || 99;
+      };
+      const tingkatDiff = getTingkat(kelasA) - getTingkat(kelasB);
+      if (tingkatDiff !== 0) return tingkatDiff;
+      const kelasDiff = kelasA.localeCompare(kelasB, 'id');
+      if (kelasDiff !== 0) return kelasDiff;
+      return (a.nama_siswa || '').localeCompare(b.nama_siswa || '', 'id');
+    });
+  };
+
+  // ─── Helper: buat worksheet dari data siswa ───────────────────────────────────
+  const buildSiswaWorksheet = (data: Siswa[], sheetTitle: string, headerColor: string) => {
+    const columns: ExcelColumnConfig<Siswa>[] = [
+      { header: 'No', accessor: (_row, idx) => (idx ?? 0) + 1, width: 6 },
+      { header: 'NIS', accessor: (row) => row.nis, width: 15 },
+      { header: 'NISN', accessor: (row) => row.nisn || '-', width: 15 },
+      { header: 'NIK', accessor: (row) => row.nik || '-', width: 20 },
+      { header: 'Nama Lengkap', accessor: (row) => row.nama_siswa, width: 30 },
+      { header: 'JK', accessor: (row) => row.jenis_kelamin, width: 6 },
+      { header: 'Kelas', accessor: (row) => row.Kelas?.nama_kelas || '-', width: 15 },
+      { header: 'Tinggi (cm)', accessor: (row) => row.tinggi_badan ?? '-', width: 12 },
+      { header: 'Berat (kg)', accessor: (row) => row.berat_badan ?? '-', width: 11 },
+      { header: 'Tempat Lahir', accessor: (row) => row.tempat_lahir || '-', width: 20 },
+      { header: 'Tanggal Lahir', accessor: (row) => row.tanggal_lahir || '-', width: 15 },
+      { header: 'Alamat Lengkap', accessor: (row) => row.alamat || '-', width: 40 },
+      { header: 'RT', accessor: (row) => row.rt || '-', width: 6 },
+      { header: 'RW', accessor: (row) => row.rw || '-', width: 6 },
+      { header: 'Kelurahan/Desa', accessor: (row) => row.kelurahan || '-', width: 20 },
+      { header: 'Kecamatan', accessor: (row) => row.kecamatan || '-', width: 20 },
+      { header: 'Kab/Kota', accessor: (row) => row.kabupaten || '-', width: 20 },
+      { header: 'Provinsi', accessor: (row) => row.provinsi || '-', width: 20 },
+      { header: 'Kode Pos', accessor: (row) => row.kode_pos || '-', width: 10 },
+      { header: 'Transportasi', accessor: (row) => row.transportasi || '-', width: 16 },
+      { header: 'No HP Siswa', accessor: (row) => row.no_hp || '-', width: 16 },
+      { header: 'Sekolah Asal', accessor: (row) => row.sekolah_asal || '-', width: 25 },
+      { header: 'No. HP Ortu', accessor: (row) => (row as any).no_hp_ortu || (row as any).no_hp_ayah || '-', width: 16 },
+      { header: 'Nama Ayah', accessor: (row) => row.nama_ayah || '-', width: 25 },
+      { header: 'NIK Ayah', accessor: (row) => row.nik_ayah || '-', width: 20 },
+      { header: 'No HP Ayah', accessor: (row) => (row as any).no_hp_ayah || '-', width: 16 },
+      { header: 'Nama Ibu', accessor: (row) => row.nama_ibu || '-', width: 25 },
+      { header: 'NIK Ibu', accessor: (row) => row.nik_ibu || '-', width: 20 },
+      { header: 'No HP Ibu', accessor: (row) => (row as any).no_hp_ibu || '-', width: 16 },
+      { header: 'Nama Wali', accessor: (row) => row.nama_wali || '-', width: 25 },
+      { header: 'No HP Wali', accessor: (row) => (row as any).no_hp_wali || '-', width: 16 },
+      { header: 'No RFID', accessor: (row) => row.no_rfid || '-', width: 16 },
+      { header: 'Status', accessor: (row) => row.status, width: 10 },
+    ];
+
+    // Baris pertama: judul sheet
+    const excelData: any[][] = [];
+    excelData.push([sheetTitle]);
+    excelData.push([]); // spacer
+    excelData.push(columns.map(c => c.header)); // header row
+
+    const sorted = sortSiswaPerKelas(data);
+    sorted.forEach((item, idx) => {
+      const row = columns.map(c => {
+        const val = (c.accessor as any)(item, idx);
+        return val === null || val === undefined ? '' : val;
+      });
+      excelData.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    const headerRowIdx = 2;
+    const numCols = columns.length;
+
+    // Merge judul
+    if (!ws['!merges']) ws['!merges'] = [];
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } });
+    const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (ws[titleCell]) {
+      ws[titleCell].s = {
+        font: { name: 'Arial', sz: 13, bold: true, color: { rgb: 'FFFFFFFF' } },
+        fill: { fgColor: { rgb: headerColor } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      };
+    }
+
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ c: C, r: R });
+        if (!ws[cellRef]) continue;
+        if (R === 0) continue; // sudah di-style di atas
+        if (R === 1) { ws[cellRef].s = {}; continue; } // spacer
+
+        const border = {
+          top: { style: 'thin', color: { rgb: 'FF000000' } },
+          bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+          left: { style: 'thin', color: { rgb: 'FF000000' } },
+          right: { style: 'thin', color: { rgb: 'FF000000' } },
+        };
+
+        if (R === headerRowIdx) {
+          ws[cellRef].s = {
+            font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFFFF' } },
+            fill: { fgColor: { rgb: headerColor } },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border,
+          };
+        } else {
+          // Zebra striping: baris genap sedikit abu
+          const isEven = (R - headerRowIdx) % 2 === 0;
+          ws[cellRef].s = {
+            font: { name: 'Arial', sz: 10 },
+            fill: isEven ? { fgColor: { rgb: 'FFF8F9FA' } } : { fgColor: { rgb: 'FFFFFFFF' } },
+            alignment: { vertical: 'center', wrapText: false },
+            border,
+          };
+        }
+      }
+    }
+
+    ws['!cols'] = columns.map(c => ({ wch: c.width || 15 }));
+    ws['!rows'] = [
+      { hpt: 28 }, // judul
+      { hpt: 6 },  // spacer
+      { hpt: 30 }, // header
+    ];
+
+    return ws;
+  };
+
   const handleExport = useCallback(async () => {
     try {
       setIsExporting(true);
-      const response = await getSiswaList(1, 2000);
-      if (response.success && response.data.length > 0) {
-        exportDataToExcel<Siswa>(response.data, [
-          { header: 'NIS', accessor: (row: Siswa) => row.nis, width: 15 },
-          { header: 'NISN', accessor: (row: Siswa) => row.nisn || '-', width: 15 },
-          { header: 'NIK', accessor: (row: Siswa) => row.nik || '-', width: 20 },
-          { header: 'Nama Lengkap', accessor: (row: Siswa) => row.nama_siswa, width: 30 },
-          { header: 'JK', accessor: (row: Siswa) => row.jenis_kelamin, width: 5 },
-          { header: 'Kelas', accessor: (row: Siswa) => row.Kelas?.nama_kelas || '-', width: 15 },
-          { header: 'Tinggi Badan (cm)', accessor: (row: Siswa) => row.tinggi_badan ? `${row.tinggi_badan} cm` : '-', width: 18 },
-          { header: 'Berat Badan (kg)', accessor: (row: Siswa) => row.berat_badan ? `${row.berat_badan} kg` : '-', width: 18 },
-          { header: 'Tempat Lahir', accessor: (row: Siswa) => row.tempat_lahir || '-', width: 20 },
-          { header: 'Tanggal Lahir', accessor: (row: Siswa) => row.tanggal_lahir || '-', width: 15 },
-          { header: 'Alamat Lengkap', accessor: (row: Siswa) => row.alamat || '-', width: 40 },
-          { header: 'Dusun', accessor: (row: Siswa) => row.dusun || '-', width: 18 },
-          { header: 'RT', accessor: (row: Siswa) => row.rt || '-', width: 10 },
-          { header: 'RW', accessor: (row: Siswa) => row.rw || '-', width: 10 },
-          { header: 'Kelurahan', accessor: (row: Siswa) => row.kelurahan || '-', width: 20 },
-          { header: 'Kecamatan', accessor: (row: Siswa) => row.kecamatan || '-', width: 20 },
-          { header: 'Kab/Kota', accessor: (row: Siswa) => row.kabupaten || '-', width: 20 },
-          { header: 'Provinsi', accessor: (row: Siswa) => row.provinsi || '-', width: 20 },
-          { header: 'Kode Pos', accessor: (row: Siswa) => row.kode_pos || '-', width: 15 },
-          { header: 'Lintang (Lat)', accessor: (row: Siswa) => (row as any).lintang || '-', width: 18 },
-          { header: 'Bujur (Long)', accessor: (row: Siswa) => (row as any).bujur || '-', width: 18 },
-          { header: 'Koordinat', accessor: (row: Siswa) => (row as any).koordinat || (row as any).lintang ? `${(row as any).lintang}, ${(row as any).bujur}` : '-', width: 25 },
-          { header: 'Transportasi', accessor: (row: Siswa) => row.transportasi || '-', width: 18 },
-          { header: 'No HP Siswa', accessor: (row: Siswa) => row.no_hp || '-', width: 15 },
-          { header: 'Sekolah Asal', accessor: (row: Siswa) => row.sekolah_asal || '-', width: 25 },
-          { header: 'No. Ijazah SMP', accessor: (row: Siswa) => row.no_ijazah_smp || '-', width: 20 },
-          { header: 'No. HP Orang Tua', accessor: (row: Siswa) => (row as any).no_hp_ortu || (row as any).no_hp_ayah || (row as any).no_hp_ibu || '-', width: 20 },
-          { header: 'Nama Ayah', accessor: (row: Siswa) => row.nama_ayah || '-', width: 25 },
-          { header: 'NIK Ayah', accessor: (row: Siswa) => row.nik_ayah || '-', width: 20 },
-          { header: 'No HP Ayah', accessor: (row: Siswa) => (row as any).no_hp_ayah || '-', width: 18 },
-          { header: 'Nama Ibu', accessor: (row: Siswa) => row.nama_ibu || '-', width: 25 },
-          { header: 'NIK Ibu', accessor: (row: Siswa) => row.nik_ibu || '-', width: 20 },
-          { header: 'No HP Ibu', accessor: (row: Siswa) => (row as any).no_hp_ibu || '-', width: 18 },
-          { header: 'Nama Wali', accessor: (row: Siswa) => row.nama_wali || '-', width: 25 },
-          { header: 'NIK Wali', accessor: (row: Siswa) => (row as any).nik_wali || '-', width: 20 },
-          { header: 'No HP Wali', accessor: (row: Siswa) => (row as any).no_hp_wali || '-', width: 18 },
-          { header: 'No RFID', accessor: (row: Siswa) => row.no_rfid || '-', width: 18 },
-          { header: 'Status', accessor: (row: Siswa) => row.status, width: 10 }
-        ], 'Laporan_Siswa', 'DATA MASTER PESERTA DIDIK');
-        toast.success('Data siswa berhasil diekspor.');
-      } else {
+      const response = await getSiswaList(1, 5000);
+      if (!response.success || response.data.length === 0) {
         toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
+        return;
       }
+
+      const allSiswa = response.data as Siswa[];
+
+      // Pisah AKTIF vs LULUS/Alumni
+      const statusAktif = ['AKTIF', 'AKTIF_PPDB', 'CALON'];
+      const siswaAktif = allSiswa.filter(s => statusAktif.includes((s.status || '').toUpperCase()));
+      const siswaLulus = allSiswa.filter(s => !statusAktif.includes((s.status || '').toUpperCase()));
+
+      const now = new Date();
+      const tglStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      const namaSekolah = 'DATA MASTER PESERTA DIDIK';
+
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1 — Siswa Aktif (header biru gelap)
+      if (siswaAktif.length > 0) {
+        const wsAktif = buildSiswaWorksheet(
+          siswaAktif,
+          `${namaSekolah} — SISWA AKTIF | Diekspor: ${tglStr}`,
+          'FF0F172A'
+        );
+        XLSX.utils.book_append_sheet(wb, wsAktif, 'Siswa Aktif');
+      }
+
+      // Sheet 2 — Siswa Lulus/Alumni (header hijau tua)
+      if (siswaLulus.length > 0) {
+        const wsLulus = buildSiswaWorksheet(
+          siswaLulus,
+          `${namaSekolah} — ALUMNI / LULUS | Diekspor: ${tglStr}`,
+          'FF065F46'
+        );
+        XLSX.utils.book_append_sheet(wb, wsLulus, 'Alumni & Lulus');
+      }
+
+      if (wb.SheetNames.length === 0) {
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
+        return;
+      }
+
+      const filename = `Laporan_Siswa_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      toast.success(`✅ Berhasil! ${siswaAktif.length} siswa aktif + ${siswaLulus.length} alumni diekspor.`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
       toast.error(msg);

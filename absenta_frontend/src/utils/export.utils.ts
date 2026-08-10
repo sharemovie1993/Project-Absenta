@@ -39,7 +39,7 @@ export function exportDataToCSV<T>(data: T[], columns: CsvColumnConfig<T>[], fil
 
 export interface ExcelColumnConfig<T> {
   header: string;
-  accessor: (row: T) => string | number | boolean | null | undefined;
+  accessor: (row: T, idx?: number) => string | number | boolean | null | undefined;
   width?: number; // Character width for auto-sizing
   required?: boolean; // Whether the column is mandatory
 }
