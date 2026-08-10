@@ -60,19 +60,23 @@ export const createSiswaSchema = z.object({
   transportasi: coerceString,
   nama_ayah: coerceString,
   nik_ayah: coerceString,
+  no_hp_ayah: coerceString,
   pekerjaan_ayah: coerceString,
   pendidikan_ayah: coerceString,
   penghasilan_ayah: coerceString,
   nama_ibu: coerceString,
   nik_ibu: coerceString,
+  no_hp_ibu: coerceString,
   pekerjaan_ibu: coerceString,
   pendidikan_ibu: coerceString,
   penghasilan_ibu: coerceString,
   nama_wali: coerceString,
   nik_wali: coerceString,
+  no_hp_wali: coerceString,
   hubungan_wali: coerceString,
   pekerjaan_wali: coerceString,
   penghasilan_wali: coerceString,
+  no_hp_ortu: coerceString,
   anak_ke: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
     if (val === null || val === undefined || val === '') return null;
     const num = Number(val);

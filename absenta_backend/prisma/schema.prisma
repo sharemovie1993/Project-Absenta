@@ -967,19 +967,23 @@ model Siswa {
   transportasi        String?
   nama_ayah           String?
   nik_ayah            String?
+  no_hp_ayah          String?
   pekerjaan_ayah      String?
   pendidikan_ayah     String?
   penghasilan_ayah    String?
   nama_ibu            String?
   nik_ibu             String?
+  no_hp_ibu           String?
   pekerjaan_ibu       String?
   pendidikan_ibu      String?
   penghasilan_ibu     String?
   nama_wali           String?
   nik_wali            String?
+  no_hp_wali          String?
   hubungan_wali       String?
   pekerjaan_wali      String?
   penghasilan_wali    String?
+  no_hp_ortu          String?
   anak_ke             Int?
   tinggi_badan        Int?
   berat_badan         Int?
