@@ -242,7 +242,10 @@ export async function downloadBlob(
     contentType.includes('application/octet-stream') ||
     contentType.includes('application/vnd.ms-excel') ||
     contentType.includes('application/pdf') ||
-    contentType.includes('text/csv');
+    contentType.includes('application/json') ||
+    contentType.includes('application/gzip') ||
+    contentType.includes('text/csv') ||
+    contentType.includes('text/plain');
 
   if (!isBinary) {
      const text = await response.text().catch(() => '');
@@ -251,8 +254,11 @@ export async function downloadBlob(
      }
      try {
        const json = JSON.parse(text);
-       throw new Error(json.message || 'Server mengembalikan JSON padahal mengharapkan biner.');
-     } catch {
+       throw new Error(json.message || 'Server mengembalikan respons kesalahan JSON.');
+     } catch (e: any) {
+       if (e?.message && e.message !== `Tipe konten tidak valid: ${contentType}`) {
+         throw e;
+       }
        throw new Error(`Tipe konten tidak valid: ${contentType}`);
      }
   }
