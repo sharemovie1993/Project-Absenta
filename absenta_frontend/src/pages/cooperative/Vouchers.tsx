@@ -70,6 +70,35 @@ const ReceiptModal = lazy(() =>
   import('../../components/cooperative/vouchers/ReceiptModal').then(module => ({ default: module.ReceiptModal }))
 );
 
+const adminInstruction = {
+  title: 'Manajemen Voucher Koperasi',
+  description: 'Atur kode diskon, promo terbatas, dan voucher belanja anggota.',
+  items: [
+    { text: 'Buat kode voucher unik dan tentukan persentase/potongan harga.' },
+    { text: 'Atur batas waktu kedaluwarsa voucher promo.' },
+    { text: 'Pantau penggunaan voucher secara langsung.' }
+  ]
+};
+
+const auditInstruction = {
+  title: 'Audit Voucher Koperasi',
+  description: 'Daftar dan pantau seluruh voucher promo aktif yang berlaku di koperasi.',
+  items: [
+    { text: 'Lihat daftar kode promo dan syarat penukaran.' },
+    { text: 'Periksa tanggal kadaluwarsa setiap voucher.' }
+  ]
+};
+
+const memberInstruction = {
+  title: 'Poin & Benefit Anggota Koperasi',
+  description: 'Kumpulkan poin belanja/simpanan Anda dan tukarkan dengan voucher promo.',
+  items: [
+    { text: 'Kumpulkan poin setiap kali bertransaksi di koperasi.' },
+    { text: 'Pilih voucher menarik dan tukarkan poin Anda.' },
+    { text: 'Gunakan voucher saat melakukan pembayaran di POS/Toko.' }
+  ]
+};
+
 const Vouchers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
