@@ -8,7 +8,6 @@ import jurusanRoutes from '../jurusan/routes/jurusan.routes';
 import jenisKegiatanMasterRoutes from '../jenis-kegiatan-master/routes/jenis-kegiatan-master.routes';
 import transitionRoutes from '../transition/routes/transition.routes';
 import strukturOrganisasiRoutes from '../struktur-organisasi/routes/struktur-organisasi.routes';
-import { backupRoutes } from '../backup/routes/backup.routes';
 import { studentCardConfigRoutes } from '../student-card-config/routes/student-card-config.routes';
 import { organizationalRoutes } from '../organizational/routes/organizational.routes';
 import programKeahlianRoutes from '../program-keahlian/routes/program-keahlian.routes';
@@ -34,7 +33,6 @@ export async function academicRoutes(fastify: any) {
   await fastify.register(transitionRoutes, { prefix: '/transition' });
   await fastify.register(strukturOrganisasiRoutes, { prefix: '/struktur-organisasi' });
   await fastify.register(organizationalRoutes);
-  await fastify.register(backupRoutes, { prefix: '/backup' });
   await fastify.register(studentCardConfigRoutes, { prefix: '/student-card-config' });
   await fastify.register(programKeahlianRoutes, { prefix: '/program-keahlian' });
   await fastify.register(ascImporterRoutes, { prefix: '/asc-importer' });
