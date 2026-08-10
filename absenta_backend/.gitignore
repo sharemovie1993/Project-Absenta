@@ -67,3 +67,6 @@ backups/
 wa_auth/
 tunnels/
 
+# TypeScript incremental build cache (environment-specific, causes VPS git conflict)
+*.tsbuildinfo
+
