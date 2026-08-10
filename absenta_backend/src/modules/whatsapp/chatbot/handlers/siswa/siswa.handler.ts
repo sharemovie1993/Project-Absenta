@@ -3,6 +3,7 @@ import { siswaService } from '@/modules/academic/siswa/services/siswa.service';
 import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
 import { sesiService } from '@/modules/attendance/sesi-absensi/services/sesi.service';
 import { formatSiswaMenu, getWhatsappActiveSemester, aggregateJadwal } from '../../../services/wa-chatbot-commands';
+import { QuickLoginHandler } from '../common/quick-login.handler';
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '@/utils/prisma';
 import { chatbotSessionManager, type ChatbotDialogSession } from '../../core/session-state-manager';
@@ -250,9 +251,19 @@ export class SiswaHandler {
       return msg;
     }
 
-    // [6] Presensi Guru KBM — khusus Petugas Kelas
+    // [6] Quick Login (siswa biasa) ATAU Presensi Guru KBM (Petugas Kelas)
+    // [7] Quick Login (khusus Petugas Kelas)
+    if (choice === '7') {
+      return QuickLoginHandler.handleQuickLogin(ctx);
+    }
+
     if (choice === '6' || choice === '60' || choice.startsWith('6') || choice.includes('PETUGAS') || choice.includes('ABSEN GURU')) {
-      return SiswaHandler.handlePetugasMenu(ctx);
+      const isPetugasCheck = await isPetugasKelas(siswa.tenant_id, siswa.user_id, siswa.kelas_id);
+      if (isPetugasCheck) {
+        return SiswaHandler.handlePetugasMenu(ctx);
+      }
+      // Bukan petugas kelas → [6] = Quick Login
+      return QuickLoginHandler.handleQuickLogin(ctx);
     }
 
     const isPetugas = await isPetugasKelas(siswa.tenant_id, siswa.user_id, siswa.kelas_id);
