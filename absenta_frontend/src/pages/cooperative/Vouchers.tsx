@@ -91,6 +91,8 @@ const Vouchers: React.FC = React.memo(() => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
+  const [memberInfo, setMemberInfo] = useState<any>(null);
 
   // Gating Logic
   const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
