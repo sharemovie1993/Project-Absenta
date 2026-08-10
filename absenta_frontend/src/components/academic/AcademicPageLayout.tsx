@@ -15,6 +15,7 @@ import { HardeningInspector } from '../superadmin/infra/InfraSharedComponents';
 import { getHardeningConfig } from '../../config/hardeningRegistry';
 import auditReport from '../../config/hardeningAuditReport.json';
 import { useTvStore } from '@/store/tvStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
 
 interface AcademicStat {
   title: string;
@@ -63,7 +64,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   hardeningModuleKey
 }) => {
   const { setInstructionData } = useInstruction();
-  const { isAdmin, user } = useAuthStore();
+  const { user } = useAuthStore();
+  const { isAdmin } = useCapabilities();
   const { isTvMode } = useTvStore();
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
@@ -159,7 +161,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
   // Admin always has access to academic pages
   const canView = useMemo(() => {
-    if (isAdmin()) return true;
+    if (isAdmin) return true;
     return canViewProp;
   }, [isAdmin, canViewProp, user]);
 

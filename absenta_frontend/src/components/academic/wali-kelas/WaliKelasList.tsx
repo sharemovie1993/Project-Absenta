@@ -59,7 +59,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [arsipOpen, setArsipOpen] = useState(false);
   const [bulkGenerateOpen, setBulkGenerateOpen] = useState(false);
 
-  const canManage = useMemo(() => isAdmin() || can('academic.homeroom.manage'), [isAdmin, can]);
+  const canManage = useMemo(() => isAdmin || can('academic.homeroom.manage'), [isAdmin, can]);
 
   const fetchData = useCallback(async (page = 1, search = '', include_inactive = false) => {
     try {

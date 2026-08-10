@@ -57,7 +57,7 @@ const UserPage: React.FC = () => {
 
   // Check permissions
   const canManage = useMemo(() => {
-    return isAdmin() || can('core.users.view.list');
+    return isAdmin || can('core.users.view.list');
   }, [isAdmin, can]);
 
   const canManageRolePermissions = useMemo(() => {

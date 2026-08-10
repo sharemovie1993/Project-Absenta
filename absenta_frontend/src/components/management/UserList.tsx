@@ -72,11 +72,11 @@ const UserList: React.FC<UserListProps> = ({
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
-    return isAdmin() || can('core.users.create') || can('core.users.update') || can('core.users.delete');
+    return isAdmin || can('core.users.create') || can('core.users.update') || can('core.users.delete');
   }, [isAdmin, can]);
 
   const canDelete = useMemo(() => {
-    return isAdmin() || can('core.users.delete');
+    return isAdmin || can('core.users.delete');
   }, [isAdmin, can]);
   
   const isSuper = isSuperAdmin();

@@ -4,7 +4,7 @@ import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
 import toast from 'react-hot-toast';
 import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui';
 
 // Impor komponen standardisasi hardening terpusat tingkat layout
@@ -51,12 +51,12 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   hardeningModuleKey
 }) => {
   const { setInstructionData } = useInstruction();
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useCapabilities();
 
 
   // Admin always has access to pages by default
   const canView = useMemo(() => {
-    if (isAdmin()) return true;
+    if (isAdmin) return true;
     return canViewProp;
   }, [isAdmin, canViewProp]);
 
