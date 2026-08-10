@@ -691,31 +691,61 @@ export class GuruJadwalHandler {
         grouped.get(guruId)!.slots.push(j);
       });
 
+      // Merge slot berurutan (kelas sama, jam_selesai[i] == jam_mulai[i+1])
+      const mergeConsecutive = (slots: any[]): Array<{ kelas: string; jamMulai: string; jamSelesai: string; bestStatus: { icon: string; label: string } }> => {
+        // Sort by jam_mulai dulu
+        slots.sort((a: any, b: any) => (a.jam_mulai || '').localeCompare(b.jam_mulai || ''));
+
+        const merged: Array<{ kelas: string; kelasId: string; jamMulai: string; jamSelesai: string; rawSlots: any[] }> = [];
+        for (const slot of slots) {
+          const kelasId   = slot.kelas_id || slot.Kelas?.id || '';
+          const kelasName = slot.Kelas?.nama_kelas || '-';
+          const last = merged[merged.length - 1];
+          // Gabung jika kelas sama dan jam berurutan (jam_selesai last == jam_mulai slot ini)
+          if (last && last.kelasId === kelasId && last.jamSelesai === slot.jam_mulai) {
+            last.jamSelesai = slot.jam_selesai;
+            last.rawSlots.push(slot);
+          } else {
+            merged.push({ kelas: kelasName, kelasId, jamMulai: slot.jam_mulai, jamSelesai: slot.jam_selesai, rawSlots: [slot] });
+          }
+        }
+
+        // Resolve status terbaik dari tiap grup: BERLANGSUNG > SELESAI > IZIN > Belum Masuk
+        const statusPriority = (icon: string) =>
+          icon === '🟢' ? 4 : icon === '✅' ? 3 : icon === '🟡' ? 2 : 1;
+
+        return merged.map(m => {
+          const statuses = m.rawSlots.map((s: any) => resolveStatus(s));
+          const bestStatus = statuses.reduce((best, cur) =>
+            statusPriority(cur.icon) > statusPriority(best.icon) ? cur : best
+          );
+          return { kelas: m.kelas, jamMulai: m.jamMulai, jamSelesai: m.jamSelesai, bestStatus };
+        });
+      };
+
       const sortedGuru = Array.from(grouped.values()).sort((a, b) =>
         a.shortName.localeCompare(b.shortName, 'id', { sensitivity: 'base' })
       );
 
       let out = '';
       sortedGuru.forEach(({ shortName, slots }) => {
-        // Sort slot by jam_mulai
-        slots.sort((a: any, b: any) => (a.jam_mulai || '').localeCompare(b.jam_mulai || ''));
-        // Status dominan: BERLANGSUNG > Belum Masuk > IZIN > SELESAI
-        const statuses = slots.map((s: any) => resolveStatus(s));
-        const dominant = statuses.find(s => s.icon === '🟢') ??
-                         statuses.find(s => s.icon === '🔴') ??
-                         statuses.find(s => s.icon === '🟡') ??
-                         statuses[0];
+        const mergedSlots = mergeConsecutive(slots);
+        // Status dominan guru: ambil dari merged slots
+        const statusPriority = (icon: string) =>
+          icon === '🟢' ? 4 : icon === '✅' ? 3 : icon === '🟡' ? 2 : 1;
+        const dominant = mergedSlots.reduce((best, cur) =>
+          statusPriority(cur.bestStatus.icon) > statusPriority(best.bestStatus.icon) ? cur : best
+        ).bestStatus;
+
         out += `${dominant.icon} *${shortName}*\n`;
-        slots.forEach((j: any) => {
-          const kelas = j.Kelas?.nama_kelas || '-';
-          const jam   = `${j.jam_mulai}–${j.jam_selesai}`;
-          const { icon, label } = resolveStatus(j);
-          out += `  ${icon} ${kelas} (${jam}) — ${label}\n`;
+        mergedSlots.forEach(({ kelas, jamMulai, jamSelesai, bestStatus }) => {
+          out += `  ${bestStatus.icon} ${kelas} (${jamMulai}–${jamSelesai}) — ${bestStatus.label}\n`;
         });
         out += `\n`;
       });
       return out;
     };
+
 
     if (filterMode === 'SEARCH') {
       // ── MODE 82: Agregasi per guru + slot indent ──
