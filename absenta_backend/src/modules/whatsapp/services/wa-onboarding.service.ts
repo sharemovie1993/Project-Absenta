@@ -550,7 +550,83 @@ export class WaOnboardingService {
       });
     }
 
-    // 13. Fetch Wali Kelas (dari Struktur Organisasi)
+    // 13. Fetch Kepala Sekolah
+    if (roleFilter === 'KEPALA_SEKOLAH') {
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          Position: {
+            code: { in: ['KEPALA_SEKOLAH', 'KEPSEK'] },
+          },
+        },
+        include: {
+          User: { include: { Guru: true } },
+          Position: { select: { name: true } },
+        },
+      });
+
+      const processedUserIds = new Set<string>();
+
+      assignments.forEach((asg) => {
+        const user = asg.User;
+        if (!user) return;
+        const guru = user.Guru;
+        const phone = guru?.no_hp || user.no_hp;
+        if (!phone) return;
+
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+        const nama = guru?.nama_guru || user.full_name || 'Kepala Sekolah';
+
+        const itemKey = `kepsek-${asg.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama,
+          no_hp: phone,
+          detailInfo: `Kepala Sekolah`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+
+      const kepsekUsers = await prisma.user.findMany({
+        where: {
+          tenant_id: tenantId,
+          Role: {
+            name: { in: ['KEPALA_SEKOLAH', 'Kepala Sekolah', 'KEPSEK'] },
+          },
+        },
+        include: { Guru: true },
+      });
+
+      kepsekUsers.forEach((u) => {
+        const phone = u.Guru?.no_hp || u.no_hp;
+        if (!phone) return;
+        const norm = this.normalizePhone(phone);
+        const lastComm = commMap.get(norm) || null;
+
+        const itemKey = `kepsek-user-${u.id}`;
+        if (processedUserIds.has(itemKey)) return;
+        processedUserIds.add(itemKey);
+
+        allUsers.push({
+          id: itemKey,
+          userType: 'GURU',
+          nama: u.Guru?.nama_guru || u.full_name || 'Kepala Sekolah',
+          no_hp: phone,
+          detailInfo: `Kepala Sekolah`,
+          statusKomunikasi: lastComm ? 'SUDAH' : 'BELUM',
+          lastCommAt: lastComm,
+        });
+      });
+    }
+
+    // 14. Fetch Wali Kelas (dari Struktur Organisasi)
     if (roleFilter === 'WALIKELAS') {
       const assignments = await prisma.organizationalAssignment.findMany({
         where: {
