@@ -189,7 +189,6 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
     }
   ], [confirm, loadData]);
 
-  if (authLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const stats = [
