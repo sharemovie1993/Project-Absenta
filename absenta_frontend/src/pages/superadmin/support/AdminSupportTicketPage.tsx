@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Ticket, Shield, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore, type User as AuthUser } from '../../../store/authStore';

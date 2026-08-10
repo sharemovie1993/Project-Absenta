@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Ticket, 
   Send, 
