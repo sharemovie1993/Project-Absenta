@@ -78,7 +78,6 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
-  if (isAuthLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!can('attendance.gate.bypass')) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const pageContent = (
