@@ -4,6 +4,7 @@ import { formatMultiRoleMenu } from './wa-chatbot-commands';
 import { ChatbotRouter } from '../chatbot/core/chatbot-router';
 import { ChatbotContext } from '../chatbot/core/chatbot-context';
 import { WaChatLogService } from './wa-chat-log.service';
+import { guruService } from '@/modules/academic/guru/services/guru.service';
 
 /**
  * Peta persistent LID → nomor HP asli (terisolasi aman di Database PostgreSQL + Redis Store).
@@ -220,6 +221,17 @@ export class WaChatbotResolverService {
           const p1 = (o.no_hp || '').replace(/\D/g, '');
           return p1.endsWith(cleanDigits);
         }) || null;
+      }
+    }
+
+    if (guru && (guru as any).user_id && (guru as any).tenant_id) {
+      try {
+        const guruMe = await guruService.getGuruMe((guru as any).user_id, (guru as any).tenant_id);
+        if (guruMe) {
+          guru = { ...guru, ...guruMe };
+        }
+      } catch (err) {
+        console.warn('[Chatbot] Failed to enrich guru profile with getGuruMe:', err);
       }
     }
 
