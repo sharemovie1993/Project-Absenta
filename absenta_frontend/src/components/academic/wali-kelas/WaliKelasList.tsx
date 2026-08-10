@@ -48,7 +48,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [assigning, setAssigning] = useState(false);
   const [presetData, setPresetData] = useState<{ guru_id?: string; kelas_id?: string } | undefined>(undefined);
 
-  const { can, isAdmin } = useAuthStore();
+  
 
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

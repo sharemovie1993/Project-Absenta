@@ -78,7 +78,7 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
-  const { user, can } = useAuthStore();
+  const { user } = useAuthStore();
   const { jenjang, config, tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);

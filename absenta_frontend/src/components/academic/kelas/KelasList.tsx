@@ -96,7 +96,7 @@ const KelasList = React.memo<KelasListProps>(({
   // Jurusan options hook
   const { rawList: jurusanList } = useJurusanOptions();
 
-  const { user, can } = useAuthStore();
+  const { user } = useAuthStore();
   const { tingkatList, jenjang } = useJenjang();
   const hasJurusan = ['SMA', 'MA', 'SMK', 'MAK'].includes(String(jenjang || '').toUpperCase());
 

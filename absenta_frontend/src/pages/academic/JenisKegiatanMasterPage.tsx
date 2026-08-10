@@ -24,7 +24,7 @@ type ModalMode = 'create' | 'edit' | 'view' | null;
 
 export default React.memo(function JenisKegiatanMasterPage() {
   const queryClient = useQueryClient();
-  const { can, isLoading: authLoading } = useAuthStore();
+  
 
   const invalidateJenisKegiatanCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-list'] });

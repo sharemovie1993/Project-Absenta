@@ -57,7 +57,7 @@ const toRoman = (num: number): string => {
 };
 
 export const KelasPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuthStore();
+  
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

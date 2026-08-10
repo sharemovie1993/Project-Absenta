@@ -44,7 +44,7 @@ interface ImportConfig {
 
 // v1.0.2 - Fixed Excel Export Engine
 const SiswaPage: React.FC = () => {
-  const { can, syncSubscription, isLoading: authLoading, user } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 

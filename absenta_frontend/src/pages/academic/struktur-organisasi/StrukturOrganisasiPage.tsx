@@ -50,7 +50,7 @@ const StrukturOrganisasiPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const { confirm } = useConfirm();
-  const { user, can, isLoading: authLoading } = useAuthStore();
+  const { user } = useAuthStore();
   const { isKurikulum, isKepalaSekolah, isAdmin, can: capCan } = useCapabilities();
   const { jenjang, sekolah } = useJenjang();
 

@@ -16,7 +16,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 const TahunPelajaranForm = lazy(() => import('../../components/academic/tahun-pelajaran/TahunPelajaranForm').then(m => ({ default: m.TahunPelajaranForm })));
 
 export const TahunPelajaranPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuthStore();
+  
   const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
   const queryClient = useQueryClient();
   const { modal, openCreate, openEdit, openView, close } = useModalState();

@@ -24,7 +24,7 @@ interface SiswaTimelineAndExitTabProps {
 }
 
 export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = React.memo(({ siswa }) => {
-  const { can, user } = useAuthStore();
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);

@@ -245,7 +245,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
 
-  const { can, user, hasPermissionCode, isLoading } = useAuthStore();
+  const { user } = useAuthStore();
   const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);

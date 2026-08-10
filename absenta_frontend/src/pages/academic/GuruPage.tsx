@@ -33,7 +33,7 @@ interface ModalState {
 }
 
 export const GuruPage: React.FC = () => {
-  const { can, isLoading: authLoading } = useAuthStore();
+  
   const { isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, isAdmin, can: capCan } = useCapabilities();
 
   const navigate = useNavigate();
