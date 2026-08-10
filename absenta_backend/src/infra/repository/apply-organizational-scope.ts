@@ -9,7 +9,7 @@ export function applyOrganizationalScope(
   if (scope?.tenantWide === true) return where;
 
   const kelasField = opts?.kelasField ?? 'kelas_id';
-  const unitField = opts?.unitField ?? 'unit_id';
+  const unitField = opts?.unitField ?? 'jurusan_id';
 
   if (Array.isArray(scope?.kelasIds) && scope.kelasIds.length > 0) {
     const allowed = scope.kelasIds.map((x) => String(x));
