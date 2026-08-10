@@ -960,6 +960,9 @@ model Siswa {
   rt                  String?
   rw                  String?
   kode_pos            String?
+  lintang             String?
+  bujur               String?
+  koordinat           String?
   no_hp               String?
   transportasi        String?
   nama_ayah           String?

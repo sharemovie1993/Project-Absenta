@@ -335,8 +335,10 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                     <DetailRow icon={<Calendar size={16} />} label="Tanggal Lahir" value={watch('tanggal_lahir')} />
                     <DetailRow icon={<Users size={16} />} label="Jenis Kelamin" value={(JENIS_KELAMIN_OPTIONS || []).find(o => o.value === watch('jenis_kelamin'))?.label} />
                     <DetailRow icon={<Bus size={16} />} label="Transportasi" value={(TRANSPORTASI_OPTIONS || []).find(o => o.value === watch('transportasi'))?.label} />
-                    <DetailRow icon={<Radio size={16} />} label="No RFID" value={watch('no_rfid')} />
                     <DetailRow icon={<Home size={16} />} label="Alamat" value={watch('alamat')} />
+                    <DetailRow icon={<MapPin size={16} />} label="Lintang (Latitude)" value={watch('lintang') || '-'} />
+                    <DetailRow icon={<MapPin size={16} />} label="Bujur (Longitude)" value={watch('bujur') || '-'} />
+                    <DetailRow icon={<MapPin size={16} />} label="Koordinat" value={watch('koordinat') || (watch('lintang') ? `${watch('lintang')}, ${watch('bujur')}` : '-')} />
                 </SectionCard>
             </div>
         );
@@ -642,6 +644,37 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                         disabled={isViewMode}
                         className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl min-h-[80px]"
                     />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="lintang" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                Lintang (Latitude)
+                            </Label>
+                        </div>
+                        <Input
+                            id="lintang"
+                            {...register('lintang')}
+                            placeholder="Contoh: -6.9174639"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="bujur" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                Bujur (Longitude)
+                            </Label>
+                        </div>
+                        <Input
+                            id="bujur"
+                            {...register('bujur')}
+                            placeholder="Contoh: 107.6191228"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
                 </div>
             </SectionCard>
 
