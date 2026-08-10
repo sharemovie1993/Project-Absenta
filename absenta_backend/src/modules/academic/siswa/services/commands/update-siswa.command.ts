@@ -155,28 +155,45 @@ export async function updateSiswaCommand(
       const targetEmail = `${cleanNewNisn}@absenta.id`;
 
       if (existingSiswa.user_id) {
+        // ✅ Siswa SUDAH punya user — cukup update email jika berubah, JANGAN buat user baru
         const linkedUser = await siswaDb.user.findUnique({
           where: { id: existingSiswa.user_id },
         });
 
         if (linkedUser && linkedUser.email.toLowerCase() !== targetEmail.toLowerCase()) {
-          const existingUserWithEmail = await siswaDb.user.findFirst({
+          const emailConflict = await siswaDb.user.findFirst({
             where: { email: targetEmail, id: { not: existingSiswa.user_id } }
           });
-          if (!existingUserWithEmail) {
+          if (!emailConflict) {
             await siswaDb.user.update({
               where: { id: existingSiswa.user_id },
               data: { email: targetEmail }
             });
             console.log(`[SYNC-USER] QuickUpdate: Auto-updated User email from ${linkedUser.email} to: ${targetEmail}`);
+          } else {
+            console.warn(`[SYNC-USER] QuickUpdate: Skipping email update — ${targetEmail} already used by another user.`);
           }
         }
       } else {
-        // Student has NO linked user account yet. Create user account automatically!
+        // ⚠️ Siswa BELUM punya user — cek dulu apakah user dengan email ini sudah ada
+        // (idempotent: jika sudah ada, link saja, jangan buat baru)
         const existingUserWithEmail = await siswaDb.user.findFirst({
-          where: { email: targetEmail }
+          where: { email: targetEmail, tenant_id: existingSiswa.tenant_id }
         });
-        if (!existingUserWithEmail) {
+
+        if (existingUserWithEmail) {
+          // User sudah ada (mungkin dari import sebelumnya) → link saja
+          const alreadyLinked = await siswaDb.siswa.findFirst({
+            where: { user_id: existingUserWithEmail.id, tenant_id: existingSiswa.tenant_id, id: { not: siswaId } }
+          });
+          if (!alreadyLinked) {
+            dataToUpdate.user_id = existingUserWithEmail.id;
+            console.log(`[SYNC-USER] QuickUpdate: Linked existing user (${targetEmail}) to siswa — no new user created.`);
+          } else {
+            console.warn(`[SYNC-USER] QuickUpdate: User ${targetEmail} already linked to another siswa — skipping.`);
+          }
+        } else {
+          // User belum ada sama sekali → buat baru
           const siswaRole = await siswaDb.role.findFirst({
             where: { name: 'SISWA' }
           });
@@ -194,7 +211,7 @@ export async function updateSiswaCommand(
               }
             });
             dataToUpdate.user_id = newUser.id;
-            console.log(`[SYNC-USER] QuickUpdate: Auto-created linked User account for student with email: ${targetEmail}`);
+            console.log(`[SYNC-USER] QuickUpdate: Created new linked User for student (${targetEmail}).`);
           }
         }
       }

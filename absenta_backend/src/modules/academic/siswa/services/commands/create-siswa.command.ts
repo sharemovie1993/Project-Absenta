@@ -222,12 +222,6 @@ export async function createSiswaCommand(
       where: { email: emailToUse, tenant_id: tenantId },
     });
 
-    if (existingUserByEmail) {
-      const suffix = Math.floor(Math.random() * 10000).toString();
-      const parts = emailToUse.split('@');
-      emailToUse = `${parts[0]}.${suffix}@${parts[1] || 'absenta.id'}`;
-    }
-
     const genStrongPassword = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
       let s = '';
@@ -239,16 +233,36 @@ export async function createSiswaCommand(
         ? process.env.DEFAULT_SISWA_PASSWORD
         : genStrongPassword();
 
-    const createdUser = await userService.createUser({
-      email: emailToUse,
-      password: defaultPassword,
-      full_name: fullName,
-      role: 'SISWA',
-      tenant_id: tenantId,
-    });
+    if (existingUserByEmail) {
+      // Cek apakah user ini sudah di-link ke siswa LAIN di tenant ini
+      const alreadyLinkedToOther = await siswaDb.siswa.findFirst({
+        where: { user_id: existingUserByEmail.id, tenant_id: tenantId },
+      });
 
-    associatedUserId = createdUser.id;
+      if (!alreadyLinkedToOther) {
+        // User bebas → link langsung, tidak perlu buat user baru (idempotent)
+        associatedUserId = existingUserByEmail.id;
+        console.log(`[SYNC-USER] Create: Reusing existing user (${emailToUse}) — no new user created.`);
+      } else {
+        // User sudah milik siswa lain → buat email baru dengan suffix
+        const suffix = Math.floor(Math.random() * 10000).toString();
+        const parts = emailToUse.split('@');
+        emailToUse = `${parts[0]}.${suffix}@${parts[1] || 'absenta.id'}`;
+      }
+    }
+
+    if (!associatedUserId) {
+      const createdUser = await userService.createUser({
+        email: emailToUse,
+        password: defaultPassword,
+        full_name: fullName,
+        role: 'SISWA',
+        tenant_id: tenantId,
+      });
+      associatedUserId = createdUser.id;
+    }
   }
+
 
   // --- SANITIZATION & AUTO-FIX ---
   const nik = validatedInput.nik ? String(validatedInput.nik).trim() : null;
