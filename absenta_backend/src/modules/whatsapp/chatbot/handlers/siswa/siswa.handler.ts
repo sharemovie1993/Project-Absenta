@@ -5,7 +5,7 @@ import { sesiService } from '@/modules/attendance/sesi-absensi/services/sesi.ser
 import { formatSiswaMenu, getWhatsappActiveSemester, aggregateJadwal } from '../../../services/wa-chatbot-commands';
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '@/utils/prisma';
-import { chatbotSessionManager } from '../../core/session-state-manager';
+import { chatbotSessionManager, type ChatbotDialogSession } from '../../core/session-state-manager';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
@@ -46,6 +46,9 @@ export class SiswaHandler {
     if (choice === '1') {
       const kelas = siswa.Kelas?.nama_kelas || '-';
       const jurusan = siswa.Jurusan?.nama || '-';
+      const tinggi = siswa.tinggi_badan ? `${siswa.tinggi_badan} cm` : '-';
+      const berat = siswa.berat_badan ? `${siswa.berat_badan} kg` : '-';
+
       let msg = `👤 *Data Profil Pribadi Siswa*\n\n`;
       msg += `• Nama    : *${siswa.nama_siswa}*\n`;
       msg += `• NIS     : ${siswa.nis || '-'}\n`;
@@ -53,9 +56,35 @@ export class SiswaHandler {
       msg += `• Kelas   : ${kelas}\n`;
       msg += `• Jurusan : ${jurusan}\n`;
       msg += `• Status  : *${siswa.status || 'AKTIF'}*\n`;
+      msg += `• Tinggi  : *${tinggi}*\n`;
+      msg += `• Berat   : *${berat}*\n`;
       msg += `• RFID    : ${siswa.no_rfid ? '✅ Terhubung' : '❌ Belum Ada'}\n\n`;
-      msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
+      msg += `⚙️ *Pilihan Menu Profil:*\n`;
+      msg += `[11] 📏 Update Tinggi & Berat Badan\n\n`;
+      msg += `💡 Ketik *11* untuk update fisik (TB/BB) atau *[0]* untuk Menu Utama.`;
       return msg;
+    }
+
+    // [11] Initiator untuk Update Tinggi & Berat Badan Siswa
+    if (choice === '11' || choice.includes('UPDATE FISIK') || choice.includes('UPDATE TB') || choice.includes('UPDATE BB')) {
+      chatbotSessionManager.set(ctx.cleanJid, {
+        flowId: 'SISWA_UPDATE_PHYSICAL',
+        step: 'AWAITING_INPUT',
+        payload: {
+          siswaId: siswa.id,
+          namaSiswa: siswa.nama_siswa,
+        },
+      });
+
+      return (
+        `📏 *Update Tinggi & Berat Badan*\n` +
+        `👤 Siswa: *${siswa.nama_siswa}*\n\n` +
+        `Silakan balas pesan ini dengan format:\n` +
+        `*<Tinggi Badan (cm)> <Berat Badan (kg)>*\n\n` +
+        `*Contoh:* \`170 65\` (Tinggi 170 cm, Berat 65 kg)\n` +
+        `Atau bisa juga tulis \`170cm 65kg\`\n\n` +
+        `💡 Ketik *[0]* atau *BATAL* untuk membatalkan.`
+      );
     }
 
     // [2] Presensi Hari Ini (Via Shared Domain Service)
@@ -588,6 +617,93 @@ export class SiswaHandler {
       `👤 Petugas : ${siswa.nama_siswa}\n\n` +
       `💡 Ketik *[6]* untuk kembali ke presensi guru kelas atau *[0]* Menu Utama.`
     );
+  }
+
+  /** Process dialog FSM for updating Siswa height (Tinggi) & weight (Berat) */
+  static async processUpdatePhysical(ctx: ChatbotContext, session: ChatbotDialogSession): Promise<string> {
+    const text = ctx.messageText.trim();
+    const siswaId = session.payload?.siswaId;
+    if (!siswaId) {
+      chatbotSessionManager.delete(ctx.cleanJid);
+      return '❌ Sesi update telah kadaluarsa. Silakan ulangi dari menu profil (*ketik 1*).';
+    }
+
+    const matches = text.match(/\d+/g);
+    if (!matches || matches.length === 0) {
+      return (
+        `⚠️ *Format Tidak Valid*\n\n` +
+        `Silakan masukkan angka Tinggi & Berat Badan.\n` +
+        `*Contoh:* \`170 65\` (Tinggi 170 cm, Berat 65 kg)\n\n` +
+        `💡 Ketik *[0]* atau *BATAL* untuk membatalkan.`
+      );
+    }
+
+    let tb: number | null = null;
+    let bb: number | null = null;
+
+    if (matches.length >= 2) {
+      tb = parseInt(matches[0], 10);
+      bb = parseInt(matches[1], 10);
+    } else {
+      const val = parseInt(matches[0], 10);
+      if (val >= 100) {
+        tb = val;
+      } else {
+        bb = val;
+      }
+    }
+
+    // Validation ranges
+    if (tb !== null && (tb < 50 || tb > 250)) {
+      return `⚠️ Tinggi badan (${tb} cm) di luar rentang wajar (50-250 cm). Silakan masukkan kembali (contoh: *170 65*).`;
+    }
+    if (bb !== null && (bb < 15 || bb > 300)) {
+      return `⚠️ Berat badan (${bb} kg) di luar rentang wajar (15-300 kg). Silakan masukkan kembali (contoh: *170 65*).`;
+    }
+
+    const updateData: any = {};
+    if (tb !== null) updateData.tinggi_badan = tb;
+    if (bb !== null) updateData.berat_badan = bb;
+
+    if (Object.keys(updateData).length === 0) {
+      return `⚠️ Tidak ada angka valid terdeteksi. Silakan balas dengan contoh: *170 65*.`;
+    }
+
+    try {
+      const updated = await prisma.siswa.update({
+        where: { id: siswaId },
+        data: updateData,
+        select: {
+          nama_siswa: true,
+          tinggi_badan: true,
+          berat_badan: true,
+          tenant_id: true,
+          Kelas: { select: { nama_kelas: true } },
+        },
+      });
+
+      // Clear Redis cache
+      void cacheInvalidationService.invalidateSiswaCache(updated.tenant_id, siswaId);
+      chatbotSessionManager.delete(ctx.cleanJid);
+
+      const kelasStr = updated.Kelas?.nama_kelas || '-';
+      const tbStr = updated.tinggi_badan ? `${updated.tinggi_badan} cm` : '-';
+      const bbStr = updated.berat_badan ? `${updated.berat_badan} kg` : '-';
+
+      return (
+        `✅ *Berhasil Memutakhirkan Data Fisik Siswa!*\n\n` +
+        `• Nama         : *${updated.nama_siswa}*\n` +
+        `• Kelas        : ${kelasStr}\n` +
+        `• Tinggi Badan : *${tbStr}* 📏\n` +
+        `• Berat Badan  : *${bbStr}* ⚖️\n\n` +
+        `Data fisik Anda telah tersimpan secara resmi di database sekolah.\n\n` +
+        `💡 Ketik *[1]* untuk Profil Siswa atau *[0]* Menu Utama.`
+      );
+    } catch (err: any) {
+      console.error('[CHATBOT_UPDATE_PHYSICAL_ERROR]', err);
+      chatbotSessionManager.delete(ctx.cleanJid);
+      return `❌ Gagal mengupdate data fisik: ${err.message || 'Terjadi kesalahan sistem.'}`;
+    }
   }
 }
 

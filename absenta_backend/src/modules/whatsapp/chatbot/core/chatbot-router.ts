@@ -87,6 +87,10 @@ export class ChatbotRouter {
       if (pendingSession.flowId === 'PETUGAS_UPDATE_STATUS') {
         return SiswaHandler.processPetugasUpdateStatus(ctx, pendingSession);
       }
+
+      if (pendingSession.flowId === 'SISWA_UPDATE_PHYSICAL') {
+        return SiswaHandler.processUpdatePhysical(ctx, pendingSession);
+      }
     }
 
     // 2. Routing Persona Guru
