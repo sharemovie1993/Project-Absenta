@@ -698,7 +698,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             pointsToday={pointsToday}
             isLoading={isKesiswaanLoading}
             onOpenPiket={() => navigate('/kesiswaan/piket')}
-            onOpenMonitoring={isStrictKesiswaan ? () => navigate('/kesiswaan/monitoring') : undefined}
+            onOpenMonitoring={isKesiswaan ? () => navigate('/kesiswaan/monitoring') : undefined}
             onSpecialEvent={() => navigate('/attendance/settings?tab=kejadian-khusus')}
           />
         )
