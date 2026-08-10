@@ -194,7 +194,11 @@ const SiswaPage: React.FC = () => {
             { header: 'Transportasi', key: 'transportasi', width: 20 },
             { header: 'No. HP', key: 'no_hp', width: 15 },
             { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
-            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 }
+            { header: 'NIK Ayah', key: 'nik_ayah', width: 20 },
+            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 },
+            { header: 'NIK Ibu', key: 'nik_ibu', width: 20 },
+            { header: 'Nama Wali', key: 'nama_wali', width: 25 },
+            { header: 'NIK Wali', key: 'nik_wali', width: 20 }
           ],
           {
             fileName: 'template_impor_siswa_lama_alumni',
@@ -238,7 +242,11 @@ const SiswaPage: React.FC = () => {
             { header: 'Kode Pos', key: 'kode_pos', width: 15 },
             { header: 'Transportasi', key: 'transportasi', width: 20 },
             { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
-            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 }
+            { header: 'NIK Ayah', key: 'nik_ayah', width: 20 },
+            { header: 'Nama Ibu', key: 'nama_ibu', width: 25 },
+            { header: 'NIK Ibu', key: 'nik_ibu', width: 20 },
+            { header: 'Nama Wali', key: 'nama_wali', width: 25 },
+            { header: 'NIK Wali', key: 'nik_wali', width: 20 }
           ],
           {
             fileName: 'template_impor_siswa_ppdb_calon',
@@ -281,7 +289,11 @@ const SiswaPage: React.FC = () => {
             { header: 'Transportasi', key: 'transportasi', width: 20 },
             { header: 'No. HP', key: 'no_hp', width: 15 },
             { header: 'Nama Ayah', key: 'nama_ayah', width: 25 },
+            { header: 'NIK Ayah', key: 'nik_ayah', width: 20 },
             { header: 'Nama Ibu', key: 'nama_ibu', width: 25 },
+            { header: 'NIK Ibu', key: 'nik_ibu', width: 20 },
+            { header: 'Nama Wali', key: 'nama_wali', width: 25 },
+            { header: 'NIK Wali', key: 'nik_wali', width: 20 },
             { header: 'No. RFID', key: 'no_rfid', width: 20 }
           ],
           {
@@ -336,7 +348,11 @@ const SiswaPage: React.FC = () => {
           { header: 'Transportasi', accessor: (row: Siswa) => row.transportasi || '-', width: 18 },
           { header: 'No HP', accessor: (row: Siswa) => row.no_hp || '-', width: 15 },
           { header: 'Nama Ayah', accessor: (row: Siswa) => row.nama_ayah || '-', width: 25 },
+          { header: 'NIK Ayah', accessor: (row: Siswa) => row.nik_ayah || '-', width: 20 },
           { header: 'Nama Ibu', accessor: (row: Siswa) => row.nama_ibu || '-', width: 25 },
+          { header: 'NIK Ibu', accessor: (row: Siswa) => row.nik_ibu || '-', width: 20 },
+          { header: 'Nama Wali', accessor: (row: Siswa) => row.nama_wali || '-', width: 25 },
+          { header: 'NIK Wali', accessor: (row: Siswa) => (row as any).nik_wali || '-', width: 20 },
           { header: 'No RFID', accessor: (row: Siswa) => row.no_rfid || '-', width: 18 },
           { header: 'Status', accessor: (row: Siswa) => row.status, width: 10 }
         ], 'Laporan_Siswa', 'DATA MASTER PESERTA DIDIK');

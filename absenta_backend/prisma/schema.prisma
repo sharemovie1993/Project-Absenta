@@ -973,6 +973,7 @@ model Siswa {
   pendidikan_ibu      String?
   penghasilan_ibu     String?
   nama_wali           String?
+  nik_wali            String?
   hubungan_wali       String?
   pekerjaan_wali      String?
   penghasilan_wali    String?

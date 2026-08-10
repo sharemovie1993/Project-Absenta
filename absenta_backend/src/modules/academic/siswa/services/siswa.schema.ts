@@ -66,6 +66,7 @@ export const createSiswaSchema = z.object({
   pendidikan_ibu: coerceString,
   penghasilan_ibu: coerceString,
   nama_wali: coerceString,
+  nik_wali: coerceString,
   hubungan_wali: coerceString,
   pekerjaan_wali: coerceString,
   penghasilan_wali: coerceString,
