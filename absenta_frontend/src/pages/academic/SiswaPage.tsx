@@ -44,7 +44,7 @@ interface ImportConfig {
 
 // v1.0.2 - Fixed Excel Export Engine
 const SiswaPage: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user, refreshSubscription } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -309,10 +309,10 @@ const SiswaPage: React.FC = () => {
   }, [importConfig.yearId]);
 
   const handleOpenImport = useCallback(() => {
-    syncSubscription().catch(() => {});
+    refreshSubscription().catch(() => {});
     setImportConfig(prev => ({ ...prev, useDefault: true, scenario: 'REGULAR' }));
     setImportOpen(true);
-  }, [syncSubscription]);
+  }, [refreshSubscription]);
   
   const handleCloseImport = useCallback(() => setImportOpen(false), []);
 
