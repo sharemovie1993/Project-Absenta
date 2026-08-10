@@ -325,7 +325,10 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 <SectionCard title="Informasi Pribadi Siswa" icon={UserIcon}>
                     <DetailRow icon={<Hash size={16} />} label="NIS" value={watch('nis')} />
                     <DetailRow icon={<Hash size={16} />} label="NISN" value={watch('nisn') || '-'} />
+                    <DetailRow icon={<Hash size={16} />} label="NIK" value={watch('nik') || '-'} />
                     <DetailRow icon={<UserIcon size={16} />} label="Nama Lengkap" value={watch('nama_siswa')} />
+                    <DetailRow icon={<UserIcon size={16} />} label="Tinggi Badan" value={watch('tinggi_badan') ? `${watch('tinggi_badan')} cm` : '-'} />
+                    <DetailRow icon={<UserIcon size={16} />} label="Berat Badan" value={watch('berat_badan') ? `${watch('berat_badan')} kg` : '-'} />
                     <DetailRow icon={<Mail size={16} />} label="Email Pengguna (User)" value={watch('email') || '-'} />
                     <DetailRow icon={<Phone size={16} />} label="Nomor HP" value={watch('no_hp')} />
                     <DetailRow icon={<MapPin size={16} />} label="Tempat Lahir" value={watch('tempat_lahir')} />
