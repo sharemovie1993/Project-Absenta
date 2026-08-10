@@ -52,9 +52,9 @@ function getAllJsFiles(dirPath, arrayOfFiles) {
 }
 
 async function obfuscateBuild() {
-  const DISABLE_OBFUSCATE = process.env.ENABLE_OBFUSCATE !== 'true'; // Nonaktif sementara untuk Trial & Error
+  const ENABLE_OBFUSCATE = process.env.ENABLE_OBFUSCATE === 'true' || process.env.ENABLE_OBFUSCATE === 'Y' || process.env.ENABLE_OBFUSCATE === '1';
 
-  if (DISABLE_OBFUSCATE || process.env.NO_OBFUSCATE === 'true' || process.env.SKIP_OBFUSCATE === 'true') {
+  if (!ENABLE_OBFUSCATE || process.env.NO_OBFUSCATE === 'true' || process.env.SKIP_OBFUSCATE === 'true') {
     console.log('⏩ [PROTEKSI HKI] Melewati pengacakan kode / Obfuscation (Trial & Error Mode Active)');
     return;
   }
