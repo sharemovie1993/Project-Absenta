@@ -45,7 +45,8 @@ import {
   AlertCircle,
   ArrowRight,
   FolderOpen,
-  Camera
+  Camera,
+  Loader
 } from 'lucide-react';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { cn } from '../../../lib/utils';
@@ -72,6 +73,9 @@ import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
 import { SiswaProfileTab } from '../../academic/siswa/dashboard/SiswaProfileTab';
 import { SiswaAttendanceTab } from '../../academic/siswa/dashboard/SiswaAttendanceTab';
 import { SiswaPointsTab } from '../../academic/siswa/dashboard/SiswaPointsTab';
+import { PendingSiswaModule } from '../../../pages/attendance/ops/components/PendingSiswaModule';
+import { useGerbangAttendanceData } from '../../../hooks/attendance/useGerbangAttendanceData';
+import { useTenant } from '../../../hooks/useTenant';
 
 export const SiswaDashboard: React.FC = () => {
   const { user, tenantMode } = useAuthStore();
@@ -136,7 +140,20 @@ export const SiswaDashboard: React.FC = () => {
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [showPrestasiModal, setShowPrestasiModal] = useState(false);
   const [showKehadiranModal, setShowKehadiranModal] = useState(false);
+  const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
+
+  const { tenantId } = useTenant();
+  const {
+    notPresent: notPresentData = [],
+    notPresentLoading,
+    miniStats: miniStatsData = { masuk: 0, keluar: 0 },
+    refreshAll: refetchNotPresent,
+  } = useGerbangAttendanceData({
+    tenantId,
+    selectedKelasId: siswaProfile?.kelas_id || '',
+    enabled: showBelumAbsenModal,
+  });
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
@@ -819,7 +836,7 @@ export const SiswaDashboard: React.FC = () => {
 
                 <Button
                   size="sm"
-                  onClick={() => navigate('/attendance/ops?tab=manual')}
+                  onClick={() => setShowBelumAbsenModal(true)}
                   className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer"
                   title={`Cek Siswa Belum Absen & Presensi Manual (${currentClassName})`}
                 >
@@ -1780,6 +1797,86 @@ export const SiswaDashboard: React.FC = () => {
                   className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
                 >
                   Tutup Rincian
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL CHECKLIST SISWA BELUM ABSENSI (PETUGAS KELAS) */}
+      <AnimatePresence>
+        {showBelumAbsenModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowBelumAbsenModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Modal */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-rose-50/60 dark:bg-rose-950/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <AlertCircle size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      Daftar Siswa Belum Absensi
+                    </h3>
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-bold">
+                      Kelas {currentClassName} • Cek &amp; Presensi Manual Petugas Kelas
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBelumAbsenModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Body: PendingSiswaModule */}
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+                <Suspense fallback={
+                  <div className="py-20 text-center space-y-3">
+                    <Loader className="animate-spin mx-auto text-rose-500" size={32} />
+                    <p className="text-xs font-bold text-slate-400">Memuat daftar siswa belum absen...</p>
+                  </div>
+                }>
+                  <PendingSiswaModule
+                    notPresent={notPresentData}
+                    notPresentLoading={notPresentLoading}
+                    miniStats={miniStatsData}
+                    selectedKelasId={siswaProfile?.kelas_id || ''}
+                    setSelectedKelasId={() => {}}
+                    kelasOptions={[]}
+                    isPetugasSiswa={true}
+                    userRole="PETUGAS_KELAS"
+                    socketConnected={true}
+                    refreshData={refetchNotPresent}
+                  />
+                </Suspense>
+              </div>
+
+              {/* Footer Modal */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 flex items-center justify-between gap-3">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Presensi manual akan langsung tercatat secara real-time.
+                </span>
+                <button
+                  onClick={() => setShowBelumAbsenModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0"
+                >
+                  Selesai &amp; Tutup
                 </button>
               </div>
             </motion.div>
