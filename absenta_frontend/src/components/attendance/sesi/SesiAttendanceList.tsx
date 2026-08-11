@@ -96,7 +96,7 @@ const SesiAttendanceRow = React.memo(({
       className={cn(
         "grid items-center gap-2 px-4 py-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group",
         isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]",
-        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/70 rounded-xl my-0.5"
+        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20"
       )}
     >
       <div className="min-w-0">
