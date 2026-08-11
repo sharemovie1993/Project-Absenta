@@ -163,17 +163,10 @@ export const SesiCard = React.memo(function SesiCard({
             </span>
             <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : 'bg-amber-500 ring-2 ring-amber-500/20'}`} title={guruStatusText} />
           </div>
-
-          {/* Hadir */}
-          <div className="pt-0.5">
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-300 inline-block border border-slate-200/60 dark:border-slate-700/60">
-              Hadir: <span className="text-blue-600 dark:text-blue-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
-            </span>
-          </div>
         </div>
 
         {/* RIGHT COLUMN: Badges & Akses Cepat Vertikal */}
-        <div className="w-28 sm:w-32 shrink-0 flex flex-col items-end justify-between gap-1.5 pl-2.5 border-l border-slate-100 dark:border-slate-800/80">
+        <div className="w-28 sm:w-32 shrink-0 flex flex-col items-end justify-between gap-1 pl-2.5 border-l border-slate-100 dark:border-slate-800/80">
           {/* Status Badge */}
           <div className="shrink-0">
             {isLive && (
@@ -196,6 +189,13 @@ export const SesiCard = React.memo(function SesiCard({
                 MENDATANG
               </span>
             )}
+          </div>
+
+          {/* Hadir Count Badge */}
+          <div className="shrink-0">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-300 inline-block border border-slate-200/60 dark:border-slate-700/60">
+              Hadir: <span className="text-blue-600 dark:text-blue-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
+            </span>
           </div>
 
           {/* Non-KBM Activity Badge (if applicable) */}
