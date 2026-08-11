@@ -169,7 +169,7 @@ export const SesiCard = React.memo(function SesiCard({
           {/* Guru */}
           <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
             <span className="truncate font-medium text-slate-700 dark:text-slate-300">
-              Guru: {guruText}
+              {guruText}
             </span>
             <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
           </div>
