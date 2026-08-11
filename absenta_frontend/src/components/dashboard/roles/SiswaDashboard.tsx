@@ -1030,10 +1030,7 @@ export const SiswaDashboard: React.FC = () => {
               <TrendingUp size={20} className="hidden sm:block" />
             </div>
             <div className="space-y-0.5 min-w-0 w-full">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
-                <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded-md border border-blue-500/20">Klasemen &rsaquo;</span>
-              </div>
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {myRank.rank > 0 ? `#${myRank.rank}` : '-'}
               </div>
@@ -1071,10 +1068,7 @@ export const SiswaDashboard: React.FC = () => {
               <Trophy size={20} className="hidden sm:block" />
             </div>
             <div className="space-y-0.5 min-w-0 w-full">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
-                <span className="text-[9px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded-md border border-purple-500/20">Detail &rsaquo;</span>
-              </div>
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {prestasiList.length} Penghargaan
               </div>
