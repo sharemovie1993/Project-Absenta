@@ -1508,7 +1508,7 @@ export class RekapService {
     const totalPoin = dbPoin > 0 ? dbPoin : calculatedPoin;
 
     // 5. Construct Rincian Array
-    const rincian: Array<{ jenis_kegiatan: string; status: string; waktu_tap: string | null }> = [];
+    const rincian: Array<{ sesi_id?: string; id?: string; nama_mapel?: string; kode_mapel?: string; jenis_kegiatan: string; status: string; waktu_tap: string | null }> = [];
 
     gateTaps.forEach(tap => {
       rincian.push({

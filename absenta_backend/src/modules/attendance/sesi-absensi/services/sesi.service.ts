@@ -1389,9 +1389,17 @@ export class SesiService {
         tahun_pelajaran_id: true,
         semester_id: true,
         status: true,
-        status_guru: true,
-        waktu_tap_guru: true,
-        created_at: true
+        created_at: true,
+        AbsenGuru: {
+          take: 1,
+          select: {
+            id: true,
+            guru_id: true,
+            status: true,
+            waktu_tap: true,
+            catatan: true
+          }
+        }
       } 
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
@@ -1559,15 +1567,16 @@ export class SesiService {
       });
 
       if (guru) {
+        const absenG = (sesi as any).AbsenGuru?.[0];
         const teacherRec = {
           id: `guru-${guru.id}`,
           guru_id: guru.id,
           is_guru: true,
-          status: (sesi as any).status_guru || 'HADIR',
-          waktu_tap: (sesi as any).waktu_tap_guru || (sesi as any).created_at,
+          status: absenG?.status || 'HADIR',
+          waktu_tap: absenG?.waktu_tap || sesi.created_at,
           is_terlambat: false,
           Guru: guru,
-          catatan: null
+          catatan: absenG?.catatan || null
         };
         return [teacherRec, ...mergedList];
       }
