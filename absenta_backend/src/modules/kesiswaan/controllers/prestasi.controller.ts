@@ -118,17 +118,31 @@ export class PrestasiController {
    */
   static async getMyPrestasi(req: any, reply: any) {
     try {
-      const { tenant_id, siswa_id } = req.user!;
-      if (!siswa_id) {
-        return sendError(reply, 403, 'Akun ini tidak terhubung ke data siswa.');
+      const { tenant_id } = req.user!;
+      const userId = req.user?.id || req.user?.userId;
+
+      // Cari siswa berdasarkan user_id (siswa_id tidak ada di JWT payload)
+      const { prisma } = await import('../../../utils/prisma');
+      const siswa = await prisma.siswa.findFirst({
+        where: { tenant_id, user_id: userId },
+        select: { id: true },
+      });
+
+      if (!siswa) {
+        return reply.status(403).send({
+          success: false,
+          message: 'Akun ini tidak terhubung ke data siswa.',
+        });
       }
+
       const result = await PrestasiService.getAllPrestasiSiswa(tenant_id, {
         ...req.query,
-        siswa_id,
+        siswa_id: siswa.id,
+        limit: req.query.limit || 50,
       });
-      return sendResponse(reply, 200, true, 'Prestasi saya berhasil diambil', result);
+      return reply.status(200).send({ success: true, message: 'Prestasi saya berhasil diambil', data: result });
     } catch (error) {
-      return sendError(reply, 500, 'Gagal mengambil data prestasi', error);
+      return reply.status(500).send({ success: false, message: 'Gagal mengambil data prestasi', error });
     }
   }
 

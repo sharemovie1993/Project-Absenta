@@ -94,18 +94,29 @@ export class PelanggaranController {
    */
   static async getMyPelanggaran(req: any, reply: any) {
     try {
-      const { tenant_id, siswa_id } = req.user!;
-      if (!siswa_id) {
-        return sendError(reply, 403, 'Akun ini tidak terhubung ke data siswa.');
+      const { tenant_id } = req.user!;
+      const userId = req.user?.id || req.user?.userId;
+
+      const { prisma } = await import('../../../utils/prisma');
+      const siswa = await prisma.siswa.findFirst({
+        where: { tenant_id, user_id: userId },
+        select: { id: true },
+      });
+
+      if (!siswa) {
+        return reply.status(403).send({
+          success: false,
+          message: 'Akun ini tidak terhubung ke data siswa.',
+        });
       }
+
       const result = await PelanggaranService.getAll(
         tenant_id,
-        { ...req.query, siswa_id },
-        { type: 'siswa', siswa_id }
+        { ...req.query, siswa_id: siswa.id, limit: req.query.limit || 50 }
       );
-      return sendResponse(reply, 200, true, 'Data pelanggaran saya berhasil diambil', result);
+      return reply.status(200).send({ success: true, message: 'Data pelanggaran saya berhasil diambil', data: result });
     } catch (error) {
-      return sendError(reply, 500, 'Gagal mengambil data pelanggaran', error);
+      return reply.status(500).send({ success: false, message: 'Gagal mengambil data pelanggaran', error });
     }
   }
 }

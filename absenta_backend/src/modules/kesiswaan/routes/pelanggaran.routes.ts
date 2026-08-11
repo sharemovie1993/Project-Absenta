@@ -30,7 +30,9 @@ export async function pelanggaranRoutes(fastify: any) {
 
   // GET /kesiswaan/pelanggaran/me — Siswa melihat pelanggaran milik sendiri (tanpa capability)
   fastify.get('/me', {
-    preHandler: []
+    preHandler: [
+      organizationalScopeMiddleware,
+    ]
   }, PelanggaranController.getMyPelanggaran);
 
   fastify.get('/', { 
