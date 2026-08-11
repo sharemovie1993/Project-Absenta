@@ -152,7 +152,7 @@ export const SesiCard = React.memo(function SesiCard({
           </div>
 
           {/* Subject Title */}
-          <h3 className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white leading-snug tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <h3 className="text-[10px] sm:text-[11px] font-black text-slate-900 dark:text-white leading-tight tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {mapelText}
           </h3>
 
@@ -198,23 +198,14 @@ export const SesiCard = React.memo(function SesiCard({
             )}
           </div>
 
-          {/* Badges: Sistem/Manual */}
-          <div className="flex items-center gap-1 flex-wrap justify-end">
-            {jk && !jk.toUpperCase().includes('KBM') && jk !== '-' && (
+          {/* Non-KBM Activity Badge (if applicable) */}
+          {jk && !jk.toUpperCase().includes('KBM') && jk !== '-' && (
+            <div className="flex items-center gap-1 flex-wrap justify-end">
               <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
                 {jk}
               </span>
-            )}
-            {isOtomatis ? (
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-sky-500/15 text-[9px] font-extrabold text-sky-700 dark:text-sky-300 border border-sky-500/25">
-                <Cpu className="w-2.5 h-2.5" /> Sistem
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-[9px] font-extrabold text-amber-700 dark:text-amber-300 border border-amber-500/25">
-                <PencilLine className="w-2.5 h-2.5" /> Manual
-              </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Vertical Buttons Stack */}
           <div className="flex flex-col items-end gap-1 w-full pt-1">
