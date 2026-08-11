@@ -20,9 +20,36 @@ export interface SiswaAttendanceTabProps {
     month: number;
     daysInMonth: number;
     firstDayIndex: number;
-    days: Array<{ day: number; isCurrentMonth: boolean; dateStr: string; status: string | null; rec: any }>;
+    days: Array<{ day: number; dateIso: string; isCurrentMonth?: boolean; dateStr?: string; status: string | null; rec?: any }>;
   };
-  monthlyRecap: any;
+  todayIso?: string;
+  selectedDate?: string;
+  onSelectDate?: (dateIso: string) => void;
+  sessionAttendanceHistory?: Array<{
+    id: string;
+    date: string;
+    waktu: string;
+    status: string;
+    metode?: string;
+    keterangan?: string;
+    sesi?: string;
+    nama_guru?: string;
+    status_guru?: string;
+    waktu_guru?: string;
+    sesi_id?: string;
+  }>;
+  todayKbmSchedule?: Array<{
+    id: string;
+    kode: string;
+    mapel: string;
+    guru: string;
+    lokasi: string;
+    jam: string;
+    status: string;
+  }>;
+  isLoadingSchedule?: boolean;
+  isApiConnected?: boolean;
+  monthlyRecap?: any;
   dailyRecapRes?: any;
   kelasId?: string;
 }
@@ -33,6 +60,13 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   handleNextMonth,
   selectedMonthFormatted,
   calendarGridData,
+  todayIso = new Date().toISOString().slice(0, 10),
+  selectedDate = '',
+  onSelectDate,
+  sessionAttendanceHistory = [],
+  todayKbmSchedule = [],
+  isLoadingSchedule = false,
+  isApiConnected = true,
   monthlyRecap,
   dailyRecapRes,
   kelasId,
