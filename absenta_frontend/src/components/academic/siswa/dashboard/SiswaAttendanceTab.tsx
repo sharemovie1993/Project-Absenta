@@ -62,51 +62,51 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* ROW 1: KALENDER PRESENSI & HISTORIS SESI ABSENSI (TOP GRID)         */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-12 gap-5 sm:gap-6">
+      <div className="grid grid-cols-12 gap-4 sm:gap-5">
         
-        {/* LEFT COLUMN: Kalender Presensi (col-span-12 lg:col-span-7 xl:col-span-8) */}
-        <div className="col-span-12 lg:col-span-7 xl:col-span-8 p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
-          <div className="space-y-4">
+        {/* LEFT COLUMN: Kalender Presensi (col-span-12 lg:col-span-7 xl:col-span-7) */}
+        <div className="col-span-12 lg:col-span-7 xl:col-span-7 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 flex flex-col justify-between">
+          <div className="space-y-3">
             {/* Header & Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
               <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
                   Kalender Presensi {selectedMonthFormatted}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Rekap status kehadiran harian di gerbang &amp; sesi sekolah
                 </p>
               </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-                <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                   {attendanceRate}% Kehadiran
                 </span>
 
                 {/* Month Navigation Buttons */}
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+                <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl">
                   <button
                     type="button"
                     onClick={handlePrevMonth}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 shadow-xs transition-all cursor-pointer select-none"
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 shadow-xs transition-all cursor-pointer select-none"
                     title="Bulan Sebelumnya"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronLeft size={14} />
                   </button>
                   <button
                     type="button"
                     onClick={handleNextMonth}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 shadow-xs transition-all cursor-pointer select-none"
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 shadow-xs transition-all cursor-pointer select-none"
                     title="Bulan Berikutnya"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronRight size={14} />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Days Header */}
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               <div>Min</div>
               <div>Sen</div>
               <div>Sel</div>
@@ -116,10 +116,10 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
               <div>Sab</div>
             </div>
 
-            {/* Calendar Days Grid */}
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            {/* Calendar Days Grid (Compact & Sleek Sizing) */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
               {Array.from({ length: calendarGridData.firstDayIndex }).map((_, idx) => (
-                <div key={`pad-${idx}`} className="aspect-square rounded-2xl bg-slate-50/40 dark:bg-slate-950/20 border border-transparent opacity-30 pointer-events-none" />
+                <div key={`pad-${idx}`} className="h-9 sm:h-10 rounded-xl bg-slate-50/40 dark:bg-slate-950/20 border border-transparent opacity-30 pointer-events-none" />
               ))}
 
               {calendarGridData.days.map((item) => {
@@ -134,31 +134,31 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                   <div
                     key={item.dateIso}
                     className={cn(
-                      "aspect-square rounded-2xl p-1.5 sm:p-2 border flex flex-col items-center justify-between relative transition-all cursor-pointer group select-none",
+                      "h-9 sm:h-10 rounded-xl p-1 border flex flex-col items-center justify-center gap-0.5 relative transition-all cursor-pointer group select-none",
                       isToday
                         ? "bg-emerald-500/15 border-emerald-500/80 text-emerald-700 dark:text-emerald-300 shadow-sm ring-2 ring-emerald-500/20 font-black"
-                        : "bg-slate-50/90 dark:bg-slate-950/70 border-slate-200/80 dark:border-slate-800/80 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
+                        : "bg-slate-50/90 dark:bg-slate-950/70 border-slate-200/70 dark:border-slate-800/80 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
                     )}
                   >
                     <span className={cn(
-                      "text-xs sm:text-sm font-extrabold leading-none",
+                      "text-xs font-extrabold leading-none",
                       isToday && "text-emerald-600 dark:text-emerald-400 font-black"
                     )}>
                       {item.day}
                     </span>
 
-                    <div className="flex items-center justify-center h-2">
+                    <div className="flex items-center justify-center h-1.5">
                       {isHadir && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" title="Hadir" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" title="Hadir" />
                       )}
                       {isTerlambat && (
-                        <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-amber-500/30" title="Terlambat" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 ring-2 ring-amber-500/30" title="Terlambat" />
                       )}
                       {isIzinSakit && (
-                        <span className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-blue-500/30" title="Izin / Sakit" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 ring-2 ring-blue-500/30" title="Izin / Sakit" />
                       )}
                       {isAlpa && (
-                        <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-rose-500/30" title="Alpa" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-rose-500/30" title="Alpa" />
                       )}
                     </div>
                   </div>
@@ -168,28 +168,28 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
           </div>
 
           {/* Bottom Legend */}
-          <div className="flex items-center justify-center gap-4 sm:gap-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs font-bold text-slate-600 dark:text-slate-400 flex-wrap mt-2">
+          <div className="flex items-center justify-center gap-3.5 sm:gap-5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-400 flex-wrap mt-1">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>Hadir</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span>Terlambat</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
               <span>Izin / Sakit</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
               <span>Alpa</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Historis Sesi Absensi (col-span-12 lg:col-span-5 xl:col-span-4) */}
-        <div className="col-span-12 lg:col-span-5 xl:col-span-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
+        {/* RIGHT COLUMN: Historis Sesi Absensi (col-span-12 lg:col-span-5 xl:col-span-5) */}
+        <div className="col-span-12 lg:col-span-5 xl:col-span-5 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
           <div>
             <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
