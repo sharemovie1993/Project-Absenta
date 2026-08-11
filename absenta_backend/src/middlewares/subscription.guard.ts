@@ -63,7 +63,13 @@ export async function subscriptionGuard(
     path.startsWith('/api/menu') ||
     path.startsWith('/api/tenants') ||
     path.startsWith('/api/my-subscription') ||
-    path.startsWith('/api/me');
+    path.startsWith('/api/me') ||
+    path.includes('/backup') ||
+    path.includes('/backups') ||
+    path.includes('/restore') ||
+    path.includes('/purge-tenant') ||
+    path.includes('/send-logout-wa') ||
+    path.includes('/activity-logs');
 
   if (billingByFlag || billingByPath || whitelistedPaths) return;
 
