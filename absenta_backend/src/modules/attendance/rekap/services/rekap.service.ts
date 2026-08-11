@@ -1461,17 +1461,31 @@ export class RekapService {
           SesiAbsensi: sesiWhere
         },
         select: {
+          sesi_id: true,
           status: true,
           is_terlambat: true,
           poin_kehadiran: true,
           waktu_tap: true,
           SesiAbsensi: {
             select: {
+              id: true,
               waktu_mulai: true,
               jenis_kegiatan: true,
+              Guru: {
+                select: {
+                  nama_guru: true
+                }
+              },
               Mapel: {
                 select: {
-                  nama_mapel: true
+                  nama_mapel: true,
+                  kode_mapel: true
+                }
+              },
+              AbsenGuru: {
+                take: 1,
+                select: {
+                  status: true
                 }
               }
             }
@@ -1490,28 +1504,28 @@ export class RekapService {
       select: { status: true }
     });
 
-    // 4. Determine Status & Poin
-    let finalStatus = 'ALPA';
-    let isLate = false;
-    let dbPoin = 0;
+    const pklPoin = pklAbsen?.status === 'HADIR' ? ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU : 0;
 
+    // Gate Status Logic
     const gateStatus = gateTaps.find(t => t.status === 'HADIR')?.status || gateTaps[0]?.status;
     const gateLate = gateTaps.some(t => t.is_terlambat);
-    const gatePoin = gateTaps.reduce((acc, t) => acc + (t.poin_kehadiran || 0), 0);
-    
-    const pklStatus = pklAbsen?.status;
-    const pklPoin = pklAbsen?.status === 'HADIR' ? ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU : 0;
-    
-    const classPoinSum = classTaps.reduce((sum, c) => sum + (c.poin_kehadiran || 0), 0);
 
+    // Class Status Logic
     const classHasHadir = classTaps.some(c => c.status === 'HADIR' || c.status === 'TERLAMBAT');
     const classHasLate = classTaps.some(c => c.is_terlambat || c.status === 'TERLAMBAT');
     const classHasSakit = classTaps.some(c => c.status === 'SAKIT');
     const classHasIzin = classTaps.some(c => c.status === 'IZIN' || c.status === 'DISPEN');
     const classHasDispen = classTaps.some(c => c.status === 'DISPEN');
 
-    // Logika status hibrida (Gerbang + Kelas + PKL)
-    if (gateStatus === 'HADIR' || classHasHadir || pklStatus === 'HADIR') {
+    const gatePoin = gateTaps.reduce((acc, t) => acc + (t.poin_kehadiran || 0), 0);
+    const classPoinSum = classTaps.reduce((sum, c) => sum + (c.poin_kehadiran || 0), 0);
+    let dbPoin = 0;
+
+    // Combined Status
+    let finalStatus = 'ALPA';
+    let isLate = false;
+
+    if ((gateStatus === 'HADIR') || classHasHadir || (pklAbsen?.status === 'HADIR')) {
         finalStatus = 'HADIR';
         if (gateLate || classHasLate) isLate = true;
     } else if (gateStatus === 'SAKIT' || classHasSakit) {
@@ -1544,18 +1558,21 @@ export class RekapService {
     const totalPoin = dbPoin > 0 ? dbPoin : calculatedPoin;
 
     // 5. Construct Rincian Array
-    const rincian: Array<{ sesi_id?: string; id?: string; nama_mapel?: string; kode_mapel?: string; jenis_kegiatan: string; status: string; waktu_tap: string | null }> = [];
+    const rincian: Array<{ sesi_id?: string; sesi_absensi_id?: string; id?: string; nama_mapel?: string; nama_guru?: string | null; status_guru?: string; kode_mapel?: string; jenis_kegiatan: string; status: string; waktu_tap: string | null; waktu?: string | null }> = [];
 
     gateTaps.forEach(tap => {
       rincian.push({
         jenis_kegiatan: tap.arah === 'GERBANG_DATANG' ? 'Datang (Gerbang)' : 'Pulang (Gerbang)',
         status: tap.is_terlambat && tap.status === 'HADIR' ? 'TERLAMBAT' : tap.status,
-        waktu_tap: tap.waktu_tap ? tap.waktu_tap.toISOString() : null
+        waktu_tap: tap.waktu_tap ? tap.waktu_tap.toISOString() : null,
+        waktu: tap.waktu_tap ? tap.waktu_tap.toISOString() : null
       });
     });
 
     classTaps.forEach(tap => {
       const mapelName = tap.SesiAbsensi?.Mapel?.nama_mapel;
+      const guruName = tap.SesiAbsensi?.Guru?.nama_guru || null;
+      const statusGuru = tap.SesiAbsensi?.AbsenGuru?.[0]?.status || 'HADIR';
       const rawJenis = tap.SesiAbsensi?.jenis_kegiatan || 'KBM';
       const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
       const cleanJenis = isUUID(rawJenis) ? 'KBM' : rawJenis;
@@ -1564,12 +1581,17 @@ export class RekapService {
       const effectiveTime = tap.waktu_tap || tap.SesiAbsensi?.waktu_mulai;
 
       rincian.push({
-        sesi_id: tap.sesi_id,
+        id: tap.SesiAbsensi?.id || tap.sesi_id,
+        sesi_id: tap.sesi_id || tap.SesiAbsensi?.id,
+        sesi_absensi_id: tap.sesi_id || tap.SesiAbsensi?.id,
         nama_mapel: mapelName,
+        nama_guru: guruName,
+        status_guru: statusGuru,
         kode_mapel: tap.SesiAbsensi?.Mapel?.kode_mapel,
         jenis_kegiatan: activityName,
         status: tap.is_terlambat && tap.status === 'HADIR' ? 'TERLAMBAT' : tap.status,
-        waktu_tap: effectiveTime ? effectiveTime.toISOString() : null
+        waktu_tap: effectiveTime ? effectiveTime.toISOString() : null,
+        waktu: effectiveTime ? effectiveTime.toISOString() : null
       });
     });
 
