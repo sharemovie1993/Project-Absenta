@@ -152,7 +152,7 @@ export const SesiCard = React.memo(function SesiCard({
           </div>
 
           {/* Subject Title */}
-          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <h3 className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white leading-snug tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {mapelText}
           </h3>
 
