@@ -460,9 +460,9 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
               {[
                 { key: 'ALL', label: 'All', count: stats.total },
                 { key: 'HADIR', label: 'Hadir', count: stats.hadir },
-                ...(stats.terlambat > 0 ? [{ key: 'TERLAMBAT', label: 'Telat', count: stats.terlambat }] : []),
-                ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
                 { key: 'BELUM_TAP', label: 'Belum', count: stats.belum_tap },
+                ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
+                ...(stats.dispen > 0 ? [{ key: 'DISPEN', label: 'Dispen', count: stats.dispen }] : []),
                 { key: 'ALPA', label: 'Alpa', count: stats.alpa }
               ].map((tab) => {
                 const isActive = filterStatus === tab.key;
