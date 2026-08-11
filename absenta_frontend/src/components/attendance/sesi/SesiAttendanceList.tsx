@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Badge } from '../../ui';
 import { getAttendanceBadgeVariant } from '../../../utils/attendance/attendanceUiSelectors';
 import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
+import { getTimezone, formatLocalTimeFromISO, getVirtualDate, formatLocalDateTime } from '../../../utils/attendance/time';
 import { 
   BookOpen, CheckCircle2, Users, Search, 
   RefreshCw, ChevronLeft, ChevronRight, LayoutList, PlayCircle
@@ -93,15 +94,10 @@ const SesiAttendanceRow = React.memo(({
 
   const formatWaktuTapDisplay = (raw: string | null | undefined) => {
     if (!raw) return '--:--';
+    const formatted = formatLocalTimeFromISO(raw);
+    if (formatted) return formatted;
+
     const str = String(raw).trim();
-    if (str.includes('T') || str.includes('Z')) {
-      try {
-        const dt = new Date(str);
-        if (!isNaN(dt.getTime())) {
-          return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        }
-      } catch {}
-    }
     const match = str.match(/(\d{1,2})[:.](\d{2})/);
     if (match) {
       return `${match[1].padStart(2, '0')}:${match[2]}`;
@@ -469,15 +465,29 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     if (status === 'HADIR') {
       const jamMulaiStr = sesi?.jam_mulai || sesi?.JamPelajaran?.jam_mulai;
       if (jamMulaiStr) {
-        const now = new Date();
-        const [h, m] = jamMulaiStr.split(':').map(Number);
-        const targetTime = new Date();
-        targetTime.setHours(h || 0, m || 0, 0, 0);
-        isLate = now.getTime() > targetTime.getTime() + (sesi?.toleransi_menit || 5) * 60 * 1000;
+        const tenantNow = getVirtualDate();
+        const tenantTz = getTimezone();
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: tenantTz,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).formatToParts(tenantNow);
+        
+        const map: Record<string, string> = {};
+        parts.forEach(p => map[p.type] = p.value);
+        
+        const nowMinutes = parseInt(map.hour || '0', 10) * 60 + parseInt(map.minute || '0', 10);
+        const [startH, startM] = jamMulaiStr.split(':').map(Number);
+        const startMinutes = (startH || 0) * 60 + (startM || 0);
+        
+        isLate = nowMinutes > startMinutes + (sesi?.toleransi_menit || 5);
       }
     } else {
       isLate = false;
     }
+
+    const tenantNowISO = formatLocalDateTime(getVirtualDate());
 
     setLocalRecords(prev => 
       prev.map(r => {
@@ -488,7 +498,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
               status: status, 
               catatan: catatan !== undefined ? catatan : r.catatan,
               is_terlambat: isLate,
-              waktu_tap: status === 'BELUM_TAP' ? null : (r.waktu_tap || new Date().toISOString())
+              waktu_tap: status === 'BELUM_TAP' ? null : (r.waktu_tap || tenantNowISO)
             }
           : r;
       })
