@@ -353,31 +353,49 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       {/* 1. Compact Inline Summary */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
         <Users size={13} className="text-slate-400 shrink-0" />
-        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5">
+        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5 flex-1 min-w-0">
           <span className="text-emerald-600 font-black">✓ Hadir {stats.hadir}</span>
           {stats.terlambat > 0 && <span className="text-orange-500 font-black">⏱ Telat {stats.terlambat}</span>}
           {(stats.izin + stats.sakit) > 0 && <span className="text-blue-500 font-black">📋 Izin {stats.izin + stats.sakit}</span>}
           {stats.dispen > 0 && <span className="text-violet-500 font-black">🎓 Dispen {stats.dispen}</span>}
           {stats.alpa > 0 && <span className="text-rose-500 font-black">✗ Alpa {stats.alpa}</span>}
-          <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total} siswa</span>
+          <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total}</span>
         </p>
+        {/* SOP + Mode toggle — ultra minimal */}
+        {!isReportMode && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
+            <button
+              onClick={() => setIsSlideMode(!isSlideMode)}
+              title={isSlideMode ? 'Mode List' : 'Mode Slide (Fokus)'}
+              className={cn(
+                "p-1.5 rounded-lg transition-all",
+                isSlideMode
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+              )}
+            >
+              {isSlideMode ? <LayoutList size={14} /> : <PlayCircle size={14} />}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. Tiny Inline Journal Info */}
       {progres && (
-        <div className="bg-indigo-50/20 dark:bg-indigo-900/10 px-4 py-2 rounded-sm border border-indigo-100/30 dark:border-indigo-800/20 flex items-center justify-between gap-3">
+        <div className="bg-indigo-50/20 dark:bg-indigo-900/10 px-3 py-1.5 rounded-lg border border-indigo-100/30 dark:border-indigo-800/20 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <p className="text-[10px] font-bold text-indigo-900 dark:text-indigo-200 truncate">{progres.judul_materi}</p>
+            <BookOpen className="w-3 h-3 text-indigo-400 shrink-0" />
+            <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 truncate">{progres.judul_materi}</p>
           </div>
-          <span className="text-[9px] font-black text-indigo-600 shrink-0">{progres.pencapaian_persen}%</span>
+          <span className="text-[9px] font-black text-indigo-500 shrink-0">{progres.pencapaian_persen}%</span>
         </div>
       )}
 
       {/* 3. Content Section (Slide vs List) */}
       <AnimatePresence mode="wait">
         {isSlideMode && filteredRecords.length > 0 ? (
-          <motion.div 
+          <motion.div
             key="slide-mode"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -404,7 +422,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
                     { label: 'ALPA', val: 'ALPA', color: 'rose' }
                   ].map((btn) => {
                     const studentId = currentSlideSiswa.siswa_akademik_id || currentSlideSiswa.siswa_id || '';
-                    const isPending = updateAttendanceMutation.isPending && 
+                    const isPending = updateAttendanceMutation.isPending &&
                                      updateAttendanceMutation.variables?.siswaAkademikId === studentId;
                     const isActive = currentSlideSiswa.status === btn.val;
                     const isCurrentPending = isPending && updateAttendanceMutation.variables?.status === btn.val;
@@ -434,7 +452,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
               </div>
 
               <div className="flex items-center justify-between w-full pt-4 border-t border-gray-100 dark:border-gray-700">
-                <button 
+                <button
                   disabled={slideIndex === 0}
                   onClick={() => setSlideIndex(prev => prev - 1)}
                   className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-20 transition-colors"
@@ -443,8 +461,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
                 </button>
                 <div className="flex gap-1">
                   {filteredRecords.map((_, i) => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={cn(
                         "w-1.5 h-1.5 rounded-full transition-all",
                         i === slideIndex ? "bg-indigo-600 w-4" : "bg-gray-200 dark:bg-gray-700"
@@ -452,7 +470,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
                     />
                   )).slice(Math.max(0, slideIndex - 5), Math.min(filteredRecords.length, slideIndex + 5))}
                 </div>
-                <button 
+                <button
                   disabled={slideIndex === filteredRecords.length - 1}
                   onClick={() => setSlideIndex(prev => prev + 1)}
                   className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-20 transition-colors"
@@ -463,41 +481,41 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
             </div>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             key="list-mode"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="space-y-3"
+            className="space-y-2"
           >
-            <div className="flex items-center gap-2">
-               <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                  <input 
-                    type="text"
-                    placeholder="Cari..."
-                    className="w-full pl-9 pr-3 h-8 bg-gray-50/50 dark:bg-gray-900 border-none rounded-sm text-[11px] font-bold focus:ring-1 focus:ring-indigo-500"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-               </div>
-               
-               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scrollbar-hide">
-                  {['ALL', 'HADIR', 'BELUM_TAP', 'DISPEN', 'ALPA'].map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setFilterStatus(st)}
-                      className={cn(
-                        "px-3 h-8 rounded-sm text-[8px] font-black uppercase tracking-tighter transition-all shrink-0",
-                        filterStatus === st 
-                        ? 'bg-gray-900 text-white dark:bg-white dark:text-black' 
-                        : 'bg-gray-100 text-gray-500 dark:bg-gray-800 hover:bg-gray-200'
-                      )}
-                    >
-                      {st === 'ALL' ? 'Semua' : (st === 'BELUM_TAP' ? (isReportMode ? 'BELUM TAP' : 'Pending') : st)}
-                    </button>
-                  ))}
-               </div>
+            {/* Search + Filter — satu baris compact */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari siswa..."
+                  className="w-full pl-7 pr-2 h-7 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg text-[11px] font-semibold focus:ring-1 focus:ring-indigo-400 outline-none"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                {['ALL', 'HADIR', 'BELUM_TAP', 'ALPA'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setFilterStatus(st)}
+                    className={cn(
+                      "px-2.5 h-7 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all shrink-0",
+                      filterStatus === st
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    )}
+                  >
+                    {st === 'ALL' ? 'Semua' : st === 'BELUM_TAP' ? 'Belum' : st}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {!records || records.length === 0 ? (
