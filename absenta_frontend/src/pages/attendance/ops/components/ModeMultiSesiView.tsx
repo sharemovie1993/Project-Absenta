@@ -163,55 +163,40 @@ export default React.memo(function ModeMultiSesiView({
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
   useEffect(() => {
-    if (urlTabParam) {
+    if (urlTabParam && urlTabParam !== 'manual') {
       setActiveTab(urlTabParam);
-    } else if (isWaliKelasPos) {
-      setActiveTab('manual');
-    } else if (isPetugasSiswa && activeTab === 'gerbang') {
-      setActiveTab('manual');
+    } else if (isWaliKelasPos || isPetugasSiswa) {
+      setActiveTab('sesi');
     } else if (!canAccessInput && activeTab === 'gerbang') {
-      if (canAccessManual) setActiveTab('manual');
-      else if (canAccessSesi) setActiveTab('sesi');
+      if (canAccessSesi) setActiveTab('sesi');
     }
-  }, [urlTabParam, isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessManual, canAccessSesi, activeTab]);
+  }, [urlTabParam, isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessSesi, activeTab]);
 
   const tabOptions = useMemo((): TabOption[] => {
-    // 🔴 1. Jika secara eksplisit dipanggil dari menu "Belum Hadir" Wali Kelas (?tab=manual)
-    if (urlTabParam === 'manual') {
-      return [{ id: 'manual', label: 'Cek Manual', icon: ClipboardCheck }];
-    }
-
-    // 🔵 2. Jika secara eksplisit dipanggil dari menu "Absensi Kelas" Guru (?tab=sesi)
-    if (urlTabParam === 'sesi') {
+    // 🔵 1. Jika secara eksplisit dipanggil dari menu "Absensi Kelas" Guru (?tab=sesi) atau redirect dari ?tab=manual
+    if (urlTabParam === 'sesi' || urlTabParam === 'manual') {
       const opts: TabOption[] = [];
       opts.push({ id: 'sesi', label: 'Manajemen Sesi', icon: Activity });
-      if (canAccessManual) {
-        opts.push({ id: 'manual', label: 'Cek Manual', icon: ClipboardCheck });
-      }
       return opts;
     }
 
-    // 🟡 3. Jika dipanggil dari Petugas Kelas Siswa
+    // 🟡 2. Jika dipanggil dari Petugas Kelas Siswa
     if (isPetugasSiswa) {
       return [
-        { id: 'manual', label: 'Cek Manual', icon: ClipboardCheck },
         { id: 'sesi', label: 'Manajemen Sesi', icon: Activity },
       ];
     }
 
-    // 🟢 4. Peran Umum / Fallback (Gerbang, Satpam, Admin, Operator)
+    // 🟢 3. Peran Umum / Fallback (Gerbang, Satpam, Admin, Operator)
     const opts: TabOption[] = [];
     if (canAccessInput) {
       opts.push({ id: 'gerbang', label: 'Scanner Gerbang', icon: MapPin });
-    }
-    if (canAccessManual) {
-      opts.push({ id: 'manual', label: 'Cek Manual', icon: ClipboardCheck });
     }
     if (canAccessSesi) {
       opts.push({ id: 'sesi', label: 'Manajemen Sesi', icon: Activity });
     }
     return opts;
-  }, [urlTabParam, isPetugasSiswa, canAccessInput, canAccessManual, canAccessSesi]);
+  }, [urlTabParam, isPetugasSiswa, canAccessInput, canAccessSesi]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto px-2 sm:px-4 pb-20 overflow-visible">
