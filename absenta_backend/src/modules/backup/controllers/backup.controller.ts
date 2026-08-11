@@ -2,6 +2,7 @@ import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { Prisma } from '@prisma/client';
+import { getDynamicTenantModels } from '@/constants/backup.constants';
 import crypto from 'crypto';
 
 function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, tenantId: string): Record<string, any> {
@@ -244,33 +245,22 @@ export class BackupController {
 
       if (shouldClearExisting) {
         console.log(`[Backup Controller] Purging existing trial data for tenant: ${tenantId} (Preserving Admin User ${currentUserId || 'N/A'})...`);
-        const purgeModelsOrder = [
-          'AbsenSiswa', 'AbsenGuru', 'AbsenGerbangSiswa', 'AbsenGerbangGuru',
-          'NilaiSiswa', 'RaporSiswa', 'PelanggaranSiswa', 'SupervisiGuru',
-          'KonselingSiswa', 'PemanggilanOrangTua', 'HomeVisit', 'AsesmenSiswa', 'RujukanKasus', 'KasusBK',
-          'SiswaDocument', 'GuruDocument', 'PrestasiSiswa', 'SiswaFaceTemplate',
-          'JadwalKBM', 'GuruMapel', 'KelasMapel', 'JadwalPiketGuru', 'JadwalKegiatan', 'AnggotaKegiatanEskul',
-          'SiswaAkademik', 'GuruTimeOff', 'StrukturKurikulum',
-          'OrganizationalAssignment', 'OrganizationalCapability', 'OrganizationalPosition', 'PositionJobdesk',
-          'IzinKeluarSiswa', 'SiswaPkl', 'AbsensiPkl', 'HubinLamaran', 'HubinTracerStudy',
-          'SesiAbsensi', 'SesiGerbang', 'JenisKegiatanMaster', 'JenisPelanggaran', 'JenisPrestasi',
-          'Member', 'Saving', 'Loan', 'Sale', 'SavingTransaction',
-          'Siswa', 'Guru', 'OrangTua', 'OrangTuaSiswa',
-          'Kelas', 'Jurusan', 'ProgramKeahlian', 'Mapel',
-          'Semester', 'TahunPelajaran', 'Sekolah',
-          'WaAuthSession', 'WaChatLog'
-        ];
+        const purgeModelsOrder = getDynamicTenantModels().slice().reverse();
 
         for (const mName of purgeModelsOrder) {
-          // @ts-ignore
-          const pModel = prisma[mName];
+          if (mName === 'User') continue; // Handled separately with admin preservation
+          const pModel = (prisma as any)[mName];
           if (!pModel) continue;
           try {
             await pModel.deleteMany({ where: { tenant_id: tenantId } });
           } catch (e) {
             try {
               await pModel.deleteMany({ where: { tenantId: tenantId } });
-            } catch (_) {}
+            } catch (_) {
+              try {
+                await pModel.deleteMany({ where: { actor_tenant_id: tenantId } });
+              } catch (_) {}
+            }
           }
         }
 
@@ -450,33 +440,22 @@ export class BackupController {
       const { prisma } = await import('@/utils/prisma');
 
       console.log(`[Backup Controller] Manual purging tenant data for: ${tenantId} (Preserving Admin User ${currentUserId || 'N/A'})...`);
-      const purgeModelsOrder = [
-        'AbsenSiswa', 'AbsenGuru', 'AbsenGerbangSiswa', 'AbsenGerbangGuru',
-        'NilaiSiswa', 'RaporSiswa', 'PelanggaranSiswa', 'SupervisiGuru',
-        'KonselingSiswa', 'PemanggilanOrangTua', 'HomeVisit', 'AsesmenSiswa', 'RujukanKasus', 'KasusBK',
-        'SiswaDocument', 'GuruDocument', 'PrestasiSiswa', 'SiswaFaceTemplate',
-        'JadwalKBM', 'GuruMapel', 'KelasMapel', 'JadwalPiketGuru', 'JadwalKegiatan', 'AnggotaKegiatanEskul',
-        'SiswaAkademik', 'GuruTimeOff', 'StrukturKurikulum',
-        'OrganizationalAssignment', 'OrganizationalCapability', 'OrganizationalPosition', 'PositionJobdesk',
-        'IzinKeluarSiswa', 'SiswaPkl', 'AbsensiPkl', 'HubinLamaran', 'HubinTracerStudy',
-        'SesiAbsensi', 'SesiGerbang', 'JenisKegiatanMaster', 'JenisPelanggaran', 'JenisPrestasi',
-        'Member', 'Saving', 'Loan', 'Sale', 'SavingTransaction',
-        'Siswa', 'Guru', 'OrangTua', 'OrangTuaSiswa',
-        'Kelas', 'Jurusan', 'ProgramKeahlian', 'Mapel',
-        'Semester', 'TahunPelajaran', 'Sekolah',
-        'WaAuthSession', 'WaChatLog'
-      ];
+      const purgeModelsOrder = getDynamicTenantModels().slice().reverse();
 
       for (const mName of purgeModelsOrder) {
-        // @ts-ignore
-        const pModel = prisma[mName];
+        if (mName === 'User') continue;
+        const pModel = (prisma as any)[mName];
         if (!pModel) continue;
         try {
           await pModel.deleteMany({ where: { tenant_id: tenantId } });
         } catch (e) {
           try {
             await pModel.deleteMany({ where: { tenantId: tenantId } });
-          } catch (_) {}
+          } catch (_) {
+            try {
+              await pModel.deleteMany({ where: { actor_tenant_id: tenantId } });
+            } catch (_) {}
+          }
         }
       }
 
