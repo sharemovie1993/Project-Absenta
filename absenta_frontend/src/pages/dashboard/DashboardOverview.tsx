@@ -539,14 +539,20 @@ export default function DashboardOverview() {
 
       const hasPetugas = caps.includes('dashboard.view.petugas');
       const isAdmin = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+      const hasGuruProfile = !!user?.guru_profile?.id || !!(user as any)?.guru?.id;
 
-      // Prioritize operational views for non-admins to avoid cluttering their view with charts
-      if (isGerbangUser && availableViews.some(v => v.id === 'gerbang')) {
+      const savedView = user?.id ? localStorage.getItem(`preferred_view_${user.id}`) : null;
+
+      if (savedView && availableViews.some(v => v.id === savedView)) {
+        setActiveView(savedView);
+      } else if (isGerbangUser && availableViews.some(v => v.id === 'gerbang')) {
         setActiveView('gerbang');
       } else if (hasPetugas && !isAdmin && availableViews.some(v => v.id === 'petugas')) {
         setActiveView('petugas');
+      } else if (roleName === 'GURU' || (hasGuruProfile && !isAdmin)) {
+        setActiveView('unified_staff');
       } else {
-        // Fallback to the first item
+        // Fallback to the first available view
         setActiveView(availableViews[0].id);
       }
     }
@@ -711,15 +717,20 @@ export default function DashboardOverview() {
     const isGerbang = (user as any)?.position_codes?.includes('GERBANG');
     if (availableViews.length < 2 || isGerbang) return null;
     return (
-      <div className="flex space-x-2 mb-6 bg-gray-100 p-1 rounded-lg inline-flex overflow-x-auto max-w-full">
+      <div className="flex space-x-2 mb-6 bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl inline-flex overflow-x-auto max-w-full border border-slate-200/80 dark:border-slate-700 shadow-sm">
         {availableViews.map((view) => (
           <button
             key={view.id}
-            onClick={() => setActiveView(view.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+            onClick={() => {
+              setActiveView(view.id);
+              if (user?.id) {
+                localStorage.setItem(`preferred_view_${user.id}`, view.id);
+              }
+            }}
+            className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               (activeView === view.id || (activeView === 'default' && availableViews[0].id === view.id))
-                ? 'bg-white text-gray-900 shadow'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200/50 dark:border-slate-800'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
             }`}
           >
             {view.label}
