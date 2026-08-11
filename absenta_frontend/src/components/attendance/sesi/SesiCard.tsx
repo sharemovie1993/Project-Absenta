@@ -94,15 +94,15 @@ export const SesiCard = React.memo(function SesiCard({
 
   const containerClassName = (() => {
     if (isLive) {
-      return 'relative border rounded-xl p-3 sm:p-4 flex flex-col gap-3 bg-gradient-to-br from-indigo-50/70 to-white dark:from-indigo-900/20 dark:to-gray-800 dark:border-indigo-800 shadow-sm transition-all hover:shadow-md ring-1 ring-indigo-200/60';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border-blue-500/30 shadow-md shadow-blue-500/5 ring-1 ring-blue-500/20 backdrop-blur-md transition-all hover:shadow-lg';
     }
     if (isFinished) {
-      return 'relative border rounded-xl p-3 sm:p-4 flex flex-col gap-3 bg-emerald-50/50 dark:bg-emerald-900/10 dark:border-emerald-800/60 shadow-sm transition-all hover:shadow-md';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800/90 shadow-xs transition-all hover:shadow-md hover:border-emerald-500/40';
     }
     if (isOverdue) {
-      return 'relative border rounded-xl p-3 sm:p-4 flex flex-col gap-3 bg-gray-50/70 dark:bg-gray-900/20 dark:border-gray-700 shadow-sm transition-all hover:shadow-md opacity-80';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-rose-500/30';
     }
-    return 'relative border rounded-xl p-3 sm:p-4 flex flex-col gap-3 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-sm transition-all hover:shadow-md';
+    return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-blue-500/40';
   })();
 
   const mapelText = (() => {
@@ -129,96 +129,88 @@ export const SesiCard = React.memo(function SesiCard({
   const stGuru = String(guruStatusText || '').toUpperCase();
   const isGuruHadir = !stGuru.includes('BELUM') && (stGuru === 'HADIR' || stGuru.includes('HADIR') || stGuru === 'TEPAT_WAKTU');
 
-  // Suggested Logic: What should the user do next?
-  const suggestedAction = (() => {
-    if (isFinished) return null;
-    if (isLive) {
-      if (!isGuruHadir && showScanGuru) return { label: 'Konfirmasi Guru', color: 'indigo' };
-      if (showScanSiswa) return { label: 'Input Presensi', color: 'emerald' };
-    }
-    return null;
-  })();
-
   return (
     <div 
-      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all rounded-xl sm:rounded-2xl border p-2.5 sm:p-3.5`}
+      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all`}
       onClick={onScan}
     >
       {isLive && (
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 pointer-events-none" />
       )}
       
-      <div className="flex flex-row items-stretch justify-between gap-2 relative z-10">
+      <div className="flex flex-row items-stretch justify-between gap-2.5 relative z-10">
         {/* LEFT COLUMN: Informasional Sesi */}
-        <div className="flex-1 space-y-1 min-w-0 pr-1">
+        <div className="flex-1 space-y-1.5 min-w-0 pr-1">
           {/* Header Tag */}
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
               {kelasText}
             </span>
-            <span className="text-[10px] font-mono text-slate-400 font-bold">
+            <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 font-bold">
               • {waktuMulaiText} – {waktuSelesaiText}
             </span>
           </div>
 
           {/* Subject Title */}
-          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight">
+          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {mapelText}
           </h3>
 
           {/* Guru */}
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-            <span className="truncate font-medium text-slate-700 dark:text-slate-300">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300">
+            <span className="truncate font-semibold text-slate-700 dark:text-slate-200">
               {guruText}
             </span>
-            <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
+            <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : 'bg-amber-500 ring-2 ring-amber-500/20'}`} title={guruStatusText} />
           </div>
 
           {/* Hadir */}
-          <div className="text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-300 pt-0.5">
-            Hadir: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
+          <div className="pt-0.5">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-300 inline-block border border-slate-200/60 dark:border-slate-700/60">
+              Hadir: <span className="text-blue-600 dark:text-blue-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
+            </span>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Badges & Akses Cepat Vertikal */}
-        <div className="w-28 sm:w-32 shrink-0 flex flex-col items-end justify-between gap-1 pl-2 border-l border-slate-100 dark:border-slate-800/80">
+        <div className="w-28 sm:w-32 shrink-0 flex flex-col items-end justify-between gap-1.5 pl-2.5 border-l border-slate-100 dark:border-slate-800/80">
           {/* Status Badge */}
           <div className="shrink-0">
             {isLive && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 animate-pulse">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-xs shadow-blue-600/30 animate-pulse">
                 LIVE
               </span>
             )}
             {isFinished && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                 SELESAI
               </span>
             )}
             {isOverdue && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                 TERLEWAT
               </span>
             )}
             {isUpcoming && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
                 MENDATANG
               </span>
             )}
           </div>
 
-          {/* Badges: Sistem/Manual (KBM badge removed for cleaner look) */}
+          {/* Badges: Sistem/Manual */}
           <div className="flex items-center gap-1 flex-wrap justify-end">
             {jk && !jk.toUpperCase().includes('KBM') && jk !== '-' && (
-              <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
                 {jk}
               </span>
             )}
             {isOtomatis ? (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-blue-500/10 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-sky-500/15 text-[9px] font-extrabold text-sky-700 dark:text-sky-300 border border-sky-500/25">
                 <Cpu className="w-2.5 h-2.5" /> Sistem
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/10 text-[9px] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-[9px] font-extrabold text-amber-700 dark:text-amber-300 border border-amber-500/25">
                 <PencilLine className="w-2.5 h-2.5" /> Manual
               </span>
             )}
@@ -230,9 +222,9 @@ export const SesiCard = React.memo(function SesiCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenJournal?.(); }}
-                className="w-full inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 text-[9px] font-black border border-blue-200 dark:border-blue-800/60 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-extrabold shadow-xs hover:shadow-md transition-all cursor-pointer"
               >
-                <BookOpen size={10} />
+                <BookOpen size={11} />
                 <span>Jurnal</span>
               </button>
             )}
@@ -242,7 +234,7 @@ export const SesiCard = React.memo(function SesiCard({
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button
                     type="button"
-                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
                     title="Hapus Sesi"
                   >
@@ -250,7 +242,7 @@ export const SesiCard = React.memo(function SesiCard({
                   </button>
                   <button
                     type="button"
-                    className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                    className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
                     onClick={(e) => { e.stopPropagation(); onFinish(); }}
                     title="Selesaikan Sesi"
                   >
@@ -262,10 +254,10 @@ export const SesiCard = React.memo(function SesiCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                className={`w-full px-2 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer text-center ${
+                className={`w-full px-2.5 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer text-center ${
                   isExpanded 
                     ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100' 
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-600/20'
                 }`}
               >
                 {isExpanded ? 'Tutup' : 'Log Hadir'}
