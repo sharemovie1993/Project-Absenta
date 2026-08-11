@@ -776,7 +776,7 @@ export const SiswaDashboard: React.FC = () => {
 
             {/* Name, Class Badge, NISN & Jurusan */}
             <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
                   {studentName}
                 </h1>
@@ -793,20 +793,24 @@ export const SiswaDashboard: React.FC = () => {
 
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
                 <span>NISN: {currentNisn}</span>
-                <span>•</span>
-                <span>Jurusan: {currentJurusan}</span>
+                {currentJurusan && currentJurusan !== '-' && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <span>{currentJurusan}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
 
-          {/* Quick Action Buttons on Right */}
+          {/* Quick Action Buttons on Right (Streamlined Row) */}
           <div className="flex items-center gap-2 flex-wrap shrink-0 self-stretch sm:self-auto justify-start sm:justify-end">
             {isPetugasKelas && (
               <>
                 <Button
                   size="sm"
                   onClick={() => navigate('/attendance/ops?tab=sesi')}
-                  className="h-10 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 shadow-md shadow-amber-500/20 border-none cursor-pointer"
+                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 shadow-md shadow-amber-500/20 border-none cursor-pointer"
                   title={`Presensi Kelas Saya (${currentClassName})`}
                 >
                   <CheckCircle2 size={15} />
@@ -816,7 +820,7 @@ export const SiswaDashboard: React.FC = () => {
                 <Button
                   size="sm"
                   onClick={() => navigate('/attendance/ops?tab=jurnal')}
-                  className="h-10 px-3.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700/80 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700/80 flex items-center gap-1.5 shadow-sm cursor-pointer"
                   title="Input Jurnal KBM Kelas"
                 >
                   <FileText size={15} />
@@ -828,10 +832,11 @@ export const SiswaDashboard: React.FC = () => {
             <Button
               size="sm"
               onClick={() => setShowDigitalCardModal(true)}
-              className="h-10 px-4 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-2 shadow-md shadow-blue-600/20 cursor-pointer"
+              className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
+              title="Buka Kartu Pelajar Digital"
             >
-              <QrCode size={16} />
-              <span>Buka Kartu Pelajar Digital</span>
+              <QrCode size={15} />
+              <span>Kartu Digital</span>
             </Button>
           </div>
         </div>
