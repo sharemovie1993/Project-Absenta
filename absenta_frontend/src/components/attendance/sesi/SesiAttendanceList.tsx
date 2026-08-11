@@ -455,8 +455,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
             exit={{ opacity: 0 }}
             className="space-y-2.5"
           >
-            {/* Status Tabs dengan Badge Count — tanpa search bar */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
+            {/* Status Tabs dengan Badge Count — 1 baris fit tanpa scroll */}
+            <div className="grid grid-flow-col auto-cols-fr w-full gap-1">
               {[
                 { key: 'ALL', label: 'All', count: stats.total },
                 { key: 'HADIR', label: 'Hadir', count: stats.hadir },
@@ -471,15 +471,15 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
                     key={tab.key}
                     onClick={() => setFilterStatus(tab.key)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 h-7 rounded-lg text-[10px] font-bold transition-all shrink-0 border",
+                      "flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2 h-7 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border min-w-0 w-full",
                       isActive
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                         : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-slate-100"
                     )}
                   >
-                    <span>{tab.label}</span>
+                    <span className="truncate">{tab.label}</span>
                     <span className={cn(
-                      "px-1.5 py-0.2 rounded-full text-[9px] font-extrabold",
+                      "px-1 sm:px-1.5 py-0.2 rounded-full text-[9px] font-extrabold shrink-0",
                       isActive
                         ? "bg-white/20 text-white"
                         : "bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
