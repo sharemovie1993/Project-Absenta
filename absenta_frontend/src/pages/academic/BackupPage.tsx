@@ -320,6 +320,9 @@ export default function BackupPage() {
       const res = await purgeTenantData();
       if (res.success) {
         toast.success(res.message || 'Data sekolah berhasil dikosongkan secara manual!');
+        const auditPayload = (res as any)?.audit ? (res as any).audit : (res as any)?.details || res;
+        setImportResult(auditPayload as ImportResultDetail);
+        setShowResultModal(true);
         setImportFile(null);
         setPreviewStats(null);
         setParsedData(null);
