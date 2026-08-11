@@ -1,7 +1,10 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, User, Clock, MapPin, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, User, Clock, MapPin, CheckCircle2, Calendar, AlertCircle, Eye } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { UnconnectedBadge } from '@/components/ui';
+import { UnconnectedBadge, Modal } from '@/components/ui';
+import { getSesiAbsenSiswa } from '@/api/attendanceGerbang.api';
+import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
   gamification: {
@@ -66,6 +69,24 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   isApiConnected = true,
 }) => {
   const attendanceRate = gamification?.attendanceRate ?? 100;
+
+  // Read-Only Session Attendance Modal state for non-petugas students
+  const [selectedSesiModal, setSelectedSesiModal] = useState<{
+    isOpen: boolean;
+    sesiId?: string;
+    sesiTitle?: string;
+    guruName?: string;
+  }>({ isOpen: false });
+
+  const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
+    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
+    queryFn: async () => {
+      if (!selectedSesiModal.sesiId) return [];
+      const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
+      return res?.data || [];
+    },
+    enabled: Boolean(selectedSesiModal.isOpen && selectedSesiModal.sesiId)
+  });
 
   const formattedSelectedDateText = React.useMemo(() => {
     if (!selectedDate) return 'Hari Ini';
@@ -242,12 +263,27 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                      onClick={() => {
+                        const targetId = (item as any).sesi_id || (item as any).sesi_absensi_id || item.id;
+                        setSelectedSesiModal({
+                          isOpen: true,
+                          sesiId: targetId,
+                          sesiTitle: item.sesi || 'Sesi KBM',
+                          guruName: item.nama_guru
+                        });
+                      }}
+                      className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md cursor-pointer transition-all group"
+                      title="Klik untuk melihat rincian presensi teman sekelas"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 truncate max-w-[220px]">
-                          {item.sesi}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 truncate max-w-[200px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {item.sesi}
+                          </span>
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
+                            <Eye size={11} /> Lihat Presensi
+                          </span>
+                        </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           {item.metode && item.metode !== '-' && (
@@ -402,6 +438,33 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* Read-Only Session Attendance Modal for Students */}
+      <Modal
+        isOpen={selectedSesiModal.isOpen}
+        onClose={() => setSelectedSesiModal({ isOpen: false })}
+        title={`Presensi Kelas — ${selectedSesiModal.sesiTitle || 'Sesi KBM'}`}
+        size="5xl"
+      >
+        <div className="p-2 space-y-3">
+          {isLoadingSesiDetails ? (
+            <div className="py-12 text-center space-y-2">
+              <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
+            </div>
+          ) : (
+            <SesiAttendanceList
+              records={(sesiAttendanceData as any) || []}
+              sesi={{
+                id: selectedSesiModal.sesiId || '',
+                status: 'SELESAI',
+                nama_guru: selectedSesiModal.guruName
+              }}
+              isReportMode={true}
+            />
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
