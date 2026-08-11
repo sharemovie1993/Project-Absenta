@@ -51,6 +51,8 @@ export interface SesiDetail {
   status: 'BERLANGSUNG' | 'SELESAI';
   guru_id?: string;
   nama_guru?: string;
+  guru_status?: string;
+  waktu_tap_guru?: string | null;
   Guru?: GuruDetail;
   JamPelajaran?: {
     Guru?: GuruDetail;
@@ -271,8 +273,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
         id: `guru-${gId}`,
         guru_id: gId,
         is_guru: true,
-        status: savedGuruData?.status || 'BELUM_TAP',
-        waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : null,
+        status: savedGuruData?.status || sesi?.guru_status || 'HADIR',
+        waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : (sesi?.waktu_tap_guru ?? null),
         is_terlambat: savedGuruData?.is_terlambat || false,
         Guru: guruDetail,
         catatan: savedGuruData?.catatan !== undefined ? savedGuruData.catatan : null

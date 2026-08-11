@@ -76,6 +76,8 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     sesiId?: string;
     sesiTitle?: string;
     guruName?: string;
+    guruStatus?: string;
+    guruWaktuTap?: string;
     waktuTap?: string;
   }>({ isOpen: false });
 
@@ -302,7 +304,9 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                           isOpen: true,
                           sesiId: targetId,
                           sesiTitle: item.sesi || 'Sesi KBM',
-                          guruName: item.nama_guru,
+                          guruName: item.nama_guru || (item as any).guru || 'Guru Pengajar',
+                          guruStatus: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'HADIR'),
+                          guruWaktuTap: item.waktu,
                           waktuTap: item.waktu
                         });
                       }}
@@ -492,7 +496,13 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
               sesi={{
                 id: selectedSesiModal.sesiId || '',
                 status: 'SELESAI',
-                nama_guru: selectedSesiModal.guruName
+                nama_guru: selectedSesiModal.guruName || 'Guru Pengajar',
+                guru_status: selectedSesiModal.guruStatus || 'HADIR',
+                waktu_tap_guru: selectedSesiModal.guruWaktuTap || selectedSesiModal.waktuTap,
+                Guru: {
+                  id: 'guru-sesi-selected',
+                  nama_guru: selectedSesiModal.guruName || 'Guru Pengajar'
+                }
               }}
               isReportMode={true}
             />
