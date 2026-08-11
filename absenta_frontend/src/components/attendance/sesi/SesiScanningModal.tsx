@@ -36,21 +36,21 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   const [isSlideMode, setIsSlideMode] = useState(false);
 
   const modalTitle = (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-base font-semibold text-gray-900 dark:text-white">Tap/Scan</span>
+    <div className="flex items-center gap-2 whitespace-nowrap">
+      <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white shrink-0">Tap/Scan</span>
       <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
       <button
         onClick={() => setIsSlideMode(prev => !prev)}
         className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
+          "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
           isSlideMode
             ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
         )}
         title={isSlideMode ? "Kembali ke Mode List" : "Buka Mode Slideshow"}
       >
         {isSlideMode ? <LayoutList size={13} /> : <PlayCircle size={13} />}
-        <span className="text-[11px] font-semibold">{isSlideMode ? "List" : "Slideshow"}</span>
+        <span className="text-[11px] font-bold">{isSlideMode ? "List" : "Slideshow"}</span>
       </button>
     </div>
   );
