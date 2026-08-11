@@ -358,13 +358,32 @@ export class JadwalKBMController {
       });
     }
 
-    // 3c. Debug check: If still 0, log all schedules for this class in DB to diagnose
-    if (jadwal.length === 0) {
+    // 3c. Fallback: Case-insensitive / Enum-mode Hari matching if 0
+    if (jadwal.length === 0 && ctx.kelasId) {
+      console.log(`[DEBUG listMySchedule] Querying all class schedules for kelas_id: ${ctx.kelasId}`);
       const allClassSchedules = await jadwalKBMDb.jadwalKBM.findMany({
         where: { tenant_id: ctx.tenantId, kelas_id: ctx.kelasId },
-        select: { id: true, hari: true, jam_mulai: true, jam_selesai: true, tahun_pelajaran_id: true, semester_id: true },
+        include: {
+          Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+          Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+        orderBy: [{ jam_mulai: 'asc' }],
       });
-      console.log(`[DEBUG listMySchedule] Total schedules in DB for kelas_id ${ctx.kelasId}:`, allClassSchedules.length, allClassSchedules);
+
+      console.log(`📊 [DEBUG listMySchedule] All schedules in DB for kelas_id ${ctx.kelasId} (count: ${allClassSchedules.length}):`, 
+        allClassSchedules.map((s: any) => ({ id: s.id, hari: s.hari, mapel: s.Mapel?.nama_mapel, jam: `${s.jam_mulai}-${s.jam_selesai}` }))
+      );
+
+      // Filter in JS for targetHari case-insensitively
+      const matchedByDay = allClassSchedules.filter((s: any) => 
+        String(s.hari || '').toUpperCase() === String(targetHari || '').toUpperCase()
+      );
+
+      if (matchedByDay.length > 0) {
+        console.log(`🎯 [DEBUG listMySchedule] Matched ${matchedByDay.length} schedules in JS memory filter for day ${targetHari}`);
+        jadwal = matchedByDay;
+      }
     } else {
       console.log(`[DEBUG listMySchedule] Found ${jadwal.length} schedules for ${targetHari}`);
     }
