@@ -569,10 +569,10 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         featureName="Operasional Presensi Realtime"
         description="Kelola pencatatan kehadiran siswa di gerbang atau kelas secara langsung dengan validasi otomatis."
       >
-        <div className="space-y-2 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-6 pb-20 sm:pb-0">
 
-          {/* 2. SIMPLIFIED TOOLBAR & ACTIONS */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-3 bg-white dark:bg-slate-900/80 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs backdrop-blur-md">
+          {/* 2. SIMPLIFIED TOOLBAR – Desktop/Tablet only (hidden on mobile HP) */}
+          <div className="hidden sm:flex flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900/80 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs backdrop-blur-md">
             {/* Left: Sleek Date Navigator */}
             <SesiFilterPanel
               tanggal={tanggal}
@@ -592,7 +592,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                   type="button"
                   onClick={handleGenerateFromTemplate} 
                   disabled={generatingTemplate}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all font-bold text-[11px] sm:text-xs shadow-2xs disabled:opacity-50"
+                  className="flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all font-bold text-xs shadow-2xs disabled:opacity-50"
                 >
                   <RefreshCw size={13} className={generatingTemplate ? 'animate-spin' : ''} />
                   <span>{generatingTemplate ? 'Sinkronisasi...' : 'Tarik Sesi Jadwal'}</span>
@@ -602,10 +602,50 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 <button 
                   type="button"
                   onClick={() => setShowCreateSessionForm(true)}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-[11px] sm:text-xs shadow-md shadow-indigo-600/20 transition-all"
+                  className="flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all"
                 >
                   <Plus size={14} />
                   <span>Buat Sesi Manual</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* MOBILE BOTTOM NAV BAR (HP only) – sticky bottom */}
+          <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shadow-2xl">
+            {/* Date Navigator */}
+            <SesiFilterPanel
+              tanggal={tanggal}
+              onChangeTanggal={setTanggal}
+              selectedKelasId={selectedKelasId}
+              onChangeKelas={setSelectedKelasId}
+              kelasOptions={kelasOptions}
+              isGuru={isPetugasSiswa}
+              kelasLabel={getKelasLabel}
+              onSetToday={() => setTanggal(toLocalDate())}
+            />
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canCreateSession && tanggal === toLocalDate() && (
+                <button
+                  type="button"
+                  onClick={handleGenerateFromTemplate}
+                  disabled={generatingTemplate}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-bold text-[11px] disabled:opacity-50 transition-all"
+                >
+                  <RefreshCw size={13} className={generatingTemplate ? 'animate-spin' : ''} />
+                  <span>{generatingTemplate ? 'Sinkron...' : 'Tarik'}</span>
+                </button>
+              )}
+              {canCreateSession && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSessionForm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-[11px] shadow-md shadow-blue-600/25 transition-all"
+                >
+                  <Plus size={14} />
+                  <span>Buat Sesi</span>
                 </button>
               )}
             </div>
