@@ -264,9 +264,24 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     setLocalRecords(preparedRecords);
   }, [preparedRecords]);
 
-  // Mutation for updating student attendance with advanced React Query Optimistic Updates (Fase 3)
+  // Mutation for updating student OR teacher attendance with advanced React Query Optimistic Updates
   const updateAttendanceMutation = useMutation({
     mutationFn: async ({ siswaAkademikId, status, catatan }: { siswaAkademikId: string, status: string, catatan?: string }) => {
+      const targetRecord = localRecords.find(r => 
+        (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId
+      );
+      const isGuruTarget = targetRecord?.is_guru || Boolean(targetRecord?.Guru) || Boolean(targetRecord?.guru_id) || (targetRecord as any)?._type === 'guru';
+
+      if (isGuruTarget) {
+        const guruId = targetRecord?.guru_id || targetRecord?.Guru?.id || siswaAkademikId.replace('guru-', '');
+        return requestWithFallback('patch', `/attendance/sesi-absensi/${sesi?.id}/absen-guru/${guruId}`, {
+          data: {
+            status: status,
+            catatan: catatan
+          }
+        });
+      }
+
       return requestWithFallback('post', `/attendance/sesi-absensi/${sesi?.id}/tap-siswa`, {
         data: {
           siswa_akademik_id: siswaAkademikId,
@@ -287,7 +302,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
       // Optimistically update React Query Cache
       if (previousQueryRes?.data) {
         const optimisticQueryData = previousQueryRes.data.map((rec: SesiAttendanceRecord) => {
-          const currentId = rec.siswa_akademik_id || rec.siswa_id;
+          const currentId = rec.siswa_akademik_id || rec.siswa_id || rec.guru_id || rec.id;
           return currentId === siswaAkademikId 
             ? { ...rec, status: status, waktu_tap: status === 'HADIR' ? new Date().toISOString() : null }
             : rec;
