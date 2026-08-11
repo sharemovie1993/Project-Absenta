@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { getSesiAbsenSiswa, getRekapBulananKelasMe, getRekapHarianKelas } from '@/api/attendanceGerbang.api';
+import { getSesiAbsenSiswa } from '@/api/attendanceGerbang.api';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
@@ -86,95 +86,21 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     waktuTap?: string;
   }>({ isOpen: false });
 
+  // Single Source of Truth (SSOT): Purely query real session attendance records from authoritative endpoint
   const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
-    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId, selectedDate, kelasId],
+    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
     queryFn: async () => {
-      if (!selectedSesiModal.sesiId) return [];
-
-      // 1. Try real session detail API first if valid ID
-      if (!selectedSesiModal.sesiId.startsWith('rincian-')) {
-        try {
-          const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
-          if (res?.data && res.data.length > 0) {
-            return res.data;
-          }
-        } catch {}
+      if (!selectedSesiModal.sesiId || selectedSesiModal.sesiId.startsWith('rincian-') || selectedSesiModal.sesiId.startsWith('session-')) {
+        return [];
       }
-
-      // 2. Fetch actual daily class attendance logs if kelasId available so every student's real tap time is displayed
-      const userNameClean = (user?.name || (user as any)?.nama_siswa || (user as any)?.nama || '').trim().toLowerCase();
-      const targetKelasId = kelasId || (user as any)?.kelas_id;
-      const targetDate = selectedDate || todayIso;
-
-      if (targetKelasId) {
-        try {
-          const harianRes = await getRekapHarianKelas(targetKelasId, { tanggal: targetDate });
-          const list = harianRes?.data || [];
-
-          if (list.length > 0) {
-            return list.map((st: any, idx: number) => {
-              const currentStId = st.siswa_id || st.id || `st-${idx}`;
-              const studentNameClean = (st.nama_siswa || st.nama || '').trim().toLowerCase();
-              const isMe = Boolean(
-                (mySiswaId && (currentStId === mySiswaId || st.id === mySiswaId)) ||
-                (userNameClean.length >= 3 && studentNameClean.length >= 3 && studentNameClean === userNameClean)
-              );
-
-              // Use student's real tap time from daily log, fallback to selectedSesiModal.waktuTap ONLY for logged-in user
-              const realTapTime = st.waktu_tap || st.waktu_masuk || st.waktu || (isMe ? selectedSesiModal.waktuTap : null);
-
-              return {
-                id: currentStId,
-                siswa_id: currentStId,
-                siswa_akademik_id: currentStId,
-                status: st.status || (isMe ? 'HADIR' : 'BELUM_TAP'),
-                waktu_tap: realTapTime,
-                Siswa: {
-                  id: currentStId,
-                  nama_siswa: st.nama_siswa || st.nama || 'Siswa Kelas',
-                  nis: st.nis || '-'
-                }
-              };
-            });
-          }
-        } catch {}
-      }
-
-      // 3. Fallback: Fetch class roster using getRekapBulananKelasMe if daily logs pending
       try {
-        const currentBulan = selectedDate ? selectedDate.slice(0, 7) : new Date().toISOString().slice(0, 7);
-        const kelasRes = await getRekapBulananKelasMe({ bulan: currentBulan });
-        const students = kelasRes?.data?.students || [];
-
-        if (students.length > 0) {
-          return students.map((st: any, idx: number) => {
-            const currentStId = st.id || st.siswa_id;
-            const studentNameClean = (st.nama || st.nama_siswa || '').trim().toLowerCase();
-
-            const isMe = Boolean(
-              (mySiswaId && (currentStId === mySiswaId || st.id === mySiswaId)) ||
-              (userNameClean.length >= 3 && studentNameClean.length >= 3 && studentNameClean === userNameClean)
-            );
-
-            return {
-              id: currentStId || `st-${idx}`,
-              siswa_id: currentStId,
-              siswa_akademik_id: currentStId,
-              status: isMe ? (st.status || 'HADIR') : (st.status || 'BELUM_TAP'),
-              waktu_tap: isMe ? (st.waktu_tap || st.waktu || selectedSesiModal.waktuTap || null) : (st.waktu_tap || st.waktu || null),
-              Siswa: {
-                id: currentStId,
-                nama_siswa: st.nama || st.nama_siswa || 'Siswa Kelas',
-                nis: st.nis || '-'
-              }
-            };
-          });
-        }
-      } catch {}
-
-      return [];
+        const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
+        return res?.data || [];
+      } catch {
+        return [];
+      }
     },
-    enabled: Boolean(selectedSesiModal.isOpen)
+    enabled: Boolean(selectedSesiModal.isOpen && selectedSesiModal.sesiId && !selectedSesiModal.sesiId.startsWith('rincian-') && !selectedSesiModal.sesiId.startsWith('session-'))
   });
 
   const formattedSelectedDateText = React.useMemo(() => {

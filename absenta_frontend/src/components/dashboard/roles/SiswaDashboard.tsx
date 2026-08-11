@@ -678,6 +678,7 @@ export const SiswaDashboard: React.FC = () => {
 
         return {
           id: item.id || item.tanggal || `session-${idx}`,
+          sesi_id: item.sesi_absensi_id || item.sesi_id || item.id,
           date: formattedDate,
           status: item.status || 'HADIR',
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
