@@ -18,6 +18,7 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 // Modular Components
 import { ExportSection } from '@/components/academic/backup/ExportSection';
 import { ImportSection } from '@/components/academic/backup/ImportSection';
+import { ActiveUsersSafetyCard } from '@/components/academic/backup/ActiveUsersSafetyCard';
 
 const ImportResultModal = lazy(() => import('@/components/academic/backup/ImportResultModal').then(module => ({ default: module.ImportResultModal })));
 
@@ -351,6 +352,8 @@ export default function BackupPage() {
       // compliance dummy comment to pass static audit toolbar check: toolbarLeft={undefined}
     >
       <div className="flex flex-col gap-6">
+        <ActiveUsersSafetyCard />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Export Card */}
           <SectionCard

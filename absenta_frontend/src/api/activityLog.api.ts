@@ -41,3 +41,25 @@ export const getTenantActivityLogs = async (params: {
     params
   });
 };
+
+export interface ActiveUserItem {
+  user_id: string;
+  name: string;
+  email: string;
+  role: string;
+  last_action: string;
+  last_activity: string;
+}
+
+export interface ActiveUsersResponse {
+  success: boolean;
+  data: {
+    count: number;
+    users: ActiveUserItem[];
+    window_minutes: number;
+  };
+}
+
+export const getActiveOnlineUsers = async (): Promise<ActiveUsersResponse> => {
+  return requestWithFallback<ActiveUsersResponse>('get', '/activity-logs/active-users');
+};

@@ -7,9 +7,18 @@ export async function activityLogRoutes(fastify: any) {
     preHandler: [
       requireCapability('core.sekolah.view.profile'),
       determineDataScope(),
-  ]
+    ]
   }, async (request: any, reply: any) => {
     return activityLogController.getTenantLogs(request, reply);
+  });
+
+  fastify.get('/active-users', {
+    preHandler: [
+      requireCapability('core.sekolah.view.profile'),
+      determineDataScope(),
+    ]
+  }, async (request: any, reply: any) => {
+    return activityLogController.getActiveUsers(request, reply);
   });
 }
 export default activityLogRoutes;

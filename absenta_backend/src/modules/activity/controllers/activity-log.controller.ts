@@ -185,6 +185,71 @@ export class ActivityLogController {
       });
     }
   }
+
+  async getActiveUsers(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({
+          success: false,
+          message: 'Unauthorized: Tenant ID required',
+        });
+      }
+
+      const minutesAgo = 15;
+      const sinceTime = new Date(Date.now() - minutesAgo * 60 * 1000);
+
+      const recentLogs = await prisma.activityLog.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: sinceTime },
+          user_id: { not: null },
+        },
+        orderBy: { created_at: 'desc' },
+        include: {
+          User: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              Role: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      const activeUserMap = new Map<string, any>();
+      for (const log of recentLogs) {
+        if (log.user_id && !activeUserMap.has(log.user_id)) {
+          activeUserMap.set(log.user_id, {
+            user_id: log.user_id,
+            name: log.User?.full_name || 'Pengguna',
+            email: log.User?.email || '',
+            role: log.User?.Role?.name || 'Pengguna',
+            last_action: log.action,
+            last_activity: log.created_at,
+          });
+        }
+      }
+
+      const activeUsers = Array.from(activeUserMap.values());
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          count: activeUsers.length,
+          users: activeUsers,
+          window_minutes: minutesAgo,
+        },
+      });
+    } catch (error: any) {
+      console.error('Failed to get active users:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error',
+      });
+    }
+  }
 }
 
 export const activityLogController = new ActivityLogController();
