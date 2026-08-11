@@ -432,10 +432,8 @@ export const SiswaDashboard: React.FC = () => {
 
   const currentDisciplineScore = useMemo(() => {
     const baseScore = 100;
-    const minus = pelanggaranList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-    const plus = prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-    return Math.min(100, Math.max(0, baseScore - minus + plus));
-  }, [pelanggaranList, prestasiList]);
+    return Math.min(100, Math.max(0, baseScore - totalPoinPelanggaran + totalPoinPrestasi));
+  }, [totalPoinPelanggaran, totalPoinPrestasi]);
 
   // Attendance stats calculation for month (100% Real API data)
   const monthStats = useMemo(() => {
@@ -685,12 +683,8 @@ export const SiswaDashboard: React.FC = () => {
 
   // Buku Catatan Kedisiplinan & Prestasi for Catatan Poin Tab
   const bukuCatatanList = useMemo(() => {
-    const rawPelanggaran: any[] = Array.isArray(pelanggaranList) ? pelanggaranList : [];
-    const rawPrestasi: any[] = Array.isArray((prestasiRes as any)?.data?.list)
-      ? (prestasiRes as any).data.list
-      : Array.isArray((prestasiRes as any)?.data)
-        ? (prestasiRes as any).data
-        : [];
+    const rawPelanggaran: any[] = pelanggaranList;
+    const rawPrestasi: any[] = prestasiList;
 
     const pelanggaranItems = rawPelanggaran.map((item: any) => ({
       id: item.id || Math.random().toString(),
@@ -724,7 +718,7 @@ export const SiswaDashboard: React.FC = () => {
       return db - da;
     });
     return combined;
-  }, [pelanggaranList, prestasiRes]);
+  }, [pelanggaranList, prestasiList]);
 
   // Totals for point summary
   const totalPoinPrestasi = useMemo(() =>
