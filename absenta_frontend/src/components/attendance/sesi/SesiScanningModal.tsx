@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutList, PlayCircle } from 'lucide-react';
 import { Modal } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
@@ -34,6 +34,19 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   kelasLabel,
 }) => {
   const [isSlideMode, setIsSlideMode] = useState(false);
+
+  // Auto-focus input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (scannerInputRef.current) {
+          scannerInputRef.current.focus();
+          scannerInputRef.current.select();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, scannerInputRef]);
 
   const modalTitle = (
     <div className="flex items-center gap-2 whitespace-nowrap">
