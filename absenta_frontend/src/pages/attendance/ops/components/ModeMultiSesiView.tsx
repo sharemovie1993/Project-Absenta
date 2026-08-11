@@ -214,7 +214,7 @@ export default React.memo(function ModeMultiSesiView({
   }, [urlTabParam, isPetugasSiswa, canAccessInput, canAccessManual, canAccessSesi]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-20 overflow-visible">
+    <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto px-2 sm:px-4 pb-20 overflow-visible">
       {/* Header Tab Switcher (Hanya tampil jika ada lebih dari 1 opsi tab) */}
       {tabOptions.length > 1 && (
         <div className="flex items-center justify-between sm:justify-end gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
