@@ -557,7 +557,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
 
   // Analytics for Stats Header
   const stats = useMemo(() => {
-    const live = sessions.filter((s) => {
+    const safeSessions = Array.isArray(sessions) ? sessions : [];
+    const live = safeSessions.filter((s) => {
       const isFinished = String(s.status || '').toUpperCase() === 'SELESAI';
       const startAt = s.waktu_mulai ? new Date(s.waktu_mulai) : null;
       const endAt = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
@@ -565,13 +566,13 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       return !isFinished && isLiveByTime;
     }).length;
     
-    const pendingJournal = sessions.filter((s) => 
+    const pendingJournal = safeSessions.filter((s) => 
       String(s.status || '').toUpperCase() === 'SELESAI' && 
       (!s.ProgresMateri || !(s.ProgresMateri as { kegiatan?: string }).kegiatan) &&
       (String(s.jenis_kegiatan_nama || '').toUpperCase().includes('KBM') || String(s.jenis_kegiatan || '').toUpperCase().includes('KBM'))
     ).length;
 
-    return { total: sessions.length, live, pendingJournal };
+    return { total: safeSessions.length, live, pendingJournal };
   }, [sessions]);
 
   return (
@@ -675,7 +676,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 <AlertCircle className="h-5 w-5" />
                 <AlertDescription className="font-bold">{errorMsg}</AlertDescription>
               </Alert>
-            ) : sessions.length === 0 ? (
+            ) : (Array.isArray(sessions) ? sessions : []).length === 0 ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -714,7 +715,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 <div className="absolute left-2 sm:left-4 top-2 bottom-2 w-0.5 bg-gradient-to-b from-blue-500/40 via-indigo-500/20 to-transparent"></div>
                 
                 <div className="grid grid-cols-1 gap-2 sm:gap-4">
-                  {sessions?.map((session, idx) => (
+                  {(Array.isArray(sessions) ? sessions : []).map((session, idx) => (
                     <motion.div 
                       key={session.id}
                       initial={{ opacity: 0, x: -20 }}
