@@ -37,7 +37,7 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
 
   const modalTitle = (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-base font-semibold text-gray-900 dark:text-white">Input Presensi</span>
+      <span className="text-base font-semibold text-gray-900 dark:text-white">Tap/Scan</span>
       <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
       <button
         onClick={() => setIsSlideMode(prev => !prev)}
