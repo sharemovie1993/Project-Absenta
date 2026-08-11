@@ -1,10 +1,11 @@
 import { prisma } from '../utils/prisma';
 import { guruService } from '../modules/academic/guru/services/guru.service';
+import { organizationalAuthorizationEngine } from '../modules/auth/services/organizational-authorization.engine';
 import bcrypt from 'bcrypt';
 
 async function testGuruProfile() {
   console.log('----------------------------------------------------');
-  console.log('🔍 TEST SCRIPT: Verifikasi Data Profil Guru (Me) FULL PAYLOAD');
+  console.log('🔍 TEST SCRIPT: Verifikasi Data Profil & Jabatan Guru');
   console.log('----------------------------------------------------');
 
   const email = 'trisna@absenta.id';
@@ -25,7 +26,7 @@ async function testGuruProfile() {
   }
 
   console.log(`✅ User Ditemukan:`);
-  console.log(`   - ID       : ${user.id}`);
+  console.log(`   - User ID  : ${user.id}`);
   console.log(`   - Full Name: ${user.full_name}`);
   console.log(`   - Email    : ${user.email}`);
   console.log(`   - Role     : ${user.Role?.name}`);
@@ -98,6 +99,40 @@ async function testGuruProfile() {
   }
 
   console.log('\n----------------------------------------------------');
+  console.log('🏛️ DETAIL DAFTAR JABATAN & POSISI STRUKTURAL PENGGUNA:');
+  console.log('----------------------------------------------------');
+
+  // Query langsung tabel OrganizationalAssignment
+  const directAssignments = await prisma.organizationalAssignment.findMany({
+    where: { user_id: user.id, tenant_id: user.tenant_id },
+    include: {
+      Position: true,
+      Kelas: true,
+      Unit: true,
+    },
+  });
+
+  console.log(`📌 Jumlah Organizational Assignment Terdaftar: ${directAssignments.length}`);
+  directAssignments.forEach((assign, idx) => {
+    console.log(`\n  --- Jabatan #${idx + 1} ---`);
+    console.log(`   - ID Position  : ${assign.position_id}`);
+    console.log(`   - Kode Posisi  : ${assign.Position?.code}`);
+    console.log(`   - Nama Posisi  : ${assign.Position?.name}`);
+    console.log(`   - Scope Type   : ${assign.Position?.scope_type}`);
+    console.log(`   - Status Aktif : ${assign.is_active ? '✅ AKTIFF' : '❌ NON-AKTIF'}`);
+    console.log(`   - Rombel Kelas : ${assign.Kelas ? `${assign.Kelas.nama_kelas} (ID: ${assign.Kelas.id})` : 'Bukan Wali Kelas (None)'}`);
+    console.log(`   - Unit/Jurusan : ${assign.Unit ? `${assign.Unit.nama} (ID: ${assign.Unit.id})` : 'None'}`);
+  });
+
+  // Resolve via organizationalAuthorizationEngine
+  const orgCtx: any = await organizationalAuthorizationEngine.resolveOrganizationalContext(user.id);
+  console.log('\n----------------------------------------------------');
+  console.log('⚡ RESOLUSI JABATAN VIA ORGANIZATIONAL AUTHORIZATION ENGINE:');
+  console.log('----------------------------------------------------');
+  console.log(`   - Resolved Position Codes : ${JSON.stringify(orgCtx.positions?.map((p: any) => p.code))}`);
+  console.log(`   - Full Organizational Context : ${JSON.stringify(orgCtx, null, 2)}`);
+
+  console.log('\n----------------------------------------------------');
   console.log(`📊 RINGKASAN HASIL TEST:`);
   console.log(`   - Total Field Diperiksa : ${requiredFields.length}`);
   console.log(`   - Field Terisi (Populated): ${populatedCount}`);
@@ -105,7 +140,7 @@ async function testGuruProfile() {
   console.log('----------------------------------------------------');
 
   if (guruMe) {
-    console.log('\n🎉 KESIMPULAN: Data Profil Guru Berhasil Ditarik Secara Lengkap dari Database!');
+    console.log('\n🎉 KESIMPULAN: Data Profil & Jabatan Pengguna Berhasil Diperiksa Secara Lengkap!');
   }
 
   await prisma.$disconnect();
