@@ -113,6 +113,18 @@ async function sanitizeRowForeignKeys(
   return true;
 }
 
+function getTenantFieldName(modelName: string): string | null {
+  const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+  if (!dmmfModel) return null;
+
+  const fieldNames = new Set(dmmfModel.fields.map(f => f.name));
+  if (fieldNames.has('tenant_id')) return 'tenant_id';
+  if (fieldNames.has('tenantId')) return 'tenantId';
+  if (fieldNames.has('actor_tenant_id')) return 'actor_tenant_id';
+  if (fieldNames.has('restored_to_tenant_id')) return 'restored_to_tenant_id';
+  return null;
+}
+
 export interface ModelRestoreSummary {
   target: number;
   restored: number;
@@ -315,17 +327,13 @@ export class BackupController {
           if (mName === 'User') continue; // Handled separately with admin preservation
           const pModel = (prisma as any)[mName];
           if (!pModel) continue;
+
+          const tenantField = getTenantFieldName(mName);
+          if (!tenantField) continue;
+
           try {
-            await pModel.deleteMany({ where: { tenant_id: tenantId } });
-          } catch (e) {
-            try {
-              await pModel.deleteMany({ where: { tenantId: tenantId } });
-            } catch (_) {
-              try {
-                await pModel.deleteMany({ where: { actor_tenant_id: tenantId } });
-              } catch (_) {}
-            }
-          }
+            await pModel.deleteMany({ where: { [tenantField]: tenantId } });
+          } catch (_) {}
         }
 
         // Purge User records except the currently logged in Admin user
@@ -583,31 +591,19 @@ export class BackupController {
         if (mName === 'User') continue;
         const pModel = (prisma as any)[mName];
         if (!pModel) continue;
+
+        const tenantField = getTenantFieldName(mName);
+        if (!tenantField) continue;
+
         try {
-          const res = await pModel.deleteMany({ where: { tenant_id: tenantId } });
-          if (res.count > 0) {
+          const res = await pModel.deleteMany({ where: { [tenantField]: tenantId } });
+          if (res && res.count > 0) {
             purgeReport[mName] = res.count;
             auditReport[mName] = { target: res.count, restored: res.count, skipped: 0, gap: 0 };
             totalDeleted += res.count;
           }
-        } catch (e) {
-          try {
-            const res = await pModel.deleteMany({ where: { tenantId: tenantId } });
-            if (res.count > 0) {
-              purgeReport[mName] = res.count;
-              auditReport[mName] = { target: res.count, restored: res.count, skipped: 0, gap: 0 };
-              totalDeleted += res.count;
-            }
-          } catch (_) {
-            try {
-              const res = await pModel.deleteMany({ where: { actor_tenant_id: tenantId } });
-              if (res.count > 0) {
-                purgeReport[mName] = res.count;
-                auditReport[mName] = { target: res.count, restored: res.count, skipped: 0, gap: 0 };
-                totalDeleted += res.count;
-              }
-            } catch (_) {}
-          }
+        } catch (e: any) {
+          console.warn(`[Purge Skip] ${mName} deleteMany error:`, e?.message);
         }
       }
 
