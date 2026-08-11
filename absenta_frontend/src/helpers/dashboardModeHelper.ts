@@ -13,36 +13,15 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-export type DashboardModeType = 'portal' | 'desktop';
+export type DashboardModeType = 'desktop';
 
-export const resolveSmartDashboardMode = (user: any): DashboardModeType => {
-  if (typeof window === 'undefined') return 'portal';
-
-  // 1. User Manual Override Check (localStorage)
-  const savedMode = localStorage.getItem('absenta_dashboard_mode') as DashboardModeType | null;
-  if (savedMode === 'portal' || savedMode === 'desktop') {
-    return savedMode;
-  }
-
-  // 2. Hybrid Context-Aware Smart Default
-  const roleName = String(user?.role?.name || '').toUpperCase();
-  const isSiswa = roleName === 'SISWA';
-  const isMobileOrTablet = window.innerWidth < 1024;
-
-  if (isSiswa) {
-    return 'portal';
-  }
-
-  if (isMobileOrTablet) {
-    return 'portal';
-  }
-
+export const resolveSmartDashboardMode = (user?: any): DashboardModeType => {
   return 'desktop';
 };
 
 export const setManualDashboardMode = (newMode: DashboardModeType) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('absenta_dashboard_mode', newMode);
-    window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: newMode }));
+    localStorage.setItem('absenta_dashboard_mode', 'desktop');
+    window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: 'desktop' }));
   }
 };

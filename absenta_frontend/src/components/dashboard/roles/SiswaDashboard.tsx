@@ -750,17 +750,6 @@ export const SiswaDashboard: React.FC = () => {
     return bukuCatatanList;
   }, [bukuCatatanList, catatanFilter]);
 
-  // RENDER PORTAL LAUNCHER IF ACTIVE
-  if (dashboardMode === 'portal') {
-    return (
-      <SiswaPortalAppLauncher
-        user={user}
-        isPetugasKelas={isPetugasKelas}
-        onSwitchToDesktop={() => handleToggleMode('desktop')}
-      />
-    );
-  }
-
   return (
     <div className="space-y-4 sm:space-y-5 pb-24 lg:pb-8 text-slate-800 dark:text-slate-100">
       
