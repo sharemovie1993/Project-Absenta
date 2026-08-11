@@ -250,9 +250,22 @@ export class JadwalKBMController {
     let ctx: any = null;
     const roleName = user?.roleName;
 
+    console.log('🔍 [BACKEND listMySchedule] Incoming request:', {
+      tenantId,
+      userId,
+      roleName,
+      query: request.query,
+    });
+
     if (roleName === RoleName.SISWA) {
       const siswa = await jadwalKBMDb.siswa.findFirst({
         where: { tenant_id: tenantId, user_id: userId },
+      });
+      console.log('👤 [BACKEND listMySchedule] Student profile lookup:', {
+        found: !!siswa,
+        siswaId: siswa?.id,
+        nama: (siswa as any)?.nama_siswa || (siswa as any)?.nama,
+        kelas_id: siswa?.kelas_id,
       });
       if (!siswa) {
         return reply.status(404).send({ success: false, message: 'Siswa profile not found' });

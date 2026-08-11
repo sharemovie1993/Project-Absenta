@@ -63,11 +63,14 @@ export const getJadwalKBM = async (filters?: JadwalKBMFilters) => {
 };
 
 export const getMyJadwalKBM = async (params?: { tanggal?: string; hari?: string }) => {
-  return requestWithFallback<{ success: boolean; message?: string; data: JadwalKBM[] }>('get', '/kurikulum/jadwal-kbm/my', {
+  console.log('🔍 [FRONTEND API] Calling getMyJadwalKBM with params:', params);
+  const res = await requestWithFallback<{ success: boolean; message?: string; data: JadwalKBM[] }>('get', '/kurikulum/jadwal-kbm/my', {
     params,
     fallbackUrl: '/kurikulum/jadwal/my',
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
+  console.log('📥 [FRONTEND API] getMyJadwalKBM response:', res);
+  return res;
 };
 
 export const createJadwalKBM = async (payload: CreateJadwalPayload) => {

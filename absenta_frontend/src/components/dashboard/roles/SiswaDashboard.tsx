@@ -227,7 +227,12 @@ export const SiswaDashboard: React.FC = () => {
 
   const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
     queryKey: ['jadwal-kbm-siswa-me', todayIso, user?.siswa_id],
-    queryFn: () => getMyJadwalKBM({ tanggal: todayIso }),
+    queryFn: async () => {
+      console.log('🚀 [FRONTEND DASHBOARD] Querying getMyJadwalKBM for date:', todayIso, 'user siswa_id:', user?.siswa_id);
+      const res = await getMyJadwalKBM({ tanggal: todayIso });
+      console.log('🎯 [FRONTEND DASHBOARD] Query getMyJadwalKBM returned:', res);
+      return res;
+    },
     enabled: !!user && !!user?.siswa_id,
   });
 
@@ -508,6 +513,7 @@ export const SiswaDashboard: React.FC = () => {
 
   // Today KBM Schedule for Kehadiran Tab Bottom Section
   const todayKbmSchedule = useMemo(() => {
+    console.log('📊 [FRONTEND USEMEMO] scheduleRes raw object:', scheduleRes);
     const rawList = scheduleRes?.data;
     const list = Array.isArray(rawList)
       ? rawList
@@ -516,6 +522,8 @@ export const SiswaDashboard: React.FC = () => {
         : Array.isArray(scheduleRes)
           ? scheduleRes
           : [];
+
+    console.log('📋 [FRONTEND USEMEMO] Parsed todayKbmSchedule list count:', list.length, list);
 
     if (list.length > 0) {
       const now = new Date();
