@@ -42,6 +42,15 @@ async function fetchCdn(urls: string[], timeoutMs = 5000): Promise<EmsifaItem[]>
 }
 
 export async function runFullWilayahSeeder() {
+  const currentTotal = await prisma.refWilayah.count();
+  if (currentTotal >= 85000) {
+    console.log('====================================================');
+    console.log(`✅ [SMART SKIP] Master Data Wilayah Indonesia sudah LENGKAP di Database (${currentTotal} Record).`);
+    console.log('🚀 Seeder dilewati otomatis untuk menghemat bandwidth & performa server!');
+    console.log('====================================================');
+    return;
+  }
+
   console.log('====================================================');
   console.log('🚀 MEMULAI PROSES SEEDER FULL WILAYAH INDONESIA (~91.600 RECORD)');
   console.log('====================================================');
