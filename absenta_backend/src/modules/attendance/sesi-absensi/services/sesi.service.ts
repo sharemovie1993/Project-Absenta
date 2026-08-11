@@ -1388,7 +1388,10 @@ export class SesiService {
         guru_id: true,
         tahun_pelajaran_id: true,
         semester_id: true,
-        status: true
+        status: true,
+        status_guru: true,
+        waktu_tap_guru: true,
+        created_at: true
       } 
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
@@ -1544,13 +1547,31 @@ export class SesiService {
         menit_keterlambatan: 0,
         poin_kehadiran: 0,
         Siswa: sa.siswa,
-        SiswaAkademik: sa,
-        is_piket_out: !!activePiket,
-        piket_log_id: activePiket?.id || null,
         piket_jam_keluar: activePiket?.jam_keluar ? new Date(activePiket.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null,
         piket_jenis: activePiket?.tipe_izin || null
       };
     });
+
+    if (sesi.guru_id) {
+      const guru = await prisma.guru.findUnique({
+        where: { id: sesi.guru_id },
+        select: { id: true, nama_guru: true, nip: true }
+      });
+
+      if (guru) {
+        const teacherRec = {
+          id: `guru-${guru.id}`,
+          guru_id: guru.id,
+          is_guru: true,
+          status: (sesi as any).status_guru || 'HADIR',
+          waktu_tap: (sesi as any).waktu_tap_guru || (sesi as any).created_at,
+          is_terlambat: false,
+          Guru: guru,
+          catatan: null
+        };
+        return [teacherRec, ...mergedList];
+      }
+    }
 
     return mergedList;
   }
