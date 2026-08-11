@@ -508,7 +508,15 @@ export const SiswaDashboard: React.FC = () => {
 
   // Today KBM Schedule for Kehadiran Tab Bottom Section
   const todayKbmSchedule = useMemo(() => {
-    const list = Array.isArray(scheduleRes?.data) ? scheduleRes.data : Array.isArray(scheduleRes) ? scheduleRes : [];
+    const rawList = scheduleRes?.data;
+    const list = Array.isArray(rawList)
+      ? rawList
+      : Array.isArray((rawList as any)?.data)
+        ? (rawList as any).data
+        : Array.isArray(scheduleRes)
+          ? scheduleRes
+          : [];
+
     if (list.length > 0) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -518,11 +526,11 @@ export const SiswaDashboard: React.FC = () => {
         const jamSelesai = item.jam_selesai || item.jam?.split('-')[1]?.trim() || '';
 
         let calcStatus = 'Mendatang';
-        if (jamMulai) {
+        if (jamMulai && jamMulai !== '??:??') {
           const [sH, sM] = jamMulai.split(':').map(Number);
           const startMin = (sH || 0) * 60 + (sM || 0);
           let endMin = startMin + 90;
-          if (jamSelesai) {
+          if (jamSelesai && jamSelesai !== '??:??') {
             const [eH, eM] = jamSelesai.split(':').map(Number);
             endMin = (eH || 0) * 60 + (eM || 0);
           }
@@ -534,12 +542,17 @@ export const SiswaDashboard: React.FC = () => {
           }
         }
 
+        const kodeMapel = item.Mapel?.kode_mapel || item.kode_mapel || item.kode || `KBM-${idx + 1}`;
+        const namaMapel = item.Mapel?.nama_mapel || item.nama_mapel || item.kegiatan || item.jenis_kegiatan || item.mapel || 'Mata Pelajaran';
+        const namaGuru = item.Guru?.User?.full_name || item.Guru?.nama_guru || item.nama_guru || item.guru || 'Guru Pengampu';
+        const namaKelas = item.Kelas?.nama_kelas || item.kelas_nama || item.lokasi || item.ruang || 'Ruang Kelas';
+
         return {
           id: item.id || String(idx),
-          kode: item.Mapel?.kode_mapel || item.kode_mapel || item.kode || `KBM-${idx + 1}`,
-          mapel: item.Mapel?.nama_mapel || item.nama_mapel || item.mapel || 'Mata Pelajaran',
-          guru: item.Guru?.User?.full_name || item.nama_guru || item.guru || 'Guru Pengampu',
-          lokasi: item.Kelas?.nama_kelas || item.lokasi || item.ruang || 'Ruang Kelas',
+          kode: kodeMapel,
+          mapel: namaMapel,
+          guru: namaGuru,
+          lokasi: namaKelas,
           jam: item.jam || (jamMulai && jamSelesai ? `${jamMulai} - ${jamSelesai}` : '07:00 - 08:30'),
           status: calcStatus,
         };

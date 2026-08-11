@@ -2,6 +2,7 @@ import { jadwalKBMController } from '../controllers/jadwal-kbm.controller';
 import { allowBothModes } from '../../../../middlewares/attendanceMode';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
+import { RoleName } from '@/constants/enums';
 
 export async function jadwalKBMRoutes(fastify: any) {
   fastify.register(async (router: any) => {
@@ -21,7 +22,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/my',
       {
         preHandler: [
-          requireCapability('academic.schedules.view.list'),
+          requireCapability('academic.schedules.view.list', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.listMySchedule(req, reply),
