@@ -448,37 +448,46 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
       </div>
 
       {/* Read-Only Session Attendance Modal for Students */}
-      <Modal
-        isOpen={selectedSesiModal.isOpen}
-        onClose={() => setSelectedSesiModal({ isOpen: false })}
-        title={`Presensi Kelas — ${selectedSesiModal.sesiTitle || 'Sesi KBM'}`}
-        size="5xl"
-      >
-        <div className="p-2 space-y-3">
-          {isLoadingSesiDetails ? (
-            <div className="py-12 text-center space-y-2">
-              <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
+      {(() => {
+        const teacherRecord = Array.isArray(sesiAttendanceData) ? (sesiAttendanceData as any[]).find(r => r.is_guru || r.nisn === 'GURU') : null;
+        const effectiveGuruName = teacherRecord?.nama_siswa || teacherRecord?.Guru?.nama_guru || selectedSesiModal.guruName || 'Guru Pengajar';
+        const effectiveGuruStatus = teacherRecord?.status || selectedSesiModal.guruStatus || 'HADIR';
+        const effectiveGuruWaktuTap = teacherRecord?.waktu_tap || selectedSesiModal.guruWaktuTap || null;
+
+        return (
+          <Modal
+            isOpen={selectedSesiModal.isOpen}
+            onClose={() => setSelectedSesiModal({ isOpen: false })}
+            title={`Presensi Kelas — ${selectedSesiModal.sesiTitle || 'Sesi KBM'}`}
+            size="5xl"
+          >
+            <div className="p-2 space-y-3">
+              {isLoadingSesiDetails ? (
+                <div className="py-12 text-center space-y-2">
+                  <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
+                </div>
+              ) : (
+                <SesiAttendanceList
+                  records={(sesiAttendanceData as any) || []}
+                  sesi={{
+                    id: selectedSesiModal.sesiId || '',
+                    status: 'SELESAI',
+                    nama_guru: effectiveGuruName,
+                    guru_status: effectiveGuruStatus,
+                    waktu_tap_guru: effectiveGuruWaktuTap,
+                    Guru: {
+                      id: 'guru-sesi-selected',
+                      nama_guru: effectiveGuruName
+                    }
+                  }}
+                  isReportMode={true}
+                />
+              )}
             </div>
-          ) : (
-            <SesiAttendanceList
-              records={(sesiAttendanceData as any) || []}
-              sesi={{
-                id: selectedSesiModal.sesiId || '',
-                status: 'SELESAI',
-                nama_guru: selectedSesiModal.guruName || 'Guru Pengajar',
-                guru_status: selectedSesiModal.guruStatus || 'HADIR',
-                waktu_tap_guru: selectedSesiModal.guruWaktuTap || null,
-                Guru: {
-                  id: 'guru-sesi-selected',
-                  nama_guru: selectedSesiModal.guruName || 'Guru Pengajar'
-                }
-              }}
-              isReportMode={true}
-            />
-          )}
-        </div>
-      </Modal>
+          </Modal>
+        );
+      })()}
     </div>
   );
 };
