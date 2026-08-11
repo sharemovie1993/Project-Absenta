@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { prisma } from '@/utils/prisma';
 import { applyDataScope } from '@/utils/applyDataScope';
 import { normalizePhone } from '@/utils/normalization';
@@ -327,6 +328,61 @@ export class GuruService {
         unit: a.Unit,
       })),
     };
+  }
+
+  /**
+   * PUT /academic/guru/me
+   * Memperbarui profil mandiri guru yang sedang login
+   */
+  async updateGuruMe(userId: string, tenantId: string, input: any): Promise<any> {
+    const existingGuru = await prisma.guru.findFirst({
+      where: { user_id: userId, tenant_id: tenantId },
+    });
+
+    if (!existingGuru) {
+      throw new Error('Profil guru tidak ditemukan untuk akun ini');
+    }
+
+    // 1. Ganti Password jika dimohonkan
+    if (input.new_password) {
+      if (!input.old_password) {
+        throw new Error('Password lama wajib diisi untuk mengganti password');
+      }
+      if (String(input.new_password).length < 8) {
+        throw new Error('Password baru minimal 8 karakter');
+      }
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      if (!currentUser || !currentUser.password) {
+        throw new Error('Pengguna tidak ditemukan');
+      }
+      const isMatch = await bcrypt.compare(input.old_password, currentUser.password);
+      if (!isMatch) {
+        throw new Error('Password lama tidak sesuai');
+      }
+      const hashedNewPassword = await bcrypt.hash(String(input.new_password), 10);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      });
+    }
+
+    // 2. Sinkronkan Nama Lengkap ke User jika diberikan
+    const nameToUse = input.nama_guru || input.full_name;
+    if (nameToUse) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { full_name: String(nameToUse).trim() },
+      });
+      input.nama_guru = String(nameToUse).trim();
+    }
+
+    // 3. Panggil updateGuru
+    await this.updateGuru(existingGuru.id, input, { tenantId });
+
+    // 4. Return data profil ter-update secara lengkap
+    return await this.getGuruMe(userId, tenantId);
   }
 
 

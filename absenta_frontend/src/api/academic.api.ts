@@ -30,6 +30,10 @@ export const guruApi = {
     return requestWithFallback<AcademicApiResponse<Guru>>('get', '/academic/guru/me');
   },
 
+  updateMe: async (data: Partial<UpdateGuruData> & Record<string, any>): Promise<AcademicApiResponse<Guru>> => {
+    return requestWithFallback<AcademicApiResponse<Guru>>('put', '/academic/guru/me', { data });
+  },
+
   create: async (data: CreateGuruData): Promise<AcademicApiResponse<Guru>> => {
     return requestWithFallback<AcademicApiResponse<Guru>>('post', '/academic/guru', { data });
   },

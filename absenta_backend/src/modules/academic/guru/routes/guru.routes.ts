@@ -27,6 +27,16 @@ export default async function guruRoutes(fastify: any) {
     return guruController.getGuruMe(request, reply);
   });
 
+  // PUT /guru/me — Update profil guru mandiri oleh guru yang sedang login (HARUS sebelum /:id)
+  fastify.put('/me', {
+    preHandler: [
+      requireCapability('academic.teachers.edit.profile', { exemptRoles: [RoleName.GURU] }),
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.updateGuruMe(request, reply);
+  });
+
   // POST /guru/normalize-wa-phones - Normalize WA phone numbers mass
   fastify.post('/normalize-wa-phones', {
     preHandler: [

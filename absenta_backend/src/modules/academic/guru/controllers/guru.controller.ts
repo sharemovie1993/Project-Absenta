@@ -146,6 +146,34 @@ export class GuruController {
     }
   }
 
+  /**
+   * PUT /guru/me — Update profil guru mandiri oleh guru yang sedang login
+   */
+  async updateGuruMe(request: any, reply: any): Promise<ApiResponse> {
+    try {
+      const userId: string = (request as any).user?.id;
+      const tenantId: string = (request as any).user?.tenant_id;
+
+      if (!userId || !tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized' };
+      }
+
+      const updated = await guruService.updateGuruMe(userId, tenantId, request.body);
+
+      reply.status(200);
+      return {
+        success: true,
+        message: 'Profil guru berhasil diperbarui',
+        data: updated,
+      };
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Gagal memperbarui profil guru';
+      reply.status(400);
+      return { success: false, message: errorMessage };
+    }
+  }
+
   async createGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
       const scope = request.dataScope;
