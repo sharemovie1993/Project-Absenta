@@ -208,25 +208,6 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
         <div className="flex items-center px-4 gap-2 sm:gap-4 ml-auto">
 
-          {/* Mode Switcher Toggle Button (Desktop vs Mobile) */}
-          <button
-            onClick={handleToggleDashboardMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold shadow-2xs transition-all cursor-pointer"
-            title={dashboardMode === 'portal' ? 'Beralih ke Tampilan Desktop' : 'Beralih ke Tampilan Mobile'}
-          >
-            {dashboardMode === 'portal' ? (
-              <>
-                <LayoutGrid size={14} className="text-indigo-600 dark:text-indigo-400" />
-                <span>Desktop</span>
-              </>
-            ) : (
-              <>
-                <Smartphone size={14} className="text-emerald-600 dark:text-emerald-400" />
-                <span>Mobile</span>
-              </>
-            )}
-          </button>
-
           {/* Notifications */}
           <div className="relative">
             <Button
