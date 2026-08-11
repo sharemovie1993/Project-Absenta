@@ -911,13 +911,14 @@ export const SiswaDashboard: React.FC = () => {
       {activeTab === 'ringkasan' && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Stat 1: Skor Kedisiplinan */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
-              <Shield size={20} />
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+              <Shield size={18} className="sm:hidden" />
+              <Shield size={20} className="hidden sm:block" />
             </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Skor Kedisiplinan</span>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            <div className="space-y-0.5 min-w-0 w-full">
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Skor Kedisiplinan</span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {currentDisciplineScore} Poin
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
@@ -927,13 +928,14 @@ export const SiswaDashboard: React.FC = () => {
           </div>
 
           {/* Stat 2: Peringkat Kedisiplinan */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5 relative overflow-hidden group hover:border-blue-500/40 transition-all">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
-              <TrendingUp size={20} />
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-blue-500/40 transition-all">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+              <TrendingUp size={18} className="sm:hidden" />
+              <TrendingUp size={20} className="hidden sm:block" />
             </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            <div className="space-y-0.5 min-w-0 w-full">
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 #{myRank.rank > 0 ? myRank.rank : 1}
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
@@ -943,13 +945,14 @@ export const SiswaDashboard: React.FC = () => {
           </div>
 
           {/* Stat 3: Kehadiran Bulanan */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={20} />
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={18} className="sm:hidden" />
+              <CheckCircle2 size={20} className="hidden sm:block" />
             </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Kehadiran Bulanan</span>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            <div className="space-y-0.5 min-w-0 w-full">
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Kehadiran Bulanan</span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {gamification.attendanceRate}%
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
@@ -959,13 +962,14 @@ export const SiswaDashboard: React.FC = () => {
           </div>
 
           {/* Stat 4: Total Prestasi */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5 relative overflow-hidden group hover:border-purple-500/40 transition-all">
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
-              <Trophy size={20} />
+          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/40 transition-all">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
+              <Trophy size={18} className="sm:hidden" />
+              <Trophy size={20} className="hidden sm:block" />
             </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            <div className="space-y-0.5 min-w-0 w-full">
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 +{prestasiList.length} Catatan
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
