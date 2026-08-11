@@ -143,6 +143,9 @@ export const SiswaDashboard: React.FC = () => {
   const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
+  // 1. Get Student Detailed Profile via Custom Hook
+  const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
+
   const { tenantId } = useTenant();
   const {
     notPresent: notPresentData = [],
@@ -154,25 +157,6 @@ export const SiswaDashboard: React.FC = () => {
     selectedKelasId: siswaProfile?.kelas_id || '',
     enabled: showBelumAbsenModal,
   });
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(todayIso);
-
-  const handleOpenEditSection = (section: SectionEditType) => {
-    setActiveSection(section);
-    setShowOnboardingModal(true);
-  };
-
-  // Form states for password change modal
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
-
-  // 1. Get Student Detailed Profile via Custom Hook
-  const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
 
   // 1.1 Fetch Sekolah Profile Data (Dynamic School Name & Logo from Modul Siswa-Card / Backend)
   const { data: sekolahProfileRes } = useQuery({
