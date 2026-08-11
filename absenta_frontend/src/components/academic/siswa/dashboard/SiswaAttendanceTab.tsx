@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { getSesiAbsenSiswa } from '@/api/attendanceGerbang.api';
+import { getSesiAbsenSiswa, getRekapHarianKelas } from '@/api/attendanceGerbang.api';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
@@ -86,21 +86,52 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     waktuTap?: string;
   }>({ isOpen: false });
 
-  // Single Source of Truth (SSOT): Purely query real session attendance records from authoritative endpoint
+  // Single Source of Truth (SSOT): Query session detail if UUID, or official daily class aggregation endpoint getRekapHarianKelas
   const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
-    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
+    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId, selectedDate, kelasId],
     queryFn: async () => {
-      if (!selectedSesiModal.sesiId || selectedSesiModal.sesiId.startsWith('rincian-') || selectedSesiModal.sesiId.startsWith('session-')) {
-        return [];
+      if (!selectedSesiModal.sesiId) return [];
+
+      // 1. Real session detail API for UUID session ID
+      const isUUID = !selectedSesiModal.sesiId.startsWith('rincian-') && !selectedSesiModal.sesiId.startsWith('session-');
+      if (isUUID) {
+        try {
+          const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
+          if (res?.data && res.data.length > 0) return res.data;
+        } catch {}
       }
-      try {
-        const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
-        return res?.data || [];
-      } catch {
-        return [];
+
+      // 2. Official backend daily class aggregation endpoint: getRekapHarianKelas
+      const targetKelasId = kelasId || (user as any)?.kelas_id;
+      const targetDate = selectedDate || todayIso;
+
+      if (targetKelasId) {
+        try {
+          const harianRes = await getRekapHarianKelas(targetKelasId, { tanggal: targetDate });
+          const list = harianRes?.data || [];
+          if (list.length > 0) {
+            return list.map((st: any, idx: number) => {
+              const currentStId = st.siswa_id || st.id || `st-${idx}`;
+              return {
+                id: currentStId,
+                siswa_id: currentStId,
+                siswa_akademik_id: currentStId,
+                status: st.status || 'HADIR',
+                waktu_tap: st.waktu_tap || st.waktu_masuk || st.waktu || null,
+                Siswa: {
+                  id: currentStId,
+                  nama_siswa: st.nama_siswa || st.nama || 'Siswa Kelas',
+                  nis: st.nis || '-'
+                }
+              };
+            });
+          }
+        } catch {}
       }
+
+      return [];
     },
-    enabled: Boolean(selectedSesiModal.isOpen && selectedSesiModal.sesiId && !selectedSesiModal.sesiId.startsWith('rincian-') && !selectedSesiModal.sesiId.startsWith('session-'))
+    enabled: Boolean(selectedSesiModal.isOpen)
   });
 
   const formattedSelectedDateText = React.useMemo(() => {
