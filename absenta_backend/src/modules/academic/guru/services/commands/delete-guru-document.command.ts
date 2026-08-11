@@ -49,5 +49,8 @@ export async function deleteGuruDocumentCommand(params: {
     console.error(`Failed to delete physical file at ${doc.file_storage_path}:`, err);
   }
 
+  const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+  await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
   return true;
 }

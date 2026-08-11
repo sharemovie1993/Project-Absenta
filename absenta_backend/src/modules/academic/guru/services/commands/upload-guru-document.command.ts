@@ -57,5 +57,8 @@ export async function uploadGuruDocumentCommand(params: {
     });
   }
 
+  const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+  await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
   return doc;
 }

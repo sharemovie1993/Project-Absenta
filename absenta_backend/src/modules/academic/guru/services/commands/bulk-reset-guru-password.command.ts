@@ -151,6 +151,10 @@ export async function bulkResetGuruPasswordCommand(
     );
   }
 
+  // Invalidate cache after bulk reset
+  const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+  await cacheInvalidationService.invalidateUserCache(tenantId);
+
   return {
     success: true,
     message: `Berhasil memproses ${teachers.length} akun guru (${created} akun baru dibuat, ${updated} password ter-update).`,
