@@ -449,7 +449,42 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
 
       {/* Read-Only Session Attendance Modal for Students */}
       {(() => {
-        const teacherRecord = Array.isArray(sesiAttendanceData) ? (sesiAttendanceData as any[]).find(r => r.is_guru || r.nisn === 'GURU') : null;
+        const computedRecords = Array.isArray(sesiAttendanceData) && sesiAttendanceData.length > 1
+          ? sesiAttendanceData
+          : (Array.isArray(monthlyRecap?.students) && monthlyRecap.students.length > 0
+              ? [
+                  {
+                    id: 'guru-header-rec',
+                    guru_id: 'guru-id-selected',
+                    is_guru: true,
+                    nama_siswa: selectedSesiModal.guruName || 'Guru Pengajar',
+                    nisn: 'GURU',
+                    status: selectedSesiModal.guruStatus || 'HADIR',
+                    waktu_tap: selectedSesiModal.guruWaktuTap || null,
+                    Guru: {
+                      id: 'guru-id-selected',
+                      nama_guru: selectedSesiModal.guruName || 'Guru Pengajar'
+                    }
+                  },
+                  ...monthlyRecap.students.map((st: any) => ({
+                    id: st.id || st.siswa_id,
+                    siswa_id: st.siswa_id || st.id,
+                    nama_siswa: st.nama_siswa || st.nama || '-',
+                    nisn: st.nis || st.nisn || '-',
+                    is_guru: false,
+                    status: st.status || (st.hadir > 0 || st.HADIR > 0 ? 'HADIR' : (st.terlambat > 0 || st.TERLAMBAT > 0 ? 'TERLAMBAT' : 'HADIR')),
+                    waktu_tap: null,
+                    Siswa: {
+                      id: st.siswa_id || st.id,
+                      nama_siswa: st.nama_siswa || st.nama || '-',
+                      nis: st.nis || st.nisn || '-'
+                    }
+                  }))
+                ]
+              : ((sesiAttendanceData as any) || [])
+            );
+
+        const teacherRecord = Array.isArray(computedRecords) ? (computedRecords as any[]).find(r => r.is_guru || r.nisn === 'GURU') : null;
         const effectiveGuruName = teacherRecord?.nama_siswa || teacherRecord?.Guru?.nama_guru || selectedSesiModal.guruName || 'Guru Pengajar';
         const effectiveGuruStatus = teacherRecord?.status || selectedSesiModal.guruStatus || 'HADIR';
         const effectiveGuruWaktuTap = teacherRecord?.waktu_tap || selectedSesiModal.guruWaktuTap || null;
@@ -462,14 +497,14 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
             size="5xl"
           >
             <div className="p-2 space-y-3">
-              {isLoadingSesiDetails ? (
+              {isLoadingSesiDetails && computedRecords.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
                   <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
                   <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
                 </div>
               ) : (
                 <SesiAttendanceList
-                  records={(sesiAttendanceData as any) || []}
+                  records={computedRecords}
                   sesi={{
                     id: selectedSesiModal.sesiId || '',
                     status: 'SELESAI',

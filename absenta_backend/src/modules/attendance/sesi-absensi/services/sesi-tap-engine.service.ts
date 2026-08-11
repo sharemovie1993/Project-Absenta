@@ -191,7 +191,8 @@ export class SesiTapEngineService {
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
 
-    const siswaAkademikList = await prisma.siswaAkademik.findMany({
+    // 1. Fetch Students from SiswaAkademik
+    let siswaAkademikList = await prisma.siswaAkademik.findMany({
       where: { kelas_id: sesi.kelas_id },
       select: {
         id: true,
@@ -199,6 +200,15 @@ export class SesiTapEngineService {
         siswa: { select: { id: true, nama_siswa: true, nisn: true, no_rfid: true } }
       }
     });
+
+    // 1b. Fallback: If SiswaAkademik list is empty, fetch directly from Siswa table
+    let directStudents: any[] = [];
+    if (siswaAkademikList.length === 0 && sesi.kelas_id) {
+      directStudents = await prisma.siswa.findMany({
+        where: { kelas_id: sesi.kelas_id, tenant_id: tenantId },
+        select: { id: true, nama_siswa: true, nisn: true, nis: true }
+      });
+    }
 
     const absenSiswaList = await prisma.absenSiswa.findMany({
       where: { tenant_id: tenantId, sesi_id },
@@ -209,40 +219,80 @@ export class SesiTapEngineService {
         is_terlambat: true,
         poin_kehadiran: true,
         waktu_tap: true,
-        catatan: true
+        catatan: true,
+        SiswaAkademik: { select: { siswa_id: true } }
       }
     });
 
     const absenMap = new Map<string, any>();
-    absenSiswaList.forEach(a => absenMap.set(a.siswa_akademik_id, a));
-
-    const mergedStudents = siswaAkademikList.map(sa => {
-      const a = absenMap.get(sa.id);
-      return {
-        id: a?.id || `temp-${sa.id}`,
-        siswa_akademik_id: sa.id,
-        siswa_id: sa.siswa_id,
-        nama_siswa: sa.siswa?.nama_siswa || '-',
-        nisn: sa.siswa?.nisn || '-',
-        is_guru: false,
-        status: a?.status || 'ALPA',
-        is_terlambat: a?.is_terlambat || false,
-        poin_kehadiran: a?.poin_kehadiran || 0,
-        waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
-        catatan: a?.catatan || null,
-        Siswa: {
-          id: sa.siswa?.id,
-          nama_siswa: sa.siswa?.nama_siswa,
-          nisn: sa.siswa?.nisn
-        }
-      };
+    absenSiswaList.forEach(a => {
+      if (a.siswa_akademik_id) absenMap.set(a.siswa_akademik_id, a);
+      if (a.SiswaAkademik?.siswa_id) absenMap.set(a.SiswaAkademik.siswa_id, a);
     });
+
+    let mergedStudents: any[] = [];
+
+    if (siswaAkademikList.length > 0) {
+      mergedStudents = siswaAkademikList.map(sa => {
+        const a = absenMap.get(sa.id) || absenMap.get(sa.siswa_id);
+        return {
+          id: a?.id || `temp-${sa.id}`,
+          siswa_akademik_id: sa.id,
+          siswa_id: sa.siswa_id,
+          nama_siswa: sa.siswa?.nama_siswa || '-',
+          nisn: sa.siswa?.nisn || '-',
+          is_guru: false,
+          status: a?.status || 'ALPA',
+          is_terlambat: a?.is_terlambat || false,
+          poin_kehadiran: a?.poin_kehadiran || 0,
+          waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
+          catatan: a?.catatan || null,
+          Siswa: {
+            id: sa.siswa?.id,
+            nama_siswa: sa.siswa?.nama_siswa,
+            nisn: sa.siswa?.nisn
+          }
+        };
+      });
+    } else {
+      mergedStudents = directStudents.map(s => {
+        const a = absenMap.get(s.id);
+        return {
+          id: a?.id || `temp-${s.id}`,
+          siswa_akademik_id: s.id,
+          siswa_id: s.id,
+          nama_siswa: s.nama_siswa || '-',
+          nisn: s.nisn || s.nis || '-',
+          is_guru: false,
+          status: a?.status || 'ALPA',
+          is_terlambat: a?.is_terlambat || false,
+          poin_kehadiran: a?.poin_kehadiran || 0,
+          waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
+          catatan: a?.catatan || null,
+          Siswa: {
+            id: s.id,
+            nama_siswa: s.nama_siswa,
+            nisn: s.nisn || s.nis
+          }
+        };
+      });
+    }
+
+    // Resolve real Guru Name if null
+    let realGuruName = sesi.Guru?.nama_guru || null;
+    if (!realGuruName && sesi.guru_id) {
+      const g = await prisma.guru.findFirst({
+        where: { id: sesi.guru_id, tenant_id: tenantId },
+        select: { nama_guru: true }
+      });
+      if (g?.nama_guru) realGuruName = g.nama_guru;
+    }
 
     const teacherRec = {
       id: sesi.AbsenGuru?.[0]?.id || `guru-${sesi.guru_id || 'unassigned'}`,
       siswa_akademik_id: `guru-${sesi.guru_id || 'unassigned'}`,
       siswa_id: sesi.guru_id || 'unassigned',
-      nama_siswa: sesi.Guru?.nama_guru || 'Guru Pengajar',
+      nama_siswa: realGuruName || 'Guru Pengajar Sesi',
       nisn: 'GURU',
       is_guru: true,
       status: sesi.AbsenGuru?.[0]?.status === 'HADIR' ? 'HADIR' : 'Belum Hadir',
@@ -251,7 +301,7 @@ export class SesiTapEngineService {
       waktu_tap: sesi.AbsenGuru?.[0]?.waktu_tap ? sesi.AbsenGuru[0].waktu_tap.toISOString() : sesi.created_at.toISOString(),
       catatan: sesi.AbsenGuru?.[0]?.catatan || null,
       Guru: {
-        nama_guru: sesi.Guru?.nama_guru || 'Guru Pengajar'
+        nama_guru: realGuruName || 'Guru Pengajar Sesi'
       }
     };
 
