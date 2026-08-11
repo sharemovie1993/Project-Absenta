@@ -1,6 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
 import { AbsensiMode } from '../../../../constants/enums';
-import { ATTENDANCE_POINTS } from '../../../../constants/attendance-points';
+import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
+import { AttendanceRuleEngine } from '@/domain/attendance/AttendanceRuleEngine';
 import { DataScope } from '../../../../types/fastify';
 import { CacheService } from '../../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../../constants/cache-keys';
@@ -501,7 +502,7 @@ export class RekapService {
                 finalStatus = 'IZIN';
             }
 
-            let calculatedPoin = 0;
+            const calculatedPoin = AttendanceRuleEngine.calculateAttendancePoints(finalStatus, isLate);
 
             let statusCode = 'A';
             if (finalStatus === 'HADIR') {
@@ -509,23 +510,18 @@ export class RekapService {
                 if (isLate) {
                     stats.telat++;
                     statusCode = 'T';
-                    calculatedPoin = ATTENDANCE_POINTS.HADIR_TERLAMBAT;
                 } else {
                     statusCode = 'H';
-                    calculatedPoin = ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
                 }
             } else if (finalStatus === 'SAKIT') {
                 stats.sakit++;
                 statusCode = 'S';
-                calculatedPoin = ATTENDANCE_POINTS.SAKIT;
             } else if (finalStatus === 'IZIN') {
                 stats.izin++;
                 statusCode = 'I';
-                calculatedPoin = ATTENDANCE_POINTS.IZIN;
             } else {
                 stats.alpa++;
                 statusCode = 'A';
-                calculatedPoin = ATTENDANCE_POINTS.ALPA;
             }
 
             const dayNum = parseInt(dateKey.split('-')[2] || '0', 10).toString();
