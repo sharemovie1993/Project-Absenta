@@ -452,6 +452,10 @@ export const GuruForm = React.memo<GuruFormProps>(({
       }
 
       // Client-side cache invalidation for Teacher/PTK domain
+      queryClient.invalidateQueries({ queryKey: ['guru'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-profile-me'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-me'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-options'] });
       queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-discipline-leaderboard-modal'] });

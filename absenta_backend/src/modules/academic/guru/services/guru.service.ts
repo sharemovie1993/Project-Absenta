@@ -738,6 +738,8 @@ export class GuruService {
         await tx.user.delete({ where: { id: existingGuru.user_id } });
       }
     });
+
+    await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);
   }
 
   async importFromExcel(data: any[], scope: DataScope, onProgress?: (current: number, total: number) => void) {
