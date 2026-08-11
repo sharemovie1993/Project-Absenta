@@ -105,14 +105,11 @@ const SesiAttendanceRow = React.memo(({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[8px] text-gray-400 font-semibold truncate">
-          <span>NIS: {record.Siswa?.nis || '-'}</span>
-          {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
-            <span className="text-indigo-500 font-bold italic">
-              · {record.catatan}
-            </span>
-          )}
-        </div>
+        {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
+          <p className="text-[8px] text-indigo-500 font-bold italic truncate leading-none mt-0.5">
+            {record.catatan}
+          </p>
+        )}
       </div>
       <div className="flex items-center justify-center gap-1.5">
         <span className="text-[10px] font-bold text-gray-500">
