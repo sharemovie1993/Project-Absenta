@@ -27,6 +27,8 @@ export interface CreateGuruInput {
   agama?: string | null;
   status_kepegawaian?: string | null;
   pendidikan_terakhir?: string | null;
+  pangkat_golongan?: string | null;
+  tmt_guru?: string | null;
   jenis_ptk?: string | null;
   foto?: string | null;
   max_jp?: number | null;
@@ -494,6 +496,8 @@ export class GuruService {
         agama: input.agama ?? null,
         status_kepegawaian: input.status_kepegawaian ?? null,
         pendidikan_terakhir: input.pendidikan_terakhir ?? null,
+        pangkat_golongan: input.pangkat_golongan ?? null,
+        tmt_guru: input.tmt_guru ?? null,
         jenis_ptk: input.jenis_ptk ?? 'PENDIDIK',
         max_jp: input.max_jp ?? 24,
       },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, GraduationCap, Activity, CreditCard } from 'lucide-react';
+import { Briefcase, GraduationCap, Activity, CreditCard, Award, Calendar } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
@@ -35,6 +35,8 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
     return (
       <SectionCard title="Status Kepegawaian" icon={Briefcase}>
         <DetailRow icon={<Briefcase size={16} />} label="Hubungan Kerja" value={getLabel(watch('status_kepegawaian'), statusKepegawaianOptions)} />
+        <DetailRow icon={<Award size={16} />} label="Pangkat / Golongan" value={watch('pangkat_golongan') || '-'} />
+        <DetailRow icon={<Calendar size={16} />} label="TMT Guru" value={watch('tmt_guru') || '-'} />
         <DetailRow icon={<GraduationCap size={16} />} label="Pendidikan" value={getLabel(watch('pendidikan_terakhir'), PENDIDIKAN_OPTIONS)} />
         <DetailRow icon={<Briefcase size={16} />} label="Jenis PTK" value={getLabel(watch('jenis_ptk'), JENIS_PTK_OPTIONS)} />
         <DetailRow icon={<Activity size={16} />} label="Status Akun" value={getLabel(watch('status'), statusOptions)} />
@@ -57,6 +59,14 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
         <Controller control={control} name="status_kepegawaian" render={({ field }) => (
           <SearchableSelect id="status_kepegawaian" value={field.value} onValueChange={field.onChange} options={statusKepegawaianOptions} placeholder="Pilih Status..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
         )} />
+      </div>
+      <div className="space-y-2 group">
+        <Label htmlFor="pangkat_golongan" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Pangkat / Golongan</Label>
+        <Input id="pangkat_golongan" {...register('pangkat_golongan')} placeholder="misal: IV/a - Pembina" disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
+      </div>
+      <div className="space-y-2 group">
+        <Label htmlFor="tmt_guru" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">TMT Guru (Terhitung Mulai Tanggal)</Label>
+        <Input id="tmt_guru" type="date" {...register('tmt_guru')} disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
       </div>
       <div className="space-y-2 group">
         <Label htmlFor="pendidikan_terakhir" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kualifikasi Pendidikan</Label>

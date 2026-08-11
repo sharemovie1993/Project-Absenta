@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, X, Loader2 } from 'lucide-react';
+import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2 } from 'lucide-react';
 import { Button, Modal } from '../../../ui';
 import { toast } from 'react-hot-toast';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
@@ -19,7 +19,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   waliKelasNama,
 }) => {
   // 1. Fetch live teacher profile via React Query Hook
-  const { guruProfile, isLoading: isProfileLoading } = useGuruMe();
+  const { guruProfile } = useGuruMe();
   const updateGuruMeMutation = useUpdateGuruMe();
 
   // 2. Account Settings Form State
@@ -28,7 +28,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // 3. Edit Data Diri Modal State
+  // 3. Edit Data Diri & Kepegawaian Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editAlamat, setEditAlamat] = useState('');
   const [editTempatLahir, setEditTempatLahir] = useState('');
@@ -36,6 +36,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [editJenisKelamin, setEditJenisKelamin] = useState('');
   const [editAgama, setEditAgama] = useState('');
   const [editPendidikanTerakhir, setEditPendidikanTerakhir] = useState('');
+  const [editStatusKepegawaian, setEditStatusKepegawaian] = useState('');
+  const [editPangkatGolongan, setEditPangkatGolongan] = useState('');
+  const [editTmtGuru, setEditTmtGuru] = useState('');
+  const [editJenisPtk, setEditJenisPtk] = useState('');
 
   // Populate state when live data arrives
   useEffect(() => {
@@ -53,6 +57,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       setEditJenisKelamin(activeGuru.jenis_kelamin || 'L');
       setEditAgama(activeGuru.agama || 'ISLAM');
       setEditPendidikanTerakhir(activeGuru.pendidikan_terakhir || 'S2 Pendidikan Komputer');
+      setEditStatusKepegawaian(activeGuru.status_kepegawaian || 'PNS');
+      setEditPangkatGolongan(activeGuru.pangkat_golongan || 'IV/a - Pembina');
+      setEditTmtGuru(activeGuru.tmt_guru || '2014-12-01');
+      setEditJenisPtk(activeGuru.jenis_ptk || 'PENDIDIK');
     }
   }, [guruProfile, user]);
 
@@ -83,7 +91,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
     }
   };
 
-  // Handle Edit Data Diri Submit
+  // Handle Edit Data Diri & Kepegawaian Submit
   const handleDataDiriSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -94,13 +102,17 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         jenis_kelamin: editJenisKelamin,
         agama: editAgama,
         pendidikan_terakhir: editPendidikanTerakhir,
+        status_kepegawaian: editStatusKepegawaian,
+        pangkat_golongan: editPangkatGolongan,
+        tmt_guru: editTmtGuru,
+        jenis_ptk: editJenisPtk,
       };
 
       await updateGuruMeMutation.mutateAsync(payload);
-      toast.success('Data pribadi berhasil diperbarui!');
+      toast.success('Data pribadi & kepegawaian berhasil diperbarui!');
       setIsEditModalOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Gagal memperbarui data pribadi.');
+      toast.error(err?.message || 'Gagal memperbarui data.');
     }
   };
 
@@ -147,15 +159,21 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{activeNip}</span>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">Golongan / Pangkat</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {editPangkatGolongan}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Jenis PTK</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {guruProfile?.jenis_ptk || 'PENDIDIK'}
+                  {editJenisPtk}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Status Pegawai</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {guruProfile?.status_kepegawaian || 'PNS / Guru Tetap'}
+                  {editStatusKepegawaian}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -335,22 +353,41 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             <div className="flex items-center gap-2">
               <Users size={16} className="text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                JABATAN DAN TUGAS TAMBAHAN
+                JABATAN DAN KEPEGAWAIAN
               </h3>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              <Edit3 size={14} />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <span className="text-[10px] font-semibold text-slate-400 block">Status Kepegawaian</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
-                {guruProfile?.status_kepegawaian || 'PNS / Guru Tetap'}
+                {editStatusKepegawaian}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">Golongan / Pangkat</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {editPangkatGolongan}
               </span>
             </div>
             <div>
               <span className="text-[10px] font-semibold text-slate-400 block">Jenis PTK</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
-                {guruProfile?.jenis_ptk || 'PENDIDIK'}
+                {editJenisPtk}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">TMT Guru</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {editTmtGuru}
               </span>
             </div>
             <div className="col-span-2">
@@ -416,12 +453,12 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         </div>
       </div>
 
-      {/* Edit Data Diri Modal */}
+      {/* Edit Data Diri & Kepegawaian Modal */}
       {isEditModalOpen && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title="Edit Data Pribadi Guru"
+          title="Edit Data Pribadi & Kepegawaian Guru"
         >
           <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -481,6 +518,66 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   <option value="BUDDHA">Buddha</option>
                   <option value="KONGHUCU">Konghucu</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Status Kepegawaian
+                </label>
+                <select
+                  value={editStatusKepegawaian}
+                  onChange={(e) => setEditStatusKepegawaian(e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="PNS">PNS / Pegawai Negeri Sipil</option>
+                  <option value="PPPK">PPPK / PPPK Guru</option>
+                  <option value="GTY">GTY / Guru Tetap Yayasan</option>
+                  <option value="GTT">GTT / Guru Tidak Tetap</option>
+                  <option value="HONORER">Honorer Sekolah</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Golongan / Pangkat
+                </label>
+                <input
+                  type="text"
+                  value={editPangkatGolongan}
+                  onChange={(e) => setEditPangkatGolongan(e.target.value)}
+                  placeholder="IV/a - Pembina"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Jenis PTK
+                </label>
+                <select
+                  value={editJenisPtk}
+                  onChange={(e) => setEditJenisPtk(e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="PENDIDIK">PENDIDIK (Guru)</option>
+                  <option value="TENAGA_KEPENDIDIKAN">TENAGA KEPENDIDIKAN (Staf / TU)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  TMT Guru (Terhitung Mulai Tanggal)
+                </label>
+                <input
+                  type="date"
+                  value={editTmtGuru}
+                  onChange={(e) => setEditTmtGuru(e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
               </div>
             </div>
 
