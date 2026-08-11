@@ -901,7 +901,7 @@ export const SiswaDashboard: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {todayKbmSchedule.map((sesi: any, idx: number) => {
-                    const tapList = dailyRecapRes?.data?.sessionTaps || trackingRes?.data?.sessionTaps || [];
+                    const tapList = dailyRecapRes?.data?.sessionTaps || (dailyRecapRes as any)?.data?.rincian || [];
                     const tap = tapList.find(
                       (t: any) => t.sesi_id === sesi.id || t.nama_sesi === sesi.nama_sesi || (t.nama_mapel && t.nama_mapel === sesi.nama_mapel)
                     );
