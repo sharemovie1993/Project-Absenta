@@ -185,21 +185,19 @@ export const SesiCard = React.memo(function SesiCard({
 
       {/* Line 2: Subject Title & Info */}
       <div className="space-y-0.5 relative z-10">
-        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight line-clamp-2">
+        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight">
           {mapelText}
         </h3>
 
-        <div className="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="truncate font-medium text-slate-700 dark:text-slate-300">
-              Guru: {guruText}
-            </span>
-            <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
-          </div>
+        <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="truncate font-medium text-slate-700 dark:text-slate-300">
+            Guru: {guruText}
+          </span>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
+        </div>
 
-          <div className="font-mono font-extrabold text-slate-700 dark:text-slate-300 shrink-0">
-            Hadir: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
-          </div>
+        <div className="text-[10px] sm:text-[11px] font-mono font-extrabold text-slate-700 dark:text-slate-300">
+          Hadir: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
         </div>
       </div>
 
