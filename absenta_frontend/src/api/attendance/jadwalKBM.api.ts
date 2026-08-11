@@ -57,6 +57,7 @@ export const getJadwalKBM = async (filters?: JadwalKBMFilters) => {
   const q: Record<string, unknown> = filters ? { ...filters, _t: Date.now() } : { _t: Date.now() };
   return requestWithFallback<any>('get', '/kurikulum/jadwal-kbm', { 
     params: q,
+    fallbackUrl: '/kurikulum/jadwal',
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 };
@@ -64,6 +65,7 @@ export const getJadwalKBM = async (filters?: JadwalKBMFilters) => {
 export const getMyJadwalKBM = async (params?: { tanggal?: string; hari?: string }) => {
   return requestWithFallback<{ success: boolean; message?: string; data: JadwalKBM[] }>('get', '/kurikulum/jadwal-kbm/my', {
     params,
+    fallbackUrl: '/kurikulum/jadwal/my',
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 };
