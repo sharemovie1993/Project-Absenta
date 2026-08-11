@@ -442,7 +442,7 @@ export const SiswaDashboard: React.FC = () => {
 
   const currentDisciplineScore = useMemo(() => {
     const baseScore = 100;
-    return Math.min(100, Math.max(0, baseScore - totalPoinPelanggaran + totalPoinPrestasi));
+    return Math.max(0, baseScore - totalPoinPelanggaran + totalPoinPrestasi);
   }, [totalPoinPelanggaran, totalPoinPrestasi]);
 
   // Attendance stats calculation for month (100% Real API data)
@@ -988,7 +988,7 @@ export const SiswaDashboard: React.FC = () => {
               KEDISIPLINAN
             </span>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
-              {currentDisciplineScore} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">/100</span>
+              {currentDisciplineScore} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">Poin</span>
             </div>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
               Gold Scholar Tier
