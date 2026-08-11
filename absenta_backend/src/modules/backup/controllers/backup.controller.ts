@@ -107,6 +107,21 @@ async function sanitizeRowForeignKeys(
             } catch (_) {}
           }
 
+          // Smart fallback for Plan relation (e.g. Subscription.plan_id)
+          if (targetModelName === 'Plan') {
+            try {
+              const rawCode = cleanData.service_code || cleanData.plan_code || 'CORE';
+              const fallbackPlan = await prisma.plan.findFirst({
+                where: { OR: [{ code: rawCode }, { is_active: true }] }
+              }) || await prisma.plan.findFirst();
+              if (fallbackPlan) {
+                cleanData[fkName] = fallbackPlan.id;
+                targetSet.add(fallbackPlan.id);
+                continue;
+              }
+            } catch (_) {}
+          }
+
           const scalarField = dmmfModel.fields.find(f => f.name === fkName);
           if (scalarField) {
             if (!scalarField.isRequired) {

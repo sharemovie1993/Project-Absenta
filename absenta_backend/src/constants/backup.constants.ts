@@ -18,9 +18,19 @@ export function getDynamicTenantModels(): string[] {
   for (const m of dmmfModels) {
     if (ignoreModels.has(m.name)) continue;
     const hasTenantField = m.fields.some(
-      f => f.name === 'tenant_id' || f.name === 'actor_tenant_id' || f.name === 'restored_to_tenant_id'
+      f => f.name === 'tenant_id' || f.name === 'tenantId' || f.name === 'actor_tenant_id' || f.name === 'restored_to_tenant_id'
     );
-    if (hasTenantField) {
+    if (hasTenantField || m.name === 'SiswaAkademik') {
+      tenantModelNames.add(m.name);
+    }
+  }
+
+  for (const m of dmmfModels) {
+    if (ignoreModels.has(m.name) || tenantModelNames.has(m.name)) continue;
+    const relatesToTenant = m.fields.some(
+      f => f.kind === 'object' && f.type && tenantModelNames.has(f.type)
+    );
+    if (relatesToTenant) {
       tenantModelNames.add(m.name);
     }
   }
