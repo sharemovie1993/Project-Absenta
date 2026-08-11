@@ -1012,7 +1012,7 @@ export const SiswaDashboard: React.FC = () => {
               <Shield size={20} className="hidden sm:block" />
             </div>
             <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Skor Kedisiplinan</span>
+              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin Kedisiplinan</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {currentDisciplineScore} Poin
               </div>
