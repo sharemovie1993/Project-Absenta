@@ -270,7 +270,6 @@ export const SesiCard = React.memo(function SesiCard({
       </div>
     </div>
   );
-  );
 });
 
 // Dummy/Empty wrapper to maintain layout if needed
