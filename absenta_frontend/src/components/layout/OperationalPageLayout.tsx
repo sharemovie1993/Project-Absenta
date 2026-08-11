@@ -276,13 +276,13 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
         </div>
       )}
 
-      {/* ── MAIN OPERATIONAL WORKSPACE CANVAS (MATCHED HP PADDING WITH SISWA DASHBOARD) ── */}
-      <main className="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-5 min-w-0 overflow-x-hidden">
+      {/* ── MAIN OPERATIONAL WORKSPACE CANVAS (FULL-WIDTH COMPACT MOBILE CANVAS) ── */}
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-0 py-1 sm:px-3.5 sm:py-3.5 space-y-2 sm:space-y-3.5 min-w-0 overflow-x-hidden">
         <InfraErrorBoundary 
           fallbackTitle={`Gagal memuat modul operasional ${title}`}
           queryKeyToInvalidate={resolvedKey ? [resolvedKey] : undefined}
         >
-          <div className="w-full space-y-3 sm:space-y-6">
+          <div className="w-full space-y-2 sm:space-y-6">
             {children}
           </div>
         </InfraErrorBoundary>
