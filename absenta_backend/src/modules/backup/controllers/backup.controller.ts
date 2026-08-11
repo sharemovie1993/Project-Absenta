@@ -53,6 +53,7 @@ async function sanitizeRowForeignKeys(
   modelName: string,
   cleanData: Record<string, any>,
   validIdsMap: Map<string, Set<string>>,
+  idMapping: Map<string, string>,
   prisma: any
 ): Promise<boolean> {
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
@@ -71,6 +72,14 @@ async function sanitizeRowForeignKeys(
         }
 
         if (!targetSet.has(String(val))) {
+          // Check universal ID mapping first (e.g. SiswaAkademik:oldProdId -> newDevId)
+          const mappedId = idMapping.get(`${targetModelName}:${val}`);
+          if (mappedId) {
+            cleanData[fkName] = mappedId;
+            targetSet.add(mappedId);
+            continue;
+          }
+
           // Check target DB once directly
           const pTarget = (prisma as any)[targetModelName];
           if (pTarget && typeof pTarget.findUnique === 'function') {
@@ -83,11 +92,12 @@ async function sanitizeRowForeignKeys(
             } catch (_) {}
           }
 
-          // Smart fallback for SiswaAkademik relation (e.g. AbsenSiswa.siswa_akademik_id)
+          // Smart fallback for SiswaAkademik relation (e.g. AbsenSiswa.siswa_akademik_id / IzinKeluarSiswa.siswa_akademik_id)
           if (targetModelName === 'SiswaAkademik' && cleanData.siswa_id) {
             try {
+              const mappedSiswaId = idMapping.get(`Siswa:${cleanData.siswa_id}`) || cleanData.siswa_id;
               const fallbackSa = await prisma.siswaAkademik.findFirst({
-                where: { siswa_id: cleanData.siswa_id }
+                where: { siswa_id: mappedSiswaId }
               });
               if (fallbackSa) {
                 cleanData[fkName] = fallbackSa.id;
@@ -348,6 +358,9 @@ export class BackupController {
 
       // Universal Foreign Key ID Map across all tenant models to prevent any FK constraint errors
       const validIdsMap = new Map<string, Set<string>>();
+      // Universal ID Translator Map: "ModelName:oldProdId" -> "newDevId"
+      const idMapping = new Map<string, string>();
+
       for (const mName of models) {
         const pModel = (prisma as any)[mName];
         if (pModel && typeof pModel.findMany === 'function') {
@@ -441,7 +454,7 @@ export class BackupController {
             }
 
             // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
-            const isFkValid = await sanitizeRowForeignKeys(modelName, cleanData, validIdsMap, prisma);
+            const isFkValid = await sanitizeRowForeignKeys(modelName, cleanData, validIdsMap, idMapping, prisma);
             if (!isFkValid) {
               skippedCount++;
               continue;
@@ -501,23 +514,31 @@ export class BackupController {
               }
             }
 
+            let savedRecord: any = null;
             if (whereInput) {
-              await prismaModel.upsert({
+              savedRecord = await prismaModel.upsert({
                 where: whereInput,
                 create: cleanData,
                 update: cleanData,
               });
             } else {
-              await prismaModel.create({ data: cleanData });
+              savedRecord = await prismaModel.create({ data: cleanData });
             }
 
-            if (cleanData.id) {
+            const oldProdId = rawRow.id;
+            const newDevId = savedRecord?.id || cleanData.id || rawRow.id;
+
+            if (oldProdId && newDevId) {
+              idMapping.set(`${modelName}:${oldProdId}`, String(newDevId));
+            }
+
+            if (newDevId) {
               let targetSet = validIdsMap.get(modelName);
               if (!targetSet) {
                 targetSet = new Set<string>();
                 validIdsMap.set(modelName, targetSet);
               }
-              targetSet.add(String(cleanData.id));
+              targetSet.add(String(newDevId));
             }
 
             restoredCount++;
