@@ -375,11 +375,49 @@ export const SiswaDashboard: React.FC = () => {
     return [];
   }, [pelanggaranRes]);
 
+  const prestasiList = useMemo(() => {
+    const apiData = prestasiRes?.data;
+    if (Array.isArray(apiData)) return apiData;
+    if (apiData?.list && Array.isArray(apiData.list)) return apiData.list;
+    return [];
+  }, [prestasiRes]);
+
+  const disciplineHistory = useMemo(() => {
+    const combined = [];
+    if (pelanggaranList.length > 0) {
+      for (const p of pelanggaranList) {
+        combined.push({
+          id: p.id || p.tanggal || `pel-${Math.random()}`,
+          judul: p.nama_pelanggaran || p.kategori || p.keterangan || 'Catatan Pelanggaran',
+          kategori: p.kategori || 'Kedisiplinan',
+          tanggal: p.tanggal,
+          poin: -(p.poin || 5),
+          type: 'pelanggaran',
+        });
+      }
+    }
+    if (prestasiList.length > 0) {
+      for (const pr of prestasiList) {
+        combined.push({
+          id: pr.id || pr.tanggal || `pres-${Math.random()}`,
+          judul: pr.nama_prestasi || pr.kategori || pr.keterangan || 'Catatan Prestasi',
+          kategori: pr.kategori || 'Prestasi & Keahlian',
+          tanggal: pr.tanggal,
+          poin: +(pr.poin || 10),
+          type: 'prestasi',
+        });
+      }
+    }
+    combined.sort((a, b) => new Date(b.tanggal || 0).getTime() - new Date(a.tanggal || 0).getTime());
+    return combined;
+  }, [pelanggaranList, prestasiList]);
+
   const currentDisciplineScore = useMemo(() => {
     const baseScore = 100;
     const minus = pelanggaranList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
-    return Math.max(0, baseScore - minus);
-  }, [pelanggaranList]);
+    const plus = prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
+    return Math.min(100, Math.max(0, baseScore - minus + plus));
+  }, [pelanggaranList, prestasiList]);
 
   // Attendance stats calculation for month
   const monthStats = useMemo(() => {
@@ -795,7 +833,11 @@ export const SiswaDashboard: React.FC = () => {
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
               <span>Presensi Gerbang:</span>
               <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
-                {dailyRecapRes?.data?.status || 'HADIR'} ({dailyRecapRes?.data?.waktu_masuk || '06.42 WIB'})
+                {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
+                {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap 
+                  ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
+                  : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
+                })
               </span>
             </h2>
 
@@ -832,7 +874,9 @@ export const SiswaDashboard: React.FC = () => {
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                 {currentDisciplineScore} Poin
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">Aman (Bebas SP)</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                {currentDisciplineScore >= 80 ? 'Aman (Bebas SP)' : currentDisciplineScore >= 60 ? 'Peringatan (SP 1)' : 'Kritis (Perlu Pembinaan)'}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
               <Shield size={20} />
@@ -844,9 +888,11 @@ export const SiswaDashboard: React.FC = () => {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Peringkat Kedisiplinan</span>
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                #{myRank.rank}
+                #{myRank.rank > 0 ? myRank.rank : 1}
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Dari {myRank.totalStudents} Siswa {currentClassName}</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                Dari {myRank.totalStudents > 0 ? myRank.totalStudents : 32} Siswa {currentClassName}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
               <TrendingUp size={20} />
@@ -860,7 +906,9 @@ export const SiswaDashboard: React.FC = () => {
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                 {gamification.attendanceRate}%
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">Sempurna (100% Hadir)</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                {gamification.attendanceRate >= 95 ? 'Sangat Baik' : gamification.attendanceRate >= 80 ? 'Cukup Baik' : 'Perlu Perhatian'}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
               <CheckCircle2 size={20} />
@@ -872,9 +920,11 @@ export const SiswaDashboard: React.FC = () => {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Total Prestasi</span>
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                +2 Catatan
+                +{prestasiList.length} Catatan
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400">+20 Poin Bonus</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400">
+                +{prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0)} Poin Bonus
+              </p>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
               <Trophy size={20} />
@@ -956,7 +1006,7 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* ðŸ“œ HISTORIS POIN KEDISIPLINAN TERBARU (Clean Light Theme) */}
+            {/* 📜 HISTORIS POIN KEDISIPLINAN TERBARU (Clean Light Theme) */}
             <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Historis Poin Kedisiplinan Terbaru</h3>
@@ -967,51 +1017,52 @@ export const SiswaDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {/* Item 1: Juara 1 LKS */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-primary/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/30">
-                      <Award size={18} />
+                {disciplineHistory.length > 0 ? (
+                  disciplineHistory.slice(0, 3).map((item) => {
+                    const isPositive = item.poin > 0;
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
+                          isPositive ? "border-emerald-200/80 dark:border-emerald-900/40 hover:border-emerald-500/40" : "border-rose-200/80 dark:border-rose-900/40 hover:border-rose-500/40"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
+                            isPositive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                          )}>
+                            {isPositive ? <Award size={18} /> : <AlertCircle size={18} />}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white">{item.judul}</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {item.kategori} • {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "text-xs font-black shrink-0 font-mono",
+                          isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        )}>
+                          {isPositive ? `+${item.poin} Poin` : `${item.poin} Poin`}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 text-center space-y-1.5">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                      <FileText size={18} />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Juara 1 LKS Rekayasa Perangkat Lunak Tingkat Kota</h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Akademik &amp; Keahlian â€¢ 2026-07-28</p>
-                    </div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada catatan poin kedisiplinan terbaru.</p>
                   </div>
-                  <span className="text-xs font-black text-primary shrink-0 font-mono">+15 Poin</span>
-                </div>
-
-                {/* Item 2: Terlambat Masuk Sekolah */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-rose-500/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
-                      <AlertCircle size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Terlambat Masuk Sekolah (&gt;15 Menit)</h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Kedisiplinan Waktu â€¢ 2026-08-02</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-rose-600 dark:text-rose-400 shrink-0 font-mono">-5 Poin</span>
-                </div>
-
-                {/* Item 3: Petugas Upacara Bendera */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-primary/40 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/30">
-                      <Award size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Petugas Upacara Bendera HUT Kemerdekaan RI</h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Keorganisasian â€¢ 2026-08-05</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-primary shrink-0 font-mono">+5 Poin</span>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* ðŸ‘‘ MODUL OPERASIONAL PETUGAS KELAS (Dua Wewenang: Presensi & Jurnal Kelas) */}
+            {/* 👑 MODUL OPERASIONAL PETUGAS KELAS (Dua Wewenang: Presensi & Jurnal Kelas) */}
             {isPetugasKelas && (
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
@@ -1072,32 +1123,42 @@ export const SiswaDashboard: React.FC = () => {
                   </div>
                   <button 
                     onClick={() => handleTabChange('catatan')}
-                    className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline"
+                    className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                   >
                     Lihat Semua
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
-                  {pelanggaranList.map((item: any) => (
-                    <div 
-                      key={item.id || item.tanggal} 
-                      className="p-3.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between"
-                    >
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                          {item.nama_pelanggaran || item.kategori || 'Tidak membawa makan'}
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-medium block">
-                          {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '31 Jul 2026'}
+                {pelanggaranList.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {pelanggaranList.slice(0, 3).map((item: any) => (
+                      <div 
+                        key={item.id || item.tanggal || `pel-${Math.random()}`} 
+                        className="p-3.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between"
+                      >
+                        <div className="space-y-0.5 min-w-0 pr-2">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
+                            {item.nama_pelanggaran || item.kategori || item.keterangan || 'Catatan Pelanggaran'}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-medium block">
+                            {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950 font-mono shrink-0">
+                          -{item.poin || 5}
                         </span>
                       </div>
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950">
-                        -{item.poin || 5}
-                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center space-y-2">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                      <CheckCircle2 size={20} className="text-emerald-500" />
                     </div>
-                  ))}
-                </div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Tidak ada catatan pelanggaran.</p>
+                    <p className="text-[11px] text-slate-400">Pertahankan kedisiplinan tinggi!</p>
+                  </div>
+                )}
               </div>
 
               {/* Card 2: Prestasi Terbaru */}
@@ -1113,19 +1174,42 @@ export const SiswaDashboard: React.FC = () => {
                   </div>
                   <button 
                     onClick={() => handleTabChange('catatan')}
-                    className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline"
+                    className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                   >
                     Lihat Semua
                   </button>
                 </div>
 
-                <div className="py-8 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                    <Trophy size={20} />
+                {prestasiList.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {prestasiList.slice(0, 3).map((item: any) => (
+                      <div 
+                        key={item.id || item.tanggal || `pres-${Math.random()}`} 
+                        className="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex items-center justify-between"
+                      >
+                        <div className="space-y-0.5 min-w-0 pr-2">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
+                            {item.nama_prestasi || item.kategori || item.keterangan || 'Prestasi Siswa'}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-medium block">
+                            {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950 font-mono shrink-0">
+                          +{item.poin || 10}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-xs font-bold text-slate-500">Tidak ada catatan prestasi.</p>
-                  <p className="text-[11px] text-slate-400">Pertahankan kedisiplinan dan ukir kebanggaan sekolah!</p>
-                </div>
+                ) : (
+                  <div className="py-8 text-center space-y-2">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                      <Trophy size={20} />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Tidak ada catatan prestasi.</p>
+                    <p className="text-[11px] text-slate-400">Pertahankan kedisiplinan dan ukir kebanggaan sekolah!</p>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
