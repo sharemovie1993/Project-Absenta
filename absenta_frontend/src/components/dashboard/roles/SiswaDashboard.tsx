@@ -138,6 +138,7 @@ export const SiswaDashboard: React.FC = () => {
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(todayIso);
 
   const handleOpenEditSection = (section: SectionEditType) => {
     setActiveSection(section);
@@ -214,8 +215,8 @@ export const SiswaDashboard: React.FC = () => {
 
   // 2. Attendance & Schedule Data
   const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
-    queryKey: ['rekap-harian-siswa-me', todayIso, user?.siswa_id],
-    queryFn: () => getRekapHarianSiswaMe({ tanggal: todayIso }),
+    queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
+    queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
     enabled: !!user && !!user?.siswa_id,
   });
 
@@ -226,10 +227,10 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
-    queryKey: ['jadwal-kbm-siswa-me', todayIso, user?.siswa_id],
+    queryKey: ['jadwal-kbm-siswa-me', selectedDate, user?.siswa_id],
     queryFn: async () => {
-      console.log('🚀 [FRONTEND DASHBOARD] Querying getMyJadwalKBM for date:', todayIso, 'user siswa_id:', user?.siswa_id);
-      const res = await getMyJadwalKBM({ tanggal: todayIso });
+      console.log('🚀 [FRONTEND DASHBOARD] Querying getMyJadwalKBM for selectedDate:', selectedDate, 'user siswa_id:', user?.siswa_id);
+      const res = await getMyJadwalKBM({ tanggal: selectedDate });
       console.log('🎯 [FRONTEND DASHBOARD] Query getMyJadwalKBM returned:', res);
       return res;
     },
@@ -477,9 +478,51 @@ export const SiswaDashboard: React.FC = () => {
 
   // Historis Sesi Absensi & Tap for Kehadiran Tab Right Column
   const sessionAttendanceHistory = useMemo(() => {
+    // 1. First check dailyRecapRes for selectedDate
+    const dailyData = dailyRecapRes?.data;
+    const rincianList = Array.isArray(dailyData?.rincian) ? dailyData.rincian : [];
+
+    if (rincianList.length > 0) {
+      return rincianList.map((item: any, idx: number) => {
+        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
+        const isTerlambat = item.status === 'TERLAMBAT';
+        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
+
+        let waktuStr = item.waktu_tap || item.waktu || item.waktu_masuk || '-';
+        if (waktuStr !== '-' && !waktuStr.includes('WIB')) {
+          waktuStr = `${waktuStr} WIB`;
+        }
+
+        let formattedDate = selectedDate;
+        if (selectedDate && selectedDate.includes('-')) {
+          try {
+            const [y, m, d] = selectedDate.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+          } catch {}
+        }
+
+        const sesiNama = item.jenis_kegiatan || item.sesi_nama || item.nama_sesi || item.mapel || 'Sesi Presensi';
+
+        return {
+          id: item.id || `rincian-${idx}`,
+          date: formattedDate,
+          status: item.status || 'HADIR',
+          metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
+          waktu: waktuStr,
+          sesi: sesiNama,
+          keterangan: item.keterangan || (isHadir ? 'Hadir tepat waktu' : isTerlambat ? 'Terlambat mengikuti presensi' : isSakit ? 'Sakit/Izin' : 'Alpa'),
+        };
+      });
+    }
+
+    // 2. Fallback to monthlyRecap detail filtered by selectedDate or all items
     const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    if (detailList.length > 0) {
-      return detailList.map((item: any, idx: number) => {
+    const filteredDetail = detailList.filter((item: any) => !selectedDate || item.tanggal === selectedDate);
+    const listToMap = filteredDetail.length > 0 ? filteredDetail : detailList;
+
+    if (listToMap.length > 0) {
+      return listToMap.map((item: any, idx: number) => {
         const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
         const isTerlambat = item.status === 'TERLAMBAT';
         const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
@@ -520,7 +563,7 @@ export const SiswaDashboard: React.FC = () => {
       });
     }
     return [];
-  }, [monthlyRecap]);
+  }, [dailyRecapRes, monthlyRecap, selectedDate]);
 
   // Today KBM Schedule for Kehadiran Tab Bottom Section
   const todayKbmSchedule = useMemo(() => {
@@ -1097,6 +1140,8 @@ export const SiswaDashboard: React.FC = () => {
               selectedMonthFormatted={selectedMonthFormatted}
               calendarGridData={calendarGridData}
               todayIso={todayIso}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
               sessionAttendanceHistory={sessionAttendanceHistory}
               todayKbmSchedule={todayKbmSchedule}
               isLoadingSchedule={isLoadingSchedule}

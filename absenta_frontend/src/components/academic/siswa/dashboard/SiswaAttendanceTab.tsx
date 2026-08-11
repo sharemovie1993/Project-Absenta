@@ -24,6 +24,8 @@ export interface SiswaAttendanceTabProps {
     }>;
   };
   todayIso: string;
+  selectedDate?: string;
+  onSelectDate?: (dateIso: string) => void;
   sessionAttendanceHistory: Array<{
     id: string;
     date: string;
@@ -53,11 +55,25 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   selectedMonthFormatted,
   calendarGridData,
   todayIso,
+  selectedDate = todayIso,
+  onSelectDate,
   sessionAttendanceHistory,
   todayKbmSchedule,
   isLoadingSchedule = false,
+  isApiConnected = true,
 }) => {
   const attendanceRate = gamification?.attendanceRate ?? 100;
+
+  const formattedSelectedDateText = React.useMemo(() => {
+    if (!selectedDate) return 'Hari Ini';
+    try {
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return selectedDate;
+    }
+  }, [selectedDate]);
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -126,6 +142,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
 
               {calendarGridData.days.map((item) => {
                 const isToday = item.dateIso === todayIso;
+                const isSelected = item.dateIso === selectedDate;
                 const st = item.status;
                 const isHadir = st === 'HADIR' || st === 'TEPAT_WAKTU';
                 const isTerlambat = st === 'TERLAMBAT';
@@ -135,16 +152,19 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                 return (
                   <div
                     key={item.dateIso}
+                    onClick={() => onSelectDate && onSelectDate(item.dateIso)}
                     className={cn(
                       "h-9 sm:h-10 rounded-xl p-1 border flex flex-col items-center justify-center gap-0.5 relative transition-all cursor-pointer group select-none",
+                      isSelected && !isToday && "ring-2 ring-blue-500/80 border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold",
                       isToday
-                        ? "bg-emerald-500/15 border-emerald-500/80 text-emerald-700 dark:text-emerald-300 shadow-sm ring-2 ring-emerald-500/20 font-black"
-                        : "bg-slate-50/90 dark:bg-slate-950/70 border-slate-200/70 dark:border-slate-800/80 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
+                        ? "bg-emerald-500/15 border-emerald-500/80 text-emerald-700 dark:text-emerald-300 shadow-sm ring-2 ring-emerald-500/30 font-black"
+                        : !isSelected && "bg-slate-50/90 dark:bg-slate-950/70 border-slate-200/70 dark:border-slate-800/80 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
                     )}
                   >
                     <span className={cn(
                       "text-xs font-extrabold leading-none",
-                      isToday && "text-emerald-600 dark:text-emerald-400 font-black"
+                      isToday && "text-emerald-600 dark:text-emerald-400 font-black",
+                      isSelected && !isToday && "text-blue-600 dark:text-blue-400 font-black"
                     )}>
                       {item.day}
                     </span>
@@ -170,7 +190,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
           </div>
 
           {/* Bottom Legend */}
-          <div className="flex items-center justify-center gap-3.5 sm:gap-5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-400 flex-wrap mt-1">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-4 text-[11px] font-bold text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>Hadir</span>
@@ -193,13 +213,19 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         {/* RIGHT COLUMN: Historis Sesi Absensi (col-span-12 lg:col-span-5 xl:col-span-5) */}
         <div className="col-span-12 lg:col-span-5 xl:col-span-5 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
           <div>
-            <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
-              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                Historis Sesi Absensi
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Catatan riwayat presensi sesi KBM &amp; pintu gerbang
-              </p>
+            <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Historis Sesi Absensi
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Catatan riwayat presensi sesi KBM &amp; pintu gerbang
+                </p>
+              </div>
+
+              <span className="px-2.5 py-1 rounded-xl text-[11px] font-black bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono shrink-0 border border-slate-200 dark:border-slate-700">
+                {formattedSelectedDateText}
+              </span>
             </div>
 
             <div className="space-y-3 pt-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
