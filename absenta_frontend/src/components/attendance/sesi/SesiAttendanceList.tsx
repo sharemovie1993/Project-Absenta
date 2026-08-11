@@ -348,23 +348,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     <div className="space-y-4 py-1">
 
 
-      {/* 1. Compact Inline Summary */}
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <Users size={13} className="text-slate-400 shrink-0" />
-        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap overflow-x-auto no-scrollbar flex-1 min-w-0">
-          <span className="text-emerald-600 font-black">✓ Hadir {stats.hadir}</span>
-          {stats.terlambat > 0 && <span className="text-orange-500 font-black">· ⏱ Telat {stats.terlambat}</span>}
-          {(stats.izin + stats.sakit) > 0 && <span className="text-blue-500 font-black">· 📋 Izin {stats.izin + stats.sakit}</span>}
-          {stats.dispen > 0 && <span className="text-violet-500 font-black">· 🎓 Dispen {stats.dispen}</span>}
-          {stats.alpa > 0 && <span className="text-rose-500 font-black">· ✗ Alpa {stats.alpa}</span>}
-          {stats.belum_tap > 0 ? (
-            <span className="text-slate-400 font-normal">· Belum {stats.belum_tap} dari {stats.total}</span>
-          ) : (
-            <span className="text-emerald-600 font-black">· ✓ Lengkap ({stats.total})</span>
-          )}
-        </p>
-      </div>
-
       {/* 2. Tiny Inline Journal Info */}
       {progres && (
         <div className="bg-indigo-50/20 dark:bg-indigo-900/10 px-3 py-1.5 rounded-lg border border-indigo-100/30 dark:border-indigo-800/20 flex items-center justify-between gap-3">
@@ -470,36 +453,42 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="space-y-2"
+            className="space-y-2.5"
           >
-            {/* Search + Filter — satu baris compact */}
-            <div className="flex items-center gap-1.5">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari siswa..."
-                  className="w-full pl-7 pr-2 h-7 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg text-[11px] font-semibold focus:ring-1 focus:ring-indigo-400 outline-none"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                {['ALL', 'HADIR', 'BELUM_TAP', 'ALPA'].map((st) => (
+            {/* Status Tabs dengan Badge Count — tanpa search bar */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
+              {[
+                { key: 'ALL', label: 'Semua', count: stats.total },
+                { key: 'HADIR', label: 'Hadir', count: stats.hadir },
+                ...(stats.terlambat > 0 ? [{ key: 'TERLAMBAT', label: 'Telat', count: stats.terlambat }] : []),
+                ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
+                { key: 'BELUM_TAP', label: 'Belum', count: stats.belum_tap },
+                { key: 'ALPA', label: 'Alpa', count: stats.alpa }
+              ].map((tab) => {
+                const isActive = filterStatus === tab.key;
+                return (
                   <button
-                    key={st}
-                    onClick={() => setFilterStatus(st)}
+                    key={tab.key}
+                    onClick={() => setFilterStatus(tab.key)}
                     className={cn(
-                      "px-2.5 h-7 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all shrink-0",
-                      filterStatus === st
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      "flex items-center gap-1.5 px-3 h-7 rounded-lg text-[10px] font-bold transition-all shrink-0 border",
+                      isActive
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:bg-slate-100"
                     )}
                   >
-                    {st === 'ALL' ? 'Semua' : st === 'BELUM_TAP' ? 'Belum' : st}
+                    <span>{tab.label}</span>
+                    <span className={cn(
+                      "px-1.5 py-0.2 rounded-full text-[9px] font-extrabold",
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    )}>
+                      {tab.count}
+                    </span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
             {!records || records.length === 0 ? (
