@@ -225,10 +225,10 @@ export const SiswaDashboard: React.FC = () => {
     enabled: !!user && !!user?.siswa_id,
   });
 
-  const { data: scheduleRes, refetch: refetchSchedule } = useQuery({
+  const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
     queryKey: ['jadwal-kbm-siswa-me', todayIso, user?.siswa_id],
     queryFn: () => getMyJadwalKBM({ tanggal: todayIso }),
-    enabled: !!user && !!user?.siswa_id && tenantMode === 'MULTI_SESI',
+    enabled: !!user && !!user?.siswa_id,
   });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
@@ -470,35 +470,80 @@ export const SiswaDashboard: React.FC = () => {
     };
   }, [selectedMonth, monthlyRecap]);
 
-  // Gate Tap History for Kehadiran Tab Right Column
-  const gateTapHistory = useMemo(() => {
+  // Historis Sesi Absensi & Tap for Kehadiran Tab Right Column
+  const sessionAttendanceHistory = useMemo(() => {
     const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
     if (detailList.length > 0) {
-      return detailList.slice(0, 6).map((item: any) => ({
-        id: item.tanggal || Math.random().toString(),
-        date: item.tanggal || '-',
-        status: item.status || 'HADIR',
-        metode: item.metode_absen || 'RFID',
-        waktu: item.waktu_masuk ? `Tap Masuk: ${item.waktu_masuk} WIB` : 'Tap Masuk: -',
-        keterangan: item.keterangan || (item.status === 'HADIR' ? 'Tepat waktu' : item.status === 'TERLAMBAT' ? 'Terlambat' : item.status === 'SAKIT' ? 'Sakit' : '-')
-      }));
+      return detailList.map((item: any, idx: number) => {
+        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
+        const isTerlambat = item.status === 'TERLAMBAT';
+        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
+
+        let waktuStr = item.waktu_masuk ? `Tap / Sesi: ${item.waktu_masuk} WIB` : 'Tap / Sesi: -';
+        if (item.waktu) {
+          waktuStr = `Tap / Sesi: ${item.waktu}`;
+        }
+
+        let defaultKet = isHadir
+          ? 'Tepat waktu via Gerbang / Sesi Presensi'
+          : isTerlambat
+          ? 'Terlambat mengikuti presensi'
+          : isSakit
+          ? 'Izin / Sakit terlampir via Portal'
+          : 'Belum ada catatan presensi dari wali kelas';
+
+        return {
+          id: item.id || item.tanggal || `session-${idx}`,
+          date: item.tanggal || '-',
+          status: item.status || 'HADIR',
+          metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
+          waktu: waktuStr,
+          sesi: item.sesi_nama || item.jenis_kegiatan || 'Presensi Harian',
+          keterangan: item.keterangan || defaultKet,
+        };
+      });
     }
     return [];
   }, [monthlyRecap]);
 
   // Today KBM Schedule for Kehadiran Tab Bottom Section
   const todayKbmSchedule = useMemo(() => {
-    const list = Array.isArray(scheduleRes?.data) ? scheduleRes.data : [];
+    const list = Array.isArray(scheduleRes?.data) ? scheduleRes.data : Array.isArray(scheduleRes) ? scheduleRes : [];
     if (list.length > 0) {
-      return list.map((item: any, idx: number) => ({
-        id: item.id || String(idx),
-        kode: item.kode_mapel || `MAPEL-${idx + 1}`,
-        mapel: item.nama_mapel || item.mapel || 'Mata Pelajaran',
-        guru: item.nama_guru || item.guru || 'Guru Pengampu',
-        lokasi: item.lokasi || item.ruang || 'Ruang Kelas',
-        jam: item.jam || `${item.jam_mulai || ''} - ${item.jam_selesai || ''}`,
-        status: idx === 0 ? 'Sedang Berlangsung' : 'Mendatang'
-      }));
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      return list.map((item: any, idx: number) => {
+        const jamMulai = item.jam_mulai || item.jam?.split('-')[0]?.trim() || '';
+        const jamSelesai = item.jam_selesai || item.jam?.split('-')[1]?.trim() || '';
+
+        let calcStatus = 'Mendatang';
+        if (jamMulai) {
+          const [sH, sM] = jamMulai.split(':').map(Number);
+          const startMin = (sH || 0) * 60 + (sM || 0);
+          let endMin = startMin + 90;
+          if (jamSelesai) {
+            const [eH, eM] = jamSelesai.split(':').map(Number);
+            endMin = (eH || 0) * 60 + (eM || 0);
+          }
+
+          if (currentMinutes >= startMin && currentMinutes <= endMin) {
+            calcStatus = 'Sedang Berlangsung';
+          } else if (currentMinutes > endMin) {
+            calcStatus = 'Selesai';
+          }
+        }
+
+        return {
+          id: item.id || String(idx),
+          kode: item.Mapel?.kode_mapel || item.kode_mapel || item.kode || `KBM-${idx + 1}`,
+          mapel: item.Mapel?.nama_mapel || item.nama_mapel || item.mapel || 'Mata Pelajaran',
+          guru: item.Guru?.User?.full_name || item.nama_guru || item.guru || 'Guru Pengampu',
+          lokasi: item.Kelas?.nama_kelas || item.lokasi || item.ruang || 'Ruang Kelas',
+          jam: item.jam || (jamMulai && jamSelesai ? `${jamMulai} - ${jamSelesai}` : '07:00 - 08:30'),
+          status: calcStatus,
+        };
+      });
     }
     return [];
   }, [scheduleRes]);
@@ -1017,10 +1062,12 @@ export const SiswaDashboard: React.FC = () => {
               gamification={gamification}
               handlePrevMonth={handlePrevMonth}
               handleNextMonth={handleNextMonth}
+              selectedMonthFormatted={selectedMonthFormatted}
               calendarGridData={calendarGridData}
               todayIso={todayIso}
-              gateTapHistory={gateTapHistory}
+              sessionAttendanceHistory={sessionAttendanceHistory}
               todayKbmSchedule={todayKbmSchedule}
+              isLoadingSchedule={isLoadingSchedule}
             />
           </motion.div>
         )}
