@@ -44,7 +44,6 @@ import {
   Sparkles,
   AlertCircle,
   ArrowRight,
-  Sparkles,
   FolderOpen,
   Camera
 } from 'lucide-react';
