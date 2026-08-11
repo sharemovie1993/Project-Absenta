@@ -303,6 +303,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                     Belum ada riwayat sesi absensi pada tanggal ini.
                   </p>
                 </div>
+              )}
             </div>
           </div>
         </div>
