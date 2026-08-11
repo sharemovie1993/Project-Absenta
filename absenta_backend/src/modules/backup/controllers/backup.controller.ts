@@ -285,7 +285,28 @@ export class BackupController {
               if (validPk) {
                 whereInput = { [pkName]: pkValue };
               }
-            } else if (cleanData.id) {
+            }
+
+            if (!whereInput && dmmfModel?.uniqueIndexes && dmmfModel.uniqueIndexes.length > 0) {
+              for (const uIdx of dmmfModel.uniqueIndexes) {
+                const uName = uIdx.name || uIdx.fields.join('_');
+                const uValue: Record<string, any> = {};
+                let validU = true;
+                for (const fName of uIdx.fields) {
+                  if (cleanData[fName] !== undefined && cleanData[fName] !== null) {
+                    uValue[fName] = cleanData[fName];
+                  } else {
+                    validU = false;
+                  }
+                }
+                if (validU) {
+                  whereInput = { [uName]: uValue };
+                  break;
+                }
+              }
+            }
+
+            if (!whereInput && cleanData.id) {
               whereInput = { id: cleanData.id };
             }
 
