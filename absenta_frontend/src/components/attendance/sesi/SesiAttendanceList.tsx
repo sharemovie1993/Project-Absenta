@@ -96,7 +96,7 @@ const SesiAttendanceRow = React.memo(({
       className={cn(
         "grid items-center gap-2 px-4 py-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group",
         isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]",
-        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20 border-l-2 border-indigo-500"
+        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20"
       )}
     >
       <div className="min-w-0">
@@ -562,7 +562,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
                   <div className="text-center">TAP</div>
                   <div className={isReportMode ? "text-center" : "text-right"}>{isReportMode ? 'STATUS' : 'AKSI CEPAT'}</div>
                 </div>
-                <div className="divide-y divide-gray-50 dark:divide-gray-700/20">
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {filteredRecords.map((r) => (
                     <SesiAttendanceRow 
                       key={r.id || r.siswa_akademik_id}
