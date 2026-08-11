@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 
 async function testGuruProfile() {
   console.log('----------------------------------------------------');
-  console.log('🔍 TEST SCRIPT: Verifikasi Data Profil Guru (Me)');
+  console.log('🔍 TEST SCRIPT: Verifikasi Data Profil Guru (Me) FULL PAYLOAD');
   console.log('----------------------------------------------------');
 
   const email = 'trisna@absenta.id';
@@ -70,7 +70,10 @@ async function testGuruProfile() {
     { key: 'agama', label: 'Agama' },
     { key: 'status_kepegawaian', label: 'Status Kepegawaian' },
     { key: 'pendidikan_terakhir', label: 'Pendidikan Terakhir' },
+    { key: 'pangkat_golongan', label: 'Pangkat / Golongan' },
+    { key: 'tmt_guru', label: 'TMT Guru' },
     { key: 'jenis_ptk', label: 'Jenis PTK' },
+    { key: 'max_jp', label: 'Kapasitas JP Mengajar' },
     { key: 'jabatan', label: 'Jabatan (String Label)' },
     { key: 'jabatan_list', label: 'Jabatan List (Array Posisi)' },
     { key: 'wali_kelas_di', label: 'Rombel Wali Kelas' },
