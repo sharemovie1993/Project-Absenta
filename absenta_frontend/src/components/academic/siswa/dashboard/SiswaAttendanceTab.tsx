@@ -78,14 +78,20 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     guruName?: string;
   }>({ isOpen: false });
 
+  const isRealUUID = Boolean(selectedSesiModal.sesiId && !selectedSesiModal.sesiId.startsWith('rincian-'));
+
   const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
     queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
     queryFn: async () => {
-      if (!selectedSesiModal.sesiId) return [];
-      const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
-      return res?.data || [];
+      if (!selectedSesiModal.sesiId || selectedSesiModal.sesiId.startsWith('rincian-')) return [];
+      try {
+        const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
+        return res?.data || [];
+      } catch {
+        return [];
+      }
     },
-    enabled: Boolean(selectedSesiModal.isOpen && selectedSesiModal.sesiId)
+    enabled: Boolean(selectedSesiModal.isOpen && isRealUUID)
   });
 
   const formattedSelectedDateText = React.useMemo(() => {
