@@ -94,11 +94,6 @@ const SesiAttendanceRow = React.memo(({
               🟨 Izin Piket {record.piket_jam_keluar ? `(${record.piket_jam_keluar})` : ''}
             </span>
           )}
-          {record.catatan?.includes('DISPENSASI') && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300/50">
-              🟦 Dispensasi
-            </span>
-          )}
         </div>
         {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
           <p className="text-[8px] text-indigo-500 font-bold italic truncate leading-none mt-0.5">
@@ -118,6 +113,11 @@ const SesiAttendanceRow = React.memo(({
         {record.is_terlambat && (
           <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
             TELAT
+          </span>
+        )}
+        {(record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI')) && (
+          <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-purple-50 text-purple-600 rounded-sm uppercase tracking-tighter border border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/50">
+            DISPEN
           </span>
         )}
       </div>
