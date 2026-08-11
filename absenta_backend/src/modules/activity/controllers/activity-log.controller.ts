@@ -344,8 +344,8 @@ export class ActivityLogController {
     } catch (error: any) {
       console.error('Failed to send WA logout warning:', error);
       let errMsg = error.message || 'Gagal mengirim pesan WA via Gateway';
-      if (errMsg.includes('belum terhubung')) {
-        errMsg = 'WA Gateway belum terhubung. Silakan hubungkan WhatsApp (Scan QR) pada menu Konfigurasi WA terlebih dahulu.';
+      if (errMsg.includes('belum terhubung') || errMsg.toLowerCase().includes('closed') || errMsg.toLowerCase().includes('disconnect')) {
+        errMsg = 'Koneksi WA Gateway terputus atau sedang menyambung ulang. Silakan coba klik Kirim WA sekali lagi, atau buka Konfigurasi WA untuk memverifikasi status WA Connected (Scan QR).';
       }
       return reply.status(400).send({
         success: false,

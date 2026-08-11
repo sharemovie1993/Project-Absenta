@@ -447,17 +447,34 @@ const waGatewayServiceLocal = {
       console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke ${nomor}`);
       return true;
     } catch (err: any) {
-      if (err.message === 'TIMEOUT_SEND') {
-        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout (5 detik). Koneksi mati (zombie). Memulai reconnect otomatis...`);
+      const isClosedOrTimeout = err.message === 'TIMEOUT_SEND' || String(err.message).toLowerCase().includes('closed') || String(err.message).toLowerCase().includes('disconnect');
+      if (isClosedOrTimeout) {
+        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA terputus (${err.message}). Memulai reconnect otomatis dari DB creds...`);
         try {
-          entry.sock.end();
+          entry.sock?.end();
         } catch (_) {}
         entry.sock = null;
         entry.status = 'connecting';
         await syncStatusToDB(tenantId, 'connecting', null);
         
-        setTimeout(() => connectTenant(tenantId), 2000);
-        throw new Error('Koneksi WhatsApp tidak merespons (zombie socket). Sistem sedang menyambung ulang otomatis.');
+        try {
+          await connectTenant(tenantId);
+          for (let i = 0; i < 15; i++) {
+            entry = pool.get(tenantId);
+            if (entry && entry.status === 'connected' && entry.sock) break;
+            await new Promise(r => setTimeout(r, 200));
+          }
+
+          if (entry && entry.status === 'connected' && entry.sock) {
+            await entry.sock.sendMessage(jid, { text: pesan });
+            console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke ${nomor} setelah auto-reconnect!`);
+            return true;
+          }
+        } catch (reconnectErr: any) {
+          console.error(`[WA-Pool:${tenantId}] Auto-reconnect retry failed:`, reconnectErr.message);
+        }
+
+        throw new Error('Koneksi WhatsApp Gateway sedang memuat ulang (reconnecting). Silakan coba klik Kirim WA sekali lagi atau pastikan status WA Connected di menu Konfigurasi WA.');
       }
       throw err;
     }
