@@ -278,11 +278,11 @@ export function formatSiswaMenu(nama: string, isPetugas = false): string {
 
   if (isPetugas) {
     msg += `[6] 📋 Presensi Guru KBM (Petugas Kelas)\n`;
-    msg += `[7] 🔑 Quick Login\n`;
   } else {
-    msg += `[6] 🔑 Quick Login\n`;
+    msg += `[6] 📋 Presensi Guru KBM (Khusus Petugas)\n`;
   }
 
+  msg += `[7] 🔑 Quick Login\n`;
   msg += `[0] 🔄 Menu Utama`;
   return msg;
 }

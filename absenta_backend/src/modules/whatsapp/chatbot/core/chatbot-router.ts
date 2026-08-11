@@ -16,9 +16,10 @@ export class ChatbotRouter {
   static async route(ctx: ChatbotContext): Promise<string> {
     const { cleanJid, messageText, guru, siswa, ortu, activeCount, activeRole, roles, commandUpper } = ctx;
 
-    // 0. Quick Login (Pintasan 6 untuk Guru & Siswa / command LOGIN)
+    // 0. Quick Login (Pintasan 6 untuk Guru, 7 untuk Siswa / command LOGIN)
     if (commandUpper === 'LOGIN' || commandUpper === 'QUICK LOGIN' ||
-        (commandUpper === '6' && (activeRole === 'G' || activeRole === 'S'))) {
+        (commandUpper === '6' && activeRole === 'G') ||
+        (commandUpper === '7' && activeRole === 'S')) {
       return QuickLoginHandler.handleQuickLogin(ctx);
     }
 

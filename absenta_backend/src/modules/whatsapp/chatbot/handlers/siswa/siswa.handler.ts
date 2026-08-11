@@ -251,18 +251,13 @@ export class SiswaHandler {
       return msg;
     }
 
-    // [6] Quick Login (siswa biasa) ATAU Presensi Guru KBM (Petugas Kelas)
-    // [7] Quick Login (khusus Petugas Kelas)
-    if (choice === '7') {
-      return QuickLoginHandler.handleQuickLogin(ctx);
+    // [6] Presensi Guru KBM (Khusus Petugas Absensi Kelas)
+    if (choice === '6' || choice === '60' || /^6[1-9]/.test(choice) || choice.includes('PETUGAS') || choice.includes('ABSEN GURU')) {
+      return SiswaHandler.handlePetugasMenu(ctx);
     }
 
-    if (choice === '6' || choice === '60' || choice.startsWith('6') || choice.includes('PETUGAS') || choice.includes('ABSEN GURU')) {
-      const isPetugasCheck = await isPetugasKelas(siswa.tenant_id, siswa.user_id, siswa.kelas_id);
-      if (isPetugasCheck) {
-        return SiswaHandler.handlePetugasMenu(ctx);
-      }
-      // Bukan petugas kelas → [6] = Quick Login
+    // [7] Quick Login (Masuk Aplikasi Web - berlaku untuk semua siswa)
+    if (choice === '7' || choice === 'LOGIN' || choice.includes('QUICK LOGIN')) {
       return QuickLoginHandler.handleQuickLogin(ctx);
     }
 
