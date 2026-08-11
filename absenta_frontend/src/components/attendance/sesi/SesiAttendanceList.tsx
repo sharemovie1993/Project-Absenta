@@ -94,14 +94,24 @@ const SesiAttendanceRow = React.memo(({
 
   const formatWaktuTapDisplay = (raw: string | null | undefined) => {
     if (!raw) return '--:--';
-    const formatted = formatLocalTimeFromISO(raw);
-    if (formatted) return formatted;
-
     const str = String(raw).trim();
-    const match = str.match(/(\d{1,2})[:.](\d{2})/);
-    if (match) {
-      return `${match[1].padStart(2, '0')}:${match[2]}`;
+    if (!str || str === '-' || str === 'null' || str === 'undefined') return '--:--';
+
+    // 1. Handle ISO timestamp with T or Z strictly using tenant timezone
+    if (str.includes('T') || str.includes('Z')) {
+      const formatted = formatLocalTimeFromISO(str);
+      if (formatted) return formatted;
     }
+
+    // 2. Extract HH:mm from time portion only (prevent matching YYYY-MM-DD date parts)
+    const timePortion = str.includes('T') ? str.split('T')[1] : str;
+    const match = timePortion.match(/(\d{1,2})[:.](\d{2})/);
+    if (match) {
+      const hh = match[1].padStart(2, '0');
+      const mm = match[2].padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
     return str;
   };
 
