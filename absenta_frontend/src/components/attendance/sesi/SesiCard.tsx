@@ -96,15 +96,16 @@ export const SesiCard = React.memo(function SesiCard({
 
   const containerClassName = (() => {
     if (isLive) {
-      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border-blue-500/30 shadow-md shadow-blue-500/5 ring-1 ring-blue-500/20 backdrop-blur-md transition-all hover:shadow-lg';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border-blue-500/30 shadow-md shadow-blue-500/5 ring-1 ring-blue-500/20 backdrop-blur-md transition-all hover:shadow-lg border-l-4 border-l-blue-500';
     }
     if (isFinished) {
-      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800/90 shadow-xs transition-all hover:shadow-md hover:border-emerald-500/40';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800/90 shadow-xs transition-all hover:shadow-md hover:border-emerald-500/30 border-l-4 border-l-emerald-400';
     }
     if (isOverdue) {
-      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-rose-500/30';
+      return 'relative border rounded-2xl p-3 sm:p-3.5 bg-amber-50/40 dark:bg-amber-950/10 border-slate-200/70 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-amber-400/50 border-l-4 border-l-amber-400';
     }
-    return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-blue-500/40';
+    // Upcoming / default
+    return 'relative border rounded-2xl p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-xs transition-all hover:shadow-md hover:border-slate-400/40 border-l-4 border-l-slate-300 dark:border-l-slate-600';
   })();
 
   const mapelText = (() => {
