@@ -320,8 +320,26 @@ export const SiswaDashboard: React.FC = () => {
   };
 
   const gamification = useMemo(() => {
-    const detail = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    const attendanceRate = monthlyRecap?.persentase_kehadiran || 100;
+    const detail = Array.isArray(monthlyRecapRes?.data?.detail)
+      ? monthlyRecapRes.data.detail
+      : Array.isArray(monthlyRecap?.detail)
+        ? monthlyRecap.detail
+        : [];
+
+    let attendanceRate = 0;
+    if (typeof monthlyRecapRes?.data?.persentase_kehadiran === 'number') {
+      attendanceRate = monthlyRecapRes.data.persentase_kehadiran;
+    } else if (typeof monthlyRecap?.persentase_kehadiran === 'number') {
+      attendanceRate = monthlyRecap.persentase_kehadiran;
+    } else {
+      const h = monthlyRecapRes?.data?.total_hadir ?? 0;
+      const i = monthlyRecapRes?.data?.total_izin ?? 0;
+      const s = monthlyRecapRes?.data?.total_sakit ?? 0;
+      const a = monthlyRecapRes?.data?.total_alpa ?? 0;
+      const tot = h + i + s + a;
+      attendanceRate = tot > 0 ? Math.round((h / tot) * 100) : 0;
+    }
+
     const apiData = pelanggaranRes?.data;
     const rawList = Array.isArray(apiData)
       ? apiData
@@ -331,7 +349,7 @@ export const SiswaDashboard: React.FC = () => {
     const totalPoinPelanggaran = rawList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
 
     return calculateStudentGamification(detail, attendanceRate, totalPoinPelanggaran);
-  }, [monthlyRecap, pelanggaranRes]);
+  }, [monthlyRecapRes, monthlyRecap, pelanggaranRes]);
 
   const studentInitials = useMemo(() => {
     const name = siswaProfile?.nama || (user as any)?.nama_siswa || user?.full_name || user?.name || 'S';
