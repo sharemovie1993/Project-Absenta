@@ -38,6 +38,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   kelasId,
 }) => {
   const { user } = useAuthStore();
+  const attendanceRate = gamification?.attendanceRate ?? 100;
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedSesiModal, setSelectedSesiModal] = useState<{
     isOpen: boolean;
