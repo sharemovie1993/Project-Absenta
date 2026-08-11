@@ -633,7 +633,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
               })}
             </div>
 
-            {!records || records.length === 0 ? (
+            {!localRecords || localRecords.length === 0 ? (
               <div className="bg-gray-50/30 rounded-sm p-8 text-center border border-dashed border-gray-200 dark:border-gray-800">
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Kosong.</p>
               </div>
