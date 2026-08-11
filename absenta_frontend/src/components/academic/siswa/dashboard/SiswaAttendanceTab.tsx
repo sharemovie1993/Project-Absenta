@@ -117,7 +117,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                 siswa_id: currentStId,
                 siswa_akademik_id: currentStId,
                 status: st.status || 'HADIR',
-                waktu_tap: st.waktu_tap || st.waktu_masuk || st.waktu || null,
+                waktu_tap: st.waktu_tap || st.waktu_masuk || st.waktu || st.created_at || st.updated_at || null,
                 Siswa: {
                   id: currentStId,
                   nama_siswa: st.nama_siswa || st.nama || 'Siswa Kelas',

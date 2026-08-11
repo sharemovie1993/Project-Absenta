@@ -89,8 +89,12 @@ const SesiAttendanceRow = React.memo(({
 }) => {
   const studentId = record.siswa_akademik_id || record.siswa_id || record.guru_id || record.id || '';
   const isGuru = record.is_guru || Boolean(record.Guru) || Boolean(record.guru_id) || (record as any)._type === 'guru';
-  const nameDisplay = record.Guru?.nama_guru || record.Siswa?.nama_siswa || studentId;
+  
+  const rawGuruName = record.Guru?.nama_guru || (record as any).nama_guru || (isGuru ? sesi?.nama_guru : null);
+  const rawSiswaName = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama;
+  const nameDisplay = isGuru ? (rawGuruName || 'Guru Pengajar Sesi') : (rawSiswaName || studentId);
   const isPiketOut = record.is_piket_out || record.catatan?.includes('IZIN SEMENTARA PIKET') || record.catatan?.includes('IZIN SEMENTARA');
+  const rawWaktuTap = record.waktu_tap || (record as any).waktu || (record as any).waktu_masuk || (record as any).created_at;
 
   const formatWaktuTapDisplay = (raw: string | null | undefined) => {
     if (!raw) return '--:--';
@@ -154,7 +158,7 @@ const SesiAttendanceRow = React.memo(({
       </div>
       <div className="flex flex-col items-center justify-center gap-0.5">
         <span className="text-[10px] font-bold text-gray-500">
-           {formatWaktuTapDisplay(record.waktu_tap)}
+           {formatWaktuTapDisplay(rawWaktuTap)}
         </span>
         {record.is_terlambat && (
           <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
