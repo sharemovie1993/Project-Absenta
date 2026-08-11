@@ -126,12 +126,18 @@ export class BackupService {
               totalRows += count;
           }
 
+          // Pre-fetch all roles to ensure role_id mapping integrity during restore
+          const roles = await this.prisma.role.findMany({
+              select: { id: true, name: true, tenant_id: true }
+          });
+
           // Meta
           const meta = {
               tenant_id: tenantId,
               version: 1,
               created_at: new Date().toISOString(),
               tenant_data: tenantData,
+              roles: roles,
               table_row_counts: tableRowCounts,
               total_rows: totalRows
           };

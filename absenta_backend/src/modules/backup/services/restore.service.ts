@@ -237,6 +237,7 @@ export class RestoreService {
           
           let processingTables = false;
           let processingMeta = false;
+          let metaRoles: { id: string; name: string }[] = [];
           let currentTableName = '';
           let oldTenantId = backup.tenant_id;
           let tableRowCounts: Record<string, number> = {};
@@ -265,6 +266,30 @@ export class RestoreService {
                           if (!result.done && result.value.name === 'stringValue') {
                               oldTenantId = result.value.value;
                               console.log(`[RESTORE] Found source tenant_id in metadata: ${oldTenantId}`);
+                          }
+                      } else if (token.name === 'keyValue' && token.value === 'roles') {
+                          result = await iterator.next();
+                          if (!result.done && result.value.name === 'startArray') {
+                              while (true) {
+                                  result = await iterator.next();
+                                  if (result.done || result.value.name === 'endArray') break;
+                                  if (result.value.name === 'startObject') {
+                                      let rObj: any = {};
+                                      while (true) {
+                                          const r = await iterator.next();
+                                          if (r.done || r.value.name === 'endObject') break;
+                                          if (r.value.name === 'keyValue') {
+                                              const rKey = r.value.value;
+                                              const rValRes = await iterator.next();
+                                              rObj[rKey] = rValRes?.value?.value ?? rValRes?.value;
+                                          }
+                                      }
+                                      if (rObj.id && rObj.name) {
+                                          metaRoles.push(rObj);
+                                      }
+                                  }
+                              }
+                              console.log(`[RESTORE] Found ${metaRoles.length} roles in backup metadata.`);
                           }
                       } else if (token.name === 'keyValue' && token.value === 'table_row_counts') {
                           // Parse table_row_counts object
@@ -331,7 +356,7 @@ export class RestoreService {
                       if (shouldProcess) {
                           const totalRows = tableRowCounts[currentTableName] || 0;
                           await this.prisma.$transaction(async (tx) => {
-                              await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, tx, false, backupId, totalRows);
+                              await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, tx, false, backupId, totalRows, metaRoles);
                           }, { timeout: 600000 }); // 10 minutes timeout for heavy tables
                           
                           // Update progress AFTER successful transaction
@@ -352,7 +377,7 @@ export class RestoreService {
                            // Consume tokens without inserting
                            // We still need to pass row counts for progress?
                            // No, if skipping, we don't publish progress.
-                           await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, this.prisma, true, backupId, 0);
+                           await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, this.prisma, true, backupId, 0, metaRoles);
                       }
                       
                       // If we just finished skipping the lastCompletedTable, turn off skipMode
@@ -419,6 +444,75 @@ export class RestoreService {
       }
   }
 
+  private roleIdMapCache = new Map<string, string>();
+  private targetRolesByNameCache = new Map<string, string>();
+
+  private async resolveTargetRoleId(
+    sourceRoleId: string,
+    metaRoles: { id: string; name: string }[],
+    tx: any
+  ): Promise<string> {
+    if (this.roleIdMapCache.has(sourceRoleId)) {
+      return this.roleIdMapCache.get(sourceRoleId)!;
+    }
+
+    if (this.targetRolesByNameCache.size === 0) {
+      try {
+        const targetRoles = await tx.role.findMany({ select: { id: true, name: true } });
+        for (const r of targetRoles) {
+          this.targetRolesByNameCache.set(r.name.toUpperCase(), r.id);
+        }
+      } catch (err) {
+        console.error('[RESTORE] Failed to fetch target roles:', err);
+      }
+    }
+
+    // 1. Try finding role name from metaRoles
+    const metaRole = metaRoles.find((r) => r.id === sourceRoleId);
+    let roleName = metaRole?.name;
+
+    // 2. If not in metaRoles, try querying DB by sourceRoleId
+    if (!roleName) {
+      try {
+        const dbRole = await tx.role.findUnique({
+          where: { id: sourceRoleId },
+          select: { name: true },
+        });
+        if (dbRole) {
+          roleName = dbRole.name;
+        }
+      } catch {}
+    }
+
+    // 3. Match by roleName in target DB
+    if (roleName) {
+      const targetRoleId = this.targetRolesByNameCache.get(roleName.toUpperCase());
+      if (targetRoleId) {
+        console.log(`[RESTORE] Mapped role_id for source role "${roleName}": ${sourceRoleId} -> ${targetRoleId}`);
+        this.roleIdMapCache.set(sourceRoleId, targetRoleId);
+        return targetRoleId;
+      }
+    }
+
+    // 4. Direct match in target DB
+    try {
+      const directMatch = await tx.role.findUnique({
+        where: { id: sourceRoleId },
+        select: { id: true },
+      });
+      if (directMatch) {
+        this.roleIdMapCache.set(sourceRoleId, sourceRoleId);
+        return sourceRoleId;
+      }
+    } catch {}
+
+    // 5. Fallback: ADMIN
+    const defaultAdminId = this.targetRolesByNameCache.get('ADMIN') || sourceRoleId;
+    console.warn(`[RESTORE] Could not resolve role_id ${sourceRoleId}, falling back to ADMIN (${defaultAdminId})`);
+    this.roleIdMapCache.set(sourceRoleId, defaultAdminId);
+    return defaultAdminId;
+  }
+
   private async processTableRows(
       iterator: AsyncIterator<any>,
       tableName: string,
@@ -427,7 +521,8 @@ export class RestoreService {
       tx: any,
       skip: boolean,
       backupId: string,
-      totalRows: number
+      totalRows: number,
+      metaRoles: { id: string; name: string }[] = []
   ) {
       let buffer: any[] = [];
       let processed = 0;
@@ -473,6 +568,11 @@ export class RestoreService {
                       row.actor_tenant_id = newTenantId;
                   }
                   
+                  // Role ID Resolution & Mapping for User table
+                  if (tableName === 'User' && row.role_id) {
+                      row.role_id = await this.resolveTargetRoleId(row.role_id, metaRoles, tx);
+                  }
+
                   buffer.push(row);
 
                   if (buffer.length >= BATCH_SIZE) {
