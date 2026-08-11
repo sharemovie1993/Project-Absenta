@@ -216,12 +216,20 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                       className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-1.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
-                          {item.date}
-                        </span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                            {item.date}
+                          </span>
+                          {item.sesi && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 truncate">
+                              {item.sesi}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {item.metode && item.metode !== '-' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
                               {item.metode}
                             </span>
                           )}
@@ -237,12 +245,13 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                         </div>
                       </div>
 
-                      <div className="text-xs font-black text-slate-900 dark:text-white font-mono">
-                        {item.waktu}
+                      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900 dark:text-white font-mono">
+                        <Clock size={13} className="text-slate-400 shrink-0" />
+                        <span>Tap / Sesi: {item.waktu}</span>
                       </div>
 
                       {item.keterangan && (
-                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
                           {item.keterangan}
                         </p>
                       )}

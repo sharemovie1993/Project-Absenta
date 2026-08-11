@@ -484,9 +484,9 @@ export const SiswaDashboard: React.FC = () => {
         const isTerlambat = item.status === 'TERLAMBAT';
         const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
 
-        let waktuStr = item.waktu_masuk ? `Tap / Sesi: ${item.waktu_masuk} WIB` : 'Tap / Sesi: -';
-        if (item.waktu) {
-          waktuStr = `Tap / Sesi: ${item.waktu}`;
+        let waktuStr = item.waktu_masuk ? `${item.waktu_masuk} WIB` : '-';
+        if (item.waktu && item.waktu !== '-') {
+          waktuStr = item.waktu.startsWith('Tap') ? item.waktu.replace('Tap / Sesi: ', '') : item.waktu;
         }
 
         let defaultKet = isHadir
@@ -497,13 +497,24 @@ export const SiswaDashboard: React.FC = () => {
           ? 'Izin / Sakit terlampir via Portal'
           : 'Belum ada catatan presensi dari wali kelas';
 
+        let formattedDate = item.tanggal || '-';
+        if (item.tanggal && item.tanggal.includes('-')) {
+          try {
+            const [y, m, d] = item.tanggal.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+          } catch {}
+        }
+
+        const sesiNama = item.sesi_nama || item.nama_sesi || item.jenis_kegiatan || item.mapel || 'Sesi Presensi';
+
         return {
           id: item.id || item.tanggal || `session-${idx}`,
-          date: item.tanggal || '-',
+          date: formattedDate,
           status: item.status || 'HADIR',
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
-          sesi: item.sesi_nama || item.jenis_kegiatan || 'Presensi Harian',
+          sesi: sesiNama,
           keterangan: item.keterangan || defaultKet,
         };
       });
