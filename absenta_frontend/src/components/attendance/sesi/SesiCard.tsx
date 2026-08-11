@@ -206,11 +206,13 @@ export const SesiCard = React.memo(function SesiCard({
             )}
           </div>
 
-          {/* Badges: KBM & Sistem/Manual */}
+          {/* Badges: Sistem/Manual (KBM badge removed for cleaner look) */}
           <div className="flex items-center gap-1 flex-wrap justify-end">
-            <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
-              {jk}
-            </span>
+            {jk && !jk.toUpperCase().includes('KBM') && jk !== '-' && (
+              <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+                {jk}
+              </span>
+            )}
             {isOtomatis ? (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-blue-500/10 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 <Cpu className="w-2.5 h-2.5" /> Sistem
