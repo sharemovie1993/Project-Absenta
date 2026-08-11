@@ -4,7 +4,7 @@ import { Modal, Badge, Label } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
-import { cn } from '../../lib/utils';
+import { cn } from '../../../lib/utils';
 
 interface SesiScanningModalProps {
   isOpen: boolean;
