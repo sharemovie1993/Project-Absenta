@@ -1105,52 +1105,6 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* 👑 MODUL OPERASIONAL PETUGAS KELAS (Dua Wewenang: Presensi & Jurnal Kelas) */}
-            {isPetugasKelas && (
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
-                      <Sparkles size={20} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                          MODUL OPERASIONAL PETUGAS KELAS
-                        </h3>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                          Siswa Piket / Sekretaris
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mt-0.5">
-                        Buka sesi presensi harian kelas {currentClassName} &amp; catat jurnal KBM mata pelajaran.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <Button
-                    size="sm"
-                    onClick={() => navigate('/attendance/ops?tab=sesi')}
-                    className="w-full h-10 px-4 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 border-none"
-                  >
-                    <CheckCircle2 size={15} />
-                    <span>Presensi Kelas Saya</span>
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    onClick={() => navigate('/attendance/ops?tab=jurnal')}
-                    className="w-full h-10 px-4 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center gap-2"
-                  >
-                    <FileText size={15} />
-                    <span>Input Jurnal KBM Kelas</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-
             {/* Grid 2 Column: Pelanggaran Terbaru & Prestasi Terbaru */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Card 1: Pelanggaran Terbaru */}
