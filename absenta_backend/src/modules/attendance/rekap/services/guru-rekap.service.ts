@@ -1,3 +1,4 @@
+import { rekapImplService } from './rekap-impl.service';
 import { prisma } from '../../../../utils/prisma';
 import { CacheService } from '../../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../../constants/cache-keys';
@@ -16,75 +17,7 @@ export class GuruRekapService {
   }
 
   async getRekapPresensiGuruByGuruId(guruId: string, namaGuru: string) {
-    const totalSesi = await prisma.sesiAbsensi.count({
-      where: { guru_id: guruId }
-    });
-
-    const totalAbsenGuru = await prisma.absenGuru.count({
-      where: { guru_id: guruId }
-    });
-
-    const totalHadir = await prisma.absenGuru.count({
-      where: { guru_id: guruId, status: 'HADIR' }
-    });
-
-    const totalTerlambat = await prisma.absenGuru.count({
-      where: { guru_id: guruId, status: 'TERLAMBAT' }
-    });
-
-    const totalIzin = await prisma.absenGuru.count({
-      where: { guru_id: guruId, status: 'IZIN' }
-    });
-
-    const totalSakit = await prisma.absenGuru.count({
-      where: { guru_id: guruId, status: 'SAKIT' }
-    });
-
-    const totalAlpa = await prisma.absenGuru.count({
-      where: { guru_id: guruId, status: 'ALPA' }
-    });
-
-    const totalHadirAtauTerlambat = totalHadir + totalTerlambat;
-    const persentaseKehadiran = totalAbsenGuru > 0
-      ? Math.round((totalHadirAtauTerlambat / totalAbsenGuru) * 100)
-      : 0;
-
-    const now = new Date();
-    const bulanStr = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    const hariTglStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-    const statusMasukText = totalHadir > 0 ? 'Sudah Tap Masuk ✅' : 'Belum Tap Masuk ❌';
-    const statusPulangText = totalAbsenGuru > totalHadir ? 'Sudah Tap Pulang ✅' : 'Belum Tap Pulang ❌';
-    const statusKbmTodayText = totalSesi > 0 ? `${totalHadir} / ${totalSesi} Sesi Mengajar` : 'Tidak Ada Sesi KBM';
-
-    const rekapBulan = {
-      totalHadirTepat: totalHadir,
-      totalTerlambat,
-      totalIzin,
-      totalSakit,
-      totalAlpa,
-      totalIzinSakit: totalIzin + totalSakit
-    };
-
-    return {
-      guru_id: guruId,
-      nama_guru: namaGuru,
-      namaGuru,
-      total_sesi: totalSesi,
-      total_absen: totalAbsenGuru,
-      total_hadir: totalHadir,
-      total_terlambat: totalTerlambat,
-      total_izin: totalIzin,
-      total_sakit: totalSakit,
-      total_alpa: totalAlpa,
-      persentase_kehadiran: persentaseKehadiran,
-      hariTglStr,
-      bulanStr,
-      statusMasukText,
-      statusPulangText,
-      statusKbmTodayText,
-      rekapBulan
-    };
+    return rekapImplService.getRekapPresensiGuruByGuruId(guruId, namaGuru);
   }
 
   async getRekapHarianGuru(tanggal: string, tenantId: string, guruId?: string) {

@@ -1,4 +1,4 @@
-import { rekapService } from './rekap.service';
+import { rekapImplService } from './rekap-impl.service';
 import { DataScope } from '../../../../types/fastify';
 
 export class StatistikRekapService {
@@ -12,19 +12,19 @@ export class StatistikRekapService {
   }
 
   async getStatistikHarian(tanggal: string, tenantId: string, tahunPelajaranId?: string, scope?: DataScope) {
-    return rekapService.getStatistikHarian(tanggal, tenantId, tahunPelajaranId, scope);
+    return rekapImplService.getStatistikHarian(tanggal, tenantId, tahunPelajaranId, scope);
   }
 
   async getLeaderboard(tenantId: string, limit: number = 10) {
-    return rekapService.getLeaderboard(tenantId, limit);
+    return rekapImplService.getLeaderboard(tenantId, limit);
   }
 
   async getLeaderboardGuru(tenantId: string, limit: number = 50, jenisPtk: string = 'PENDIDIK') {
-    return rekapService.getLeaderboardGuru(tenantId, limit, jenisPtk);
+    return rekapImplService.getLeaderboardGuru(tenantId, limit, jenisPtk);
   }
 
   async logActivity(userId: string, tenantId: string, action: string, entityId?: string) {
-    return rekapService.logActivity(userId, tenantId, action, entityId);
+    return rekapImplService.logActivity(userId, tenantId, action, entityId);
   }
 }
 

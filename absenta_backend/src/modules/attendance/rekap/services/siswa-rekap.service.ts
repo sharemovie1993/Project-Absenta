@@ -1,4 +1,4 @@
-import { rekapService } from './rekap.service';
+import { rekapImplService } from './rekap-impl.service';
 
 export class SiswaRekapService {
   private static instance: SiswaRekapService;
@@ -11,19 +11,19 @@ export class SiswaRekapService {
   }
 
   async getSiswaIdFromUser(tenantId: string, userId: string): Promise<string | null> {
-    return rekapService.getSiswaIdFromUser(tenantId, userId);
+    return rekapImplService.getSiswaIdFromUser(tenantId, userId);
   }
 
   async getRekapHarianSiswa(siswaId: string, tanggal: string, tenantId: string, tahunPelajaranId?: string) {
-    return rekapService.getRekapHarianSiswa(siswaId, tanggal, tenantId, tahunPelajaranId);
+    return rekapImplService.getRekapHarianSiswa(siswaId, tanggal, tenantId, tahunPelajaranId);
   }
 
   async getRekapBulananSiswa(siswaId: string, bulan: string, tenantId: string, tahunPelajaranId?: string) {
-    return rekapService.getRekapBulananSiswa(siswaId, bulan, tenantId, tahunPelajaranId);
+    return rekapImplService.getRekapBulananSiswa(siswaId, bulan, tenantId, tahunPelajaranId);
   }
 
   async getTrackingHarianSiswa(siswaId: string, tanggal: string, tenantId: string) {
-    return rekapService.getTrackingHarianSiswa(siswaId, tanggal, tenantId);
+    return rekapImplService.getTrackingHarianSiswa(siswaId, tanggal, tenantId);
   }
 }
 
