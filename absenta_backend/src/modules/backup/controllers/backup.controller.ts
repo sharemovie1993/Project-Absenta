@@ -383,6 +383,10 @@ export class BackupController {
       const idMapping = new Map<string, string>();
 
       for (const mName of models) {
+        const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === mName);
+        const hasIdField = dmmfModel?.fields.some(f => f.name === 'id');
+        if (!hasIdField) continue;
+
         const pModel = (prisma as any)[mName];
         if (pModel && typeof pModel.findMany === 'function') {
           const tenantField = getTenantFieldName(mName);
