@@ -351,9 +351,10 @@ export class BackupController {
       for (const mName of models) {
         const pModel = (prisma as any)[mName];
         if (pModel && typeof pModel.findMany === 'function') {
+          const tenantField = getTenantFieldName(mName);
           try {
             const rows = await pModel.findMany({
-              where: { tenant_id: tenantId },
+              where: tenantField ? { [tenantField]: tenantId } : {},
               select: { id: true },
             });
             validIdsMap.set(mName, new Set(rows.map((r: any) => String(r.id))));
