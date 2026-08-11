@@ -255,6 +255,100 @@ export class ActivityLogController {
       });
     }
   }
+
+  async sendLogoutWarning(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({
+          success: false,
+          message: 'Unauthorized: Tenant ID required',
+        });
+      }
+
+      const { user_id, phone, name, is_bulk, target_users } = request.body || {};
+
+      const { WhatsappService } = await import('../../whatsapp/services/whatsapp.service');
+      const whatsappService = new WhatsappService();
+      let config: any = await whatsappService.getConfig(tenantId);
+      if (!config) {
+        config = { tenant_id: tenantId, provider_name: 'LOCAL', is_active: true };
+      }
+
+      // Handle Bulk Broadcast
+      if (is_bulk && Array.isArray(target_users) && target_users.length > 0) {
+        let sentCount = 0;
+        let failedCount = 0;
+
+        for (const item of target_users) {
+          const targetPhone = item.phone || item.no_hp;
+          if (!targetPhone) {
+            failedCount++;
+            continue;
+          }
+          const targetName = item.name || 'Pengguna';
+          const msg = `*PEMBERITAHUAN LOGOUT SISTEM ABSENTA*\n\nHalo *${targetName}*,\nMohon perhatian: Sistem akademik saat ini sedang dalam persiapan pemeliharaan / pemulihan data.\n\nMohon untuk segera menyimpan pekerjaan Anda dan melakukan *LOGOUT* dari aplikasi.\n\nTerima kasih atas kerja samanya! 🙏`;
+
+          try {
+            await whatsappService.sendMessage(config, targetPhone, msg);
+            sentCount++;
+          } catch (e) {
+            console.error(`Failed sending WA logout notice to ${targetName} (${targetPhone}):`, e);
+            failedCount++;
+          }
+        }
+
+        return reply.status(200).send({
+          success: true,
+          message: `Berhasil mengautomasikan pengiriman WA Gateway ke ${sentCount} pengguna aktif (${failedCount} gagal/tanpa nomor).`,
+          data: { sent_count: sentCount, failed_count: failedCount },
+        });
+      }
+
+      // Single User Mode
+      let targetPhone = phone;
+      let targetName = name || 'Pengguna';
+
+      if (user_id) {
+        const targetUser = await prisma.user.findUnique({
+          where: { id: user_id },
+          select: {
+            full_name: true,
+            no_hp: true,
+            Guru: { select: { no_hp: true } },
+            Siswa: { select: { no_hp: true } },
+          },
+        });
+        if (targetUser) {
+          targetName = targetUser.full_name || targetName;
+          targetPhone = targetPhone || targetUser.no_hp || targetUser.Guru?.no_hp || targetUser.Siswa?.no_hp;
+        }
+      }
+
+      if (!targetPhone) {
+        return reply.status(400).send({
+          success: false,
+          message: `Nomor telepon untuk ${targetName} tidak ditemukan di database.`,
+        });
+      }
+
+      const message = `*PEMBERITAHUAN LOGOUT SISTEM ABSENTA*\n\nHalo *${targetName}*,\nMohon perhatian: Sistem akademik saat ini sedang dalam persiapan pemeliharaan / pemulihan data.\n\nMohon untuk segera menyimpan pekerjaan Anda dan melakukan *LOGOUT* dari aplikasi.\n\nTerima kasih atas kerja samanya! 🙏`;
+
+      const result = await whatsappService.sendMessage(config, targetPhone, message);
+
+      return reply.status(200).send({
+        success: true,
+        message: `Pesan WA peringatan logout berhasil terkirim via WA Gateway ke ${targetName} (${targetPhone})`,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('Failed to send WA logout warning:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Gagal mengirim pesan WA via Gateway',
+      });
+    }
+  }
 }
 
 export const activityLogController = new ActivityLogController();

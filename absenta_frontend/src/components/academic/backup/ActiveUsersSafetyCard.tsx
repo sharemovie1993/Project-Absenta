@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, ShieldCheck, AlertTriangle, RefreshCw, Eye, X, Activity, Clock, UserCheck, MessageSquare, Copy, ExternalLink, Phone } from 'lucide-react';
+import { Users, ShieldCheck, AlertTriangle, RefreshCw, Eye, X, Activity, Clock, UserCheck, MessageSquare, Copy, ExternalLink, Phone, Send, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getActiveOnlineUsers, ActiveUserItem } from '@/api/activityLog.api';
+import { getActiveOnlineUsers, sendWaLogoutWarning, ActiveUserItem } from '@/api/activityLog.api';
 import { Button, Badge } from '@/components/ui';
 
 export function ActiveUsersSafetyCard() {
@@ -10,6 +10,8 @@ export function ActiveUsersSafetyCard() {
   const [windowMinutes, setWindowMinutes] = useState<number>(15);
   const [loading, setLoading] = useState<boolean>(true);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [sendingWaUserId, setSendingWaUserId] = useState<string | null>(null);
+  const [sendingBulkWa, setSendingBulkWa] = useState<boolean>(false);
 
   const fetchActiveUsers = useCallback(async () => {
     try {
@@ -29,7 +31,6 @@ export function ActiveUsersSafetyCard() {
 
   useEffect(() => {
     fetchActiveUsers();
-    // Poll every 30 seconds
     const interval = setInterval(fetchActiveUsers, 30000);
     return () => clearInterval(interval);
   }, [fetchActiveUsers]);
@@ -47,19 +48,72 @@ export function ActiveUsersSafetyCard() {
     return cleaned;
   };
 
-  const handleSendWaNotice = (user: ActiveUserItem) => {
+  // Kirim via Backend WA Gateway (Otomatis tanpa buka tab baru)
+  const handleSendWaGateway = async (user: ActiveUserItem) => {
+    try {
+      setSendingWaUserId(user.user_id);
+      const res = await sendWaLogoutWarning({
+        user_id: user.user_id,
+        phone: user.no_hp || undefined,
+        name: user.name,
+      });
+
+      if (res.success) {
+        toast.success(res.message || `Pesan WA Gateway berhasil dikirim ke ${user.name}!`);
+      } else {
+        toast.error(res.message || 'Gagal mengirim WA via Gateway');
+      }
+    } catch (err: any) {
+      console.error('WA Gateway Send Error:', err);
+      toast.error(err.message || 'Gagal mengirim WA via Gateway, mencoba fallback wa.me...');
+      // Fallback wa.me direct if gateway fails
+      handleOpenWaMeDirect(user);
+    } finally {
+      setSendingWaUserId(null);
+    }
+  };
+
+  // Kirim masif (Bulk Broadcast) via Backend WA Gateway
+  const handleSendBulkWaGateway = async () => {
+    if (activeUsers.length === 0) return;
+    try {
+      setSendingBulkWa(true);
+      const res = await sendWaLogoutWarning({
+        is_bulk: true,
+        target_users: activeUsers.map(u => ({
+          user_id: u.user_id,
+          phone: u.no_hp || undefined,
+          name: u.name,
+        })),
+      });
+
+      if (res.success) {
+        toast.success(res.message || 'Berhasil mengirim peringatan WA ke seluruh pengguna online!');
+      } else {
+        toast.error(res.message || 'Gagal mengirim broadcast WA Gateway');
+      }
+    } catch (err: any) {
+      console.error('Bulk WA Gateway Error:', err);
+      toast.error(err.message || 'Gagal mengirim broadcast WA Gateway');
+    } finally {
+      setSendingBulkWa(false);
+    }
+  };
+
+  // Fallback Manual wa.me direct link
+  const handleOpenWaMeDirect = (user: ActiveUserItem) => {
     const formattedPhone = formatWhatsAppNumber(user.no_hp);
     const message = `*PEMBERITAHUAN LOGOUT SISTEM ABSENTA*\n\nHalo *${user.name}*,\nMohon perhatian: Sistem akademik saat ini sedang dalam persiapan pemeliharaan / pemulihan data.\n\nMohon untuk segera menyimpan pekerjaan Anda dan melakukan *LOGOUT* dari aplikasi.\n\nTerima kasih atas kerja samanya! 🙏`;
 
     if (formattedPhone) {
       const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
       window.open(waUrl, '_blank');
-      toast.success(`Membuka WhatsApp untuk ${user.name}`);
+      toast.success(`Membuka wa.me untuk ${user.name}`);
     } else {
       navigator.clipboard.writeText(message);
-      toast(`Nomor HP ${user.name} belum tercatat. Pesan peringatan logout telah disalin ke clipboard!`, {
+      toast(`Nomor HP ${user.name} belum tercatat. Pesan telah disalin ke clipboard!`, {
         icon: '📋',
-        duration: 4000
+        duration: 4000,
       });
     }
   };
@@ -170,18 +224,29 @@ export function ActiveUsersSafetyCard() {
 
             {/* Action Toolbar */}
             {activeUsers.length > 0 && (
-              <div className="px-6 py-3 bg-emerald-500/5 border-b border-emerald-500/10 flex items-center justify-between gap-3">
+              <div className="px-6 py-3 bg-emerald-500/5 border-b border-emerald-500/10 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Kirim peringatan ke pengguna agar segera menyelesaiakan sesi & logout:
+                  Kirim peringatan WA Gateway ke pengguna aktif:
                 </span>
-                <button
-                  onClick={handleCopyBroadcastText}
-                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-                >
-                  <Copy className="w-3 h-3" />
-                  Salin Teks Peringatan Broadcast
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSendBulkWaGateway}
+                    disabled={sendingBulkWa}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                  >
+                    {sendingBulkWa ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    Broadcast WA Gateway Ke Semua
+                  </button>
+                  <button
+                    onClick={handleCopyBroadcastText}
+                    className="px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all shrink-0"
+                    title="Salin Teks Broadcast WA"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Salin Teks
+                  </button>
+                </div>
               </div>
             )}
 
@@ -197,6 +262,8 @@ export function ActiveUsersSafetyCard() {
               ) : (
                 activeUsers.map((u) => {
                   const hasPhone = Boolean(u.no_hp);
+                  const isSendingThisUser = sendingWaUserId === u.user_id;
+
                   return (
                     <div key={u.user_id} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
@@ -241,15 +308,31 @@ export function ActiveUsersSafetyCard() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => handleSendWaNotice(u)}
-                          className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm"
-                          title={`Kirim WA Peringatan Logout ke ${u.name}`}
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Kirim WA</span>
-                          <ExternalLink className="w-3 h-3 opacity-60" />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {/* Tombol Utama: Kirim via Backend WA Gateway */}
+                          <button
+                            onClick={() => handleSendWaGateway(u)}
+                            disabled={isSendingThisUser}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-md"
+                            title={`Kirim Pesan WA via WA Gateway ke ${u.name}`}
+                          >
+                            {isSendingThisUser ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                            <span>Kirim WA Gateway</span>
+                          </button>
+
+                          {/* Tombol Cadangan: Manual wa.me direct link */}
+                          <button
+                            onClick={() => handleOpenWaMeDirect(u)}
+                            className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 rounded-xl transition-all"
+                            title="Buka Chat Manual (wa.me)"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -260,7 +343,7 @@ export function ActiveUsersSafetyCard() {
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between">
               <span className="text-[11px] text-slate-500 font-medium">
-                Data diperbarui secara otomatis setiap 30 detik
+                Sistem terhubung langsung dengan Service WA Gateway Absenta
               </span>
               <Button
                 variant="outline"

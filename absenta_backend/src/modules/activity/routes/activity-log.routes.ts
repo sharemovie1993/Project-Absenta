@@ -20,5 +20,14 @@ export async function activityLogRoutes(fastify: any) {
   }, async (request: any, reply: any) => {
     return activityLogController.getActiveUsers(request, reply);
   });
+
+  fastify.post('/send-logout-wa', {
+    preHandler: [
+      requireCapability('core.sekolah.view.profile'),
+      determineDataScope(),
+    ]
+  }, async (request: any, reply: any) => {
+    return activityLogController.sendLogoutWarning(request, reply);
+  });
 }
 export default activityLogRoutes;

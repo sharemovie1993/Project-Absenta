@@ -64,3 +64,13 @@ export interface ActiveUsersResponse {
 export const getActiveOnlineUsers = async (): Promise<ActiveUsersResponse> => {
   return requestWithFallback<ActiveUsersResponse>('get', '/activity-logs/active-users');
 };
+
+export const sendWaLogoutWarning = async (payload: {
+  user_id?: string;
+  phone?: string;
+  name?: string;
+  is_bulk?: boolean;
+  target_users?: Array<{ user_id?: string; phone?: string; no_hp?: string; name?: string }>;
+}): Promise<{ success: boolean; message: string; data?: any }> => {
+  return requestWithFallback('post', '/activity-logs/send-logout-wa', payload);
+};
