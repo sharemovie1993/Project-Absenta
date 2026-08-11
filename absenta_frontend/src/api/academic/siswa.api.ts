@@ -312,5 +312,5 @@ export const bulkResetSiswaPassword = async (payload: BulkResetSiswaPasswordPayl
   failed: number;
   errors?: any[];
 }> => {
-  return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload });
+  return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload, timeout: 300000 });
 };

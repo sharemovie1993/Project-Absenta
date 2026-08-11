@@ -171,5 +171,5 @@ export const bulkResetGuruPassword = async (payload: BulkResetGuruPasswordPayloa
   failed: number;
   errors?: any[];
 }> => {
-  return requestWithFallback('post', '/academic/guru/bulk-reset-password', { data: payload });
+  return requestWithFallback('post', '/academic/guru/bulk-reset-password', { data: payload, timeout: 300000 });
 };

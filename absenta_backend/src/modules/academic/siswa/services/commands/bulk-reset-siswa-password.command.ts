@@ -71,75 +71,91 @@ export async function bulkResetSiswaPasswordCommand(
   let failed = 0;
   const errors: { siswaId: string; nama: string; reason: string }[] = [];
 
-  for (const student of students) {
-    try {
-      // Determine raw password value
-      let rawPassword = '';
-      const cleanNisn = student.nisn ? String(student.nisn).trim() : '';
-      const cleanNis = student.nis ? String(student.nis).trim() : '';
+  // Hash cache to prevent hashing the same password 1000x
+  const hashCache = new Map<string, string>();
+  const getHashedPassword = async (raw: string): Promise<string> => {
+    if (hashCache.has(raw)) return hashCache.get(raw)!;
+    const hashed = await bcrypt.hash(raw, 10);
+    hashCache.set(raw, hashed);
+    return hashed;
+  };
 
-      if (mode === 'NISN') {
-        rawPassword = cleanNisn || cleanNis || customPassword || 'Siswa123!';
-      } else if (mode === 'NIS') {
-        rawPassword = cleanNis || cleanNisn || customPassword || 'Siswa123!';
-      } else {
-        rawPassword = customPassword || 'Siswa123!';
-      }
+  // Process in parallel chunks of 25 students for maximum throughput without DB pool starvation
+  const CHUNK_SIZE = 25;
+  for (let i = 0; i < students.length; i += CHUNK_SIZE) {
+    const chunk = students.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(async (student) => {
+        try {
+          // Determine raw password value
+          let rawPassword = '';
+          const cleanNisn = student.nisn ? String(student.nisn).trim() : '';
+          const cleanNis = student.nis ? String(student.nis).trim() : '';
 
-      if (!rawPassword || rawPassword.trim().length < 4) {
-        rawPassword = 'Siswa123!';
-      }
-
-      const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
-      if (student.user_id && student.User) {
-        // Update existing user password
-        await prisma.user.update({
-          where: { id: student.user_id },
-          data: {
-            password: hashedPassword,
-            updated_at: new Date()
+          if (mode === 'NISN') {
+            rawPassword = cleanNisn || cleanNis || customPassword || 'Siswa123!';
+          } else if (mode === 'NIS') {
+            rawPassword = cleanNis || cleanNisn || customPassword || 'Siswa123!';
+          } else {
+            rawPassword = customPassword || 'Siswa123!';
           }
-        });
-        updated++;
-      } else {
-        // Create new User account for student
-        const emailPrefix = cleanNisn || cleanNis || student.id.slice(0, 8);
-        const email = `${emailPrefix}@absenta.id`;
 
-        // Check email uniqueness
-        const existingEmail = await prisma.user.findFirst({
-          where: { email }
-        });
-
-        const finalEmail = existingEmail ? `siswa.${student.id.slice(0, 8)}@absenta.id` : email;
-
-        const newUser = await prisma.user.create({
-          data: {
-            email: finalEmail,
-            full_name: student.nama_siswa,
-            password: hashedPassword,
-            role_id: siswaRole.id,
-            tenant_id: tenantId,
+          if (!rawPassword || rawPassword.trim().length < 4) {
+            rawPassword = 'Siswa123!';
           }
-        });
 
-        // Link student to new user
-        await prisma.siswa.update({
-          where: { id: student.id },
-          data: { user_id: newUser.id }
-        });
+          const hashedPassword = await getHashedPassword(rawPassword);
 
-        created++;
-      }
-    } catch (err: any) {
-      failed++;
-      errors.push({
-        siswaId: student.id,
-        nama: student.nama_siswa,
-        reason: err?.message || 'Gagal mereset password'
-      });
-    }
+          if (student.user_id && student.User) {
+            // Update existing user password
+            await prisma.user.update({
+              where: { id: student.user_id },
+              data: {
+                password: hashedPassword,
+                updated_at: new Date()
+              }
+            });
+            updated++;
+          } else {
+            // Create new User account for student
+            const emailPrefix = cleanNisn || cleanNis || student.id.slice(0, 8);
+            const email = `${emailPrefix}@absenta.id`;
+
+            // Check email uniqueness
+            const existingEmail = await prisma.user.findFirst({
+              where: { email }
+            });
+
+            const finalEmail = existingEmail ? `siswa.${student.id.slice(0, 8)}@absenta.id` : email;
+
+            const newUser = await prisma.user.create({
+              data: {
+                email: finalEmail,
+                full_name: student.nama_siswa,
+                password: hashedPassword,
+                role_id: siswaRole.id,
+                tenant_id: tenantId,
+              }
+            });
+
+            // Link student to new user
+            await prisma.siswa.update({
+              where: { id: student.id },
+              data: { user_id: newUser.id }
+            });
+
+            created++;
+          }
+        } catch (err: any) {
+          failed++;
+          errors.push({
+            siswaId: student.id,
+            nama: student.nama_siswa,
+            reason: err?.message || 'Gagal mereset password'
+          });
+        }
+      })
+    );
   }
 
   return {
