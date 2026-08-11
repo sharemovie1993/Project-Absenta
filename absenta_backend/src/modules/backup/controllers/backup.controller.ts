@@ -525,6 +525,23 @@ export class BackupController {
               }
             }
 
+            // Unique scalar field guard (e.g. Plan.code, Addon.code, User.email)
+            if (dmmfModel?.fields) {
+              const uniqueField = dmmfModel.fields.find(
+                f => f.isUnique && f.name !== 'id' && cleanData[f.name] !== undefined && cleanData[f.name] !== null
+              );
+              if (uniqueField) {
+                try {
+                  const existingByUnique = await prismaModel.findFirst({
+                    where: { [uniqueField.name]: cleanData[uniqueField.name] }
+                  });
+                  if (existingByUnique) {
+                    whereInput = { id: existingByUnique.id };
+                  }
+                } catch (_) {}
+              }
+            }
+
             if (!whereInput && cleanData.id) {
               whereInput = { id: cleanData.id };
             }
@@ -541,11 +558,34 @@ export class BackupController {
 
             let savedRecord: any = null;
             if (whereInput) {
-              savedRecord = await prismaModel.upsert({
-                where: whereInput,
-                create: cleanData,
-                update: cleanData,
-              });
+              try {
+                savedRecord = await prismaModel.upsert({
+                  where: whereInput,
+                  create: cleanData,
+                  update: cleanData,
+                });
+              } catch (upsertErr: any) {
+                // Self-healing fallback if unique constraint failed (e.g. Plan code collision)
+                const uniqueField = dmmfModel?.fields.find(
+                  f => f.isUnique && f.name !== 'id' && cleanData[f.name] !== undefined && cleanData[f.name] !== null
+                );
+                if (uniqueField) {
+                  savedRecord = await prismaModel.findFirst({
+                    where: { [uniqueField.name]: cleanData[uniqueField.name] }
+                  });
+                  if (savedRecord) {
+                    try {
+                      const updatePayload = { ...cleanData };
+                      delete updatePayload.id;
+                      savedRecord = await prismaModel.update({
+                        where: { id: savedRecord.id },
+                        data: updatePayload,
+                      });
+                    } catch (_) {}
+                  }
+                }
+                if (!savedRecord) throw upsertErr;
+              }
             } else {
               savedRecord = await prismaModel.create({ data: cleanData });
             }
