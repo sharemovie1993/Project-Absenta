@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutList, PlayCircle } from 'lucide-react';
-import { Modal, Label } from '../../ui';
+import { Modal } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
@@ -66,11 +66,7 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
     >
       <div className="space-y-4">
         {/* Search / Scan Input */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="session-scanner-input" className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            Scan / Ketik Siswa atau Guru
-          </Label>
-          <div className="bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
             <SmartStudentPicker
               id="session-scanner-input"
               ref={scannerInputRef}
