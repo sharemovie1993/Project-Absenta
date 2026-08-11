@@ -21,17 +21,26 @@ export interface SiswaDetail {
   jenis_kelamin?: 'L' | 'P';
 }
 
+export interface GuruDetail {
+  id: string;
+  nama_guru: string;
+  nip?: string;
+}
+
 export interface SesiAttendanceRecord {
   id: string;
   sesi_absensi_id?: string;
   siswa_akademik_id?: string;
   siswa_id?: string;
+  guru_id?: string;
+  is_guru?: boolean;
   status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DISPEN' | 'ALPA' | 'BELUM_TAP' | string;
   waktu_tap?: string | null;
   is_terlambat?: boolean;
   asal_gerbang?: boolean;
   catatan?: string | null;
   Siswa?: SiswaDetail;
+  Guru?: GuruDetail;
   is_piket_out?: boolean;
   piket_jam_keluar?: string | null;
   piket_log_id?: string | null;
@@ -67,7 +76,9 @@ const SesiAttendanceRow = React.memo(({
   isPending: boolean;
   onUpdateStatus: (siswaAkademikId: string, status: string) => void;
 }) => {
-  const studentId = record.siswa_akademik_id || record.siswa_id || '';
+  const studentId = record.siswa_akademik_id || record.siswa_id || record.guru_id || record.id || '';
+  const isGuru = record.is_guru || Boolean(record.Guru) || Boolean(record.guru_id) || (record as any)._type === 'guru';
+  const nameDisplay = record.Guru?.nama_guru || record.Siswa?.nama_siswa || studentId;
   const isPiketOut = record.is_piket_out || record.catatan?.includes('IZIN SEMENTARA PIKET') || record.catatan?.includes('IZIN SEMENTARA');
 
   return (
@@ -76,14 +87,20 @@ const SesiAttendanceRow = React.memo(({
       animate={{ opacity: 1 }}
       className={cn(
         "grid items-center gap-2 px-4 py-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group",
-        isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]"
+        isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]",
+        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20 border-l-2 border-indigo-500"
       )}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
-            {record.Siswa?.nama_siswa || studentId}
+            {nameDisplay}
           </p>
+          {isGuru && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-200 border border-indigo-300/60">
+              👨‍🏫 Guru
+            </span>
+          )}
           {record.catatan?.includes('PULANG AWAL') && (
             <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50">
               🟧 Pulang Awal
@@ -296,21 +313,28 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
   const filteredRecords = useMemo(() => {
     return localRecords
       .filter(r => {
+        const name = r.Guru?.nama_guru || r.Siswa?.nama_siswa || '';
         const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
-        const matchSearch = (r.Siswa?.nama_siswa || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchStatus && matchSearch;
       })
       .sort((a, b) => {
-        const nameA = (a.Siswa?.nama_siswa || '').toLowerCase();
-        const nameB = (b.Siswa?.nama_siswa || '').toLowerCase();
+        const isGuruA = a.is_guru || Boolean(a.Guru) || Boolean(a.guru_id) || (a as any)._type === 'guru';
+        const isGuruB = b.is_guru || Boolean(b.Guru) || Boolean(b.guru_id) || (b as any)._type === 'guru';
+
+        if (isGuruA && !isGuruB) return -1;
+        if (!isGuruA && isGuruB) return 1;
+
+        const nameA = (a.Guru?.nama_guru || a.Siswa?.nama_siswa || '').toLowerCase();
+        const nameB = (b.Guru?.nama_guru || b.Siswa?.nama_siswa || '').toLowerCase();
         return nameA.localeCompare(nameB);
       });
   }, [localRecords, filterStatus, searchTerm]);
 
   const handleUpdateStatus = (siswaAkademikId: string, status: string, catatan?: string) => {
     if ((status === 'SAKIT' || status === 'IZIN' || status === 'DISPEN') && !catatan) {
-      const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.id) === siswaAkademikId);
-      const sName = rec?.Siswa?.nama_siswa || 'Siswa';
+      const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
+      const sName = rec?.Guru?.nama_guru || rec?.Siswa?.nama_siswa || 'Pengguna';
       setNoteTarget({ siswaAkademikId, studentName: sName, status: status as 'SAKIT' | 'IZIN' | 'DISPEN' });
       setNoteModalOpen(true);
       return;
