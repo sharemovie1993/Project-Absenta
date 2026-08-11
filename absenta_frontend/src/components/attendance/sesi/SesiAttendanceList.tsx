@@ -337,14 +337,40 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     onSuccess: (_, variables) => {
       toast.success('Status absensi diperbarui');
       
+      // Save persistent teacher attendance ONLY WHEN SERVER ACCEPTS THE TRANSACTION
+      const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === variables.siswaAkademikId);
+      const isGuruTarget = targetRec?.is_guru || Boolean(targetRec?.Guru) || Boolean(targetRec?.guru_id) || (targetRec as any)?._type === 'guru';
+      
+      if (isGuruTarget && sesi?.id) {
+        const gId = targetRec?.guru_id || targetRec?.Guru?.id || 'guru-sesi';
+        const wTap = variables.status === 'BELUM_TAP' ? null : (targetRec?.waktu_tap || new Date().toISOString());
+        try {
+          localStorage.setItem(`absenta_guru_att_${sesi.id}_${gId}`, JSON.stringify({
+            status: variables.status,
+            waktu_tap: wTap,
+            is_terlambat: targetRec?.is_terlambat || false,
+            catatan: variables.catatan !== undefined ? variables.catatan : targetRec?.catatan
+          }));
+        } catch {}
+      }
+
       // Auto-next logic for Slide Mode
       if (isSlideMode && slideIndex < filteredRecords.length - 1) {
         setTimeout(() => setSlideIndex(prev => prev + 1), 300);
       }
     },
     onError: (error: any, variables, context) => {
-      // Rollback local records state to prop values
+      // Rollback local records state to original props
       setLocalRecords(records);
+
+      // Remove invalid/rejected localStorage entry if transaction was rejected by backend
+      if (sesi?.id && variables?.siswaAkademikId) {
+        const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === variables.siswaAkademikId);
+        const gId = targetRec?.guru_id || targetRec?.Guru?.id || 'guru-sesi';
+        try {
+          localStorage.removeItem(`absenta_guru_att_${sesi.id}_${gId}`);
+        } catch {}
+      }
 
       // Rollback query cache
       if (context?.previousQueryRes && sesi?.id) {
@@ -439,22 +465,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
           : r;
       })
     );
-
-    // Save persistent teacher attendance to prevent loss on modal toggle
-    const isGuruTarget = targetRec?.is_guru || Boolean(targetRec?.Guru) || Boolean(targetRec?.guru_id) || (targetRec as any)?._type === 'guru';
-    
-    if (isGuruTarget && sesi?.id) {
-      const gId = targetRec?.guru_id || targetRec?.Guru?.id || 'guru-sesi';
-      const wTap = status === 'BELUM_TAP' ? null : (targetRec?.waktu_tap || new Date().toISOString());
-      try {
-        localStorage.setItem(`absenta_guru_att_${sesi.id}_${gId}`, JSON.stringify({
-          status,
-          waktu_tap: wTap,
-          is_terlambat: isLate,
-          catatan: catatan !== undefined ? catatan : targetRec?.catatan
-        }));
-      } catch {}
-    }
 
     // 2. Fire mutation
     updateAttendanceMutation.mutate({ siswaAkademikId, status, catatan });
