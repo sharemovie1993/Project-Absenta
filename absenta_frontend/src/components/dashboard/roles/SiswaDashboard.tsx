@@ -1770,7 +1770,7 @@ export const SiswaDashboard: React.FC = () => {
                   <button
                     onClick={() => {
                       setShowKehadiranModal(false);
-                      setActiveTab('kehadiran');
+                      handleTabChange('kehadiran');
                     }}
                     className="shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
                   >
