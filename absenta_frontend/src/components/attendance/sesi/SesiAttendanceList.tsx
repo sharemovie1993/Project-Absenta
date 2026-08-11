@@ -84,6 +84,11 @@ const SesiAttendanceRow = React.memo(({
           <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
             {record.Siswa?.nama_siswa || studentId}
           </p>
+          {record.is_terlambat && (
+            <span className="px-1.5 py-0.2 text-[8px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 rounded uppercase tracking-wider border border-rose-200">
+              ⏱ Telat
+            </span>
+          )}
           {record.catatan?.includes('PULANG AWAL') && (
             <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50">
               🟧 Pulang Awal
@@ -100,26 +105,21 @@ const SesiAttendanceRow = React.memo(({
             </span>
           )}
         </div>
-        <p className="hidden sm:block text-[8px] text-gray-400 font-bold truncate">NIS: {record.Siswa?.nis || '-'}</p>
-        {record.catatan && (
-          <p className="text-[7px] text-indigo-500 font-black italic truncate mt-0.5">
-            {record.catatan}
-          </p>
-        )}
-      </div>
-      <div className="flex flex-col items-center justify-center gap-0.5">
-        <div className="flex items-center justify-center gap-1.5">
-          <span className="text-[10px] font-bold text-gray-500">
-             {record.waktu_tap ? new Date(record.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-          </span>
-          {record.status === 'HADIR' && !record.asal_gerbang && (
-             <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin-slow" />
+        <div className="flex items-center gap-2 text-[8px] text-gray-400 font-semibold truncate">
+          <span>NIS: {record.Siswa?.nis || '-'}</span>
+          {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
+            <span className="text-indigo-500 font-bold italic">
+              · {record.catatan}
+            </span>
           )}
         </div>
-        {record.is_terlambat && (
-          <span className="px-1 py-0.2 text-[7px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
-            Telat
-          </span>
+      </div>
+      <div className="flex items-center justify-center gap-1.5">
+        <span className="text-[10px] font-bold text-gray-500">
+           {record.waktu_tap ? new Date(record.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+        </span>
+        {record.status === 'HADIR' && !record.asal_gerbang && (
+           <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin-slow" />
         )}
       </div>
       <div className={cn("flex items-center gap-1", isReportMode ? "justify-center" : "justify-end")}>
