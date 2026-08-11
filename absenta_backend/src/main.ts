@@ -34,9 +34,21 @@ const filterRedisWarn = () => {
     return `${C.bold}${C.blue}INFO ${C.reset} ${msg}`;
   };
 
+  const formatArg = (a: any) => {
+    if (typeof a === 'object' && a !== null) {
+      if (a instanceof Error) return a.stack || a.message;
+      try {
+        return JSON.stringify(a);
+      } catch {
+        return String(a);
+      }
+    }
+    return String(a ?? '');
+  };
+
   const origWarn = console.warn;
   console.warn = (...args: any[]) => {
-    const msg = args.map(a => String(a || '')).join(' ');
+    const msg = args.map(formatArg).join(' ');
     // Silence known harmless infra warnings
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
     if (msg.includes('missed execution') && msg.includes('NODE-CRON')) return;  // node-cron startup noise
@@ -48,7 +60,7 @@ const filterRedisWarn = () => {
   };
   const origErr = console.error;
   console.error = (...args: any[]) => {
-    const msg = args.map(a => String(a || '')).join(' ');
+    const msg = args.map(formatArg).join(' ');
     if (msg.includes('minimum Redis version of 6.2.0') || msg.includes('Current: 6.0.')) return;
     if (msg.includes('[FSTDEP017]') || msg.includes('request.routerPath')) return;  // Fastify deprecation
     if (msg.includes('Use `node --trace-deprecation')) return;                       // Node deprecation hint
@@ -56,7 +68,7 @@ const filterRedisWarn = () => {
   };
   const origLog = console.log;
   console.log = (...args: any[]) => {
-    const msg = args.map(a => String(a || '')).join(' ');
+    const msg = args.map(formatArg).join(' ');
     if (msg.includes('[FSTDEP017]') || msg.includes('request.routerPath')) return;
     if (msg.includes('allowUnionTypes') || msg.includes('strictTypes')) return;
     origLog(`${time()} ${colorizeRaw(msg)}`);
