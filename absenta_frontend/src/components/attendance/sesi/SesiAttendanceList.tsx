@@ -232,7 +232,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
 
-  // Auto-ensure Teacher record exists at the top of list
+  // Auto-ensure Teacher record exists at the top of list with persistent caching
   const preparedRecords = useMemo(() => {
     const hasGuru = records.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
     
@@ -242,20 +242,44 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
         nama_guru: sesi.nama_guru || sesi.JamPelajaran?.nama_guru || 'Guru Pengajar'
       };
 
+      let savedGuruData: { status?: string; waktu_tap?: string | null; catatan?: string | null } | null = null;
+      try {
+        const stored = localStorage.getItem(`absenta_guru_att_${sesi?.id}_${gObj.id}`);
+        if (stored) savedGuruData = JSON.parse(stored);
+      } catch {}
+
       const teacherRec: SesiAttendanceRecord = {
         id: `guru-${gObj.id}`,
         guru_id: gObj.id,
         is_guru: true,
-        status: 'BELUM_TAP',
-        waktu_tap: null,
+        status: savedGuruData?.status || 'BELUM_TAP',
+        waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : null,
         Guru: gObj,
-        catatan: null
+        catatan: savedGuruData?.catatan !== undefined ? savedGuruData.catatan : null
       };
 
       return [teacherRec, ...records];
     }
 
-    return records;
+    return records.map(r => {
+      const isG = r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru';
+      if (isG && sesi?.id) {
+        const gId = r.guru_id || r.Guru?.id || 'guru-sesi';
+        try {
+          const stored = localStorage.getItem(`absenta_guru_att_${sesi.id}_${gId}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            return {
+              ...r,
+              status: parsed.status || r.status,
+              waktu_tap: parsed.waktu_tap !== undefined ? parsed.waktu_tap : r.waktu_tap,
+              catatan: parsed.catatan !== undefined ? parsed.catatan : r.catatan
+            };
+          }
+        } catch {}
+      }
+      return r;
+    });
   }, [records, sesi]);
 
   // Sync state with parent props for robust optimistic updates across all dashboards
@@ -403,6 +427,22 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
           : r;
       })
     );
+
+    // Save persistent teacher attendance to prevent loss on modal toggle
+    const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
+    const isGuruTarget = targetRec?.is_guru || Boolean(targetRec?.Guru) || Boolean(targetRec?.guru_id) || (targetRec as any)?._type === 'guru';
+    
+    if (isGuruTarget && sesi?.id) {
+      const gId = targetRec?.guru_id || targetRec?.Guru?.id || 'guru-sesi';
+      const wTap = status === 'BELUM_TAP' ? null : (targetRec?.waktu_tap || new Date().toISOString());
+      try {
+        localStorage.setItem(`absenta_guru_att_${sesi.id}_${gId}`, JSON.stringify({
+          status,
+          waktu_tap: wTap,
+          catatan: catatan !== undefined ? catatan : targetRec?.catatan
+        }));
+      } catch {}
+    }
 
     // 2. Fire mutation
     updateAttendanceMutation.mutate({ siswaAkademikId, status, catatan });
