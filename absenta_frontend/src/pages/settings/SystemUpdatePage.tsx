@@ -407,8 +407,9 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
             icon={Terminal}
             fullWidth
           >
+            <div className="w-full space-y-4">
               {/* Master Data Wilayah tools */}
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Data Wilayah Indonesia</span>
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
