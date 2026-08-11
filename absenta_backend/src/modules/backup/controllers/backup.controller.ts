@@ -49,6 +49,33 @@ function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, ten
   return cleanData;
 }
 
+function sanitizeRowForeignKeys(
+  modelName: string,
+  cleanData: Record<string, any>,
+  validIdsMap: Map<string, Set<string>>
+) {
+  const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+  if (!dmmfModel) return;
+
+  for (const field of dmmfModel.fields) {
+    if (field.kind === 'object' && field.relationFromFields && field.relationFromFields.length > 0) {
+      const fkName = field.relationFromFields[0];
+      const val = cleanData[fkName];
+      if (val !== undefined && val !== null) {
+        const targetModelName = field.type;
+        const targetSet = validIdsMap.get(targetModelName);
+        if (targetSet && !targetSet.has(String(val))) {
+          // If FK target ID is missing in target DB, set nullable FK to null to prevent FK constraint error
+          const scalarField = dmmfModel.fields.find(f => f.name === fkName);
+          if (scalarField && !scalarField.isRequired) {
+            cleanData[fkName] = null;
+          }
+        }
+      }
+    }
+  }
+}
+
 export interface ModelRestoreSummary {
   target: number;
   restored: number;
@@ -274,10 +301,25 @@ export class BackupController {
         }
       }
 
-      // Track existing & newly imported User IDs to prevent foreign key errors (e.g., Siswa_user_id_fkey)
-      const validUserIds = new Set(
-        (await prisma.user.findMany({ where: { tenant_id: tenantId }, select: { id: true } })).map(u => u.id)
-      );
+      // Universal Foreign Key ID Map across all tenant models to prevent any FK constraint errors
+      const validIdsMap = new Map<string, Set<string>>();
+      for (const mName of models) {
+        const pModel = (prisma as any)[mName];
+        if (pModel && typeof pModel.findMany === 'function') {
+          try {
+            const rows = await pModel.findMany({
+              where: { tenant_id: tenantId },
+              select: { id: true },
+            });
+            validIdsMap.set(mName, new Set(rows.map((r: any) => String(r.id))));
+          } catch (_) {
+            try {
+              const rows = await pModel.findMany({ select: { id: true } });
+              validIdsMap.set(mName, new Set(rows.map((r: any) => String(r.id))));
+            } catch (_) {}
+          }
+        }
+      }
 
       // Track valid Role IDs & Names in target DB to prevent User_role_id_fkey failures
       const existingRoles = await prisma.role.findMany({
@@ -317,10 +359,8 @@ export class BackupController {
           try {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
 
-            // Foreign Key Guard: If user_id field is present, verify target User exists
-            if (cleanData.user_id && !validUserIds.has(cleanData.user_id)) {
-              cleanData.user_id = null;
-            }
+            // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
+            sanitizeRowForeignKeys(modelName, cleanData, validIdsMap);
 
             const isUserModel = modelName === 'User' || modelName.toLowerCase() === 'user';
             if (isUserModel) {
@@ -413,8 +453,13 @@ export class BackupController {
               await prismaModel.create({ data: cleanData });
             }
 
-            if ((modelName === 'User' || modelName.toLowerCase() === 'user') && cleanData.id) {
-              validUserIds.add(cleanData.id);
+            if (cleanData.id) {
+              let targetSet = validIdsMap.get(modelName);
+              if (!targetSet) {
+                targetSet = new Set<string>();
+                validIdsMap.set(modelName, targetSet);
+              }
+              targetSet.add(String(cleanData.id));
             }
 
             restoredCount++;
