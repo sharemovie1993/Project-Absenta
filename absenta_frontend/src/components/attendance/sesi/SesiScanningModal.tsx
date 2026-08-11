@@ -79,21 +79,19 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
     >
       <div className="space-y-4">
         {/* Search / Scan Input */}
-        <div className="bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
-            <SmartStudentPicker
-              id="session-scanner-input"
-              ref={scannerInputRef}
-              value={scannerInput}
-              onChange={setScannerInput}
-              placeholder="Scan kartu, ketik Nama, NIS, NIP, atau RFID..."
-              disabled={scanLoading}
-              mode="universal"
-              onSelect={(item: Student) =>
-                onSubmitScan(item.id, (item as unknown as { _type?: string })._type === 'guru')
-              }
-              scope="global"
-            />
-          </div>
+        <SmartStudentPicker
+          id="session-scanner-input"
+          ref={scannerInputRef}
+          value={scannerInput}
+          onChange={setScannerInput}
+          placeholder="Scan kartu, ketik Nama, NIS, NIP, atau RFID..."
+          disabled={scanLoading}
+          mode="universal"
+          onSelect={(item: Student) =>
+            onSubmitScan(item.id, (item as unknown as { _type?: string })._type === 'guru')
+          }
+          scope="global"
+        />
 
 
         {/* Daftar Hadir */}
