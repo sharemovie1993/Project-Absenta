@@ -294,23 +294,35 @@ export class JadwalKBMController {
       targetHari = map[idx];
     }
 
-    // 3. Fetch schedules strictly matching active academic year & semester
+    // 3. Fetch schedules with smart DB lookup for student class
     const scheduleWhere: any = {
       tenant_id: ctx.tenantId,
-      tahun_pelajaran_id: ctx.tahunPelajaranId,
-      semester_id: ctx.semesterId,
       hari: targetHari,
     };
     
     // If Guru, filter by their own ID. If Siswa, filter by their Kelas.
     if (roleName === RoleName.GURU) {
-      scheduleWhere.guru_id = ctx.guru.id;
+      scheduleWhere.guru_id = ctx.guru?.id;
     } else {
       scheduleWhere.kelas_id = ctx.kelasId;
     }
 
-    const jadwal = await jadwalKBMDb.jadwalKBM.findMany({
-      where: scheduleWhere,
+    console.log(`[DEBUG listMySchedule] Querying schedule:`, {
+      tenantId: ctx.tenantId,
+      kelasId: ctx.kelasId,
+      tpId: ctx.tahunPelajaranId,
+      semId: ctx.semesterId,
+      targetHari,
+      roleName,
+    });
+
+    // 3a. Try strict match with active tahun_pelajaran_id and semester_id
+    let jadwal = await jadwalKBMDb.jadwalKBM.findMany({
+      where: {
+        ...scheduleWhere,
+        tahun_pelajaran_id: ctx.tahunPelajaranId,
+        semester_id: ctx.semesterId,
+      },
       include: {
         Mapel: { select: { nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
@@ -318,6 +330,31 @@ export class JadwalKBMController {
       },
       orderBy: [{ jam_mulai: 'asc' }],
     });
+
+    // 3b. Fallback: If 0 schedules with strict TP/Semester, query by tenant, class, and day
+    if (jadwal.length === 0) {
+      console.log(`[DEBUG listMySchedule] Strict query returned 0, attempting query without strict TP/Semester filter...`);
+      jadwal = await jadwalKBMDb.jadwalKBM.findMany({
+        where: scheduleWhere,
+        include: {
+          Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+          Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+        orderBy: [{ jam_mulai: 'asc' }],
+      });
+    }
+
+    // 3c. Debug check: If still 0, log all schedules for this class in DB to diagnose
+    if (jadwal.length === 0) {
+      const allClassSchedules = await jadwalKBMDb.jadwalKBM.findMany({
+        where: { tenant_id: ctx.tenantId, kelas_id: ctx.kelasId },
+        select: { id: true, hari: true, jam_mulai: true, jam_selesai: true, tahun_pelajaran_id: true, semester_id: true },
+      });
+      console.log(`[DEBUG listMySchedule] Total schedules in DB for kelas_id ${ctx.kelasId}:`, allClassSchedules.length, allClassSchedules);
+    } else {
+      console.log(`[DEBUG listMySchedule] Found ${jadwal.length} schedules for ${targetHari}`);
+    }
 
     // 4. Fetch active sessions for deduplication
     const targetDate = tanggal ? new Date(`${tanggal}T00:00:00.000+07:00`) : new Date();
