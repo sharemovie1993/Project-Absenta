@@ -279,6 +279,17 @@ export class BackupController {
         (await prisma.user.findMany({ where: { tenant_id: tenantId }, select: { id: true } })).map(u => u.id)
       );
 
+      // Track valid Role IDs & Names in target DB to prevent User_role_id_fkey failures
+      const existingRoles = await prisma.role.findMany({
+        where: { OR: [{ tenant_id: tenantId }, { tenant_id: null }] },
+      });
+      const validRoleIds = new Set(existingRoles.map(r => r.id));
+      const roleNameMap = new Map<string, string>();
+      for (const r of existingRoles) {
+        if (r.name) roleNameMap.set(r.name.toUpperCase(), r.id);
+      }
+      let fallbackRoleId = existingRoles.find(r => r.tenant_id === tenantId)?.id || existingRoles[0]?.id;
+
       for (const modelName of models) {
         let rows: any[] | undefined = dataTables[modelName];
         if (!rows) {
@@ -309,6 +320,33 @@ export class BackupController {
             // Foreign Key Guard: If user_id field is present, verify target User exists
             if (cleanData.user_id && !validUserIds.has(cleanData.user_id)) {
               cleanData.user_id = null;
+            }
+
+            const isUserModel = modelName === 'User' || modelName.toLowerCase() === 'user';
+            if (isUserModel) {
+              if (!cleanData.role_id || !validRoleIds.has(cleanData.role_id)) {
+                const rawRoleName = rawRow.Role?.name || rawRow.role_name || rawRow.role || rawRow.roleName;
+                const matchedRoleId = rawRoleName ? roleNameMap.get(String(rawRoleName).toUpperCase()) : null;
+
+                if (matchedRoleId) {
+                  cleanData.role_id = matchedRoleId;
+                } else if (fallbackRoleId) {
+                  cleanData.role_id = fallbackRoleId;
+                } else {
+                  const defaultRole = await prisma.role.create({
+                    data: {
+                      tenant_id: tenantId,
+                      name: 'ADMIN',
+                      description: 'System Created Admin Role',
+                      is_system: true,
+                    }
+                  });
+                  validRoleIds.add(defaultRole.id);
+                  roleNameMap.set('ADMIN', defaultRole.id);
+                  fallbackRoleId = defaultRole.id;
+                  cleanData.role_id = defaultRole.id;
+                }
+              }
             }
 
             const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
@@ -353,6 +391,16 @@ export class BackupController {
 
             if (!whereInput && cleanData.id) {
               whereInput = { id: cleanData.id };
+            }
+
+            // User Email Matching Guard: if user with email exists in tenant, update by email
+            if (isUserModel && cleanData.email) {
+              const existingUserByEmail = await prisma.user.findFirst({
+                where: { email: cleanData.email, tenant_id: tenantId }
+              });
+              if (existingUserByEmail) {
+                whereInput = { id: existingUserByEmail.id };
+              }
             }
 
             if (whereInput) {
