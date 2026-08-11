@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PiketOperations } from '../../piket/PiketOperations';
-import { PiketPrintSlip } from '../../piket/PiketPrintSlip';
+import { PiketOperations } from '../../../piket/PiketOperations';
+import { PiketPrintSlip } from '../../../piket/PiketPrintSlip';
 
 interface StaffPiketOperasionalTabProps {
   dailyPermits: any[];
