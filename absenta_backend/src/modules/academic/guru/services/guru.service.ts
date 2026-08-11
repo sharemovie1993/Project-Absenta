@@ -47,6 +47,8 @@ export interface UpdateGuruInput {
   agama?: string | null;
   status_kepegawaian?: string | null;
   pendidikan_terakhir?: string | null;
+  pangkat_golongan?: string | null;
+  tmt_guru?: string | null;
   jenis_ptk?: string | null;
   foto?: string | null;
   max_jp?: number | null;
@@ -600,6 +602,8 @@ export class GuruService {
     if (input.agama !== undefined) updateData.agama = input.agama;
     if (input.status_kepegawaian !== undefined) updateData.status_kepegawaian = input.status_kepegawaian;
     if (input.pendidikan_terakhir !== undefined) updateData.pendidikan_terakhir = input.pendidikan_terakhir;
+    if (input.pangkat_golongan !== undefined) updateData.pangkat_golongan = input.pangkat_golongan;
+    if (input.tmt_guru !== undefined) updateData.tmt_guru = input.tmt_guru;
     if (input.jenis_ptk !== undefined) updateData.jenis_ptk = input.jenis_ptk;
     if (input.foto !== undefined) updateData.foto = input.foto;
     if (input.max_jp !== undefined) updateData.max_jp = input.max_jp;
