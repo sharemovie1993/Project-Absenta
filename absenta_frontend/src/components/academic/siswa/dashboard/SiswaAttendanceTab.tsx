@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, User, Clock, MapPin, CheckCircle2, Calendar,
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
+import { useAuthStore } from '@/store/authStore';
 import { getSesiAbsenSiswa, getRekapBulananKelasMe } from '@/api/attendanceGerbang.api';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
@@ -68,6 +69,8 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   isLoadingSchedule = false,
   isApiConnected = true,
 }) => {
+  const { user } = useAuthStore();
+  const mySiswaId = (user as any)?.siswa_id || user?.id;
   const attendanceRate = gamification?.attendanceRate ?? 100;
 
   // Read-Only Session Attendance Modal state for non-petugas students
@@ -103,18 +106,23 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         const students = kelasRes?.data?.students || [];
 
         if (students.length > 0) {
-          return students.map((st: any, idx: number) => ({
-            id: st.id || st.siswa_id || `st-${idx}`,
-            siswa_id: st.id || st.siswa_id,
-            siswa_akademik_id: st.id || st.siswa_id,
-            status: st.status || 'HADIR',
-            waktu_tap: st.waktu_tap || st.waktu || selectedSesiModal.waktuTap || new Date().toISOString(),
-            Siswa: {
-              id: st.id || st.siswa_id,
-              nama_siswa: st.nama || st.nama_siswa || 'Siswa Kelas',
-              nis: st.nis || '-'
-            }
-          }));
+          return students.map((st: any, idx: number) => {
+            const currentStId = st.id || st.siswa_id;
+            const isMe = currentStId === mySiswaId || String(st.nama || st.nama_siswa || '').toLowerCase().includes(String(user?.name || '').toLowerCase());
+
+            return {
+              id: currentStId || `st-${idx}`,
+              siswa_id: currentStId,
+              siswa_akademik_id: currentStId,
+              status: st.status || (isMe ? 'HADIR' : 'BELUM_TAP'),
+              waktu_tap: st.waktu_tap || st.waktu || (isMe ? selectedSesiModal.waktuTap : null),
+              Siswa: {
+                id: currentStId,
+                nama_siswa: st.nama || st.nama_siswa || 'Siswa Kelas',
+                nis: st.nis || '-'
+              }
+            };
+          });
         }
       } catch {}
 
