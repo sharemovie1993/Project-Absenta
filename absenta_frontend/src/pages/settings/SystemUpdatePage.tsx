@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { RefreshCw, GitCommit, CheckCircle2, XCircle, Loader2, Terminal, UploadCloud, ShieldCheck } from 'lucide-react';
 import { systemUpdateApi, type UpdateProgress, type UpdateCheckData } from '@/api/systemUpdate.api';
+import axiosInstance from '@/lib/axiosInstance';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, Card, CardContent, SectionCard } from '@/components/ui';
 import useConfirm from '@/hooks/useConfirm';
@@ -406,22 +407,64 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
             icon={Terminal}
             fullWidth
           >
-            <div className="w-full space-y-3">
-              <p className="text-xs text-gray-400">Aksi darurat untuk pemeliharaan</p>
-              <Button
-                onClick={doRestart}
-                disabled={restarting || updating}
-                variant="outline"
-                className="w-full text-red-600 border-red-200 hover:bg-red-50"
-              >
-                {restarting
-                  ? <><Loader2 size={14} className="animate-spin mr-2" /> Merestart...</>
-                  : <><Terminal size={14} className="mr-2" /> Paksa Restart Layanan (PM2)</>
-                }
-              </Button>
-              <p className="text-xs text-gray-400">
-                Gunakan jika aplikasi tidak merespon tanpa perlu update kode.
-              </p>
+              {/* Master Data Wilayah tools */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Data Wilayah Indonesia</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    ~91.600 Record
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Tarik data lengkap Provinsi, Kabupaten/Kota, Kecamatan, & Desa se-Indonesia ke database lokal.
+                </p>
+                <Button
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Sinkronisasi Full Data Wilayah Indonesia',
+                      message: 'Sistem akan mengunduh dan menyelaraskan ~91.600 record master wilayah Indonesia secara otomatis di latar belakang. Lanjutkan?',
+                      confirmText: 'Mulai Sinkronisasi',
+                      cancelText: 'Batal',
+                    });
+                    if (!ok) return;
+
+                    try {
+                      const toastId = toast.loading('Memulai sinkronisasi data wilayah se-Indonesia...');
+                      const res = await axiosInstance.post('/wilayah/sync');
+                      toast.dismiss(toastId);
+                      if (res.data?.success) {
+                        toast.success('Berhasil! Sinkronisasi ~91.600 data wilayah Indonesia berjalan di latar belakang.');
+                      } else {
+                        toast.error(res.data?.message || 'Gagal memulai sinkronisasi wilayah.');
+                      }
+                    } catch (err: any) {
+                      toast.error(err?.response?.data?.message || err?.message || 'Gagal memicu sinkronisasi wilayah.');
+                    }
+                  }}
+                  disabled={restarting || updating}
+                  variant="outline"
+                  className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/50 dark:hover:bg-indigo-900/20"
+                >
+                  <UploadCloud size={14} className="mr-2" /> Tarik & Sinkronkan Wilayah (Se-Indonesia)
+                </Button>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                <Button
+                  onClick={doRestart}
+                  disabled={restarting || updating}
+                  variant="outline"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  {restarting
+                    ? <><Loader2 size={14} className="animate-spin mr-2" /> Merestart...</>
+                    : <><Terminal size={14} className="mr-2" /> Paksa Restart Layanan (PM2)</>
+                  }
+                </Button>
+                <p className="text-xs text-gray-400 mt-2">
+                  Gunakan jika aplikasi tidak merespon tanpa perlu update kode.
+                </p>
+              </div>
               {(restarting) && (
                 <p className="text-xs text-amber-600 font-medium text-center">
                   Halaman akan dimuat ulang dalam {countdown} detik...
