@@ -41,12 +41,13 @@ const SearchableSelect = lazy(() =>
 // ─── Konstanta Filter Jenis Aksi ──────────────────────────────────────────────
 const ACTION_OPTIONS = [
   { value: '', label: 'Semua Jenis Aksi' },
+  { value: 'USER_LOGIN', label: 'Pengguna Masuk Aplikasi' },
+  { value: 'USER_LOGOUT', label: 'Pengguna Keluar Aplikasi' },
+  { value: 'VIEW_REKAP_HARIAN_SISWA', label: 'Siswa Akses Rekap Harian' },
   { value: 'ACADEMIC_STUDENT_CLASS_CHANGED', label: 'Perubahan Kelas Siswa' },
   { value: 'ACADEMIC_STUDENT_SYNC', label: 'Sinkronisasi Siswa Akademik' },
   { value: 'ACADEMIC_TRANSITION_EXECUTE', label: 'Kelulusan & Kenaikan' },
   { value: 'ATTENDANCE_MANUAL_INPUT', label: 'Input Absensi Manual' },
-  { value: 'USER_LOGIN', label: 'Staf Masuk Aplikasi' },
-  { value: 'USER_LOGOUT', label: 'Staf Keluar Aplikasi' },
   { value: 'USER_CREATED', label: 'Pembuatan Pengguna' },
   { value: 'USER_UPDATED', label: 'Pembaruan Pengguna' },
 ];
@@ -272,20 +273,20 @@ export function StaffActivityLogPage() {
 
   // ── SearchableSelect options untuk Staff Users (useMemo) ──
   const staffUserOptions = useMemo(() => ([
-    { value: '', label: 'Semua Petugas/Staf' },
+    { value: '', label: 'Semua Pengguna (Staf/Guru/Siswa)' },
     ...staffUsers?.map(u => ({
       value: u.id,
-      label: `${u.full_name} (${u.role?.name || 'Staf'})`,
+      label: `${u.full_name} (${u.role?.name || 'Pengguna'})`,
     })),
   ]), [staffUsers]);
 
   // ── Instruction (useMemo) ──
   const instruction = useMemo(() => ({
-    title: 'Panduan Log Aktivitas Staf',
-    description: 'Halaman ini menampilkan seluruh riwayat aksi operasional staf administrasi sekolah secara real-time.',
+    title: 'Panduan Log Aktivitas Pengguna',
+    description: 'Halaman ini menampilkan seluruh riwayat aksi operasional pengguna (Staf, Guru, & Siswa) secara real-time dari database.',
     items: [
-      { text: 'Gunakan filter "Petugas/Staf" untuk melihat aktivitas satu pengguna secara spesifik.' },
-      { text: 'Filter "Jenis Aksi" membantu menyaring kejadian berdasarkan kategori (Login, Sinkronisasi, Transisi, dll).' },
+      { text: 'Gunakan filter "Pengguna" untuk melihat aktivitas satu pengguna secara spesifik.' },
+      { text: 'Filter "Jenis Aksi" membantu menyaring kejadian berdasarkan kategori (Login, Akses Rekap, Sinkronisasi, Transisi, dll).' },
       { text: 'Kombinasikan filter tanggal "Dari" dan "Sampai" untuk melihat aktivitas pada rentang waktu tertentu.' },
       { text: 'Tombol "Reset" menghapus semua filter aktif dan menampilkan kembali seluruh log terbaru.' },
     ],
