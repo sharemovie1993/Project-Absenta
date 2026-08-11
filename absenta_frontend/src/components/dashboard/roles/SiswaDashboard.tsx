@@ -266,6 +266,7 @@ export const SiswaDashboard: React.FC = () => {
         const axios = (await import('../../../lib/axiosInstance')).default;
         const res = await axios.get('/kesiswaan/pelanggaran/me');
         console.log('🚨 [DEBUG PELANGGARAN-ME] Raw API response:', res?.data);
+        console.log('🚨 [DEBUG PELANGGARAN-ME] Inner data payload:', res?.data?.data, 'Keys:', res?.data?.data ? Object.keys(res.data.data) : []);
         return res.data;
       } catch (err) {
         console.error('❌ [DEBUG PELANGGARAN-ME] Error fetching pelanggaran:', err);
@@ -282,6 +283,7 @@ export const SiswaDashboard: React.FC = () => {
         const axios = (await import('../../../lib/axiosInstance')).default;
         const res = await axios.get('/kesiswaan/prestasi/me');
         console.log('🏆 [DEBUG PRESTASI-ME] Raw API response:', res?.data);
+        console.log('🏆 [DEBUG PRESTASI-ME] Inner data payload:', res?.data?.data, 'Keys:', res?.data?.data ? Object.keys(res.data.data) : []);
         return res.data;
       } catch (err) {
         console.error('❌ [DEBUG PRESTASI-ME] Error fetching prestasi:', err);
@@ -421,31 +423,43 @@ export const SiswaDashboard: React.FC = () => {
     return renderApiValue(val, customConnectedText, isApiConnected);
   };
 
+  // Helper for universal array extraction from backend payload
+  const extractListFromPayload = (payload: any): any[] => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    
+    const target = payload?.data || payload;
+    if (Array.isArray(target)) return target;
+    if (Array.isArray(target?.list)) return target.list;
+    if (Array.isArray(target?.rows)) return target.rows;
+    if (Array.isArray(target?.items)) return target.items;
+    if (Array.isArray(target?.records)) return target.records;
+    if (Array.isArray(target?.pelanggaran)) return target.pelanggaran;
+    if (Array.isArray(target?.prestasi)) return target.prestasi;
+    if (Array.isArray(target?.data)) return target.data;
+    
+    if (target && typeof target === 'object') {
+      for (const key of Object.keys(target)) {
+        if (Array.isArray(target[key])) {
+          return target[key];
+        }
+      }
+    }
+    return [];
+  };
+
   // pelanggaran data list — handle all possible API payload shapes
   const pelanggaranList = useMemo(() => {
     console.log('🔍 [DEBUG PELANGGARAN LIST] pelanggaranRes:', pelanggaranRes);
-    let list: any[] = [];
-    if (Array.isArray(pelanggaranRes)) list = pelanggaranRes;
-    else if (Array.isArray(pelanggaranRes?.data)) list = pelanggaranRes.data;
-    else if (Array.isArray(pelanggaranRes?.data?.list)) list = pelanggaranRes.data.list;
-    else if (Array.isArray(pelanggaranRes?.data?.pelanggaran)) list = pelanggaranRes.data.pelanggaran;
-    else if (Array.isArray(pelanggaranRes?.list)) list = pelanggaranRes.list;
-    else if (Array.isArray(pelanggaranRes?.pelanggaran)) list = pelanggaranRes.pelanggaran;
-    
+    const list = extractListFromPayload(pelanggaranRes);
     console.log('✅ [DEBUG PELANGGARAN LIST] Parsed count:', list.length, list);
     return list;
   }, [pelanggaranRes]);
 
   const prestasiList = useMemo(() => {
     console.log('🔍 [DEBUG PRESTASI LIST] prestasiRes:', prestasiRes);
-    let list: any[] = [];
-    if (Array.isArray(prestasiRes)) list = prestasiRes;
-    else if (Array.isArray(prestasiRes?.data)) list = prestasiRes.data;
-    else if (Array.isArray(prestasiRes?.data?.list)) list = prestasiRes.data.list;
-    else if (Array.isArray(prestasiRes?.data?.prestasi)) list = prestasiRes.data.prestasi;
-    else if (Array.isArray(prestasiRes?.list)) list = prestasiRes.list;
-    else if (Array.isArray(prestasiRes?.prestasi)) list = prestasiRes.prestasi;
-    
+    const list = extractListFromPayload(prestasiRes);
     console.log('✅ [DEBUG PRESTASI LIST] Parsed count:', list.length, list);
     return list;
   }, [prestasiRes]);
