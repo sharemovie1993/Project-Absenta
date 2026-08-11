@@ -310,11 +310,13 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.officers.manage',
     'attendance.manage.petugas',
 
-    // Pelanggaran & Rujukan BK
+    // Pelanggaran & Rujukan BK & Prestasi
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
     'affairs.violations.report',
     'affairs.violation.types.view.list',
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
     'bk.cases.view.list',                  // Ringkasan status kasus (tanpa curhat sensitif BK)
     'bk.referrals.create',                 // Buat rujukan konseling ke BK
 
@@ -370,12 +372,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.recyclebin.view',
     'bk.recyclebin.restore',
 
-    // Pelanggaran & Piket (Koordinasi)
+    // Pelanggaran & Piket & Prestasi (Koordinasi)
     'affairs.violations.report',
     'affairs.violations.update',
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
     'affairs.violation.types.view.list',
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
     'attendance.piket.view',
     'attendance.piket.manage',
   ],
@@ -514,6 +518,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'affairs.violation.types.update',
     'affairs.violation.types.delete',
     'affairs.violation.types.manage',
+
+    // Master Jenis & Catatan Prestasi Siswa
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
 
     // Pengumuman Massal & Event
     'notify.announcements.manage',
@@ -668,6 +676,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
 
     // Executive Monitoring Modul
     'affairs.violations.view.list', 'affairs.violations.view.detail',
+    'affairs.achievements.view.list',
     'attendance.piket.view', 'attendance.reports.view',
     'attendance.sessions.view.list', 'attendance.sessions.view.detail',
     'attendance.recap.view.daily', 'attendance.recap.view.monthly', 'attendance.recap.view.global',
