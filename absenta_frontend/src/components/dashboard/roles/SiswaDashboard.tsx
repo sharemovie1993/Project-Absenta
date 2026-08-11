@@ -262,8 +262,15 @@ export const SiswaDashboard: React.FC = () => {
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
     queryKey: ['pelanggaran-me', user?.siswa_id || user?.id],
     queryFn: async () => {
-      const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/pelanggaran/me'));
-      return data;
+      try {
+        const axios = (await import('../../../lib/axiosInstance')).default;
+        const res = await axios.get('/kesiswaan/pelanggaran/me');
+        console.log('🚨 [DEBUG PELANGGARAN-ME] Raw API response:', res?.data);
+        return res.data;
+      } catch (err) {
+        console.error('❌ [DEBUG PELANGGARAN-ME] Error fetching pelanggaran:', err);
+        return null;
+      }
     },
     enabled: !!user,
   });
@@ -271,8 +278,15 @@ export const SiswaDashboard: React.FC = () => {
   const { data: prestasiRes } = useQuery({
     queryKey: ['prestasi-me', user?.siswa_id || user?.id],
     queryFn: async () => {
-      const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/prestasi/me'));
-      return data;
+      try {
+        const axios = (await import('../../../lib/axiosInstance')).default;
+        const res = await axios.get('/kesiswaan/prestasi/me');
+        console.log('🏆 [DEBUG PRESTASI-ME] Raw API response:', res?.data);
+        return res.data;
+      } catch (err) {
+        console.error('❌ [DEBUG PRESTASI-ME] Error fetching prestasi:', err);
+        return null;
+      }
     },
     enabled: !!user,
   });
@@ -409,25 +423,31 @@ export const SiswaDashboard: React.FC = () => {
 
   // pelanggaran data list — handle all possible API payload shapes
   const pelanggaranList = useMemo(() => {
-    if (Array.isArray(pelanggaranRes)) return pelanggaranRes;
-    const apiData = pelanggaranRes?.data;
-    if (Array.isArray(apiData)) return apiData;
-    if (Array.isArray(apiData?.list)) return apiData.list;
-    if (Array.isArray(apiData?.pelanggaran)) return apiData.pelanggaran;
-    if (Array.isArray(pelanggaranRes?.list)) return pelanggaranRes.list;
-    if (Array.isArray(pelanggaranRes?.pelanggaran)) return pelanggaranRes.pelanggaran;
-    return [];
+    console.log('🔍 [DEBUG PELANGGARAN LIST] pelanggaranRes:', pelanggaranRes);
+    let list: any[] = [];
+    if (Array.isArray(pelanggaranRes)) list = pelanggaranRes;
+    else if (Array.isArray(pelanggaranRes?.data)) list = pelanggaranRes.data;
+    else if (Array.isArray(pelanggaranRes?.data?.list)) list = pelanggaranRes.data.list;
+    else if (Array.isArray(pelanggaranRes?.data?.pelanggaran)) list = pelanggaranRes.data.pelanggaran;
+    else if (Array.isArray(pelanggaranRes?.list)) list = pelanggaranRes.list;
+    else if (Array.isArray(pelanggaranRes?.pelanggaran)) list = pelanggaranRes.pelanggaran;
+    
+    console.log('✅ [DEBUG PELANGGARAN LIST] Parsed count:', list.length, list);
+    return list;
   }, [pelanggaranRes]);
 
   const prestasiList = useMemo(() => {
-    if (Array.isArray(prestasiRes)) return prestasiRes;
-    const apiData = prestasiRes?.data;
-    if (Array.isArray(apiData)) return apiData;
-    if (Array.isArray(apiData?.list)) return apiData.list;
-    if (Array.isArray(apiData?.prestasi)) return apiData.prestasi;
-    if (Array.isArray(prestasiRes?.list)) return prestasiRes.list;
-    if (Array.isArray(prestasiRes?.prestasi)) return prestasiRes.prestasi;
-    return [];
+    console.log('🔍 [DEBUG PRESTASI LIST] prestasiRes:', prestasiRes);
+    let list: any[] = [];
+    if (Array.isArray(prestasiRes)) list = prestasiRes;
+    else if (Array.isArray(prestasiRes?.data)) list = prestasiRes.data;
+    else if (Array.isArray(prestasiRes?.data?.list)) list = prestasiRes.data.list;
+    else if (Array.isArray(prestasiRes?.data?.prestasi)) list = prestasiRes.data.prestasi;
+    else if (Array.isArray(prestasiRes?.list)) list = prestasiRes.list;
+    else if (Array.isArray(prestasiRes?.prestasi)) list = prestasiRes.prestasi;
+    
+    console.log('✅ [DEBUG PRESTASI LIST] Parsed count:', list.length, list);
+    return list;
   }, [prestasiRes]);
 
   const totalPoinPelanggaran = useMemo(() => {
