@@ -81,7 +81,6 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
               scope="global"
             />
           </div>
-        </div>
 
 
         {/* Daftar Hadir */}
