@@ -86,4 +86,27 @@ export class PelanggaranController {
       return sendError(reply, 500, 'Gagal mengambil analitik kedisiplinan', error);
     }
   }
+
+  /**
+   * GET /kesiswaan/pelanggaran/me
+   * Endpoint khusus siswa untuk melihat catatan pelanggaran milik sendiri.
+   * Tidak memerlukan capability tambahan — cukup login sebagai siswa.
+   */
+  static async getMyPelanggaran(req: any, reply: any) {
+    try {
+      const { tenant_id, siswa_id } = req.user!;
+      if (!siswa_id) {
+        return sendError(reply, 403, 'Akun ini tidak terhubung ke data siswa.');
+      }
+      const result = await PelanggaranService.getAll(
+        tenant_id,
+        { ...req.query, siswa_id },
+        { type: 'siswa', siswa_id }
+      );
+      return sendResponse(reply, 200, true, 'Data pelanggaran saya berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil data pelanggaran', error);
+    }
+  }
 }
+

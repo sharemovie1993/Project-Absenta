@@ -28,6 +28,11 @@ export async function pelanggaranRoutes(fastify: any) {
     ] 
   }, PelanggaranController.delete);
 
+  // GET /kesiswaan/pelanggaran/me — Siswa melihat pelanggaran milik sendiri (tanpa capability)
+  fastify.get('/me', {
+    preHandler: []
+  }, PelanggaranController.getMyPelanggaran);
+
   fastify.get('/', { 
     preHandler: [
       requireCapability('affairs.violations.view.list'), 

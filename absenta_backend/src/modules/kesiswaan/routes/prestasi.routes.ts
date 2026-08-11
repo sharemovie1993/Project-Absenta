@@ -69,6 +69,13 @@ export async function prestasiRoutes(fastify: any) {
       determineDataScope(),
   ]
   }, PrestasiController.deletePrestasiSiswa);
+  // GET /kesiswaan/prestasi/me — Siswa melihat prestasi milik sendiri (tanpa capability)
+  fastify.get('/prestasi/me', {
+    preHandler: [
+      organizationalScopeMiddleware,
+    ]
+  }, PrestasiController.getMyPrestasi);
+
   fastify.get('/prestasi', {
     preHandler: [
       requireCapability('affairs.achievements.view.list'),

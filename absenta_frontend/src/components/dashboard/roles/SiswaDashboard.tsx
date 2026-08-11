@@ -232,8 +232,20 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
-    queryKey: ['pelanggaran-siswa-me', user?.siswa_id],
-    queryFn: () => kesiswaanApi.getPelanggaran({ siswa_id: user?.siswa_id }),
+    queryKey: ['pelanggaran-me', user?.siswa_id],
+    queryFn: async () => {
+      const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/pelanggaran/me'));
+      return data;
+    },
+    enabled: !!user && !!user?.siswa_id,
+  });
+
+  const { data: prestasiRes } = useQuery({
+    queryKey: ['prestasi-me', user?.siswa_id],
+    queryFn: async () => {
+      const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/prestasi/me'));
+      return data;
+    },
     enabled: !!user && !!user?.siswa_id,
   });
 
@@ -304,9 +316,13 @@ export const SiswaDashboard: React.FC = () => {
   const gamification = useMemo(() => {
     const detail = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
     const attendanceRate = monthlyRecap?.persentase_kehadiran || 100;
-    const totalPoinPelanggaran = Array.isArray(pelanggaranRes?.data) 
-      ? pelanggaranRes.data.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0)
-      : 0;
+    const apiData = pelanggaranRes?.data;
+    const rawList = Array.isArray(apiData)
+      ? apiData
+      : Array.isArray(apiData?.list)
+        ? apiData.list
+        : [];
+    const totalPoinPelanggaran = rawList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
 
     return calculateStudentGamification(detail, attendanceRate, totalPoinPelanggaran);
   }, [monthlyRecap, pelanggaranRes]);
@@ -345,12 +361,11 @@ export const SiswaDashboard: React.FC = () => {
     return renderApiValue(val, customConnectedText, isApiConnected);
   };
 
-  // pelanggaran data list
+  // pelanggaran data list — handle both array and paginated { list, pagination } shapes
   const pelanggaranList = useMemo(() => {
     const apiData = pelanggaranRes?.data;
-    if (Array.isArray(apiData)) {
-      return apiData;
-    }
+    if (Array.isArray(apiData)) return apiData;
+    if (apiData?.list && Array.isArray(apiData.list)) return apiData.list;
     return [];
   }, [pelanggaranRes]);
 
@@ -490,30 +505,60 @@ export const SiswaDashboard: React.FC = () => {
 
   // Buku Catatan Kedisiplinan & Prestasi for Catatan Poin Tab
   const bukuCatatanList = useMemo(() => {
-    const rawPelanggaran = Array.isArray(pelanggaranList) ? pelanggaranList : [];
-    if (rawPelanggaran.length > 0) {
-      return rawPelanggaran.map((item: any) => ({
-        id: item.id || Math.random().toString(),
-        type: 'PELANGGARAN' as const,
-        tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
-        judul: item.nama_pelanggaran || item.kategori || item.judul || 'Pelanggaran Kedisiplinan',
-        kategori: item.kategori || 'Kedisiplinan',
-        pencatat: item.pencatat || 'Tim BK',
-        poinText: `-${item.poin || 0} Poin`,
-        status: item.status || 'Selesai',
-      }));
-    }
-    return [];
-  }, [pelanggaranList]);
+    const rawPelanggaran: any[] = Array.isArray(pelanggaranList) ? pelanggaranList : [];
+    const rawPrestasi: any[] = Array.isArray((prestasiRes as any)?.data?.list)
+      ? (prestasiRes as any).data.list
+      : Array.isArray((prestasiRes as any)?.data)
+        ? (prestasiRes as any).data
+        : [];
+
+    const pelanggaranItems = rawPelanggaran.map((item: any) => ({
+      id: item.id || Math.random().toString(),
+      type: 'PELANGGARAN' as const,
+      tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
+      judul: item.nama_pelanggaran || item.jenis_pelanggaran || item.kategori || item.judul || 'Pelanggaran Kedisiplinan',
+      kategori: item.Jenis?.kategori || item.kategori || item.jenis_pelanggaran || 'Kedisiplinan',
+      pencatat: item.pencatat || item.guru_pencatat || 'Tim BK',
+      poin: -(item.poin || 0),
+      poinText: `-${item.poin || 0} Poin`,
+      status: item.status || 'Selesai',
+    }));
+
+    const prestasiItems = rawPrestasi.map((item: any) => ({
+      id: item.id || Math.random().toString(),
+      type: 'PRESTASI' as const,
+      tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
+      judul: item.nama_prestasi || item.judul || 'Prestasi Siswa',
+      kategori: item.Jenis?.kategori || item.kategori || 'Akademik & Keilmuan',
+      pencatat: item.pencatat || item.guru_pencatat || 'Wali Kelas',
+      poin: item.poin || 0,
+      poinText: `+${item.poin || 0} Poin`,
+      status: item.status || 'Disetujui',
+    }));
+
+    const combined = [...pelanggaranItems, ...prestasiItems];
+    // Sort by tanggal descending (terbaru dulu)
+    combined.sort((a, b) => {
+      const da = a.tanggal === '-' ? 0 : new Date(a.tanggal).getTime();
+      const db = b.tanggal === '-' ? 0 : new Date(b.tanggal).getTime();
+      return db - da;
+    });
+    return combined;
+  }, [pelanggaranList, prestasiRes]);
+
+  // Totals for point summary
+  const totalPoinPrestasi = useMemo(() =>
+    bukuCatatanList.filter(i => i.type === 'PRESTASI').reduce((s, i) => s + (i.poin ?? 0), 0),
+  [bukuCatatanList]);
+  const totalPoinPelanggaran = useMemo(() =>
+    bukuCatatanList.filter(i => i.type === 'PELANGGARAN').reduce((s, i) => s + Math.abs(i.poin ?? 0), 0),
+  [bukuCatatanList]);
+  const netPoin = useMemo(() => totalPoinPrestasi - totalPoinPelanggaran, [totalPoinPrestasi, totalPoinPelanggaran]);
 
   // Filtered List based on catatanFilter state
   const filteredBukuCatatan = useMemo(() => {
-    if (catatanFilter === 'prestasi') {
-      return bukuCatatanList.filter(item => item.type === 'PRESTASI');
-    }
-    if (catatanFilter === 'pelanggaran') {
-      return bukuCatatanList.filter(item => item.type === 'PELANGGARAN');
-    }
+    if (catatanFilter === 'prestasi') return bukuCatatanList.filter(item => item.type === 'PRESTASI');
+    if (catatanFilter === 'pelanggaran') return bukuCatatanList.filter(item => item.type === 'PELANGGARAN');
     return bukuCatatanList;
   }, [bukuCatatanList, catatanFilter]);
 
@@ -994,6 +1039,9 @@ export const SiswaDashboard: React.FC = () => {
               catatanFilter={catatanFilter}
               setCatatanFilter={setCatatanFilter}
               filteredBukuCatatan={filteredBukuCatatan}
+              totalPoinPrestasi={totalPoinPrestasi}
+              totalPoinPelanggaran={totalPoinPelanggaran}
+              netPoin={netPoin}
             />
           </motion.div>
         )}

@@ -111,6 +111,27 @@ export class PrestasiController {
     }
   }
 
+  /**
+   * GET /kesiswaan/prestasi/me
+   * Endpoint khusus siswa untuk melihat prestasi milik sendiri.
+   * Tidak memerlukan capability tambahan — cukup login sebagai siswa.
+   */
+  static async getMyPrestasi(req: any, reply: any) {
+    try {
+      const { tenant_id, siswa_id } = req.user!;
+      if (!siswa_id) {
+        return sendError(reply, 403, 'Akun ini tidak terhubung ke data siswa.');
+      }
+      const result = await PrestasiService.getAllPrestasiSiswa(tenant_id, {
+        ...req.query,
+        siswa_id,
+      });
+      return sendResponse(reply, 200, true, 'Prestasi saya berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil data prestasi', error);
+    }
+  }
+
   static async seedDefaults(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
