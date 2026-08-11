@@ -1528,6 +1528,9 @@ export class RekapService {
       const effectiveTime = tap.waktu_tap || tap.SesiAbsensi?.waktu_mulai;
 
       rincian.push({
+        sesi_id: tap.sesi_id,
+        nama_mapel: mapelName,
+        kode_mapel: tap.SesiAbsensi?.Mapel?.kode_mapel,
         jenis_kegiatan: activityName,
         status: tap.is_terlambat && tap.status === 'HADIR' ? 'TERLAMBAT' : tap.status,
         waktu_tap: effectiveTime ? effectiveTime.toISOString() : null

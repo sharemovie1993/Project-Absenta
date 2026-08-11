@@ -419,18 +419,15 @@ export const SiswaDashboard: React.FC = () => {
     return Math.min(100, Math.max(0, baseScore - minus + plus));
   }, [pelanggaranList, prestasiList]);
 
-  // Attendance stats calculation for month
+  // Attendance stats calculation for month (100% Real API data)
   const monthStats = useMemo(() => {
-    if (monthlyRecap?.statistik) {
-      return {
-        hadir: monthlyRecap.statistik.HADIR || 6,
-        sakit: monthlyRecap.statistik.SAKIT || 0,
-        izin: monthlyRecap.statistik.IZIN || 0,
-        alpa: monthlyRecap.statistik.ALPA || 0,
-      };
-    }
-    return { hadir: 6, sakit: 0, izin: 0, alpa: 0 };
-  }, [monthlyRecap]);
+    return {
+      hadir: monthlyRecapRes?.data?.total_hadir ?? monthlyRecap?.statistik?.HADIR ?? 0,
+      sakit: monthlyRecapRes?.data?.total_sakit ?? monthlyRecap?.statistik?.SAKIT ?? 0,
+      izin: monthlyRecapRes?.data?.total_izin ?? monthlyRecap?.statistik?.IZIN ?? 0,
+      alpa: monthlyRecapRes?.data?.total_alpa ?? monthlyRecap?.statistik?.ALPA ?? 0,
+    };
+  }, [monthlyRecapRes, monthlyRecap]);
 
   // Navigation Tabs definition
   const tabs = [
@@ -911,7 +908,13 @@ export const SiswaDashboard: React.FC = () => {
                         : [];
 
                     const tap = tapList.find(
-                      (t: any) => t.sesi_id === sesi.id || t.nama_sesi === sesi.nama_sesi || (t.nama_mapel && t.nama_mapel === sesi.mapel) || (t.mapel && t.mapel === sesi.mapel)
+                      (t: any) => 
+                        t.sesi_id === sesi.id || 
+                        t.nama_sesi === sesi.nama_sesi || 
+                        (t.nama_mapel && sesi.mapel && String(t.nama_mapel).toLowerCase().trim() === String(sesi.mapel).toLowerCase().trim()) || 
+                        (t.mapel && sesi.mapel && String(t.mapel).toLowerCase().trim() === String(sesi.mapel).toLowerCase().trim()) ||
+                        (t.jenis_kegiatan && sesi.mapel && String(t.jenis_kegiatan).toLowerCase().includes(String(sesi.mapel).toLowerCase())) ||
+                        (t.jenis_kegiatan && sesi.kode && String(t.jenis_kegiatan).toLowerCase().includes(String(sesi.kode).toLowerCase()))
                     );
 
                     let displayStatusLabel = 'Jadwal';
@@ -1010,10 +1013,10 @@ export const SiswaDashboard: React.FC = () => {
             <div className="space-y-0.5 min-w-0 w-full">
               <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                #{myRank.rank > 0 ? myRank.rank : 1}
+                {myRank.rank > 0 ? `#${myRank.rank}` : '-'}
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                Dari {myRank.totalStudents > 0 ? myRank.totalStudents : 32} Siswa {currentClassName}
+                {myRank.totalStudents > 0 ? `Dari ${myRank.totalStudents} Siswa ${currentClassName}` : `Kelas ${currentClassName}`}
               </p>
             </div>
           </div>
