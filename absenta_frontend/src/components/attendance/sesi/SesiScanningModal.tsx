@@ -1,7 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
 import { Modal, Badge, Label } from '../../ui';
-import Button from '../../ui/Button';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
@@ -72,15 +71,6 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <Button
-            onClick={() => onSubmitScan()}
-            disabled={scanLoading || !scannerInput.trim()}
-            className="h-9 px-5 rounded-xl bg-indigo-600 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20"
-          >
-            {scanLoading ? 'Memproses...' : 'Submit Manual'}
-          </Button>
-        </div>
 
         {/* Daftar Hadir */}
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
