@@ -93,7 +93,19 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.tapSiswa,
   });
 
-  // Daftar absen siswa per sesi — juga perlu elevatedScopeMiddleware
+  // Presensi terpadu guru & siswa per sesi (Unified Shared Endpoint)
+  fastify.get('/:id/presensi-terpadu', {
+    preHandler: [
+        requireMultiSesiMode, 
+        requireCapability('attendance.sessions.view.detail', { exemptRoles: [RoleName.SISWA, RoleName.GURU, RoleName.ADMIN] }), 
+        elevatedScopeMiddleware,
+        determineDataScope(),
+        SesiGuard.validateSessionAccess
+    ],
+    handler: sesiAbsensiController.getPresensiTerpaduSesi || sesiAbsensiController.listAbsenSiswa,
+  });
+
+  // Legacy route alias for backward compatibility
   fastify.get('/:id/absen-siswa', {
     preHandler: [
         requireMultiSesiMode, 

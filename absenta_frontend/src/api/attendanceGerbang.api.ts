@@ -523,13 +523,16 @@ export async function tapSiswaKeSesi(
   return res;
 }
 
-export async function getSesiAbsenSiswa(
+export async function getPresensiTerpaduSesi(
   sesi_id: string
 ): Promise<{ success: boolean; message: string; data: Array<{ id: string; siswa_id: string; status: string; waktu_tap: string; Siswa?: { id: string; nama_siswa: string; nis: string } }> }>{
-  return requestWithFallback<{ success: boolean; message: string; data: Array<{ id: string; siswa_id: string; status: string; waktu_tap: string; Siswa?: { id: string; nama_siswa: string; nis: string } }> }>('get', `/attendance/sesi-absensi/${sesi_id}/absen-siswa`, {
+  return requestWithFallback<{ success: boolean; message: string; data: Array<{ id: string; siswa_id: string; status: string; waktu_tap: string; Siswa?: { id: string; nama_siswa: string; nis: string } }> }>('get', `/attendance/sesi-absensi/${sesi_id}/presensi-terpadu`, {
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
+
+// Unified alias for backward compatibility across all legacy views
+export const getSesiAbsenSiswa = getPresensiTerpaduSesi;
 
 export async function getAttendanceFeed(params?: { tanggal?: string; kelas_id?: string; guru_id?: string; siswa_id?: string }): Promise<{ success: boolean; message: string; data: any[] }> {
   return requestWithFallback<{ success: boolean; message: string; data: any[] }>('get', '/attendance/notify/feed', { 

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { getSesiAbsenSiswa } from '@/api/attendanceGerbang.api';
+import { getPresensiTerpaduSesi } from '@/api/attendanceGerbang.api';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
@@ -20,39 +20,10 @@ export interface SiswaAttendanceTabProps {
     month: number;
     daysInMonth: number;
     firstDayIndex: number;
-    days: Array<{
-      day: number;
-      dateIso: string;
-      status: string | null;
-      rec?: any;
-    }>;
+    days: Array<{ day: number; isCurrentMonth: boolean; dateStr: string; status: string | null; rec: any }>;
   };
-  todayIso: string;
-  selectedDate?: string;
-  onSelectDate?: (dateIso: string) => void;
-  sessionAttendanceHistory: Array<{
-    id: string;
-    date: string;
-    waktu: string;
-    status: string;
-    metode?: string;
-    keterangan?: string;
-    sesi?: string;
-    nama_guru?: string;
-    status_guru?: string;
-  }>;
-
-  todayKbmSchedule: Array<{
-    id: string;
-    kode: string;
-    mapel: string;
-    guru: string;
-    lokasi: string;
-    jam: string;
-    status: string;
-  }>;
-  isLoadingSchedule?: boolean;
-  isApiConnected?: boolean;
+  monthlyRecap: any;
+  dailyRecapRes?: any;
   kelasId?: string;
 }
 
@@ -62,20 +33,12 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   handleNextMonth,
   selectedMonthFormatted,
   calendarGridData,
-  todayIso,
-  selectedDate = todayIso,
-  onSelectDate,
-  sessionAttendanceHistory,
-  todayKbmSchedule,
-  isLoadingSchedule = false,
-  isApiConnected = true,
+  monthlyRecap,
+  dailyRecapRes,
   kelasId,
 }) => {
   const { user } = useAuthStore();
-  const mySiswaId = (user as any)?.siswa_id || user?.id;
-  const attendanceRate = gamification?.attendanceRate ?? 100;
-
-  // Read-Only Session Attendance Modal state for non-petugas students
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedSesiModal, setSelectedSesiModal] = useState<{
     isOpen: boolean;
     sesiId?: string;
@@ -94,7 +57,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         return [];
       }
       try {
-        const res = await getSesiAbsenSiswa(selectedSesiModal.sesiId);
+        const res = await getPresensiTerpaduSesi(selectedSesiModal.sesiId);
         return res?.data || [];
       } catch {
         return [];

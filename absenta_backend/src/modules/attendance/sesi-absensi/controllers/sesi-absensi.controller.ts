@@ -207,6 +207,30 @@ export const sesiAbsensiController = {
     }
   },
 
+  async getPresensiTerpaduSesi(request: any, reply: any) {
+    try {
+      const scope = (request as any).organizationalScope;
+      const tenantId = request.tenantId;
+      const { id: sesi_id } = request.params;
+
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id not found' };
+      }
+
+      const data = await sesiService.listAbsenSiswa(tenantId, scope, sesi_id, String(request.user?.id || ''));
+      
+      reply.status(200);
+      return { success: true, message: 'Daftar presensi terpadu guru dan siswa', data };
+    } catch (error: any) {
+      console.error('Presensi terpadu error:', error);
+      if (error.message.includes('Forbidden')) reply.status(403);
+      else if (error.message.includes('tidak ditemukan')) reply.status(404);
+      else reply.status(500);
+      return { success: false, message: error.message || 'Internal server error' };
+    }
+  },
+
   async listAbsenSiswa(request: any, reply: any) {
     try {
       const scope = (request as any).organizationalScope;
