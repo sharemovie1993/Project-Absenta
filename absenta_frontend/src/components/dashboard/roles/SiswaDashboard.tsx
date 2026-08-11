@@ -867,29 +867,74 @@ export const SiswaDashboard: React.FC = () => {
       {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'ringkasan' && (
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-blue-500/20">
-          {/* Left Side: Attendance Info */}
-          <div className="space-y-2 max-w-2xl">
-            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-              STATUS HARI INI - {todayFormattedDate.toUpperCase()}
-            </span>
-
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
-              <span>Presensi Gerbang:</span>
-              <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
-                {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
-                {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap 
-                  ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
-                  : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
-                })
+          {/* Left Side: Gate Attendance & Mini Session Status */}
+          <div className="space-y-3 max-w-2xl min-w-0">
+            <div className="space-y-1.5">
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                STATUS HARI INI - {todayFormattedDate.toUpperCase()}
               </span>
-            </h2>
 
-            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-              <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <span>Gate 1 Utara</span>
-              <span>•</span>
-              <span>Sesi KBM Aktif</span>
-            </p>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
+                <span>Presensi Gerbang:</span>
+                <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
+                  {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
+                  {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap 
+                    ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
+                    : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
+                  })
+                </span>
+              </h2>
+
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>Gate 1 Utama</span>
+                <span>•</span>
+                <span>Sesi KBM Active</span>
+              </p>
+            </div>
+
+            {/* Mini Status Sesi KBM Hari Ini (Khusus Mode Multi-Sesi) */}
+            {todayKbmSchedule && todayKbmSchedule.length > 0 && (
+              <div className="pt-2.5 space-y-1.5 border-t border-blue-500/20">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Progres Sesi KBM Hari Ini ({todayKbmSchedule.length} Sesi Terjadwal)
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {todayKbmSchedule.map((sesi: any, idx: number) => {
+                    const tapList = dailyRecapRes?.data?.sessionTaps || trackingRes?.data?.sessionTaps || [];
+                    const tap = tapList.find(
+                      (t: any) => t.sesi_id === sesi.id || t.nama_sesi === sesi.nama_sesi || (t.nama_mapel && t.nama_mapel === sesi.nama_mapel)
+                    );
+                    const rawStatus = tap?.status;
+                    
+                    const badgeStyle = 
+                      rawStatus === 'HADIR' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' :
+                      rawStatus === 'TERLAMBAT' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' :
+                      rawStatus === 'ALPA' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' :
+                      rawStatus === 'SAKIT' || rawStatus === 'IZIN' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30' :
+                      'bg-slate-200/60 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-300/80 dark:border-slate-700';
+
+                    const displayStatusLabel = 
+                      rawStatus === 'HADIR' ? 'Hadir' : 
+                      rawStatus === 'TERLAMBAT' ? 'Terlambat' : 
+                      rawStatus === 'ALPA' ? 'Alpa' : 
+                      rawStatus === 'SAKIT' || rawStatus === 'IZIN' ? rawStatus : 
+                      'Belum';
+
+                    return (
+                      <span
+                        key={sesi.id || `sesi-mini-${idx}`}
+                        className={cn("px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all", badgeStyle)}
+                        title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.nama_mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
+                      >
+                        <span className="font-mono text-[10px] opacity-75">Sesi {idx + 1}</span>
+                        <span className="font-extrabold">{displayStatusLabel}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Side: Discipline Score Glass Box */}
