@@ -49,13 +49,14 @@ function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, ten
   return cleanData;
 }
 
-function sanitizeRowForeignKeys(
+async function sanitizeRowForeignKeys(
   modelName: string,
   cleanData: Record<string, any>,
-  validIdsMap: Map<string, Set<string>>
-) {
+  validIdsMap: Map<string, Set<string>>,
+  prisma: any
+): Promise<boolean> {
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
-  if (!dmmfModel) return;
+  if (!dmmfModel) return true;
 
   for (const field of dmmfModel.fields) {
     if (field.kind === 'object' && field.relationFromFields && field.relationFromFields.length > 0) {
@@ -63,17 +64,53 @@ function sanitizeRowForeignKeys(
       const val = cleanData[fkName];
       if (val !== undefined && val !== null) {
         const targetModelName = field.type;
-        const targetSet = validIdsMap.get(targetModelName);
-        if (targetSet && !targetSet.has(String(val))) {
-          // If FK target ID is missing in target DB, set nullable FK to null to prevent FK constraint error
+        let targetSet = validIdsMap.get(targetModelName);
+        if (!targetSet) {
+          targetSet = new Set<string>();
+          validIdsMap.set(targetModelName, targetSet);
+        }
+
+        if (!targetSet.has(String(val))) {
+          // Check target DB once directly
+          const pTarget = (prisma as any)[targetModelName];
+          if (pTarget && typeof pTarget.findUnique === 'function') {
+            try {
+              const existingTarget = await pTarget.findUnique({ where: { id: String(val) } });
+              if (existingTarget) {
+                targetSet.add(String(val));
+                continue;
+              }
+            } catch (_) {}
+          }
+
+          // Smart fallback for SiswaAkademik relation (e.g. AbsenSiswa.siswa_akademik_id)
+          if (targetModelName === 'SiswaAkademik' && cleanData.siswa_id) {
+            try {
+              const fallbackSa = await prisma.siswaAkademik.findFirst({
+                where: { siswa_id: cleanData.siswa_id }
+              });
+              if (fallbackSa) {
+                cleanData[fkName] = fallbackSa.id;
+                targetSet.add(fallbackSa.id);
+                continue;
+              }
+            } catch (_) {}
+          }
+
           const scalarField = dmmfModel.fields.find(f => f.name === fkName);
-          if (scalarField && !scalarField.isRequired) {
-            cleanData[fkName] = null;
+          if (scalarField) {
+            if (!scalarField.isRequired) {
+              cleanData[fkName] = null;
+            } else {
+              // Unresolvable required FK: return false to skip row cleanly without throwing Prisma FK error
+              return false;
+            }
           }
         }
       }
     }
   }
+  return true;
 }
 
 export interface ModelRestoreSummary {
@@ -360,7 +397,11 @@ export class BackupController {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
 
             // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
-            sanitizeRowForeignKeys(modelName, cleanData, validIdsMap);
+            const isFkValid = await sanitizeRowForeignKeys(modelName, cleanData, validIdsMap, prisma);
+            if (!isFkValid) {
+              skippedCount++;
+              continue;
+            }
 
             const isUserModel = modelName === 'User' || modelName.toLowerCase() === 'user';
             if (isUserModel) {
