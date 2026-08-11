@@ -1,5 +1,5 @@
 import { prisma } from '../../../../utils/prisma';
-import { ATTENDANCE_POINTS } from '../../../../constants/attendance-points';
+import { AttendanceRuleEngine } from '../../../../domain/attendance/AttendanceRuleEngine';
 
 export class SesiTapEngineService {
   private static instance: SesiTapEngineService;
@@ -80,14 +80,7 @@ export class SesiTapEngineService {
       isTerlambat = true;
     }
 
-    let poin = ATTENDANCE_POINTS.ALPA;
-    if (status === 'HADIR') {
-      poin = isTerlambat ? ATTENDANCE_POINTS.HADIR_TERLAMBAT : ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
-    } else if (status === 'SAKIT') {
-      poin = ATTENDANCE_POINTS.SAKIT;
-    } else if (status === 'IZIN') {
-      poin = ATTENDANCE_POINTS.IZIN;
-    }
+    const poin = AttendanceRuleEngine.calculateAttendancePoints(status, isTerlambat);
 
     const existing = await prisma.absenSiswa.findFirst({
       where: {
