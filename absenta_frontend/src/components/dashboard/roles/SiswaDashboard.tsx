@@ -651,10 +651,10 @@ export const SiswaDashboard: React.FC = () => {
       });
     }
 
-    // 2. Fallback to monthlyRecap detail filtered by selectedDate or all items
+    // 2. Strict filtering by selectedDate or todayIso to ensure today's data is isolated
     const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    const filteredDetail = detailList.filter((item: any) => !selectedDate || item.tanggal === selectedDate);
-    const listToMap = filteredDetail.length > 0 ? filteredDetail : detailList;
+    const targetDate = selectedDate || todayIso;
+    const listToMap = detailList.filter((item: any) => item.tanggal === targetDate);
 
     if (listToMap.length > 0) {
       return listToMap.map((item: any, idx: number) => {
