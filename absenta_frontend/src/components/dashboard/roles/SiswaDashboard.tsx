@@ -1035,7 +1035,7 @@ export const SiswaDashboard: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => handleOpenEditSection('pribadi')}
+                  onClick={() => handleTabChange('profil')}
                   className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
                 >
                   <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -1043,7 +1043,7 @@ export const SiswaDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Edit Data / Password</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
                   </div>
                 </button>
               </div>
