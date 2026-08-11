@@ -8,7 +8,7 @@ async function testGuruProfile() {
   console.log('🔍 TEST SCRIPT: Verifikasi Data Profil & Jabatan Guru');
   console.log('----------------------------------------------------');
 
-  const email = 'trisna@absenta.id';
+  const email = 'ai@gmail.com';
   const rawPass = 'admin1234';
 
   // 1. Cari user di database
@@ -119,7 +119,7 @@ async function testGuruProfile() {
     console.log(`   - Kode Posisi  : ${assign.Position?.code}`);
     console.log(`   - Nama Posisi  : ${assign.Position?.name}`);
     console.log(`   - Scope Type   : ${assign.Position?.scope_type}`);
-    console.log(`   - Status Aktif : ${assign.is_active ? '✅ AKTIFF' : '❌ NON-AKTIF'}`);
+    console.log(`   - Status Aktif : ${assign.is_active ? '✅ AKTIF' : '❌ NON-AKTIF'}`);
     console.log(`   - Rombel Kelas : ${assign.Kelas ? `${assign.Kelas.nama_kelas} (ID: ${assign.Kelas.id})` : 'Bukan Wali Kelas (None)'}`);
     console.log(`   - Unit/Jurusan : ${assign.Unit ? `${assign.Unit.nama} (ID: ${assign.Unit.id})` : 'None'}`);
   });
