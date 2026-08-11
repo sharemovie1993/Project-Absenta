@@ -1065,7 +1065,7 @@ export const SiswaDashboard: React.FC = () => {
             <div className="space-y-0.5 min-w-0 w-full">
               <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                +{prestasiList.length} Catatan
+                {prestasiList.length} Penghargaan
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
                 +{prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0)} Poin Bonus
