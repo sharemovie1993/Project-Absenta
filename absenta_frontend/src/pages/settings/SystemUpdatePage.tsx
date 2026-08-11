@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { RefreshCw, GitCommit, CheckCircle2, XCircle, Loader2, Terminal, UploadCloud, ShieldCheck } from 'lucide-react';
+import { RefreshCw, GitCommit, CheckCircle2, XCircle, Loader2, Terminal, UploadCloud, ShieldCheck, Globe, Database, X } from 'lucide-react';
 import { systemUpdateApi, type UpdateProgress, type UpdateCheckData } from '@/api/systemUpdate.api';
 import axiosInstance from '@/lib/axiosInstance';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -83,6 +83,8 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
   const [checking,  setChecking]  = useState(false);
   const [updating,  setUpdating]  = useState(false);
   const [restarting,setRestarting]= useState(false);
+  const [showWilayahModal, setShowWilayahModal] = useState(false);
+  const [syncingWilayah, setSyncingWilayah] = useState(false);
   const [checkData, setCheckData] = useState<UpdateCheckData | null>(null);
   const [progress,  setProgress]  = useState<UpdateProgress | null>(null);
   const [countdown, setCountdown] = useState(5);
@@ -420,28 +422,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
                   Tarik data lengkap Provinsi, Kabupaten/Kota, Kecamatan, & Desa se-Indonesia ke database lokal.
                 </p>
                 <Button
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: 'Sinkronisasi Full Data Wilayah Indonesia',
-                      message: 'Sistem akan mengunduh dan menyelaraskan ~91.600 record master wilayah Indonesia secara otomatis di latar belakang. Lanjutkan?',
-                      confirmText: 'Mulai Sinkronisasi',
-                      cancelText: 'Batal',
-                    });
-                    if (!ok) return;
-
-                    try {
-                      const toastId = toast.loading('Memulai sinkronisasi data wilayah se-Indonesia...');
-                      const res = await axiosInstance.post('/wilayah/sync');
-                      toast.dismiss(toastId);
-                      if (res.data?.success) {
-                        toast.success('Berhasil! Sinkronisasi ~91.600 data wilayah Indonesia berjalan di latar belakang.');
-                      } else {
-                        toast.error(res.data?.message || 'Gagal memulai sinkronisasi wilayah.');
-                      }
-                    } catch (err: any) {
-                      toast.error(err?.response?.data?.message || err?.message || 'Gagal memicu sinkronisasi wilayah.');
-                    }
-                  }}
+                  onClick={() => setShowWilayahModal(true)}
                   disabled={restarting || updating}
                   variant="outline"
                   className="w-full text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/50 dark:hover:bg-indigo-900/20"
@@ -475,6 +456,114 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
           </SectionCard>
         </div>
       </div>
+
+      {/* ── DEDICATED ELEGANT WILAYAH SYNC MODAL DIALOG ── */}
+      {showWilayahModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-lg overflow-hidden bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+                  <Globe size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Sinkronisasi Wilayah Indonesia
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Penarikan & Impor Master Data Kemendagri
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !syncingWilayah && setShowWilayahModal(false)}
+                disabled={syncingWilayah}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 space-y-5">
+              <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
+                  Proses ini akan mengunduh dan menyinkronkan data administratif wilayah Indonesia secara penuh ke dalam database PostgreSQL lokal untuk mendukung pencarian alamat kencang dan offline.
+                </p>
+              </div>
+
+              {/* Data Breakdown Table */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Rincian Target Data (~91.603 Record)</span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 block">Tingkat 1 (Provinsi)</span>
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100">38 Provinsi</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 block">Tingkat 2 (Kab/Kota)</span>
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100">514 Kab / Kota</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 block">Tingkat 3 (Kecamatan)</span>
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100">7.288 Kecamatan</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-400 block">Tingkat 4 (Kel/Desa)</span>
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100">83.763 Desa</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                <CheckCircle2 size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span>Proses berjalan 100% Idempotent (Aman dari duplikasi data).</span>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="outline"
+                onClick={() => setShowWilayahModal(false)}
+                disabled={syncingWilayah}
+                className="h-10 px-5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    setSyncingWilayah(true);
+                    const toastId = toast.loading('Memulai sinkronisasi data wilayah se-Indonesia...');
+                    const res = await axiosInstance.post('/wilayah/sync');
+                    toast.dismiss(toastId);
+                    if (res.data?.success) {
+                      toast.success('Berhasil! Sinkronisasi ~91.600 data wilayah Indonesia berjalan di latar belakang.');
+                      setShowWilayahModal(false);
+                    } else {
+                      toast.error(res.data?.message || 'Gagal memulai sinkronisasi wilayah.');
+                    }
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || err?.message || 'Gagal memicu sinkronisasi wilayah.');
+                  } finally {
+                    setSyncingWilayah(false);
+                  }
+                }}
+                disabled={syncingWilayah}
+                className="h-10 px-6 text-xs font-black text-white rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-600/25"
+              >
+                {syncingWilayah ? (
+                  <><Loader2 size={14} className="mr-2 animate-spin" /> Memproses...</>
+                ) : (
+                  <><UploadCloud size={14} className="mr-2" /> Mulai Sinkronisasi</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
