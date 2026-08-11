@@ -51,6 +51,8 @@ type Props = {
   records: SesiAttendanceRecord[];
   sesi?: SesiDetail;
   isReportMode?: boolean;
+  isSlideMode?: boolean;
+  onToggleSlideMode?: () => void;
 };
 
 // Memoized Sub-Component for High-Performance Rendering (Fase 2)
@@ -187,12 +189,20 @@ const SesiAttendanceRow = React.memo(({
 
 SesiAttendanceRow.displayName = 'SesiAttendanceRow';
 
-export function SesiAttendanceList({ records, sesi, isReportMode = false }: Props) {
+export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlideMode: propIsSlideMode, onToggleSlideMode }: Props) {
   const queryClient = useQueryClient();
   const progres = sesi?.ProgresMateri;
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isSlideMode, setIsSlideMode] = useState(false);
+  const [internalSlideMode, setInternalSlideMode] = useState(false);
+  const isSlideMode = propIsSlideMode !== undefined ? propIsSlideMode : internalSlideMode;
+  const setIsSlideMode = (val: boolean | ((prev: boolean) => boolean)) => {
+    if (onToggleSlideMode) {
+      onToggleSlideMode();
+    } else {
+      setInternalSlideMode(val);
+    }
+  };
   const [slideIndex, setSlideIndex] = useState(0);
 
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -349,21 +359,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           {stats.alpa > 0 && <span className="text-rose-500 font-black">✗ Alpa {stats.alpa}</span>}
           <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total}</span>
         </p>
-        {/* Mode Slide toggle — icon only */}
-        {!isReportMode && (
-          <button
-            onClick={() => setIsSlideMode(!isSlideMode)}
-            title={isSlideMode ? 'Mode List' : 'Mode Slide (Fokus)'}
-            className={cn(
-              "p-1.5 rounded-lg transition-all shrink-0",
-              isSlideMode
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
-            )}
-          >
-            {isSlideMode ? <LayoutList size={14} /> : <PlayCircle size={14} />}
-          </button>
-        )}
       </div>
 
       {/* 2. Tiny Inline Journal Info */}

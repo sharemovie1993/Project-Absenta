@@ -1,9 +1,10 @@
-import React from 'react';
-import { Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, LayoutList, PlayCircle } from 'lucide-react';
 import { Modal, Badge, Label } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
+import { cn } from '../../lib/utils';
 
 interface SesiScanningModalProps {
   isOpen: boolean;
@@ -32,10 +33,25 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   currentSession,
   kelasLabel,
 }) => {
+  const [isSlideMode, setIsSlideMode] = useState(false);
+
   const modalTitle = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 flex-wrap">
       <span className="text-base font-semibold text-gray-900 dark:text-white">Input Presensi</span>
       <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
+      <button
+        onClick={() => setIsSlideMode(prev => !prev)}
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
+          isSlideMode
+            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+        )}
+        title={isSlideMode ? "Kembali ke Mode List" : "Buka Mode Slideshow"}
+      >
+        {isSlideMode ? <LayoutList size={13} /> : <PlayCircle size={13} />}
+        <span className="text-[11px] font-semibold">{isSlideMode ? "List" : "Slideshow"}</span>
+      </button>
     </div>
   );
 
@@ -85,7 +101,12 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
           </div>
 
           <div className="max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-            <SesiAttendanceList records={sessionAttendanceRecords} sesi={currentSession} />
+            <SesiAttendanceList 
+              records={sessionAttendanceRecords} 
+              sesi={currentSession}
+              isSlideMode={isSlideMode}
+              onToggleSlideMode={() => setIsSlideMode(prev => !prev)}
+            />
           </div>
         </div>
       </div>
