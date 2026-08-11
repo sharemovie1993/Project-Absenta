@@ -21,8 +21,7 @@ export function ActiveUsersSafetyCard() {
       }
     } catch (err) {
       console.error('Failed to fetch active online users:', err);
-    } font-medium
-    finally {
+    } finally {
       setLoading(false);
     }
   }, []);
