@@ -297,12 +297,24 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       if (selectedKelasId) params.kelas_id = selectedKelasId;
       
       const res = await getSesiAbsensiList(params);
-      return (res.data as SessionData[]) || [];
+      const raw = res?.data;
+      if (Array.isArray(raw)) return raw as SessionData[];
+      if (Array.isArray((raw as any)?.data)) return (raw as any).data as SessionData[];
+      if (Array.isArray((raw as any)?.sessions)) return (raw as any).sessions as SessionData[];
+      if (Array.isArray(res)) return res as unknown as SessionData[];
+      return [];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const sessions = sessionsQuery.data || [];
+  const rawSessionsData = sessionsQuery.data;
+  const sessions: SessionData[] = useMemo(() => {
+    if (Array.isArray(rawSessionsData)) return rawSessionsData;
+    if (Array.isArray((rawSessionsData as any)?.data)) return (rawSessionsData as any).data;
+    if (Array.isArray((rawSessionsData as any)?.sessions)) return (rawSessionsData as any).sessions;
+    return [];
+  }, [rawSessionsData]);
+
   const loading = sessionsQuery.isLoading;
   const errorMsg = sessionsQuery.error ? 'Gagal memuat sesi.' : null;
 
