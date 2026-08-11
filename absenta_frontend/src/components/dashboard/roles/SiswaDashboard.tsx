@@ -831,8 +831,8 @@ export const SiswaDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Row: Integrated Navigation Tabs Bar Inset */}
-        <div className="p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar">
+        {/* Bottom Row: Integrated Navigation Tabs Bar Inset (Desktop / Tablet Only - Hidden on Mobile) */}
+        <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar">
           {tabs.map((tab) => {
             const TabIcon = tab.icon;
             const isTabActive = activeTab === tab.id;
