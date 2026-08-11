@@ -92,6 +92,7 @@ export default function BackupPage() {
   const [previewStats, setPreviewStats] = useState<BackupStats | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [parsedData, setParsedData] = useState<BackupJsonData | null>(null);
+  const [clearExisting, setClearExisting] = useState<boolean>(false);
 
   // States for Progress & Report
   const [importProgress, setImportProgress] = useState(0);
@@ -262,7 +263,11 @@ export default function BackupPage() {
         });
       }, 200);
 
-      const res = await importAcademicData(parsedData);
+      const importPayload = {
+        ...parsedData,
+        clear_existing: clearExisting
+      };
+      const res = await importAcademicData(importPayload);
 
       // Hentikan interval setelah selesai
       if (progressIntervalRef.current !== null) {
@@ -385,6 +390,8 @@ export default function BackupPage() {
               processingStage={processingStage}
               importProgress={importProgress}
               previewStats={previewStats}
+              clearExisting={clearExisting}
+              onToggleClearExisting={setClearExisting}
               onImport={executeImport}
             />
           </SectionCard>

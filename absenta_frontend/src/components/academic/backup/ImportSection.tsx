@@ -52,6 +52,8 @@ interface ImportSectionProps {
   processingStage: 'idle' | 'uploading' | 'processing' | 'done';
   importProgress: number;
   previewStats: BackupStats | null;
+  clearExisting?: boolean;
+  onToggleClearExisting?: (val: boolean) => void;
   onImport: () => void;
 }
 
@@ -63,6 +65,8 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
   processingStage,
   importProgress,
   previewStats,
+  clearExisting = false,
+  onToggleClearExisting,
   onImport
 }) => {
   return (
@@ -245,6 +249,31 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
       </div>
 
       <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+        {/* Toggle Reset Data Trial */}
+        {onToggleClearExisting && (
+          <label className="flex items-start gap-3 p-3.5 bg-amber-500/5 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 cursor-pointer hover:border-amber-400 transition-colors">
+            <input
+              type="checkbox"
+              checked={clearExisting}
+              onChange={(e) => onToggleClearExisting(e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500 cursor-pointer shrink-0"
+            />
+            <div className="flex-1 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                  Kosongkan Data Trial Dev Terlebih Dahulu
+                </span>
+                <Badge variant="warning" className="text-[9px] font-black uppercase px-1.5 py-0 tracking-wider">
+                  Rekomendasi Dev Mirror
+                </Badge>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                Sistem akan menghapus data lama di Dev sebelum mengimpor agar Dev menjadi 100% cermin Produksi tanpa tersisa data trial & error.
+              </p>
+            </div>
+          </label>
+        )}
+
         <Button
           onClick={onImport}
           disabled={loadingImport || !importFile}

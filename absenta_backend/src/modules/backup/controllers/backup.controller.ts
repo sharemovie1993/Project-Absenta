@@ -239,6 +239,40 @@ export class BackupController {
       let grandTarget = 0;
       let grandRestored = 0;
       let grandSkipped = 0;
+      const shouldClearExisting = Boolean(body.clear_existing || body.clearExisting || payload.clear_existing || payload.clearExisting);
+
+      if (shouldClearExisting) {
+        console.log(`[Backup Controller] Purging existing trial data for tenant: ${tenantId}...`);
+        const purgeModelsOrder = [
+          'AbsenSiswa', 'AbsenGuru', 'AbsenGerbangSiswa', 'AbsenGerbangGuru',
+          'NilaiSiswa', 'RaporSiswa', 'PelanggaranSiswa', 'SupervisiGuru',
+          'KonselingSiswa', 'PemanggilanOrangTua', 'HomeVisit', 'AsesmenSiswa', 'RujukanKasus', 'KasusBK',
+          'SiswaDocument', 'GuruDocument', 'PrestasiSiswa', 'SiswaFaceTemplate',
+          'JadwalKBM', 'GuruMapel', 'KelasMapel', 'JadwalPiketGuru', 'JadwalKegiatan', 'AnggotaKegiatanEskul',
+          'SiswaAkademik', 'GuruTimeOff', 'StrukturKurikulum',
+          'OrganizationalAssignment', 'OrganizationalCapability', 'OrganizationalPosition', 'PositionJobdesk',
+          'IzinKeluarSiswa', 'SiswaPkl', 'AbsensiPkl', 'HubinLamaran', 'HubinTracerStudy',
+          'SesiAbsensi', 'SesiGerbang', 'JenisKegiatanMaster', 'JenisPelanggaran', 'JenisPrestasi',
+          'Member', 'Saving', 'Loan', 'Sale', 'SavingTransaction',
+          'Siswa', 'Guru', 'OrangTua', 'OrangTuaSiswa',
+          'Kelas', 'Jurusan', 'ProgramKeahlian', 'Mapel',
+          'Semester', 'TahunPelajaran', 'Sekolah',
+          'WaAuthSession', 'WaChatLog'
+        ];
+
+        for (const mName of purgeModelsOrder) {
+          // @ts-ignore
+          const pModel = prisma[mName];
+          if (!pModel) continue;
+          try {
+            await pModel.deleteMany({ where: { tenant_id: tenantId } });
+          } catch (e) {
+            try {
+              await pModel.deleteMany({ where: { tenantId: tenantId } });
+            } catch (_) {}
+          }
+        }
+      }
 
       for (const modelName of models) {
         let rows: any[] | undefined = dataTables[modelName];
