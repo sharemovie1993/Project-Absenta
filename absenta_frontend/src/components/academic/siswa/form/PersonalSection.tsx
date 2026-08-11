@@ -7,7 +7,16 @@ import { Label } from '../../../ui/Label';
 import { Button } from '../../../ui/Button';
 import { Modal } from '../../../ui/Modal';
 import { Controller, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
-import { JENIS_KELAMIN_OPTIONS, TRANSPORTASI_OPTIONS } from '../../../../api/dropdown.api';
+import { 
+  JENIS_KELAMIN_OPTIONS, 
+  TRANSPORTASI_OPTIONS, 
+  PROVINSI_INDONESIA_OPTIONS,
+  getKabupatenOptions,
+  getKecamatanOptions,
+  getKelurahanOptions,
+  getSmartKodePos,
+  DropdownOption
+} from '../../../../api/dropdown.api';
 import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 import { requestWithFallback } from '../../../../api/apiUtils';
@@ -35,6 +44,47 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
+    const [adminKabupatenOptions, setAdminKabupatenOptions] = useState<DropdownOption[]>([]);
+    const [adminKecamatanOptions, setAdminKecamatanOptions] = useState<DropdownOption[]>([]);
+    const [adminKelurahanOptions, setAdminKelurahanOptions] = useState<DropdownOption[]>([]);
+    const selectedProvinsi = watch('provinsi');
+    const selectedKabupaten = watch('kabupaten');
+    const selectedKecamatan = watch('kecamatan');
+    const selectedKelurahan = watch('kelurahan');
+
+    useEffect(() => {
+        if (selectedProvinsi) {
+            getKabupatenOptions(selectedProvinsi).then(opts => setAdminKabupatenOptions(opts));
+        } else {
+            setAdminKabupatenOptions([]);
+        }
+    }, [selectedProvinsi]);
+
+    useEffect(() => {
+        if (selectedKabupaten) {
+            getKecamatanOptions(selectedKabupaten).then(opts => setAdminKecamatanOptions(opts));
+        } else {
+            setAdminKecamatanOptions([]);
+        }
+    }, [selectedKabupaten]);
+
+    useEffect(() => {
+        if (selectedKecamatan) {
+            getKelurahanOptions(selectedKecamatan, selectedKabupaten).then(opts => setAdminKelurahanOptions(opts));
+        } else {
+            setAdminKelurahanOptions([]);
+        }
+    }, [selectedKecamatan, selectedKabupaten]);
+
+    useEffect(() => {
+        if (selectedKecamatan) {
+            getSmartKodePos(selectedKecamatan, selectedKelurahan, selectedKabupaten).then(code => {
+                if (code) {
+                    setValue('kode_pos', code);
+                }
+            });
+        }
+    }, [selectedKecamatan, selectedKelurahan, selectedKabupaten]);
 
     useEffect(() => {
         setCurrentFoto(watch('foto') || '');
@@ -490,6 +540,81 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="agama" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Agama
+                        </Label>
+                    </div>
+                    <Input
+                        id="agama"
+                        {...register('agama')}
+                        placeholder="Contoh: Islam..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="hobi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Hobi / Kegemaran
+                        </Label>
+                    </div>
+                    <Input
+                        id="hobi"
+                        {...register('hobi')}
+                        placeholder="Contoh: Membaca, Olahraga..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="cita_cita" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Cita-cita
+                        </Label>
+                    </div>
+                    <Input
+                        id="cita_cita"
+                        {...register('cita_cita')}
+                        placeholder="Contoh: Programmer, TNI, Dokter..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="ekskul_1" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Ekstrakulikuler 1 / Utama
+                        </Label>
+                    </div>
+                    <Input
+                        id="ekskul_1"
+                        {...register('ekskul_1')}
+                        placeholder="Contoh: Pramuka..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="ekskul_2" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Ekstrakulikuler 2 (Opsional)
+                        </Label>
+                    </div>
+                    <Input
+                        id="ekskul_2"
+                        {...register('ekskul_2')}
+                        placeholder="Contoh: Paskibra..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
                         <Label htmlFor="nama_siswa" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             Nama Lengkap <span className="text-rose-500">*</span>
                         </Label>
@@ -631,18 +756,224 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                     />
                 </div>
 
+                {/* HIERARCHICAL CASCADING ADDRESS SECTION */}
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="provinsi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            1. Provinsi <span className="text-rose-500">*</span>
+                        </Label>
+                    </div>
+                    <Controller
+                        name="provinsi"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="provinsi"
+                                value={field.value || ''}
+                                onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue('kabupaten', '');
+                                    setValue('kecamatan', '');
+                                    setValue('kelurahan', '');
+                                }}
+                                options={PROVINSI_INDONESIA_OPTIONS}
+                                placeholder="-- Pilih Provinsi --"
+                                disabled={isViewMode}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="kabupaten" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            2. Kabupaten / Kota
+                        </Label>
+                    </div>
+                    <Controller
+                        name="kabupaten"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="kabupaten"
+                                value={field.value || ''}
+                                onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue('kecamatan', '');
+                                    setValue('kelurahan', '');
+                                }}
+                                options={adminKabupatenOptions.length > 0 ? adminKabupatenOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                placeholder={selectedProvinsi ? (adminKabupatenOptions.length > 0 ? "-- Pilih Kabupaten/Kota --" : "Memuat Kota...") : "-- Pilih Provinsi Terlebih Dahulu --"}
+                                disabled={isViewMode || !selectedProvinsi}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="kecamatan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            3. Kecamatan
+                        </Label>
+                    </div>
+                    <Controller
+                        name="kecamatan"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="kecamatan"
+                                value={field.value || ''}
+                                onValueChange={(val) => {
+                                    field.onChange(val);
+                                    setValue('kelurahan', '');
+                                    setValue('kode_pos', '');
+                                }}
+                                options={adminKecamatanOptions.length > 0 ? adminKecamatanOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                placeholder={selectedKabupaten ? (adminKecamatanOptions.length > 0 ? "-- Pilih Kecamatan --" : "Ketik / Memuat Kecamatan...") : "-- Pilih Kabupaten Terlebih Dahulu --"}
+                                disabled={isViewMode || !selectedKabupaten}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                {/* 4. KELURAHAN / DESA */}
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="kelurahan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            4. Kelurahan / Desa
+                        </Label>
+                    </div>
+                    <Controller
+                        name="kelurahan"
+                        control={control}
+                        render={({ field }) => (
+                            <SearchableSelect
+                                id="kelurahan"
+                                value={field.value || ''}
+                                onValueChange={field.onChange}
+                                options={adminKelurahanOptions.length > 0 ? adminKelurahanOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                placeholder={selectedKecamatan ? (adminKelurahanOptions.length > 0 ? "-- Pilih Kelurahan/Desa --" : "Ketik / Memuat Desa...") : "-- Pilih Kecamatan Terlebih Dahulu --"}
+                                disabled={isViewMode || !selectedKecamatan}
+                                triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                            />
+                        )}
+                    />
+                </div>
+
+                {/* RT & RW (Tepat Setelah Kelurahan/Desa) */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="rt" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                RT
+                            </Label>
+                        </div>
+                        <Input
+                            id="rt"
+                            {...register('rt')}
+                            placeholder="001"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+
+                    <div className="space-y-2 group">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="rw" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                                RW
+                            </Label>
+                        </div>
+                        <Input
+                            id="rw"
+                            {...register('rw')}
+                            placeholder="002"
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    </div>
+                </div>
+
+                {/* KODE POS (Pintar Auto-Detect) */}
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="kode_pos" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter flex items-center gap-1.5">
+                            Kode Pos <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Auto-Detect)</span>
+                        </Label>
+                    </div>
+                    <Input
+                        id="kode_pos"
+                        {...register('kode_pos')}
+                        placeholder="Contoh: 41162"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
+                    />
+                </div>
+
+                {/* ALAMAT JALAN / KAMPUNG / PATOKAN RUMAH */}
                 <div className="md:col-span-2 space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="alamat" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Alamat Lengkap Domisili
+                            Alamat Jalan / Kampung / Patokan Rumah
                         </Label>
                     </div>
                     <Textarea
                         id="alamat"
-                        {...register('alamat')}
-                        placeholder="Masukkan alamat lengkap RT/RW/Kelurahan/Kecamatan..."
+                        {...register('alamat', {
+                            onChange: (e) => {
+                                setValue('dusun', e.target.value);
+                            }
+                        })}
+                        placeholder="Contoh: Kp. Cihampelas No. 11 atau Jl. Merdeka No. 45..."
                         disabled={isViewMode}
                         className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl min-h-[80px]"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="rt" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            RT
+                        </Label>
+                    </div>
+                    <Input
+                        id="rt"
+                        {...register('rt')}
+                        placeholder="001"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="rw" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            RW
+                        </Label>
+                    </div>
+                    <Input
+                        id="rw"
+                        {...register('rw')}
+                        placeholder="002"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="kode_pos" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Kode Pos
+                        </Label>
+                    </div>
+                    <Input
+                        id="kode_pos"
+                        {...register('kode_pos')}
+                        placeholder="Kode pos..."
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
                     />
                 </div>
 

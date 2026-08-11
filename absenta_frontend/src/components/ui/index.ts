@@ -60,4 +60,5 @@ export { Pagination } from './Pagination';
 export { default as Breadcrumb, type BreadcrumbItem } from './Breadcrumb';
 export { PrintSignature, type PrintSignatureProps } from './PrintSignature';
 export { TabSwitcher, type TabOption } from './TabSwitcher';
+export { UnconnectedBadge, renderApiValue, type UnconnectedBadgeProps } from './UnconnectedBadge';
 

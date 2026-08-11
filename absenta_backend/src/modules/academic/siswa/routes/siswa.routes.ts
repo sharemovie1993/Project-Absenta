@@ -6,6 +6,26 @@ import { RoleName } from '../../../../constants/enums';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export default async function siswaRoutes(fastify: any) {
+  // GET /siswa/me - Get logged in student profile
+  fastify.get('/me', {
+    preHandler: [
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getSiswaMe(request, reply);
+  });
+
+  // PUT /siswa/me - Update logged in student profile
+  fastify.put('/me', {
+    preHandler: [
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.updateSiswaMe(request, reply);
+  });
+
   // GET /siswa - Get all siswa (Scoped)
   fastify.get('/', {
     preHandler: [

@@ -5,7 +5,7 @@
  */
 import React, { useState, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, FolderOpen, FileText, Image as ImageIcon, Download, Eye, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Plus, FolderOpen, FileText, Image as ImageIcon, Download, Eye, Trash2, CheckCircle2, AlertCircle, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useAuthStore } from '../../../store/authStore';
@@ -90,6 +90,20 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
   // Filter dokumen: wajib vs lain-lain
   const wajibDocs = docs.filter(d => WAJIB_CATEGORIES.includes(d.kategori as MemberDocKategori));
   const otherDocs = docs.filter(d => !WAJIB_CATEGORIES.includes(d.kategori as MemberDocKategori));
+
+  // Navigation handlers for prev / next document
+  const uploadedDocs = docs;
+  const selectedIndex = selectedDoc ? uploadedDocs.findIndex(d => d.id === selectedDoc.id) : -1;
+  const hasPrev = selectedIndex > 0;
+  const hasNext = selectedIndex !== -1 && selectedIndex < uploadedDocs.length - 1;
+
+  const handlePrevDoc = useCallback(() => {
+    if (hasPrev) setSelectedDoc(uploadedDocs[selectedIndex - 1]);
+  }, [hasPrev, selectedIndex, uploadedDocs]);
+
+  const handleNextDoc = useCallback(() => {
+    if (hasNext) setSelectedDoc(uploadedDocs[selectedIndex + 1]);
+  }, [hasNext, selectedIndex, uploadedDocs]);
 
   const handleDelete = useCallback(async (doc: MemberDoc) => {
     const ok = await confirm({
@@ -516,13 +530,18 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
             </div>
           </div>
 
-          {/* Right panel: built-in Previewer */}
-          <div className="lg:col-span-6 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 min-h-[500px] flex flex-col bg-slate-50/20 dark:bg-slate-900/10">
+          {/* Right panel: built-in Previewer (Desktop) */}
+          <div className="hidden lg:flex lg:col-span-6 border border-slate-100 dark:border-slate-800 rounded-3xl p-5 min-h-[500px] flex-col bg-slate-50/20 dark:bg-slate-900/10">
             <MemberDocsViewer
               doc={selectedDoc}
               entityType="SISWA"
               entityId={siswaId}
               entityName={siswaName}
+              onClose={() => setSelectedDoc(null)}
+              onPrev={hasPrev ? handlePrevDoc : undefined}
+              onNext={hasNext ? handleNextDoc : undefined}
+              currentIndex={selectedIndex !== -1 ? selectedIndex + 1 : undefined}
+              totalDocs={uploadedDocs.length}
               className="flex-1"
             />
           </div>
@@ -531,6 +550,26 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
         /* Compact layout: list only slots */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {WAJIB_CATEGORIES.map(renderSlot)}
+        </div>
+      )}
+
+      {/* Mobile HP Responsive Fullscreen Lightbox Modal for Selected Document */}
+      {selectedDoc && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex flex-col lg:hidden animate-in fade-in duration-200 p-2 sm:p-4">
+          <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl p-4 overflow-y-auto shadow-2xl flex flex-col">
+            <MemberDocsViewer
+              doc={selectedDoc}
+              entityType="SISWA"
+              entityId={siswaId}
+              entityName={siswaName}
+              onClose={() => setSelectedDoc(null)}
+              onPrev={hasPrev ? handlePrevDoc : undefined}
+              onNext={hasNext ? handleNextDoc : undefined}
+              currentIndex={selectedIndex !== -1 ? selectedIndex + 1 : undefined}
+              totalDocs={uploadedDocs.length}
+              className="h-full"
+            />
+          </div>
         </div>
       )}
     </div>

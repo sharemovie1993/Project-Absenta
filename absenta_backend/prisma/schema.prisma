@@ -987,6 +987,13 @@ model Siswa {
   anak_ke             Int?
   tinggi_badan        Int?
   berat_badan         Int?
+  agama               String?
+  hobi                String?
+  cita_cita           String?
+  is_osis             Boolean?              @default(false)
+  is_mpk              Boolean?              @default(false)
+  ekskul_1            String?
+  ekskul_2            String?
   kebutuhan_khusus    String?
   penerima_kps        Boolean?              @default(false)
   penerima_kip        Boolean?              @default(false)
@@ -1413,6 +1420,24 @@ model Config {
   Tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+}
+
+// Global Master Data Wilayah Indonesia (Cross-Tenant)
+model RefWilayah {
+  kode        String       @id @db.VarChar(20)
+  nama        String       @db.VarChar(150)
+  tingkat     Int          // 1 = Provinsi, 2 = Kabupaten/Kota, 3 = Kecamatan, 4 = Kelurahan/Desa
+  parent_kode String?      @db.VarChar(20)
+  
+  Parent      RefWilayah?  @relation("WilayahHierarchy", fields: [parent_kode], references: [kode], onDelete: Cascade)
+  Children    RefWilayah[] @relation("WilayahHierarchy")
+
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  @@index([tingkat])
+  @@index([parent_kode])
+  @@index([nama])
 }
 
 model ActivityLog {

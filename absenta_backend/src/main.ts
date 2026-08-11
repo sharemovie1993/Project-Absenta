@@ -409,6 +409,10 @@ async function start() {
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
   fastify.log.info('Received SIGINT, shutting down gracefully...');
+  try {
+    const { waGatewayService } = require('./services/wa-gateway.service');
+    await waGatewayService.shutdownAll();
+  } catch (_) {}
   await fastify.close();
   await closeInvoicePdfQueue();
   await closeMouPdfQueue();
@@ -420,6 +424,10 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   fastify.log.info('Received SIGTERM, shutting down gracefully...');
+  try {
+    const { waGatewayService } = require('./services/wa-gateway.service');
+    await waGatewayService.shutdownAll();
+  } catch (_) {}
   await fastify.close();
   await closeInvoicePdfQueue();
   await closeMouPdfQueue();

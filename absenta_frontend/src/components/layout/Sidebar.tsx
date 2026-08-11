@@ -7,8 +7,9 @@ import {
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
   Award, LayoutDashboard, Users, UserCheck, MailOpen,
   Home, ClipboardList, Send, BarChart3, History, List,
-  ShieldAlert, BookOpen
+  ShieldAlert, BookOpen, LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { cn, resolveProfilePhotoUrl } from '../../lib/utils';
@@ -183,9 +184,15 @@ const hasBackendPathAccess = (
 };
 
 export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false }: SidebarProps) => {
-  const { user, subscription, token } = useAuthStore();
+  const { user, subscription, token, logout } = useAuthStore();
+  const navigate = useNavigate();
   const { isTvMode } = useTvStore();
   const { jenjang } = useJenjang();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
@@ -1189,9 +1196,28 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         })()}
 
         {isOpen && (
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400 text-center truncate">
-              {systemConfig?.app_name || 'Sistem Absensi'}
+          <div className="p-3 border-t border-slate-200/80 dark:border-slate-800 mt-auto bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="p-2.5 rounded-2xl bg-emerald-50/70 dark:bg-slate-800/80 border border-emerald-200/60 dark:border-slate-700 flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-extrabold text-xs shrink-0">
+                  {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : user?.name ? user.name.slice(0, 2).toUpperCase() : 'US'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                    {user?.full_name || user?.name || 'Fahrizal Abdul Ghoffar'}
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-400 truncate">
+                    {user?.role?.name || 'Orang Tua/Siswa'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0 cursor-pointer"
+                title="Keluar / Logout"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         )}

@@ -70,6 +70,15 @@ export const getSiswaList = async (
   return requestWithFallback<PaginatedResponse<Siswa>>('get', '/academic/siswa', { params });
 };
 
+export const getSiswaMe = async (): Promise<Siswa | null> => {
+  const res = await requestWithFallback<{ success: boolean; data: Siswa }>('get', '/academic/siswa/me');
+  return res.data || null;
+};
+
+export const updateSiswaMe = async (data: Partial<Siswa>): Promise<{ success: boolean; message: string; data?: Siswa }> => {
+  return requestWithFallback<{ success: boolean; message: string; data?: Siswa }>('put', '/academic/siswa/me', { data });
+};
+
 export const getSiswaById = async (id: string): Promise<Siswa | null> => {
   const res = await requestWithFallback<{ success: boolean; data: Siswa }>('get', `/academic/siswa/${id}`);
   return res.data || null;

@@ -203,6 +203,17 @@ const SettingsPage: React.FC = () => {
 
       const d = await saveSystemConfig(payload);
       if (d) {
+        // Update localStorage cache agar ThemeProvider tidak reset ke warna lama
+        try {
+          const raw = localStorage.getItem('active_system_config');
+          const existing = raw ? JSON.parse(raw) : {};
+          localStorage.setItem('active_system_config', JSON.stringify({ ...existing, ...payload }));
+        } catch { /* ignore */ }
+
+        // Apply warna ke DOM langsung via applyBrandingFromConfig
+        const { applyBrandingFromConfig } = await import('@/services/systemConfig');
+        applyBrandingFromConfig(payload);
+
         setSaveMessage('Konfigurasi berhasil disimpan');
         queryClient.invalidateQueries({ queryKey: ['system-config'] });
         queryClient.invalidateQueries({ queryKey: ['attendance-config'] });

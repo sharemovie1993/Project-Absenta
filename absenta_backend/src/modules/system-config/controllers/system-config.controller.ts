@@ -3,7 +3,7 @@ import { systemConfigService, SystemConfigPayload } from '../services/system-con
 export const systemConfigController = {
   async getActive(request: any, reply: any) {
     try {
-      const tenantId = request.tenantId || request.user?.tenantId || null;
+      const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id || null;
       const data = await systemConfigService.getActive(tenantId);
       return reply.send({ success: true, message: 'OK', data });
     } catch (err: any) {
@@ -18,8 +18,8 @@ export const systemConfigController = {
   async upsert(request: any, reply: any) {
     try {
       const roleName = request.user?.roleName || request.user?.role?.name;
-      const tenantId = request.tenantId || request.user?.tenantId || null;
       const payload = request.body as SystemConfigPayload;
+      const tenantId = payload.tenant_id || request.tenantId || request.user?.tenantId || request.user?.tenant_id || null;
       
       console.log('[SystemConfig] Upsert Payload:', JSON.stringify(payload, null, 2));
       console.log('[SystemConfig] User:', { roleName, tenantId });

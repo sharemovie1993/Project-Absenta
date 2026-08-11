@@ -43,9 +43,11 @@ export async function updateSiswaCommand(
   const validFields = [
     'user_id', 'nis', 'nisn', 'nik', 'nama_siswa', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
     'alamat', 'dusun', 'kelurahan', 'kecamatan', 'kabupaten', 'provinsi', 'rt', 'rw', 'kode_pos',
-    'no_hp', 'transportasi', 'nama_ayah', 'nik_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah',
-    'nama_ibu', 'nik_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu', 'nama_wali', 'hubungan_wali',
-    'pekerjaan_wali', 'penghasilan_wali', 'anak_ke', 'kebutuhan_khusus', 'penerima_kps', 'penerima_kip', 'no_kip', 'kelas_id',
+    'no_hp', 'transportasi', 'nama_ayah', 'nik_ayah', 'no_hp_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah',
+    'nama_ibu', 'nik_ibu', 'no_hp_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu',
+    'nama_wali', 'nik_wali', 'no_hp_wali', 'hubungan_wali', 'pekerjaan_wali', 'penghasilan_wali', 'no_hp_ortu',
+    'anak_ke', 'tinggi_badan', 'berat_badan', 'agama', 'hobi', 'cita_cita', 'is_osis', 'is_mpk', 'ekskul_1', 'ekskul_2',
+    'kebutuhan_khusus', 'penerima_kps', 'penerima_kip', 'no_kip', 'kelas_id', 'jurusan_id',
     'tahun_pelajaran_id', 'semester_id', 'tanggal_masuk', 'tanggal_keluar', 'alasan_keluar', 'status', 'no_rfid', 'foto',
     'sekolah_asal', 'no_ijazah_smp'
   ];

@@ -70,6 +70,40 @@ export async function authMiddleware(
     return;
   }
 
+  // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
+  const tokenQuery = (request.query as any)?.token || (request.query as any)?.access_token;
+  if (!request.headers.authorization && tokenQuery) {
+    const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
+    request.headers.authorization = `Bearer ${cleanToken}`;
+  }
+
+  const authHeader = request.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      let payload: UserPayload;
+      if (tokenQuery) {
+        const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
+        payload = await (request as any).server.jwt.verify(cleanToken) as UserPayload;
+      } else {
+        payload = await request.jwtVerify() as UserPayload;
+      }
+
+      if (payload) {
+        const normalizedUser = {
+          ...payload,
+          id: payload.id || (payload as any).userId || (payload as any).user_id,
+          tenantId: payload.tenantId || (payload as any).tenant_id,
+          tenant_id: (payload as any).tenant_id || payload.tenantId,
+          roleName: payload.roleName || (payload as any).role?.name
+        };
+        request.user = normalizedUser;
+        request.tenantId = normalizedUser.tenantId;
+      }
+    } catch (err) {
+      // Token invalid or expired - allow to continue only if endpoint is public
+    }
+  }
+
   // Skip authentication for public endpoints (ignore query string)
   const urlPath = String(request.url || '').split('?')[0];
   const isSystemConfigPath = (urlPath === '/api/system/config' || urlPath === '/system/config');
@@ -88,28 +122,20 @@ export async function authMiddleware(
   const isPublicEndpoint =
     (PUBLIC_ENDPOINTS.includes(urlPath) || isVerifyEmailPublic || isLookupNpsnPublic || isAuthPublic || isInvoicePublic || isPaymentPublic || urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) &&
     (!isSystemConfigPath || request.method === 'GET');
+
   if (isPublicEndpoint) {
     if (request.log) {
       request.log.info({
         type: 'auth_debug_skipped',
         url: request.url,
-        reason: 'isPublicEndpoint'
+        reason: 'isPublicEndpoint',
+        tenantId: request.tenantId || null
       }, `[AUTH] Skipped public endpoint: ${request.url}`);
     }
     return;
   }
-  
-  // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
-  const tokenQuery = (request.query as any)?.token || (request.query as any)?.access_token;
 
-  if (!request.headers.authorization && tokenQuery) {
-    const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
-    request.headers.authorization = `Bearer ${cleanToken}`;
-  }
-  
-  const authHeader = request.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!request.user) {
     request.log.warn({
       event: 'AUTH_MISSING_HEADER',
       path: urlPath,
@@ -121,109 +147,36 @@ export async function authMiddleware(
     });
   }
 
-  try {
-    // Verify JWT token using Fastify's JWT plugin (Direct query token support or header verify)
-    let payload: UserPayload;
-    if (tokenQuery) {
-      const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
-      payload = await (request as any).server.jwt.verify(cleanToken) as UserPayload;
-    } else {
-      payload = await request.jwtVerify() as UserPayload;
-    }
-    
-    // Store user payload in request object and normalize common fields
-    request.user = payload;
-    appendLog({
-      type: 'auth_debug_verified',
-      payload: payload
-    });
+  const normalizedUser = request.user;
+  const roleName = normalizedUser.roleName;
+  const tenantIdFromPayload = normalizedUser.tenantId;
 
-    // Normalize user properties eagerly
-    const normalizedUser = {
-      ...payload,
-      id: payload.id || (payload as any).userId || (payload as any).user_id,
-      tenantId: payload.tenantId || (payload as any).tenant_id,
-      tenant_id: (payload as any).tenant_id || payload.tenantId,
-      roleName: payload.roleName || (payload as any).role?.name
-    };
-    request.user = normalizedUser;
-    
-    const shouldLog = (pathStr: string) => {
-      if (pathStr.startsWith('/uploads/') || pathStr.startsWith('/api/uploads/')) return false;
-      if (pathStr === '/api/system/config' || pathStr === '/system/config') return false;
-      if (pathStr === '/api/whatsapp/status' || pathStr === '/whatsapp/status') return false;
-      if (pathStr === '/api/notifications/my' || pathStr === '/notifications/my') return false;
-      return true;
-    };
+  // Token Tenant Integrity Check (ANTI CROSS-TENANT)
+  const isSuperAdminSystem = isSystemSuperAdmin(roleName, tenantIdFromPayload);
 
-    if (request.log && shouldLog(urlPath)) {
-      request.log.info({
-        event: 'AUTH_USER_SET',
+  if (!isSuperAdminSystem) {
+    if (!tenantIdFromPayload) {
+      request.log.warn({
+        event: 'AUTH_TENANT_MISSING',
         user: normalizedUser.email,
-        tenant: normalizedUser.tenantId,
+        role: roleName,
         path: urlPath
-      }, `[AUTH] User set for ${normalizedUser.email} on ${urlPath}`);
+      }, `[AUTH DEBUG] Token missing tenantId! User: ${normalizedUser.email}`);
+      return reply.status(401).send({
+        code: 'UNAUTHORIZED',
+        message: 'Invalid token: missing tenant context'
+      });
     }
 
-    const roleName = normalizedUser.roleName;
-    const tenantIdFromPayload = normalizedUser.tenantId;
-
-    // Token Tenant Integrity Check (ANTI CROSS-TENANT)
-    // REVISI KEBIJAKAN: SUPERADMIN (system) allowed to access from any domain.
-    const isSuperAdminSystem = isSystemSuperAdmin(roleName, tenantIdFromPayload);
-
-    if (isSuperAdminSystem) {
-       // Bypass tenant-domain restriction
-       // SUPERADMIN boleh lintas domain
-    } else {
-      // Non-SUPERADMIN users must have tenantId
-      if (!tenantIdFromPayload) {
-        request.log.warn({
-          event: 'AUTH_TENANT_MISSING',
-          user: (payload as any).email,
-          role: roleName,
-          path: urlPath
-        }, `[AUTH DEBUG] Token missing tenantId!
-          User: ${(payload as any).email}
-          Role: ${roleName}
-          Path: ${urlPath}
-          Payload: ${JSON.stringify(payload)}
-        `);
-        return reply.status(401).send({
-             code: 'UNAUTHORIZED',
-             message: 'Invalid token: missing tenant context' 
-        });
-      }
-
-      // Sync request.tenantId with token tenant if domain resolution is different or missing
-      // This is crucial after migration to ensure domain-based resolution doesn't block valid tokens
-      if (request.tenantId && request.tenantId !== tenantIdFromPayload) {
-        // Log mismatch for debugging but trust the token (JWT-first authority)
-        // Unless it's a critical security boundary, but here we prioritize functionality after domain migration
-        request.log.info({
-          event: 'AUTH_TENANT_ADJUSTED',
-          resolved: request.tenantId,
-          token: tenantIdFromPayload,
-          url: urlPath
-        }, `[AUTH] Adjusting request.tenantId to match token: ${tenantIdFromPayload}`);
-        request.tenantId = tenantIdFromPayload;
-      } else if (!request.tenantId) {
-        request.tenantId = tenantIdFromPayload;
-      }
+    if (request.tenantId && request.tenantId !== tenantIdFromPayload) {
+      request.log.info({
+        event: 'AUTH_TENANT_ADJUSTED',
+        resolved: request.tenantId,
+        token: tenantIdFromPayload,
+        url: urlPath
+      }, `[AUTH] Adjusting request.tenantId to match token: ${tenantIdFromPayload}`);
     }
-
-  } catch (err) {
-    request.log.warn({
-      event: 'AUTH_VERIFICATION_FAILED',
-      path: urlPath,
-      error: (err as Error).message,
-      ip: request.ip
-    }, `[AUTH DEBUG] Verification Failed: ${(err as Error).message}`);
-    return reply.status(401).send({
-      code: 'UNAUTHORIZED',
-      message: 'Invalid or expired token'
-    });
+    request.tenantId = tenantIdFromPayload;
   }
-
-
 }
+

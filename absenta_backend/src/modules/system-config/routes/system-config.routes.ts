@@ -1,10 +1,20 @@
 import { systemConfigController } from '../controllers/system-config.controller';
 
 export async function systemConfigRoutes(fastify: any) {
-  // GET /api/system/config
+  // GET /api/system/config — requires auth so tenantId is extracted from JWT
   fastify.get('/', {
+    handler: systemConfigController.getActive.bind(systemConfigController),
+  });
+
+  // GET /api/system/config/public — truly public, returns global config for login page branding
+  fastify.get('/public', {
     config: { skipAuth: true, public: true },
     handler: systemConfigController.getActive.bind(systemConfigController),
+  });
+
+  // PUT /api/system/config
+  fastify.put('/', {
+    handler: systemConfigController.upsert.bind(systemConfigController),
   });
 
   // POST /api/setup/initialize (First-Run Windows Setup Wizard)

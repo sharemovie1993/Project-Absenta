@@ -4,7 +4,7 @@ import { initParentAppAttendanceEventConsumer } from '../services/event-handlers
 import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function parentAppRoutes(fastify: any) {
-  await initParentAppAttendanceEventConsumer();
+  void initParentAppAttendanceEventConsumer().catch(err => console.warn('[ParentAppRoutes] Consumer init warning:', err?.message));
   // console.log('🔥 parentAppRoutes REGISTERED');
   const NotificationController = (require('../../notification/controllers/notification.controller') as any)
     .NotificationController as any;

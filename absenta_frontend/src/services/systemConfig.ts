@@ -83,6 +83,13 @@ export type SystemConfig = SystemConfigPayload;
 export const fetchActiveSystemConfig = async (): Promise<SystemConfig | null> => {
   const { data } = await axiosInstance.get<SystemConfigResponse<SystemConfig>>('/system/config');
   const cfg = data?.data || null;
+  // 🐛 DEBUG — hapus setelah dikonfirmasi
+  console.log('[SystemConfig] fetchActive result:', {
+    primary_color: cfg?.primary_color,
+    secondary_color: cfg?.secondary_color,
+    accent_color: cfg?.accent_color,
+    tenant_id: cfg?.tenant_id,
+  });
   try {
     const tz = cfg?.timezone;
     if (tz) localStorage.setItem('active_timezone', String(tz));

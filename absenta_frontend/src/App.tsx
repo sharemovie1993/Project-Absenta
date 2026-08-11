@@ -1495,7 +1495,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/kesiswaan/piket" element={
-                  <ProtectedRoute requiredCapability={['attendance.piket.view', 'attendance.schedules.view.list']}>
+                  <ProtectedRoute>
                     <Suspense fallback={
                       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                         <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />

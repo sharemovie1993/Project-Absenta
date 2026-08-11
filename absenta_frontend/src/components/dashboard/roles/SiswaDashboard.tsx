@@ -2,11 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../../../components/ui/Button';
+import { Button, Badge, UnconnectedBadge, renderApiValue } from '../../../components/ui';
 import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import QRCode from 'qrcode';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
 import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { toLocalDate, toLocalMonth } from '../../../utils/attendance/time';
@@ -15,8 +16,11 @@ import {
   CheckCircle2, 
   User, 
   QrCode, 
+  CreditCard,
+  Printer,
   Users, 
   Trophy, 
+  Award,
   AlertTriangle, 
   TrendingUp, 
   ChevronRight, 
@@ -30,21 +34,48 @@ import {
   Edit3,
   Key,
   ShieldCheck,
+  Shield,
+  Clock,
+  Calendar,
   MapPin,
   Heart,
   X,
   Check,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  FolderOpen,
+  Camera
 } from 'lucide-react';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { cn } from '../../../lib/utils';
 import { siswaApi } from '../../../api/academic.api';
-import { SiswaOnboardingModal, calculateProfileCompleteness } from '@/components/academic/siswa/SiswaOnboardingModal';
+import { getSiswaList, getSiswaMe } from '../../../api/academic/siswa.api';
+import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
+import { changePassword } from '../../../api/auth.api';
+import { PreviewCard } from '../../../components/academic/student-card/PreviewCard';
+import { CardBackPreview } from '../../../components/academic/student-card/CardBackPreview';
+import { PrintableCard } from '../../../components/academic/student-card/PrintableCard';
+import { CardBackPrint } from '../../../components/academic/student-card/CardBackPrint';
+import { DEFAULT_CONFIG } from '../../../components/academic/student-card/constants';
+import { SiswaOnboardingModal, calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/SiswaOnboardingModal';
+import { useSiswaMe } from '@/hooks/useSiswaMe';
+import { useTenantSettings } from '@/hooks/useTenantSettings';
+import { formatAlamatLengkap } from '@/lib/alamat.util';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
+import { listSiswaDocuments, getMemberDocPreviewUrl } from '@/api/memberDocs.api';
+import { SiswaDocsPanel } from '@/components/academic/siswa/SiswaDocsPanel';
+import { SelfMemberDocsSection } from '@/components/documents/SelfMemberDocsSection';
 import { toast } from 'react-hot-toast';
+import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
+import { SiswaProfileTab } from '../../academic/siswa/dashboard/SiswaProfileTab';
+import { SiswaAttendanceTab } from '../../academic/siswa/dashboard/SiswaAttendanceTab';
+import { SiswaPointsTab } from '../../academic/siswa/dashboard/SiswaPointsTab';
 
 export const SiswaDashboard: React.FC = () => {
   const { user, tenantMode } = useAuthStore();
+  const { tenant: tenantSettings } = useTenantSettings();
   const { can } = useCapabilities();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,6 +91,8 @@ export const SiswaDashboard: React.FC = () => {
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
     return resolveSmartDashboardMode(user);
   });
+
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   useEffect(() => {
     if (user && !localStorage.getItem('absenta_dashboard_mode')) {
@@ -86,14 +119,30 @@ export const SiswaDashboard: React.FC = () => {
 
   const todayIso = useMemo(() => toLocalDate(), []);
   const monthIso = useMemo(() => toLocalMonth(), []);
+  const todayFormattedDate = useMemo(() => {
+    return new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }, []);
 
   // Selected Month State for Attendance Tab (Format: YYYY-MM)
   const [selectedMonth, setSelectedMonth] = useState<string>(monthIso);
+  const [catatanFilter, setCatatanFilter] = useState<'semua' | 'prestasi' | 'pelanggaran'>('semua');
 
   // Modals state
+  const [showDigitalCardModal, setShowDigitalCardModal] = useState(false);
+  const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleOpenEditSection = (section: SectionEditType) => {
+    setActiveSection(section);
+    setShowOnboardingModal(true);
+  };
 
   // Form states for password change modal
   const [oldPassword, setOldPassword] = useState('');
@@ -101,14 +150,53 @@ export const SiswaDashboard: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
-  // 1. Get Student Detailed Profile
-  const { data: siswaProfileRes, refetch: refetchProfile } = useQuery({
-    queryKey: ['siswa-profile-me', user?.siswa_id],
-    queryFn: () => siswaApi.getById(user?.siswa_id || ''),
-    enabled: !!user?.siswa_id,
+  // 1. Get Student Detailed Profile via Custom Hook
+  const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
+
+  // 1.1 Fetch Sekolah Profile Data (Dynamic School Name & Logo from Modul Siswa-Card / Backend)
+  const { data: sekolahProfileRes } = useQuery({
+    queryKey: ['sekolah-profile'],
+    queryFn: sekolahApi.getProfile,
   });
 
-  const siswaProfile = siswaProfileRes?.data;
+  const sekolahName = tenantSettings?.name || sekolahProfileRes?.nama || sekolahProfileRes?.nama_sekolah || (siswaProfile as any)?.Sekolah?.nama || (siswaProfile as any)?.sekolah?.nama || (user as any)?.nama_sekolah || (user as any)?.tenant_name || (user as any)?.sekolah_nama || (user as any)?.tenantName || 'Sekolah';
+  const sekolahLogo = tenantSettings?.logo_url || sekolahProfileRes?.logo_url || null;
+
+  // 1.15 Resolve Student Profile Photo (with resolveProfilePhotoUrl & MemberDocs FOTO fallback)
+  const { data: siswaDocsForPhoto } = useQuery({
+    queryKey: ['self-member-docs-foto', siswaProfile?.id],
+    queryFn: () => listSiswaDocuments(siswaProfile!.id),
+    enabled: !!siswaProfile?.id && !siswaProfile?.foto && !siswaProfile?.foto_url,
+  });
+
+  const studentPhotoDoc = useMemo(() => {
+    return siswaDocsForPhoto?.data?.find((d: any) => d.kategori === 'FOTO');
+  }, [siswaDocsForPhoto]);
+
+  const rawStudentPhoto = useMemo(() => {
+    if (siswaProfile?.foto) return siswaProfile.foto;
+    if (siswaProfile?.foto_url) return siswaProfile.foto_url;
+    if ((siswaProfile as any)?.foto_pas) return (siswaProfile as any).foto_pas;
+    if ((user as any)?.foto) return (user as any).foto;
+    if ((user as any)?.foto_url) return (user as any).foto_url;
+    if (studentPhotoDoc && siswaProfile?.id) {
+      return getMemberDocPreviewUrl('SISWA', siswaProfile.id, studentPhotoDoc.id);
+    }
+    return null;
+  }, [siswaProfile, user, studentPhotoDoc]);
+
+  const studentPhotoUrl = useMemo(() => {
+    return rawStudentPhoto ? resolveProfilePhotoUrl(rawStudentPhoto) : null;
+  }, [rawStudentPhoto]);
+
+  // 1.2 Fetch Active Student Card Configuration from Modul Siswa-Card (Tenant Setting Hook)
+  const { data: studentCardConfigRes } = useQuery({
+    queryKey: ['student-card-config-me'],
+    queryFn: studentCardConfigApi.getConfig,
+    enabled: true,
+  });
+
+  const activeCardConfig = studentCardConfigRes || null;
 
   const completeness = useMemo(() => {
     return calculateProfileCompleteness(siswaProfile);
@@ -157,14 +245,15 @@ export const SiswaDashboard: React.FC = () => {
 
   const myRank = useMemo(() => {
     const students = kelasLeaderboardRes?.data?.students || [];
-    if (!students.length) return { rank: 35, totalStudents: 38 };
+    if (!students.length) return { rank: 0, totalStudents: 0 };
     const myIdx = students.findIndex((s: any) => s.id === user?.siswa_id || s.id === user?.id || s.nama === user?.name || s.nama === siswaProfile?.nama);
     return {
-      rank: myIdx !== -1 ? myIdx + 1 : 35,
-      totalStudents: students.length > 0 ? students.length : 38,
+      rank: myIdx !== -1 ? myIdx + 1 : 0,
+      totalStudents: students.length,
     };
   }, [kelasLeaderboardRes, user, siswaProfile]);
 
+  const dailyRecap = dailyRecapRes?.data ?? null;
   const monthlyRecap = monthlyRecapRes?.data ?? null;
 
   const handleRefresh = async () => {
@@ -188,23 +277,25 @@ export const SiswaDashboard: React.FC = () => {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oldPassword || !newPassword) {
-      toast.error('Password lama dan baru harus diisi');
+      toast.error('Password lama dan password baru harus diisi');
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (confirmPassword && newPassword !== confirmPassword) {
       toast.error('Konfirmasi password baru tidak cocok');
       return;
     }
     setPasswordSubmitting(true);
     try {
-      await new Promise(res => setTimeout(res, 800));
+      await changePassword({
+        current_password: oldPassword,
+        new_password: newPassword,
+      });
       toast.success('Password berhasil diperbarui!');
-      setShowChangePasswordModal(false);
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err) {
-      toast.error('Gagal mengubah password');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mengubah password');
     } finally {
       setPasswordSubmitting(false);
     }
@@ -221,7 +312,7 @@ export const SiswaDashboard: React.FC = () => {
   }, [monthlyRecap, pelanggaranRes]);
 
   const studentInitials = useMemo(() => {
-    const name = siswaProfile?.nama || user?.full_name || user?.name || 'Fahrizal Abdul Ghoffar';
+    const name = siswaProfile?.nama || (user as any)?.nama_siswa || user?.full_name || user?.name || 'S';
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -229,19 +320,38 @@ export const SiswaDashboard: React.FC = () => {
     return name.slice(0, 2).toUpperCase();
   }, [siswaProfile, user]);
 
-  const currentClassName = siswaProfile?.Kelas?.nama_kelas || (user as any)?.kelas_nama || '7D';
-  const currentNisn = siswaProfile?.nisn || user?.nisn || '0138544323';
+  const studentName = siswaProfile?.nama || siswaProfile?.nama_siswa || (user as any)?.nama_siswa || user?.full_name || user?.name || '-';
+  const currentClassName = siswaProfile?.Kelas?.nama_kelas || siswaProfile?.kelas?.nama_kelas || siswaProfile?.kelas_nama || (user as any)?.kelas_nama || (user as any)?.kelas || '-';
+  const currentNisn = (siswaProfile as any)?.nisn || (siswaProfile as any)?.nis || (user as any)?.nisn || (user as any)?.username || '-';
+  const currentNik = siswaProfile?.nik || (user as any)?.nik || (user as any)?.nik_siswa || '-';
 
-  // pelanggaran data list (fallback to sample reference if empty so UI is rich)
+  useEffect(() => {
+    const rawNisn = currentNisn && currentNisn !== '-' ? currentNisn : (siswaProfile?.nisn || siswaProfile?.nis || user?.username || '1234567890');
+    QRCode.toDataURL(String(rawNisn), { errorCorrectionLevel: 'L', margin: 0, width: 300 })
+      .then(url => setQrCodeDataUrl(url))
+      .catch(err => console.error('Failed to generate QR code:', err));
+  }, [currentNisn, siswaProfile, user]);
+
+  const currentJurusan = siswaProfile?.Jurusan?.nama || siswaProfile?.jurusan?.nama || siswaProfile?.Kelas?.Jurusan?.nama || siswaProfile?.kelas?.Jurusan?.nama || siswaProfile?.jurusan?.nama_jurusan || siswaProfile?.Jurusan?.nama_jurusan || siswaProfile?.Kelas?.Jurusan?.nama_jurusan || siswaProfile?.Kelas?.jurusan?.nama_jurusan || siswaProfile?.kelas?.Jurusan?.nama_jurusan || siswaProfile?.kelas?.jurusan?.nama_jurusan || siswaProfile?.jurusan_nama || (user as any)?.jurusan_nama || (user as any)?.jurusan || '-';
+  const currentOrtu = siswaProfile?.nama_ayah || siswaProfile?.nama_ibu || siswaProfile?.nama_wali || (user as any)?.nama_ortu || '-';
+  const rawTitle = activeCardConfig?.card_title;
+  const dynamicCardTitle = (rawTitle && !rawTitle.toLowerCase().includes('pegawai'))
+    ? rawTitle
+    : 'KARTU TANDA PELAJAR DIGITAL';
+  const dynamicLogoUrl = activeCardConfig?.logo_url || sekolahLogo;
+  const dynamicRules = activeCardConfig?.back_rules || 'Gunakan QR Code ini untuk scan Tap Presensi Gerbang Sekolah & Akses Perpustakaan Digital.';
+
+  const renderValueOrUnconnectedBadge = (val: any, customConnectedText?: React.ReactNode) => {
+    return renderApiValue(val, customConnectedText, isApiConnected);
+  };
+
+  // pelanggaran data list
   const pelanggaranList = useMemo(() => {
     const apiData = pelanggaranRes?.data;
-    if (Array.isArray(apiData) && apiData.length > 0) {
+    if (Array.isArray(apiData)) {
       return apiData;
     }
-    return [
-      { id: '1', nama_pelanggaran: 'Tidak membawa makan', tanggal: '2026-07-31', poin: 5, pencatat: 'Bilqis' },
-      { id: '2', nama_pelanggaran: 'Tidak membawa makan', tanggal: '2026-08-04', poin: 5, pencatat: 'Mitha' },
-    ];
+    return [];
   }, [pelanggaranRes]);
 
   const currentDisciplineScore = useMemo(() => {
@@ -268,6 +378,7 @@ export const SiswaDashboard: React.FC = () => {
     { id: 'ringkasan', label: 'Ringkasan', icon: LayoutList },
     { id: 'kehadiran', label: 'Kehadiran', icon: CheckCircle2 },
     { id: 'catatan', label: 'Catatan', icon: FileText },
+    { id: 'berkas', label: 'Berkas Saya', icon: FolderOpen },
     { id: 'profil', label: 'Profil', icon: User },
   ];
 
@@ -300,6 +411,112 @@ export const SiswaDashboard: React.FC = () => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   }, [selectedMonth]);
 
+  // Calendar Grid Calculator for Kehadiran Tab
+  const calendarGridData = useMemo(() => {
+    const [yStr, mStr] = selectedMonth.split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10); // 1-indexed
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstDayIndex = new Date(year, month - 1, 1).getDay(); // 0 = Sun, 1 = Mon ...
+
+    const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
+    const statusMap = new Map<string, { status: string; waktu_masuk?: string; keterangan?: string; metode?: string }>();
+
+    for (const item of detailList) {
+      if (item.tanggal) {
+        statusMap.set(item.tanggal, {
+          status: item.status,
+          waktu_masuk: item.waktu_masuk,
+          keterangan: item.keterangan,
+          metode: item.metode_absen
+        });
+      }
+    }
+
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const rec = statusMap.get(dateIso);
+      days.push({
+        day: d,
+        dateIso,
+        status: rec?.status || null,
+        rec,
+      });
+    }
+
+    return {
+      year,
+      month,
+      daysInMonth,
+      firstDayIndex,
+      days,
+    };
+  }, [selectedMonth, monthlyRecap]);
+
+  // Gate Tap History for Kehadiran Tab Right Column
+  const gateTapHistory = useMemo(() => {
+    const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
+    if (detailList.length > 0) {
+      return detailList.slice(0, 6).map((item: any) => ({
+        id: item.tanggal || Math.random().toString(),
+        date: item.tanggal || '-',
+        status: item.status || 'HADIR',
+        metode: item.metode_absen || 'RFID',
+        waktu: item.waktu_masuk ? `Tap Masuk: ${item.waktu_masuk} WIB` : 'Tap Masuk: -',
+        keterangan: item.keterangan || (item.status === 'HADIR' ? 'Tepat waktu' : item.status === 'TERLAMBAT' ? 'Terlambat' : item.status === 'SAKIT' ? 'Sakit' : '-')
+      }));
+    }
+    return [];
+  }, [monthlyRecap]);
+
+  // Today KBM Schedule for Kehadiran Tab Bottom Section
+  const todayKbmSchedule = useMemo(() => {
+    const list = Array.isArray(scheduleRes?.data) ? scheduleRes.data : [];
+    if (list.length > 0) {
+      return list.map((item: any, idx: number) => ({
+        id: item.id || String(idx),
+        kode: item.kode_mapel || `MAPEL-${idx + 1}`,
+        mapel: item.nama_mapel || item.mapel || 'Mata Pelajaran',
+        guru: item.nama_guru || item.guru || 'Guru Pengampu',
+        lokasi: item.lokasi || item.ruang || 'Ruang Kelas',
+        jam: item.jam || `${item.jam_mulai || ''} - ${item.jam_selesai || ''}`,
+        status: idx === 0 ? 'Sedang Berlangsung' : 'Mendatang'
+      }));
+    }
+    return [];
+  }, [scheduleRes]);
+
+  // Buku Catatan Kedisiplinan & Prestasi for Catatan Poin Tab
+  const bukuCatatanList = useMemo(() => {
+    const rawPelanggaran = Array.isArray(pelanggaranList) ? pelanggaranList : [];
+    if (rawPelanggaran.length > 0) {
+      return rawPelanggaran.map((item: any) => ({
+        id: item.id || Math.random().toString(),
+        type: 'PELANGGARAN' as const,
+        tanggal: item.tanggal ? new Date(item.tanggal).toISOString().split('T')[0] : '-',
+        judul: item.nama_pelanggaran || item.kategori || item.judul || 'Pelanggaran Kedisiplinan',
+        kategori: item.kategori || 'Kedisiplinan',
+        pencatat: item.pencatat || 'Tim BK',
+        poinText: `-${item.poin || 0} Poin`,
+        status: item.status || 'Selesai',
+      }));
+    }
+    return [];
+  }, [pelanggaranList]);
+
+  // Filtered List based on catatanFilter state
+  const filteredBukuCatatan = useMemo(() => {
+    if (catatanFilter === 'prestasi') {
+      return bukuCatatanList.filter(item => item.type === 'PRESTASI');
+    }
+    if (catatanFilter === 'pelanggaran') {
+      return bukuCatatanList.filter(item => item.type === 'PELANGGARAN');
+    }
+    return bukuCatatanList;
+  }, [bukuCatatanList, catatanFilter]);
+
   // RENDER PORTAL LAUNCHER IF ACTIVE
   if (dashboardMode === 'portal') {
     return (
@@ -314,209 +531,192 @@ export const SiswaDashboard: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-5 pb-24 lg:pb-8 text-slate-800 dark:text-slate-100">
       
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* TOP HERO PROFILE CARD (Inspected: Only visible on Tab Ringkasan)    */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'ringkasan' && (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-8 text-white shadow-xl border border-indigo-500/20 transition-all">
-          {/* Subtle Background Glow Elements */}
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* TOP INTEGRATED HERO & NAVIGATION CARD (Clean Light White Theme)    */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 text-slate-800 dark:text-slate-100 shadow-sm space-y-4 sm:space-y-5">
+        {/* Top Row: Identity & Quick Action */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            {/* Avatar Box with Initial */}
+            <div className="relative shrink-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xs">
+                {studentInitials}
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white" title="Status Aktif">
+                <Check size={10} strokeWidth={4} />
+              </span>
+            </div>
 
-          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-5 sm:gap-6">
-            {/* Student Profile Identity Section */}
-            <div className="flex flex-col items-center sm:flex-row sm:items-start text-center sm:text-left gap-4 sm:gap-6 w-full lg:w-auto">
-              {/* Avatar Box with Initial */}
-              <div className="relative shrink-0">
-                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 p-1 shadow-xl shadow-indigo-500/30">
-                  <div className="w-full h-full rounded-[14px] bg-slate-900 flex items-center justify-center font-extrabold text-2xl sm:text-3xl text-sky-400 tracking-wider">
-                    {studentInitials}
-                  </div>
-                </div>
-                <span className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center text-slate-950" title="Status Aktif">
-                  <Check size={11} strokeWidth={4} />
+            {/* Name, Class Badge, NISN & Jurusan */}
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                  {studentName}
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                  Kelas {currentClassName}
                 </span>
               </div>
 
-              {/* Student Name & Badge Attributes */}
-              <div className="space-y-1.5 sm:space-y-2">
-                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight">
-                  {siswaProfile?.nama || user?.full_name || user?.name || 'Fahrizal Abdul Ghoffar'}
-                </h1>
-
-                <p className="text-xs sm:text-sm font-semibold text-sky-400 font-mono flex items-center justify-center sm:justify-start gap-2">
-                  <span>NISN {currentNisn}</span>
-                </p>
-
-                {/* Tag Badges */}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 pt-1">
-                  <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                    Kelas {currentClassName}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 backdrop-blur-md flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Aktif
-                  </span>
-                  {isPetugasKelas && (
-                    <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md flex items-center gap-1">
-                      <CheckCircle2 size={13} className="text-amber-400" />
-                      Petugas Kelas
-                    </span>
-                  )}
-                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 backdrop-blur-md flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-indigo-400" />
-                    Skor {currentDisciplineScore}
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
+                <span>NISN: {currentNisn}</span>
+                <span>•</span>
+                <span>Jurusan: {currentJurusan}</span>
+              </p>
             </div>
+          </div>
 
-            {/* Action Buttons on Right */}
-            <div className="grid grid-cols-3 sm:flex sm:flex-col gap-2 w-full sm:w-auto shrink-0">
-              <Button
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-full h-9.5 px-4 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/15 backdrop-blur-md flex items-center justify-center gap-2 shadow-sm transition-all"
-              >
-                <RefreshCw size={13} className={cn(isRefreshing && "animate-spin")} />
-                <span>Refresh</span>
-              </Button>
+          {/* Quick Action Button: Buka Kartu Pelajar Digital */}
+          <Button
+            size="sm"
+            onClick={() => setShowDigitalCardModal(true)}
+            className="h-10 px-4 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-2 shadow-md shadow-blue-600/20 shrink-0 cursor-pointer"
+          >
+            <QrCode size={16} />
+            <span>Buka Kartu Pelajar Digital</span>
+          </Button>
+        </div>
 
-              <Button
-                size="sm"
-                onClick={() => setShowOnboardingModal(true)}
-                className="w-full h-9.5 px-4 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 border-none transition-all"
-              >
-                <Edit3 size={13} />
-                <span>Edit Data</span>
-              </Button>
+        {/* Bottom Row: Integrated Navigation Tabs Bar Inset */}
+        <div className="p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80 flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar">
+          {tabs.map((tab) => {
+            const TabIcon = tab.icon;
+            const isTabActive = activeTab === tab.id;
+            const badgeCount = tab.id === 'catatan' ? (pelanggaranRes?.data?.length || 0) : null;
 
-              <Button
-                size="sm"
-                onClick={() => setShowChangePasswordModal(true)}
-                className="w-full h-9.5 px-4 rounded-xl text-xs font-bold bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center gap-2 transition-all truncate"
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer select-none",
+                  isTabActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20 border border-blue-500 font-extrabold"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/50"
+                )}
               >
-                <Key size={13} />
-                <span>Ganti Pass</span>
-              </Button>
+                <TabIcon size={16} />
+                <span>{tab.id === 'profil' ? 'Profil & Kartu' : tab.id === 'catatan' ? 'Catatan Poin' : tab.label}</span>
+                {badgeCount !== null && badgeCount > 0 && (
+                  <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30">
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* TODAY'S PRESENCE & DISCIPLINE SCORE BANNER                         */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {activeTab === 'ringkasan' && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-blue-500/20">
+          {/* Left Side: Attendance Info */}
+          <div className="space-y-2 max-w-2xl">
+            <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+              STATUS HARI INI - {todayFormattedDate.toUpperCase()}
+            </span>
+
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
+              <span>Presensi Gerbang:</span>
+              <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
+                {dailyRecapRes?.data?.status || 'HADIR'} ({dailyRecapRes?.data?.waktu_masuk || '06.42 WIB'})
+              </span>
+            </h2>
+
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+              <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>Gate 1 Utara</span>
+              <span>•</span>
+              <span>Sesi KBM Aktif</span>
+            </p>
+          </div>
+
+          {/* Right Side: Discipline Score Glass Box */}
+          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/10 backdrop-blur-md border border-slate-200/80 dark:border-white/20 text-center min-w-[160px] sm:min-w-[180px] shrink-0 self-stretch md:self-auto flex flex-col items-center justify-center space-y-1 shadow-sm">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
+              KEDISIPLINAN
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+              {currentDisciplineScore} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">/100</span>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+              Gold Scholar Tier
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 4 SUMMARY STAT CARDS (Clean Light Theme - Rendered only on Ringkasan tab) */}
+      {activeTab === 'ringkasan' && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Stat 1: Skor Kedisiplinan */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Skor Kedisiplinan</span>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                {currentDisciplineScore} Poin
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">Aman (Bebas SP)</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+              <Shield size={20} />
+            </div>
+          </div>
+
+          {/* Stat 2: Peringkat Kedisiplinan */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3 relative overflow-hidden group hover:border-primary/40 transition-all">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Peringkat Kedisiplinan</span>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                #{myRank.rank}
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Dari {myRank.totalStudents} Siswa {currentClassName}</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+              <TrendingUp size={20} />
+            </div>
+          </div>
+
+          {/* Stat 3: Kehadiran Bulanan */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3 relative overflow-hidden group hover:border-primary/40 transition-all">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Kehadiran Bulanan</span>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                {gamification.attendanceRate}%
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400">Sempurna (100% Hadir)</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={20} />
+            </div>
+          </div>
+
+          {/* Stat 4: Total Prestasi */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3 relative overflow-hidden group hover:border-purple-500/40 transition-all">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Total Prestasi</span>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                +2 Catatan
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400">+20 Poin Bonus</p>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
+              <Trophy size={20} />
             </div>
           </div>
         </div>
       )}
 
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 4 SUMMARY STAT CARDS (2x2 Grid on Mobile, 4-Cols on Desktop)       */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Stat 1: Skor Akhir */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SKOR AKHIR</span>
-            <div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <Activity size={16} />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-              {currentDisciplineScore}
-            </div>
-            <div className="w-full h-1.5 sm:h-2 bg-slate-100 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, currentDisciplineScore)}%` }} 
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Stat 2: Peringkat Kelas */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PERINGKAT KELAS</span>
-            <div className="w-7 h-7 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-              <TrendingUp size={16} />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              #{myRank.rank}
-            </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5 truncate">
-              dari {myRank.totalStudents} siswa di kelas {currentClassName}
-            </p>
-          </div>
-        </div>
-
-        {/* Stat 3: Total Prestasi */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TOTAL PRESTASI</span>
-            <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <Trophy size={16} />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-              +0
-            </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5">
-              0 catatan prestasi
-            </p>
-          </div>
-        </div>
-
-        {/* Stat 4: Kehadiran Bulan Ini */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-sky-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">KEHADIRAN BULAN INI</span>
-            <div className="w-7 h-7 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
-              <CheckCircle2 size={16} />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              {gamification.attendanceRate}%
-            </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5">
-              {monthStats.hadir} hari hadir tercatat
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* 4 TABULAR PILLS (Desktop: Top Segmented Control Pills hidden lg:flex) */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex items-center gap-1.5 p-1.5 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-inner">
-        {tabs.map((tab) => {
-          const TabIcon = tab.icon;
-          const isTabActive = activeTab === tab.id;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none",
-                isTabActive
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 border border-emerald-500"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-              )}
-            >
-              <TabIcon size={16} className={isTabActive ? "text-white" : "text-slate-400"} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* TAB CONTENT AREA                                                   */}
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AnimatePresence mode="wait">
         
-        {/* 📌 TAB 1: RINGKASAN */}
+        {/* ðŸ“Œ TAB 1: RINGKASAN */}
         {activeTab === 'ringkasan' && (
           <motion.div
             key="tab-ringkasan"
@@ -524,40 +724,122 @@ export const SiswaDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="space-y-4 sm:space-y-6"
+            className="space-y-5 sm:space-y-6"
           >
-            {/* Banner Kehadiran Hari Ini & Shortcut */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
-                  <Fingerprint size={22} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] sm:text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
-                      Status Kehadiran Hari Ini
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                      Tepat Waktu
-                    </span>
+            {/* ðŸš€ AKSI CEPAT SISWA (Clean Light Theme) */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Aksi Cepat Siswa</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <button
+                  onClick={() => setShowDigitalCardModal(true)}
+                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <QrCode size={20} />
                   </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                    Hadir (Masuk: 06:45 WIB • Pulang: 14:30 WIB)
-                  </p>
-                </div>
-              </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
+                  </div>
+                </button>
 
-              <Button
-                size="sm"
-                onClick={() => handleTabChange('kehadiran')}
-                className="w-full sm:w-auto shrink-0 h-8 sm:h-9 px-3.5 rounded-xl text-[11px] sm:text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center justify-center gap-1.5"
-              >
-                <span>Lihat Detail Presensi</span>
-                <ArrowRight size={13} />
-              </Button>
+                <button
+                  onClick={() => handleTabChange('kehadiran')}
+                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jadwal KBM</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Cek Presensi Kelas</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleTabChange('catatan')}
+                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Trophy size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Buku Poin</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Pelanggaran &amp; Prestasi</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleOpenEditSection('pribadi')}
+                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <User size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Edit Data / Password</p>
+                  </div>
+                </button>
+              </div>
             </div>
 
-            {/* 👑 MODUL OPERASIONAL PETUGAS KELAS (Dua Wewenang: Presensi & Jurnal Kelas) */}
+            {/* ðŸ“œ HISTORIS POIN KEDISIPLINAN TERBARU (Clean Light Theme) */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Historis Poin Kedisiplinan Terbaru</h3>
+                <button onClick={() => handleTabChange('catatan')} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+                  <span>Lihat Semua</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Item 1: Juara 1 LKS */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-primary/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/30">
+                      <Award size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Juara 1 LKS Rekayasa Perangkat Lunak Tingkat Kota</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Akademik &amp; Keahlian â€¢ 2026-07-28</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-primary shrink-0 font-mono">+15 Poin</span>
+                </div>
+
+                {/* Item 2: Terlambat Masuk Sekolah */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-rose-500/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
+                      <AlertCircle size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Terlambat Masuk Sekolah (&gt;15 Menit)</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Kedisiplinan Waktu â€¢ 2026-08-02</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-rose-600 dark:text-rose-400 shrink-0 font-mono">-5 Poin</span>
+                </div>
+
+                {/* Item 3: Petugas Upacara Bendera */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 hover:border-primary/40 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 border border-primary/30">
+                      <Award size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Petugas Upacara Bendera HUT Kemerdekaan RI</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Keorganisasian â€¢ 2026-08-05</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-primary shrink-0 font-mono">+5 Poin</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ðŸ‘‘ MODUL OPERASIONAL PETUGAS KELAS (Dua Wewenang: Presensi & Jurnal Kelas) */}
             {isPetugasKelas && (
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
@@ -677,7 +959,7 @@ export const SiswaDashboard: React.FC = () => {
           </motion.div>
         )}
 
-        {/* 🗓️ TAB 2: KEHADIRAN */}
+        {/* TAB 2: KEHADIRAN (Kalender & Historis Presensi Gerbang) */}
         {activeTab === 'kehadiran' && (
           <motion.div
             key="tab-kehadiran"
@@ -685,86 +967,20 @@ export const SiswaDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="space-y-4 sm:space-y-6"
           >
-            {/* Month Navigation Control */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePrevMonth}
-                className="w-8 h-8 sm:w-9 sm:h-9 p-0 rounded-xl flex items-center justify-center"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-
-              <h2 className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-                {selectedMonthFormatted}
-              </h2>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleNextMonth}
-                className="w-8 h-8 sm:w-9 sm:h-9 p-0 rounded-xl flex items-center justify-center"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-
-            {/* 4 Status Badges Row (Single Horizontal 4-Column Grid on Mobile) */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-4">
-              {/* Hadir */}
-              <div className="p-3 sm:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-0.5">
-                <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{monthStats.hadir}</div>
-                <div className="text-[10px] sm:text-xs font-extrabold text-emerald-700 dark:text-emerald-300">Hadir</div>
-              </div>
-
-              {/* Sakit */}
-              <div className="p-3 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-0.5">
-                <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">{monthStats.sakit}</div>
-                <div className="text-[10px] sm:text-xs font-extrabold text-amber-700 dark:text-amber-300">Sakit</div>
-              </div>
-
-              {/* Izin */}
-              <div className="p-3 sm:p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-center space-y-0.5">
-                <div className="text-xl sm:text-2xl font-black text-sky-600 dark:text-sky-400">{monthStats.izin}</div>
-                <div className="text-[10px] sm:text-xs font-extrabold text-sky-700 dark:text-sky-300">Izin</div>
-              </div>
-
-              {/* Alpa */}
-              <div className="p-3 sm:p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center space-y-0.5">
-                <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400">{monthStats.alpa}</div>
-                <div className="text-[10px] sm:text-xs font-extrabold text-rose-700 dark:text-rose-300">Alpa</div>
-              </div>
-            </div>
-
-            {/* Attendance Log List */}
-            <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-              <h3 className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">
-                Riwayat Presensi Harian
-              </h3>
-
-              {[
-                { date: 'Senin, 03 Agu 2026', status: 'HADIR' },
-                { date: 'Selasa, 04 Agu 2026', status: 'HADIR' },
-                { date: 'Rabu, 05 Agu 2026', status: 'HADIR' },
-                { date: 'Kamis, 06 Agu 2026', status: 'HADIR' },
-                { date: "Jum'at, 07 Agu 2026", status: 'HADIR' },
-              ].map((rec, i) => (
-                <div key={i} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{rec.date}</span>
-                  <span className="px-2.5 py-0.5 rounded-xl text-[11px] sm:text-xs font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 size={12} />
-                    Hadir
-                  </span>
-                </div>
-              ))}
-            </div>
+            <SiswaAttendanceTab
+              gamification={gamification}
+              handlePrevMonth={handlePrevMonth}
+              handleNextMonth={handleNextMonth}
+              calendarGridData={calendarGridData}
+              todayIso={todayIso}
+              gateTapHistory={gateTapHistory}
+              todayKbmSchedule={todayKbmSchedule}
+            />
           </motion.div>
         )}
 
-        {/* 📝 TAB 3: CATATAN */}
+        {/* TAB 3: CATATAN POIN (Buku Catatan Kedisiplinan & Prestasi) */}
         {activeTab === 'catatan' && (
           <motion.div
             key="tab-catatan"
@@ -772,94 +988,44 @@ export const SiswaDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="space-y-4 sm:space-y-6"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Card 1: Catatan Wali Kelas */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                    <FileText size={18} />
-                  </div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    CATATAN WALI KELAS
-                  </h3>
-                </div>
-                <div className="py-6 text-center text-slate-400 text-xs font-semibold">
-                  Belum ada catatan wali kelas.
-                </div>
-              </div>
-
-              {/* Card 2: Catatan Guru BK */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                    <MessageCircle size={18} />
-                  </div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    CATATAN GURU BK
-                  </h3>
-                </div>
-                <div className="py-6 text-center text-slate-400 text-xs font-semibold">
-                  Belum ada catatan guru BK.
-                </div>
-              </div>
-
-              {/* Card 3: Catatan Pelanggaran */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    CATATAN PELANGGARAN
-                  </h3>
-                </div>
-                
-                <div className="space-y-2.5">
-                  {pelanggaranList.map((item: any) => (
-                    <div 
-                      key={item.id || item.tanggal} 
-                      className="p-3.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-start gap-3"
-                    >
-                      <div className="w-7 h-7 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center shrink-0 mt-0.5">
-                        <AlertCircle size={15} />
-                      </div>
-                      <div className="flex-1 space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {item.nama_pelanggaran || item.kategori || 'Tidak membawa makan'}
-                          </span>
-                          <span className="text-xs font-black text-rose-600 dark:text-rose-400">-{item.poin || 5}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400">
-                          {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '31 Jul 2026'} • dicatat oleh {item.pencatat || 'Wali Kelas'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Card 4: Catatan Prestasi */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                    <Trophy size={18} />
-                  </div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    CATATAN PRESTASI
-                  </h3>
-                </div>
-                <div className="py-6 text-center text-slate-400 text-xs font-semibold">
-                  Tidak ada catatan prestasi.
-                </div>
-              </div>
-            </div>
+            <SiswaPointsTab
+              bukuCatatanList={bukuCatatanList}
+              catatanFilter={catatanFilter}
+              setCatatanFilter={setCatatanFilter}
+              filteredBukuCatatan={filteredBukuCatatan}
+            />
           </motion.div>
         )}
 
-        {/* 👤 TAB 4: PROFIL */}
+        {/* TAB 4: BERKAS SAYA (Slot Kategori Visual Berkas Siswa) */}
+        {activeTab === 'berkas' && (
+          <motion.div
+            key="tab-berkas"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {siswaProfile?.id ? (
+              <SiswaDocsPanel
+                siswaId={siswaProfile.id}
+                siswaName={siswaProfile.nama_siswa || user?.name || ''}
+                nis={siswaProfile.nis}
+                nisn={siswaProfile.nisn}
+                mode="full"
+                canManage={true}
+              />
+            ) : (
+              <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 text-center text-slate-400 font-semibold animate-pulse">
+                Memuat data berkas siswa...
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* TAB 5: PROFIL */}
         {activeTab === 'profil' && (
           <motion.div
             key="tab-profil"
@@ -867,171 +1033,37 @@ export const SiswaDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="space-y-4 sm:space-y-6"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Section 1: Data Pribadi */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                      <User size={18} />
-                    </div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      DATA PRIBADI
-                    </h3>
-                  </div>
-                  <button onClick={() => setShowOnboardingModal(true)} className="p-1 text-slate-400 hover:text-emerald-500">
-                    <Edit3 size={16} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block font-medium">Jenis Kelamin</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Laki-laki</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Agama</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Islam</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Tempat Lahir</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Purwakarta</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Tanggal Lahir</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">31 Mei 2013</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Email</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">siswa@student.sch.id</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Hobi</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Main Bola</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-slate-400 block font-medium">Cita-cita</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Ingin menjadi TNI</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Organisasi & Ekstrakurikuler */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                      <Users size={18} />
-                    </div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      ORGANISASI DAN EKSTRAKURIKULER
-                    </h3>
-                  </div>
-                  <button onClick={() => setShowOnboardingModal(true)} className="p-1 text-slate-400 hover:text-indigo-500">
-                    <Edit3 size={16} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block font-medium">Anggota OSIS</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Tidak</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Anggota MPK</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Tidak</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Ekstrakurikuler 1</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Pramuka</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Ekstrakurikuler 2</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Futsal</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Kontak & Alamat */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                      <MapPin size={18} />
-                    </div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      KONTAK & ALAMAT
-                    </h3>
-                  </div>
-                  <button onClick={() => setShowOnboardingModal(true)} className="p-1 text-slate-400 hover:text-sky-500">
-                    <Edit3 size={16} />
-                  </button>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <span className="text-slate-400 block font-medium">Nomor Telepon</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">087713346462</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Alamat</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                      Kp. Ciarakoneng Rt. 011/004 Ds. Legoksari Kec. Darangdan Kab. Purwakarta
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4: Orang Tua / Wali Murid */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                      <Heart size={18} />
-                    </div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      ORANG TUA / WALI MURID
-                    </h3>
-                  </div>
-                  <button onClick={() => setShowOnboardingModal(true)} className="p-1 text-slate-400 hover:text-amber-500">
-                    <Edit3 size={16} />
-                  </button>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <span className="text-slate-400 block font-medium">Nama Ayah & No. HP</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Ginanzhar Sudiarna</span>
-                    <span className="text-slate-400 font-mono">087779902007</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Nama Ibu & No. HP</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Neng Ismah</span>
-                    <span className="text-slate-400 font-mono">082122319562</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Kartu Digital Siswa QR Code */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm text-center space-y-4">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                KARTU PELAJAR DIGITAL
-              </h3>
-              <div className="inline-block p-4 bg-white rounded-2xl shadow-md border border-slate-200">
-                <QrCode size={130} className="text-slate-900" />
-              </div>
-              <p className="text-xs text-slate-500">Gunakan QR Code ini untuk scan presensi gerbang atau perpustakaan.</p>
-            </div>
+            <SiswaProfileTab
+              siswaProfile={siswaProfile}
+              user={user}
+              studentPhotoUrl={studentPhotoUrl}
+              studentInitials={studentInitials}
+              currentClassName={currentClassName}
+              currentJurusan={currentJurusan}
+              currentNisn={currentNisn}
+              currentNik={currentNik}
+              currentOrtu={currentOrtu}
+              qrCodeDataUrl={qrCodeDataUrl}
+              renderValueOrUnconnectedBadge={renderValueOrUnconnectedBadge}
+              handleOpenEditSection={handleOpenEditSection}
+              setShowDigitalCardModal={setShowDigitalCardModal}
+              handlePasswordSubmit={handlePasswordSubmit}
+              oldPassword={oldPassword}
+              setOldPassword={setOldPassword}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
+              passwordSubmitting={passwordSubmitting}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ──────────────────────────────────────────────────────────── */}
       {/* MOBILE FIXED BOTTOM NAVIGATION BAR (Inspected: lg:hidden)           */}
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ──────────────────────────────────────────────────────────── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center shadow-xl">
         {tabs.map((tab) => {
           const TabIcon = tab.icon;
@@ -1044,13 +1076,13 @@ export const SiswaDashboard: React.FC = () => {
               className={cn(
                 "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1",
                 isTabActive
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "text-primary"
                   : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               )}
             >
               <div className={cn(
                 "p-1.5 rounded-xl transition-all",
-                isTabActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-transparent"
+                isTabActive ? "bg-primary/15 text-primary" : "bg-transparent"
               )}>
                 <TabIcon size={18} />
               </div>
@@ -1060,9 +1092,9 @@ export const SiswaDashboard: React.FC = () => {
         })}
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ──────────────────────────────────────────────────────────── */}
       {/* MODAL GANTI PASSWORD                                              */}
-      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ──────────────────────────────────────────────────────────── */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
@@ -1134,14 +1166,32 @@ export const SiswaDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Onboarding Profile Edit Modal */}
-      {showOnboardingModal && siswaProfile && (
+      {/* Kartu Pelajar Digital Verified Fullscreen Modal */}
+      <SiswaCardModal
+        isOpen={showDigitalCardModal}
+        onClose={() => setShowDigitalCardModal(false)}
+        siswaProfile={siswaProfile}
+        user={user}
+        sekolahName={sekolahName}
+        dynamicLogoUrl={dynamicLogoUrl}
+        studentPhotoUrl={studentPhotoUrl}
+        studentInitials={studentInitials}
+        studentName={studentName}
+        currentClassName={currentClassName}
+        currentJurusan={currentJurusan}
+        currentNisn={currentNisn}
+        currentNik={currentNik}
+        studentCardConfigRes={studentCardConfigRes}
+      />
+
+      {/* Focused Per-Section Profile Edit Modal */}
+      {showOnboardingModal && (
         <SiswaOnboardingModal
           isOpen={showOnboardingModal}
           onClose={() => setShowOnboardingModal(false)}
-          siswaData={siswaProfile}
+          siswa={siswaProfile}
+          activeSection={activeSection}
           onSuccess={() => {
-            setShowOnboardingModal(false);
             refetchProfile();
           }}
         />
@@ -1149,3 +1199,6 @@ export const SiswaDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default SiswaDashboard;
+

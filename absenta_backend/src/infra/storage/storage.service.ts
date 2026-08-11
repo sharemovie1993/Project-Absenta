@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Readable, PassThrough } from 'stream';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand, CreateBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export type StorageDriverName = 'local' | 's3';
@@ -113,10 +113,27 @@ function buildPublicObjectUrl(publicBaseUrl: string, key: string): string {
   return `${base}/${encoded}`;
 }
 
-
-
 export class StorageService {
   private cachedS3: { cfg: S3Config; client: S3Client } | null = null;
+  private checkedBuckets = new Set<string>();
+
+  private async ensureBucketExists(s3: { cfg: S3Config; client: S3Client }): Promise<void> {
+    if (this.checkedBuckets.has(s3.cfg.bucket)) return;
+    try {
+      await s3.client.send(new HeadBucketCommand({ Bucket: s3.cfg.bucket }));
+      this.checkedBuckets.add(s3.cfg.bucket);
+    } catch {
+      try {
+        await s3.client.send(new CreateBucketCommand({ Bucket: s3.cfg.bucket }));
+        console.log(`[StorageService] MinIO S3 bucket "${s3.cfg.bucket}" created automatically.`);
+        this.checkedBuckets.add(s3.cfg.bucket);
+      } catch (err: any) {
+        console.error(`[StorageService] Auto-create MinIO bucket "${s3.cfg.bucket}" notice:`, err?.message || err);
+        // Fallback: mark checked anyway to avoid blocking execution
+        this.checkedBuckets.add(s3.cfg.bucket);
+      }
+    }
+  }
 
   getDriverName(): StorageDriverName {
     return buildS3Config() ? 's3' : 'local';
@@ -136,6 +153,7 @@ export class StorageService {
     const sizeBytes = buffer.length;
     const s3 = this.getS3();
     if (s3) {
+      await this.ensureBucketExists(s3);
       await s3.client.send(
         new PutObjectCommand({
           Bucket: s3.cfg.bucket,

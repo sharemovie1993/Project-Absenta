@@ -120,7 +120,7 @@ export const KepalaSekolahDashboard: React.FC = () => {
           className={cn(
             "flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
             activeTab === 'kbm'
-              ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-white border border-slate-200/40 dark:border-slate-700/50"
+              ? "bg-white dark:bg-slate-800 shadow-sm text-primary dark:text-white border border-slate-200/40 dark:border-slate-700/50"
               : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
           )}
         >
@@ -211,7 +211,7 @@ export const KepalaSekolahDashboard: React.FC = () => {
                   )}
                   <Button 
                     variant="ghost" 
-                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-indigo-600"
+                    className="w-full h-8 text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-primary"
                     onClick={() => navigate('/notifications')}
                   >
                      Lihat Semua Eskalasi

@@ -49,7 +49,7 @@ export function useSystemConfig() {
     supportEmail: config?.support_email || 'support@absenta.id',
     supportPhone: config?.support_phone || '',
     footerText: config?.footer_text || '© Absenta. All rights reserved.',
-    primaryColor: config?.primary_color || '#4f46e5',
+    primaryColor: config?.primary_color || '#2563eb',
   }), [config]);
 
   return {

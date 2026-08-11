@@ -11,8 +11,8 @@ const StatCard: React.FC<StatCardProps> = ({
   color = 'blue'
 }) => {
   const colorSchemes = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
+    blue: 'bg-primary/10 text-primary dark:bg-primary/20',
+    indigo: 'bg-primary/10 text-primary dark:bg-primary/20',
     emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
     orange: 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400',
     purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',

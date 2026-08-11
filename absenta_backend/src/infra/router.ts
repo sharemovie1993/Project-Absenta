@@ -134,6 +134,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { authRoutes } = await import('../modules/auth/routes/auth.routes');
         await fastify.register(authRoutes, { prefix: '/auth' });
 
+        const { wilayahRoutes } = await import('../modules/wilayah/routes/wilayah.routes');
+        await fastify.register(wilayahRoutes, { prefix: '/wilayah' });
+
         // Public Kalender iCal Export (Sync for Google/Apple Calendar)
         fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
           const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');

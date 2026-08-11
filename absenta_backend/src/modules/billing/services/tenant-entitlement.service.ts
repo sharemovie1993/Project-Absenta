@@ -59,7 +59,7 @@ export const tenantEntitlementService = {
       orderBy: { end_date: 'desc' },
     });
 
-    const featureSet = new Set<string>(['CORE']);
+    const featureSet = new Set<string>(['CORE', 'WHATSAPP', 'ATTENDANCE', 'ACADEMIC', 'KESISWAAN', 'KURIKULUM']);
     for (const sub of subscriptions) {
       const plan = (sub as any).Plan;
       

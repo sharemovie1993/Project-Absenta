@@ -168,6 +168,13 @@ export async function registerPlugins(fastify: any) {
     const raw = String((request.params && (request.params as any)['*']) || '');
     const subPath = raw.replace(/^\/+/, '');
     const key = `uploads/${subPath}`;
+
+    const fileExists = await storageService.exists(key);
+    if (!fileExists) {
+      reply.header('Access-Control-Allow-Origin', '*');
+      return reply.status(404).send({ success: false, message: 'File not found' });
+    }
+
     const ext = subPath.includes('.') ? subPath.split('.').pop()!.toLowerCase() : '';
     const contentType =
       ext === 'jpg' || ext === 'jpeg'

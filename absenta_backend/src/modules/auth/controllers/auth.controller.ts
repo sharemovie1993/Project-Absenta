@@ -1828,8 +1828,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         console.error('Failed to log impersonation activity:', err);
       }
 
-      reply.status(200);
-      return {
+      return reply.status(200).send({
         success: true,
         message: 'Impersonation successful',
         data: {
@@ -1837,11 +1836,55 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
           token,
           refreshToken,
         }
-      };
+      });
     } catch (error: any) {
       console.error('Error in impersonation controller:', error);
-      reply.status(500);
-      return { success: false, message: error.message || 'Internal server error' };
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async changePassword(request: any, reply: any) {
+    try {
+      const userPayload = request.user;
+      if (!userPayload || !userPayload.id) {
+        return reply.status(401).send({ success: false, message: 'Tidak terotentikasi' });
+      }
+
+      const { current_password, new_password } = request.body || {};
+      if (!current_password || !new_password) {
+        return reply.status(400).send({ success: false, message: 'Password lama dan password baru wajib diisi' });
+      }
+
+      if (String(new_password).length < 6) {
+        return reply.status(400).send({ success: false, message: 'Password baru minimal 6 karakter' });
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userPayload.id }
+      });
+
+      if (!dbUser || !dbUser.password) {
+        return reply.status(404).send({ success: false, message: 'Pengguna tidak ditemukan' });
+      }
+
+      const isMatch = await bcrypt.compare(current_password, dbUser.password);
+      if (!isMatch) {
+        return reply.status(400).send({ success: false, message: 'Password lama yang Anda masukkan salah' });
+      }
+
+      const hashedPassword = await bcrypt.hash(new_password, 10);
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: { password: hashedPassword }
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Password berhasil diperbarui!'
+      });
+    } catch (error: any) {
+      console.error('Error in changePassword controller:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Gagal memperbarui password' });
     }
   }
 };

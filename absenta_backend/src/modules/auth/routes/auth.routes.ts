@@ -183,4 +183,10 @@ export async function authRoutes(fastify: any) {
     preHandler: [requireCapability('core.auth.logout'), determineDataScope()],
     handler: authController.logout.bind(authController),
   });
+
+  // Change Password - requires authentication
+  fastify.post('/change-password', {
+    preHandler: [determineDataScope()],
+    handler: authController.changePassword.bind(authController),
+  });
 }

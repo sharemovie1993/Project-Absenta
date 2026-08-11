@@ -69,8 +69,9 @@ function MainLayoutContent() {
     return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
   }, []);
 
-  const isPortalMode = dashboardMode === 'portal';
-  const isHideSidebarForPortal = isPortalMode;
+  const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
+  const isPortalMode = dashboardMode === 'portal' || isSiswa;
+  const isHideSidebarForPortal = isPortalMode || isSiswa;
 
   const configQuery = useQuery({
     queryKey: ['system-config','active'],

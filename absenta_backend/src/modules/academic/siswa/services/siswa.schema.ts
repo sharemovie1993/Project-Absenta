@@ -92,6 +92,13 @@ export const createSiswaSchema = z.object({
     const num = Number(val);
     return isNaN(num) ? null : num;
   }),
+  agama: coerceString,
+  hobi: coerceString,
+  cita_cita: coerceString,
+  is_osis: z.union([z.boolean(), z.string(), z.number()]).optional().default(false).transform(val => Boolean(val)),
+  is_mpk: z.union([z.boolean(), z.string(), z.number()]).optional().default(false).transform(val => Boolean(val)),
+  ekskul_1: coerceString,
+  ekskul_2: coerceString,
   kebutuhan_khusus: coerceString,
   penerima_kps: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
     if (typeof val === 'boolean') return val;

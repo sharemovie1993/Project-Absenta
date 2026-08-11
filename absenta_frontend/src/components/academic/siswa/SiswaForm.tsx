@@ -313,6 +313,13 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         nik: fetchedSiswa.nik || '',
         tinggi_badan: fetchedSiswa.tinggi_badan ?? '',
         berat_badan: fetchedSiswa.berat_badan ?? '',
+        agama: (fetchedSiswa as any).agama || '',
+        hobi: (fetchedSiswa as any).hobi || '',
+        cita_cita: (fetchedSiswa as any).cita_cita || '',
+        is_osis: !!(fetchedSiswa as any).is_osis,
+        is_mpk: !!(fetchedSiswa as any).is_mpk,
+        ekskul_1: (fetchedSiswa as any).ekskul_1 || '',
+        ekskul_2: (fetchedSiswa as any).ekskul_2 || '',
         foto: fetchedSiswa.foto || '',
         nama_ayah: fetchedSiswa.nama_ayah || '',
         nik_ayah: (fetchedSiswa as any).nik_ayah || '',
@@ -354,6 +361,8 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 
       const payload = {
         ...data,
+        tinggi_badan: data.tinggi_badan === '' || data.tinggi_badan === null || data.tinggi_badan === undefined ? undefined : Number(data.tinggi_badan),
+        berat_badan: data.berat_badan === '' || data.berat_badan === null || data.berat_badan === undefined ? undefined : Number(data.berat_badan),
         tanggal_lahir: data.tanggal_lahir || undefined,
         tanggal_keluar: data.tanggal_keluar || undefined,
         alasan_keluar: data.alasan_keluar || undefined,

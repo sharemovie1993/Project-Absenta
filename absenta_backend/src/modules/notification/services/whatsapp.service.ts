@@ -701,6 +701,30 @@ Silakan lakukan perpanjangan agar layanan tidak terhenti.
     event?: string;
   }) {
     try {
+      const eventName = data.event || 'GENERAL';
+      const relatedId = data.relatedId || null;
+
+      if (relatedId) {
+        const existing = await this.prisma.notificationLog.findFirst({
+          where: {
+            event: eventName,
+            related_id: relatedId,
+            recipient: data.recipient,
+          },
+        });
+
+        if (existing) {
+          await this.prisma.notificationLog.update({
+            where: { id: existing.id },
+            data: {
+              status: data.status,
+              message: data.message,
+            },
+          });
+          return;
+        }
+      }
+
       await this.prisma.notificationLog.create({
         data: {
           tenant_id: data.tenantId,
@@ -708,9 +732,9 @@ Silakan lakukan perpanjangan agar layanan tidak terhenti.
           recipient: data.recipient,
           message: data.message,
           status: data.status,
-          related_id: data.relatedId,
+          related_id: relatedId,
           subject: data.subject,
-          event: data.event || 'GENERAL',
+          event: eventName,
         },
       });
     } catch (error) {

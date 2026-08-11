@@ -2,14 +2,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
-import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School } from 'lucide-react';
+import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School, Palette, Shuffle, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { getGuruList } from '@/api/academic/guru.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchActiveSystemConfig, saveSystemConfig } from '@/services/systemConfig';
+import { fetchActiveSystemConfig, saveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { getKelasForDropdown } from '@/api/dropdown.api';
 
 /**
@@ -31,6 +32,15 @@ export const TenantSettings: React.FC = () => {
 
   // BPBK Settings state
   const [requireApproval, setRequireApproval] = useState(true);
+
+  // Theme / Branding color state
+  const [themeColors, setThemeColors] = useState({
+    primary_color: '#2563EB',
+    secondary_color: '#1d4ed8',
+    accent_color: '#3b82f6',
+  });
+  const [hoveredPresetId, setHoveredPresetId] = useState<string | null>(null);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   // Shift states
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -259,10 +269,15 @@ export const TenantSettings: React.FC = () => {
 
         setHeaderLines(parsed);
 
-        // Fetch BPBK configuration
+        // Fetch BPBK + Branding configuration
         const configData = await fetchActiveSystemConfig();
         if (configData) {
           setRequireApproval(configData.bpbk_summons_require_principal_approval ?? true);
+          setThemeColors({
+            primary_color: configData.primary_color || '#2563EB',
+            secondary_color: configData.secondary_color || '#1d4ed8',
+            accent_color: configData.accent_color || '#3b82f6',
+          });
         }
       }
     } catch (error) {
@@ -1138,7 +1153,19 @@ export const TenantSettings: React.FC = () => {
             </div>
           )}
         </CardContent>
-      </Card>      {/* ⏰ SHIFT & JAM PELAJARAN KBM CARD */}
+      </Card>
+
+      {/* 🎨 TEMA WARNA SEKOLAH CARD */}
+      <TenantThemeCard
+        themeColors={themeColors}
+        setThemeColors={setThemeColors}
+        hoveredPresetId={hoveredPresetId}
+        setHoveredPresetId={setHoveredPresetId}
+        savingTheme={savingTheme}
+        setSavingTheme={setSavingTheme}
+      />
+
+      {/* ⏰ SHIFT & JAM PELAJARAN KBM CARD */}
       <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
           <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
@@ -1268,3 +1295,249 @@ export const TenantSettings: React.FC = () => {
 };
 
 export default TenantSettings;
+
+/* ─────────────────────────────────────────────────────────
+   TenantThemeCard — Komponen Preset Warna untuk Tenant Admin
+───────────────────────────────────────────────────────── */
+
+interface ThemeColors {
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+}
+
+interface TenantThemeCardProps {
+  themeColors: ThemeColors;
+  setThemeColors: React.Dispatch<React.SetStateAction<ThemeColors>>;
+  hoveredPresetId: string | null;
+  setHoveredPresetId: React.Dispatch<React.SetStateAction<string | null>>;
+  savingTheme: boolean;
+  setSavingTheme: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+interface ColorPreset {
+  id: string;
+  name: string;
+  emoji: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+}
+
+const THEME_PRESETS: ColorPreset[] = [
+  { id: 'royal-blue',   name: 'Royal Blue',    emoji: '🔵', primary: '#2563EB', secondary: '#1d4ed8', accent: '#3b82f6' },
+  { id: 'deep-purple',  name: 'Deep Purple',   emoji: '🟣', primary: '#7c3aed', secondary: '#6d28d9', accent: '#a855f7' },
+  { id: 'rose-red',     name: 'Rose Red',      emoji: '🩷', primary: '#e11d48', secondary: '#be123c', accent: '#f43f5e' },
+  { id: 'emerald',      name: 'Emerald Green', emoji: '🟢', primary: '#059669', secondary: '#047857', accent: '#10b981' },
+  { id: 'teal-ocean',   name: 'Teal Ocean',    emoji: '🩵', primary: '#0891b2', secondary: '#0e7490', accent: '#22d3ee' },
+  { id: 'amber-gold',   name: 'Amber Gold',    emoji: '🟠', primary: '#d97706', secondary: '#b45309', accent: '#f59e0b' },
+  { id: 'pink-coral',   name: 'Pink Coral',    emoji: '🌸', primary: '#db2777', secondary: '#be185d', accent: '#ec4899' },
+  { id: 'forest-green', name: 'Forest Green',  emoji: '🌿', primary: '#16a34a', secondary: '#15803d', accent: '#22c55e' },
+  { id: 'navy-slate',   name: 'Navy Slate',    emoji: '🌊', primary: '#334155', secondary: '#1e293b', accent: '#64748b' },
+  { id: 'crimson',      name: 'Crimson',       emoji: '🔴', primary: '#dc2626', secondary: '#b91c1c', accent: '#ef4444' },
+  { id: 'sunshine',     name: 'Sunshine',      emoji: '🟡', primary: '#ca8a04', secondary: '#a16207', accent: '#eab308' },
+  { id: 'ice-cyan',     name: 'Ice Cyan',      emoji: '🧊', primary: '#0284c7', secondary: '#0369a1', accent: '#38bdf8' },
+];
+
+function getActivePreset(colors: ThemeColors): string | null {
+  return THEME_PRESETS.find(
+    (p) =>
+      p.primary.toLowerCase() === (colors.primary_color || '').toLowerCase() &&
+      p.secondary.toLowerCase() === (colors.secondary_color || '').toLowerCase() &&
+      p.accent.toLowerCase() === (colors.accent_color || '').toLowerCase()
+  )?.id ?? null;
+}
+
+const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
+  themeColors,
+  setThemeColors,
+  hoveredPresetId,
+  setHoveredPresetId,
+  savingTheme,
+  setSavingTheme,
+}) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const activePresetId = getActivePreset(themeColors);
+
+  const applyPreset = (preset: ColorPreset) => {
+    setThemeColors({
+      primary_color: preset.primary,
+      secondary_color: preset.secondary,
+      accent_color: preset.accent,
+    });
+  };
+
+  const applyRandom = () => {
+    const pool = THEME_PRESETS.filter((p) => p.id !== activePresetId);
+    applyPreset(pool[Math.floor(Math.random() * pool.length)]);
+  };
+
+  const handleSaveTheme = async () => {
+    setSavingTheme(true);
+    try {
+      await saveSystemConfig({
+        tenant_id: user?.tenant_id,
+        primary_color: themeColors.primary_color,
+        secondary_color: themeColors.secondary_color,
+        accent_color: themeColors.accent_color,
+      });
+
+      // 1. Update localStorage cache agar ThemeProvider tidak reset ke warna lama
+      try {
+        const raw = localStorage.getItem('active_system_config');
+        const existing = raw ? JSON.parse(raw) : {};
+        const updated = {
+          ...existing,
+          primary_color: themeColors.primary_color,
+          secondary_color: themeColors.secondary_color,
+          accent_color: themeColors.accent_color,
+        };
+        localStorage.setItem('active_system_config', JSON.stringify(updated));
+      } catch { /* ignore */ }
+
+      // 2. Apply ke DOM via applyBrandingFromConfig (bukan langsung setProperty)
+      //    agar semua logika dark-mode-awareness dihormati
+      applyBrandingFromConfig({
+        primary_color: themeColors.primary_color,
+        secondary_color: themeColors.secondary_color,
+        accent_color: themeColors.accent_color,
+      });
+
+      // 3. Invalidate React Query cache agar semua hook useSystemConfig re-fetch
+      queryClient.invalidateQueries({ queryKey: ['system-config'] });
+
+      toast.success('Tema warna sekolah berhasil disimpan! 🎨');
+    } catch (err) {
+      toast.error('Gagal menyimpan tema warna.');
+    } finally {
+      setSavingTheme(false);
+    }
+  };
+
+  // Preview: hovered preset takes priority over saved colors
+  const previewPrimary   = hoveredPresetId
+    ? (THEME_PRESETS.find(p => p.id === hoveredPresetId)?.primary   ?? themeColors.primary_color)
+    : themeColors.primary_color;
+  const previewSecondary = hoveredPresetId
+    ? (THEME_PRESETS.find(p => p.id === hoveredPresetId)?.secondary ?? themeColors.secondary_color)
+    : themeColors.secondary_color;
+  const previewAccent    = hoveredPresetId
+    ? (THEME_PRESETS.find(p => p.id === hoveredPresetId)?.accent    ?? themeColors.accent_color)
+    : themeColors.accent_color;
+
+  return (
+    <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+      <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
+        <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+          <div className="p-2 bg-primary/10 rounded-xl text-primary">
+            <Palette className="h-4 w-4" />
+          </div>
+          Tema Warna Aplikasi Sekolah
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 sm:p-8 space-y-6">
+
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pilih Preset Warna</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Warna ini akan diterapkan di seluruh tampilan aplikasi untuk sekolah Anda.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={applyRandom}
+            className="h-8 px-3 text-xs font-bold flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-solid hover:border-primary hover:text-primary transition-all text-slate-500"
+          >
+            <Shuffle size={13} />
+            Acak Tema
+          </button>
+        </div>
+
+        {/* Preset Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          {THEME_PRESETS.map((preset) => {
+            const isActive = activePresetId === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                onMouseEnter={() => setHoveredPresetId(preset.id)}
+                onMouseLeave={() => setHoveredPresetId(null)}
+                title={preset.name}
+                className={cn(
+                  'relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 text-[10px] font-bold transition-all duration-150 cursor-pointer select-none',
+                  isActive
+                    ? 'border-slate-800 dark:border-white shadow-md scale-105'
+                    : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm'
+                )}
+                style={{ background: isActive ? preset.primary + '15' : undefined }}
+              >
+                <div className="flex gap-0.5">
+                  <span className="w-5 h-5 rounded-l-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.primary }} />
+                  <span className="w-5 h-5 border-y border-white/30 shadow-sm"              style={{ backgroundColor: preset.secondary }} />
+                  <span className="w-5 h-5 rounded-r-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.accent }} />
+                </div>
+                <span className="text-slate-600 dark:text-slate-400 leading-tight text-center">
+                  {preset.emoji} {preset.name}
+                </span>
+                {isActive && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-800 dark:bg-white flex items-center justify-center shadow">
+                    <Check size={9} className="text-white dark:text-slate-900" strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Live Preview Banner */}
+        <div
+          className="rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm transition-all duration-300 overflow-hidden relative"
+          style={{ background: `linear-gradient(135deg, ${previewPrimary}, ${previewSecondary})` }}
+        >
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl" style={{ backgroundColor: previewAccent }} />
+          <div className="relative z-10 space-y-0.5">
+            <p className="text-xs font-black text-white/90 uppercase tracking-wider">Pratinjau Tema Sekolah</p>
+            <p className="text-[10px] text-white/70 font-medium">Warna ini akan tampil di seluruh dashboard &amp; modul aplikasi</p>
+          </div>
+          <div className="relative z-10 flex items-center gap-2">
+            <span
+              className="px-2.5 py-1 rounded-full text-[10px] font-black border border-white/30"
+              style={{ backgroundColor: previewAccent + '33', color: '#fff' }}
+            >
+              Aktif
+            </span>
+            <span
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black"
+              style={{ backgroundColor: previewAccent, color: '#fff' }}
+            >
+              AB
+            </span>
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={handleSaveTheme}
+            disabled={savingTheme}
+            className="flex items-center gap-2 font-bold"
+          >
+            {savingTheme ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Save size={15} />
+            )}
+            {savingTheme ? 'Menyimpan...' : 'Simpan Tema Warna'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+

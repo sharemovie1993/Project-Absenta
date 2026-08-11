@@ -11,7 +11,7 @@ export interface StatCardProps {
     isPositive: boolean;
   };
   loading?: boolean;
-  color?: 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'amber';
+  color?: 'primary' | 'blue' | 'indigo' | 'emerald' | 'orange' | 'purple' | 'rose' | 'amber';
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ 
@@ -21,11 +21,12 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon, 
   trend,
   loading,
-  color = 'blue'
+  color = 'primary'
 }) => {
   const colorSchemes = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
+    primary: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground',
+    blue: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground',
+    indigo: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground',
     emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
     orange: 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400',
     purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
@@ -68,13 +69,13 @@ export const StatCard: React.FC<StatCardProps> = ({
 
         {icon && (
           <div className={`flex-shrink-0 p-3 md:p-4 rounded-xl transition-transform group-hover:scale-110 group-hover:rotate-6 ${colorSchemes[color]}`}>
-            {React.cloneElement(icon as any, { size: 24, strokeWidth: 2.5 })}
+            {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2.5 })}
           </div>
         )}
       </div>
       
       {/* Subtle bottom accent line */}
-      <div className={`absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-300 ${colorSchemes[color].split(' ')[1]}`}></div>
+      <div className="absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-300 bg-primary"></div>
     </motion.div>
   );
 };

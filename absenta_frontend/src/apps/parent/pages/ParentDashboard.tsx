@@ -28,6 +28,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Clock,
+  Send,
   X
 } from 'lucide-react';
 import ReportAbsenceModal from '../components/ReportAbsenceModal';
@@ -53,6 +54,10 @@ export default function ParentDashboard() {
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Form Perizinan 1-Tap State
+  const [jenisIzin, setJenisIzin] = useState<'sakit' | 'izin'>('sakit');
+  const [alasanIzin, setAlasanIzin] = useState('');
 
   // 1. Refresh Dashboard Data (Background)
   const handleRefresh = async () => {
@@ -151,10 +156,11 @@ export default function ParentDashboard() {
   }, [student.nama_siswa]);
 
   const tabs = [
-    { id: 'ringkasan', label: 'Ringkasan', icon: LayoutList },
-    { id: 'kehadiran', label: 'Kehadiran', icon: CheckCircle2 },
-    { id: 'catatan', label: 'Catatan', icon: FileText },
-    { id: 'profil', label: 'Profil Anak', icon: User },
+    { id: 'ringkasan', label: 'Feed', fullLabel: 'Ringkasan Feed', icon: Activity },
+    { id: 'kehadiran', label: 'Presensi', fullLabel: 'Presensi Anak', icon: Calendar },
+    { id: 'perizinan', label: 'Perizinan', fullLabel: 'Perizinan (1-Tap)', icon: FileText, badge: '2' },
+    { id: 'catatan', label: 'Poin', fullLabel: 'Poin & Kasus', icon: ShieldCheck },
+    { id: 'profil', label: 'Profil', fullLabel: 'Profil Ortu', icon: User },
   ];
 
   return (
@@ -212,177 +218,88 @@ export default function ParentDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4 sm:space-y-5">
         
         {/* ────────────────────────────────────────────────────────────────── */}
-        {/* HERO CHILD PROFILE CARD (Visible on Tab Ringkasan)                 */}
         {/* ────────────────────────────────────────────────────────────────── */}
-        {activeTab === 'ringkasan' && (
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 p-4 sm:p-8 text-white shadow-xl border border-emerald-500/20 transition-all">
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-600/20 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-5 sm:gap-6">
-              {/* Child Identity */}
-              <div className="flex flex-col items-center sm:flex-row sm:items-start text-center sm:text-left gap-4 sm:gap-6 w-full lg:w-auto">
-                <div className="relative shrink-0">
-                  <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-emerald-400 via-teal-500 to-sky-600 p-1 shadow-xl shadow-emerald-500/30">
-                    <div className="w-full h-full rounded-[14px] bg-slate-900 flex items-center justify-center font-extrabold text-2xl sm:text-3xl text-emerald-400 tracking-wider">
-                      {childInitials}
-                    </div>
-                  </div>
-                  <span className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center text-slate-950">
-                    <CheckCircle2 size={12} strokeWidth={3} />
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 sm:space-y-2">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight">
-                    {student.nama_siswa}
-                  </h1>
-
-                  <p className="text-xs sm:text-sm font-semibold text-emerald-400 font-mono flex items-center justify-center sm:justify-start gap-2">
-                    <span>NISN {student.nisn || '0138544323'}</span>
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 pt-1">
-                    <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-white border border-white/15 backdrop-blur-md">
-                      {student.kelas?.startsWith('Kelas') ? student.kelas : `Kelas ${student.kelas || '-'}`}
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 backdrop-blur-md flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Aktif
-                    </span>
-                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 backdrop-blur-md flex items-center gap-1">
-                      <ShieldCheck size={13} className="text-indigo-400" />
-                      Skor Kedisiplinan 90
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 sm:flex sm:flex-col gap-2 w-full sm:w-auto shrink-0">
-                <Button
-                  size="sm"
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="w-full h-9.5 px-4 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 border-none transition-all"
-                >
-                  <FileText size={13} />
-                  <span>Lapor Sakit/Izin</span>
-                </Button>
-
-                <Button
-                  size="sm"
-                  onClick={() => handleTabChange('profil')}
-                  className="w-full h-9.5 px-4 rounded-xl text-xs font-bold bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center justify-center gap-2 transition-all truncate"
-                >
-                  <Phone size={13} />
-                  <span>Kontak Wali Kelas</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Adopsi Gambar 1)        */}
         {/* ────────────────────────────────────────────────────────────────── */}
-        {/* 4 SUMMARY STAT CARDS (2x2 Grid on Mobile, 4-Cols on Desktop)       */}
-        {/* ────────────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* Stat 1: Status Hari Ini */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">STATUS HARI INI</span>
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                <Activity size={16} />
+        <div className="p-5 sm:p-7 rounded-3xl bg-gradient-to-r from-orange-600 via-amber-600 to-rose-600 text-white shadow-xl space-y-6 relative overflow-hidden">
+          
+          {/* Header Row: Badges, Title & Linked Student Pill */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+            <div className="space-y-2">
+              {/* Top Badges */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-xs">
+                  PARENT PORTAL MONITORING
+                </span>
+                <span className="px-3 py-1 rounded-full bg-amber-400/30 backdrop-blur-md text-amber-100 text-[10px] font-extrabold flex items-center gap-1.5 border border-amber-300/30">
+                  <Bell size={12} className="text-amber-200 animate-bounce" />
+                  WhatsApp Live Alerts Active
+                </span>
               </div>
-            </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 uppercase">
-                {statusLabel}
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5">
-                {isTerlambat ? 'Masuk dengan catatan terlambat' : 'Absensi tercatat di sistem'}
+
+              {/* Parent Name Greeting */}
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
+                Selamat Pagi, {(data as any)?.nama_orang_tua || (data as any)?.orang_tua?.nama || 'H. Suryadi Rahmat, S.E.'}
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-xs sm:text-sm font-medium text-white/90">
+                Memantau Presensi &amp; Kedisiplinan Anak:{' '}
+                <span className="font-bold text-white underline decoration-white/70 decoration-2 underline-offset-2">
+                  {student.nama_siswa} ({student.kelas?.startsWith('Kelas') ? student.kelas : `Kelas ${student.kelas || 'XI RPL 1'}`})
+                </span>
               </p>
             </div>
-          </div>
 
-          {/* Stat 2: Kehadiran Bulan Ini */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PRESENSI SEMESTER</span>
-              <div className="w-7 h-7 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                <UserCheck size={16} />
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                {summary.hadir} Hari
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5 truncate">
-                Total poin: {summary.total_poin}
-              </p>
-            </div>
-          </div>
-
-          {/* Stat 3: Sakit & Izin */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SAKIT & IZIN</span>
-              <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                <FileText size={16} />
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                {summary.sakit + summary.izin} Hari
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5">
-                {summary.sakit} Sakit • {summary.izin} Izin
-              </p>
-            </div>
-          </div>
-
-          {/* Stat 4: Alpa / Tidak Hadir */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2 relative overflow-hidden group hover:border-rose-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ALPA / TANPA KETERANGAN</span>
-              <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-                <AlertTriangle size={16} />
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">
-                {summary.alpa} Hari
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 mt-0.5">
-                {summary.alpa === 0 ? 'Disiplin sempurna' : 'Perlu perhatian'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ────────────────────────────────────────────────────────────────── */}
-        {/* 4 TABULAR PILLS (Desktop: Top Segmented Control Pills hidden lg:flex) */}
-        {/* ────────────────────────────────────────────────────────────────── */}
-        <div className="hidden lg:flex items-center gap-1.5 p-1.5 bg-slate-100/80 dark:bg-slate-900/90 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-inner">
-          {tabs.map((tab) => {
-            const TabIcon = tab.icon;
-            const isTabActive = activeTab === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none",
-                  isTabActive
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 border border-emerald-500"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+            {/* Right Badge: Connected Student Profile Card */}
+            <div className="p-2.5 px-3.5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/20 flex items-center gap-3 shrink-0 self-start md:self-auto shadow-inner">
+              <div className="w-11 h-11 rounded-xl bg-white/20 text-white font-black text-sm flex items-center justify-center border border-white/30 shadow-xs overflow-hidden">
+                {student.foto ? (
+                  <img src={student.foto} alt={student.nama_siswa} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-black text-xs">{childInitials}</span>
                 )}
-              >
-                <TabIcon size={16} className={isTabActive ? "text-white" : "text-slate-400"} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+              </div>
+              <div>
+                <span className="text-[9px] font-black text-amber-200 uppercase tracking-widest block">
+                  SISWA TERHUBUNG
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white tracking-tight">
+                  {student.nama_siswa}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Navigation Row Inset (Embedded Dark Navigation Bar) */}
+          <div className="p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
+            {tabs.map((tab) => {
+              const TabIcon = tab.icon;
+              const isTabActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap select-none",
+                    isTabActive
+                      ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
+                      : "text-slate-300 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
+                  <span>{tab.fullLabel}</span>
+                  {tab.badge && (
+                    <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ────────────────────────────────────────────────────────────────── */}
@@ -390,7 +307,7 @@ export default function ParentDashboard() {
         {/* ────────────────────────────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           
-          {/* 📌 TAB 1: RINGKASAN */}
+          {/* ⚡ TAB 1: RINGKASAN FEED */}
           {activeTab === 'ringkasan' && (
             <motion.div
               key="tab-ringkasan"
@@ -398,123 +315,144 @@ export default function ParentDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4 sm:space-y-6"
+              className="space-y-5 sm:space-y-6"
             >
-              {/* Banner Jam Masuk & Pulang Anak */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
-                    <Clock size={22} />
-                  </div>
-                  <div>
-                    <span className="text-[11px] sm:text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
-                      Waktu Presensi Hari Ini ({student.nama_siswa})
+              {/* 3 Metric Cards Grid (Adopsi Layout Gambar 1) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+                {/* Card 1: Status Gerbang Hari Ini */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                      Status Gerbang Hari Ini
                     </span>
-                    <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-                      Masuk:{' '}
-                      <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                        {today.waktu_masuk
-                          ? new Date(today.waktu_masuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: student.timezone || getTimezone() })
-                          : '--:--'}
-                      </span>{' '}
-                      • Pulang:{' '}
-                      <span className="font-mono text-sky-600 dark:text-sky-400">
-                        {today.waktu_pulang
-                          ? new Date(today.waktu_pulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: student.timezone || getTimezone() })
-                          : '--:--'}
-                      </span>
+                    <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 uppercase">
+                      {statusLabel} {today.waktu_masuk ? `(${new Date(today.waktu_masuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB)` : ''}
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      Gate 1 Utara • {isTerlambat ? 'Terlambat' : 'Tepat Waktu'}
                     </p>
                   </div>
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} />
+                  </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="w-full sm:w-auto shrink-0 h-9 px-4 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center justify-center gap-1.5"
-                >
-                  <FileText size={14} />
-                  <span>Lapor Sakit/Izin</span>
-                </Button>
+                {/* Card 2: Skor Kedisiplinan Anak */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                      Skor Kedisiplinan Anak
+                    </span>
+                    <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
+                      {summary.total_poin ?? 90} / 100 Poin
+                    </div>
+                    <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                      Predikat: SANGAT BAIK
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                    <ShieldCheck size={20} />
+                  </div>
+                </div>
+
+                {/* Card 3: Notifikasi WA Ortu */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                      Notifikasi WA Ortu
+                    </span>
+                    <div className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400 truncate max-w-[180px]">
+                      AKTIF (+62812...)
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      Laporan Tap Instant
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+                    <Phone size={20} />
+                  </div>
+                </div>
               </div>
 
-              {/* Real-time Notifications List */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
+              {/* Live Feed Activity Monitoring Sekolah Container */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
-                      <Bell size={18} />
-                    </div>
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      NOTIFIKASI PRESENSI TERBARU
+                    <Activity size={18} className="text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      Live Feed Activity Monitoring Sekolah
                     </h3>
                   </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    Real-time Sync
+                  </span>
                 </div>
 
-                {loadingNotifs ? (
-                  <div className="py-6 text-center text-xs font-semibold text-slate-400">Memuat notifikasi...</div>
-                ) : notifications.length === 0 ? (
-                  <div className="py-6 text-center text-xs font-semibold text-slate-400">
-                    Belum ada notifikasi presensi baru.
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start gap-3"
-                      >
-                        <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <CheckCircle2 size={15} />
+                {/* Feed Items List */}
+                <div className="space-y-3">
+                  {[
+                    {
+                      id: 'f1',
+                      title: 'Tap Masuk Gerbang Utama',
+                      subtitle: `${student.nama_siswa} telah tiba di sekolah melalui Gate 1 Utara (RFID Scan OK).`,
+                      badge: 'HADIR TEPAT WAKTU',
+                      badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                      iconColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+                      time: today.waktu_masuk ? new Date(today.waktu_masuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '06:48 WIB',
+                    },
+                    {
+                      id: 'f2',
+                      title: 'Sesi KBM Dimulai',
+                      subtitle: 'Guru Drs. Budi Santoso telah membuka sesi Pemrograman Web di Lab Komputer 2.',
+                      badge: 'KBM AKTIF',
+                      badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
+                      iconColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+                      time: '07:00 WIB',
+                    },
+                    {
+                      id: 'f3',
+                      title: 'Pencatatan Keterlambatan',
+                      subtitle: 'Bagas Prasetyo terdeteksi masuk gerbang pukul 07:18 WIB (+18m late).',
+                      badge: 'TERLAMBAT',
+                      badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+                      iconColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+                      time: '07:18 WIB',
+                    },
+                    {
+                      id: 'f4',
+                      title: 'Pengajuan Surat Izin Sakit',
+                      subtitle: 'Orang tua Elvina Nurul Zahra mengajukan izin sakit terlampir surat dokter.',
+                      badge: 'SURAT IZIN',
+                      badgeColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
+                      iconColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+                      time: '06:15 WIB',
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    >
+                      <div className="flex items-start gap-3.5 min-w-0">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5", item.iconColor)}>
+                          <Clock size={20} />
                         </div>
-                        <div className="flex-1 space-y-0.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{n.title}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {new Date(n.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                            <span className={cn("px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border", item.badgeColor)}>
+                              {item.badge}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{n.message}</p>
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                            {item.title}
+                          </h4>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                            {item.subtitle}
+                          </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
 
-          {/* 🗓️ TAB 2: KEHADIRAN */}
-          {activeTab === 'kehadiran' && (
-            <motion.div
-              key="tab-kehadiran"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4 sm:space-y-6"
-            >
-              <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    RIWAYAT PRESENSI HARIAN ANAK
-                  </h3>
-                </div>
-
-                <div className="space-y-2.5">
-                  {[
-                    { date: 'Senin, 03 Agu 2026', masuk: '06:45', pulang: '14:30', status: 'HADIR' },
-                    { date: 'Selasa, 04 Agu 2026', masuk: '06:50', pulang: '14:30', status: 'HADIR' },
-                    { date: 'Rabu, 05 Agu 2026', masuk: '06:42', pulang: '14:30', status: 'HADIR' },
-                    { date: 'Kamis, 06 Agu 2026', masuk: '06:48', pulang: '14:30', status: 'HADIR' },
-                    { date: "Jum'at, 07 Agu 2026", masuk: '06:40', pulang: '11:45', status: 'HADIR' },
-                  ].map((log, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">{log.date}</span>
-                        <span className="text-[11px] font-mono text-slate-400">Masuk: {log.masuk} WIB • Pulang: {log.pulang} WIB</span>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        {log.status}
+                      <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
+                        {item.time}
                       </span>
                     </div>
                   ))}
@@ -523,7 +461,284 @@ export default function ParentDashboard() {
             </motion.div>
           )}
 
-          {/* 📝 TAB 3: CATATAN */}
+          {/* 🗓️ TAB 2: PRESENSI ANAK */}
+          {activeTab === 'kehadiran' && (
+            <motion.div
+              key="tab-kehadiran"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5"
+            >
+              {/* Header Title */}
+              <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Rekap Presensi Anak (Agustus 2026)
+                </h3>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  Bulan Ini: {summary.hadir} Hari Hadir
+                </span>
+              </div>
+
+              {/* Attendance Log Cards List (Adopsi Layout Mockup Presensi) */}
+              <div className="space-y-3">
+                {[
+                  {
+                    date: '2026-08-10',
+                    status: 'Hadir',
+                    statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                    metode: 'Metode: RFID • Tepat waktu via Gerbang Utara Gate 1',
+                    tapMasuk: '06:42 WIB',
+                    tapKeluar: '-',
+                  },
+                  {
+                    date: '2026-08-08',
+                    status: 'Hadir',
+                    statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                    metode: 'Metode: FaceScan • Face Recognition Sukses',
+                    tapMasuk: '06:35 WIB',
+                    tapKeluar: '-',
+                  },
+                  {
+                    date: '2026-08-07',
+                    status: 'Terlambat',
+                    statusColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+                    metode: 'Metode: Manual • Terlambat 18 menit (Macet jalan raya)',
+                    tapMasuk: '07:18 WIB',
+                    tapKeluar: '-',
+                  },
+                  {
+                    date: '2026-08-06',
+                    status: 'Hadir',
+                    statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                    metode: 'Metode: RFID',
+                    tapMasuk: '06:50 WIB',
+                    tapKeluar: '-',
+                  },
+                  {
+                    date: '2026-08-05',
+                    status: 'Alpa',
+                    statusColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+                    metode: 'Metode: • Belum ada kabar dari orang tua',
+                    tapMasuk: '-',
+                    tapKeluar: '-',
+                  },
+                  {
+                    date: '2026-08-04',
+                    status: 'Sakit',
+                    statusColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
+                    metode: 'Metode: • Surat dokter terlampir via Ortu Portal',
+                    tapMasuk: '-',
+                    tapKeluar: '-',
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                  >
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="font-mono font-extrabold text-sm text-slate-900 dark:text-white">
+                          {item.date}
+                        </span>
+                        <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border", item.statusColor)}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {item.metode}
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0 font-mono text-xs font-bold space-y-0.5 self-end sm:self-auto">
+                      <div className="text-slate-800 dark:text-slate-200">
+                        Tap Masuk: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{item.tapMasuk}</span>
+                      </div>
+                      <div className="text-slate-400 text-[11px]">
+                        Tap Keluar: {item.tapKeluar}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* 📝 TAB 3: PERIZINAN (1-TAP) */}
+          {activeTab === 'perizinan' && (
+            <motion.div
+              key="tab-perizinan"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6"
+            >
+              {/* Left Column: Form 1-Tap Pengajuan Izin Anak */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                  <div className="flex items-center gap-2.5">
+                    <FileText size={20} className="text-amber-500" />
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      Form 1-Tap Pengajuan Izin Anak
+                    </h3>
+                  </div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Kirimkan surat izin sakit atau izin keperluan ke Wali Kelas
+                  </p>
+                </div>
+
+                <form onSubmit={(e) => { e.preventDefault(); toast.success('Surat izin berhasil dikirimkan ke Wali Kelas!'); }} className="space-y-4">
+                  {/* Jenis Perizinan (Segmented Buttons) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Jenis Perizinan
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setJenisIzin('sakit')}
+                        className={cn(
+                          "py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer",
+                          jenisIzin === 'sakit'
+                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        Sakit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJenisIzin('izin')}
+                        className={cn(
+                          "py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer",
+                          jenisIzin === 'izin'
+                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        Izin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJenisIzin('pulang_cepat' as any)}
+                        className={cn(
+                          "py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer",
+                          (jenisIzin as any) === 'pulang_cepat'
+                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        Pulang Cepat
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Alasan / Keterangan Lengkap */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Alasan / Keterangan Lengkap
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={alasanIzin}
+                      onChange={(e) => setAlasanIzin(e.target.value)}
+                      placeholder="Contoh: Ananda Fahrizal sakit demam tinggi sejak semalam, saran dokter istirahat."
+                      className="w-full p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 text-xs font-medium focus:outline-none focus:border-amber-500 transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {/* Lampiran Foto Surat Dokter / Catatan */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Lampiran Foto Surat Dokter / Catatan
+                    </label>
+                    <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 text-center hover:border-amber-500/50 transition-all cursor-pointer group">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                        <FileText size={20} />
+                      </div>
+                      <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                        Klik untuk Unggah Surat Dokter / Bukti
+                      </p>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                        JPG, PNG, PDF maks 5MB
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    className="w-full h-11 rounded-2xl text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white border-none flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 cursor-pointer"
+                  >
+                    <Send size={15} />
+                    <span>Kirim Surat Izin ke Wali Kelas</span>
+                  </Button>
+                </form>
+              </div>
+
+              {/* Right Column: Riwayat Surat Izin Diajukan */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                    Riwayat Surat Izin Diajukan
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    {
+                      id: 'rz1',
+                      jenis: 'Sakit',
+                      badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+                      timestamp: '2026-08-10 06:15 WIB',
+                      alasan: 'Demam tinggi dan flu berat, saran dokter istirahat total 2 hari.',
+                      statusText: 'Disetujui Wali Kelas',
+                      statusColor: 'text-emerald-600 dark:text-emerald-400',
+                    },
+                    {
+                      id: 'rz2',
+                      jenis: 'Pulang Cepat',
+                      badgeColor: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
+                      timestamp: '2026-08-10 07:05 WIB',
+                      alasan: 'Mengikuti seleksi tim sepakbola daerah jam 11.00 WIB',
+                      statusText: 'Menunggu Persetujuan',
+                      statusColor: 'text-emerald-600 dark:text-emerald-400',
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border", item.badgeColor)}>
+                          {item.jenis}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 font-bold">
+                          {item.timestamp}
+                        </span>
+                      </div>
+
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
+                        {item.alasan}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-xs font-medium">
+                        <span className="text-slate-400 text-[11px]">Status Persetujuan:</span>
+                        <span className={cn("font-bold flex items-center gap-1.5", item.statusColor)}>
+                          <CheckCircle2 size={14} />
+                          {item.statusText}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* 🛡️ TAB 4: POIN & KASUS (CATATAN KEDISIPLINAN) */}
           {activeTab === 'catatan' && (
             <motion.div
               key="tab-catatan"
@@ -531,39 +746,77 @@ export default function ParentDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4 sm:space-y-6"
+              className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5"
             >
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-                  <div className="flex items-center gap-2">
-                    <FileText size={18} className="text-sky-500" />
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      CATATAN WALI KELAS
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-400 py-6 text-center">Belum ada catatan dari Wali Kelas.</p>
-                </div>
+              {/* Header Title */}
+              <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Transparansi Catatan Kedisiplinan Anak
+                </h3>
+              </div>
 
-                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-rose-500" />
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      CATATAN PELANGGARAN
-                    </h3>
-                  </div>
-                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 block">Tidak membawa makan</span>
-                      <span className="text-[10px] text-slate-400">31 Jul 2026</span>
+              {/* Discipline Record List (Adopsi Layout Mockup Poin & Kasus) */}
+              <div className="space-y-3">
+                {[
+                  {
+                    id: 'pk1',
+                    title: 'Juara 1 LKS Rekayasa Perangkat Lunak Tingkat Kota',
+                    meta: 'Tanggal: 2026-07-28 • Diproses oleh: Drs. Budi Santoso, M.Pd',
+                    poin: '+15 Poin',
+                    poinColor: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    id: 'pk2',
+                    title: 'Terlambat Masuk Sekolah (>15 Menit)',
+                    meta: 'Tanggal: 2026-08-02 • Diproses oleh: Pak Hendra (Satpam Gerbang)',
+                    poin: '-5 Poin',
+                    poinColor: 'text-rose-600 dark:text-rose-400',
+                  },
+                  {
+                    id: 'pk3',
+                    title: 'Petugas Upacara Bendera HUT Kemerdekaan RI',
+                    meta: 'Tanggal: 2026-08-05 • Diproses oleh: Ibu Rahmawati, S.Pd',
+                    poin: '+5 Poin',
+                    poinColor: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    id: 'pk4',
+                    title: 'Seragam Tidak Sesuai Ketentuan (Sepatu Putih)',
+                    meta: 'Tanggal: 2026-08-08 • Diproses oleh: Tim Ketertiban BK',
+                    poin: '-10 Poin',
+                    poinColor: 'text-rose-600 dark:text-rose-400',
+                  },
+                  {
+                    id: 'pk5',
+                    title: 'Meninggalkan Lingkungan Sekolah Tanpa Izin (Bolas KBM)',
+                    meta: 'Tanggal: 2026-08-04 • Diproses oleh: Pak Suwandi, S.ST (Guru Piket)',
+                    poin: '-25 Poin',
+                    poinColor: 'text-rose-600 dark:text-rose-400',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                        {item.title}
+                      </h4>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {item.meta}
+                      </p>
                     </div>
-                    <span className="font-black text-rose-600 dark:text-rose-400">-5 Poin</span>
+
+                    <span className={cn("text-xs sm:text-sm font-extrabold font-mono shrink-0", item.poinColor)}>
+                      {item.poin}
+                    </span>
                   </div>
-                </div>
+                ))}
               </div>
             </motion.div>
           )}
 
-          {/* 👤 TAB 4: PROFIL ANAK */}
+          {/* 👤 TAB 5: PROFIL ORTU & PENGATURAN NOTIFIKASI WA */}
           {activeTab === 'profil' && (
             <motion.div
               key="tab-profil"
@@ -571,36 +824,34 @@ export default function ParentDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4 sm:space-y-6"
+              className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5"
             >
-              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                    <User size={18} />
+              {/* Header Title */}
+              <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Pengaturan Profil &amp; Notifikasi WhatsApp
+                </h3>
+              </div>
+
+              {/* Notification Setting Card (Adopsi Layout Mockup Profil Ortu) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-amber-500/30 dark:border-amber-500/20 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Phone size={20} />
                   </div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                    BIODATA SISWA (ANAK)
-                  </h3>
+                  <div className="space-y-0.5 min-w-0">
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                      Laporan WhatsApp Otomatis
+                    </h4>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      Kirimkan pesan WA saat anak melakukan Tap Gerbang atau Absen KBM
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block font-medium">Nama Lengkap</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{student.nama_siswa}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">NISN</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{student.nisn || '0138544323'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Kelas</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{student.kelas}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-medium">Wali Kelas</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Bpk. Hendra Wijaya, S.Pd.</span>
-                  </div>
-                </div>
+                <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-500 text-white shadow-sm shrink-0">
+                  Aktif
+                </span>
               </div>
             </motion.div>
           )}
@@ -609,7 +860,7 @@ export default function ParentDashboard() {
         {/* ────────────────────────────────────────────────────────────────── */}
         {/* MOBILE FIXED BOTTOM NAVIGATION BAR (lg:hidden)                     */}
         {/* ────────────────────────────────────────────────────────────────── */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center shadow-xl">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center shadow-xl">
           {tabs.map((tab) => {
             const TabIcon = tab.icon;
             const isTabActive = activeTab === tab.id;
@@ -617,21 +868,27 @@ export default function ParentDashboard() {
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1",
+                  "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 relative cursor-pointer",
                   isTabActive
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    ? "text-emerald-600 dark:text-emerald-400 font-black"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 <div className={cn(
-                  "p-1.5 rounded-xl transition-all",
+                  "p-1.5 rounded-xl transition-all relative",
                   isTabActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-transparent"
                 )}>
                   <TabIcon size={18} />
+                  {tab.badge && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-purple-500 text-white text-[8px] font-black flex items-center justify-center border border-white dark:border-slate-900">
+                      {tab.badge}
+                    </span>
+                  )}
                 </div>
-                <span>{tab.label}</span>
+                <span className="truncate max-w-[64px]">{tab.label}</span>
               </button>
             );
           })}

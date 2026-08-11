@@ -80,12 +80,15 @@ export const KATEGORI_OPTIONS = (Object.entries(KATEGORI_LABELS) as [MemberDocKa
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
+import { resolveProfilePhotoUrl } from '@/lib/utils';
+
 /** Kembalikan URL untuk stream/preview berkas secara inline (local & S3) */
 export function getMemberDocPreviewUrl(entityType: MemberDocEntityType, entityId: string, docId: string): string {
-  const base = entityType === 'SISWA'
+  const relative = entityType === 'SISWA'
     ? `/api/academic/siswa/${entityId}/documents/${docId}/download`
     : `/api/academic/guru/${entityId}/documents/${docId}/download`;
-  return base;
+
+  return resolveProfilePhotoUrl(relative);
 }
 
 /** Format bytes ke string human-readable */

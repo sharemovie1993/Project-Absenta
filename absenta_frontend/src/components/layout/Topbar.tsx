@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft, LogOut } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
@@ -35,7 +35,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
   const rawLogoUrl = (systemConfig as any)?.logo_url;
   const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
-  const { user, subscription, tenantMode } = useAuthStore();
+  const { user, subscription, tenantMode, logout } = useAuthStore();
   
   // Use Mapper for consistent UI state
   const _uiState = subscription ? mapSubscriptionToUI(subscription) : null;
@@ -43,6 +43,21 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname;
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success('Berhasil keluar dari akun!');
+  };
+
+  const formattedToday = React.useMemo(() => {
+    return new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }, []);
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
     return resolveSmartDashboardMode(user);
@@ -383,9 +398,22 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             )}
           </div>
 
+          {/* Date Pill (Matching reference layout) */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs">
+            <Calendar size={14} className="text-emerald-600 dark:text-emerald-400" />
+            <span>{formattedToday}</span>
+          </div>
+
           <ThemeToggle />
 
-          <UserMenu />
+          {/* Clean Logout Door Button */}
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shadow-2xs"
+            title="Keluar / Logout"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
 
         {/* Notification Detail Modal */}

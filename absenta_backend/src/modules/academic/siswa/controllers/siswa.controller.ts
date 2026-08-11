@@ -89,6 +89,188 @@ export const siswaController = {
     }
   },
 
+  async getSiswaMe(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = request.user?.id || request.user?.userId;
+
+      if (!tenantId || !userId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Missing credentials' });
+      }
+
+      const siswa = await prisma.siswa.findFirst({
+        where: {
+          tenant_id: tenantId,
+          user_id: userId,
+        },
+        include: {
+          User: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+          Kelas: {
+            include: {
+              Jurusan: true,
+            },
+          },
+          Jurusan: true,
+          TahunPelajaran: true,
+          Semester: true,
+        },
+      });
+
+      if (!siswa) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Profil siswa untuk pengguna ini tidak ditemukan',
+          data: null,
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Profil siswa me retrieved successfully',
+        data: siswa,
+      });
+    } catch (error: any) {
+      console.error('Error in getSiswaMe:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async updateSiswaMe(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = request.user?.id || request.user?.userId;
+
+      if (!tenantId || !userId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Missing credentials' });
+      }
+
+      const siswa = await prisma.siswa.findFirst({
+        where: {
+          tenant_id: tenantId,
+          user_id: userId,
+        },
+      });
+
+      if (!siswa) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Profil siswa tidak ditemukan',
+          data: null,
+        });
+      }
+
+      const body = request.body || {};
+      const allowedFields = [
+        'nisn',
+        'nik',
+        'tempat_lahir',
+        'tanggal_lahir',
+        'jenis_kelamin',
+        'tinggi_badan',
+        'berat_badan',
+        'agama',
+        'hobi',
+        'cita_cita',
+        'is_osis',
+        'is_mpk',
+        'ekskul_1',
+        'ekskul_2',
+        'no_hp',
+        'alamat',
+        'dusun',
+        'kelurahan',
+        'kecamatan',
+        'kabupaten',
+        'provinsi',
+        'rt',
+        'rw',
+        'kode_pos',
+        'lintang',
+        'bujur',
+        'koordinat',
+        'transportasi',
+        'nama_ayah',
+        'nik_ayah',
+        'no_hp_ayah',
+        'pekerjaan_ayah',
+        'pendidikan_ayah',
+        'penghasilan_ayah',
+        'nama_ibu',
+        'nik_ibu',
+        'no_hp_ibu',
+        'pekerjaan_ibu',
+        'pendidikan_ibu',
+        'penghasilan_ibu',
+        'nama_wali',
+        'nik_wali',
+        'hubungan_wali',
+        'no_hp_wali',
+        'pekerjaan_wali',
+        'penghasilan_wali',
+        'no_hp_ortu',
+        'anak_ke',
+        'kebutuhan_khusus',
+        'penerima_kps',
+        'penerima_kip',
+        'no_kip',
+        'sekolah_asal',
+        'no_ijazah_smp',
+        'foto',
+      ];
+
+      const updateData: any = {};
+      for (const field of allowedFields) {
+        if (body[field] !== undefined) {
+          if ((field === 'tanggal_lahir' || field === 'tanggal_masuk' || field === 'tanggal_keluar') && body[field]) {
+            updateData[field] = new Date(body[field]);
+          } else if ((field === 'tinggi_badan' || field === 'berat_badan' || field === 'anak_ke') && body[field] !== undefined) {
+            updateData[field] = body[field] === null || body[field] === '' ? null : Number(body[field]);
+          } else if ((field === 'is_osis' || field === 'is_mpk' || field === 'penerima_kps' || field === 'penerima_kip') && body[field] !== undefined) {
+            updateData[field] = Boolean(body[field]);
+          } else {
+            updateData[field] = body[field];
+          }
+        }
+      }
+
+      const updated = await prisma.siswa.update({
+        where: { id: siswa.id },
+        data: updateData,
+        include: {
+          Kelas: {
+            include: {
+              Jurusan: true,
+            },
+          },
+          Jurusan: true,
+        },
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Profil siswa berhasil diperbarui',
+        data: updated,
+      });
+    } catch (error: any) {
+      console.error('Error in updateSiswaMe:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal memperbarui profil siswa',
+        data: null,
+      });
+    }
+  },
+
   async getSiswaById(request: any, reply: any) {
     try {
       const scope = (request as any).organizationalScope;
@@ -255,6 +437,12 @@ export const siswaController = {
       if (input.tanggal_keluar) {
         input.tanggal_keluar = new Date(input.tanggal_keluar);
       }
+      if (input.tinggi_badan !== undefined) {
+        input.tinggi_badan = input.tinggi_badan === null || input.tinggi_badan === '' ? null : Number(input.tinggi_badan);
+      }
+      if (input.berat_badan !== undefined) {
+        input.berat_badan = input.berat_badan === null || input.berat_badan === '' ? null : Number(input.berat_badan);
+      }
 
       const siswa = await siswaService.createSiswa(input, tenantId, scope);
 
@@ -330,6 +518,12 @@ export const siswaController = {
       }
       if (input.tanggal_keluar) {
         input.tanggal_keluar = new Date(input.tanggal_keluar);
+      }
+      if (input.tinggi_badan !== undefined) {
+        input.tinggi_badan = input.tinggi_badan === null || input.tinggi_badan === '' ? null : Number(input.tinggi_badan);
+      }
+      if (input.berat_badan !== undefined) {
+        input.berat_badan = input.berat_badan === null || input.berat_badan === '' ? null : Number(input.berat_badan);
       }
 
       const siswa = await siswaService.updateSiswa(id, input, tenantId, scope, request.user?.id);

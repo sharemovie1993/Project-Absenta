@@ -170,7 +170,7 @@ export async function requestWithFallback<T>(
   path: string,
   options?: { params?: Record<string, unknown> | URLSearchParams; data?: unknown; headers?: Record<string, string>; responseType?: 'json' | 'blob' | 'arraybuffer' | 'text'; onUploadProgress?: (e: unknown) => void; unwrapData?: boolean; timeout?: number }
 ): Promise<T> {
-  const url = path;
+  const url = path.startsWith('/') ? path.substring(1) : path;
   const config: any = { 
     params: options?.params, 
     headers: options?.headers ? { ...options.headers } : {}, 

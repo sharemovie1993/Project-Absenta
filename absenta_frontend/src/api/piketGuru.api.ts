@@ -49,12 +49,17 @@ export const piketGuruApi = {
     hari?: Hari;
     guru_id?: string;
   }): Promise<{ success: boolean; data: JadwalPiketGuru[] }> => {
-    const response = await api.get('/kurikulum/jadwal-piket', { params });
+    const response = await api.get('/kurikulum/jadwal-piket', {
+      headers: { 'X-Skip-403-Redirect': 'true' },
+      params
+    });
     return response.data;
   },
 
   getHariIni: async (): Promise<{ success: boolean; data: GuruPiketHariIniResponse }> => {
-    const response = await api.get('/kurikulum/jadwal-piket/hari-ini');
+    const response = await api.get('/kurikulum/jadwal-piket/hari-ini', {
+      headers: { 'X-Skip-403-Redirect': 'true' }
+    });
     return response.data;
   },
 

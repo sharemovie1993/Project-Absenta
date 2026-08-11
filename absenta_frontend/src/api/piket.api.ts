@@ -39,6 +39,9 @@ export interface IzinKeluarSiswa {
 export const piketApi = {
   getDailyPermits: async (params?: { date?: string; startDate?: string; endDate?: string }): Promise<{ success: boolean; data: IzinKeluarSiswa[] }> => {
     const response = await api.get('/kesiswaan/piket', {
+      headers: {
+        'X-Skip-403-Redirect': 'true'
+      },
       params: {
         ...params,
         elevated_context: 'true',

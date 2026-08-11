@@ -149,6 +149,11 @@ export const systemConfigService = {
       if (tenantActive) {
         const merged = {
           ...tenantActive,
+          // Warna: gunakan tenant punya sendiri, fallback ke global jika kosong
+          primary_color: tenantActive.primary_color ?? globalActive?.primary_color ?? null,
+          secondary_color: tenantActive.secondary_color ?? globalActive?.secondary_color ?? null,
+          accent_color: tenantActive.accent_color ?? globalActive?.accent_color ?? null,
+          // Company fields selalu dari global
           company_legal_name: globalActive?.company_legal_name ?? null,
           company_trade_name: globalActive?.company_trade_name ?? null,
           company_npwp: globalActive?.company_npwp ?? null,
@@ -174,7 +179,14 @@ export const systemConfigService = {
 
   async upsert(payload: SystemConfigPayload, roleName?: string, requesterTenantId?: string | null) {
     const superAdmin = isSystemSuperAdmin(roleName, requesterTenantId || undefined);
-    const tenantIdToUse = superAdmin ? (payload.tenant_id ?? null) : (requesterTenantId ?? null);
+    let tenantIdToUse: string | null = null;
+    if (typeof payload.tenant_id !== 'undefined') {
+      tenantIdToUse = payload.tenant_id;
+    } else if (requesterTenantId && requesterTenantId !== 'system') {
+      tenantIdToUse = requesterTenantId;
+    } else {
+      tenantIdToUse = null;
+    }
     const isGlobalConfig = !tenantIdToUse;
 
     // Enforce: only system-level SUPERADMIN can manage payment gateway toggles
@@ -232,7 +244,7 @@ export const systemConfigService = {
     const data = {
       tenant_id: tenantIdToUse,
       // General
-      app_name: payload.app_name ?? null,
+      app_name: payload.app_name ?? undefined,
       default_language: payload.default_language ?? undefined,
       timezone: payload.timezone ?? undefined,
       date_format: payload.date_format ?? undefined,

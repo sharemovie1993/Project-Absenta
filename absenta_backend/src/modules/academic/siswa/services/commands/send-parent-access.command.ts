@@ -74,7 +74,7 @@ Terima kasih.`;
   const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
   const waService = new WhatsAppService();
 
-  await waService.sendWhatsApp({
+  const sent = await waService.sendWhatsApp({
     phoneNumber: targetParent.no_hp,
     message: message,
     tenantId: tenantId,
@@ -84,6 +84,10 @@ Terima kasih.`;
     force: true,
     throwOnError: true,
   });
+
+  if (!sent) {
+    throw new Error('Gagal mengirim WhatsApp: WA Gateway belum terhubung (Scan QR di menu Settings WhatsApp) atau pesan ditolak');
+  }
 
   return {
     success: true,

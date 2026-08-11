@@ -149,29 +149,42 @@ function ensureMinioRunning() {
   const activeMinioPids = getListeningPids(minioPort);
   
   if (activeMinioPids.length === 0) {
-    const minioPath = 'd:\\BarayaProject\\MiniIO\\minio.exe';
+    const minioBat = 'd:\\BarayaProject\\MiniIO\\start-minio.bat';
+    const minioExe = 'd:\\BarayaProject\\MiniIO\\minio.exe';
     const minioData = 'd:\\BarayaProject\\MiniIO\\data';
 
-    if (fs.existsSync(minioPath)) {
+    if (fs.existsSync(minioBat)) {
       console.log('\n======================================================================');
       console.log(' [MinIO Storage] Memulai MinIO S3 Storage Server otomatis pada port 9000...');
       console.log('======================================================================\n');
       
       try {
         const { spawn } = require('child_process');
-        const minioProc = spawn('powershell.exe', [
-          '-NoProfile',
-          '-Command',
-          `Start-Process '${minioPath}' -ArgumentList 'server', '${minioData}', '--console-address', ':9001' -WindowStyle Minimized`
-        ], { detached: true, stdio: 'ignore' });
+        const minioProc = spawn('cmd.exe', ['/c', 'start', '""', '/min', minioBat], {
+          detached: true,
+          stdio: 'ignore'
+        });
         minioProc.unref();
 
-        console.log('[MinIO Storage] MinIO Server berhasil dijalankan di latar belakang.');
+        console.log('[MinIO Storage] MinIO Server (start-minio.bat) berhasil dijalankan di latar belakang.\n');
+      } catch (err) {
+        console.error('[MinIO Storage] Gagal menjalankan MinIO otomatis:', err.message);
+      }
+    } else if (fs.existsSync(minioExe)) {
+      try {
+        const { spawn } = require('child_process');
+        const minioProc = spawn('cmd.exe', ['/c', 'start', '""', '/min', minioExe, 'server', minioData, '--console-address', ':9001'], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        minioProc.unref();
+
+        console.log('[MinIO Storage] MinIO Server (minio.exe) berhasil dijalankan di latar belakang.\n');
       } catch (err) {
         console.error('[MinIO Storage] Gagal menjalankan MinIO otomatis:', err.message);
       }
     } else {
-      console.warn('[MinIO Storage] File minio.exe tidak ditemukan di: ' + minioPath);
+      console.warn('[MinIO Storage] MinIO tidak ditemukan di: D:\\BarayaProject\\MiniIO');
     }
   } else {
     console.log('[MinIO Storage] Server MinIO S3 sudah aktif berjalan pada port 9000.');

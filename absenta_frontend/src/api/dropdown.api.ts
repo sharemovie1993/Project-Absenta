@@ -249,6 +249,104 @@ export const AGAMA_OPTIONS: DropdownOption[] = [
   { value: 'LAINNYA', label: 'Lainnya' }
 ];
 
+export const PROVINSI_INDONESIA_OPTIONS: DropdownOption[] = [
+  { value: 'ACEH', label: 'Aceh' },
+  { value: 'SUMATERA_UTARA', label: 'Sumatera Utara' },
+  { value: 'SUMATERA_BARAT', label: 'Sumatera Barat' },
+  { value: 'RIAU', label: 'Riau' },
+  { value: 'KEPULAUAN_RIAU', label: 'Kepulauan Riau' },
+  { value: 'JAMBI', label: 'Jambi' },
+  { value: 'BENGKULU', label: 'Bengkulu' },
+  { value: 'SUMATERA_SELATAN', label: 'Sumatera Selatan' },
+  { value: 'KEPULAUAN_BANGKA_BELITUNG', label: 'Kepulauan Bangka Belitung' },
+  { value: 'LAMPUNG', label: 'Lampung' },
+  { value: 'BANTEN', label: 'Banten' },
+  { value: 'DKI_JAKARTA', label: 'DKI Jakarta' },
+  { value: 'JAWA_BARAT', label: 'Jawa Barat' },
+  { value: 'JAWA_TENGAH', label: 'Jawa Tengah' },
+  { value: 'DI_YOGYAKARTA', label: 'DI Yogyakarta' },
+  { value: 'JAWA_TIMUR', label: 'Jawa Timur' },
+  { value: 'BALI', label: 'Bali' },
+  { value: 'NUSA_TENGGARA_BARAT', label: 'Nusa Tenggara Barat' },
+  { value: 'NUSA_TENGGARA_TIMUR', label: 'Nusa Tenggara Timur' },
+  { value: 'KALIMANTAN_BARAT', label: 'Kalimantan Barat' },
+  { value: 'KALIMANTAN_TENGAH', label: 'Kalimantan Tengah' },
+  { value: 'KALIMANTAN_SELATAN', label: 'Kalimantan Selatan' },
+  { value: 'KALIMANTAN_TIMUR', label: 'Kalimantan Timur' },
+  { value: 'KALIMANTAN_UTARA', label: 'Kalimantan Utara' },
+  { value: 'SULAWESI_UTARA', label: 'Sulawesi Utara' },
+  { value: 'GORONTALO', label: 'Gorontalo' },
+  { value: 'SULAWESI_TENGAH', label: 'Sulawesi Tengah' },
+  { value: 'SULAWESI_BARAT', label: 'Sulawesi Barat' },
+  { value: 'SULAWESI_SELATAN', label: 'Sulawesi Selatan' },
+  { value: 'SULAWESI_TENGGARA', label: 'Sulawesi Tenggara' },
+  { value: 'MALUKU', label: 'Maluku' },
+  { value: 'MALUKU_UTARA', label: 'Maluku Utara' },
+  { value: 'PAPUA', label: 'Papua' },
+  { value: 'PAPUA_BARAT', label: 'Papua Barat' },
+  { value: 'PAPUA_SELATAN', label: 'Papua Selatan' },
+  { value: 'PAPUA_TENGAH', label: 'Papua Tengah' },
+  { value: 'PAPUA_PEGUNUNGAN', label: 'Papua Pegunungan' },
+  { value: 'PAPUA_BARAT_DAYA', label: 'Papua Barat Daya' }
+];
+
+export async function getProvinsiOptions(): Promise<DropdownOption[]> {
+  try {
+    const response = await requestWithFallback<{ success: boolean; data: DropdownOption[] }>('get', '/wilayah/provinsi');
+    const list = (response as any)?.data || [];
+    if (Array.isArray(list) && list.length > 0) return list;
+  } catch (error) {
+    console.warn('Error fetching provinsi from API, using fallback:', error);
+  }
+  return PROVINSI_INDONESIA_OPTIONS;
+}
+
+export async function getKabupatenOptions(provinsiNama?: string): Promise<DropdownOption[]> {
+  try {
+    const params = provinsiNama ? { provinsi_nama: provinsiNama } : undefined;
+    const response = await requestWithFallback<{ success: boolean; data: DropdownOption[] }>('get', '/wilayah/kabupaten', { params });
+    return (response as any)?.data || [];
+  } catch (error) {
+    console.warn('Error fetching kabupaten from API:', error);
+    return [];
+  }
+}
+
+export async function getKecamatanOptions(kabupatenNama?: string): Promise<DropdownOption[]> {
+  try {
+    const params = kabupatenNama ? { kabupaten_nama: kabupatenNama } : undefined;
+    const response = await requestWithFallback<{ success: boolean; data: DropdownOption[] }>('get', '/wilayah/kecamatan', { params });
+    return (response as any)?.data || [];
+  } catch (error) {
+    console.warn('Error fetching kecamatan from API:', error);
+    return [];
+  }
+}
+
+export async function getKelurahanOptions(kecamatanNama?: string, kabupatenNama?: string): Promise<DropdownOption[]> {
+  try {
+    if (!kecamatanNama) return [];
+    const params = { kecamatan_nama: kecamatanNama, kabupaten_nama: kabupatenNama };
+    const response = await requestWithFallback<{ success: boolean; data: DropdownOption[] }>('get', '/wilayah/kelurahan', { params });
+    return (response as any)?.data || [];
+  } catch (error) {
+    console.warn('Error fetching kelurahan from API:', error);
+    return [];
+  }
+}
+
+export async function getSmartKodePos(kecamatanNama?: string, kelurahanNama?: string, kabupatenNama?: string): Promise<string> {
+  try {
+    if (!kecamatanNama && !kelurahanNama) return '';
+    const params = { kecamatan_nama: kecamatanNama, kelurahan_nama: kelurahanNama, kabupaten_nama: kabupatenNama };
+    const response = await requestWithFallback<{ success: boolean; data: { kode_pos: string } }>('get', '/wilayah/kodepos', { params });
+    return (response as any)?.data?.kode_pos || '';
+  } catch (error) {
+    console.warn('Error detecting smart kode pos:', error);
+    return '';
+  }
+}
+
 export const statusSiswaOptions: DropdownOption[] = [
   { value: 'AKTIF', label: 'Aktif' },
   { value: 'TIDAK_AKTIF', label: 'Tidak Aktif' },

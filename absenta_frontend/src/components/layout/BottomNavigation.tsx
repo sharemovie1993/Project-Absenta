@@ -41,6 +41,16 @@ export const BottomNavigation = React.memo(({ onMenuToggle }: { onMenuToggle?: (
     }
   };
 
+  // Suppress legacy floating bottom nav on Dashboard routes (which use their own inspected Tab Bottom Bar)
+  const isDashboardRoute = location.pathname === '/dashboard' || 
+                           location.pathname === '/dashboard/' ||
+                           location.pathname.startsWith('/dashboard') ||
+                           location.pathname.startsWith('/parent-app/dashboard');
+
+  if (isDashboardRoute) {
+    return null;
+  }
+
   return (
     <>
       {/* Floating Bottom Nav Container */}

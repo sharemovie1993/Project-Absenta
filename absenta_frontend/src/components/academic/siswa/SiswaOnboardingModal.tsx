@@ -16,17 +16,216 @@ import {
   CreditCard, 
   Phone, 
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Heart,
+  Edit3,
+  Camera,
+  Upload,
+  RotateCcw
 } from 'lucide-react';
+import { uploadSiswaDocument } from '@/api/memberDocs.api';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateSiswa, siswaQueryKeys } from '@/api/academic/siswa.api';
+import { updateSiswa, updateSiswaMe, siswaQueryKeys } from '@/api/academic/siswa.api';
+import { useSiswaMe, useUpdateSiswaMe } from '@/hooks/useSiswaMe';
+import { 
+  AGAMA_OPTIONS, 
+  TRANSPORTASI_OPTIONS, 
+  PEKERJAAN_OPTIONS, 
+  HUBUNGAN_WALI_OPTIONS,
+  PROVINSI_INDONESIA_OPTIONS,
+  getKabupatenOptions,
+  getKecamatanOptions,
+  getKelurahanOptions,
+  getSmartKodePos,
+  DropdownOption
+} from '@/api/dropdown.api';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
+
+// ─── Live Webcam Capture Modal Component ─────────────────────────────────────
+
+interface WebcamModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCapture: (file: File) => void;
+}
+
+const WebcamModal: React.FC<WebcamModalProps> = ({ isOpen, onClose, onCapture }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+
+  // Discover connected video input devices
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const inputs = devices.filter((d) => d.kind === 'videoinput');
+        setVideoDevices(inputs);
+      }).catch(console.error);
+    }
+  }, [isOpen]);
+
+  // Start video stream when facingMode or currentDeviceId changes
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
+    setCameraError(null);
+
+    const constraints: MediaTrackConstraints = currentDeviceId
+      ? { deviceId: { exact: currentDeviceId } }
+      : { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 640 } };
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: constraints })
+        .then((stream) => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch((err) => {
+          console.error('Camera access error:', err);
+          setCameraError('Gagal mengakses kamera. Pastikan izin kamera telah diberikan di browser Anda.');
+        });
+    } else {
+      setCameraError('Browser ini tidak mendukung fitur kamera live.');
+    }
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [isOpen, facingMode, currentDeviceId]);
+
+  const handleSwitchCamera = () => {
+    if (videoDevices.length > 1) {
+      const currentIndex = videoDevices.findIndex((d) => d.deviceId === currentDeviceId);
+      const nextIndex = (currentIndex + 1) % videoDevices.length;
+      setCurrentDeviceId(videoDevices[nextIndex].deviceId);
+    } else {
+      setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
+      setCurrentDeviceId(null);
+    }
+  };
+
+  const isUserFacing = facingMode === 'user' && !currentDeviceId;
+
+  const handleTakeSnap = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 640;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      if (isUserFacing) {
+        // Mirror image horizontally for natural selfie view
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `pas_foto_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          onCapture(file);
+          onClose();
+        }
+      }, 'image/jpeg', 0.9);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[120] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-md w-full text-center space-y-4 shadow-2xl relative">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2 text-white font-extrabold text-sm">
+            <Camera size={18} className="text-emerald-400" />
+            <span>Kamera Live (Ambil Pas Foto)</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSwitchCamera}
+              title="Ganti / Switch Kamera (Depan / Belakang / Kamera Lain)"
+              className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-slate-700 transition-all shadow-xs"
+            >
+              <RotateCcw size={13} />
+              <span>Switch Kamera</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative aspect-square w-full rounded-2xl bg-black overflow-hidden border-2 border-emerald-500/50 shadow-inner flex items-center justify-center">
+          {cameraError ? (
+            <div className="p-4 text-xs font-bold text-rose-400 text-center space-y-2">
+              <AlertCircle size={24} className="mx-auto" />
+              <p>{cameraError}</p>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={cn("w-full h-full object-cover", isUserFacing && "transform -scale-x-100")}
+            />
+          )}
+        </div>
+
+        <div className="flex justify-center gap-3 pt-1">
+          <Button variant="outline" onClick={onClose} className="rounded-xl text-xs font-bold border-slate-700 text-slate-300">
+            Batal
+          </Button>
+
+          {!cameraError && (
+            <button
+              type="button"
+              onClick={handleTakeSnap}
+              className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-lg cursor-pointer transition-all active:scale-95"
+            >
+              <Camera size={16} />
+              <span>📸 Jepret Foto</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export type SectionEditType = 'pribadi' | 'ekskul' | 'alamat' | 'orangtua' | 'all';
 
 export interface SiswaOnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  siswa: any;
+  siswa?: any;
+  siswaData?: any;
   onSuccess?: () => void;
+  initialStep?: number;
+  activeSection?: SectionEditType;
 }
 
 export function calculateProfileCompleteness(siswa: any) {
@@ -59,11 +258,44 @@ export function calculateProfileCompleteness(siswa: any) {
 export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   isOpen,
   onClose,
-  siswa,
+  siswa: siswaProp,
+  siswaData,
   onSuccess,
+  initialStep = 1,
+  activeSection = 'all',
 }) => {
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(initialStep);
+
+  const { siswaProfile: siswaFromHook, isApiConnected } = useSiswaMe();
+
+  const siswa = useMemo(() => {
+    return siswaProp || siswaData || siswaFromHook || null;
+  }, [siswaProp, siswaData, siswaFromHook]);
+
+  const renderFieldStatusBadge = (value: any) => {
+    if (!isApiConnected) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-mono select-none ml-1.5">
+          Belum Terhubung ke API
+        </span>
+      );
+    }
+    if (value === undefined || value === null || value === '' || value === 0) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono select-none ml-1.5">
+          Belum Diisi
+        </span>
+      );
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(initialStep);
+    }
+  }, [isOpen, initialStep]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -75,6 +307,9 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     no_hp: '',
     tinggi_badan: '' as number | string,
     berat_badan: '' as number | string,
+    agama: 'Islam',
+    hobi: '',
+    cita_cita: '',
 
     alamat: '',
     dusun: '',
@@ -87,49 +322,133 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     kode_pos: '',
     transportasi: '',
 
+    is_osis: false,
+    is_mpk: false,
+    ekskul_1: '',
+    ekskul_2: '',
+
     nama_ayah: '',
     nik_ayah: '',
     pekerjaan_ayah: '',
+    no_hp_ayah: '',
     nama_ibu: '',
     nik_ibu: '',
     pekerjaan_ibu: '',
+    no_hp_ibu: '',
     nama_wali: '',
     hubungan_wali: '',
   });
 
-  // Populate data when modal opens
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+
+  const [kabupatenOptions, setKabupatenOptions] = useState<DropdownOption[]>([]);
+  const [kecamatanOptions, setKecamatanOptions] = useState<DropdownOption[]>([]);
+  const [kelurahanOptions, setKelurahanOptions] = useState<DropdownOption[]>([]);
+
+  useEffect(() => {
+    if (formData.provinsi) {
+      getKabupatenOptions(formData.provinsi).then(opts => setKabupatenOptions(opts));
+    } else {
+      setKabupatenOptions([]);
+    }
+  }, [formData.provinsi]);
+
+  useEffect(() => {
+    if (formData.kabupaten) {
+      getKecamatanOptions(formData.kabupaten).then(opts => setKecamatanOptions(opts));
+    } else {
+      setKecamatanOptions([]);
+    }
+  }, [formData.kabupaten]);
+
+  useEffect(() => {
+    if (formData.kecamatan) {
+      getKelurahanOptions(formData.kecamatan, formData.kabupaten).then(opts => setKelurahanOptions(opts));
+    } else {
+      setKelurahanOptions([]);
+    }
+  }, [formData.kecamatan, formData.kabupaten]);
+
+  useEffect(() => {
+    if (formData.kecamatan) {
+      getSmartKodePos(formData.kecamatan, formData.kelurahan, formData.kabupaten).then(code => {
+        if (code) {
+          setFormData(prev => ({ ...prev, kode_pos: code }));
+        }
+      });
+    }
+  }, [formData.kecamatan, formData.kelurahan, formData.kabupaten]);
+
+const matchOptionValue = (val: string | null | undefined, options: Array<{ value: string; label: string }>): string => {
+  if (!val) return '';
+  const cleanVal = String(val).trim().toLowerCase();
+  
+  const byLabel = options.find(o => o.label.toLowerCase() === cleanVal);
+  if (byLabel) return byLabel.label;
+
+  const byValue = options.find(o => o.value.toLowerCase() === cleanVal);
+  if (byValue) return byValue.label;
+
+  const normVal = cleanVal.replace(/[\s\-_]+/g, '');
+  const byNorm = options.find(o => 
+    o.label.toLowerCase().replace(/[\s\-_]+/g, '') === normVal ||
+    o.value.toLowerCase().replace(/[\s\-_]+/g, '') === normVal
+  );
+  if (byNorm) return byNorm.label;
+
+  return val;
+};
+
+// Populate data when modal opens
   useEffect(() => {
     if (siswa) {
       setFormData({
         nik: siswa.nik || '',
         nisn: siswa.nisn || '',
         tempat_lahir: siswa.tempat_lahir || '',
-        tanggal_lahir: siswa.tanggal_lahir ? siswa.tanggal_lahir.split('T')[0] : '',
+        tanggal_lahir: siswa.tanggal_lahir ? String(siswa.tanggal_lahir).split('T')[0] : '',
         jenis_kelamin: siswa.jenis_kelamin || 'L',
         no_hp: siswa.no_hp || '',
         tinggi_badan: siswa.tinggi_badan ?? '',
         berat_badan: siswa.berat_badan ?? '',
+        agama: matchOptionValue(siswa.agama, AGAMA_OPTIONS) || 'Islam',
+        hobi: siswa.hobi || '',
+        cita_cita: siswa.cita_cita || '',
 
         alamat: siswa.alamat || '',
         dusun: siswa.dusun || '',
         kelurahan: siswa.kelurahan || '',
         kecamatan: siswa.kecamatan || '',
         kabupaten: siswa.kabupaten || '',
-        provinsi: siswa.provinsi || '',
+        provinsi: matchOptionValue(siswa.provinsi, PROVINSI_INDONESIA_OPTIONS) || 'Jawa Barat',
         rt: siswa.rt || '',
         rw: siswa.rw || '',
         kode_pos: siswa.kode_pos || '',
-        transportasi: siswa.transportasi || '',
+        transportasi: matchOptionValue(siswa.transportasi, TRANSPORTASI_OPTIONS),
+
+        is_osis: !!siswa.is_osis,
+        is_mpk: !!siswa.is_mpk,
+        ekskul_1: siswa.ekskul_1 || '',
+        ekskul_2: siswa.ekskul_2 || '',
 
         nama_ayah: siswa.nama_ayah || '',
         nik_ayah: siswa.nik_ayah || '',
-        pekerjaan_ayah: siswa.pekerjaan_ayah || '',
+        pekerjaan_ayah: matchOptionValue(siswa.pekerjaan_ayah, PEKERJAAN_OPTIONS),
+        no_hp_ayah: siswa.no_hp_ayah || '',
         nama_ibu: siswa.nama_ibu || '',
         nik_ibu: siswa.nik_ibu || '',
-        pekerjaan_ibu: siswa.pekerjaan_ibu || '',
+        pekerjaan_ibu: matchOptionValue(siswa.pekerjaan_ibu, PEKERJAAN_OPTIONS),
+        no_hp_ibu: siswa.no_hp_ibu || '',
         nama_wali: siswa.nama_wali || '',
-        hubungan_wali: siswa.hubungan_wali || '',
+        nik_wali: siswa.nik_wali || '',
+        hubungan_wali: matchOptionValue(siswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS),
+        pekerjaan_wali: matchOptionValue(siswa.pekerjaan_wali, PEKERJAAN_OPTIONS),
+        no_hp_wali: siswa.no_hp_wali || '',
       });
+      setSelectedPhotoFile(null);
+      setPhotoPreview(null);
     }
   }, [siswa, isOpen]);
 
@@ -138,30 +457,18 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     return calculateProfileCompleteness({ ...siswa, ...formData });
   }, [siswa, formData]);
 
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      if (!siswa?.id) throw new Error('ID Siswa tidak ditemukan');
-      const payload = {
-        ...formData,
-        tinggi_badan: formData.tinggi_badan === '' ? undefined : Number(formData.tinggi_badan),
-        berat_badan: formData.berat_badan === '' ? undefined : Number(formData.berat_badan),
-        tanggal_lahir: formData.tanggal_lahir || undefined,
-      };
-      return updateSiswa(siswa.id, payload as any);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['siswa-profile-me'] });
-      queryClient.invalidateQueries({ queryKey: ['profile-me'] });
-      toast.success('Profil berhasil diperbarui!');
-      onSuccess?.();
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Gagal memperbarui data siswa');
-    },
-  });
+  const updateMutationMe = useUpdateSiswaMe();
 
-  if (!isOpen || !siswa) return null;
+  const getPreparedPayload = () => {
+    return {
+      ...formData,
+      tinggi_badan: formData.tinggi_badan === '' || formData.tinggi_badan === null ? undefined : Number(formData.tinggi_badan),
+      berat_badan: formData.berat_badan === '' || formData.berat_badan === null ? undefined : Number(formData.berat_badan),
+      tanggal_lahir: formData.tanggal_lahir || undefined,
+    };
+  };
+
+  if (!isOpen) return null;
 
   const handleNext = () => {
     if (step < 3) setStep(prev => prev + 1);
@@ -172,475 +479,821 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   };
 
   const handleSubmitFinal = async () => {
-    await updateMutation.mutateAsync();
-    onClose();
+    try {
+      if (selectedPhotoFile && siswa?.id) {
+        try {
+          await uploadSiswaDocument({
+            siswaId: siswa.id,
+            file: selectedPhotoFile,
+            kategori: 'FOTO',
+            judul: `Foto Profil - ${siswa.nama || 'Siswa'}`,
+          });
+        } catch (err) {
+          console.error('Failed uploading photo document', err);
+        }
+      }
+
+      if (siswa?.id === 'demo-siswa-id') {
+        toast.success('Data profil berhasil disimpan!');
+        onClose();
+        return;
+      }
+
+      const payload = getPreparedPayload();
+      await updateMutationMe.mutateAsync(payload as any);
+      toast.success('Profil berhasil diperbarui!');
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui data siswa');
+    }
   };
 
+  const sectionMeta = {
+    pribadi: {
+      title: 'Edit Data Pribadi',
+      badge: 'SEKSI DATA PRIBADI',
+      icon: User,
+      color: 'emerald',
+    },
+    ekskul: {
+      title: 'Edit Organisasi & Ekstrakurikuler',
+      badge: 'SEKSI ORGANISASI & EKSKUL',
+      icon: Users,
+      color: 'indigo',
+    },
+    identitas: {
+      title: 'Edit Identitas & Foto Profil Siswa',
+      badge: 'SEKSI IDENTITAS & FOTO',
+      icon: User,
+      color: 'emerald',
+    },
+    biodata: {
+      title: 'Edit Identitas & Foto Profil Siswa',
+      badge: 'SEKSI IDENTITAS & FOTO',
+      icon: User,
+      color: 'emerald',
+    },
+    kontak: {
+      title: 'Edit Kontak & Alamat Rumah',
+      badge: 'SEKSI KONTAK & ALAMAT',
+      icon: MapPin,
+      color: 'sky',
+    },
+    orangtua: {
+      title: 'Edit Data Orang Tua / Wali',
+      badge: 'SEKSI ORANG TUA / WALI',
+      icon: Heart,
+      color: 'amber',
+    },
+    all: {
+      title: step === 1 ? 'Data Pribadi & Identitas Induk' : step === 2 ? 'Alamat & Domisili Tempat Tinggal' : 'Data Orang Tua / Wali Murid & Ekskul',
+      badge: 'EDIT PROFIL SISWA',
+      icon: Sparkles,
+      color: 'emerald',
+    }
+  }[activeSection] || {
+    title: 'Edit Profil Siswa',
+    badge: 'EDIT PROFIL SISWA',
+    icon: Sparkles,
+    color: 'emerald',
+  };
+
+  const SectionIcon = sectionMeta.icon || Sparkles;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden my-auto"
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden my-auto text-slate-800 dark:text-slate-100"
       >
-        {/* HEADER & METER BAR */}
-        <div className="p-6 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-slate-900 border-b border-slate-800 relative">
+        {/* FOCUSED HEADER */}
+        <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-slate-900 border-b border-slate-200/80 dark:border-slate-800 relative">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
+            className="absolute top-5 right-5 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-inner">
-              <Sparkles size={24} />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <SectionIcon size={22} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  Onboarding Siswa Baru
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">
-                  Langkah {step} dari 3
-                </span>
-              </div>
-              <h2 className="text-lg font-extrabold text-white mt-1">
-                Lengkapi Profil Data Induk Siswa
+              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {sectionMeta.badge}
+              </span>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-1">
+                {sectionMeta.title}
               </h2>
             </div>
           </div>
 
-          {/* Progress Bar Completeness */}
-          <div className="mt-5 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-emerald-400" />
-                Kelengkapan Profil Siswa
-              </span>
-              <span className="text-emerald-400 font-bold">{liveCompleteness.percent}% Complete</span>
+          {/* Completeness Bar (Only visible when activeSection === 'all') */}
+          {activeSection === 'all' && (
+            <div className="mt-4 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-emerald-500" />
+                  Kelengkapan Profil Siswa
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{liveCompleteness.percent}%</span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-800">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${liveCompleteness.percent}%` }}
+                  transition={{ duration: 0.4 }}
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                />
+              </div>
             </div>
-            <div className="h-2.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/80 p-0.5">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${liveCompleteness.percent}%` }}
-                transition={{ duration: 0.5 }}
-                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* BODY STEP CONTENT */}
-        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-          {/* STEP TABS HEADER */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { num: 1, label: 'Identitas & Fisik', icon: User },
-              { num: 2, label: 'Alamat & Domisili', icon: MapPin },
-              { num: 3, label: 'Orang Tua & Wali', icon: Users },
-            ].map(s => {
-              const Icon = s.icon;
-              const isActive = step === s.num;
-              const isPast = step > s.num;
-
-              return (
-                <button
-                  key={s.num}
-                  onClick={() => setStep(s.num)}
-                  className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition ${
-                    isActive
-                      ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm'
-                      : isPast
-                      ? 'bg-slate-800/60 text-slate-300 border-slate-700/60'
-                      : 'bg-slate-950/40 text-slate-500 border-slate-800/40'
-                  }`}
-                >
-                  <Icon size={14} />
-                  <span className="hidden sm:inline">{s.label}</span>
-                  <span className="sm:hidden">{s.num}</span>
-                  {isPast && <CheckCircle2 size={12} className="text-emerald-400 ml-auto" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <AnimatePresence mode="wait">
-            {/* STEP 1: IDENTITAS & FISIK */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4 text-xs"
-              >
-                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-start gap-2.5">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                  <p>
-                    Mohon isi NIK (16 digit) dan fisik terbaru Anda. Data ini penting untuk pencatatan DAPODIK dan verifikasi identitas resmi sekolah.
-                  </p>
+        {/* BODY CONTENT AREA */}
+        <div className="p-5 sm:p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+          {/* FOCUSED SECTION 1: DATA PRIBADI & IDENTITAS */}
+          {(activeSection === 'pribadi' || activeSection === 'identitas' || activeSection === 'biodata' || (activeSection === 'all' && step === 1)) && (
+            <motion.div
+              key="sec-pribadi"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 text-xs"
+            >
+              {/* Photo Upload Box */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative shrink-0">
+                  {photoPreview || (siswa as any)?.foto || (siswa as any)?.foto_url ? (
+                    <img
+                      src={photoPreview || resolveProfilePhotoUrl((siswa as any)?.foto || (siswa as any)?.foto_url)}
+                      alt="Foto Profil Siswa"
+                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/40 flex items-center justify-center font-black text-2xl shadow-md">
+                      {siswa?.nama ? siswa.nama.charAt(0) : 'S'}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center text-white shadow-md">
+                    <Camera size={12} />
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <CreditCard size={13} className="text-blue-400" />
-                      NIK (Nomor Induk Kependudukan)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={16}
-                      value={formData.nik}
-                      onChange={e => setFormData({ ...formData, nik: e.target.value })}
-                      placeholder="16 digit NIK..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                    />
+                <div className="space-y-2 flex-1 text-center sm:text-left">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 dark:text-slate-100">Upload Foto Profil / Pas Foto</h4>
+                    <p className="text-[10px] text-slate-400 font-bold">Format: JPG / PNG (Maks. 5 MB). Digunakan pada Kartu Pelajar Digital & Raport.</p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <CreditCard size={13} className="text-blue-400" />
-                      NISN (Nasional)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={10}
-                      value={formData.nisn}
-                      onChange={e => setFormData({ ...formData, nisn: e.target.value })}
-                      placeholder="10 digit NISN..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <Phone size={13} className="text-emerald-400" />
-                      No. HP / WhatsApp Siswa
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.no_hp}
-                      onChange={e => setFormData({ ...formData, no_hp: e.target.value })}
-                      placeholder="Contoh: 081234567890"
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <User size={13} className="text-indigo-400" />
-                      Jenis Kelamin
-                    </label>
-                    <select
-                      value={formData.jenis_kelamin}
-                      onChange={e => setFormData({ ...formData, jenis_kelamin: e.target.value })}
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
+                  <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
+                    {/* Option 1: Live Web Camera Viewfinder Capture */}
+                    <button
+                      type="button"
+                      onClick={() => setShowWebcamModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
                     >
-                      <option value="L">Laki-laki (L)</option>
-                      <option value="P">Perempuan (P)</option>
-                    </select>
-                  </div>
+                      <Camera size={14} />
+                      <span>Ambil Foto (Kamera Live)</span>
+                    </button>
 
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <MapPin size={13} className="text-amber-400" />
-                      Tempat Lahir
+                    {/* Option 2: Choose from Device / Gallery */}
+                    <label className="px-3.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all">
+                      <Upload size={14} />
+                      <span>Pilih dari Galeri</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSelectedPhotoFile(file);
+                            setPhotoPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
                     </label>
-                    <input
-                      type="text"
-                      value={formData.tempat_lahir}
-                      onChange={e => setFormData({ ...formData, tempat_lahir: e.target.value })}
-                      placeholder="Kota/Kabupaten kelahiran..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <Calendar size={13} className="text-amber-400" />
-                      Tanggal Lahir
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.tanggal_lahir}
-                      onChange={e => setFormData({ ...formData, tanggal_lahir: e.target.value })}
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* TINGGI & BERAT BADAN */}
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <Ruler size={13} className="text-purple-400" />
-                      Tinggi Badan (cm)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.tinggi_badan}
-                      onChange={e => setFormData({ ...formData, tinggi_badan: e.target.value })}
-                      placeholder="Contoh: 165"
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <Weight size={13} className="text-rose-400" />
-                      Berat Badan (kg)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.berat_badan}
-                      onChange={e => setFormData({ ...formData, berat_badan: e.target.value })}
-                      placeholder="Contoh: 55"
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                    />
+                    {selectedPhotoFile && (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        ✓ Foto Siap Disimpan
+                      </span>
+                    )}
                   </div>
                 </div>
-              </motion.div>
-            )}
+              </div>
 
-            {/* STEP 2: ALAMAT & DOMISILI */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4 text-xs"
-              >
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 font-medium">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-emerald-500" />
+                <p>
+                  Perbarui NIK (16 digit), data kelahiran, dan hobi/cita-cita Anda. Data ini penting untuk verifikasi DAPODIK sekolah.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-300">Alamat Tempat Tinggal Lengkap</label>
-                  <textarea
-                    rows={3}
-                    value={formData.alamat}
-                    onChange={e => setFormData({ ...formData, alamat: e.target.value })}
-                    placeholder="Nama jalan, nomor rumah, RT/RW..."
-                    className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none resize-none"
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <CreditCard size={13} className="text-emerald-500" />
+                    <span>NIK (Nomor Induk Kependudukan)</span>
+                    {renderFieldStatusBadge(formData.nik)}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={16}
+                    value={formData.nik}
+                    onChange={e => setFormData({ ...formData, nik: e.target.value })}
+                    placeholder="16 digit NIK..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">RT</label>
-                    <input
-                      type="text"
-                      value={formData.rt}
-                      onChange={e => setFormData({ ...formData, rt: e.target.value })}
-                      placeholder="001"
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <CreditCard size={13} className="text-indigo-500" />
+                    <span>NISN (Nasional)</span>
+                    {renderFieldStatusBadge(formData.nisn)}
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={formData.nisn}
+                    onChange={e => setFormData({ ...formData, nisn: e.target.value })}
+                    placeholder="10 digit NISN..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <Phone size={13} className="text-emerald-500" />
+                    <span>No. HP / WhatsApp Siswa</span>
+                    {renderFieldStatusBadge(formData.no_hp)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.no_hp}
+                    onChange={e => setFormData({ ...formData, no_hp: e.target.value })}
+                    placeholder="Contoh: 087713346462"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <User size={13} className="text-indigo-500" />
+                    <span>Jenis Kelamin</span>
+                    {renderFieldStatusBadge(formData.jenis_kelamin)}
+                  </label>
+                  <select
+                    value={formData.jenis_kelamin}
+                    onChange={e => setFormData({ ...formData, jenis_kelamin: e.target.value })}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  >
+                    <option value="L">Laki-laki (L)</option>
+                    <option value="P">Perempuan (P)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <MapPin size={13} className="text-sky-500" />
+                    <span>Tempat Lahir</span>
+                    {renderFieldStatusBadge(formData.tempat_lahir)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tempat_lahir}
+                    onChange={e => setFormData({ ...formData, tempat_lahir: e.target.value })}
+                    placeholder="Kota/Kabupaten kelahiran..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <Calendar size={13} className="text-amber-500" />
+                    <span>Tanggal Lahir</span>
+                    {renderFieldStatusBadge(formData.tanggal_lahir)}
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.tanggal_lahir}
+                    onChange={e => setFormData({ ...formData, tanggal_lahir: e.target.value })}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <Ruler size={13} className="text-emerald-500" />
+                    <span>Tinggi Badan (cm)</span>
+                    {renderFieldStatusBadge(formData.tinggi_badan)}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.tinggi_badan}
+                    onChange={e => setFormData({ ...formData, tinggi_badan: e.target.value })}
+                    placeholder="Contoh: 168"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <Weight size={13} className="text-blue-500" />
+                    <span>Berat Badan (kg)</span>
+                    {renderFieldStatusBadge(formData.berat_badan)}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.berat_badan}
+                    onChange={e => setFormData({ ...formData, berat_badan: e.target.value })}
+                    placeholder="Contoh: 55"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Agama</span>
+                    {renderFieldStatusBadge(formData.agama)}
+                  </label>
+                  <select
+                    value={formData.agama}
+                    onChange={e => setFormData({ ...formData, agama: e.target.value })}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  >
+                    <option value="">-- Pilih Agama --</option>
+                    {AGAMA_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.agama && !AGAMA_OPTIONS.some(o => o.label.toLowerCase() === formData.agama.toLowerCase() || o.value.toLowerCase() === formData.agama.toLowerCase()) && (
+                      <option value={formData.agama}>{formData.agama}</option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Hobi / Kegemaran</span>
+                    {renderFieldStatusBadge(formData.hobi)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.hobi}
+                    onChange={e => setFormData({ ...formData, hobi: e.target.value })}
+                    placeholder="Contoh: Main Bola, Membaca..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Cita-cita</span>
+                    {renderFieldStatusBadge(formData.cita_cita)}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.cita_cita}
+                    onChange={e => setFormData({ ...formData, cita_cita: e.target.value })}
+                    placeholder="Contoh: Ingin menjadi TNI, Dokter, Programmer..."
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* FOCUSED SECTION 2: ORGANISASI DAN EKSTRAKURIKULER */}
+          {(activeSection === 'ekskul' || (activeSection === 'all' && step === 3)) && (
+            <motion.div
+              key="sec-ekskul"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                    <Users size={14} /> Keanggotaan Organisasi
+                  </h4>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">Anggota OSIS</span>
+                    <select
+                      value={formData.is_osis ? '1' : '0'}
+                      onChange={e => setFormData({ ...formData, is_osis: e.target.value === '1' })}
+                      className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-xs"
+                    >
+                      <option value="0">Tidak</option>
+                      <option value="1">Ya (Aktif)</option>
+                    </select>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">RW</label>
-                    <input
-                      type="text"
-                      value={formData.rw}
-                      onChange={e => setFormData({ ...formData, rw: e.target.value })}
-                      placeholder="002"
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="font-bold text-slate-300">Dusun / Kampung</label>
-                    <input
-                      type="text"
-                      value={formData.dusun}
-                      onChange={e => setFormData({ ...formData, dusun: e.target.value })}
-                      placeholder="Nama dusun/kampung..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">Anggota MPK</span>
+                    <select
+                      value={formData.is_mpk ? '1' : '0'}
+                      onChange={e => setFormData({ ...formData, is_mpk: e.target.value === '1' })}
+                      className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-xs"
+                    >
+                      <option value="0">Tidak</option>
+                      <option value="1">Ya (Aktif)</option>
+                    </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <Sparkles size={14} /> Pilihan Ekstrakurikuler
+                  </h4>
+
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Kelurahan / Desa</label>
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Ekstrakurikuler 1 (Utama)</label>
                     <input
                       type="text"
-                      value={formData.kelurahan}
-                      onChange={e => setFormData({ ...formData, kelurahan: e.target.value })}
-                      placeholder="Nama kelurahan..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
+                      value={formData.ekskul_1}
+                      onChange={e => setFormData({ ...formData, ekskul_1: e.target.value })}
+                      placeholder="Contoh: Pramuka, PMR..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                   </div>
+
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Kecamatan</label>
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Ekstrakurikuler 2 (Pilihan)</label>
                     <input
                       type="text"
-                      value={formData.kecamatan}
-                      onChange={e => setFormData({ ...formData, kecamatan: e.target.value })}
-                      placeholder="Nama kecamatan..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Kabupaten / Kota</label>
-                    <input
-                      type="text"
-                      value={formData.kabupaten}
-                      onChange={e => setFormData({ ...formData, kabupaten: e.target.value })}
-                      placeholder="Nama kabupaten..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
+                      value={formData.ekskul_2}
+                      onChange={e => setFormData({ ...formData, ekskul_2: e.target.value })}
+                      placeholder="Contoh: Futsal, Basket, Paskibra..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* FOCUSED SECTION 3: KONTAK & ALAMAT (HIERARCHICAL CASCADING FLOW) */}
+          {(activeSection === 'alamat' || (activeSection === 'all' && step === 2)) && (
+            <motion.div
+              key="sec-alamat"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 1. PROVINSI (Paling Utama / Pertama) */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    1. Provinsi <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.provinsi}
+                    onChange={e => setFormData({ ...formData, provinsi: e.target.value, kabupaten: '', kecamatan: '', kelurahan: '' })}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  >
+                    <option value="">-- Pilih Provinsi --</option>
+                    {PROVINSI_INDONESIA_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.provinsi && !PROVINSI_INDONESIA_OPTIONS.some(o => o.label.toLowerCase() === formData.provinsi.toLowerCase() || o.value.toLowerCase() === formData.provinsi.toLowerCase()) && (
+                      <option value={formData.provinsi}>{formData.provinsi}</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* 2. KABUPATEN / KOTA (Tersaring Otomatis Berdasarkan Provinsi) */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    2. Kabupaten / Kota
+                  </label>
+                  <select
+                    value={formData.kabupaten}
+                    onChange={e => setFormData({ ...formData, kabupaten: e.target.value, kecamatan: '', kelurahan: '' })}
+                    disabled={!formData.provinsi}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                  >
+                    <option value="">{formData.provinsi ? (kabupatenOptions.length > 0 ? '-- Pilih Kabupaten/Kota --' : 'Memuat Kota...') : '-- Pilih Provinsi Terlebih Dahulu --'}</option>
+                    {kabupatenOptions.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.kabupaten && !kabupatenOptions.some(o => o.label.toLowerCase() === formData.kabupaten.toLowerCase()) && (
+                      <option value={formData.kabupaten}>{formData.kabupaten}</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* 3. KECAMATAN (Tersaring Otomatis Berdasarkan Kabupaten) */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">3. Kecamatan</label>
+                  <select
+                    value={formData.kecamatan}
+                    onChange={e => setFormData({ ...formData, kecamatan: e.target.value, kelurahan: '', kode_pos: '' })}
+                    disabled={!formData.kabupaten}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                  >
+                    <option value="">{formData.kabupaten ? (kecamatanOptions.length > 0 ? '-- Pilih Kecamatan --' : 'Memuat Kecamatan...') : '-- Pilih Kota Terlebih Dahulu --'}</option>
+                    {kecamatanOptions.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.kecamatan && !kecamatanOptions.some(o => o.label.toLowerCase() === formData.kecamatan.toLowerCase()) && (
+                      <option value={formData.kecamatan}>{formData.kecamatan}</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* 4. KELURAHAN / DESA (Tersaring Otomatis Berdasarkan Kecamatan) */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">4. Kelurahan / Desa</label>
+                  <select
+                    value={formData.kelurahan}
+                    onChange={e => setFormData({ ...formData, kelurahan: e.target.value })}
+                    disabled={!formData.kecamatan}
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                  >
+                    <option value="">{formData.kecamatan ? (kelurahanOptions.length > 0 ? '-- Pilih Kelurahan/Desa --' : 'Memuat Desa...') : '-- Pilih Kecamatan Terlebih Dahulu --'}</option>
+                    {kelurahanOptions.map(opt => (
+                      <option key={opt.value} value={opt.label}>{opt.label}</option>
+                    ))}
+                    {formData.kelurahan && !kelurahanOptions.some(o => o.label.toLowerCase() === formData.kelurahan.toLowerCase()) && (
+                      <option value={formData.kelurahan}>{formData.kelurahan}</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* RT & RW (Tepat Setelah Kelurahan/Desa) & KODE POS (Auto-Detect) */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">RT</label>
+                  <input
+                    type="text"
+                    value={formData.rt}
+                    onChange={e => setFormData({ ...formData, rt: e.target.value })}
+                    placeholder="001"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">RW</label>
+                  <input
+                    type="text"
+                    value={formData.rw}
+                    onChange={e => setFormData({ ...formData, rw: e.target.value })}
+                    placeholder="002"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    Kode Pos <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">(Auto)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.kode_pos}
+                    onChange={e => setFormData({ ...formData, kode_pos: e.target.value })}
+                    placeholder="41162"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* 5. ALAMAT JALAN / KAMPUNG / PATOKAN RUMAH */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  5. Alamat Jalan / Kampung / Patokan Rumah
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.alamat || formData.dusun}
+                  onChange={e => setFormData({ ...formData, alamat: e.target.value, dusun: e.target.value })}
+                  placeholder="Contoh: Kp. Cihampelas No. 11 atau Jl. Merdeka No. 45..."
+                  className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">Moda Transportasi Ke Sekolah</label>
+                <select
+                  value={formData.transportasi}
+                  onChange={e => setFormData({ ...formData, transportasi: e.target.value })}
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                >
+                  <option value="">-- Pilih Transportasi --</option>
+                  {TRANSPORTASI_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.label}>{opt.label}</option>
+                  ))}
+                  {formData.transportasi && !TRANSPORTASI_OPTIONS.some(o => o.label.toLowerCase() === formData.transportasi.toLowerCase() || o.value.toLowerCase() === formData.transportasi.toLowerCase()) && (
+                    <option value={formData.transportasi}>{formData.transportasi}</option>
+                  )}
+                </select>
+              </div>
+            </motion.div>
+          )}
+
+          {/* FOCUSED SECTION 4: ORANG TUA / WALI MURID */}
+          {(activeSection === 'orangtua' || (activeSection === 'all' && step === 3)) && (
+            <motion.div
+              key="sec-orangtua"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* AYAH */}
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <User size={14} /> Data Ayah Kandung
+                  </h4>
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Kode Pos</label>
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Nama Ayah</label>
                     <input
                       type="text"
-                      value={formData.kode_pos}
-                      onChange={e => setFormData({ ...formData, kode_pos: e.target.value })}
-                      placeholder="Kode pos..."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
+                      value={formData.nama_ayah}
+                      onChange={e => setFormData({ ...formData, nama_ayah: e.target.value })}
+                      placeholder="Nama lengkap ayah..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     />
                   </div>
-
                   <div className="space-y-1.5">
-                    <label className="font-bold text-slate-300">Moda Transportasi Ke Sekolah</label>
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">No. HP / WA Ayah</label>
                     <input
                       type="text"
-                      value={formData.transportasi}
-                      onChange={e => setFormData({ ...formData, transportasi: e.target.value })}
-                      placeholder="Motor, Sepeda, Jalan Kaki, dsb."
-                      className="w-full h-10 px-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
+                      value={formData.no_hp_ayah}
+                      onChange={e => setFormData({ ...formData, no_hp_ayah: e.target.value })}
+                      placeholder="087779902007..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
                     />
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* STEP 3: ORANG TUA & WALI */}
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4 text-xs"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* AYAH */}
-                  <div className="space-y-3 p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
-                    <h4 className="font-bold text-blue-400 flex items-center gap-1.5">
-                      <User size={14} /> Data Ayah Kandung
-                    </h4>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">Nama Ayah</label>
-                      <input
-                        type="text"
-                        value={formData.nama_ayah}
-                        onChange={e => setFormData({ ...formData, nama_ayah: e.target.value })}
-                        placeholder="Nama lengkap ayah..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">NIK Ayah</label>
-                      <input
-                        type="text"
-                        maxLength={16}
-                        value={formData.nik_ayah}
-                        onChange={e => setFormData({ ...formData, nik_ayah: e.target.value })}
-                        placeholder="16 digit NIK Ayah..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">Pekerjaan Ayah</label>
-                      <input
-                        type="text"
-                        value={formData.pekerjaan_ayah}
-                        onChange={e => setFormData({ ...formData, pekerjaan_ayah: e.target.value })}
-                        placeholder="Pekerjaan..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* IBU */}
-                  <div className="space-y-3 p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
-                    <h4 className="font-bold text-indigo-400 flex items-center gap-1.5">
-                      <User size={14} /> Data Ibu Kandung
-                    </h4>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">Nama Ibu</label>
-                      <input
-                        type="text"
-                        value={formData.nama_ibu}
-                        onChange={e => setFormData({ ...formData, nama_ibu: e.target.value })}
-                        placeholder="Nama lengkap ibu..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">NIK Ibu</label>
-                      <input
-                        type="text"
-                        maxLength={16}
-                        value={formData.nik_ibu}
-                        onChange={e => setFormData({ ...formData, nik_ibu: e.target.value })}
-                        placeholder="16 digit NIK Ibu..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="font-semibold text-slate-300">Pekerjaan Ibu</label>
-                      <input
-                        type="text"
-                        value={formData.pekerjaan_ibu}
-                        onChange={e => setFormData({ ...formData, pekerjaan_ibu: e.target.value })}
-                        placeholder="Pekerjaan..."
-                        className="w-full h-9 px-3 rounded-lg bg-slate-900 border border-slate-800 text-white focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pekerjaan Ayah</label>
+                    <select
+                      value={formData.pekerjaan_ayah}
+                      onChange={e => setFormData({ ...formData, pekerjaan_ayah: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    >
+                      <option value="">-- Pilih Pekerjaan Ayah --</option>
+                      {PEKERJAAN_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {formData.pekerjaan_ayah && !PEKERJAAN_OPTIONS.some(o => o.label.toLowerCase() === formData.pekerjaan_ayah.toLowerCase() || o.value.toLowerCase() === formData.pekerjaan_ayah.toLowerCase()) && (
+                        <option value={formData.pekerjaan_ayah}>{formData.pekerjaan_ayah}</option>
+                      )}
+                    </select>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+
+                {/* IBU */}
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                    <User size={14} /> Data Ibu Kandung
+                  </h4>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Nama Ibu</label>
+                    <input
+                      type="text"
+                      value={formData.nama_ibu}
+                      onChange={e => setFormData({ ...formData, nama_ibu: e.target.value })}
+                      placeholder="Nama lengkap ibu..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">No. HP / WA Ibu</label>
+                    <input
+                      type="text"
+                      value={formData.no_hp_ibu}
+                      onChange={e => setFormData({ ...formData, no_hp_ibu: e.target.value })}
+                      placeholder="082122319562..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pekerjaan Ibu</label>
+                    <select
+                      value={formData.pekerjaan_ibu}
+                      onChange={e => setFormData({ ...formData, pekerjaan_ibu: e.target.value })}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    >
+                      <option value="">-- Pilih Pekerjaan Ibu --</option>
+                      {PEKERJAAN_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                      {formData.pekerjaan_ibu && !PEKERJAAN_OPTIONS.some(o => o.label.toLowerCase() === formData.pekerjaan_ibu.toLowerCase() || o.value.toLowerCase() === formData.pekerjaan_ibu.toLowerCase()) && (
+                        <option value={formData.pekerjaan_ibu}>{formData.pekerjaan_ibu}</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* WALI MURID */}
+                <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 sm:col-span-2">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <User size={14} /> Data Wali Murid (Opsional)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Nama Wali</label>
+                      <input
+                        type="text"
+                        value={formData.nama_wali}
+                        onChange={e => setFormData({ ...formData, nama_wali: e.target.value })}
+                        placeholder="Nama lengkap wali (jika ada)..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Hubungan Dengan Siswa</label>
+                      <select
+                        value={formData.hubungan_wali}
+                        onChange={e => setFormData({ ...formData, hubungan_wali: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pilih Hubungan --</option>
+                        {HUBUNGAN_WALI_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.hubungan_wali && !HUBUNGAN_WALI_OPTIONS.some(o => o.label.toLowerCase() === formData.hubungan_wali.toLowerCase() || o.value.toLowerCase() === formData.hubungan_wali.toLowerCase()) && (
+                          <option value={formData.hubungan_wali}>{formData.hubungan_wali}</option>
+                        )}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">No. HP / WA Wali</label>
+                      <input
+                        type="text"
+                        value={formData.no_hp_wali}
+                        onChange={e => setFormData({ ...formData, no_hp_wali: e.target.value })}
+                        placeholder="No HP / WhatsApp wali..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Pekerjaan Wali</label>
+                      <select
+                        value={formData.pekerjaan_wali}
+                        onChange={e => setFormData({ ...formData, pekerjaan_wali: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pilih Pekerjaan Wali --</option>
+                        {PEKERJAAN_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.label}>{opt.label}</option>
+                        ))}
+                        {formData.pekerjaan_wali && !PEKERJAAN_OPTIONS.some(o => o.label.toLowerCase() === formData.pekerjaan_wali.toLowerCase() || o.value.toLowerCase() === formData.pekerjaan_wali.toLowerCase()) && (
+                          <option value={formData.pekerjaan_wali}>{formData.pekerjaan_wali}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* FOOTER ACTIONS */}
-        <div className="p-6 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between">
-          <button
+        <div className="p-4 sm:p-6 bg-slate-50/80 dark:bg-slate-950/80 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+          <Button
             type="button"
-            onClick={handlePrev}
-            disabled={step === 1}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition"
+            variant="outline"
+            onClick={onClose}
+            className="h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5"
           >
-            <ArrowLeft size={14} />
-            <span>Sebelumnya</span>
-          </button>
+            <span>Batal</span>
+          </Button>
 
-          <div className="flex items-center gap-2">
-            {step < 3 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 transition"
-              >
-                <span>Lanjutkan</span>
-                <ArrowRight size={14} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmitFinal}
-                disabled={updateMutation.isPending}
-                className="flex items-center gap-2 px-6 py-2.5 text-xs font-extrabold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 transition disabled:opacity-50"
-              >
-                <Save size={14} />
-                <span>{updateMutation.isPending ? 'Simpan Data...' : 'Simpan & Selesaikan Onboarding'}</span>
-              </button>
-            )}
-          </div>
+          <Button
+            type="button"
+            onClick={handleSubmitFinal}
+            disabled={updateMutationMe.isPending}
+            className="h-10 px-5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+          >
+            <Save size={14} />
+            <span>{updateMutationMe.isPending ? 'Simpan Data...' : 'Simpan Perubahan'}</span>
+          </Button>
         </div>
       </motion.div>
+      <WebcamModal
+        isOpen={showWebcamModal}
+        onClose={() => setShowWebcamModal(false)}
+        onCapture={(file) => {
+          setSelectedPhotoFile(file);
+          setPhotoPreview(URL.createObjectURL(file));
+        }}
+      />
     </div>
   );
 };

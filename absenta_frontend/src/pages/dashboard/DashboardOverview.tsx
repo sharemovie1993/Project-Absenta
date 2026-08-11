@@ -37,6 +37,7 @@ const SiswaDashboard = lazy(() => import("../../components/dashboard/roles/Siswa
 const PetugasDashboard = lazy(() => import("../../components/dashboard/roles/PetugasDashboard").then(module => ({ default: module.PetugasDashboard })));
 const GerbangDashboard = lazy(() => import("../../components/dashboard/roles/GerbangDashboard").then(module => ({ default: module.GerbangDashboard })));
 const KepalaSekolahDashboard = lazy(() => import("../../components/dashboard/roles/KepalaSekolahDashboard").then(module => ({ default: module.KepalaSekolahDashboard })));
+const OrtuDashboard = lazy(() => import("../../apps/parent/pages/ParentDashboard"));
 
 export default function DashboardOverview() {
   // ----------------------------------------------------------------------
@@ -292,10 +293,18 @@ export default function DashboardOverview() {
       views.push({ id: 'overview', label: 'Overview', component: renderOverviewContent() });
     }
 
-    // 1. GERBANG (Khusus peran murni Petugas Gerbang/Satpam)
+    // 1. GERBANG (Petugas Gerbang / Satpam atau Guru dengan Jabatan Petugas Gerbang)
     const isSiswa = roleName === 'SISWA';
-    const isDedicatedGerbangRole = (roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG') && !(user as any)?.position_codes?.includes('WALIKELAS');
-    if (!isAdminOrSuperadmin && !isSiswa && isDedicatedGerbangRole) {
+    const isGerbangPosition =
+      roleName === 'GERBANG' ||
+      roleName === 'PETUGAS_GERBANG' ||
+      ((user?.guru_profile as any)?.jabatan || '').toLowerCase().includes('gerbang') ||
+      ((user as any)?.jabatan || '').toLowerCase().includes('gerbang') ||
+      (user as any)?.position_codes?.includes('GERBANG') ||
+      hasCap('dashboard.view.gerbang') ||
+      hasCap('attendance.gate.tap.entry');
+
+    if (!isAdminOrSuperadmin && !isSiswa && isGerbangPosition) {
       if (!views.find(v => v.id === 'gerbang')) {
         views.push({ id: 'gerbang', label: 'Petugas Gerbang', component: <GerbangDashboard /> });
       }
@@ -334,6 +343,13 @@ export default function DashboardOverview() {
     if (roleName === 'SISWA') {
        if (!views.find(v => v.id === 'siswa')) {
           views.push({ id: 'siswa', label: 'Dashboard Siswa', component: <SiswaDashboard /> });
+       }
+    }
+
+    // 5. ORTU / PARENT PORTAL (Khusus pengguna ber-role Orang Tua)
+    if (['ORTU', 'ORANG_TUA', 'PARENT', 'WALI_MURID'].includes(roleName || '')) {
+       if (!views.find(v => v.id === 'ortu')) {
+          views.push({ id: 'ortu', label: 'Dashboard Orang Tua', component: <OrtuDashboard /> });
        }
     }
 
@@ -513,21 +529,28 @@ export default function DashboardOverview() {
   // Set default view on load
   useEffect(() => {
     if (availableViews.length > 0 && activeView === 'default') {
-      const hasGerbang = caps.includes('attendance.gate.tap.entry') || caps.includes('attendance.gate.tap.exit');
+      const isGerbangUser = 
+        roleName === 'GERBANG' || 
+        roleName === 'PETUGAS_GERBANG' ||
+        ((user?.guru_profile as any)?.jabatan || '').toLowerCase().includes('gerbang') ||
+        ((user as any)?.jabatan || '').toLowerCase().includes('gerbang') ||
+        caps.includes('attendance.gate.tap.entry') ||
+        caps.includes('dashboard.view.gerbang');
+
       const hasPetugas = caps.includes('dashboard.view.petugas');
       const isAdmin = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
 
       // Prioritize operational views for non-admins to avoid cluttering their view with charts
-      if (hasGerbang && !isAdmin) {
+      if (isGerbangUser && availableViews.some(v => v.id === 'gerbang')) {
         setActiveView('gerbang');
-      } else if (hasPetugas && !isAdmin) {
+      } else if (hasPetugas && !isAdmin && availableViews.some(v => v.id === 'petugas')) {
         setActiveView('petugas');
       } else {
-        // Fallback to the first item (e.g., 'overview' if available)
+        // Fallback to the first item
         setActiveView(availableViews[0].id);
       }
     }
-  }, [availableViews, activeView, caps, roleName]);
+  }, [availableViews, activeView, caps, roleName, user]);
 
   // Data Fetching Effect
   useEffect(() => {
@@ -766,8 +789,8 @@ export default function DashboardOverview() {
 
   return (
     <div className="flex-1 space-y-6">
-      {/* Peta Tugas Harian Terintegrasi Universal (Hanya Staf & Pegawai) */}
-      {roleName !== 'SISWA' && <MyJobdeskWidget />}
+      {/* Peta Tugas Harian Terintegrasi Universal (Hanya Staf & Pegawai selain Dashboard Guru) */}
+      {roleName !== 'SISWA' && activeView !== 'unified_staff' && <MyJobdeskWidget />}
 
       {/* Onboarding Modal */}
       {/* <SimpleOnboardingModal 

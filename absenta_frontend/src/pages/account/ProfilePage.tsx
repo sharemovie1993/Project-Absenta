@@ -26,6 +26,7 @@ import { CardBackPreview } from '../../components/academic/student-card/CardBack
 import { DEFAULT_CONFIG, DEFAULT_GURU_CONFIG } from '../../components/academic/student-card/constants';
 import toast from 'react-hot-toast';
 import { resolveProfilePhotoUrl } from '../../lib/utils';
+import { formatAlamatLengkap } from '../../lib/alamat.util';
 
 const EditProfileModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.EditProfileModal })));
 const ChangePasswordModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.ChangePasswordModal })));
@@ -305,7 +306,7 @@ export default function ProfilePage() {
         kontakLabel: 'No HP',
         kontak: gp.no_hp || '-',
         alamatLabel: 'Alamat',
-        alamat: gp.alamat || '-',
+        alamat: formatAlamatLengkap(gp),
         lahirLabel: 'Tanggal Lahir',
         lahir: gp.tanggal_lahir ? new Date(gp.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
         jkLabel: 'Jenis Kelamin',
@@ -328,7 +329,7 @@ export default function ProfilePage() {
         kontakLabel: 'No HP',
         kontak: sp.no_hp || sp.telepon_ortu || sp.no_hp_ortu || '-',
         alamatLabel: 'Alamat',
-        alamat: sp.alamat || '-',
+        alamat: formatAlamatLengkap(sp),
         lahirLabel: 'Tanggal Lahir',
         lahir: sp.tanggal_lahir ? new Date(sp.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
         jkLabel: 'Jenis Kelamin',

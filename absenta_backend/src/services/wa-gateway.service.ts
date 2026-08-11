@@ -409,7 +409,24 @@ const waGatewayServiceLocal = {
    * Melempar Error jika belum connected (agar caller bisa gracefully skip).
    */
   async sendMessage(tenantId: string, nomor: string, pesan: string): Promise<boolean> {
-    const entry = pool.get(tenantId);
+    let entry = pool.get(tenantId);
+    if (!entry || entry.status !== 'connected' || !entry.sock) {
+      const { hasCreds } = await getTenantDbCredsInfo(tenantId);
+      if (hasCreds && isMasterInstance()) {
+        console.log(`[WA-Pool:${tenantId}] Auto-restoring WA socket connection from DB creds before sending message...`);
+        try {
+          await connectTenant(tenantId);
+          for (let i = 0; i < 15; i++) {
+            entry = pool.get(tenantId);
+            if (entry && entry.status === 'connected' && entry.sock) break;
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch (err: any) {
+          console.error(`[WA-Pool:${tenantId}] Auto-restore before send failed:`, err.message);
+        }
+      }
+    }
+
     if (!entry || entry.status !== 'connected' || !entry.sock) {
       throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
     }
@@ -450,7 +467,24 @@ const waGatewayServiceLocal = {
    * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
    */
   async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
-    const entry = pool.get(tenantId);
+    let entry = pool.get(tenantId);
+    if (!entry || entry.status !== 'connected' || !entry.sock) {
+      const { hasCreds } = await getTenantDbCredsInfo(tenantId);
+      if (hasCreds && isMasterInstance()) {
+        console.log(`[WA-Pool:${tenantId}] Auto-restoring WA socket connection from DB creds before sending to JID...`);
+        try {
+          await connectTenant(tenantId);
+          for (let i = 0; i < 15; i++) {
+            entry = pool.get(tenantId);
+            if (entry && entry.status === 'connected' && entry.sock) break;
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch (err: any) {
+          console.error(`[WA-Pool:${tenantId}] Auto-restore before sendToJid failed:`, err.message);
+        }
+      }
+    }
+
     if (!entry || entry.status !== 'connected' || !entry.sock) {
       throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
     }
@@ -751,6 +785,20 @@ const waGatewayServiceLocal = {
       console.error('[WA-Pool] Gagal restore connections:', e.message);
     }
   },
+  async shutdownAll(): Promise<void> {
+    for (const entry of pool.values()) {
+      try {
+        if (entry.sock) {
+          entry.sock.ev.removeAllListeners('connection.update');
+          entry.sock.ev.removeAllListeners('messages.upsert');
+          entry.sock.ws?.close();
+          entry.sock.end?.(undefined);
+        }
+      } catch (_) {}
+    }
+    pool.clear();
+    console.log('[WA-Pool] Cleanly closed all WhatsApp sockets on shutdown.');
+  },
 };
 
 // ─── PM2 Cluster RPC Delegator ───────────────────────────────────────────────
@@ -928,5 +976,8 @@ export const waGatewayService = {
     if (isMasterInstance()) {
       return waGatewayServiceLocal.restoreConnections();
     }
+  },
+  async shutdownAll(): Promise<void> {
+    return waGatewayServiceLocal.shutdownAll();
   },
 };

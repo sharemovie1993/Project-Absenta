@@ -316,14 +316,14 @@ h1 {
   .space-y-6 { margin-top: 1rem !important; margin-bottom: 1rem !important; }
 }
 
-/* Branding CSS Variables with sensible defaults */
+/* Branding CSS Variables with sensible defaults — Sapphire Royal Blue Theme */
 :root {
-  --color-primary: #F59E0B;
-  --color-primary-foreground: #111827;
-  --color-secondary: #2563EB;
+  --color-primary: #2563EB;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #1d4ed8;
   --color-secondary-foreground: #FFFFFF;
-  --color-accent: #F59E0B;
-  --color-accent-foreground: #111827;
+  --color-accent: #3b82f6;
+  --color-accent-foreground: #FFFFFF;
 }
 
 html[data-theme="dark"][data-dark-variant="default"] {
