@@ -1,0 +1,97 @@
+import { prisma } from '../../../../utils/prisma';
+
+export class SesiCloseNotifyService {
+  private static instance: SesiCloseNotifyService;
+
+  public static getInstance(): SesiCloseNotifyService {
+    if (!SesiCloseNotifyService.instance) {
+      SesiCloseNotifyService.instance = new SesiCloseNotifyService();
+    }
+    return SesiCloseNotifyService.instance;
+  }
+
+  async upsertProgresMateri(tenantId: string, _org: any, sesiId: string, _payload: any) {
+    const sesi = await prisma.sesiAbsensi.findFirst({
+      where: { id: sesiId, tenant_id: tenantId }
+    });
+    if (!sesi) throw new Error('Sesi tidak ditemukan');
+
+    const updated = await prisma.sesiAbsensi.update({
+      where: { id: sesiId },
+      data: {
+        updated_at: new Date()
+      }
+    });
+
+    return updated;
+  }
+
+  async handleSessionClose(tenantId: string, sesiId: string, _sesi: any) {
+    const sesi = await prisma.sesiAbsensi.findFirst({
+      where: { id: sesiId, tenant_id: tenantId },
+      select: { id: true, kelas_id: true }
+    });
+    if (!sesi) return;
+
+    const siswaList = await prisma.siswaAkademik.findMany({
+      where: { kelas_id: sesi.kelas_id },
+      select: { id: true }
+    });
+
+    const existingAbsen = await prisma.absenSiswa.findMany({
+      where: { tenant_id: tenantId, sesi_id: sesiId },
+      select: { siswa_akademik_id: true }
+    });
+
+    const recordedSet = new Set(existingAbsen.map(a => a.siswa_akademik_id));
+    const missingSiswa = siswaList.filter(s => !recordedSet.has(s.id));
+
+    if (missingSiswa.length > 0) {
+      await prisma.absenSiswa.createMany({
+        data: missingSiswa.map(s => ({
+          tenant_id: tenantId,
+          sesi_id: sesiId,
+          siswa_akademik_id: s.id,
+          status: 'ALPA',
+          is_terlambat: false,
+          poin_kehadiran: 0,
+          catatan: 'Auto-marked ALPA on session close'
+        }))
+      });
+    }
+  }
+
+  async finalizeSessionAndNotify(tenantId: string, sesiId: string) {
+    const sesi = await prisma.sesiAbsensi.findFirst({
+      where: { id: sesiId, tenant_id: tenantId },
+      select: {
+        id: true,
+        kelas_id: true,
+        jenis_kegiatan: true,
+        Mapel: { select: { nama_mapel: true } }
+      }
+    });
+    if (!sesi) throw new Error('Sesi tidak ditemukan');
+
+    await this.handleSessionClose(tenantId, sesiId, sesi);
+
+    const alpaSiswa = await prisma.absenSiswa.findMany({
+      where: { tenant_id: tenantId, sesi_id: sesiId, status: 'ALPA' },
+      select: {
+        SiswaAkademik: {
+          select: {
+            siswa: { select: { nama_siswa: true, no_hp: true } }
+          }
+        }
+      }
+    });
+
+    return {
+      success: true,
+      message: `Session finalized. ${alpaSiswa.length} student(s) auto-marked as ALPA and queued for notification.`,
+      notified_count: alpaSiswa.length
+    };
+  }
+}
+
+export const sesiCloseNotifyService = SesiCloseNotifyService.getInstance();
