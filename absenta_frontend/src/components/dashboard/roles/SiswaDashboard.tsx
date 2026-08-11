@@ -646,6 +646,8 @@ export const SiswaDashboard: React.FC = () => {
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
           sesi: sesiNama,
+          nama_guru: item.nama_guru || item.guru || null,
+          status_guru: item.status_guru || 'HADIR',
           keterangan: item.keterangan || '',
         };
       });
@@ -684,6 +686,8 @@ export const SiswaDashboard: React.FC = () => {
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
           sesi: sesiNama,
+          nama_guru: item.nama_guru || item.guru || null,
+          status_guru: item.status_guru || 'HADIR',
           keterangan: item.keterangan || '',
         };
       });

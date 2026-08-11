@@ -313,15 +313,19 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                           <span>Waktu Tap: {item.waktu}</span>
                         </div>
 
-                        {item.nama_guru && (
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                            <User size={12} className="text-slate-400 shrink-0" />
-                            <span>Guru: {item.nama_guru}</span>
+                        {item.nama_guru ? (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-indigo-50/70 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">👨‍🏫 Guru:</span>
+                            <span className="font-extrabold text-slate-900 dark:text-white">{item.nama_guru}</span>
                             {item.status_guru === 'HADIR' ? (
-                              <span className="ml-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">(Guru Hadir)</span>
-                            ) : item.status_guru === 'BELUM_ABSEN' ? (
-                              <span className="ml-1 text-[10px] font-medium text-slate-400">(Belum Absen)</span>
-                            ) : null}
+                              <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">HADIR</span>
+                            ) : (
+                              <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-500 border border-slate-300/60 dark:border-slate-700">BELUM TAP</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-800/40 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-800">
+                            <span>👨‍🏫 Guru Pengajar Sesi</span>
                           </div>
                         )}
                       </div>
