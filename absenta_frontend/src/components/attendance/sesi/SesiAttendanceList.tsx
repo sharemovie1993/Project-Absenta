@@ -458,7 +458,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
             {/* Status Tabs dengan Badge Count — tanpa search bar */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
               {[
-                { key: 'ALL', label: 'Semua', count: stats.total },
+                { key: 'ALL', label: 'All', count: stats.total },
                 { key: 'HADIR', label: 'Hadir', count: stats.hadir },
                 ...(stats.terlambat > 0 ? [{ key: 'TERLAMBAT', label: 'Telat', count: stats.terlambat }] : []),
                 ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
