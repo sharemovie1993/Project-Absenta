@@ -8,7 +8,8 @@ import {
   Info,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 import { Button, Badge } from '../../ui';
 
@@ -54,6 +55,7 @@ interface ImportSectionProps {
   previewStats: BackupStats | null;
   clearExisting?: boolean;
   onToggleClearExisting?: (val: boolean) => void;
+  onManualPurge?: () => void;
   onImport: () => void;
 }
 
@@ -67,6 +69,7 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
   previewStats,
   clearExisting = false,
   onToggleClearExisting,
+  onManualPurge,
   onImport
 }) => {
   return (
@@ -272,6 +275,18 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
               </p>
             </div>
           </label>
+        )}
+
+        {onManualPurge && (
+          <button
+            type="button"
+            onClick={onManualPurge}
+            disabled={loadingImport}
+            className="w-full py-2.5 px-3.5 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/60 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors text-[11px] font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span>Kosongkan Data Sekolah Manual (Reset Tenant)</span>
+          </button>
         )}
 
         <Button

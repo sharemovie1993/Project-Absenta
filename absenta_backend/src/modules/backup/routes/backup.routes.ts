@@ -11,6 +11,7 @@ export async function backupRoutes(fastify: any) {
     // Academic Tenant Export & Import endpoints
     fastify.get('/academic/backup/export', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportTenantData);
     fastify.post('/academic/backup/import', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importTenantData);
+    fastify.post('/academic/backup/purge-tenant', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.purgeTenantData);
     
     // SSE Endpoint (Must be registered)
     fastify.register(restoreProgressRoutes, { prefix: '/admin/backups' }); 

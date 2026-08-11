@@ -9,7 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { exportAcademicData, importAcademicData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
+import { exportAcademicData, importAcademicData, purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
 import { SectionCard, Loader, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
@@ -302,7 +302,38 @@ export default function BackupPage() {
         setProcessingStage('idle');
       }, 1000);
     }
-  }, [parsedData, confirm, loadHistory]);
+  }, [parsedData, clearExisting, confirm, loadHistory]);
+
+  const handleManualPurge = useCallback(async () => {
+    const ok = await confirm({
+      title: 'Kosongkan Seluruh Data Sekolah?',
+      description: 'PERINGATAN: Semua data akademik (Siswa, Guru, Mapel, Kelas, Presensi, Jadwal) pada sekolah ini akan DIHAPUS BERSIH. Akun Admin Anda yang sedang login AKAN TETAP AKTIF dan tersimpan aman.',
+      confirmText: 'Ya, Kosongkan Data Sekolah',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+
+    if (!ok) return;
+
+    try {
+      setLoadingImport(true);
+      const res = await purgeTenantData();
+      if (res.success) {
+        toast.success(res.message || 'Data sekolah berhasil dikosongkan secara manual!');
+        setImportFile(null);
+        setPreviewStats(null);
+        setParsedData(null);
+        loadHistory();
+      } else {
+        toast.error(`Gagal mengosongkan data: ${res.message}`);
+      }
+    } catch (err: any) {
+      console.error('Purge error:', err);
+      toast.error(`Gagal mengosongkan data: ${err.message || 'Error server'}`);
+    } finally {
+      setLoadingImport(false);
+    }
+  }, [confirm, loadHistory]);
 
   // headerStats dibungkus useMemo agar tidak memicu re-render yang tidak perlu
   const headerStats = useMemo(() => [
@@ -392,6 +423,7 @@ export default function BackupPage() {
               previewStats={previewStats}
               clearExisting={clearExisting}
               onToggleClearExisting={setClearExisting}
+              onManualPurge={handleManualPurge}
               onImport={executeImport}
             />
           </SectionCard>

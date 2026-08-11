@@ -25,3 +25,7 @@ export const getBackupHistory = async (): Promise<BackupHistoryItem[]> => {
   const res = await requestWithFallback<{ success: boolean; data: BackupHistoryItem[] }>('get', '/admin/backups');
   return res.data || [];
 };
+
+export const purgeTenantData = async (): Promise<{ success: boolean; message: string }> => {
+  return requestWithFallback<{ success: boolean; message: string }>('post', '/academic/backup/purge-tenant');
+};

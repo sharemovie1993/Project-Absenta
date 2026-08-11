@@ -239,10 +239,11 @@ export class BackupController {
       let grandTarget = 0;
       let grandRestored = 0;
       let grandSkipped = 0;
+      const currentUserId = req.user?.id || req.userId;
       const shouldClearExisting = Boolean(body.clear_existing || body.clearExisting || payload.clear_existing || payload.clearExisting);
 
       if (shouldClearExisting) {
-        console.log(`[Backup Controller] Purging existing trial data for tenant: ${tenantId}...`);
+        console.log(`[Backup Controller] Purging existing trial data for tenant: ${tenantId} (Preserving Admin User ${currentUserId || 'N/A'})...`);
         const purgeModelsOrder = [
           'AbsenSiswa', 'AbsenGuru', 'AbsenGerbangSiswa', 'AbsenGerbangGuru',
           'NilaiSiswa', 'RaporSiswa', 'PelanggaranSiswa', 'SupervisiGuru',
@@ -272,7 +273,21 @@ export class BackupController {
             } catch (_) {}
           }
         }
+
+        // Purge User records except the currently logged in Admin user
+        if (currentUserId) {
+          try {
+            await prisma.user.deleteMany({
+              where: { tenant_id: tenantId, id: { not: currentUserId } }
+            });
+          } catch (_) {}
+        }
       }
+
+      // Track existing & newly imported User IDs to prevent foreign key errors (e.g., Siswa_user_id_fkey)
+      const validUserIds = new Set(
+        (await prisma.user.findMany({ where: { tenant_id: tenantId }, select: { id: true } })).map(u => u.id)
+      );
 
       for (const modelName of models) {
         let rows: any[] | undefined = dataTables[modelName];
@@ -300,6 +315,12 @@ export class BackupController {
         for (const rawRow of rows) {
           try {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
+
+            // Foreign Key Guard: If user_id field is present, verify target User exists
+            if (cleanData.user_id && !validUserIds.has(cleanData.user_id)) {
+              cleanData.user_id = null;
+            }
+
             const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
 
             let whereInput: any = null;
@@ -353,6 +374,11 @@ export class BackupController {
             } else {
               await prismaModel.create({ data: cleanData });
             }
+
+            if ((modelName === 'User' || modelName.toLowerCase() === 'user') && cleanData.id) {
+              validUserIds.add(cleanData.id);
+            }
+
             restoredCount++;
           } catch (err: any) {
             skippedCount++;
@@ -411,6 +437,64 @@ export class BackupController {
     } catch (error: any) {
       console.error('Error importing tenant backup:', error);
       return reply.status(500).send({ success: false, message: 'Gagal memulihkan data: ' + (error?.message || 'Error') });
+    }
+  }
+
+  static async purgeTenantData(req: any, reply: any) {
+    try {
+      const tenantId = req.tenantId || req.dataScope?.tenantId;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Context Tenant tidak ditemukan' });
+      }
+      const currentUserId = req.user?.id || req.userId;
+      const { prisma } = await import('@/utils/prisma');
+
+      console.log(`[Backup Controller] Manual purging tenant data for: ${tenantId} (Preserving Admin User ${currentUserId || 'N/A'})...`);
+      const purgeModelsOrder = [
+        'AbsenSiswa', 'AbsenGuru', 'AbsenGerbangSiswa', 'AbsenGerbangGuru',
+        'NilaiSiswa', 'RaporSiswa', 'PelanggaranSiswa', 'SupervisiGuru',
+        'KonselingSiswa', 'PemanggilanOrangTua', 'HomeVisit', 'AsesmenSiswa', 'RujukanKasus', 'KasusBK',
+        'SiswaDocument', 'GuruDocument', 'PrestasiSiswa', 'SiswaFaceTemplate',
+        'JadwalKBM', 'GuruMapel', 'KelasMapel', 'JadwalPiketGuru', 'JadwalKegiatan', 'AnggotaKegiatanEskul',
+        'SiswaAkademik', 'GuruTimeOff', 'StrukturKurikulum',
+        'OrganizationalAssignment', 'OrganizationalCapability', 'OrganizationalPosition', 'PositionJobdesk',
+        'IzinKeluarSiswa', 'SiswaPkl', 'AbsensiPkl', 'HubinLamaran', 'HubinTracerStudy',
+        'SesiAbsensi', 'SesiGerbang', 'JenisKegiatanMaster', 'JenisPelanggaran', 'JenisPrestasi',
+        'Member', 'Saving', 'Loan', 'Sale', 'SavingTransaction',
+        'Siswa', 'Guru', 'OrangTua', 'OrangTuaSiswa',
+        'Kelas', 'Jurusan', 'ProgramKeahlian', 'Mapel',
+        'Semester', 'TahunPelajaran', 'Sekolah',
+        'WaAuthSession', 'WaChatLog'
+      ];
+
+      for (const mName of purgeModelsOrder) {
+        // @ts-ignore
+        const pModel = prisma[mName];
+        if (!pModel) continue;
+        try {
+          await pModel.deleteMany({ where: { tenant_id: tenantId } });
+        } catch (e) {
+          try {
+            await pModel.deleteMany({ where: { tenantId: tenantId } });
+          } catch (_) {}
+        }
+      }
+
+      if (currentUserId) {
+        try {
+          await prisma.user.deleteMany({
+            where: { tenant_id: tenantId, id: { not: currentUserId } }
+          });
+        } catch (_) {}
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Data sekolah berhasil dikosongkan secara manual! Akun admin Anda tetap tersimpan & aktif.'
+      });
+    } catch (err: any) {
+      console.error('Error purging tenant data:', err);
+      return reply.status(500).send({ success: false, message: 'Gagal mengosongkan data: ' + (err?.message || 'Error') });
     }
   }
 }
