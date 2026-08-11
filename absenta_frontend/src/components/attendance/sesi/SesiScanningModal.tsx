@@ -73,7 +73,7 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={modalTitle}
-      size="2xl"
+      size="4xl"
       className="max-h-[96vh]"
       contentClassName="max-h-[88vh]"
     >
@@ -96,7 +96,7 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
 
         {/* Daftar Hadir */}
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
-          <div className="max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+          <div className="max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
             <SesiAttendanceList 
               records={sessionAttendanceRecords} 
               sesi={currentSession}

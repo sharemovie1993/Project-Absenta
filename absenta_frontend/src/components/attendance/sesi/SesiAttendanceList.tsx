@@ -76,7 +76,7 @@ const SesiAttendanceRow = React.memo(({
       animate={{ opacity: 1 }}
       className={cn(
         "grid items-center gap-2 px-4 py-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group",
-        isReportMode ? "grid-cols-[2fr_1fr_1fr]" : "grid-cols-[2fr_1fr_1.5fr]"
+        isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]"
       )}
     >
       <div className="min-w-0">
@@ -499,7 +499,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
               <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-sm overflow-hidden">
                 <div className={cn(
                   "grid bg-gray-50/30 dark:bg-gray-900/50 px-4 py-2 text-[8px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 dark:border-gray-800",
-                  isReportMode ? "grid-cols-[2fr_1fr_1fr]" : "grid-cols-[2fr_1fr_1.5fr]"
+                  isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]"
                 )}>
                   <div>Siswa</div>
                   <div className="text-center">Tap</div>
