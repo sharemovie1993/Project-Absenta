@@ -141,164 +141,135 @@ export const SesiCard = React.memo(function SesiCard({
 
   return (
     <div 
-      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all`}
+      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all rounded-2xl sm:rounded-3xl border p-3.5 sm:p-4 space-y-2.5`}
       onClick={onScan}
     >
       {isLive && (
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 pointer-events-none" />
       )}
       
-      <div className="flex flex-col gap-4 relative z-10">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div className="flex-1 space-y-3">
-             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black text-indigo-500/60 dark:text-indigo-400/60 uppercase tracking-widest">{kelasText}</span>
-                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                <span className="text-xs font-bold text-gray-400">{waktuMulaiText} – {waktuSelesaiText}</span>
-             </div>
-
-             <div className="flex items-center gap-3">
-                <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight">
-                  {mapelText}
-                </h3>
-                {isLive && <Badge className="bg-indigo-600 text-white border-none text-[10px] px-3 font-black uppercase tracking-widest animate-pulse">Live</Badge>}
-                {isFinished && <Badge className="bg-emerald-500 text-white border-none text-[10px] px-3 font-black uppercase tracking-widest">Selesai</Badge>}
-                {isOverdue && <Badge variant="destructive" className="text-[10px] px-3 font-black uppercase tracking-widest">Terlewat</Badge>}
-             </div>
-
-             <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center border border-gray-100 dark:border-gray-700">
-                      <Users className="w-4 h-4 text-gray-400" />
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Hadir</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        {((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))} 
-                        <span className="text-gray-400 text-[10px]"> / {(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}</span>
-                      </p>
-                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${isGuruHadir ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-amber-50 border-amber-100 text-amber-600'}`}>
-                      <Fingerprint className="w-4 h-4" />
-                   </div>
-                   <div>
-                      <div className="flex items-center gap-1.5">
-                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Pengajar</p>
-                         <Badge 
-                           variant={guruStatusVariant} 
-                           className="text-[9px] px-1.5 py-0 font-bold uppercase tracking-tight"
-                         >
-                           {guruStatusText}
-                         </Badge>
-                      </div>
-                      <p className={`text-sm font-bold ${isGuruHadir ? 'text-emerald-600' : 'text-amber-600'}`}>{guruText}</p>
-                   </div>
-                </div>
-             </div>
-          </div>
-
-          <div className="flex flex-row md:flex-col items-center md:items-end gap-2">
-             {suggestedAction ? (
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className={`bg-${suggestedAction.color}-600 text-white p-1 rounded-xl flex items-center gap-1 shadow-lg shadow-${suggestedAction.color}-600/20`}
-                >
-                   <Button 
-                     size="sm" 
-                     className={`bg-white text-${suggestedAction.color}-600 hover:bg-${suggestedAction.color}-50 border-none rounded-xl font-black text-[11px] uppercase tracking-widest px-4 h-9 shadow-sm`}
-                     onClick={(e) => { e.stopPropagation(); onScan(); }}
-                   >
-                     {suggestedAction.label}
-                   </Button>
-                   <div className="px-3 py-1 hidden lg:block">
-                      <p className="text-[9px] font-black uppercase tracking-wider text-white/80 leading-tight">Aksi<br/>Saran</p>
-                   </div>
-                </motion.div>
-             ) : isFinished && onOpenJournal && (rawJenis.toUpperCase().includes('KBM')) ? (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-blue-50/50 text-blue-600 border-blue-100 hover:bg-blue-100 rounded-xl font-black text-[11px] uppercase tracking-widest px-4 h-10 gap-2"
-                  onClick={(e) => { e.stopPropagation(); onOpenJournal?.(); }}
-                >
-                  <BookOpen className="w-4 h-4" /> Jurnal Ajar
-                </Button>
-             ) : (
-                <Badge variant="outline" className="h-10 px-4 rounded-xl border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 font-bold uppercase text-[10px] tracking-widest">
-                   {isFinished ? 'Arsip Sesi' : isUpcoming ? 'Segera Mulai' : 'Siap Pantau'}
-                </Badge>
-             )}
-          </div>
+      {/* Line 1: Header Badge Row */}
+      <div className="flex items-center justify-between gap-2 relative z-10">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+            {kelasText}
+          </span>
+          <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0">
+            • {waktuMulaiText} – {waktuSelesaiText}
+          </span>
         </div>
 
-        <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-           <div className="flex items-center gap-1">
-              <span className="px-2 py-0.5 rounded-md bg-gray-50 dark:bg-gray-800 text-[10px] font-bold text-gray-500 uppercase tracking-tighter border border-gray-100 dark:border-gray-700">
-                {jk}
-              </span>
-              {/* Sumber Sesi Badge */}
-              {isOtomatis ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter border border-blue-100 dark:border-blue-800">
-                  <Cpu className="w-3 h-3" />
-                  Sistem
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/30 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tighter border border-amber-100 dark:border-amber-800">
-                  <PencilLine className="w-3 h-3" />
-                  Manual
-                </span>
-              )}
-           </div>
+        <div className="shrink-0 flex items-center gap-1.5">
+          {isLive && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 animate-pulse">
+              LIVE
+            </span>
+          )}
+          {isFinished && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              SELESAI
+            </span>
+          )}
+          {isOverdue && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+              TERLEWAT
+            </span>
+          )}
+          {isUpcoming && (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+              MENDATANG
+            </span>
+          )}
+        </div>
+      </div>
 
-           <div className="flex items-center gap-2">
-              <DropdownWrapper>
-                 <div className="flex items-center gap-2">
-                    {canManage && !isFinished && (
-                       <div className="flex items-center gap-1 mr-2 pr-2 border-r border-gray-100 dark:border-gray-800">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
-                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                          >
-                            <Trash className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
-                            onClick={(e) => { e.stopPropagation(); onFinish(); }}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </Button>
-                       </div>
-                    )}
-                    
-                    <div className="flex gap-2">
-                       {canManage && (
-                          <div className="hidden lg:flex gap-1">
-                             <Button size="sm" variant="ghost" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 rounded-lg text-gray-500 hover:bg-indigo-50 hover:text-indigo-600" onClick={(e) => { e.stopPropagation(); onScan(); }}>Scan Universal</Button>
-                          </div>
-                       )}
-                       <Button
-                         size="sm"
-                         variant={isExpanded ? 'secondary' : 'primary'}
-                         onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                         className={`h-8 px-4 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${isExpanded ? '' : 'shadow-lg shadow-indigo-600/10'}`}
-                       >
-                         {isExpanded ? 'Tutup' : 'Log Hadir'}
-                       </Button>
-                    </div>
-                 </div>
-              </DropdownWrapper>
-           </div>
+      {/* Line 2: Subject Title & Info */}
+      <div className="space-y-1 relative z-10">
+        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug tracking-tight">
+          {mapelText}
+        </h3>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+              Pengajar: {guruText}
+            </span>
+            <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
+          </div>
+
+          <div className="font-mono font-extrabold text-slate-700 dark:text-slate-300 shrink-0">
+            Hadir Siswa: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span> / {(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* Line 3: Compact Action Bar */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 relative z-10">
+        {/* Left: Badges */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+            {jk}
+          </span>
+          {isOtomatis ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-[10px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+              <Cpu className="w-3 h-3" /> Sistem
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-[10px] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <PencilLine className="w-3 h-3" /> Manual
+            </span>
+          )}
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isFinished && onOpenJournal && (rawJenis.toUpperCase().includes('KBM')) && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenJournal?.(); }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 text-[10px] font-black border border-blue-200 dark:border-blue-800/60 transition-colors shadow-2xs"
+            >
+              <BookOpen size={12} />
+              <span>Jurnal Ajar</span>
+            </button>
+          )}
+
+          {canManage && !isFinished && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Hapus Sesi"
+              >
+                <Trash size={14} />
+              </button>
+              <button
+                type="button"
+                className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onFinish(); }}
+                title="Selesaikan Sesi"
+              >
+                <CheckCircle2 size={14} />
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+            className={`px-3 py-1 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
+              isExpanded 
+                ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100' 
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+            }`}
+          >
+            {isExpanded ? 'Tutup' : 'Log Hadir'}
+          </button>
         </div>
       </div>
     </div>
+  );
   );
 });
 
