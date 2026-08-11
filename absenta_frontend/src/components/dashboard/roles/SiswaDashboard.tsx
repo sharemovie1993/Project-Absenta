@@ -981,19 +981,6 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Right Side: Discipline Score Glass Box */}
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-white/10 backdrop-blur-md border border-slate-200/80 dark:border-white/20 text-center min-w-[160px] sm:min-w-[180px] shrink-0 self-stretch md:self-auto flex flex-col items-center justify-center space-y-1 shadow-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
-              KEDISIPLINAN
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
-              {netPoin >= 0 ? `+${netPoin}` : netPoin} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">Poin</span>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-              Gold Scholar Tier
-            </span>
-          </div>
         </div>
       )}
 
