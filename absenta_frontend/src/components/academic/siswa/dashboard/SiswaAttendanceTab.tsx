@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, User, Clock, MapPin, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UnconnectedBadge } from '@/components/ui';
 
 export interface SiswaAttendanceTabProps {
   gamification: {
@@ -42,6 +43,7 @@ export interface SiswaAttendanceTabProps {
     status: string;
   }>;
   isLoadingSchedule?: boolean;
+  isApiConnected?: boolean;
 }
 
 export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({

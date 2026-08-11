@@ -294,7 +294,7 @@ export class JadwalKBMController {
       targetHari = map[idx];
     }
 
-    // 3. Fetch schedules
+    // 3. Fetch schedules strictly matching active academic year & semester
     const scheduleWhere: any = {
       tenant_id: ctx.tenantId,
       tahun_pelajaran_id: ctx.tahunPelajaranId,

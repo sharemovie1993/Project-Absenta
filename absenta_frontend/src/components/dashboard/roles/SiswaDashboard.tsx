@@ -1081,6 +1081,7 @@ export const SiswaDashboard: React.FC = () => {
               sessionAttendanceHistory={sessionAttendanceHistory}
               todayKbmSchedule={todayKbmSchedule}
               isLoadingSchedule={isLoadingSchedule}
+              isApiConnected={isApiConnected}
             />
           </motion.div>
         )}
