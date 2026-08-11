@@ -2,6 +2,7 @@ import React from 'react';
 import { Users } from 'lucide-react';
 import { Modal, Badge, Label } from '../../ui';
 import Button from '../../ui/Button';
+import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
 
@@ -32,11 +33,18 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   currentSession,
   kelasLabel,
 }) => {
+  const modalTitle = (
+    <div className="flex items-center gap-3">
+      <span className="text-base font-semibold text-gray-900 dark:text-white">Input Presensi</span>
+      <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Input Presensi"
+      title={modalTitle}
       size="2xl"
       className="max-h-[96vh]"
       contentClassName="max-h-[88vh]"

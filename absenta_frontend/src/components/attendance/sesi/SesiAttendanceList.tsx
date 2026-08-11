@@ -11,7 +11,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { requestWithFallback, formatErrorMessage } from '../../../api/apiUtils';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
-import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 
 
 // Strict TypeScript Interfaces for Hardening
@@ -361,23 +360,20 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           {stats.alpa > 0 && <span className="text-rose-500 font-black">✗ Alpa {stats.alpa}</span>}
           <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total}</span>
         </p>
-        {/* SOP + Mode toggle — ultra minimal */}
+        {/* Mode Slide toggle — icon only */}
         {!isReportMode && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
-            <button
-              onClick={() => setIsSlideMode(!isSlideMode)}
-              title={isSlideMode ? 'Mode List' : 'Mode Slide (Fokus)'}
-              className={cn(
-                "p-1.5 rounded-lg transition-all",
-                isSlideMode
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
-              )}
-            >
-              {isSlideMode ? <LayoutList size={14} /> : <PlayCircle size={14} />}
-            </button>
-          </div>
+          <button
+            onClick={() => setIsSlideMode(!isSlideMode)}
+            title={isSlideMode ? 'Mode List' : 'Mode Slide (Fokus)'}
+            className={cn(
+              "p-1.5 rounded-lg transition-all shrink-0",
+              isSlideMode
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+            )}
+          >
+            {isSlideMode ? <LayoutList size={14} /> : <PlayCircle size={14} />}
+          </button>
         )}
       </div>
 
