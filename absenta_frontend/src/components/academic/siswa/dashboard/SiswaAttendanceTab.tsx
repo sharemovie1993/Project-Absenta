@@ -61,7 +61,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   selectedMonthFormatted,
   calendarGridData,
   todayIso = new Date().toISOString().slice(0, 10),
-  selectedDate = '',
+  selectedDate: propSelectedDate = '',
   onSelectDate,
   sessionAttendanceHistory = [],
   todayKbmSchedule = [],
@@ -73,7 +73,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
 }) => {
   const { user } = useAuthStore();
   const attendanceRate = gamification?.attendanceRate ?? 100;
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const selectedDate = propSelectedDate || todayIso;
   const [selectedSesiModal, setSelectedSesiModal] = useState<{
     isOpen: boolean;
     sesiId?: string;
