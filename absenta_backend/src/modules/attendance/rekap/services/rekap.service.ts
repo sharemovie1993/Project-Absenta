@@ -469,20 +469,8 @@ export class RekapService {
         if (!stats) return;
 
         datesMap.forEach((rec, dateKey) => {
-            let finalStatus = 'ALPA';
-            let isLate = false;
             let dbPoin = 0;
-
-            const gateStatus = rec.gate?.status;
-            const gateLate = rec.gate?.is_terlambat;
             const gatePoin = rec.gate?.poin_kehadiran || 0;
-            
-            const classStatuses = rec.class.map(c => c.status);
-            const classHasHadir = classStatuses.includes('HADIR') || classStatuses.includes('TERLAMBAT');
-            const classHasLate = classStatuses.includes('TERLAMBAT');
-            const classRecordsLate = rec.class.some(c => c.is_terlambat);
-            const classHasSakit = classStatuses.includes('SAKIT');
-            const classHasIzin = classStatuses.includes('IZIN') || classStatuses.includes('DISPEN');
 
             if (rec.class.length > 0) {
                 const maxClassPoin = Math.max(...rec.class.map(c => c.poin));
@@ -491,18 +479,13 @@ export class RekapService {
                 dbPoin = gatePoin;
             }
 
-            if ((gateStatus === 'HADIR') || classHasHadir || (rec.pkl?.status === 'HADIR')) {
-                finalStatus = 'HADIR';
-                if (gateLate || classHasLate || classRecordsLate) {
-                    isLate = true;
-                }
-            } else if (gateStatus === 'SAKIT' || classHasSakit) {
-                finalStatus = 'SAKIT';
-            } else if (gateStatus === 'IZIN' || classHasIzin) {
-                finalStatus = 'IZIN';
-            }
+            const gateItems = rec.gate ? [{ arah: 'GERBANG', status: rec.gate.status, is_terlambat: rec.gate.is_terlambat }] : [];
+            const classItems = rec.class.map(c => ({ status: c.status === 'TERLAMBAT' ? 'HADIR' : c.status, is_terlambat: c.is_terlambat || c.status === 'TERLAMBAT' }));
+            const hybridRes = AttendanceRuleEngine.calculateHybridStatus(gateItems, classItems, rec.pkl);
 
-            const calculatedPoin = AttendanceRuleEngine.calculateAttendancePoints(finalStatus, isLate);
+            const finalStatus = hybridRes.status;
+            const isLate = hybridRes.isLate;
+            const calculatedPoin = hybridRes.points;
 
             let statusCode = 'A';
             if (finalStatus === 'HADIR') {
