@@ -172,11 +172,11 @@ const SesiAttendanceRow = React.memo(({
             )}
             <div className="flex items-center gap-0.5 bg-gray-50 dark:bg-gray-900 p-0.5 rounded-sm border border-gray-100 dark:border-gray-800 shadow-inner">
               {[
-                { label: 'H', val: 'HADIR', color: 'emerald' },
-                { label: 'I', val: 'IZIN', color: 'blue' },
-                { label: 'S', val: 'SAKIT', color: 'amber' },
-                { label: 'D', val: 'DISPEN', color: 'violet' },
-                { label: 'A', val: 'ALPA', color: 'rose' }
+                { label: 'H', val: 'HADIR', activeBg: 'bg-emerald-600 text-white shadow-sm scale-105' },
+                { label: 'I', val: 'IZIN', activeBg: 'bg-blue-600 text-white shadow-sm scale-105' },
+                { label: 'S', val: 'SAKIT', activeBg: 'bg-amber-500 text-white shadow-sm scale-105' },
+                { label: 'D', val: 'DISPEN', activeBg: 'bg-purple-600 text-white shadow-sm scale-105' },
+                { label: 'A', val: 'ALPA', activeBg: 'bg-rose-600 text-white shadow-sm scale-105' }
               ].map((btn) => {
                 const isActive = record.status === btn.val;
                 const isCurrentPending = isPending && isActive;
@@ -190,7 +190,7 @@ const SesiAttendanceRow = React.memo(({
                   className={cn(
                     "w-5 h-5 flex items-center justify-center rounded-sm text-[9px] font-black transition-all relative",
                     isActive
-                      ? `bg-${btn.color}-500 text-white shadow-sm scale-105`
+                      ? btn.activeBg
                       : "text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700",
                     isPending && !isActive && "opacity-40 cursor-not-allowed"
                   )}
@@ -392,13 +392,13 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     // 1. Instant optimistic update to local state
     setLocalRecords(prev => 
       prev.map(r => {
-        const currentId = r.siswa_akademik_id || r.siswa_id;
+        const currentId = r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id;
         return currentId === siswaAkademikId 
           ? { 
               ...r, 
               status: status, 
               catatan: catatan !== undefined ? catatan : r.catatan,
-              waktu_tap: status === 'HADIR' ? new Date().toISOString() : null 
+              waktu_tap: status === 'BELUM_TAP' ? null : (r.waktu_tap || new Date().toISOString())
             }
           : r;
       })
@@ -578,18 +578,21 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
                   <div className={isReportMode ? "text-center" : "text-right"}>{isReportMode ? 'STATUS' : 'AKSI CEPAT'}</div>
                 </div>
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {filteredRecords.map((r) => (
-                    <SesiAttendanceRow 
-                      key={r.id || r.siswa_akademik_id}
-                      record={r}
-                      isReportMode={isReportMode}
-                      isPending={
-                        updateAttendanceMutation.isPending && 
-                        updateAttendanceMutation.variables?.siswaAkademikId === r.siswa_akademik_id
-                      }
-                      onUpdateStatus={handleUpdateStatus}
-                    />
-                  ))}
+                  {filteredRecords.map((r) => {
+                    const rowId = r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id;
+                    return (
+                      <SesiAttendanceRow 
+                        key={r.id || r.siswa_akademik_id || r.guru_id}
+                        record={r}
+                        isReportMode={isReportMode}
+                        isPending={
+                          updateAttendanceMutation.isPending && 
+                          updateAttendanceMutation.variables?.siswaAkademikId === rowId
+                        }
+                        onUpdateStatus={handleUpdateStatus}
+                      />
+                    );
+                  })}
                   {filteredRecords.length === 0 && (
                     <div className="p-10 text-center space-y-2">
                       <Search className="w-8 h-8 text-gray-200 mx-auto" />
