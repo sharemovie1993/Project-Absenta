@@ -1027,7 +1027,7 @@ export class GerbangService {
     return results;
   }
 
-  private async processOfflineTap(tenantId: string, input: GerbangTapInput, tapTime: Date) {
+  async processOfflineTap(tenantId: string, input: GerbangTapInput, tapTime: Date) {
     // Basic implementation of offline tap processing
     // Similar to tap() but handles historical time
     return await gerbangDb.$transaction(async (tx) => {
