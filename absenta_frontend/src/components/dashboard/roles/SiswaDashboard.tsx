@@ -41,6 +41,7 @@ import {
   Heart,
   X,
   Check,
+  Sparkles,
   AlertCircle,
   ArrowRight,
   Sparkles,
@@ -746,12 +747,23 @@ export const SiswaDashboard: React.FC = () => {
       {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 text-slate-800 dark:text-slate-100 shadow-sm space-y-4 sm:space-y-5">
         {/* Top Row: Identity & Quick Action */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 sm:gap-4">
-            {/* Avatar Box with Initial */}
+            {/* Avatar Box with Student Photo */}
             <div className="relative shrink-0">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xs">
-                {studentInitials}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xs overflow-hidden">
+                {studentPhotoUrl ? (
+                  <img
+                    src={studentPhotoUrl}
+                    alt={studentName}
+                    className="w-full h-full object-cover rounded-2xl"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  studentInitials
+                )}
               </div>
               <span className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white" title="Status Aktif">
                 <Check size={10} strokeWidth={4} />
@@ -767,6 +779,12 @@ export const SiswaDashboard: React.FC = () => {
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
                   Kelas {currentClassName}
                 </span>
+                {isPetugasKelas && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <Sparkles size={11} />
+                    <span>Petugas Kelas</span>
+                  </span>
+                )}
               </div>
 
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
@@ -777,15 +795,41 @@ export const SiswaDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Action Button: Buka Kartu Pelajar Digital */}
-          <Button
-            size="sm"
-            onClick={() => setShowDigitalCardModal(true)}
-            className="h-10 px-4 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-2 shadow-md shadow-blue-600/20 shrink-0 cursor-pointer"
-          >
-            <QrCode size={16} />
-            <span>Buka Kartu Pelajar Digital</span>
-          </Button>
+          {/* Quick Action Buttons on Right */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-stretch sm:self-auto justify-start sm:justify-end">
+            {isPetugasKelas && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/attendance/ops?tab=sesi')}
+                  className="h-10 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 shadow-md shadow-amber-500/20 border-none cursor-pointer"
+                  title={`Presensi Kelas Saya (${currentClassName})`}
+                >
+                  <CheckCircle2 size={15} />
+                  <span>Presensi Kelas</span>
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/attendance/ops?tab=jurnal')}
+                  className="h-10 px-3.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700/80 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  title="Input Jurnal KBM Kelas"
+                >
+                  <FileText size={15} />
+                  <span>Jurnal KBM</span>
+                </Button>
+              </>
+            )}
+
+            <Button
+              size="sm"
+              onClick={() => setShowDigitalCardModal(true)}
+              className="h-10 px-4 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-2 shadow-md shadow-blue-600/20 cursor-pointer"
+            >
+              <QrCode size={16} />
+              <span>Buka Kartu Pelajar Digital</span>
+            </Button>
+          </div>
         </div>
 
         {/* Bottom Row: Integrated Navigation Tabs Bar Inset */}
