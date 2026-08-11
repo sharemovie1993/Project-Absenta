@@ -843,42 +843,44 @@ export class AuthService {
       }
     }
 
-    // Attach guru_profile if role is GURU
-    if (response.role?.name === 'GURU') {
-      const guru = await prisma.guru.findFirst({
-        where: { user_id: user.id }
-      });
-      if (guru) {
-        let waliKelasDi = null;
-        const waliAssignment = await prisma.organizationalAssignment.findFirst({
-          where: {
-            user_id: user.id,
-            tenant_id: user.tenant_id,
-            is_active: true,
-            Position: { code: 'WALIKELAS' },
-            kelas_id: { not: null },
+    // Attach guru_profile if a Guru record exists for this user (regardless of primary role name)
+    const guru = await prisma.guru.findFirst({
+      where: { user_id: user.id }
+    });
+    if (guru) {
+      let waliKelasDi = null;
+      const waliAssignment = await prisma.organizationalAssignment.findFirst({
+        where: {
+          user_id: user.id,
+          tenant_id: user.tenant_id,
+          is_active: true,
+          Position: {
+            code: { in: ['WALIKELAS', 'WALI_KELAS', 'WALI'] }
           },
-          include: {
-            Kelas: {
-              select: {
-                id: true,
-                nama_kelas: true,
-                tingkat: true,
-              },
+          kelas_id: { not: null },
+        },
+        include: {
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
             },
           },
-        });
+        },
+      });
 
-        if (waliAssignment?.Kelas) {
-          waliKelasDi = waliAssignment.Kelas;
-        }
-
-        response.guru_profile = {
-          id: guru.id,
-          wali_kelas_di: waliKelasDi,
-          jenis_ptk: guru.jenis_ptk
-        };
+      if (waliAssignment?.Kelas) {
+        waliKelasDi = waliAssignment.Kelas;
       }
+
+      response.guru_profile = {
+        id: guru.id,
+        wali_kelas_di: waliKelasDi,
+        jenis_ptk: guru.jenis_ptk,
+        pangkat_golongan: guru.pangkat_golongan,
+        tmt_guru: guru.tmt_guru,
+      };
     }
   }
 }
