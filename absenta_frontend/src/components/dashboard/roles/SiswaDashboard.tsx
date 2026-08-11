@@ -400,6 +400,16 @@ export const SiswaDashboard: React.FC = () => {
     return [];
   }, [prestasiRes]);
 
+  const totalPoinPelanggaran = useMemo(() => {
+    return pelanggaranList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
+  }, [pelanggaranList]);
+
+  const totalPoinPrestasi = useMemo(() => {
+    return prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0);
+  }, [prestasiList]);
+
+  const netPoin = useMemo(() => totalPoinPrestasi - totalPoinPelanggaran, [totalPoinPrestasi, totalPoinPelanggaran]);
+
   const disciplineHistory = useMemo(() => {
     const combined = [];
     if (pelanggaranList.length > 0) {
@@ -719,15 +729,6 @@ export const SiswaDashboard: React.FC = () => {
     });
     return combined;
   }, [pelanggaranList, prestasiList]);
-
-  // Totals for point summary
-  const totalPoinPrestasi = useMemo(() =>
-    bukuCatatanList.filter(i => i.type === 'PRESTASI').reduce((s, i) => s + (i.poin ?? 0), 0),
-  [bukuCatatanList]);
-  const totalPoinPelanggaran = useMemo(() =>
-    bukuCatatanList.filter(i => i.type === 'PELANGGARAN').reduce((s, i) => s + Math.abs(i.poin ?? 0), 0),
-  [bukuCatatanList]);
-  const netPoin = useMemo(() => totalPoinPrestasi - totalPoinPelanggaran, [totalPoinPrestasi, totalPoinPelanggaran]);
 
   // Filtered List based on catatanFilter state
   const filteredBukuCatatan = useMemo(() => {
