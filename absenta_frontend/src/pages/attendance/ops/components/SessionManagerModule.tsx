@@ -728,6 +728,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           showScanSiswa={!isReadOnlyExecutive}
                           canManage={isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa)}
                           onOpenJournal={() => handleOpenJournal(session)}
+                          hideKelas={isPetugasSiswa}
                         />
                         
                         <AnimatePresence>

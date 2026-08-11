@@ -39,6 +39,7 @@ type Props = {
   showScanSiswa: boolean;
   canManage?: boolean;
   onOpenJournal?: () => void;
+  hideKelas?: boolean;
 };
 
 export const SesiCard = React.memo(function SesiCard({
@@ -64,6 +65,7 @@ export const SesiCard = React.memo(function SesiCard({
   showScanGuru,
   showScanSiswa,
   onOpenJournal,
+  hideKelas = false,
 }: Props) {
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const rawJenis = String(sesi?.jenis_kegiatan || '').trim();
@@ -143,11 +145,18 @@ export const SesiCard = React.memo(function SesiCard({
         <div className="flex-1 space-y-1.5 min-w-0 pr-1">
           {/* Header Tag */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-              {kelasText}
-            </span>
-            <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 font-bold">
-              • {waktuMulaiText} – {waktuSelesaiText}
+            {!hideKelas && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                {kelasText}
+              </span>
+            )}
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+              hideKelas 
+                ? 'bg-blue-600/10 text-blue-700 dark:text-blue-300 border border-blue-500/20' 
+                : 'text-slate-500 dark:text-slate-400'
+            }`}>
+              <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              <span>{waktuMulaiText} – {waktuSelesaiText}</span>
             </span>
           </div>
 
