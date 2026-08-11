@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Users, LayoutList, PlayCircle } from 'lucide-react';
-import { Modal, Badge, Label } from '../../ui';
+import { LayoutList, PlayCircle } from 'lucide-react';
+import { Modal, Label } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
@@ -90,16 +90,6 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
 
         {/* Daftar Hadir */}
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Users size={13} className="text-indigo-500" />
-              Daftar Hadir Sesi
-            </h4>
-            <Badge variant="outline" className="text-[9px] font-black uppercase">
-              {kelasLabel}
-            </Badge>
-          </div>
-
           <div className="max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
             <SesiAttendanceList 
               records={sessionAttendanceRecords} 
