@@ -34,6 +34,7 @@ import {
   PEKERJAAN_OPTIONS, 
   HUBUNGAN_WALI_OPTIONS,
   PROVINSI_INDONESIA_OPTIONS,
+  getProvinsiOptions,
   getKabupatenOptions,
   getKecamatanOptions,
   getKelurahanOptions,
@@ -343,9 +344,16 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showWebcamModal, setShowWebcamModal] = useState(false);
 
+  const [provinsiOptions, setProvinsiOptions] = useState<DropdownOption[]>(PROVINSI_INDONESIA_OPTIONS);
   const [kabupatenOptions, setKabupatenOptions] = useState<DropdownOption[]>([]);
   const [kecamatanOptions, setKecamatanOptions] = useState<DropdownOption[]>([]);
   const [kelurahanOptions, setKelurahanOptions] = useState<DropdownOption[]>([]);
+
+  useEffect(() => {
+    getProvinsiOptions().then(opts => {
+      if (opts && opts.length > 0) setProvinsiOptions(opts);
+    });
+  }, []);
 
   useEffect(() => {
     if (formData.provinsi) {

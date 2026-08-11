@@ -11,6 +11,7 @@ import {
   JENIS_KELAMIN_OPTIONS, 
   TRANSPORTASI_OPTIONS, 
   PROVINSI_INDONESIA_OPTIONS,
+  getProvinsiOptions,
   getKabupatenOptions,
   getKecamatanOptions,
   getKelurahanOptions,
@@ -44,6 +45,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
+    const [adminProvinsiOptions, setAdminProvinsiOptions] = useState<DropdownOption[]>(PROVINSI_INDONESIA_OPTIONS);
     const [adminKabupatenOptions, setAdminKabupatenOptions] = useState<DropdownOption[]>([]);
     const [adminKecamatanOptions, setAdminKecamatanOptions] = useState<DropdownOption[]>([]);
     const [adminKelurahanOptions, setAdminKelurahanOptions] = useState<DropdownOption[]>([]);
@@ -51,6 +53,26 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
     const selectedKabupaten = watch('kabupaten');
     const selectedKecamatan = watch('kecamatan');
     const selectedKelurahan = watch('kelurahan');
+
+    useEffect(() => {
+        getProvinsiOptions().then(opts => {
+            if (opts && opts.length > 0) {
+                setAdminProvinsiOptions(opts);
+            }
+        });
+    }, []);
+
+    const getEffectiveOptions = (options: DropdownOption[], currentValue?: string): DropdownOption[] => {
+        if (!currentValue) return options;
+        const exists = options.some(opt => 
+            opt.value.toLowerCase() === currentValue.toLowerCase() || 
+            opt.label.toLowerCase() === currentValue.toLowerCase()
+        );
+        if (!exists) {
+            return [{ value: currentValue, label: currentValue }, ...options];
+        }
+        return options;
+    };
 
     useEffect(() => {
         if (selectedProvinsi) {
@@ -775,8 +797,9 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                     setValue('kabupaten', '');
                                     setValue('kecamatan', '');
                                     setValue('kelurahan', '');
+                                    setValue('kode_pos', '');
                                 }}
-                                options={PROVINSI_INDONESIA_OPTIONS}
+                                options={getEffectiveOptions(adminProvinsiOptions, field.value)}
                                 placeholder="-- Pilih Provinsi --"
                                 disabled={isViewMode}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
@@ -802,8 +825,9 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                     field.onChange(val);
                                     setValue('kecamatan', '');
                                     setValue('kelurahan', '');
+                                    setValue('kode_pos', '');
                                 }}
-                                options={adminKabupatenOptions.length > 0 ? adminKabupatenOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                options={getEffectiveOptions(adminKabupatenOptions, field.value)}
                                 placeholder={selectedProvinsi ? (adminKabupatenOptions.length > 0 ? "-- Pilih Kabupaten/Kota --" : "Memuat Kota...") : "-- Pilih Provinsi Terlebih Dahulu --"}
                                 disabled={isViewMode || !selectedProvinsi}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
@@ -830,7 +854,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                     setValue('kelurahan', '');
                                     setValue('kode_pos', '');
                                 }}
-                                options={adminKecamatanOptions.length > 0 ? adminKecamatanOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                options={getEffectiveOptions(adminKecamatanOptions, field.value)}
                                 placeholder={selectedKabupaten ? (adminKecamatanOptions.length > 0 ? "-- Pilih Kecamatan --" : "Ketik / Memuat Kecamatan...") : "-- Pilih Kabupaten Terlebih Dahulu --"}
                                 disabled={isViewMode || !selectedKabupaten}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
@@ -854,7 +878,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                 id="kelurahan"
                                 value={field.value || ''}
                                 onValueChange={field.onChange}
-                                options={adminKelurahanOptions.length > 0 ? adminKelurahanOptions : (field.value ? [{ value: field.value, label: field.value }] : [])}
+                                options={getEffectiveOptions(adminKelurahanOptions, field.value)}
                                 placeholder={selectedKecamatan ? (adminKelurahanOptions.length > 0 ? "-- Pilih Kelurahan/Desa --" : "Ketik / Memuat Desa...") : "-- Pilih Kecamatan Terlebih Dahulu --"}
                                 disabled={isViewMode || !selectedKecamatan}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
