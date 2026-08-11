@@ -125,6 +125,7 @@ export const SiswaDashboard: React.FC = () => {
   const monthIso = useMemo(() => toLocalMonth(), []);
   const todayFormattedDate = useMemo(() => {
     return new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -897,8 +898,8 @@ export const SiswaDashboard: React.FC = () => {
           {/* Left Side: Gate Attendance & Mini Session Status */}
           <div className="space-y-3 max-w-2xl min-w-0">
             <div className="space-y-1.5">
-              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                STATUS HARI INI - {todayFormattedDate.toUpperCase()}
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                STATUS HARI INI – {todayFormattedDate}
               </span>
 
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
