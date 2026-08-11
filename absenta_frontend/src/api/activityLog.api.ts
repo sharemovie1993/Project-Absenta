@@ -72,5 +72,5 @@ export const sendWaLogoutWarning = async (payload: {
   is_bulk?: boolean;
   target_users?: Array<{ user_id?: string; phone?: string; no_hp?: string; name?: string }>;
 }): Promise<{ success: boolean; message: string; data?: any }> => {
-  return requestWithFallback('post', '/activity-logs/send-logout-wa', payload);
+  return requestWithFallback('post', '/activity-logs/send-logout-wa', { data: payload });
 };
