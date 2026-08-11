@@ -819,6 +819,16 @@ export const SiswaDashboard: React.FC = () => {
 
                 <Button
                   size="sm"
+                  onClick={() => navigate('/attendance/ops?tab=manual')}
+                  className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer"
+                  title={`Cek Siswa Belum Absen & Presensi Manual (${currentClassName})`}
+                >
+                  <AlertCircle size={15} />
+                  <span>Belum Absensi</span>
+                </Button>
+
+                <Button
+                  size="sm"
                   onClick={() => navigate('/attendance/ops?tab=jurnal')}
                   className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white border border-slate-700/80 flex items-center gap-1.5 shadow-sm cursor-pointer"
                   title="Input Jurnal KBM Kelas"
