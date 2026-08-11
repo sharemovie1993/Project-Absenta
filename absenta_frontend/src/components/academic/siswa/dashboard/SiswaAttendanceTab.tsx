@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, User, Clock, MapPin, CheckCircle2, Calendar, AlertCircle, Eye } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { getPresensiTerpaduSesi } from '@/api/attendanceGerbang.api';
+import { usePresensiTerpaduSesi } from '@/hooks/useAttendanceHooks';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
@@ -84,22 +83,11 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     waktuTap?: string;
   }>({ isOpen: false });
 
-  // Purely fetch backend pre-calculated session attendance records without frontend recalculation
-  const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
-    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
-    queryFn: async () => {
-      if (!selectedSesiModal.sesiId || selectedSesiModal.sesiId.startsWith('rincian-') || selectedSesiModal.sesiId.startsWith('session-')) {
-        return [];
-      }
-      try {
-        const res = await getPresensiTerpaduSesi(selectedSesiModal.sesiId);
-        return res?.data || [];
-      } catch {
-        return [];
-      }
-    },
-    enabled: Boolean(selectedSesiModal.isOpen && selectedSesiModal.sesiId && !selectedSesiModal.sesiId.startsWith('rincian-') && !selectedSesiModal.sesiId.startsWith('session-'))
-  });
+  // Purely fetch backend pre-calculated session attendance records via custom hook
+  const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = usePresensiTerpaduSesi(
+    selectedSesiModal.sesiId,
+    selectedSesiModal.isOpen
+  );
 
   const formattedSelectedDateText = React.useMemo(() => {
     if (!selectedDate) return 'Hari Ini';
