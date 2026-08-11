@@ -10,7 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
 import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
-import { toLocalDate, toLocalMonth } from '../../../utils/attendance/time';
+import { toLocalDate, toLocalMonth, formatLocalTimeFromISO } from '../../../utils/attendance/time';
 import { calculateStudentGamification } from '../../../utils/attendance/attendanceGamification.utils';
 import { 
   CheckCircle2, 
@@ -478,6 +478,17 @@ export const SiswaDashboard: React.FC = () => {
 
   // Historis Sesi Absensi & Tap for Kehadiran Tab Right Column
   const sessionAttendanceHistory = useMemo(() => {
+    const formatWaktu = (raw: any) => {
+      if (!raw || raw === '-') return '-';
+      const str = String(raw).trim();
+      if (str.includes('T') || str.includes('Z')) {
+        const formatted = formatLocalTimeFromISO(str);
+        if (formatted) return `${formatted} WIB`;
+      }
+      const clean = str.replace(/WIB/gi, '').trim();
+      return clean ? `${clean} WIB` : '-';
+    };
+
     // 1. First check dailyRecapRes for selectedDate
     const dailyData = dailyRecapRes?.data;
     const rincianList = Array.isArray(dailyData?.rincian) ? dailyData.rincian : [];
@@ -488,10 +499,8 @@ export const SiswaDashboard: React.FC = () => {
         const isTerlambat = item.status === 'TERLAMBAT';
         const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
 
-        let waktuStr = item.waktu_tap || item.waktu || item.waktu_masuk || '-';
-        if (waktuStr !== '-' && !waktuStr.includes('WIB')) {
-          waktuStr = `${waktuStr} WIB`;
-        }
+        const waktuRaw = item.waktu_tap || item.waktu || item.waktu_masuk || item.created_at || '-';
+        const waktuStr = formatWaktu(waktuRaw);
 
         let formattedDate = selectedDate;
         if (selectedDate && selectedDate.includes('-')) {
@@ -527,10 +536,8 @@ export const SiswaDashboard: React.FC = () => {
         const isTerlambat = item.status === 'TERLAMBAT';
         const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
 
-        let waktuStr = item.waktu_masuk ? `${item.waktu_masuk} WIB` : '-';
-        if (item.waktu && item.waktu !== '-') {
-          waktuStr = item.waktu.startsWith('Tap') ? item.waktu.replace('Tap / Sesi: ', '') : item.waktu;
-        }
+        const waktuRaw = item.waktu_masuk || item.waktu || item.waktu_tap || '-';
+        const waktuStr = formatWaktu(waktuRaw);
 
         let defaultKet = isHadir
           ? 'Tepat waktu via Gerbang / Sesi Presensi'
