@@ -143,6 +143,23 @@ export const SiswaDashboard: React.FC = () => {
   const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionEditType>('pribadi');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(todayIso);
+
+  const handleOpenEditSection = (section: SectionEditType) => {
+    setActiveSection(section);
+    setShowOnboardingModal(true);
+  };
+
+  // Form states for password change modal
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+
   // 1. Get Student Detailed Profile via Custom Hook
   const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
 
