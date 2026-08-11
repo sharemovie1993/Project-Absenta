@@ -658,10 +658,10 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 </div>
               </motion.div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-2 sm:space-y-6">
                 <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500/20 via-indigo-500/10 to-transparent hidden md:block"></div>
                 
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-2 sm:gap-4">
                   {sessions?.map((session, idx) => (
                     <motion.div 
                       key={session.id}
