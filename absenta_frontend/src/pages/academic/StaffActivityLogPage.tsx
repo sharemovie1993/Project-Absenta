@@ -294,14 +294,14 @@ export function StaffActivityLogPage() {
   // ── Breadcrumbs (useMemo) ──
   const breadcrumbs = useMemo(() => ([
     { label: 'Akademik', path: '/academic' },
-    { label: 'Log Aktivitas Staf' },
+    { label: 'Log Aktivitas Pengguna' },
   ]), []);
 
   return (
     <AcademicPageLayout
       hardeningModuleKey="staffactivitylogpage"
-      title="Log Aktivitas Staf"
-      description="Pantau seluruh riwayat operasional dan aksi staf administrasi sekolah secara real-time"
+      title="Log Aktivitas Pengguna"
+      description="Pantau seluruh riwayat operasional, aktivitas login, dan aksi pengguna (Staf, Guru, & Siswa) secara real-time"
       stats={stats}
       instruction={instruction}
       breadcrumbs={breadcrumbs}
