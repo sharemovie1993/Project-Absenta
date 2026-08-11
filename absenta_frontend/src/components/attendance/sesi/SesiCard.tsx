@@ -141,129 +141,135 @@ export const SesiCard = React.memo(function SesiCard({
 
   return (
     <div 
-      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all rounded-xl sm:rounded-3xl border p-2.5 sm:p-4 space-y-1.5 sm:space-y-2.5`}
+      className={`${containerClassName} group/card overflow-hidden cursor-pointer active:scale-[0.98] transition-all rounded-xl sm:rounded-2xl border p-2.5 sm:p-3.5`}
       onClick={onScan}
     >
       {isLive && (
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 pointer-events-none" />
       )}
       
-      {/* Line 1: Header Badge Row */}
-      <div className="flex items-center justify-between gap-1.5 relative z-10">
-        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap min-w-0">
-          <span className="px-2 py-0.5 rounded-md text-[9px] sm:text-[11px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
-            {kelasText}
-          </span>
-          <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 font-bold shrink-0">
-            • {waktuMulaiText} – {waktuSelesaiText}
-          </span>
+      <div className="flex flex-row items-stretch justify-between gap-2 relative z-10">
+        {/* LEFT COLUMN: Informasional Sesi */}
+        <div className="flex-1 space-y-1 min-w-0 pr-1">
+          {/* Header Tag */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80">
+              {kelasText}
+            </span>
+            <span className="text-[10px] font-mono text-slate-400 font-bold">
+              • {waktuMulaiText} – {waktuSelesaiText}
+            </span>
+          </div>
+
+          {/* Subject Title */}
+          <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight">
+            {mapelText}
+          </h3>
+
+          {/* Guru */}
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+            <span className="truncate font-medium text-slate-700 dark:text-slate-300">
+              Guru: {guruText}
+            </span>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
+          </div>
+
+          {/* Hadir */}
+          <div className="text-[10px] font-mono font-extrabold text-slate-700 dark:text-slate-300 pt-0.5">
+            Hadir: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
+          </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1">
-          {isLive && (
-            <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 animate-pulse">
-              LIVE
-            </span>
-          )}
-          {isFinished && (
-            <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-              SELESAI
-            </span>
-          )}
-          {isOverdue && (
-            <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-              TERLEWAT
-            </span>
-          )}
-          {isUpcoming && (
-            <span className="px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
-              MENDATANG
-            </span>
-          )}
-        </div>
-      </div>
+        {/* RIGHT COLUMN: Badges & Akses Cepat Vertikal */}
+        <div className="w-28 sm:w-32 shrink-0 flex flex-col items-end justify-between gap-1 pl-2 border-l border-slate-100 dark:border-slate-800/80">
+          {/* Status Badge */}
+          <div className="shrink-0">
+            {isLive && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 animate-pulse">
+                LIVE
+              </span>
+            )}
+            {isFinished && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                SELESAI
+              </span>
+            )}
+            {isOverdue && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                TERLEWAT
+              </span>
+            )}
+            {isUpcoming && (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                MENDATANG
+              </span>
+            )}
+          </div>
 
-      {/* Line 2: Subject Title & Info */}
-      <div className="space-y-0.5 relative z-10">
-        <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug tracking-tight">
-          {mapelText}
-        </h3>
-
-        <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
-          <span className="truncate font-medium text-slate-700 dark:text-slate-300">
-            Guru: {guruText}
-          </span>
-          <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500' : 'bg-amber-500'}`} title={guruStatusText} />
-        </div>
-
-        <div className="text-[10px] sm:text-[11px] font-mono font-extrabold text-slate-700 dark:text-slate-300">
-          Hadir: <span className="text-indigo-600 dark:text-indigo-400">{((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))}</span>/{(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}
-        </div>
-      </div>
-
-      {/* Line 3: Compact Action Bar */}
-      <div className="flex items-center justify-between gap-1.5 pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 relative z-10">
-        {/* Left: Badges */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] sm:text-[10px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
-            {jk}
-          </span>
-          {isOtomatis ? (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-blue-500/10 text-[9px] sm:text-[10px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              <Cpu className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Sistem
+          {/* Badges: KBM & Sistem/Manual */}
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+              {jk}
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-amber-500/10 text-[9px] sm:text-[10px] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              <PencilLine className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Manual
-            </span>
-          )}
-        </div>
+            {isOtomatis ? (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-blue-500/10 text-[9px] font-extrabold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <Cpu className="w-2.5 h-2.5" /> Sistem
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/10 text-[9px] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <PencilLine className="w-2.5 h-2.5" /> Manual
+              </span>
+            )}
+          </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {isFinished && onOpenJournal && (rawJenis.toUpperCase().includes('KBM')) && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenJournal?.(); }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 text-[9px] sm:text-[10px] font-black border border-blue-200 dark:border-blue-800/60 transition-colors shadow-2xs"
-            >
-              <BookOpen size={11} />
-              <span>Jurnal</span>
-            </button>
-          )}
-
-          {canManage && !isFinished && (
-            <div className="flex items-center gap-0.5">
+          {/* Vertical Buttons Stack */}
+          <div className="flex flex-col items-end gap-1 w-full pt-1">
+            {isFinished && onOpenJournal && (rawJenis.toUpperCase().includes('KBM')) && (
               <button
                 type="button"
-                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                title="Hapus Sesi"
+                onClick={(e) => { e.stopPropagation(); onOpenJournal?.(); }}
+                className="w-full inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 text-[9px] font-black border border-blue-200 dark:border-blue-800/60 transition-colors"
               >
-                <Trash size={13} />
+                <BookOpen size={10} />
+                <span>Jurnal</span>
               </button>
+            )}
+
+            <div className="flex items-center gap-1 w-full justify-end">
+              {canManage && !isFinished && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    title="Hapus Sesi"
+                  >
+                    <Trash size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onFinish(); }}
+                    title="Selesaikan Sesi"
+                  >
+                    <CheckCircle2 size={12} />
+                  </button>
+                </div>
+              )}
+
               <button
                 type="button"
-                className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onFinish(); }}
-                title="Selesaikan Sesi"
+                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                className={`w-full px-2 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer text-center ${
+                  isExpanded 
+                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100' 
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs'
+                }`}
               >
-                <CheckCircle2 size={13} />
+                {isExpanded ? 'Tutup' : 'Log Hadir'}
               </button>
             </div>
-          )}
-
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-            className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer ${
-              isExpanded 
-                ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100' 
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-            }`}
-          >
-            {isExpanded ? 'Tutup' : 'Log Hadir'}
-          </button>
+          </div>
         </div>
       </div>
     </div>
