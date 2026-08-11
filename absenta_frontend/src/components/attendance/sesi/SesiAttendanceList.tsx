@@ -349,16 +349,16 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
 
 
       {/* 1. Compact Inline Summary */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 overflow-hidden">
         <Users size={13} className="text-slate-400 shrink-0" />
-        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5 flex-1 min-w-0">
+        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2 whitespace-nowrap overflow-x-auto no-scrollbar flex-1 min-w-0">
           <span className="text-emerald-600 font-black">✓ Hadir {stats.hadir}</span>
-          {stats.terlambat > 0 && <span className="text-orange-500 font-black">⏱ Telat {stats.terlambat}</span>}
-          {(stats.izin + stats.sakit) > 0 && <span className="text-blue-500 font-black">📋 Izin {stats.izin + stats.sakit}</span>}
-          {stats.dispen > 0 && <span className="text-violet-500 font-black">🎓 Dispen {stats.dispen}</span>}
-          {stats.alpa > 0 && <span className="text-rose-500 font-black">✗ Alpa {stats.alpa}</span>}
+          {stats.terlambat > 0 && <span className="text-orange-500 font-black">· ⏱ Telat {stats.terlambat}</span>}
+          {(stats.izin + stats.sakit) > 0 && <span className="text-blue-500 font-black">· 📋 Izin {stats.izin + stats.sakit}</span>}
+          {stats.dispen > 0 && <span className="text-violet-500 font-black">· 🎓 Dispen {stats.dispen}</span>}
+          {stats.alpa > 0 && <span className="text-rose-500 font-black">· ✗ Alpa {stats.alpa}</span>}
           {stats.belum_tap > 0 ? (
-            <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total}</span>
+            <span className="text-slate-400 font-normal">· Belum {stats.belum_tap} dari {stats.total}</span>
           ) : (
             <span className="text-emerald-600 font-black">· ✓ Lengkap ({stats.total})</span>
           )}
