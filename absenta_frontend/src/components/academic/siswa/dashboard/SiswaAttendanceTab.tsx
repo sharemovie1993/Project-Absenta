@@ -262,7 +262,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                             isSakit && "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
                             isAlpa && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
                           )}>
-                            {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Sakit/Izin' : 'Alpa / Tidak Diikuti'}
+                            {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Izin / Sakit' : 'Alpa'}
                           </span>
                         </div>
                       </div>
@@ -286,7 +286,8 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                         )}
                       </div>
 
-                      {item.keterangan && (
+                      {item.keterangan && 
+                        !['alpa', 'hadir', 'hadir tepat waktu', 'terlambat', 'terlambat mengikuti presensi', 'sakit/izin', 'sakit', 'izin', 'tepat waktu via gerbang / sesi presensi', 'izin / sakit terlampir via portal', 'belum ada catatan presensi dari wali kelas'].includes(item.keterangan.trim().toLowerCase()) && (
                         <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
                           {item.keterangan}
                         </p>

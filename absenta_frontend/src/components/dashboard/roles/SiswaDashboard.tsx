@@ -584,7 +584,7 @@ export const SiswaDashboard: React.FC = () => {
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
           sesi: sesiNama,
-          keterangan: item.keterangan || (isHadir ? 'Hadir tepat waktu' : isTerlambat ? 'Terlambat mengikuti presensi' : isSakit ? 'Sakit/Izin' : 'Alpa'),
+          keterangan: item.keterangan || '',
         };
       });
     }
@@ -602,14 +602,6 @@ export const SiswaDashboard: React.FC = () => {
 
         const waktuRaw = item.waktu_masuk || item.waktu || item.waktu_tap || '-';
         const waktuStr = formatWaktu(waktuRaw);
-
-        let defaultKet = isHadir
-          ? 'Tepat waktu via Gerbang / Sesi Presensi'
-          : isTerlambat
-          ? 'Terlambat mengikuti presensi'
-          : isSakit
-          ? 'Izin / Sakit terlampir via Portal'
-          : 'Belum ada catatan presensi dari wali kelas';
 
         let formattedDate = item.tanggal || '-';
         if (item.tanggal && item.tanggal.includes('-')) {
@@ -629,7 +621,7 @@ export const SiswaDashboard: React.FC = () => {
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
           sesi: sesiNama,
-          keterangan: item.keterangan || defaultKet,
+          keterangan: item.keterangan || '',
         };
       });
     }
