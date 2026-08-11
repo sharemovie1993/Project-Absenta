@@ -260,21 +260,21 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
-    queryKey: ['pelanggaran-me', user?.siswa_id],
+    queryKey: ['pelanggaran-me', user?.siswa_id || user?.id],
     queryFn: async () => {
       const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/pelanggaran/me'));
       return data;
     },
-    enabled: !!user && !!user?.siswa_id,
+    enabled: !!user,
   });
 
   const { data: prestasiRes } = useQuery({
-    queryKey: ['prestasi-me', user?.siswa_id],
+    queryKey: ['prestasi-me', user?.siswa_id || user?.id],
     queryFn: async () => {
       const { data } = await import('../../../lib/axiosInstance').then(m => m.default.get('/kesiswaan/prestasi/me'));
       return data;
     },
-    enabled: !!user && !!user?.siswa_id,
+    enabled: !!user,
   });
 
   const { data: kelasLeaderboardRes } = useQuery({
@@ -407,18 +407,26 @@ export const SiswaDashboard: React.FC = () => {
     return renderApiValue(val, customConnectedText, isApiConnected);
   };
 
-  // pelanggaran data list — handle both array and paginated { list, pagination } shapes
+  // pelanggaran data list — handle all possible API payload shapes
   const pelanggaranList = useMemo(() => {
+    if (Array.isArray(pelanggaranRes)) return pelanggaranRes;
     const apiData = pelanggaranRes?.data;
     if (Array.isArray(apiData)) return apiData;
-    if (apiData?.list && Array.isArray(apiData.list)) return apiData.list;
+    if (Array.isArray(apiData?.list)) return apiData.list;
+    if (Array.isArray(apiData?.pelanggaran)) return apiData.pelanggaran;
+    if (Array.isArray(pelanggaranRes?.list)) return pelanggaranRes.list;
+    if (Array.isArray(pelanggaranRes?.pelanggaran)) return pelanggaranRes.pelanggaran;
     return [];
   }, [pelanggaranRes]);
 
   const prestasiList = useMemo(() => {
+    if (Array.isArray(prestasiRes)) return prestasiRes;
     const apiData = prestasiRes?.data;
     if (Array.isArray(apiData)) return apiData;
-    if (apiData?.list && Array.isArray(apiData.list)) return apiData.list;
+    if (Array.isArray(apiData?.list)) return apiData.list;
+    if (Array.isArray(apiData?.prestasi)) return apiData.prestasi;
+    if (Array.isArray(prestasiRes?.list)) return prestasiRes.list;
+    if (Array.isArray(prestasiRes?.prestasi)) return prestasiRes.prestasi;
     return [];
   }, [prestasiRes]);
 
