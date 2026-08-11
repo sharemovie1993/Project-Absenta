@@ -1265,7 +1265,11 @@ export class RekapService {
         },
         include: {
           SesiAbsensi: {
-            include: { Mapel: true }
+            include: {
+              Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+              Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+              AbsenGuru: { select: { id: true, status: true, created_at: true } }
+            }
           }
         },
         orderBy: { SesiAbsensi: { waktu_mulai: 'asc' } }
@@ -1275,6 +1279,16 @@ export class RekapService {
         // Use tap time if available, otherwise fall back to session start time
         const effectiveTime = tap.waktu_tap || tap.SesiAbsensi?.waktu_mulai;
         const mapelName = tap.SesiAbsensi?.Mapel?.nama_mapel;
+        const kodeMapel = tap.SesiAbsensi?.Mapel?.kode_mapel;
+        const guruName = tap.SesiAbsensi?.Guru?.User?.full_name || tap.SesiAbsensi?.Guru?.nama_guru || null;
+        
+        const teacherAbsenList = Array.isArray(tap.SesiAbsensi?.AbsenGuru) ? tap.SesiAbsensi.AbsenGuru : [];
+        const isGuruHadir = teacherAbsenList.some((ag: any) => 
+          ag.status === 'HADIR' || ag.status === 'TEPAT_WAKTU' || ag.status === 'TERLAMBAT'
+        );
+        const statusGuru = teacherAbsenList.length > 0
+          ? (isGuruHadir ? 'HADIR' : (teacherAbsenList[0]?.status || 'IZIN'))
+          : (tap.SesiAbsensi?.guru_id ? 'BELUM_ABSEN' : 'TIDAK_ADA');
         
         // Helper to check if string is UUID
         const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -1288,8 +1302,14 @@ export class RekapService {
           waktu: effectiveTime ? formatTime(effectiveTime) : '-',
           timestamp: effectiveTime,
           jenis_kegiatan: activityName,
+          kode_mapel: kodeMapel,
+          nama_mapel: mapelName,
+          nama_guru: guruName,
+          status_guru: statusGuru,
+          is_guru_hadir: isGuruHadir,
           status: (tap.status === 'HADIR' && tap.is_terlambat) ? 'TERLAMBAT' : tap.status,
-          keterangan: tap.keterangan || null,  // Catatan dari sesi KBM (termasuk warisan pembiasaan overtime)
+          metode: tap.metode_absen || (tap.waktu_tap ? 'RFID' : 'Manual'),
+          keterangan: tap.keterangan || null,
         };
       }));
     }

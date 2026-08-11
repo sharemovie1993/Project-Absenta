@@ -34,7 +34,10 @@ export interface SiswaAttendanceTabProps {
     metode?: string;
     keterangan?: string;
     sesi?: string;
+    nama_guru?: string;
+    status_guru?: string;
   }>;
+
   todayKbmSchedule: Array<{
     id: string;
     kode: string;
@@ -239,19 +242,12 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-1.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                      className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                            {item.date}
-                          </span>
-                          {item.sesi && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 truncate">
-                              {item.sesi}
-                            </span>
-                          )}
-                        </div>
+                        <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 truncate max-w-[220px]">
+                          {item.sesi}
+                        </span>
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           {item.metode && item.metode !== '-' && (
@@ -266,14 +262,28 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                             isSakit && "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
                             isAlpa && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
                           )}>
-                            {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Sakit/Izin' : 'Alpa'}
+                            {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Sakit/Izin' : 'Alpa / Tidak Diikuti'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900 dark:text-white font-mono">
-                        <Clock size={13} className="text-slate-400 shrink-0" />
-                        <span>Tap / Sesi: {item.waktu}</span>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5 font-mono font-extrabold text-slate-900 dark:text-white">
+                          <Clock size={13} className="text-slate-400 shrink-0" />
+                          <span>Waktu Tap: {item.waktu}</span>
+                        </div>
+
+                        {item.nama_guru && (
+                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                            <User size={12} className="text-slate-400 shrink-0" />
+                            <span>Guru: {item.nama_guru}</span>
+                            {item.status_guru === 'HADIR' ? (
+                              <span className="ml-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">(Guru Hadir)</span>
+                            ) : item.status_guru === 'BELUM_ABSEN' ? (
+                              <span className="ml-1 text-[10px] font-medium text-slate-400">(Belum Absen)</span>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
 
                       {item.keterangan && (
@@ -290,10 +300,9 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                     <Calendar size={20} />
                   </div>
                   <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    Belum ada riwayat sesi absensi.
+                    Belum ada riwayat sesi absensi pada tanggal ini.
                   </p>
                 </div>
-              )}
             </div>
           </div>
         </div>
