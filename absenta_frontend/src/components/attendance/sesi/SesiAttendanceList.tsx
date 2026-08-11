@@ -336,18 +336,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
 
   return (
     <div className="space-y-4 py-1">
-      {/* 0. Mode Toggle (Operational only) */}
-      {!isReportMode && (
-        <div className="flex justify-between items-center">
-          <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="📜 SOP Absensi" />
-          <button 
-            onClick={() => setIsSlideMode(!isSlideMode)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors border border-indigo-100 dark:border-indigo-800/50"
-          >
-            {isSlideMode ? <><LayoutList size={14} /> Mode List</> : <><PlayCircle size={14} /> Mode Slide (Fokus)</>}
-          </button>
-        </div>
-      )}
+
 
       {/* 1. Compact Inline Summary */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
