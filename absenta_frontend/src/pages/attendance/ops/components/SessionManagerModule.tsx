@@ -659,7 +659,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
               </motion.div>
             ) : (
               <div className="space-y-2 sm:space-y-6">
-                <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500/20 via-indigo-500/10 to-transparent hidden md:block"></div>
+                <div className="absolute left-2 sm:left-4 top-2 bottom-2 w-0.5 bg-gradient-to-b from-blue-500/40 via-indigo-500/20 to-transparent"></div>
                 
                 <div className="grid grid-cols-1 gap-2 sm:gap-4">
                   {sessions?.map((session, idx) => (
@@ -669,12 +669,12 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: idx * 0.05 }}
-                      className="relative md:pl-12"
+                      className="relative pl-5 sm:pl-10"
                     >
                       {/* Timeline Node */}
-                      <div className="absolute left-3.5 top-8 w-1 h-1 rounded-full bg-indigo-500 hidden md:block ring-8 ring-indigo-500/10"></div>
+                      <div className="absolute left-[3px] sm:left-[11px] top-4 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-500/20 z-10"></div>
                       
-                      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xl shadow-black/[0.02] hover:shadow-2xl hover:shadow-indigo-600/5 transition-all">
+                      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xs hover:shadow-md transition-all">
                         <SesiCard
                           sesi={session}
                           isExpanded={!!expanded[session.id]}
