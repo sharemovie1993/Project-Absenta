@@ -988,7 +988,7 @@ export const SiswaDashboard: React.FC = () => {
               KEDISIPLINAN
             </span>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
-              {currentDisciplineScore} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">Poin</span>
+              {netPoin >= 0 ? `+${netPoin}` : netPoin} <span className="text-xs text-slate-500 dark:text-blue-200 font-normal">Poin</span>
             </div>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
               Gold Scholar Tier
@@ -1009,10 +1009,10 @@ export const SiswaDashboard: React.FC = () => {
             <div className="space-y-0.5 min-w-0 w-full">
               <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin Kedisiplinan</span>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                {currentDisciplineScore} Poin
+                {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                {currentDisciplineScore >= 80 ? 'Aman (Bebas SP)' : currentDisciplineScore >= 60 ? 'Peringatan (SP 1)' : 'Kritis (Perlu Pembinaan)'}
+                {netPoin >= 0 ? 'Aman (Saldo Poin Positif)' : netPoin >= -20 ? 'Peringatan (Perlu Perhatian)' : 'Kritis (Perlu Pembinaan)'}
               </p>
             </div>
           </div>
