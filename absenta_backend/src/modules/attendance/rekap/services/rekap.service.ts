@@ -929,7 +929,19 @@ export class RekapService {
     };
     let total_poin = 0;
 
-    let detail: Array<{ tanggal: string; status: string }> = [];
+    let detail: Array<{
+      id?: string;
+      sesi_id?: string | null;
+      sesi_absensi_id?: string | null;
+      tanggal: string;
+      status: string;
+      waktu_tap?: string | null;
+      waktu?: string | null;
+      jenis_kegiatan?: string;
+      sesi_nama?: string;
+      nama_mapel?: string | null;
+      nama_guru?: string | null;
+    }> = [];
 
     if (forceGateOnly || tenant.absensi_mode === AbsensiMode.SIMPLE) {
       const whereAbsen: any = {
@@ -951,9 +963,6 @@ export class RekapService {
         const dateKey = formatDateKey(absen.waktu_tap);
         if (!attendanceByDate.has(dateKey)) {
           attendanceByDate.set(dateKey, absen);
-        } else {
-          // Keep the earliest/latest? Or prioritize status?
-          // Simple logic: first tap of day defines status (usually 'HADIR')
         }
       });
 
@@ -962,8 +971,12 @@ export class RekapService {
         if (statistik[status] !== undefined) statistik[status]++;
         
         detail.push({
+          id: absen.id,
           tanggal: formatDateKey(absen.waktu_tap),
-          status: status
+          status: status,
+          waktu_tap: absen.waktu_tap ? absen.waktu_tap.toISOString() : null,
+          waktu: absen.waktu_tap ? absen.waktu_tap.toISOString() : null,
+          jenis_kegiatan: 'Presensi Gerbang'
         });
 
         // Poin calculation: Prioritize DB value
@@ -992,7 +1005,14 @@ export class RekapService {
           SiswaAkademik: { siswa_id: siswaId },
           SesiAbsensi: sesiWhere,
         },
-        include: { SesiAbsensi: true }
+        include: {
+          SesiAbsensi: {
+            include: {
+              Mapel: true,
+              Guru: true
+            }
+          }
+        }
       });
 
       // 2. Fetch Gate Data
@@ -1085,19 +1105,35 @@ export class RekapService {
             finalStatus = 'DISPEN';
         }
 
+        const firstClass = classTaps[0];
+        const firstGate = gateTaps[0];
+        const sesiId = firstClass?.sesi_id || firstClass?.SesiAbsensi?.id || null;
+        const rawWaktu = firstClass?.waktu_tap ? firstClass.waktu_tap.toISOString() : (firstGate?.waktu_tap ? firstGate.waktu_tap.toISOString() : null);
+        const mapelName = firstClass?.SesiAbsensi?.Mapel?.nama_mapel || null;
+        const guruName = firstClass?.SesiAbsensi?.Guru?.nama_guru || null;
+        const rawJenis = firstClass?.SesiAbsensi?.jenis_kegiatan || 'KBM';
+
         // Add to Stats
-        if (finalStatus === 'HADIR') {
-             if (isLate) {
-                 if (statistik['TERLAMBAT'] !== undefined) statistik['TERLAMBAT']++;
-                 detail.push({ tanggal: date, status: 'TERLAMBAT' });
-             } else {
-                 if (statistik['HADIR'] !== undefined) statistik['HADIR']++;
-                 detail.push({ tanggal: date, status: 'HADIR' });
-             }
-        } else {
-             if (statistik[finalStatus] !== undefined) statistik[finalStatus]++;
-             detail.push({ tanggal: date, status: finalStatus });
+        const calculatedStatus = isLate && finalStatus === 'HADIR' ? 'TERLAMBAT' : finalStatus;
+        if (calculatedStatus === 'TERLAMBAT') {
+          if (statistik['TERLAMBAT'] !== undefined) statistik['TERLAMBAT']++;
+        } else if (statistik[calculatedStatus] !== undefined) {
+          statistik[calculatedStatus]++;
         }
+
+        detail.push({
+          id: sesiId || `rekap-${date}`,
+          sesi_id: sesiId,
+          sesi_absensi_id: sesiId,
+          tanggal: date,
+          status: calculatedStatus,
+          waktu_tap: rawWaktu,
+          waktu: rawWaktu,
+          jenis_kegiatan: mapelName ? `KBM - ${mapelName}` : rawJenis,
+          sesi_nama: mapelName ? `KBM - ${mapelName}` : rawJenis,
+          nama_mapel: mapelName,
+          nama_guru: guruName
+        });
         
         // Calculate Poin
         let calculatedPoin = 0;
