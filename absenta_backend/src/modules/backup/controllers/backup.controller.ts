@@ -252,18 +252,24 @@ export class BackupController {
         const prismaModel = prisma[modelName];
         if (!prismaModel) continue;
 
-        let whereClause: any = { tenant_id: tenantId };
-        if (modelName === 'DocumentActivity') {
-          whereClause = { actor_tenant_id: tenantId };
+        const tenantField = getTenantFieldName(modelName);
+        let whereClause: any = null;
+
+        if (tenantField) {
+          whereClause = { [tenantField]: tenantId };
+        } else if (modelName === 'SiswaAkademik') {
+          whereClause = { siswa: { tenant_id: tenantId } };
         }
 
         try {
-          const rows = await prismaModel.findMany({ where: whereClause });
+          const rows = whereClause
+            ? await prismaModel.findMany({ where: whereClause })
+            : await prismaModel.findMany();
           exportData[modelName] = rows;
           tableRowCounts[modelName] = rows.length;
           totalRows += rows.length;
-        } catch (e) {
-          // Ignore if model does not have tenant_id filter directly
+        } catch (e: any) {
+          console.warn(`[Export Warning] Failed to export ${modelName}:`, e?.message);
         }
       }
 
