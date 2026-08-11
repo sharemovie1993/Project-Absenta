@@ -1005,9 +1005,13 @@ export const SiswaDashboard: React.FC = () => {
       {/* 4 SUMMARY STAT CARDS (Clean Light Theme - Rendered only on Ringkasan tab) */}
       {activeTab === 'ringkasan' && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* Stat 1: Skor Kedisiplinan */}
-          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+          {/* Stat 1: Saldo Poin Kedisiplinan (Clickable to Catatan Tab) */}
+          <div 
+            onClick={() => handleTabChange('catatan')}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+            title="Klik untuk membuka Tab Catatan & Buku Poin"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Shield size={18} className="sm:hidden" />
               <Shield size={20} className="hidden sm:block" />
             </div>
