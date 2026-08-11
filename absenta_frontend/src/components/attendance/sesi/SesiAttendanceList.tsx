@@ -3,9 +3,8 @@ import { Badge } from '../../ui';
 import { getAttendanceBadgeVariant } from '../../../utils/attendance/attendanceUiSelectors';
 import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { 
-  BookOpen, AlertCircle, CheckCircle2, Users, Search, 
-  Clock, GraduationCap, Info, RefreshCw,
-  ChevronLeft, ChevronRight, LayoutList, PlayCircle
+  BookOpen, CheckCircle2, Users, Search, 
+  RefreshCw, ChevronLeft, ChevronRight, LayoutList, PlayCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -351,26 +350,17 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         </div>
       )}
 
-      {/* 1. Ultra Compact Stats Overview */}
-      <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 pb-1">
-         {[
-           { label: 'Hadir', value: stats.hadir, color: 'emerald', icon: CheckCircle2 },
-           { label: 'Telat', value: stats.terlambat, color: 'orange', icon: Clock },
-           { label: 'Izin', value: stats.izin + stats.sakit, color: 'blue', icon: Info },
-           { label: 'Dispen', value: stats.dispen, color: 'violet', icon: GraduationCap },
-           { label: 'Alpa', value: stats.alpa, color: 'rose', icon: AlertCircle },
-           { label: 'Belum', value: stats.belum_tap, color: 'slate', icon: Users },
-         ].map((item) => (
-           <div key={item.label} className="bg-gray-50/80 dark:bg-gray-900/50 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-sm border border-gray-100 dark:border-gray-800 flex items-center gap-1 sm:gap-1.5">
-              <div className={`p-0.5 sm:p-1 bg-${item.color}-500/10 rounded-sm`}>
-                 <item.icon className={`w-2.5 h-2.5 sm:w-3 h-3 text-${item.color}-500`} />
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-0 sm:gap-1">
-                 <h5 className="text-[10px] sm:text-xs font-black text-gray-900 dark:text-white leading-none">{item.value}</h5>
-                 <p className="text-[7px] sm:text-[8px] font-black text-gray-400 uppercase tracking-tighter">{item.label}</p>
-              </div>
-           </div>
-         ))}
+      {/* 1. Compact Inline Summary */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+        <Users size={13} className="text-slate-400 shrink-0" />
+        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5">
+          <span className="text-emerald-600 font-black">✓ Hadir {stats.hadir}</span>
+          {stats.terlambat > 0 && <span className="text-orange-500 font-black">⏱ Telat {stats.terlambat}</span>}
+          {(stats.izin + stats.sakit) > 0 && <span className="text-blue-500 font-black">📋 Izin {stats.izin + stats.sakit}</span>}
+          {stats.dispen > 0 && <span className="text-violet-500 font-black">🎓 Dispen {stats.dispen}</span>}
+          {stats.alpa > 0 && <span className="text-rose-500 font-black">✗ Alpa {stats.alpa}</span>}
+          <span className="text-slate-400">· Belum {stats.belum_tap} dari {stats.total} siswa</span>
+        </p>
       </div>
 
       {/* 2. Tiny Inline Journal Info */}
