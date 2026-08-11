@@ -1288,6 +1288,7 @@ export const SiswaDashboard: React.FC = () => {
               todayKbmSchedule={todayKbmSchedule}
               isLoadingSchedule={isLoadingSchedule}
               isApiConnected={isApiConnected}
+              kelasId={siswaProfile?.kelas_id || (user as any)?.kelas_id || ''}
             />
           </motion.div>
         )}

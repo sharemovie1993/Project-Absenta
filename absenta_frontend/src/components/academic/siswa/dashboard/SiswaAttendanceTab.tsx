@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { getSesiAbsenSiswa, getRekapBulananKelasMe } from '@/api/attendanceGerbang.api';
+import { getSesiAbsenSiswa, getRekapBulananKelasMe, getRekapHarianKelas } from '@/api/attendanceGerbang.api';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
 
 export interface SiswaAttendanceTabProps {
@@ -53,6 +53,7 @@ export interface SiswaAttendanceTabProps {
   }>;
   isLoadingSchedule?: boolean;
   isApiConnected?: boolean;
+  kelasId?: string;
 }
 
 export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
@@ -68,6 +69,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   todayKbmSchedule,
   isLoadingSchedule = false,
   isApiConnected = true,
+  kelasId,
 }) => {
   const { user } = useAuthStore();
   const mySiswaId = (user as any)?.siswa_id || user?.id;
@@ -85,7 +87,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   }>({ isOpen: false });
 
   const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
-    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId],
+    queryKey: ['siswa-sesi-detail-attendance', selectedSesiModal.sesiId, selectedDate, kelasId],
     queryFn: async () => {
       if (!selectedSesiModal.sesiId) return [];
 
@@ -99,15 +101,52 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         } catch {}
       }
 
-      // 2. Fallback: Fetch class roster using getRekapBulananKelasMe so class list is NEVER empty
+      // 2. Fetch actual daily class attendance logs if kelasId available so every student's real tap time is displayed
+      const userNameClean = (user?.name || (user as any)?.nama_siswa || (user as any)?.nama || '').trim().toLowerCase();
+      const targetKelasId = kelasId || (user as any)?.kelas_id;
+      const targetDate = selectedDate || todayIso;
+
+      if (targetKelasId) {
+        try {
+          const harianRes = await getRekapHarianKelas(targetKelasId, { tanggal: targetDate });
+          const list = harianRes?.data || [];
+
+          if (list.length > 0) {
+            return list.map((st: any, idx: number) => {
+              const currentStId = st.siswa_id || st.id || `st-${idx}`;
+              const studentNameClean = (st.nama_siswa || st.nama || '').trim().toLowerCase();
+              const isMe = Boolean(
+                (mySiswaId && (currentStId === mySiswaId || st.id === mySiswaId)) ||
+                (userNameClean.length >= 3 && studentNameClean.length >= 3 && studentNameClean === userNameClean)
+              );
+
+              // Use student's real tap time from daily log, fallback to selectedSesiModal.waktuTap ONLY for logged-in user
+              const realTapTime = st.waktu_tap || st.waktu_masuk || st.waktu || (isMe ? selectedSesiModal.waktuTap : null);
+
+              return {
+                id: currentStId,
+                siswa_id: currentStId,
+                siswa_akademik_id: currentStId,
+                status: st.status || (isMe ? 'HADIR' : 'BELUM_TAP'),
+                waktu_tap: realTapTime,
+                Siswa: {
+                  id: currentStId,
+                  nama_siswa: st.nama_siswa || st.nama || 'Siswa Kelas',
+                  nis: st.nis || '-'
+                }
+              };
+            });
+          }
+        } catch {}
+      }
+
+      // 3. Fallback: Fetch class roster using getRekapBulananKelasMe if daily logs pending
       try {
-        const currentBulan = new Date().toISOString().slice(0, 7);
+        const currentBulan = selectedDate ? selectedDate.slice(0, 7) : new Date().toISOString().slice(0, 7);
         const kelasRes = await getRekapBulananKelasMe({ bulan: currentBulan });
         const students = kelasRes?.data?.students || [];
 
         if (students.length > 0) {
-          const userNameClean = (user?.name || (user as any)?.nama_siswa || (user as any)?.nama || '').trim().toLowerCase();
-
           return students.map((st: any, idx: number) => {
             const currentStId = st.id || st.siswa_id;
             const studentNameClean = (st.nama || st.nama_siswa || '').trim().toLowerCase();
