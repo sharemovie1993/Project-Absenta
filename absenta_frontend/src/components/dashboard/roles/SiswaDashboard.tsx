@@ -901,31 +901,60 @@ export const SiswaDashboard: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {todayKbmSchedule.map((sesi: any, idx: number) => {
-                    const tapList = dailyRecapRes?.data?.sessionTaps || (dailyRecapRes as any)?.data?.rincian || [];
-                    const tap = tapList.find(
-                      (t: any) => t.sesi_id === sesi.id || t.nama_sesi === sesi.nama_sesi || (t.nama_mapel && t.nama_mapel === sesi.nama_mapel)
-                    );
-                    const rawStatus = tap?.status;
-                    
-                    const badgeStyle = 
-                      rawStatus === 'HADIR' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' :
-                      rawStatus === 'TERLAMBAT' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' :
-                      rawStatus === 'ALPA' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' :
-                      rawStatus === 'SAKIT' || rawStatus === 'IZIN' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30' :
-                      'bg-slate-200/60 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-300/80 dark:border-slate-700';
+                    const gateStatus = dailyRecapRes?.data?.status || dailyRecapRes?.data?.rincian?.[0]?.status;
+                    const isStudentAtSchool = gateStatus === 'HADIR' || gateStatus === 'TERLAMBAT' || gateStatus === 'TEPAT_WAKTU';
 
-                    const displayStatusLabel = 
-                      rawStatus === 'HADIR' ? 'Hadir' : 
-                      rawStatus === 'TERLAMBAT' ? 'Terlambat' : 
-                      rawStatus === 'ALPA' ? 'Alpa' : 
-                      rawStatus === 'SAKIT' || rawStatus === 'IZIN' ? rawStatus : 
-                      'Belum';
+                    const tapList = Array.isArray(dailyRecapRes?.data?.sessionTaps)
+                      ? dailyRecapRes.data.sessionTaps
+                      : Array.isArray((dailyRecapRes as any)?.data?.rincian)
+                        ? (dailyRecapRes as any).data.rincian
+                        : [];
+
+                    const tap = tapList.find(
+                      (t: any) => t.sesi_id === sesi.id || t.nama_sesi === sesi.nama_sesi || (t.nama_mapel && t.nama_mapel === sesi.mapel) || (t.mapel && t.mapel === sesi.mapel)
+                    );
+
+                    let displayStatusLabel = 'Jadwal';
+                    let badgeStyle = 'bg-slate-200/60 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-300/80 dark:border-slate-700';
+
+                    if (tap && tap.status) {
+                      const s = String(tap.status).toUpperCase();
+                      if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
+                        displayStatusLabel = 'Hadir';
+                        badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+                      } else if (s === 'TERLAMBAT') {
+                        displayStatusLabel = 'Terlambat';
+                        badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
+                      } else if (s === 'SAKIT' || s === 'IZIN' || s === 'DISPEN') {
+                        displayStatusLabel = s === 'SAKIT' ? 'Sakit' : s === 'IZIN' ? 'Izin' : 'Dispen';
+                        badgeStyle = 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
+                      } else if (s === 'ALPA') {
+                        displayStatusLabel = 'Alpa';
+                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+                      }
+                    } else {
+                      if (sesi.status === 'Sedang Berlangsung') {
+                        displayStatusLabel = isStudentAtSchool ? 'KBM' : 'Belum';
+                        badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 animate-pulse';
+                      } else if (sesi.status === 'Mendatang') {
+                        displayStatusLabel = 'Jadwal';
+                        badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+                      } else if (sesi.status === 'Selesai') {
+                        if (isStudentAtSchool) {
+                          displayStatusLabel = 'Hadir';
+                          badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+                        } else {
+                          displayStatusLabel = 'Alpa';
+                          badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+                        }
+                      }
+                    }
 
                     return (
                       <span
                         key={sesi.id || `sesi-mini-${idx}`}
                         className={cn("px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all", badgeStyle)}
-                        title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.nama_mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
+                        title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
                       >
                         <span className="font-mono text-[10px] opacity-75">Sesi {idx + 1}</span>
                         <span className="font-extrabold">{displayStatusLabel}</span>
