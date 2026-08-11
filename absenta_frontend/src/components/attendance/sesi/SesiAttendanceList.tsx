@@ -89,6 +89,24 @@ const SesiAttendanceRow = React.memo(({
   const nameDisplay = record.Guru?.nama_guru || record.Siswa?.nama_siswa || studentId;
   const isPiketOut = record.is_piket_out || record.catatan?.includes('IZIN SEMENTARA PIKET') || record.catatan?.includes('IZIN SEMENTARA');
 
+  const formatWaktuTapDisplay = (raw: string | null | undefined) => {
+    if (!raw) return '--:--';
+    const str = String(raw).trim();
+    if (str.includes('T') || str.includes('Z')) {
+      try {
+        const dt = new Date(str);
+        if (!isNaN(dt.getTime())) {
+          return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+      } catch {}
+    }
+    const match = str.match(/(\d{1,2})[:.](\d{2})/);
+    if (match) {
+      return `${match[1].padStart(2, '0')}:${match[2]}`;
+    }
+    return str;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -128,7 +146,7 @@ const SesiAttendanceRow = React.memo(({
       </div>
       <div className="flex flex-col items-center justify-center gap-0.5">
         <span className="text-[10px] font-bold text-gray-500">
-           {record.waktu_tap ? new Date(record.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+           {formatWaktuTapDisplay(record.waktu_tap)}
         </span>
         {record.is_terlambat && (
           <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">

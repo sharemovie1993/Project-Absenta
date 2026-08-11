@@ -76,6 +76,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
     sesiId?: string;
     sesiTitle?: string;
     guruName?: string;
+    waktuTap?: string;
   }>({ isOpen: false });
 
   const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = useQuery({
@@ -100,12 +101,12 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         const students = kelasRes?.data?.students || [];
 
         if (students.length > 0) {
-          return students.map((st: any) => ({
-            id: st.id || st.siswa_id,
+          return students.map((st: any, idx: number) => ({
+            id: st.id || st.siswa_id || `st-${idx}`,
             siswa_id: st.id || st.siswa_id,
             siswa_akademik_id: st.id || st.siswa_id,
-            status: 'HADIR',
-            waktu_tap: null,
+            status: st.status || 'HADIR',
+            waktu_tap: st.waktu_tap || st.waktu || selectedSesiModal.waktuTap || new Date().toISOString(),
             Siswa: {
               id: st.id || st.siswa_id,
               nama_siswa: st.nama || st.nama_siswa || 'Siswa Kelas',
@@ -301,7 +302,8 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                           isOpen: true,
                           sesiId: targetId,
                           sesiTitle: item.sesi || 'Sesi KBM',
-                          guruName: item.nama_guru
+                          guruName: item.nama_guru,
+                          waktuTap: item.waktu
                         });
                       }}
                       className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md cursor-pointer transition-all group"
