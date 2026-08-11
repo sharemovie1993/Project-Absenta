@@ -212,7 +212,10 @@ export class ActivityLogController {
               id: true,
               full_name: true,
               email: true,
+              no_hp: true,
               Role: { select: { name: true } },
+              Guru: { select: { no_hp: true } },
+              Siswa: { select: { no_hp: true } },
             },
           },
         },
@@ -221,10 +224,12 @@ export class ActivityLogController {
       const activeUserMap = new Map<string, any>();
       for (const log of recentLogs) {
         if (log.user_id && !activeUserMap.has(log.user_id)) {
+          const userPhone = log.User?.no_hp || log.User?.Guru?.no_hp || log.User?.Siswa?.no_hp || null;
           activeUserMap.set(log.user_id, {
             user_id: log.user_id,
             name: log.User?.full_name || 'Pengguna',
             email: log.User?.email || '',
+            no_hp: userPhone,
             role: log.User?.Role?.name || 'Pengguna',
             last_action: log.action,
             last_activity: log.created_at,

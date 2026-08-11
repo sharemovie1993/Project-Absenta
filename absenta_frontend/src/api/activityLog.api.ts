@@ -46,6 +46,7 @@ export interface ActiveUserItem {
   user_id: string;
   name: string;
   email: string;
+  no_hp?: string | null;
   role: string;
   last_action: string;
   last_activity: string;
