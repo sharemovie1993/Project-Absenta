@@ -227,47 +227,55 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
 
-  // Auto-ensure Teacher record exists at the top of list with persistent caching
+  // Stable & Immutable Teacher injection ensuring row never vanishes during refetch, query invalidation, or toast dismissal
   const preparedRecords = useMemo(() => {
-    const hasGuru = records.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
+    const hasGuruInRecords = records.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
     
-    if (!hasGuru && (sesi?.Guru || sesi?.nama_guru || sesi?.JamPelajaran?.Guru)) {
-      const gObj: GuruDetail = sesi.Guru || sesi.JamPelajaran?.Guru || {
-        id: sesi.guru_id || sesi.JamPelajaran?.guru_id || 'guru-sesi',
-        nama_guru: sesi.nama_guru || sesi.JamPelajaran?.nama_guru || 'Guru Pengajar'
-      };
+    // Resolve teacher detail fallback
+    const guruDetail: GuruDetail = sesi?.Guru || sesi?.JamPelajaran?.Guru || {
+      id: sesi?.guru_id || sesi?.JamPelajaran?.guru_id || 'guru-sesi-default',
+      nama_guru: sesi?.nama_guru || sesi?.JamPelajaran?.nama_guru || 'Guru Pengajar Sesi'
+    };
 
-      let savedGuruData: { status?: string; waktu_tap?: string | null; catatan?: string | null } | null = null;
-      try {
-        const stored = localStorage.getItem(`absenta_guru_att_${sesi?.id}_${gObj.id}`);
-        if (stored) savedGuruData = JSON.parse(stored);
-      } catch {}
+    const gId = guruDetail.id || 'guru-sesi-default';
 
+    // Check local storage for persistent status
+    let savedGuruData: { status?: string; waktu_tap?: string | null; catatan?: string | null; is_terlambat?: boolean } | null = null;
+    try {
+      const stored = localStorage.getItem(`absenta_guru_att_${sesi?.id || 'active'}_${gId}`);
+      if (stored) savedGuruData = JSON.parse(stored);
+    } catch {}
+
+    let baseRecords = records;
+
+    if (!hasGuruInRecords) {
       const teacherRec: SesiAttendanceRecord = {
-        id: `guru-${gObj.id}`,
-        guru_id: gObj.id,
+        id: `guru-${gId}`,
+        guru_id: gId,
         is_guru: true,
         status: savedGuruData?.status || 'BELUM_TAP',
         waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : null,
-        Guru: gObj,
+        is_terlambat: savedGuruData?.is_terlambat || false,
+        Guru: guruDetail,
         catatan: savedGuruData?.catatan !== undefined ? savedGuruData.catatan : null
       };
 
-      return [teacherRec, ...records];
+      baseRecords = [teacherRec, ...records];
     }
 
-    return records.map(r => {
+    return baseRecords.map(r => {
       const isG = r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru';
-      if (isG && sesi?.id) {
-        const gId = r.guru_id || r.Guru?.id || 'guru-sesi';
+      if (isG) {
+        const teacherId = r.guru_id || r.Guru?.id || gId;
         try {
-          const stored = localStorage.getItem(`absenta_guru_att_${sesi.id}_${gId}`);
+          const stored = localStorage.getItem(`absenta_guru_att_${sesi?.id || 'active'}_${teacherId}`);
           if (stored) {
             const parsed = JSON.parse(stored);
             return {
               ...r,
               status: parsed.status || r.status,
               waktu_tap: parsed.waktu_tap !== undefined ? parsed.waktu_tap : r.waktu_tap,
+              is_terlambat: parsed.is_terlambat !== undefined ? parsed.is_terlambat : r.is_terlambat,
               catatan: parsed.catatan !== undefined ? parsed.catatan : r.catatan
             };
           }
@@ -360,8 +368,8 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
       }
     },
     onError: (error: any, variables, context) => {
-      // Rollback local records state to original props
-      setLocalRecords(records);
+      // Rollback local records state to preparedRecords (preserving Guru row)
+      setLocalRecords(preparedRecords);
 
       // Remove invalid/rejected localStorage entry if transaction was rejected by backend
       if (sesi?.id && variables?.siswaAkademikId) {
