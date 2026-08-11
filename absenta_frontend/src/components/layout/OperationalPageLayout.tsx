@@ -224,9 +224,9 @@ export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
         </div>
       )}
 
-      {/* Mobile Hardening Inspector fallback */}
+      {/* Mobile Hardening Inspector fallback (hidden on mobile HP to maximize vertical screen space) */}
       {hardeningConfig && resolvedKey && (
-        <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-1 flex justify-center">
+        <div className="hidden md:flex bg-slate-900 border-b border-slate-800 px-4 py-1 justify-center">
           <HardeningInspector 
             pageName={hardeningConfig.displayName}
             standards={hardeningConfig.standards}
