@@ -106,16 +106,23 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         const students = kelasRes?.data?.students || [];
 
         if (students.length > 0) {
+          const userNameClean = (user?.name || (user as any)?.nama_siswa || (user as any)?.nama || '').trim().toLowerCase();
+
           return students.map((st: any, idx: number) => {
             const currentStId = st.id || st.siswa_id;
-            const isMe = currentStId === mySiswaId || String(st.nama || st.nama_siswa || '').toLowerCase().includes(String(user?.name || '').toLowerCase());
+            const studentNameClean = (st.nama || st.nama_siswa || '').trim().toLowerCase();
+
+            const isMe = Boolean(
+              (mySiswaId && (currentStId === mySiswaId || st.id === mySiswaId)) ||
+              (userNameClean.length >= 3 && studentNameClean.length >= 3 && studentNameClean === userNameClean)
+            );
 
             return {
               id: currentStId || `st-${idx}`,
               siswa_id: currentStId,
               siswa_akademik_id: currentStId,
-              status: st.status || (isMe ? 'HADIR' : 'BELUM_TAP'),
-              waktu_tap: st.waktu_tap || st.waktu || (isMe ? selectedSesiModal.waktuTap : null),
+              status: isMe ? (st.status || 'HADIR') : (st.status || 'BELUM_TAP'),
+              waktu_tap: isMe ? (st.waktu_tap || st.waktu || selectedSesiModal.waktuTap || null) : (st.waktu_tap || st.waktu || null),
               Siswa: {
                 id: currentStId,
                 nama_siswa: st.nama || st.nama_siswa || 'Siswa Kelas',
@@ -314,7 +321,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                           sesiTitle: item.sesi || 'Sesi KBM',
                           guruName: item.nama_guru || (item as any).guru || 'Guru Pengajar',
                           guruStatus: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'HADIR'),
-                          guruWaktuTap: item.waktu,
+                          guruWaktuTap: (item as any).waktu_guru || null,
                           waktuTap: item.waktu
                         });
                       }}
@@ -506,7 +513,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                 status: 'SELESAI',
                 nama_guru: selectedSesiModal.guruName || 'Guru Pengajar',
                 guru_status: selectedSesiModal.guruStatus || 'HADIR',
-                waktu_tap_guru: selectedSesiModal.guruWaktuTap || selectedSesiModal.waktuTap,
+                waktu_tap_guru: selectedSesiModal.guruWaktuTap || null,
                 Guru: {
                   id: 'guru-sesi-selected',
                   nama_guru: selectedSesiModal.guruName || 'Guru Pengajar'
