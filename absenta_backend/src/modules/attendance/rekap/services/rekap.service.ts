@@ -728,6 +728,9 @@ export class RekapService {
         const statusUpper = (absen.status || '').toUpperCase();
         let code = 'A';
 
+        const calculatedPoin = AttendanceRuleEngine.calculateAttendancePoints(statusUpper, absen.is_terlambat);
+        st.poin += calculatedPoin;
+
         if (statusUpper === 'HADIR') {
           st.hadir++;
           if (absen.is_terlambat) {
