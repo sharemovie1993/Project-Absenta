@@ -441,7 +441,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     );
 
     // Save persistent teacher attendance to prevent loss on modal toggle
-    const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
     const isGuruTarget = targetRec?.is_guru || Boolean(targetRec?.Guru) || Boolean(targetRec?.guru_id) || (targetRec as any)?._type === 'guru';
     
     if (isGuruTarget && sesi?.id) {
