@@ -409,6 +409,22 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     }
 
     // 1. Instant optimistic update to local state
+    const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
+    
+    let isLate = targetRec?.is_terlambat || false;
+    if (status === 'HADIR') {
+      const jamMulaiStr = sesi?.jam_mulai || sesi?.JamPelajaran?.jam_mulai;
+      if (jamMulaiStr) {
+        const now = new Date();
+        const [h, m] = jamMulaiStr.split(':').map(Number);
+        const targetTime = new Date();
+        targetTime.setHours(h || 0, m || 0, 0, 0);
+        isLate = now.getTime() > targetTime.getTime() + (sesi?.toleransi_menit || 5) * 60 * 1000;
+      }
+    } else {
+      isLate = false;
+    }
+
     setLocalRecords(prev => 
       prev.map(r => {
         const currentId = r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id;
@@ -417,6 +433,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
               ...r, 
               status: status, 
               catatan: catatan !== undefined ? catatan : r.catatan,
+              is_terlambat: isLate,
               waktu_tap: status === 'BELUM_TAP' ? null : (r.waktu_tap || new Date().toISOString())
             }
           : r;
@@ -434,6 +451,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
         localStorage.setItem(`absenta_guru_att_${sesi.id}_${gId}`, JSON.stringify({
           status,
           waktu_tap: wTap,
+          is_terlambat: isLate,
           catatan: catatan !== undefined ? catatan : targetRec?.catatan
         }));
       } catch {}
