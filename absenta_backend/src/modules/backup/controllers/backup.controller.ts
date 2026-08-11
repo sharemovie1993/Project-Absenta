@@ -372,6 +372,7 @@ export class BackupController {
         where: { OR: [{ tenant_id: tenantId }, { tenant_id: null }] },
       });
       const validRoleIds = new Set(existingRoles.map(r => r.id));
+      validIdsMap.set('Role', new Set(existingRoles.map(r => r.id)));
       const roleNameMap = new Map<string, string>();
       for (const r of existingRoles) {
         if (r.name) roleNameMap.set(r.name.toUpperCase(), r.id);
@@ -405,13 +406,6 @@ export class BackupController {
           try {
             const cleanData = sanitizeRowForModel(modelName, rawRow, tenantId);
 
-            // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
-            const isFkValid = await sanitizeRowForeignKeys(modelName, cleanData, validIdsMap, prisma);
-            if (!isFkValid) {
-              skippedCount++;
-              continue;
-            }
-
             const isUserModel = modelName === 'User' || modelName.toLowerCase() === 'user';
             if (isUserModel) {
               if (!cleanData.role_id || !validRoleIds.has(cleanData.role_id)) {
@@ -437,6 +431,20 @@ export class BackupController {
                   cleanData.role_id = defaultRole.id;
                 }
               }
+
+              let roleSet = validIdsMap.get('Role');
+              if (!roleSet) {
+                roleSet = new Set<string>();
+                validIdsMap.set('Role', roleSet);
+              }
+              validRoleIds.forEach(id => roleSet!.add(id));
+            }
+
+            // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
+            const isFkValid = await sanitizeRowForeignKeys(modelName, cleanData, validIdsMap, prisma);
+            if (!isFkValid) {
+              skippedCount++;
+              continue;
             }
 
             const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
