@@ -134,6 +134,7 @@ export const SiswaDashboard: React.FC = () => {
   // Modals state
   const [showDigitalCardModal, setShowDigitalCardModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [showPrestasiModal, setShowPrestasiModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -1059,19 +1060,26 @@ export const SiswaDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Stat 4: Total Prestasi */}
-          <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/40 transition-all">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
+          {/* Stat 4: Total Prestasi (Clickable Modal) */}
+          <div 
+            onClick={() => setShowPrestasiModal(true)}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+            title="Klik untuk melihat Detail Catatan Prestasi & Penghargaan"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
               <Trophy size={18} className="sm:hidden" />
               <Trophy size={20} className="hidden sm:block" />
             </div>
             <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
+                <span className="text-[9px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded-md border border-purple-500/20">Detail &rsaquo;</span>
+              </div>
               <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {prestasiList.length} Penghargaan
               </div>
               <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
-                +{prestasiList.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0)} Poin Bonus
+                +{totalPoinPrestasi} Poin Bonus
               </p>
             </div>
           </div>
@@ -1578,6 +1586,104 @@ export const SiswaDashboard: React.FC = () => {
                   className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
                 >
                   Tutup Klasemen
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL BUKU CATATAN PRESTASI & PENGHARGAAN SISWA */}
+      <AnimatePresence>
+        {showPrestasiModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowPrestasiModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Modal */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-purple-50/60 dark:bg-purple-950/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <Trophy size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      Buku Catatan Prestasi & Penghargaan
+                    </h3>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-bold">
+                      Total +{totalPoinPrestasi} Poin Bonus • {prestasiList.length} Penghargaan
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPrestasiModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* List Content */}
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-3">
+                {bukuCatatanList.filter(item => item.type === 'PRESTASI').length > 0 ? (
+                  bukuCatatanList.filter(item => item.type === 'PRESTASI').map((item: any) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 flex items-start justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Award size={20} />
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                            {item.judul}
+                          </h4>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                            Kategori: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.kategori}</span> • Pencatat: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.pencatat}</span>
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            Tanggal: {item.tanggal}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 inline-block font-mono">
+                          +{item.poin || 0} Poin
+                        </span>
+                        <span className="block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                          {item.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-10 text-center space-y-2">
+                    <Trophy className="mx-auto text-slate-300 dark:text-slate-700" size={40} />
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                      Belum ada catatan prestasi atau penghargaan yang terdaftar.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 text-center">
+                <button
+                  onClick={() => setShowPrestasiModal(false)}
+                  className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                >
+                  Tutup Buku Prestasi
                 </button>
               </div>
             </motion.div>
