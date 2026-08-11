@@ -1,7 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
 import { CacheService } from '../../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../../constants/cache-keys';
-import { formatTenantTime, getTenantTimezone } from '../../../../utils/timezone.utils';
+import { formatTenantTime, getTenantTimezone, getTenantDayRange } from '../../../../utils/timezone.utils';
 
 const cacheService = CacheService.getInstance();
 
@@ -89,13 +89,7 @@ export class GuruRekapService {
 
   async getRekapHarianGuru(tanggal: string, tenantId: string, guruId?: string) {
     const tenantTimezone = await getTenantTimezone(tenantId);
-    const dayStr = tanggal;
-    const offsetMatch = tenantTimezone.match(/([+-]\d{2}):?(\d{2})?/);
-    const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 7;
-    const offset = -offsetHours;
-
-    const startOfDay = new Date(new Date(`${dayStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-    const endOfDay = new Date(new Date(`${dayStr}T23:59:59.999Z`).getTime() - (offset * 60 * 60 * 1000));
+    const { startOfDay, endOfDay } = getTenantDayRange(tanggal, tenantTimezone);
 
     const where: any = {
       tenant_id: tenantId,
@@ -147,13 +141,7 @@ export class GuruRekapService {
 
     if (!guru) throw new Error('Guru tidak ditemukan');
 
-    const dayStr = tanggal;
-    const offsetMatch = tenantTimezone.match(/([+-]\d{2}):?(\d{2})?/);
-    const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 7;
-    const offset = -offsetHours;
-
-    const startOfDay = new Date(new Date(`${dayStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-    const endOfDay = new Date(new Date(`${dayStr}T23:59:59.999Z`).getTime() - (offset * 60 * 60 * 1000));
+    const { startOfDay, endOfDay } = getTenantDayRange(tanggal, tenantTimezone);
 
     const gateTaps = await prisma.absenGerbangGuru.findMany({
       where: {

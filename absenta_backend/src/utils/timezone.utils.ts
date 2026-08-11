@@ -104,3 +104,11 @@ export function getTenantDayRangeUTC(dateStr: string, timezone?: string | null):
     endUTC: new Date(endIso),
   };
 }
+
+/**
+ * Convenience helper returning { startOfDay, endOfDay } in UTC for database queries.
+ */
+export function getTenantDayRange(dateStr: string, timezone?: string | null): { startOfDay: Date; endOfDay: Date } {
+  const { startUTC, endUTC } = getTenantDayRangeUTC(dateStr, timezone);
+  return { startOfDay: startUTC, endOfDay: endUTC };
+}
