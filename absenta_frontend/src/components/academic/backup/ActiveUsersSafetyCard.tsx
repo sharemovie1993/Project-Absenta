@@ -57,8 +57,9 @@ export function ActiveUsersSafetyCard() {
       }
     } catch (err: any) {
       console.error('WA Gateway Send Error:', err);
-      toast.error(`Gagal mengirim via WA Gateway: ${err.message || 'Koneksi terputus'}`, {
-        duration: 5000,
+      const serverMsg = err.response?.data?.message || err.message || 'Koneksi terputus';
+      toast.error(`Gagal WA Gateway: ${serverMsg}`, {
+        duration: 6000,
       });
     } finally {
       setSendingWaUserId(null);
@@ -88,8 +89,9 @@ export function ActiveUsersSafetyCard() {
       }
     } catch (err: any) {
       console.error('Bulk WA Gateway Error:', err);
-      toast.error(`Gagal broadcast WA Gateway: ${err.message || 'Gangguan server'}`, {
-        duration: 5000,
+      const serverMsg = err.response?.data?.message || err.message || 'Gangguan server';
+      toast.error(`Gagal broadcast WA Gateway: ${serverMsg}`, {
+        duration: 6000,
       });
     } finally {
       setSendingBulkWa(false);

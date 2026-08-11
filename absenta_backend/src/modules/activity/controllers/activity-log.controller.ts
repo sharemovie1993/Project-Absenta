@@ -343,9 +343,13 @@ export class ActivityLogController {
       });
     } catch (error: any) {
       console.error('Failed to send WA logout warning:', error);
-      return reply.status(500).send({
+      let errMsg = error.message || 'Gagal mengirim pesan WA via Gateway';
+      if (errMsg.includes('belum terhubung')) {
+        errMsg = 'WA Gateway belum terhubung. Silakan hubungkan WhatsApp (Scan QR) pada menu Konfigurasi WA terlebih dahulu.';
+      }
+      return reply.status(400).send({
         success: false,
-        message: error.message || 'Gagal mengirim pesan WA via Gateway',
+        message: errMsg,
       });
     }
   }
