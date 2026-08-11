@@ -49,6 +49,14 @@ export interface SesiAttendanceRecord {
 export interface SesiDetail {
   id: string;
   status: 'BERLANGSUNG' | 'SELESAI';
+  guru_id?: string;
+  nama_guru?: string;
+  Guru?: GuruDetail;
+  JamPelajaran?: {
+    Guru?: GuruDetail;
+    guru_id?: string;
+    nama_guru?: string;
+  };
   ProgresMateri?: {
     judul_materi: string;
     pencapaian_persen: number;
@@ -224,11 +232,37 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
 
+  // Auto-ensure Teacher record exists at the top of list
+  const preparedRecords = useMemo(() => {
+    const hasGuru = records.some(r => r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru');
+    
+    if (!hasGuru && (sesi?.Guru || sesi?.nama_guru || sesi?.JamPelajaran?.Guru)) {
+      const gObj: GuruDetail = sesi.Guru || sesi.JamPelajaran?.Guru || {
+        id: sesi.guru_id || sesi.JamPelajaran?.guru_id || 'guru-sesi',
+        nama_guru: sesi.nama_guru || sesi.JamPelajaran?.nama_guru || 'Guru Pengajar'
+      };
+
+      const teacherRec: SesiAttendanceRecord = {
+        id: `guru-${gObj.id}`,
+        guru_id: gObj.id,
+        is_guru: true,
+        status: 'BELUM_TAP',
+        waktu_tap: null,
+        Guru: gObj,
+        catatan: null
+      };
+
+      return [teacherRec, ...records];
+    }
+
+    return records;
+  }, [records, sesi]);
+
   // Sync state with parent props for robust optimistic updates across all dashboards
-  const [localRecords, setLocalRecords] = useState<SesiAttendanceRecord[]>(records);
+  const [localRecords, setLocalRecords] = useState<SesiAttendanceRecord[]>(preparedRecords);
   useEffect(() => {
-    setLocalRecords(records);
-  }, [records]);
+    setLocalRecords(preparedRecords);
+  }, [preparedRecords]);
 
   // Mutation for updating student attendance with advanced React Query Optimistic Updates (Fase 3)
   const updateAttendanceMutation = useMutation({
