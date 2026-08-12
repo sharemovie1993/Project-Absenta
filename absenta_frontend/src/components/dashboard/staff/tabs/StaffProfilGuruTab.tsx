@@ -45,21 +45,25 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   useEffect(() => {
     const activeGuru = guruProfile || (user as any)?.guru_profile || user;
     if (activeGuru) {
-      setNoHp(activeGuru.no_hp || user?.no_hp || '6287779937341');
-      setEmail(activeGuru.email || user?.email || 'guru.budi@absenta.sch.id');
-      setEditAlamat(activeGuru.alamat || 'Jl. Soekarno Hatta No. 456, Bandung');
-      setEditTempatLahir(activeGuru.tempat_lahir || 'Bandung');
+      setNoHp(activeGuru.no_hp || user?.no_hp || '');
+      setEmail(activeGuru.email || user?.email || '');
+      setEditAlamat(activeGuru.alamat || '');
+      setEditTempatLahir(activeGuru.tempat_lahir || '');
       setEditTanggalLahir(
         activeGuru.tanggal_lahir
           ? new Date(activeGuru.tanggal_lahir).toISOString().split('T')[0]
-          : '1978-04-12'
+          : ''
       );
       setEditJenisKelamin(activeGuru.jenis_kelamin || 'L');
       setEditAgama(activeGuru.agama || 'ISLAM');
-      setEditPendidikanTerakhir(activeGuru.pendidikan_terakhir || 'S2 Pendidikan Komputer');
+      setEditPendidikanTerakhir(activeGuru.pendidikan_terakhir || '');
       setEditStatusKepegawaian(activeGuru.status_kepegawaian || 'PNS');
-      setEditPangkatGolongan(activeGuru.pangkat_golongan || 'IV/a - Pembina');
-      setEditTmtGuru(activeGuru.tmt_guru || '2014-12-01');
+      setEditPangkatGolongan(activeGuru.pangkat_golongan || '');
+      setEditTmtGuru(
+        activeGuru.tmt_guru
+          ? new Date(activeGuru.tmt_guru).toISOString().split('T')[0]
+          : ''
+      );
       setEditJenisPtk(activeGuru.jenis_ptk || 'PENDIDIK');
     }
   }, [guruProfile, user]);

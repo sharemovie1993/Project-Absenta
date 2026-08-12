@@ -79,6 +79,9 @@ export function useUpdateGuruMe() {
       queryClient.invalidateQueries({ queryKey: ['guru-me'] });
       queryClient.invalidateQueries({ queryKey: ['guru-options'] });
       queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+      queryClient.invalidateQueries({ queryKey: ['profile-me'] });
+      queryClient.invalidateQueries({ queryKey: ['auth-user'] });
+      queryClient.invalidateQueries({ queryKey: ['user-me'] });
     },
   });
 }
