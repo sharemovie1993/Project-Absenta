@@ -189,7 +189,12 @@ export class EasyTunnelService {
       throw new Error('License key ini sudah terdaftar di aplikasi.');
     }
 
-    // 1. Ambil config dari server lisensi
+    // 1. Lepas kunci lisensi lama jika ada (Auto-release agar lisensi yang pernah dipasang bisa di-bind ulang)
+    try {
+      await releaseLicense(license_key.trim());
+    } catch {}
+
+    // 2. Ambil config dari server lisensi
     const tunnelData = await requestTunnelConfig({
       license_key: license_key.trim(),
       subdomain_slug: subdomain_slug.trim().toLowerCase(),
