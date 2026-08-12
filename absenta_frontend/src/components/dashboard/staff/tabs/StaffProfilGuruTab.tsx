@@ -578,47 +578,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               : 'Edit Kontak & Alamat Guru'
           }
         >
-          {/* Section Navigation Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl mb-4">
-            <button
-              type="button"
-              onClick={() => setActiveEditSection('pribadi')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeEditSection === 'pribadi'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <User size={14} />
-              <span>Data Pribadi</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveEditSection('kepegawaian')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeEditSection === 'kepegawaian'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <Users size={14} />
-              <span>Kepegawaian</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveEditSection('alamat')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeEditSection === 'alamat'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <MapPin size={14} />
-              <span>Kontak &amp; Alamat</span>
-            </button>
-          </div>
-
-          <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-1">
+          <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
             {activeEditSection === 'pribadi' && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -834,27 +794,71 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Alamat Jalan / Blok
+                      1. Provinsi
                     </label>
-                    <input
-                      type="text"
-                      value={editAlamat}
-                      onChange={(e) => setEditAlamat(e.target.value)}
-                      placeholder="Jl. Raya No. 123"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    <SearchableSelect
+                      value={editProvinsi}
+                      onValueChange={(val) => {
+                        setEditProvinsi(val);
+                        setEditKabupaten('');
+                        setEditKecamatan('');
+                        setEditKelurahan('');
+                      }}
+                      options={provinsiOptions}
+                      placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
+                      disabled={loadingProv}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Dusun / Kampung
+                      2. Kabupaten / Kota
                     </label>
-                    <input
-                      type="text"
-                      value={editDusun}
-                      onChange={(e) => setEditDusun(e.target.value)}
-                      placeholder="Kampung Krajan"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    <SearchableSelect
+                      value={editKabupaten}
+                      onValueChange={(val) => {
+                        setEditKabupaten(val);
+                        setEditKecamatan('');
+                        setEditKelurahan('');
+                      }}
+                      options={kabupatenOptions}
+                      placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
+                      disabled={!editProvinsi || loadingKab}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      3. Kecamatan
+                    </label>
+                    <SearchableSelect
+                      value={editKecamatan}
+                      onValueChange={(val) => {
+                        setEditKecamatan(val);
+                        setEditKelurahan('');
+                      }}
+                      options={kecamatanOptions}
+                      placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
+                      disabled={!editKabupaten || loadingKec}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      4. Kelurahan / Desa
+                    </label>
+                    <SearchableSelect
+                      value={editKelurahan}
+                      onValueChange={(val) => setEditKelurahan(val)}
+                      options={kelurahanOptions}
+                      placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
+                      disabled={!editKecamatan || loadingKel}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
                     />
                   </div>
                 </div>
@@ -903,71 +907,27 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Provinsi
+                      Alamat Jalan / Blok
                     </label>
-                    <SearchableSelect
-                      value={editProvinsi}
-                      onValueChange={(val) => {
-                        setEditProvinsi(val);
-                        setEditKabupaten('');
-                        setEditKecamatan('');
-                        setEditKelurahan('');
-                      }}
-                      options={provinsiOptions}
-                      placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
-                      disabled={loadingProv}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    <input
+                      type="text"
+                      value={editAlamat}
+                      onChange={(e) => setEditAlamat(e.target.value)}
+                      placeholder="Jl. Raya No. 123"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Kabupaten / Kota
+                      Dusun / Kampung
                     </label>
-                    <SearchableSelect
-                      value={editKabupaten}
-                      onValueChange={(val) => {
-                        setEditKabupaten(val);
-                        setEditKecamatan('');
-                        setEditKelurahan('');
-                      }}
-                      options={kabupatenOptions}
-                      placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
-                      disabled={!editProvinsi || loadingKab}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Kecamatan
-                    </label>
-                    <SearchableSelect
-                      value={editKecamatan}
-                      onValueChange={(val) => {
-                        setEditKecamatan(val);
-                        setEditKelurahan('');
-                      }}
-                      options={kecamatanOptions}
-                      placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
-                      disabled={!editKabupaten || loadingKec}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Desa / Kelurahan
-                    </label>
-                    <SearchableSelect
-                      value={editKelurahan}
-                      onValueChange={(val) => setEditKelurahan(val)}
-                      options={kelurahanOptions}
-                      placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
-                      disabled={!editKecamatan || loadingKel}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    <input
+                      type="text"
+                      value={editDusun}
+                      onChange={(e) => setEditDusun(e.target.value)}
+                      placeholder="Kampung Krajan"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
