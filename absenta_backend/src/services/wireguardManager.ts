@@ -106,14 +106,15 @@ export class WireguardManager {
     return `WireGuardTunnel$et-${slug}`;
   }
 
-  /** Dapatkan path .conf dari slug */
+  /** Dapatkan path .conf dari slug — SELALU mengarah ke tunnels/ sebagai satu-satunya sumber kebenaran */
   static confPath(slug: string): string {
-    if (!this.isWindows()) {
-      const linuxSysConf = `/etc/wireguard/et-${slug}.conf`;
-      if (fs.existsSync(linuxSysConf)) return linuxSysConf;
-    }
     this.ensureTunnelsDir();
     return path.join(TUNNELS_DIR, `et-${slug}.conf`);
+  }
+
+  /** Path symlink di /etc/wireguard/ — hanya untuk keperluan systemd & wg-quick by-name */
+  static etcConfPath(slug: string): string {
+    return `/etc/wireguard/et-${slug}.conf`;
   }
 
   /** Tulis file konfigurasi WireGuard ke disk dengan PersistentKeepalive = 25 hardening */
@@ -133,16 +134,36 @@ export class WireguardManager {
         fs.chmodSync(confPath, 0o600);
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
+
+      // Buat symlink di /etc/wireguard/ agar systemctl wg-quick@<iface> & wg-quick up <name> bekerja
+      // Gunakan ln -sf sehingga jika sudah ada file/symlink lama, otomatis diganti
+      try {
+        const etcPath = this.etcConfPath(slug);
+        execSync(`sudo ln -sf "${confPath}" "${etcPath}"`, { stdio: 'pipe' });
+        console.log(`[WG] Symlink created: ${etcPath} -> ${confPath}`);
+      } catch (e: any) {
+        console.warn(`[WG] Gagal membuat symlink /etc/wireguard/: ${e.message}`);
+      }
     }
     console.log(`[WG] Config written with 0600 perms & PersistentKeepalive=25: ${confPath}`);
     return confPath;
   }
 
-  /** Hapus file konfigurasi */
+  /** Hapus file konfigurasi (sumber di tunnels/) DAN symlink di /etc/wireguard/ */
   static deleteConfig(slug: string): void {
+    // 1. Hapus file sumber di tunnels/
     const confPath = this.confPath(slug);
     if (fs.existsSync(confPath)) {
       fs.unlinkSync(confPath);
+      console.log(`[WG] Config deleted: ${confPath}`);
+    }
+    // 2. Hapus symlink atau file sisa di /etc/wireguard/ (Linux only)
+    if (!this.isWindows()) {
+      try {
+        const etcPath = this.etcConfPath(slug);
+        execSync(`sudo rm -f "${etcPath}"`, { stdio: 'pipe' });
+        console.log(`[WG] /etc/wireguard symlink/file removed: ${etcPath}`);
+      } catch {}
     }
   }
 
@@ -298,34 +319,37 @@ export class WireguardManager {
     } else {
       const ifName = `et-${slug}`;
 
-      // Fix 1: Ensure permission 600 so WireGuard doesn't warn "world accessible"
+      // Pastikan symlink /etc/wireguard/ selalu up-to-date sebelum start
+      // (antisipasi jika Watchdog sebelumnya cp -f menimpa symlink jadi file biasa)
+      try {
+        execSync(`sudo ln -sf "${confPath}" "${this.etcConfPath(slug)}"`, { stdio: 'pipe' });
+      } catch {}
+
+      // Ensure permission 600 so WireGuard doesn't warn "world accessible"
       try {
         fs.chmodSync(confPath, 0o600);
         execSync(`sudo chmod 600 "${confPath}"`, { stdio: 'pipe' });
       } catch {}
 
-      // Pembersihan aman khusus untuk terowongan yang sedang di-start ini saja
-      try {
-        execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe' });
-      } catch {}
-      try {
-        execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' });
-      } catch {}
+      // Pembersihan aman: pastikan interface lama sudah down sebelum up
+      try { execSync(`sudo wg-quick down ${ifName}`, { stdio: 'pipe' }); } catch {}
+      try { execSync(`sudo ip link delete ${ifName}`, { stdio: 'pipe' }); } catch {}
 
-      // Fix 3: Execute wg-quick up with error recovery
+      // Jalankan wg-quick menggunakan NAMA interface (baca dari /etc/wireguard/ via symlink)
+      // — konsisten dengan cara systemctl enable wg-quick@<iface> bekerja
       try {
-        execSync(`sudo wg-quick up "${confPath}"`, { stdio: 'pipe' });
+        execSync(`sudo wg-quick up ${ifName}`, { stdio: 'pipe' });
       } catch (err: any) {
         const errMsg = err.stderr ? err.stderr.toString() : err.message;
         if (errMsg.includes('already exists')) {
-          try { execSync(`sudo ip link delete "${ifName}"`, { stdio: 'pipe' }); } catch {}
-          execSync(`sudo wg-quick up "${confPath}"`, { stdio: 'pipe' });
+          try { execSync(`sudo ip link delete ${ifName}`, { stdio: 'pipe' }); } catch {}
+          execSync(`sudo wg-quick up ${ifName}`, { stdio: 'pipe' });
         } else {
           throw new Error(`Gagal mengaktifkan WireGuard: ${errMsg}`);
         }
       }
 
-      // Hardening: Enable systemd service so OS reboot automatically restarts WireGuard interface
+      // Enable systemd agar tunnel otomatis hidup kembali setelah VPS reboot
       try {
         execSync(`sudo systemctl enable wg-quick@${ifName}`, { stdio: 'pipe' });
       } catch {}
@@ -357,8 +381,9 @@ export class WireguardManager {
       try { execSync(`"${WINDOWS_WG_PATH}" /uninstalltunnelservice "${tunnelName}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
       return { success: true, message: 'Tunnel VPN berhasil dinonaktifkan.' };
     } else {
-      const confPath = this.confPath(slug);
-      try { execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
+      // Gunakan nama interface (bukan path) agar konsisten dengan systemctl
+      try { execSync(`sudo wg-quick down ${ifName}`, { stdio: 'pipe', windowsHide: true }); } catch {}
+      try { execSync(`sudo ip link delete ${ifName}`, { stdio: 'pipe' }); } catch {}
       try { execSync(`sudo systemctl disable wg-quick@${ifName}`, { stdio: 'pipe' }); } catch {}
       return { success: true, message: 'Tunnel VPN berhasil dinonaktifkan & layanan systemd dinonaktifkan.' };
     }
@@ -395,12 +420,15 @@ export class WireguardManager {
         }
       }
     } else {
-      const confPath = this.confPath(slug);
-      try { execSync(`sudo wg-quick down "${confPath}"`, { stdio: 'pipe', windowsHide: true }); } catch {}
+      // 1. Matikan interface & hapus dari kernel
+      try { execSync(`sudo wg-quick down ${ifName}`, { stdio: 'pipe', windowsHide: true }); } catch {}
+      try { execSync(`sudo ip link delete ${ifName}`, { stdio: 'pipe' }); } catch {}
+      // 2. Nonaktifkan autostart systemd
       try { execSync(`sudo systemctl disable wg-quick@${ifName}`, { stdio: 'pipe' }); } catch {}
-      try { execSync(`sudo rm -f "/etc/wireguard/${ifName}.conf"`, { stdio: 'pipe' }); } catch {}
+      try { execSync(`sudo systemctl stop wg-quick@${ifName}`, { stdio: 'pipe' }); } catch {}
     }
 
+    // 3. Hapus file sumber di tunnels/ DAN symlink/file di /etc/wireguard/ (via deleteConfig)
     this.deleteConfig(slug);
     return { success: true, message: 'Tunnel berhasil dihapus & dikosongkan dari OS.' };
   }
