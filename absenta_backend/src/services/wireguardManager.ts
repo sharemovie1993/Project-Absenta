@@ -241,16 +241,33 @@ export class WireguardManager {
       }
     } catch {}
 
-    // Cari caddy.exe
+    // Cari caddy.exe dengan urutan prioritas:
+    // 1. Path di dalam Project Absenta (project root / bin)
+    // 2. Fallback ke toolkit Deployer (deployer/caddy-bin/caddy.exe)
     const candidatePaths = [
+      path.join(__dirname, '../../../caddy.exe'),
+      path.join(__dirname, '../../../bin/caddy.exe'),
+      path.join(process.cwd(), 'caddy.exe'),
+      path.join(process.cwd(), 'bin/caddy.exe'),
       path.join(__dirname, '../../../../deployer/caddy-bin/caddy.exe'),
       'd:\\BarayaProject\\deployer\\caddy-bin\\caddy.exe',
       path.join(process.cwd(), '../deployer/caddy-bin/caddy.exe')
     ];
 
-    const caddyExe = candidatePaths.find(p => fs.existsSync(p));
+    let caddyExe = candidatePaths.find(p => fs.existsSync(p));
+    
+    // Cek jika caddy terinstall di PATH Windows
     if (!caddyExe) {
-      console.warn('[WG-Caddy] Binary caddy.exe tidak ditemukan di candidate paths.');
+      try {
+        const whichOut = execSync('where caddy 2>nul', { stdio: 'pipe', windowsHide: true }).toString().trim().split('\r\n')[0];
+        if (whichOut && fs.existsSync(whichOut)) {
+          caddyExe = whichOut;
+        }
+      } catch {}
+    }
+
+    if (!caddyExe) {
+      console.warn('[WG-Caddy] Binary caddy.exe tidak ditemukan.');
       return;
     }
 
