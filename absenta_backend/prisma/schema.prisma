@@ -806,6 +806,10 @@ model Guru {
   tenant_id             String
   user_id               String                     @unique
   nip                   String?
+  nuptk                 String?
+  nik                   String?
+  npwp                  String?
+  nama_ibu_kandung      String?
   nama_guru             String
   no_rfid               String?
   // Kontak & Pribadi (opsional)

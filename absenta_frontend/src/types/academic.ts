@@ -9,6 +9,10 @@ export interface Guru {
   tenant_id: string;
   user_id: string;
   nip?: string;
+  nuptk?: string;
+  nik?: string;
+  npwp?: string;
+  nama_ibu_kandung?: string;
   nama_guru: string;
   no_rfid?: string;
   email?: string;

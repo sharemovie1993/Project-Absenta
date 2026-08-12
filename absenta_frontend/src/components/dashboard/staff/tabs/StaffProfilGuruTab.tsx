@@ -40,6 +40,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [editPangkatGolongan, setEditPangkatGolongan] = useState('');
   const [editTmtGuru, setEditTmtGuru] = useState('');
   const [editJenisPtk, setEditJenisPtk] = useState('');
+  const [editNik, setEditNik] = useState('');
+  const [editNuptk, setEditNuptk] = useState('');
+  const [editNpwp, setEditNpwp] = useState('');
+  const [editNamaIbuKandung, setEditNamaIbuKandung] = useState('');
 
   // Populate state when live data arrives
   useEffect(() => {
@@ -65,6 +69,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           : ''
       );
       setEditJenisPtk(activeGuru.jenis_ptk || 'PENDIDIK');
+      setEditNik(activeGuru.nik || '');
+      setEditNuptk(activeGuru.nuptk || '');
+      setEditNpwp(activeGuru.npwp || '');
+      setEditNamaIbuKandung(activeGuru.nama_ibu_kandung || '');
     }
   }, [guruProfile, user]);
 
@@ -110,6 +118,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         pangkat_golongan: editPangkatGolongan,
         tmt_guru: editTmtGuru,
         jenis_ptk: editJenisPtk,
+        nik: editNik,
+        nuptk: editNuptk,
+        npwp: editNpwp,
+        nama_ibu_kandung: editNamaIbuKandung,
       };
 
       await updateGuruMeMutation.mutateAsync(payload);
@@ -161,6 +173,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIP</span>
                 <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{activeNip}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">NIK (KTP)</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">NUPTK</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNuptk || '-'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Golongan / Pangkat</span>
@@ -348,6 +368,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="text-[10px] font-semibold text-slate-400 block">Pendidikan Terakhir</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">{editPendidikanTerakhir}</span>
             </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">NIK (KTP)</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">Nama Ibu Kandung</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{editNamaIbuKandung || '-'}</span>
+            </div>
           </div>
         </div>
 
@@ -393,6 +421,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="font-bold text-slate-800 dark:text-slate-200">
                 {editTmtGuru}
               </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">NUPTK</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNuptk || '-'}</span>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">NPWP</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNpwp || '-'}</span>
             </div>
             <div className="col-span-2">
               <span className="text-[10px] font-semibold text-slate-400 block">Jabatan Struktural</span>
@@ -465,6 +501,62 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           title="Edit Data Pribadi & Kepegawaian Guru"
         >
           <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  NIK (KTP 16 Digit)
+                </label>
+                <input
+                  type="text"
+                  value={editNik}
+                  onChange={(e) => setEditNik(e.target.value)}
+                  placeholder="3204xxxxxxxxxxxx"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  NUPTK
+                </label>
+                <input
+                  type="text"
+                  value={editNuptk}
+                  onChange={(e) => setEditNuptk(e.target.value)}
+                  placeholder="16-digit NUPTK"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  NPWP
+                </label>
+                <input
+                  type="text"
+                  value={editNpwp}
+                  onChange={(e) => setEditNpwp(e.target.value)}
+                  placeholder="Nomor NPWP Guru"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Nama Ibu Kandung (Sesuai Dapodik)
+                </label>
+                <input
+                  type="text"
+                  value={editNamaIbuKandung}
+                  onChange={(e) => setEditNamaIbuKandung(e.target.value)}
+                  placeholder="Nama Ibu Kandung"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">

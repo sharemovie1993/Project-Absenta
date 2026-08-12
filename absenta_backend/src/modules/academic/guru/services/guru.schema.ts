@@ -3,6 +3,10 @@ import { z } from 'zod';
 export const createGuruSchema = z.object({
   user_id: z.string().optional().nullable(),
   nip: z.string().optional().nullable(),
+  nuptk: z.string().optional().nullable(),
+  nik: z.string().optional().nullable(),
+  npwp: z.string().optional().nullable(),
+  nama_ibu_kandung: z.string().optional().nullable(),
   nama_guru: z.string().min(1, 'Nama guru wajib diisi'),
   no_rfid: z.string().optional().nullable(),
   email: z.string().email('Format email tidak valid').optional().nullable(),

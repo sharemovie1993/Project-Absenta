@@ -15,6 +15,10 @@ import { bulkResetGuruPasswordCommand } from './commands/bulk-reset-guru-passwor
 export interface CreateGuruInput {
   user_id?: string | null;
   nip?: string | null;
+  nuptk?: string | null;
+  nik?: string | null;
+  npwp?: string | null;
+  nama_ibu_kandung?: string | null;
   nama_guru: string;
   no_rfid?: string | null;
   email?: string | null;
@@ -36,6 +40,10 @@ export interface CreateGuruInput {
 
 export interface UpdateGuruInput {
   nip?: string | null;
+  nuptk?: string | null;
+  nik?: string | null;
+  npwp?: string | null;
+  nama_ibu_kandung?: string | null;
   nama_guru?: string | null;
   no_rfid?: string | null;
   status?: string | null;
@@ -581,6 +589,10 @@ export class GuruService {
     // Build update data object, only including defined fields
     const updateData: any = {};
     if (input.nip !== undefined) updateData.nip = input.nip;
+    if (input.nuptk !== undefined) updateData.nuptk = input.nuptk;
+    if (input.nik !== undefined) updateData.nik = input.nik;
+    if (input.npwp !== undefined) updateData.npwp = input.npwp;
+    if (input.nama_ibu_kandung !== undefined) updateData.nama_ibu_kandung = input.nama_ibu_kandung;
     if (input.nama_guru !== undefined) updateData.nama_guru = input.nama_guru;
     if (input.no_rfid !== undefined) updateData.no_rfid = input.no_rfid;
     if (input.no_hp !== undefined) {
