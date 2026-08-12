@@ -279,11 +279,12 @@ export class WireguardManager {
       if (match) localPort = parseInt(match[1], 10);
     } catch {}
 
+    const backendPort = process.env.PORT || '3004';
     const caddyfilePath = path.join(os.tmpdir(), 'Caddyfile.absenta.dev');
     const caddyConfig = `
 :80, :443 {
     tls internal
-    reverse_proxy /api/* localhost:3000
+    reverse_proxy /api/* localhost:${backendPort}
     reverse_proxy /* localhost:${localPort}
 }
 `.trim();
