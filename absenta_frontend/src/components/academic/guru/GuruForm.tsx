@@ -325,8 +325,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           npwp: guru.npwp || '',
           nama_ibu_kandung: guru.nama_ibu_kandung || '',
           nama: guru.nama_guru || '',
-          email: guru.email || '',
-          no_hp: guru.no_hp || '',
+          email: guru.email || (guru as any).User?.email || '',
+          no_hp: guru.no_hp || (guru as any).User?.no_hp || '',
           alamat: guru.alamat || '',
           dusun: guru.dusun || '',
           kelurahan: guru.kelurahan || '',
@@ -337,18 +337,18 @@ export const GuruForm = React.memo<GuruFormProps>(({
           rw: guru.rw || '',
           kode_pos: guru.kode_pos || '',
           tempat_lahir: guru.tempat_lahir || '',
-          tanggal_lahir: guru.tanggal_lahir ? guru.tanggal_lahir.split('T')[0] : '',
+          tanggal_lahir: guru.tanggal_lahir ? String(guru.tanggal_lahir).split('T')[0] : '',
           jenis_kelamin: (guru.jenis_kelamin as 'L' | 'P') || 'L',
           agama: guru.agama || 'ISLAM',
           status_kepegawaian: (guru.status_kepegawaian as 'PNS' | 'HONORER' | 'KONTRAK') || 'PNS',
           status: (guru as any).User?.status || 'ACTIVE',
           pendidikan_terakhir: guru.pendidikan_terakhir || 'S1',
           pangkat_golongan: guru.pangkat_golongan || '',
-          tmt_guru: guru.tmt_guru || '',
+          tmt_guru: guru.tmt_guru ? String(guru.tmt_guru).split('T')[0] : '',
           rfid_tag: guru.no_rfid || '',
-          max_jp: (guru as any).max_jp || '',
+          max_jp: (guru as any).max_jp ?? '',
           jenis_ptk: guru.jenis_ptk || 'PENDIDIK',
-          foto: guru.foto || ''
+          foto: guru.foto || (guru as any).User?.foto || ''
         });
       } catch (error) {
         console.error('Error loading guru data:', error);

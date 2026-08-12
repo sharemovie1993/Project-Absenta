@@ -195,6 +195,7 @@ export class GuruService {
             email: true,
             full_name: true,
             status: true,
+            no_hp: true,
             Role: {
               select: {
                 id: true,
@@ -215,7 +216,8 @@ export class GuruService {
 
     const enrichedGuru = guru.map((g: any) => {
       if (g.User) {
-        g.email = g.User.email;
+        g.email = g.email || g.User.email;
+        g.no_hp = g.no_hp || g.User.no_hp;
       }
       return g;
     });
@@ -246,13 +248,15 @@ export class GuruService {
             email: true,
             full_name: true,
             status: true,
+            no_hp: true,
           },
         },
       },
     });
 
     if (guru && (guru as any).User) {
-      (guru as any).email = (guru as any).User.email;
+      (guru as any).email = (guru as any).email || (guru as any).User.email;
+      (guru as any).no_hp = (guru as any).no_hp || (guru as any).User.no_hp;
     }
 
     return guru as GuruResponse | null;
@@ -279,6 +283,7 @@ export class GuruService {
             email: true,
             full_name: true,
             status: true,
+            no_hp: true,
           },
         },
       },
@@ -287,7 +292,8 @@ export class GuruService {
     if (!guru) return null;
 
     if (guru && (guru as any).User) {
-      (guru as any).email = (guru as any).User.email;
+      (guru as any).email = (guru as any).email || (guru as any).User.email;
+      (guru as any).no_hp = (guru as any).no_hp || (guru as any).User.no_hp;
     }
 
     // 2. Ambil semua OrganizationalAssignment aktif untuk user ini
@@ -533,13 +539,15 @@ export class GuruService {
             id: true,
             email: true,
             full_name: true,
+            no_hp: true,
           },
         },
       },
     });
 
     if (guru && (guru as any).User) {
-      (guru as any).email = (guru as any).User.email;
+      (guru as any).email = (guru as any).email || (guru as any).User.email;
+      (guru as any).no_hp = (guru as any).no_hp || (guru as any).User.no_hp;
     }
 
     await cacheInvalidationService.invalidateAcademicCache(tenantId);
@@ -662,6 +670,7 @@ export class GuruService {
             email: true,
             full_name: true,
             status: true,
+            no_hp: true,
           },
         },
       },
@@ -683,13 +692,15 @@ export class GuruService {
               email: true,
               full_name: true,
               status: true,
+              no_hp: true,
             },
           },
         },
       });
 
       if (updatedGuru && updatedGuru.User) {
-        updatedGuru.email = updatedGuru.User.email;
+        updatedGuru.email = updatedGuru.email || updatedGuru.User.email;
+        updatedGuru.no_hp = updatedGuru.no_hp || updatedGuru.User.no_hp;
       }
 
       await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);
@@ -697,7 +708,8 @@ export class GuruService {
     }
 
     if (guru && (guru as any).User) {
-      (guru as any).email = (guru as any).User.email;
+      (guru as any).email = (guru as any).email || (guru as any).User.email;
+      (guru as any).no_hp = (guru as any).no_hp || (guru as any).User.no_hp;
     }
 
     await cacheInvalidationService.invalidateAcademicCache(existingGuru.tenant_id);

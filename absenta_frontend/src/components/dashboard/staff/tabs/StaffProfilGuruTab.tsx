@@ -75,25 +75,29 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   useEffect(() => {
     const activeGuru = guruProfile || (user as any)?.guru_profile || user;
     if (activeGuru) {
+      const formatDateForInput = (val?: string | null) => {
+        if (!val) return '';
+        try {
+          const str = String(val);
+          if (str.includes('T')) return str.split('T')[0];
+          const d = new Date(str);
+          return isNaN(d.getTime()) ? str : d.toISOString().split('T')[0];
+        } catch {
+          return '';
+        }
+      };
+
       setNoHp(activeGuru.no_hp || user?.no_hp || '');
       setEmail(activeGuru.email || user?.email || '');
       setEditAlamat(activeGuru.alamat || '');
       setEditTempatLahir(activeGuru.tempat_lahir || '');
-      setEditTanggalLahir(
-        activeGuru.tanggal_lahir
-          ? new Date(activeGuru.tanggal_lahir).toISOString().split('T')[0]
-          : ''
-      );
+      setEditTanggalLahir(formatDateForInput(activeGuru.tanggal_lahir));
       setEditJenisKelamin(activeGuru.jenis_kelamin || 'L');
       setEditAgama(activeGuru.agama || 'ISLAM');
       setEditPendidikanTerakhir(activeGuru.pendidikan_terakhir || '');
       setEditStatusKepegawaian(activeGuru.status_kepegawaian || 'PNS');
       setEditPangkatGolongan(activeGuru.pangkat_golongan || '');
-      setEditTmtGuru(
-        activeGuru.tmt_guru
-          ? new Date(activeGuru.tmt_guru).toISOString().split('T')[0]
-          : ''
-      );
+      setEditTmtGuru(formatDateForInput(activeGuru.tmt_guru));
       setEditJenisPtk(activeGuru.jenis_ptk || 'PENDIDIK');
       setEditNik(activeGuru.nik || '');
       setEditNoKk(activeGuru.no_kk || '');
