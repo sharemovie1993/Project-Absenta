@@ -304,6 +304,15 @@ export class WireguardManager {
     }
   }
 
+  /** Mematikan Caddy Reverse Proxy di Windows Dev agar tidak ada proses menggantung */
+  static stopWindowsCaddy(): void {
+    if (!this.isWindows()) return;
+    try {
+      execSync('taskkill /F /IM caddy.exe 2>nul', { stdio: 'pipe', windowsHide: true });
+      console.log('[WG-Caddy] Berhasil mematikan proses caddy.exe di Windows.');
+    } catch {}
+  }
+
   /**
    * Pengelola Multi-Tunnel Coexistence.
    * Catatan: Auto-kill switch enforceSingleActiveTunnel telah dinonaktifkan karena subnet mask /32
@@ -444,6 +453,7 @@ export class WireguardManager {
     const ifName = `et-${slug}`;
     if (this.isWindows()) {
       const tunnelName = ifName;
+      this.stopWindowsCaddy();
 
       if (!this.isAdmin()) {
         const psCode = `Start-Process "${WINDOWS_WG_PATH}" -ArgumentList '/uninstalltunnelservice','${tunnelName}' -Wait`;
@@ -475,6 +485,7 @@ export class WireguardManager {
     const ifName = `et-${slug}`;
     if (this.isWindows()) {
       const tunnelName = ifName;
+      this.stopWindowsCaddy();
 
       if (!this.isAdmin()) {
         const psCode = `
