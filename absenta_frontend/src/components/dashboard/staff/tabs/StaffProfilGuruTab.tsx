@@ -5,6 +5,7 @@ import { Button, Modal, SearchableSelect } from '../../../ui';
 import { toast } from 'react-hot-toast';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
+import { formatAlamatLengkap } from '../../../../lib/alamat.util';
 
 interface StaffProfilGuruTabProps {
   user: any;
@@ -503,40 +504,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="space-y-3 text-xs">
             <div>
               <span className="text-[10px] font-semibold text-slate-400 block">Nomor Telepon</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{noHp}</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{noHp || '-'}</span>
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">Kode Pos</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editKodePos || '-'}</span>
-            </div>
-            <div className="col-span-2">
-              <span className="text-[10px] font-semibold text-slate-400 block">Alamat Jalan / Kampung</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{editAlamat || editDusun || '-'}</span>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">RT / RW</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                {editRt || editRw ? `RT ${editRt || '00'} / RW ${editRw || '00'}` : '-'}
+              <span className="text-[10px] font-semibold text-slate-400 block">Alamat Lengkap</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 leading-relaxed block">
+                {formatAlamatLengkap({
+                  alamat: editAlamat,
+                  dusun: editDusun,
+                  rt: editRt,
+                  rw: editRw,
+                  kelurahan: editKelurahan,
+                  kecamatan: editKecamatan,
+                  kabupaten: editKabupaten,
+                  provinsi: editProvinsi,
+                  kode_pos: editKodePos,
+                })}
               </span>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">Desa / Kelurahan</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{editKelurahan || '-'}</span>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">Kecamatan</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{editKecamatan || '-'}</span>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">Kabupaten / Kota</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{editKabupaten || '-'}</span>
-            </div>
-            <div className="col-span-2">
-              <span className="text-[10px] font-semibold text-slate-400 block">Provinsi</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{editProvinsi || '-'}</span>
             </div>
           </div>
         </div>
