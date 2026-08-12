@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { User, Hash, Mail, Phone, MapPin, Calendar, Activity, Building2, Camera, Upload, Trash2 } from 'lucide-react';
+import { User, Hash, Mail, Phone, MapPin, Calendar, Activity, Building2, Camera, Upload, Trash2, FileText, CreditCard } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { Textarea } from '../../../ui/Textarea';
@@ -9,6 +9,7 @@ import { Button } from '../../../ui/Button';
 import { Modal } from '../../../ui/Modal';
 import { Controller } from 'react-hook-form';
 import { JENIS_KELAMIN_OPTIONS, AGAMA_OPTIONS } from '../../../../api/dropdown.api';
+import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
 import { SectionCard, DetailRow } from './FormShared';
 import { requestWithFallback } from '../../../../api/apiUtils';
 import toast from 'react-hot-toast';
@@ -37,6 +38,16 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
+
+  // Cascading Wilayah Hooks
+  const selectedProvinsi = watch('provinsi');
+  const selectedKabupaten = watch('kabupaten');
+  const selectedKecamatan = watch('kecamatan');
+
+  const { options: provinsiOptions, isLoading: loadingProv } = useProvinsiOptions();
+  const { options: kabupatenOptions, isLoading: loadingKab } = useKabupatenOptions(selectedProvinsi);
+  const { options: kecamatanOptions, isLoading: loadingKec } = useKecamatanOptions(selectedKabupaten);
+  const { options: kelurahanOptions, isLoading: loadingKel } = useKelurahanOptions(selectedKecamatan, selectedKabupaten);
 
   useEffect(() => {
     setCurrentFoto(watch('foto') || '');
@@ -125,10 +136,6 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
     setTimeout(() => {
       startWebcam();
     }, 100);
-  };
-
-  const handleStartCamera = () => {
-    startWebcam();
   };
 
   const startWebcam = async () => {
@@ -306,7 +313,12 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
         <>
           <SectionCard title="Identitas Personal" icon={User}>
             <DetailRow icon={<Hash size={16} />} label="NIP" value={watch('nip')} />
+            <DetailRow icon={<CreditCard size={16} />} label="NIK (KTP)" value={watch('nik')} />
+            <DetailRow icon={<CreditCard size={16} />} label="No. Kartu Keluarga" value={watch('no_kk')} />
+            <DetailRow icon={<CreditCard size={16} />} label="NUPTK" value={watch('nuptk')} />
+            <DetailRow icon={<CreditCard size={16} />} label="NPWP" value={watch('npwp')} />
             <DetailRow icon={<User size={16} />} label="Nama Lengkap" value={watch('nama')} />
+            <DetailRow icon={<User size={16} />} label="Nama Ibu Kandung" value={watch('nama_ibu_kandung')} />
             <DetailRow icon={<Mail size={16} />} label="Email" value={watch('email')} />
             <DetailRow icon={<Phone size={16} />} label="Nomor WhatsApp" value={watch('no_hp')} />
             <DetailRow icon={<MapPin size={16} />} label="Tempat Lahir" value={watch('tempat_lahir')} />
@@ -315,9 +327,13 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
             <DetailRow icon={<Building2 size={16} />} label="Agama" value={getLabel(watch('agama'), AGAMA_OPTIONS)} />
           </SectionCard>
           <SectionCard title="Domisili Pendidik" icon={MapPin}>
-            <div className="md:col-span-2">
-              <DetailRow icon={<MapPin size={16} />} label="Alamat Lengkap" value={watch('alamat')} />
-            </div>
+            <DetailRow icon={<MapPin size={16} />} label="Alamat Jalan / Kampung" value={watch('alamat') || watch('dusun')} />
+            <DetailRow icon={<MapPin size={16} />} label="RT / RW" value={watch('rt') || watch('rw') ? `RT ${watch('rt') || '00'} / RW ${watch('rw') || '00'}` : '-'} />
+            <DetailRow icon={<MapPin size={16} />} label="Desa / Kelurahan" value={watch('kelurahan')} />
+            <DetailRow icon={<MapPin size={16} />} label="Kecamatan" value={watch('kecamatan')} />
+            <DetailRow icon={<MapPin size={16} />} label="Kabupaten / Kota" value={watch('kabupaten')} />
+            <DetailRow icon={<MapPin size={16} />} label="Provinsi" value={watch('provinsi')} />
+            <DetailRow icon={<MapPin size={16} />} label="Kode Pos" value={watch('kode_pos')} />
           </SectionCard>
         </>
       ) : (
@@ -329,9 +345,29 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               {errors.nip && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nip.message}</p>}
             </div>
             <div className="space-y-2 group">
+              <Label htmlFor="nik" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">NIK (KTP 16 Digit)</Label>
+              <Input id="nik" {...register('nik')} placeholder="3204xxxxxxxxxxxx" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+            <div className="space-y-2 group">
+              <Label htmlFor="no_kk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">No. Kartu Keluarga (KK)</Label>
+              <Input id="no_kk" {...register('no_kk')} placeholder="16-digit No. KK..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+            <div className="space-y-2 group">
+              <Label htmlFor="nuptk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">NUPTK</Label>
+              <Input id="nuptk" {...register('nuptk')} placeholder="16-digit NUPTK..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+            <div className="space-y-2 group">
+              <Label htmlFor="npwp" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">NPWP</Label>
+              <Input id="npwp" {...register('npwp')} placeholder="Nomor NPWP Guru..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+            <div className="space-y-2 group">
               <Label htmlFor="nama" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap <span className="text-rose-500">*</span></Label>
               <Input id="nama" {...register('nama')} placeholder="Entry Nama Lengkap..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl shadow-inner" />
               {errors.nama && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama.message}</p>}
+            </div>
+            <div className="space-y-2 group">
+              <Label htmlFor="nama_ibu_kandung" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nama Ibu Kandung</Label>
+              <Input id="nama_ibu_kandung" {...register('nama_ibu_kandung')} placeholder="Entry Nama Ibu Kandung..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
             <div className="space-y-2 group">
               <Label htmlFor="email" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Email Aktif</Label>
@@ -366,10 +402,98 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               )} />
             </div>
           </SectionCard>
-          <SectionCard title="Domisili Pendidik" icon={MapPin}>
+
+          <SectionCard title="Domisili Pendidik (Sesuai Wilayah)" icon={MapPin}>
             <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="alamat" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Alamat Lengkap</Label>
-              <Textarea id="alamat" {...register('alamat')} placeholder="Entry Alamat Lengkap..." disabled={isViewMode} rows={3} className="text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-blue-500/30 rounded-2xl resize-none p-4 shadow-inner" />
+              <Label htmlFor="alamat" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Alamat Jalan / Kampung</Label>
+              <Textarea id="alamat" {...register('alamat')} placeholder="Jl. Raya No. 123 / Kampung Krajan..." disabled={isViewMode} rows={2} className="text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-blue-500/30 rounded-2xl resize-none p-4 shadow-inner" />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="rt" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">RT</Label>
+              <Input id="rt" {...register('rt')} placeholder="001" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="rw" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">RW</Label>
+              <Input id="rw" {...register('rw')} placeholder="002" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="provinsi" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Provinsi</Label>
+              <Controller control={control} name="provinsi" render={({ field }) => (
+                <SearchableSelect
+                  id="provinsi"
+                  value={field.value}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    setValue('kabupaten', '');
+                    setValue('kecamatan', '');
+                    setValue('kelurahan', '');
+                  }}
+                  options={provinsiOptions}
+                  placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
+                  disabled={isViewMode || loadingProv}
+                  triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                />
+              )} />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="kabupaten" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kabupaten / Kota</Label>
+              <Controller control={control} name="kabupaten" render={({ field }) => (
+                <SearchableSelect
+                  id="kabupaten"
+                  value={field.value}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    setValue('kecamatan', '');
+                    setValue('kelurahan', '');
+                  }}
+                  options={kabupatenOptions}
+                  placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
+                  disabled={isViewMode || !selectedProvinsi || loadingKab}
+                  triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                />
+              )} />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="kecamatan" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kecamatan</Label>
+              <Controller control={control} name="kecamatan" render={({ field }) => (
+                <SearchableSelect
+                  id="kecamatan"
+                  value={field.value}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    setValue('kelurahan', '');
+                  }}
+                  options={kecamatanOptions}
+                  placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
+                  disabled={isViewMode || !selectedKabupaten || loadingKec}
+                  triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                />
+              )} />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="kelurahan" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Desa / Kelurahan</Label>
+              <Controller control={control} name="kelurahan" render={({ field }) => (
+                <SearchableSelect
+                  id="kelurahan"
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  options={kelurahanOptions}
+                  placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
+                  disabled={isViewMode || !selectedKecamatan || loadingKel}
+                  triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                />
+              )} />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="kode_pos" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kode Pos</Label>
+              <Input id="kode_pos" {...register('kode_pos')} placeholder="41162" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
           </SectionCard>
         </>

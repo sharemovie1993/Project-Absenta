@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2 } from 'lucide-react';
-import { Button, Modal } from '../../../ui';
+import { Button, Modal, SearchableSelect } from '../../../ui';
 import { toast } from 'react-hot-toast';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
+import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
 
 interface StaffProfilGuruTabProps {
   user: any;
@@ -53,6 +54,12 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [editRt, setEditRt] = useState('');
   const [editRw, setEditRw] = useState('');
   const [editKodePos, setEditKodePos] = useState('');
+
+  // Cascading Wilayah Hooks
+  const { options: provinsiOptions, isLoading: loadingProv } = useProvinsiOptions();
+  const { options: kabupatenOptions, isLoading: loadingKab } = useKabupatenOptions(editProvinsi);
+  const { options: kecamatanOptions, isLoading: loadingKec } = useKecamatanOptions(editKabupaten);
+  const { options: kelurahanOptions, isLoading: loadingKel } = useKelurahanOptions(editKecamatan, editKabupaten);
 
   // Populate state when live data arrives
   useEffect(() => {
@@ -760,20 +767,35 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                Alamat Jalan / Kampung
-              </label>
-              <textarea
-                rows={2}
-                value={editAlamat}
-                onChange={(e) => setEditAlamat(e.target.value)}
-                placeholder="Jl. Raya No. 123 / Kampung Krajan"
-                className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Alamat Jalan / Blok
+                </label>
+                <input
+                  type="text"
+                  value={editAlamat}
+                  onChange={(e) => setEditAlamat(e.target.value)}
+                  placeholder="Jl. Raya No. 123"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Dusun / Kampung
+                </label>
+                <input
+                  type="text"
+                  value={editDusun}
+                  onChange={(e) => setEditDusun(e.target.value)}
+                  placeholder="Kampung Krajan"
+                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-3 gap-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                   RT
@@ -802,19 +824,6 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Desa / Kelurahan
-                </label>
-                <input
-                  type="text"
-                  value={editKelurahan}
-                  onChange={(e) => setEditKelurahan(e.target.value)}
-                  placeholder="Nama Desa/Kel"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                   Kode Pos
                 </label>
                 <input
@@ -827,17 +836,23 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Kecamatan
+                  Provinsi
                 </label>
-                <input
-                  type="text"
-                  value={editKecamatan}
-                  onChange={(e) => setEditKecamatan(e.target.value)}
-                  placeholder="Nama Kecamatan"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                <SearchableSelect
+                  value={editProvinsi}
+                  onValueChange={(val) => {
+                    setEditProvinsi(val);
+                    setEditKabupaten('');
+                    setEditKecamatan('');
+                    setEditKelurahan('');
+                  }}
+                  options={provinsiOptions}
+                  placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
+                  disabled={loadingProv}
+                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
                 />
               </div>
 
@@ -845,25 +860,50 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                   Kabupaten / Kota
                 </label>
-                <input
-                  type="text"
+                <SearchableSelect
                   value={editKabupaten}
-                  onChange={(e) => setEditKabupaten(e.target.value)}
-                  placeholder="Nama Kab/Kota"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  onValueChange={(val) => {
+                    setEditKabupaten(val);
+                    setEditKecamatan('');
+                    setEditKelurahan('');
+                  }}
+                  options={kabupatenOptions}
+                  placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
+                  disabled={!editProvinsi || loadingKab}
+                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Kecamatan
+                </label>
+                <SearchableSelect
+                  value={editKecamatan}
+                  onValueChange={(val) => {
+                    setEditKecamatan(val);
+                    setEditKelurahan('');
+                  }}
+                  options={kecamatanOptions}
+                  placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
+                  disabled={!editKabupaten || loadingKec}
+                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Provinsi
+                  Desa / Kelurahan
                 </label>
-                <input
-                  type="text"
-                  value={editProvinsi}
-                  onChange={(e) => setEditProvinsi(e.target.value)}
-                  placeholder="Nama Provinsi"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                <SearchableSelect
+                  value={editKelurahan}
+                  onValueChange={(val) => setEditKelurahan(val)}
+                  options={kelurahanOptions}
+                  placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
+                  disabled={!editKecamatan || loadingKel}
+                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
                 />
               </div>
             </div>
