@@ -227,6 +227,66 @@ export class WireguardManager {
     }
   }
 
+  /** Jalankan Caddy Reverse Proxy otomatis di Windows Dev jika Port 443 belum aktif */
+  static ensureWindowsCaddyRunning(slug: string): void {
+    if (!this.isWindows()) return;
+
+    // Cek apakah Port 443 sudah mendengarkan (Caddy/Server sudah running)
+    try {
+      const testCmd = `powershell -Command "(Test-NetConnection -ComputerName 127.0.0.1 -Port 443).TcpTestSucceeded"`;
+      const testOut = execSync(testCmd, { stdio: 'pipe', windowsHide: true }).toString().trim();
+      if (testOut === 'True') {
+        console.log('[WG-Caddy] Port 443 sudah MENDENGARKAN di Windows.');
+        return;
+      }
+    } catch {}
+
+    // Cari caddy.exe
+    const candidatePaths = [
+      path.join(__dirname, '../../../../deployer/caddy-bin/caddy.exe'),
+      'd:\\BarayaProject\\deployer\\caddy-bin\\caddy.exe',
+      path.join(process.cwd(), '../deployer/caddy-bin/caddy.exe')
+    ];
+
+    const caddyExe = candidatePaths.find(p => fs.existsSync(p));
+    if (!caddyExe) {
+      console.warn('[WG-Caddy] Binary caddy.exe tidak ditemukan di candidate paths.');
+      return;
+    }
+
+    const confPath = this.confPath(slug);
+    let localPort = 5173;
+    try {
+      const content = fs.readFileSync(confPath, 'utf8');
+      const match = content.match(/#\s*LocalPort\s*=\s*(\d+)/i);
+      if (match) localPort = parseInt(match[1], 10);
+    } catch {}
+
+    const caddyfilePath = path.join(os.tmpdir(), 'Caddyfile.absenta.dev');
+    const caddyConfig = `
+:80, :443 {
+    tls internal
+    reverse_proxy /api/* localhost:3000
+    reverse_proxy /* localhost:${localPort}
+}
+`.trim();
+
+    fs.writeFileSync(caddyfilePath, caddyConfig, 'utf8');
+
+    try {
+      const { spawn } = require('child_process');
+      const child = spawn(caddyExe, ['run', '--config', caddyfilePath], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+      console.log(`[WG-Caddy] Otomatis menjalankan Caddy reverse proxy di Windows Dev (Port 443 -> localhost:${localPort})`);
+    } catch (e: any) {
+      console.warn('[WG-Caddy] Gagal menjalankan Caddy:', e.message);
+    }
+  }
+
   /**
    * Pengelola Multi-Tunnel Coexistence.
    * Catatan: Auto-kill switch enforceSingleActiveTunnel telah dinonaktifkan karena subnet mask /32
@@ -315,6 +375,10 @@ export class WireguardManager {
         const errMsg = lastErr && lastErr.stderr ? lastErr.stderr.toString().trim() : (lastErr ? lastErr.message : 'Unknown error');
         throw new Error('Gagal menjalankan layanan WireGuard: ' + errMsg);
       }
+
+      // Otomatis jalankan Caddy Reverse Proxy di Windows Dev jika Port 443 belum active
+      this.ensureWindowsCaddyRunning(slug);
+
       return { success: true, message: 'Tunnel VPN berhasil diaktifkan.' };
     } else {
       const ifName = `et-${slug}`;
