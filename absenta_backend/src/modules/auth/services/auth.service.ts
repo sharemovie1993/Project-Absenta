@@ -12,6 +12,7 @@ import { emitDomainEvent } from '@/infra/event-bus';
 import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
 import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
+import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
 
 export interface QuickLoginResult {
   success: boolean;
@@ -83,10 +84,16 @@ export class AuthService {
   async register(input: RegisterInput): Promise<UserResponse> {
     const { email, password, full_name, role, tenant_id } = input;
 
-    // Find the role by name
-    const roleRecord = await prisma.role.findFirst({
-      where: { name: role },
+    // Find the role by name (prioritize tenant-scoped role)
+    let roleRecord = await prisma.role.findFirst({
+      where: { tenant_id, name: role },
     });
+
+    if (!roleRecord) {
+      roleRecord = await prisma.role.findFirst({
+        where: { name: role },
+      });
+    }
 
     if (!roleRecord) {
       throw new Error('Invalid role');
@@ -525,6 +532,9 @@ export class AuthService {
           },
         });
 
+        const tenantRoleMap = await ensureTenantBaseRoles(newTenant.id, tx);
+        const adminRoleId = tenantRoleMap['ADMIN'] || adminRole.id;
+
         await tx.sekolah.create({
           data: {
             tenant_id: newTenant.id,
@@ -571,7 +581,7 @@ export class AuthService {
           email: admin_email,
           password: hashedPassword,
           tenant_id: newTenant.id,
-          role_id: adminRole.id,
+          role_id: adminRoleId,
           no_hp: String(admin_phone).trim(),
         },
       });

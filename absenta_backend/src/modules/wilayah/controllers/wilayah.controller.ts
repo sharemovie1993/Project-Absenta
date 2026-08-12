@@ -1,7 +1,5 @@
 import { prisma } from '../../../utils/prisma';
-import { seedWilayahIndonesia } from '../../../database/seeds/seed_wilayah';
 import { STATIC_PROVINSI, STATIC_KABUPATEN } from '../data/wilayah-static.data';
-import axios from 'axios';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -22,44 +20,6 @@ function formatRegencyName(name: string): string {
   return toTitleCase(clean);
 }
 
-// Multi-CDN Fallback URLs for max production resilience
-const API_URLS = {
-  provinces: [
-    'https://cdn.jsdelivr.net/gh/emsifa/api-wilayah-indonesia@master/api/provinces.json',
-    'https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json',
-    'https://raw.githubusercontent.com/emsifa/api-wilayah-indonesia/master/api/provinces.json',
-  ],
-  regencies: (provKode: string) => [
-    `https://cdn.jsdelivr.net/gh/emsifa/api-wilayah-indonesia@master/api/regencies/${provKode}.json`,
-    `https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provKode}.json`,
-    `https://raw.githubusercontent.com/emsifa/api-wilayah-indonesia/master/api/regencies/${provKode}.json`,
-  ],
-  districts: (kabKode: string) => [
-    `https://cdn.jsdelivr.net/gh/emsifa/api-wilayah-indonesia@master/api/districts/${kabKode}.json`,
-    `https://emsifa.github.io/api-wilayah-indonesia/api/districts/${kabKode}.json`,
-    `https://raw.githubusercontent.com/emsifa/api-wilayah-indonesia/master/api/districts/${kabKode}.json`,
-  ],
-  villages: (kecKode: string) => [
-    `https://cdn.jsdelivr.net/gh/emsifa/api-wilayah-indonesia@master/api/villages/${kecKode}.json`,
-    `https://emsifa.github.io/api-wilayah-indonesia/api/villages/${kecKode}.json`,
-    `https://raw.githubusercontent.com/emsifa/api-wilayah-indonesia/master/api/villages/${kecKode}.json`,
-  ],
-};
-
-async function fetchFromMultiCdn(urls: string[], timeout: number = 3000): Promise<any[] | null> {
-  for (const url of urls) {
-    try {
-      const res = await axios.get<any[]>(url, { timeout });
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        return res.data;
-      }
-    } catch {
-      // Continue to next CDN url silently
-    }
-  }
-  return null;
-}
-
 export const wilayahController = {
   // GET /api/wilayah/provinsi
   async getProvinsi(_request: any, reply: any) {
@@ -73,37 +33,8 @@ export const wilayahController = {
         },
       });
 
-      // If database is empty, seed from bundled static fallback immediately
       if (list.length === 0) {
-        // 1. Instant Static Fallback Mapping
         list = STATIC_PROVINSI.map(p => ({ kode: p.kode, nama: p.nama }));
-
-        // 2. Non-blocking Background DB Seed & CDN Sync
-        (async () => {
-          try {
-            // Seed static bundle first
-            for (const p of STATIC_PROVINSI) {
-              await prisma.refWilayah.upsert({
-                where: { kode: p.kode },
-                update: { nama: p.nama, tingkat: 1 },
-                create: { kode: p.kode, nama: p.nama, tingkat: 1 },
-              });
-            }
-            // Optional CDN refresh
-            const liveProvs = await fetchFromMultiCdn(API_URLS.provinces, 3000);
-            if (liveProvs && liveProvs.length > 0) {
-              for (const p of liveProvs) {
-                await prisma.refWilayah.upsert({
-                  where: { kode: String(p.id) },
-                  update: { nama: p.name, tingkat: 1 },
-                  create: { kode: String(p.id), nama: p.name, tingkat: 1 },
-                });
-              }
-            }
-          } catch (err) {
-            console.warn('[WILAYAH] Background prov seed warn:', err);
-          }
-        })();
       }
 
       return reply.status(200).send({
@@ -120,14 +51,11 @@ export const wilayahController = {
       });
     } catch (error: any) {
       console.error('Error in getProvinsi:', error);
-      
-      // Zero-Downtime Fallback: return bundled static provinces if DB fails
       const fallbackList = STATIC_PROVINSI.map(p => ({
         value: toTitleCase(p.nama),
         label: toTitleCase(p.nama),
         kode: p.kode,
       }));
-
       return reply.status(200).send({
         success: true,
         message: 'Daftar provinsi diambil dari cadangan offline',
@@ -143,8 +71,8 @@ export const wilayahController = {
 
       let parentKode = provinsi_kode;
 
-      if (!parentKode && provinsi_nama) {
-        const cleanProv = provinsi_nama.trim();
+      if (!parentKode && provinsi_nama && provinsi_nama.trim().length > 0) {
+        const cleanProv = provinsi_nama.replace(/_/g, ' ').trim();
         const prov = await prisma.refWilayah.findFirst({
           where: {
             tingkat: 1,
@@ -157,17 +85,21 @@ export const wilayahController = {
         if (prov) {
           parentKode = prov.kode;
         } else {
-          // Check static fallback for parentKode
           const staticProv = STATIC_PROVINSI.find(p => p.nama.toLowerCase().includes(cleanProv.toLowerCase()));
           if (staticProv) parentKode = staticProv.kode;
         }
       }
 
-      const whereClause: any = { tingkat: 2 };
-      if (parentKode) whereClause.parent_kode = parentKode;
+      if (!parentKode) {
+        return reply.status(200).send({
+          success: true,
+          message: 'Pilih provinsi terlebih dahulu',
+          data: [],
+        });
+      }
 
-      let list = await prisma.refWilayah.findMany({
-        where: whereClause,
+      const list = await prisma.refWilayah.findMany({
+        where: { tingkat: 2, parent_kode: parentKode },
         orderBy: { nama: 'asc' },
         select: {
           kode: true,
@@ -175,44 +107,6 @@ export const wilayahController = {
           parent_kode: true,
         },
       });
-
-      // If list is empty for parentKode, use bundled static kabupaten or multi-CDN
-      if (list.length === 0) {
-        const staticKabList = STATIC_KABUPATEN.filter(k => !parentKode || k.parent_kode === parentKode);
-        if (staticKabList.length > 0) {
-          list = staticKabList.map(k => ({ kode: k.kode, nama: k.nama, parent_kode: k.parent_kode ?? null }));
-        }
-
-        // Non-blocking CDN fetch & DB populate
-        if (parentKode) {
-          const pk = parentKode;
-          (async () => {
-            try {
-              // Populate static first
-              for (const k of staticKabList) {
-                await prisma.refWilayah.upsert({
-                  where: { kode: k.kode },
-                  update: { nama: k.nama, tingkat: 2, parent_kode: k.parent_kode },
-                  create: { kode: k.kode, nama: k.nama, tingkat: 2, parent_kode: k.parent_kode },
-                });
-              }
-              // CDN fetch
-              const liveRegencies = await fetchFromMultiCdn(API_URLS.regencies(pk), 3000);
-              if (liveRegencies && liveRegencies.length > 0) {
-                for (const r of liveRegencies) {
-                  await prisma.refWilayah.upsert({
-                    where: { kode: String(r.id) },
-                    update: { nama: r.name, tingkat: 2, parent_kode: pk },
-                    create: { kode: String(r.id), nama: r.name, tingkat: 2, parent_kode: pk },
-                  });
-                }
-              }
-            } catch (err) {
-              console.warn('[WILAYAH] Background kab seed warn:', err);
-            }
-          })();
-        }
-      }
 
       return reply.status(200).send({
         success: true,
@@ -228,20 +122,10 @@ export const wilayahController = {
       });
     } catch (error: any) {
       console.error('Error in getKabupaten:', error);
-
-      const { provinsi_kode } = (request.query || {}) as { provinsi_kode?: string };
-      const fallbackList = STATIC_KABUPATEN
-        .filter(k => !provinsi_kode || k.parent_kode === provinsi_kode)
-        .map(k => ({
-          value: formatRegencyName(k.nama),
-          label: formatRegencyName(k.nama),
-          kode: k.kode,
-        }));
-
       return reply.status(200).send({
         success: true,
-        message: 'Daftar kabupaten/kota diambil dari cadangan offline',
-        data: fallbackList,
+        message: error?.message || 'Gagal mengambil data kabupaten/kota',
+        data: [],
       });
     }
   },
@@ -253,19 +137,31 @@ export const wilayahController = {
 
       let parentKode = kabupaten_kode;
 
-      if (!parentKode && kabupaten_nama) {
-        const cleanKab = kabupaten_nama.trim().replace(/^kab(\.|upaten)?\s+/i, '').replace(/^kota\s+/i, '').trim();
-        const reg = await prisma.refWilayah.findFirst({
+      if (!parentKode && kabupaten_nama && kabupaten_nama.trim().length > 0) {
+        const rawUpper = kabupaten_nama.replace(/_/g, ' ').trim().toUpperCase();
+        const cleanKab = rawUpper.replace(/^KAB(\.|UPATEN)?\s+/i, '').replace(/^KOTA\s+/i, '').trim();
+        const isKota = rawUpper.startsWith('KOTA');
+        const exactTarget = isKota ? `KOTA ${cleanKab}` : `KABUPATEN ${cleanKab}`;
+
+        let reg = await prisma.refWilayah.findFirst({
           where: {
             tingkat: 2,
             OR: [
-              { nama: { equals: kabupaten_nama.trim(), mode: 'insensitive' } },
-              { nama: { equals: `KABUPATEN ${cleanKab}`, mode: 'insensitive' } },
-              { nama: { equals: `KOTA ${cleanKab}`, mode: 'insensitive' } },
-              { nama: { contains: cleanKab, mode: 'insensitive' } },
+              { nama: { equals: exactTarget, mode: 'insensitive' } },
+              { nama: { equals: rawUpper, mode: 'insensitive' } },
             ],
           },
         });
+
+        if (!reg) {
+          reg = await prisma.refWilayah.findFirst({
+            where: {
+              tingkat: 2,
+              nama: { contains: cleanKab, mode: 'insensitive' },
+            },
+          });
+        }
+
         if (reg) {
           parentKode = reg.kode;
         } else {
@@ -274,11 +170,16 @@ export const wilayahController = {
         }
       }
 
-      const whereClause: any = { tingkat: 3 };
-      if (parentKode) whereClause.parent_kode = parentKode;
+      if (!parentKode) {
+        return reply.status(200).send({
+          success: true,
+          message: 'Silakan pilih kabupaten/kota terlebih dahulu',
+          data: [],
+        });
+      }
 
-      let list = await prisma.refWilayah.findMany({
-        where: whereClause,
+      const list = await prisma.refWilayah.findMany({
+        where: { tingkat: 3, parent_kode: parentKode },
         orderBy: { nama: 'asc' },
         select: {
           kode: true,
@@ -286,25 +187,6 @@ export const wilayahController = {
           parent_kode: true,
         },
       });
-
-      if (parentKode && list.length === 0) {
-        const pk = parentKode;
-        const liveDistricts = await fetchFromMultiCdn(API_URLS.districts(pk), 4000);
-        if (liveDistricts && liveDistricts.length > 0) {
-          for (const d of liveDistricts) {
-            await prisma.refWilayah.upsert({
-              where: { kode: String(d.id) },
-              update: { nama: d.name, tingkat: 3, parent_kode: pk },
-              create: { kode: String(d.id), nama: d.name, tingkat: 3, parent_kode: pk },
-            });
-          }
-          list = await prisma.refWilayah.findMany({
-            where: whereClause,
-            orderBy: { nama: 'asc' },
-            select: { kode: true, nama: true, parent_kode: true },
-          });
-        }
-      }
 
       return reply.status(200).send({
         success: true,
@@ -339,12 +221,12 @@ export const wilayahController = {
 
       let parentKode = kecamatan_kode;
 
-      if (!parentKode && kecamatan_nama) {
-        const cleanKec = kecamatan_nama.trim().replace(/^kec(\.|amatan)?\s+/i, '').trim();
+      if (!parentKode && kecamatan_nama && kecamatan_nama.trim().length > 0) {
+        const cleanKec = kecamatan_nama.replace(/_/g, ' ').trim().replace(/^kec(\.|amatan)?\s+/i, '').trim();
         let parentRegKode: string | undefined = undefined;
 
         if (kabupaten_nama) {
-          const cleanKab = kabupaten_nama.trim().replace(/^kab(\.|upaten)?\s+/i, '').replace(/^kota\s+/i, '').trim();
+          const cleanKab = kabupaten_nama.replace(/_/g, ' ').trim().replace(/^kab(\.|upaten)?\s+/i, '').replace(/^kota\s+/i, '').trim();
           const reg = await prisma.refWilayah.findFirst({
             where: {
               tingkat: 2,
@@ -368,22 +250,7 @@ export const wilayahController = {
         };
         if (parentRegKode) distWhere.parent_kode = parentRegKode;
 
-        let dist = await prisma.refWilayah.findFirst({ where: distWhere });
-
-        if (!dist && parentRegKode) {
-          const liveDistricts = await fetchFromMultiCdn(API_URLS.districts(parentRegKode), 4000);
-          if (liveDistricts && liveDistricts.length > 0) {
-            for (const d of liveDistricts) {
-              await prisma.refWilayah.upsert({
-                where: { kode: String(d.id) },
-                update: { nama: d.name, tingkat: 3, parent_kode: parentRegKode },
-                create: { kode: String(d.id), nama: d.name, tingkat: 3, parent_kode: parentRegKode },
-              });
-            }
-            dist = await prisma.refWilayah.findFirst({ where: distWhere });
-          }
-        }
-
+        const dist = await prisma.refWilayah.findFirst({ where: distWhere });
         if (dist) parentKode = dist.kode;
       }
 
@@ -395,10 +262,8 @@ export const wilayahController = {
         });
       }
 
-      const whereClause: any = { tingkat: 4, parent_kode: parentKode };
-
-      let list = await prisma.refWilayah.findMany({
-        where: whereClause,
+      const list = await prisma.refWilayah.findMany({
+        where: { tingkat: 4, parent_kode: parentKode },
         orderBy: { nama: 'asc' },
         select: {
           kode: true,
@@ -406,25 +271,6 @@ export const wilayahController = {
           parent_kode: true,
         },
       });
-
-      if (parentKode && list.length === 0) {
-        const pk = parentKode;
-        const liveVillages = await fetchFromMultiCdn(API_URLS.villages(pk), 4000);
-        if (liveVillages && liveVillages.length > 0) {
-          for (const v of liveVillages) {
-            await prisma.refWilayah.upsert({
-              where: { kode: String(v.id) },
-              update: { nama: v.name, tingkat: 4, parent_kode: pk },
-              create: { kode: String(v.id), nama: v.name, tingkat: 4, parent_kode: pk },
-            });
-          }
-          list = await prisma.refWilayah.findMany({
-            where: whereClause,
-            orderBy: { nama: 'asc' },
-            select: { kode: true, nama: true, parent_kode: true },
-          });
-        }
-      }
 
       return reply.status(200).send({
         success: true,
@@ -458,19 +304,9 @@ export const wilayahController = {
 
   // POST /api/wilayah/sync
   async syncWilayah(_request: any, reply: any) {
-    try {
-      seedWilayahIndonesia().catch(err => console.error('Background seed error:', err));
-
-      return reply.status(200).send({
-        success: true,
-        message: 'Sinkronisasi master data wilayah Indonesia dari API Kemendagri sedang berjalan di latar belakang.',
-      });
-    } catch (error: any) {
-      console.error('Error in syncWilayah:', error);
-      return reply.status(500).send({
-        success: false,
-        message: error?.message || 'Gagal memulai sinkronisasi wilayah',
-      });
-    }
+    return reply.status(200).send({
+      success: true,
+      message: 'Master data wilayah sudah 100% tersimpan di database lokal.',
+    });
   },
 };

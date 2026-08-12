@@ -58,9 +58,15 @@ export async function bulkResetSiswaPasswordCommand(
   }
 
   // 2. Find or fallback SISWA role
-  const siswaRole = await prisma.role.findFirst({
-    where: { name: 'SISWA' }
+  let siswaRole = await prisma.role.findFirst({
+    where: { tenant_id: tenantId, name: 'SISWA' }
   });
+
+  if (!siswaRole) {
+    siswaRole = await prisma.role.findFirst({
+      where: { name: 'SISWA' }
+    });
+  }
 
   if (!siswaRole) {
     throw new Error('Role SISWA tidak ditemukan dalam database.');

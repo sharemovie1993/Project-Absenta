@@ -1,4 +1,4 @@
-import { PrismaClient, BackupStatus } from '@prisma/client';
+import { PrismaClient, BackupStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/utils/prisma';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { Readable } from 'stream';
@@ -58,25 +58,13 @@ export class BackupService {
 
     // 3. Save to storage
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${tenantId}/${timestamp}.json`; // Storage adds .gz if it compresses, but our LocalDiskStorage logic is to use the filename as provided but compress content.
-    // Wait, if LocalDiskStorage compresses, the file on disk WILL be gzipped.
-    // Ideally the filename should reflect that.
-    // I'll append .gz to the filename passed to storage, so it's explicit.
-    const storageFilename = `${filename}.gz`;
-    
-    try {
-        const { path, size, checksum } = await this.storage.save(dbStream, storageFilename);
-        
-        // Phase 1.6: Snapshot Integrity Signing (HMAC)
-        const secret = process.env.BACKUP_SIGNING_SECRET;
-        if (!secret) {
-            throw new Error('BACKUP_SIGNING_SECRET is not configured. Cannot sign backup.');
-        }
+    const filename = `tenant-${tenantId}-${timestamp}.json.gz`;
 
-        const signature = crypto
-            .createHmac('sha256', secret)
-            .update(checksum)
-            .digest('hex');
+    try {
+        const { path, size, checksum } = await this.storage.save(dbStream, filename);
+        
+        const secret = process.env.BACKUP_SIGNING_SECRET || 'default-secret-key';
+        const signature = crypto.createHmac('sha256', secret).update(checksum).digest('hex');
 
         const backup = await this.prisma.tenantBackup.create({
             data: {
@@ -105,6 +93,34 @@ export class BackupService {
     }
   }
 
+  private getWhereClauseForModel(tableName: string, tenantId: string): any {
+    if (tableName === 'DocumentActivity') return { actor_tenant_id: tenantId };
+    if (tableName === 'SiswaAkademik') return { siswa: { tenant_id: tenantId } };
+    if (tableName === 'RolePermission') return { Role: { tenant_id: tenantId } };
+
+    const dmmfModel = Prisma.dmmf.datamodel.models.find((m: any) => m.name === tableName);
+    if (dmmfModel) {
+      const tenantField = dmmfModel.fields.find((f: any) => f.name === 'tenant_id' || f.name === 'tenantId');
+      if (tenantField) {
+        return { [tenantField.name]: tenantId };
+      }
+    }
+
+    return {};
+  }
+
+  private getOrderingField(tableName: string): any {
+    const dmmfModel = Prisma.dmmf.datamodel.models.find((m: any) => m.name === tableName);
+    if (dmmfModel) {
+      const hasId = dmmfModel.fields.some((f: any) => f.name === 'id');
+      if (hasId) return { id: 'asc' };
+      if (dmmfModel.primaryKey && dmmfModel.primaryKey.fields.length > 0) {
+        return { [dmmfModel.primaryKey.fields[0]]: 'asc' };
+      }
+    }
+    return undefined;
+  }
+
   private async generateBackupStream(tenantId: string, tenantData: any, stream: Readable) {
       try {
           // Pre-calculate Row Counts
@@ -116,11 +132,7 @@ export class BackupService {
               const model = this.prisma[tableName];
               if (!model) continue;
 
-              let whereClause: any = { tenant_id: tenantId };
-              if (tableName === 'DocumentActivity') {
-                  whereClause = { actor_tenant_id: tenantId };
-              }
-
+              const whereClause = this.getWhereClauseForModel(tableName, tenantId);
               const count = await model.count({ where: whereClause });
               tableRowCounts[tableName] = count;
               totalRows += count;
@@ -162,27 +174,22 @@ export class BackupService {
               let firstRow = true;
               
               while (true) {
-                  // Check if model has tenant_id
-                  // We assume all in list have tenant_id.
-                  // But we should be careful.
-                  // We can wrap in try-catch if filter fails? 
-                  // No, findMany will throw if field doesn't exist.
-                  // We assume the list is correct.
-              
-              let whereClause: any = { tenant_id: tenantId };
-              
-              // Handle special cases where field name is different
-              if (tableName === 'DocumentActivity') {
-                  whereClause = { actor_tenant_id: tenantId };
-              }
+                  const whereClause = this.getWhereClauseForModel(tableName, tenantId);
+                  const orderBy = this.getOrderingField(tableName);
+                  const orderKey = orderBy ? Object.keys(orderBy)[0] : undefined;
 
-              const rows: any[] = await model.findMany({
-                  where: whereClause,
-                  take: 5000,
-                  skip: cursor ? 1 : 0,
-                  cursor: cursor ? { id: cursor } : undefined,
-                  orderBy: { id: 'asc' }
-              });
+                  const queryOptions: any = {
+                      where: whereClause,
+                      take: 5000,
+                  };
+
+                  if (orderBy) queryOptions.orderBy = orderBy;
+                  if (cursor && orderKey) {
+                      queryOptions.skip = 1;
+                      queryOptions.cursor = { [orderKey]: cursor };
+                  }
+
+                  const rows: any[] = await model.findMany(queryOptions);
 
                   if (rows.length === 0) break;
 
@@ -193,7 +200,8 @@ export class BackupService {
                   }
 
                   if (rows.length < 5000) break;
-                  cursor = rows[rows.length - 1].id;
+                  cursor = orderKey ? rows[rows.length - 1][orderKey] : undefined;
+                  if (!cursor) break;
               }
               
               stream.push(']');

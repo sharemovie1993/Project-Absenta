@@ -124,9 +124,14 @@ export async function updateSiswaCommand(
         throw new Error('Email sudah digunakan oleh pengguna lain');
       }
       
-      const siswaRole = await siswaDb.role.findFirst({
-        where: { name: 'SISWA' }
+      let siswaRole = await siswaDb.role.findFirst({
+        where: { tenant_id: tenantId, name: 'SISWA' }
       });
+      if (!siswaRole) {
+        siswaRole = await siswaDb.role.findFirst({
+          where: { name: 'SISWA' }
+        });
+      }
       if (!siswaRole) {
         throw new Error('Role SISWA tidak ditemukan');
       }
@@ -196,9 +201,14 @@ export async function updateSiswaCommand(
           }
         } else {
           // User belum ada sama sekali → buat baru
-          const siswaRole = await siswaDb.role.findFirst({
-            where: { name: 'SISWA' }
+          let siswaRole = await siswaDb.role.findFirst({
+            where: { tenant_id: tenantId, name: 'SISWA' }
           });
+          if (!siswaRole) {
+            siswaRole = await siswaDb.role.findFirst({
+              where: { name: 'SISWA' }
+            });
+          }
           if (siswaRole) {
             const defaultPass = cleanNewNisn;
             const hashedPassword = await bcrypt.hash(defaultPass, 12);

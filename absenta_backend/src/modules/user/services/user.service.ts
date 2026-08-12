@@ -165,10 +165,16 @@ export class UserService {
       throw new Error('User already exists in this tenant');
     }
 
-    // Get role record
-    const roleRecord = await prisma.role.findFirst({
-      where: { name: role },
+    // Get role record (Prioritize tenant-scoped role)
+    let roleRecord = await prisma.role.findFirst({
+      where: { tenant_id: tenant_id || null, name: role },
     });
+
+    if (!roleRecord) {
+      roleRecord = await prisma.role.findFirst({
+        where: { name: role },
+      });
+    }
 
     if (!roleRecord) {
       throw new Error('Invalid role');

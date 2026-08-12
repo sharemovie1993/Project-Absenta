@@ -54,9 +54,15 @@ export async function bulkResetGuruPasswordCommand(
   }
 
   // 2. Find GURU role
-  const guruRole = await prisma.role.findFirst({
-    where: { name: 'GURU' }
+  let guruRole = await prisma.role.findFirst({
+    where: { tenant_id: tenantId, name: 'GURU' }
   });
+
+  if (!guruRole) {
+    guruRole = await prisma.role.findFirst({
+      where: { name: 'GURU' }
+    });
+  }
 
   if (!guruRole) {
     throw new Error('Role GURU tidak ditemukan dalam database.');

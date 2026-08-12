@@ -5,6 +5,7 @@ import { seedDefaultJenisPelanggaranForTenant } from '../../kesiswaan/services/j
 import { auditLogService } from '../../audit/services/audit-log.service';
 import { strukturOrganisasiService } from '../../academic/struktur-organisasi/services/struktur-organisasi.service';
 import { tenantEntitlementService } from '../../billing/services/tenant-entitlement.service';
+import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
 
 const prisma = new PrismaClient();
 
@@ -338,6 +339,7 @@ export class TenantService {
 
     await strukturOrganisasiService.initializeTenant(tenant.id);
 
+    await ensureTenantBaseRoles(tenant.id);
     await seedDefaultJenisKegiatanForTenant(tenant.id);
     await seedDefaultJenisPelanggaranForTenant(tenant.id);
 

@@ -596,6 +596,55 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
   };
 }
 
+export const TENANT_BASE_ROLE_DEFS = [
+  { name: 'ADMIN', description: 'Tenant Administrator (akses penuh tenant sendiri)' },
+  { name: 'GURU', description: 'Guru (akses pembelajaran & monitoring siswa)' },
+  { name: 'SISWA', description: 'Siswa (akses pribadi & pembayaran)' },
+  { name: 'ANGGOTA_KOPERASI_EXTERNAL', description: 'Anggota Koperasi Pihak Eksternal (akses terbatas)' },
+];
+
+export async function ensureTenantBaseRoles(tenantId: string, client: any = prisma): Promise<Record<string, string>> {
+  const allDbPermissions = (await client.permission.findMany({ select: { id: true } })).map((p: any) => p.id);
+  const roleBaselines = buildRoleBaselines(allDbPermissions);
+  const roleMap: Record<string, string> = {};
+
+  for (const def of TENANT_BASE_ROLE_DEFS) {
+    let existing = await client.role.findFirst({
+      where: { tenant_id: tenantId, name: def.name }
+    });
+
+    if (!existing) {
+      existing = await client.role.create({
+        data: {
+          name: def.name,
+          tenant_id: tenantId,
+          description: def.description,
+          is_system: true
+        }
+      });
+    } else if (existing.description !== def.description) {
+      await client.role.update({
+        where: { id: existing.id },
+        data: { description: def.description }
+      });
+    }
+
+    roleMap[def.name] = existing.id;
+
+    // Sync permissions for this tenant role
+    const baseline = roleBaselines[def.name] || [];
+    if (baseline.length > 0) {
+      await client.rolePermission.deleteMany({ where: { role_id: existing.id } });
+      await client.rolePermission.createMany({
+        data: baseline.map((permission_id: string) => ({ role_id: existing.id, permission_id })),
+        skipDuplicates: true
+      });
+    }
+  }
+
+  return roleMap;
+}
+
 async function parseActionCatalog(): Promise<{ id: string; group: string; description: string }[]> {
   const canonicalPath = path.join(__dirname, '../../../docs/action_catalog.md');
   if (!fs.existsSync(canonicalPath)) {
@@ -695,15 +744,6 @@ export async function seedPolicies() {
     { name: 'PLATFORM_INFRASTRUCTURE', description: 'Staf IT & DevOps Platform Absenta.id', tenant_id: 'system' },
   ];
 
-  const tenantRoleDefs = [
-    { name: 'ADMIN', description: 'Tenant Administrator (akses penuh tenant sendiri)', tenant_id: null },
-    { name: 'GURU', description: 'Guru (akses pembelajaran & monitoring siswa)', tenant_id: null },
-    { name: 'SISWA', description: 'Siswa (akses pribadi & pembayaran)', tenant_id: null },
-    { name: 'ANGGOTA_KOPERASI_EXTERNAL', description: 'Anggota Koperasi Pihak Eksternal (akses terbatas)', tenant_id: null },
-  ];
-
-  const allRoleDefs = [...platformRoleDefs, ...tenantRoleDefs];
-
   const ensureRole = async (name: string, description: string, tenantId: string | null) => {
     const existing = await prisma.role.findFirst({ where: { tenant_id: tenantId, name } });
     if (existing) {
@@ -715,7 +755,7 @@ export async function seedPolicies() {
     return prisma.role.create({ data: { name, tenant_id: tenantId, description, is_system: true } });
   };
 
-  for (const def of allRoleDefs) {
+  for (const def of platformRoleDefs) {
     const role = await ensureRole(def.name, def.description, def.tenant_id);
     const baseline = Array.isArray(roleBaselines[def.name]) ? roleBaselines[def.name] : [];
 
@@ -734,6 +774,16 @@ export async function seedPolicies() {
     }
   }
 
+  // Ensure base roles for all existing real school tenants
+  const existingTenants = await prisma.tenant.findMany({
+    where: { id: { not: 'system' } },
+    select: { id: true }
+  });
+
+  for (const tenant of existingTenants) {
+    await ensureTenantBaseRoles(tenant.id, prisma);
+  }
+
   console.log('✅ RolePermissions seeded (strict canonical).');
   
   // 3. Seed OrganizationalCapabilities from STRUKTUR_CAPABILITIES (Canonical)
@@ -743,34 +793,6 @@ export async function seedPolicies() {
   await strukturOrganisasiService.seedAllCapabilities();
 
   console.log('✅ OrganizationalCapabilities seeded.');
-
-  // 4. Propagate Permissions to all Tenant-specific Roles
-  console.log('🔄 Propagating permissions to all existing tenant-level roles...');
-  for (const def of tenantRoleDefs) {
-    const baseline = roleBaselines[def.name] || [];
-    const tenantRoles = await prisma.role.findMany({
-      where: { 
-        name: def.name, 
-        tenant_id: { 
-          notIn: ['system'],
-          not: null 
-        } 
-      }, // hanya sinkronisasi tenant sekolah riil
-      select: { id: true, tenant_id: true }
-    });
-    
-    if (tenantRoles.length > 0) {
-      console.log(`   - Syncing ${tenantRoles.length} tenant roles for: ${def.name}`);
-      for (const tRole of tenantRoles) {
-        // Clear current permissions and sync with baseline
-        await prisma.rolePermission.deleteMany({ where: { role_id: tRole.id } });
-        await prisma.rolePermission.createMany({
-          data: baseline.map(pId => ({ role_id: tRole.id, permission_id: pId })),
-          skipDuplicates: true
-        });
-      }
-    }
-  }
 
   console.log('🏁 Policy Engine Seeding Completed.');
 
