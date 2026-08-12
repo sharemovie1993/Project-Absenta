@@ -41,6 +41,12 @@ import {
   getSmartKodePos,
   DropdownOption
 } from '@/api/dropdown.api';
+import { 
+  useProvinsiOptions, 
+  useKabupatenOptions, 
+  useKecamatanOptions, 
+  useKelurahanOptions 
+} from '@/hooks/useWilayahOptions';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -344,40 +350,11 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showWebcamModal, setShowWebcamModal] = useState(false);
 
-  const [provinsiOptions, setProvinsiOptions] = useState<DropdownOption[]>(PROVINSI_INDONESIA_OPTIONS);
-  const [kabupatenOptions, setKabupatenOptions] = useState<DropdownOption[]>([]);
-  const [kecamatanOptions, setKecamatanOptions] = useState<DropdownOption[]>([]);
-  const [kelurahanOptions, setKelurahanOptions] = useState<DropdownOption[]>([]);
-
-  useEffect(() => {
-    getProvinsiOptions().then(opts => {
-      if (opts && opts.length > 0) setProvinsiOptions(opts);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (formData.provinsi) {
-      getKabupatenOptions(formData.provinsi).then(opts => setKabupatenOptions(opts));
-    } else {
-      setKabupatenOptions([]);
-    }
-  }, [formData.provinsi]);
-
-  useEffect(() => {
-    if (formData.kabupaten) {
-      getKecamatanOptions(formData.kabupaten).then(opts => setKecamatanOptions(opts));
-    } else {
-      setKecamatanOptions([]);
-    }
-  }, [formData.kabupaten]);
-
-  useEffect(() => {
-    if (formData.kecamatan) {
-      getKelurahanOptions(formData.kecamatan, formData.kabupaten).then(opts => setKelurahanOptions(opts));
-    } else {
-      setKelurahanOptions([]);
-    }
-  }, [formData.kecamatan, formData.kabupaten]);
+  // TanStack Query Hooks untuk data wilayah
+  const { options: provinsiOptions } = useProvinsiOptions();
+  const { options: kabupatenOptions } = useKabupatenOptions(formData.provinsi);
+  const { options: kecamatanOptions } = useKecamatanOptions(formData.kabupaten);
+  const { options: kelurahanOptions } = useKelurahanOptions(formData.kecamatan, formData.kabupaten);
 
   useEffect(() => {
     if (formData.kecamatan) {
@@ -975,9 +952,6 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     {PROVINSI_INDONESIA_OPTIONS.map(opt => (
                       <option key={opt.value} value={opt.label}>{opt.label}</option>
                     ))}
-                    {formData.provinsi && !PROVINSI_INDONESIA_OPTIONS.some(o => o.label.toLowerCase() === formData.provinsi.toLowerCase() || o.value.toLowerCase() === formData.provinsi.toLowerCase()) && (
-                      <option value={formData.provinsi}>{formData.provinsi}</option>
-                    )}
                   </select>
                 </div>
 
@@ -996,9 +970,6 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     {kabupatenOptions.map(opt => (
                       <option key={opt.value} value={opt.label}>{opt.label}</option>
                     ))}
-                    {formData.kabupaten && !kabupatenOptions.some(o => o.label.toLowerCase() === formData.kabupaten.toLowerCase()) && (
-                      <option value={formData.kabupaten}>{formData.kabupaten}</option>
-                    )}
                   </select>
                 </div>
 
@@ -1011,13 +982,10 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     disabled={!formData.kabupaten}
                     className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                   >
-                    <option value="">{formData.kabupaten ? (kecamatanOptions.length > 0 ? '-- Pilih Kecamatan --' : 'Memuat Kecamatan...') : '-- Pilih Kota Terlebih Dahulu --'}</option>
+                    <option value="">{formData.kabupaten ? (kecamatanOptions.length > 0 ? '-- Pilih Kecamatan --' : 'Memuat Kecamatan...') : '-- Pilih Kota/Kabupaten Terlebih Dahulu --'}</option>
                     {kecamatanOptions.map(opt => (
                       <option key={opt.value} value={opt.label}>{opt.label}</option>
                     ))}
-                    {formData.kecamatan && !kecamatanOptions.some(o => o.label.toLowerCase() === formData.kecamatan.toLowerCase()) && (
-                      <option value={formData.kecamatan}>{formData.kecamatan}</option>
-                    )}
                   </select>
                 </div>
 
@@ -1034,9 +1002,6 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     {kelurahanOptions.map(opt => (
                       <option key={opt.value} value={opt.label}>{opt.label}</option>
                     ))}
-                    {formData.kelurahan && !kelurahanOptions.some(o => o.label.toLowerCase() === formData.kelurahan.toLowerCase()) && (
-                      <option value={formData.kelurahan}>{formData.kelurahan}</option>
-                    )}
                   </select>
                 </div>
               </div>

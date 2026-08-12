@@ -62,14 +62,23 @@ export function SearchableSelect({
   // Derived selected option
   const selectedOption = useMemo(() => {
     if (!value) return null;
-    const found = options.find((opt) => opt.value === value);
+    const found = options.find((opt) => opt.value === value || opt.label.toLowerCase() === value.toLowerCase());
     if (found) return found;
-    return { label: value, value };
+    return null;
   }, [options, value]);
 
   const selectedLabel = selectedOption ? selectedOption.label : '';
 
-  // Sync searchQuery with selection when closed or selection changes
+  // Reset searchQuery when options change or value is cleared
+  useEffect(() => {
+    if (!value || (options.length > 0 && !options.some(opt => opt.value === value || opt.label.toLowerCase() === value.toLowerCase()))) {
+      setSearchQuery('');
+    } else if (!isOpen) {
+      setSearchQuery(selectedLabel);
+    }
+  }, [options, value, selectedLabel, isOpen]);
+
+  // Sync searchQuery with selection when dropdown closes
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery(selectedLabel);

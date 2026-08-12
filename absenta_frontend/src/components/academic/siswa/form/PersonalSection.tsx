@@ -11,13 +11,15 @@ import {
   JENIS_KELAMIN_OPTIONS, 
   TRANSPORTASI_OPTIONS, 
   PROVINSI_INDONESIA_OPTIONS,
-  getProvinsiOptions,
-  getKabupatenOptions,
-  getKecamatanOptions,
-  getKelurahanOptions,
   getSmartKodePos,
   DropdownOption
 } from '../../../../api/dropdown.api';
+import { 
+  useProvinsiOptions, 
+  useKabupatenOptions, 
+  useKecamatanOptions, 
+  useKelurahanOptions 
+} from '../../../../hooks/useWilayahOptions';
 import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 import { requestWithFallback } from '../../../../api/apiUtils';
@@ -34,7 +36,7 @@ interface PersonalSectionProps {
     siswaId?: string;
 }
 
-export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
+export const PersonalSection: React.FC<PersonalSectionProps> = ({
     register,
     control,
     errors,
@@ -45,22 +47,17 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
-    const [adminProvinsiOptions, setAdminProvinsiOptions] = useState<DropdownOption[]>(PROVINSI_INDONESIA_OPTIONS);
-    const [adminKabupatenOptions, setAdminKabupatenOptions] = useState<DropdownOption[]>([]);
-    const [adminKecamatanOptions, setAdminKecamatanOptions] = useState<DropdownOption[]>([]);
-    const [adminKelurahanOptions, setAdminKelurahanOptions] = useState<DropdownOption[]>([]);
+
     const selectedProvinsi = watch('provinsi');
     const selectedKabupaten = watch('kabupaten');
     const selectedKecamatan = watch('kecamatan');
     const selectedKelurahan = watch('kelurahan');
 
-    useEffect(() => {
-        getProvinsiOptions().then(opts => {
-            if (opts && opts.length > 0) {
-                setAdminProvinsiOptions(opts);
-            }
-        });
-    }, []);
+    // TanStack Query Hooks untuk data wilayah
+    const { options: adminProvinsiOptions } = useProvinsiOptions();
+    const { options: adminKabupatenOptions, isLoading: isLoadingKabupaten } = useKabupatenOptions(selectedProvinsi);
+    const { options: adminKecamatanOptions, isLoading: isLoadingKecamatan } = useKecamatanOptions(selectedKabupaten);
+    const { options: adminKelurahanOptions, isLoading: isLoadingKelurahan } = useKelurahanOptions(selectedKecamatan, selectedKabupaten);
 
     const getEffectiveOptions = (options: DropdownOption[], currentValue?: string): DropdownOption[] => {
         if (!currentValue) return options;
@@ -68,35 +65,11 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
             opt.value.toLowerCase() === currentValue.toLowerCase() || 
             opt.label.toLowerCase() === currentValue.toLowerCase()
         );
-        if (!exists) {
+        if (!exists && isViewMode) {
             return [{ value: currentValue, label: currentValue }, ...options];
         }
         return options;
     };
-
-    useEffect(() => {
-        if (selectedProvinsi) {
-            getKabupatenOptions(selectedProvinsi).then(opts => setAdminKabupatenOptions(opts));
-        } else {
-            setAdminKabupatenOptions([]);
-        }
-    }, [selectedProvinsi]);
-
-    useEffect(() => {
-        if (selectedKabupaten) {
-            getKecamatanOptions(selectedKabupaten).then(opts => setAdminKecamatanOptions(opts));
-        } else {
-            setAdminKecamatanOptions([]);
-        }
-    }, [selectedKabupaten]);
-
-    useEffect(() => {
-        if (selectedKecamatan) {
-            getKelurahanOptions(selectedKecamatan, selectedKabupaten).then(opts => setAdminKelurahanOptions(opts));
-        } else {
-            setAdminKelurahanOptions([]);
-        }
-    }, [selectedKecamatan, selectedKabupaten]);
 
     useEffect(() => {
         if (selectedKecamatan) {
@@ -106,7 +79,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 }
             });
         }
-    }, [selectedKecamatan, selectedKelurahan, selectedKabupaten]);
+    }, [selectedKecamatan, selectedKelurahan, selectedKabupaten, setValue]);
 
     useEffect(() => {
         setCurrentFoto(watch('foto') || '');
@@ -855,7 +828,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                     setValue('kode_pos', '');
                                 }}
                                 options={getEffectiveOptions(adminKecamatanOptions, field.value)}
-                                placeholder={selectedKabupaten ? (adminKecamatanOptions.length > 0 ? "-- Pilih Kecamatan --" : "Ketik / Memuat Kecamatan...") : "-- Pilih Kabupaten Terlebih Dahulu --"}
+                                placeholder={selectedKabupaten ? (adminKecamatanOptions.length > 0 ? "-- Pilih Kecamatan --" : "Memuat Kecamatan...") : "-- Pilih Kabupaten Terlebih Dahulu --"}
                                 disabled={isViewMode || !selectedKabupaten}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                             />
@@ -879,7 +852,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                 value={field.value || ''}
                                 onValueChange={field.onChange}
                                 options={getEffectiveOptions(adminKelurahanOptions, field.value)}
-                                placeholder={selectedKecamatan ? (adminKelurahanOptions.length > 0 ? "-- Pilih Kelurahan/Desa --" : "Ketik / Memuat Desa...") : "-- Pilih Kecamatan Terlebih Dahulu --"}
+                                placeholder={selectedKecamatan ? (adminKelurahanOptions.length > 0 ? "-- Pilih Kelurahan/Desa --" : "Memuat Desa...") : "-- Pilih Kecamatan Terlebih Dahulu --"}
                                 disabled={isViewMode || !selectedKecamatan}
                                 triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
                             />
@@ -953,51 +926,6 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                         placeholder="Contoh: Kp. Cihampelas No. 11 atau Jl. Merdeka No. 45..."
                         disabled={isViewMode}
                         className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl min-h-[80px]"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="rt" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            RT
-                        </Label>
-                    </div>
-                    <Input
-                        id="rt"
-                        {...register('rt')}
-                        placeholder="001"
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="rw" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            RW
-                        </Label>
-                    </div>
-                    <Input
-                        id="rw"
-                        {...register('rw')}
-                        placeholder="002"
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
-                </div>
-
-                <div className="space-y-2 group">
-                    <div className="flex items-center justify-between px-1">
-                        <Label htmlFor="kode_pos" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Kode Pos
-                        </Label>
-                    </div>
-                    <Input
-                        id="kode_pos"
-                        {...register('kode_pos')}
-                        placeholder="Kode pos..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl font-mono"
                     />
                 </div>
 
@@ -1081,6 +1009,4 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
             </Modal>
         </div>
     );
-});
-
-PersonalSection.displayName = 'PersonalSection';
+};
