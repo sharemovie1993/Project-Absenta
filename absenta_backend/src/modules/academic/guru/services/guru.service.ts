@@ -17,6 +17,7 @@ export interface CreateGuruInput {
   nip?: string | null;
   nuptk?: string | null;
   nik?: string | null;
+  no_kk?: string | null;
   npwp?: string | null;
   nama_ibu_kandung?: string | null;
   nama_guru: string;
@@ -25,6 +26,14 @@ export interface CreateGuruInput {
   // Kontak & Pribadi
   no_hp?: string | null;
   alamat?: string | null;
+  dusun?: string | null;
+  kelurahan?: string | null;
+  kecamatan?: string | null;
+  kabupaten?: string | null;
+  provinsi?: string | null;
+  rt?: string | null;
+  rw?: string | null;
+  kode_pos?: string | null;
   tempat_lahir?: string | null;
   tanggal_lahir?: Date | string | null;
   jenis_kelamin?: string | null;
@@ -42,6 +51,7 @@ export interface UpdateGuruInput {
   nip?: string | null;
   nuptk?: string | null;
   nik?: string | null;
+  no_kk?: string | null;
   npwp?: string | null;
   nama_ibu_kandung?: string | null;
   nama_guru?: string | null;
@@ -51,6 +61,14 @@ export interface UpdateGuruInput {
   // Kontak & Pribadi
   no_hp?: string | null;
   alamat?: string | null;
+  dusun?: string | null;
+  kelurahan?: string | null;
+  kecamatan?: string | null;
+  kabupaten?: string | null;
+  provinsi?: string | null;
+  rt?: string | null;
+  rw?: string | null;
+  kode_pos?: string | null;
   tempat_lahir?: string | null;
   tanggal_lahir?: Date | string | null;
   jenis_kelamin?: string | null;
@@ -591,10 +609,20 @@ export class GuruService {
     if (input.nip !== undefined) updateData.nip = input.nip;
     if (input.nuptk !== undefined) updateData.nuptk = input.nuptk;
     if (input.nik !== undefined) updateData.nik = input.nik;
+    if (input.no_kk !== undefined) updateData.no_kk = input.no_kk;
     if (input.npwp !== undefined) updateData.npwp = input.npwp;
     if (input.nama_ibu_kandung !== undefined) updateData.nama_ibu_kandung = input.nama_ibu_kandung;
     if (input.nama_guru !== undefined) updateData.nama_guru = input.nama_guru;
     if (input.no_rfid !== undefined) updateData.no_rfid = input.no_rfid;
+    if (input.alamat !== undefined) updateData.alamat = input.alamat;
+    if (input.dusun !== undefined) updateData.dusun = input.dusun;
+    if (input.kelurahan !== undefined) updateData.kelurahan = input.kelurahan;
+    if (input.kecamatan !== undefined) updateData.kecamatan = input.kecamatan;
+    if (input.kabupaten !== undefined) updateData.kabupaten = input.kabupaten;
+    if (input.provinsi !== undefined) updateData.provinsi = input.provinsi;
+    if (input.rt !== undefined) updateData.rt = input.rt;
+    if (input.rw !== undefined) updateData.rw = input.rw;
+    if (input.kode_pos !== undefined) updateData.kode_pos = input.kode_pos;
     if (input.no_hp !== undefined) {
       const cleanPhone = input.no_hp ? normalizePhone(input.no_hp) : null;
       if (existingGuru.no_hp) {

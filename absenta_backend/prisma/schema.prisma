@@ -808,6 +808,7 @@ model Guru {
   nip                   String?
   nuptk                 String?
   nik                   String?
+  no_kk                 String?
   npwp                  String?
   nama_ibu_kandung      String?
   nama_guru             String
@@ -815,6 +816,14 @@ model Guru {
   // Kontak & Pribadi (opsional)
   no_hp                 String?
   alamat                String?
+  dusun                 String?
+  kelurahan             String?
+  kecamatan             String?
+  kabupaten             String?
+  provinsi              String?
+  rt                    String?
+  rw                    String?
+  kode_pos              String?
   tempat_lahir          String?
   tanggal_lahir         DateTime?
   jenis_kelamin         String?

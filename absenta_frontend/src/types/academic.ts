@@ -11,6 +11,7 @@ export interface Guru {
   nip?: string;
   nuptk?: string;
   nik?: string;
+  no_kk?: string;
   npwp?: string;
   nama_ibu_kandung?: string;
   nama_guru: string;
@@ -18,6 +19,14 @@ export interface Guru {
   email?: string;
   no_hp?: string;
   alamat?: string;
+  dusun?: string;
+  kelurahan?: string;
+  kecamatan?: string;
+  kabupaten?: string;
+  provinsi?: string;
+  rt?: string;
+  rw?: string;
+  kode_pos?: string;
   tempat_lahir?: string;
   tanggal_lahir?: string;
   jenis_kelamin?: 'L' | 'P';

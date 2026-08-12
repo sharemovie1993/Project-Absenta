@@ -5,6 +5,7 @@ export const createGuruSchema = z.object({
   nip: z.string().optional().nullable(),
   nuptk: z.string().optional().nullable(),
   nik: z.string().optional().nullable(),
+  no_kk: z.string().optional().nullable(),
   npwp: z.string().optional().nullable(),
   nama_ibu_kandung: z.string().optional().nullable(),
   nama_guru: z.string().min(1, 'Nama guru wajib diisi'),
@@ -12,6 +13,14 @@ export const createGuruSchema = z.object({
   email: z.string().email('Format email tidak valid').optional().nullable(),
   no_hp: z.string().optional().nullable(),
   alamat: z.string().optional().nullable(),
+  dusun: z.string().optional().nullable(),
+  kelurahan: z.string().optional().nullable(),
+  kecamatan: z.string().optional().nullable(),
+  kabupaten: z.string().optional().nullable(),
+  provinsi: z.string().optional().nullable(),
+  rt: z.string().optional().nullable(),
+  rw: z.string().optional().nullable(),
+  kode_pos: z.string().optional().nullable(),
   tempat_lahir: z.string().optional().nullable(),
   tanggal_lahir: z.union([z.date(), z.string()])
     .transform((v) => (v ? new Date(v) : null))
