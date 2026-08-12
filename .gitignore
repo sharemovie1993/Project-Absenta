@@ -54,3 +54,7 @@ bin/
 .redis-bin/
 .tsbuildinfo
 
+# WireGuard Tunnels (Dynamic configurations per server)
+tunnels/*.conf
+
+
