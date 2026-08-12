@@ -600,7 +600,6 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 />
               </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
                   NPWP
@@ -613,19 +612,19 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                 />
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Nama Ibu Kandung (Sesuai Dapodik)
-                </label>
-                <input
-                  type="text"
-                  value={editNamaIbuKandung}
-                  onChange={(e) => setEditNamaIbuKandung(e.target.value)}
-                  placeholder="Nama Ibu Kandung"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                Nama Ibu Kandung (Sesuai Dapodik)
+              </label>
+              <input
+                type="text"
+                value={editNamaIbuKandung}
+                onChange={(e) => setEditNamaIbuKandung(e.target.value)}
+                placeholder="Nama Ibu Kandung"
+                className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
