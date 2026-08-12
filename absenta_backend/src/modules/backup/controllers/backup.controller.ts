@@ -405,17 +405,11 @@ export class BackupController {
         }
       }
 
-      // Track valid Role IDs & Names in target DB to prevent User_role_id_fkey failures
+      // Track valid Role IDs in target DB to prevent User_role_id_fkey failures
       const existingRoles = await prisma.role.findMany({
         where: { OR: [{ tenant_id: tenantId }, { tenant_id: null }] },
       });
-      const validRoleIds = new Set(existingRoles.map(r => r.id));
       validIdsMap.set('Role', new Set(existingRoles.map(r => r.id)));
-      const roleNameMap = new Map<string, string>();
-      for (const r of existingRoles) {
-        if (r.name) roleNameMap.set(r.name.toUpperCase(), r.id);
-      }
-      let fallbackRoleId = existingRoles.find(r => r.tenant_id === tenantId)?.id || existingRoles[0]?.id;
 
       for (const modelName of models) {
         let rows: any[] | undefined = dataTables[modelName];
@@ -446,14 +440,38 @@ export class BackupController {
 
             const isUserModel = modelName === 'User' || modelName.toLowerCase() === 'user';
             if (isUserModel) {
-              if (!cleanData.role_id || !validRoleIds.has(cleanData.role_id)) {
-                const rawRoleName = rawRow.Role?.name || rawRow.role_name || rawRow.role || rawRow.roleName;
-                const matchedRoleId = rawRoleName ? roleNameMap.get(String(rawRoleName).toUpperCase()) : null;
+              let targetRoleId: string | undefined = undefined;
 
-                if (matchedRoleId) {
-                  cleanData.role_id = matchedRoleId;
-                } else if (fallbackRoleId) {
-                  cleanData.role_id = fallbackRoleId;
+              // 1. Check if role_id in cleanData exists directly in target DB
+              if (cleanData.role_id) {
+                const checkRole = await prisma.role.findUnique({ where: { id: String(cleanData.role_id) } });
+                if (checkRole) {
+                  targetRoleId = checkRole.id;
+                }
+              }
+
+              // 2. If cleanData.role_id doesn't exist in target DB, resolve by Role Name
+              if (!targetRoleId) {
+                const rawRoleName = rawRow.Role?.name || rawRow.role_name || rawRow.role || rawRow.roleName;
+                if (rawRoleName) {
+                  const upperName = String(rawRoleName).toUpperCase();
+                  const matchedRole = await prisma.role.findFirst({
+                    where: {
+                      name: upperName,
+                      OR: [{ tenant_id: tenantId }, { tenant_id: null }]
+                    }
+                  });
+                  if (matchedRole) targetRoleId = matchedRole.id;
+                }
+              }
+
+              // 3. Fallback to any valid tenant role or default ADMIN role
+              if (!targetRoleId) {
+                const fallbackRole = await prisma.role.findFirst({
+                  where: { OR: [{ tenant_id: tenantId }, { tenant_id: null }] }
+                });
+                if (fallbackRole) {
+                  targetRoleId = fallbackRole.id;
                 } else {
                   const defaultRole = await prisma.role.create({
                     data: {
@@ -463,19 +481,18 @@ export class BackupController {
                       is_system: true,
                     }
                   });
-                  validRoleIds.add(defaultRole.id);
-                  roleNameMap.set('ADMIN', defaultRole.id);
-                  fallbackRoleId = defaultRole.id;
-                  cleanData.role_id = defaultRole.id;
+                  targetRoleId = defaultRole.id;
                 }
               }
+
+              cleanData.role_id = targetRoleId;
 
               let roleSet = validIdsMap.get('Role');
               if (!roleSet) {
                 roleSet = new Set<string>();
                 validIdsMap.set('Role', roleSet);
               }
-              validRoleIds.forEach(id => roleSet!.add(id));
+              roleSet.add(targetRoleId);
             }
 
             // Universal Foreign Key Guard: Verify & sanitize all object relation fields against valid target IDs
@@ -565,23 +582,42 @@ export class BackupController {
                   update: cleanData,
                 });
               } catch (upsertErr: any) {
-                // Self-healing fallback if unique constraint failed (e.g. Plan code collision)
-                const uniqueField = dmmfModel?.fields.find(
-                  f => f.isUnique && f.name !== 'id' && cleanData[f.name] !== undefined && cleanData[f.name] !== null
-                );
-                if (uniqueField) {
-                  savedRecord = await prismaModel.findFirst({
-                    where: { [uniqueField.name]: cleanData[uniqueField.name] }
+                // Self-healing fallback 1: FK error on User_role_id_fkey
+                if (isUserModel || String(upsertErr?.message).includes('User_role_id_fkey') || String(upsertErr?.message).includes('foreign key constraint')) {
+                  const safeRole = await prisma.role.findFirst({
+                    where: { OR: [{ tenant_id: tenantId }, { tenant_id: null }] }
                   });
-                  if (savedRecord) {
+                  if (safeRole) {
+                    cleanData.role_id = safeRole.id;
                     try {
-                      const updatePayload = { ...cleanData };
-                      delete updatePayload.id;
-                      savedRecord = await prismaModel.update({
-                        where: { id: savedRecord.id },
-                        data: updatePayload,
+                      savedRecord = await prismaModel.upsert({
+                        where: whereInput,
+                        create: cleanData,
+                        update: cleanData,
                       });
                     } catch (_) {}
+                  }
+                }
+
+                // Self-healing fallback 2: unique constraint failed
+                if (!savedRecord) {
+                  const uniqueField = dmmfModel?.fields.find(
+                    f => f.isUnique && f.name !== 'id' && cleanData[f.name] !== undefined && cleanData[f.name] !== null
+                  );
+                  if (uniqueField) {
+                    savedRecord = await prismaModel.findFirst({
+                      where: { [uniqueField.name]: cleanData[uniqueField.name] }
+                    });
+                    if (savedRecord) {
+                      try {
+                        const updatePayload = { ...cleanData };
+                        delete updatePayload.id;
+                        savedRecord = await prismaModel.update({
+                          where: { id: savedRecord.id },
+                          data: updatePayload,
+                        });
+                      } catch (_) {}
+                    }
                   }
                 }
                 if (!savedRecord) throw upsertErr;
