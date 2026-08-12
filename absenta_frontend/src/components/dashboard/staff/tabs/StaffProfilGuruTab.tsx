@@ -55,6 +55,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [editRw, setEditRw] = useState('');
   const [editKodePos, setEditKodePos] = useState('');
 
+  // Active section state for modal editing ('pribadi' | 'kepegawaian' | 'alamat')
+  const [activeEditSection, setActiveEditSection] = useState<'pribadi' | 'kepegawaian' | 'alamat'>('pribadi');
+
+  const handleOpenEditSection = (section: 'pribadi' | 'kepegawaian' | 'alamat') => {
+    setActiveEditSection(section);
+    setIsEditModalOpen(true);
+  };
+
   // Cascading Wilayah Hooks
   const { options: provinsiOptions, isLoading: loadingProv } = useProvinsiOptions();
   const { options: kabupatenOptions, isLoading: loadingKab } = useKabupatenOptions(editProvinsi);
@@ -372,7 +380,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => handleOpenEditSection('pribadi')}
               className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               <Edit3 size={14} />
@@ -428,7 +436,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => handleOpenEditSection('kepegawaian')}
               className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               <Edit3 size={14} />
@@ -488,7 +496,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={() => handleOpenEditSection('alamat')}
               className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               <Edit3 size={14} />
@@ -562,353 +570,411 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title="Edit Data Pribadi & Kepegawaian Guru"
+          title={
+            activeEditSection === 'pribadi'
+              ? 'Edit Data Pribadi Guru'
+              : activeEditSection === 'kepegawaian'
+              ? 'Edit Kepegawaian & Dapodik Guru'
+              : 'Edit Kontak & Alamat Guru'
+          }
         >
-          <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  NIK (KTP 16 Digit)
-                </label>
-                <input
-                  type="text"
-                  value={editNik}
-                  onChange={(e) => setEditNik(e.target.value)}
-                  placeholder="3204xxxxxxxxxxxx"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+          {/* Section Navigation Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveEditSection('pribadi')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeEditSection === 'pribadi'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <User size={14} />
+              <span>Data Pribadi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveEditSection('kepegawaian')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeEditSection === 'kepegawaian'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Users size={14} />
+              <span>Kepegawaian</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveEditSection('alamat')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeEditSection === 'alamat'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <MapPin size={14} />
+              <span>Kontak &amp; Alamat</span>
+            </button>
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  No. Kartu Keluarga (KK)
-                </label>
-                <input
-                  type="text"
-                  value={editNoKk}
-                  onChange={(e) => setEditNoKk(e.target.value)}
-                  placeholder="16-digit No. KK"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+          <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-1">
+            {activeEditSection === 'pribadi' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      NIK (KTP 16 Digit)
+                    </label>
+                    <input
+                      type="text"
+                      value={editNik}
+                      onChange={(e) => setEditNik(e.target.value)}
+                      placeholder="3204xxxxxxxxxxxx"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  NUPTK
-                </label>
-                <input
-                  type="text"
-                  value={editNuptk}
-                  onChange={(e) => setEditNuptk(e.target.value)}
-                  placeholder="16-digit NUPTK"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      No. Kartu Keluarga (KK)
+                    </label>
+                    <input
+                      type="text"
+                      value={editNoKk}
+                      onChange={(e) => setEditNoKk(e.target.value)}
+                      placeholder="16-digit No. KK"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  NPWP
-                </label>
-                <input
-                  type="text"
-                  value={editNpwp}
-                  onChange={(e) => setEditNpwp(e.target.value)}
-                  placeholder="Nomor NPWP Guru"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    Nama Ibu Kandung (Sesuai Dapodik)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNamaIbuKandung}
+                    onChange={(e) => setEditNamaIbuKandung(e.target.value)}
+                    placeholder="Nama Ibu Kandung"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                Nama Ibu Kandung (Sesuai Dapodik)
-              </label>
-              <input
-                type="text"
-                value={editNamaIbuKandung}
-                onChange={(e) => setEditNamaIbuKandung(e.target.value)}
-                placeholder="Nama Ibu Kandung"
-                className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Tempat Lahir
+                    </label>
+                    <input
+                      type="text"
+                      value={editTempatLahir}
+                      onChange={(e) => setEditTempatLahir(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Tempat Lahir
-                </label>
-                <input
-                  type="text"
-                  value={editTempatLahir}
-                  onChange={(e) => setEditTempatLahir(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Tanggal Lahir
+                    </label>
+                    <input
+                      type="date"
+                      value={editTanggalLahir}
+                      onChange={(e) => setEditTanggalLahir(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Tanggal Lahir
-                </label>
-                <input
-                  type="date"
-                  value={editTanggalLahir}
-                  onChange={(e) => setEditTanggalLahir(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Jenis Kelamin
+                    </label>
+                    <select
+                      value={editJenisKelamin}
+                      onChange={(e) => setEditJenisKelamin(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="L">Laki-laki</option>
+                      <option value="P">Perempuan</option>
+                    </select>
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Jenis Kelamin
-                </label>
-                <select
-                  value={editJenisKelamin}
-                  onChange={(e) => setEditJenisKelamin(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="L">Laki-laki</option>
-                  <option value="P">Perempuan</option>
-                </select>
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Agama
+                    </label>
+                    <select
+                      value={editAgama}
+                      onChange={(e) => setEditAgama(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="ISLAM">Islam</option>
+                      <option value="KRISTEN">Kristen</option>
+                      <option value="KATHOLIK">Katholik</option>
+                      <option value="HINDU">Hindu</option>
+                      <option value="BUDDHA">Buddha</option>
+                      <option value="KONGHUCU">Konghucu</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Agama
-                </label>
-                <select
-                  value={editAgama}
-                  onChange={(e) => setEditAgama(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="ISLAM">Islam</option>
-                  <option value="KRISTEN">Kristen</option>
-                  <option value="KATHOLIK">Katholik</option>
-                  <option value="HINDU">Hindu</option>
-                  <option value="BUDDHA">Buddha</option>
-                  <option value="KONGHUCU">Konghucu</option>
-                </select>
-              </div>
-            </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    Pendidikan Terakhir
+                  </label>
+                  <input
+                    type="text"
+                    value={editPendidikanTerakhir}
+                    onChange={(e) => setEditPendidikanTerakhir(e.target.value)}
+                    placeholder="S1 Pendidikan Komputer"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </>
+            )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Status Kepegawaian
-                </label>
-                <select
-                  value={editStatusKepegawaian}
-                  onChange={(e) => setEditStatusKepegawaian(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="PNS">PNS / Pegawai Negeri Sipil</option>
-                  <option value="PPPK">PPPK / PPPK Guru</option>
-                  <option value="GTY">GTY / Guru Tetap Yayasan</option>
-                  <option value="GTT">GTT / Guru Tidak Tetap</option>
-                  <option value="HONORER">Honorer Sekolah</option>
-                </select>
-              </div>
+            {activeEditSection === 'kepegawaian' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      NUPTK
+                    </label>
+                    <input
+                      type="text"
+                      value={editNuptk}
+                      onChange={(e) => setEditNuptk(e.target.value)}
+                      placeholder="16-digit NUPTK"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Golongan / Pangkat
-                </label>
-                <input
-                  type="text"
-                  value={editPangkatGolongan}
-                  onChange={(e) => setEditPangkatGolongan(e.target.value)}
-                  placeholder="IV/a - Pembina"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      NPWP
+                    </label>
+                    <input
+                      type="text"
+                      value={editNpwp}
+                      onChange={(e) => setEditNpwp(e.target.value)}
+                      placeholder="Nomor NPWP Guru"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Jenis PTK
-                </label>
-                <select
-                  value={editJenisPtk}
-                  onChange={(e) => setEditJenisPtk(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="PENDIDIK">PENDIDIK (Guru)</option>
-                  <option value="TENAGA_KEPENDIDIKAN">TENAGA KEPENDIDIKAN (Staf / TU)</option>
-                </select>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Status Kepegawaian
+                    </label>
+                    <select
+                      value={editStatusKepegawaian}
+                      onChange={(e) => setEditStatusKepegawaian(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="PNS">PNS / Pegawai Negeri Sipil</option>
+                      <option value="PPPK">PPPK / PPPK Guru</option>
+                      <option value="GTY">GTY / Guru Tetap Yayasan</option>
+                      <option value="GTT">GTT / Guru Tidak Tetap</option>
+                      <option value="HONORER">Honorer Sekolah</option>
+                    </select>
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  TMT Guru (Terhitung Mulai Tanggal)
-                </label>
-                <input
-                  type="date"
-                  value={editTmtGuru}
-                  onChange={(e) => setEditTmtGuru(e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Golongan / Pangkat
+                    </label>
+                    <input
+                      type="text"
+                      value={editPangkatGolongan}
+                      onChange={(e) => setEditPangkatGolongan(e.target.value)}
+                      placeholder="IV/a - Pembina"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                Pendidikan Terakhir
-              </label>
-              <input
-                type="text"
-                value={editPendidikanTerakhir}
-                onChange={(e) => setEditPendidikanTerakhir(e.target.value)}
-                placeholder="S1 Pendidikan Komputer"
-                className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Jenis PTK
+                    </label>
+                    <select
+                      value={editJenisPtk}
+                      onChange={(e) => setEditJenisPtk(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="PENDIDIK">PENDIDIK (Guru)</option>
+                      <option value="TENAGA_KEPENDIDIKAN">TENAGA KEPENDIDIKAN (Staf / TU)</option>
+                    </select>
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Alamat Jalan / Blok
-                </label>
-                <input
-                  type="text"
-                  value={editAlamat}
-                  onChange={(e) => setEditAlamat(e.target.value)}
-                  placeholder="Jl. Raya No. 123"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      TMT Guru (Terhitung Mulai Tanggal)
+                    </label>
+                    <input
+                      type="date"
+                      value={editTmtGuru}
+                      onChange={(e) => setEditTmtGuru(e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Dusun / Kampung
-                </label>
-                <input
-                  type="text"
-                  value={editDusun}
-                  onChange={(e) => setEditDusun(e.target.value)}
-                  placeholder="Kampung Krajan"
-                  className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+            {activeEditSection === 'alamat' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Alamat Jalan / Blok
+                    </label>
+                    <input
+                      type="text"
+                      value={editAlamat}
+                      onChange={(e) => setEditAlamat(e.target.value)}
+                      placeholder="Jl. Raya No. 123"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-3 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  RT
-                </label>
-                <input
-                  type="text"
-                  value={editRt}
-                  onChange={(e) => setEditRt(e.target.value)}
-                  placeholder="001"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Dusun / Kampung
+                    </label>
+                    <input
+                      type="text"
+                      value={editDusun}
+                      onChange={(e) => setEditDusun(e.target.value)}
+                      placeholder="Kampung Krajan"
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  RW
-                </label>
-                <input
-                  type="text"
-                  value={editRw}
-                  onChange={(e) => setEditRw(e.target.value)}
-                  placeholder="002"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                <div className="grid grid-cols-3 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      RT
+                    </label>
+                    <input
+                      type="text"
+                      value={editRt}
+                      onChange={(e) => setEditRt(e.target.value)}
+                      placeholder="001"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Kode Pos
-                </label>
-                <input
-                  type="text"
-                  value={editKodePos}
-                  onChange={(e) => setEditKodePos(e.target.value)}
-                  placeholder="41162"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      RW
+                    </label>
+                    <input
+                      type="text"
+                      value={editRw}
+                      onChange={(e) => setEditRw(e.target.value)}
+                      placeholder="002"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Provinsi
-                </label>
-                <SearchableSelect
-                  value={editProvinsi}
-                  onValueChange={(val) => {
-                    setEditProvinsi(val);
-                    setEditKabupaten('');
-                    setEditKecamatan('');
-                    setEditKelurahan('');
-                  }}
-                  options={provinsiOptions}
-                  placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
-                  disabled={loadingProv}
-                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Kode Pos
+                    </label>
+                    <input
+                      type="text"
+                      value={editKodePos}
+                      onChange={(e) => setEditKodePos(e.target.value)}
+                      placeholder="41162"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Kabupaten / Kota
-                </label>
-                <SearchableSelect
-                  value={editKabupaten}
-                  onValueChange={(val) => {
-                    setEditKabupaten(val);
-                    setEditKecamatan('');
-                    setEditKelurahan('');
-                  }}
-                  options={kabupatenOptions}
-                  placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
-                  disabled={!editProvinsi || loadingKab}
-                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Provinsi
+                    </label>
+                    <SearchableSelect
+                      value={editProvinsi}
+                      onValueChange={(val) => {
+                        setEditProvinsi(val);
+                        setEditKabupaten('');
+                        setEditKecamatan('');
+                        setEditKelurahan('');
+                      }}
+                      options={provinsiOptions}
+                      placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
+                      disabled={loadingProv}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Kecamatan
-                </label>
-                <SearchableSelect
-                  value={editKecamatan}
-                  onValueChange={(val) => {
-                    setEditKecamatan(val);
-                    setEditKelurahan('');
-                  }}
-                  options={kecamatanOptions}
-                  placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
-                  disabled={!editKabupaten || loadingKec}
-                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Kabupaten / Kota
+                    </label>
+                    <SearchableSelect
+                      value={editKabupaten}
+                      onValueChange={(val) => {
+                        setEditKabupaten(val);
+                        setEditKecamatan('');
+                        setEditKelurahan('');
+                      }}
+                      options={kabupatenOptions}
+                      placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
+                      disabled={!editProvinsi || loadingKab}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                  Desa / Kelurahan
-                </label>
-                <SearchableSelect
-                  value={editKelurahan}
-                  onValueChange={(val) => setEditKelurahan(val)}
-                  options={kelurahanOptions}
-                  placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
-                  disabled={!editKecamatan || loadingKel}
-                  triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Kecamatan
+                    </label>
+                    <SearchableSelect
+                      value={editKecamatan}
+                      onValueChange={(val) => {
+                        setEditKecamatan(val);
+                        setEditKelurahan('');
+                      }}
+                      options={kecamatanOptions}
+                      placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
+                      disabled={!editKabupaten || loadingKec}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Desa / Kelurahan
+                    </label>
+                    <SearchableSelect
+                      value={editKelurahan}
+                      onValueChange={(val) => setEditKelurahan(val)}
+                      options={kelurahanOptions}
+                      placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
+                      disabled={!editKecamatan || loadingKel}
+                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
