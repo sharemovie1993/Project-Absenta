@@ -49,28 +49,19 @@ export function useGuruMe() {
 }
 
 /**
- * Hook to update logged in teacher's profile data (with automatic cache invalidation)
+ * Hook to update logged in teacher's profile data via dedicated /me endpoint.
+ * Guru role always uses PUT /guru/me (exempted from capability check).
+ * Does NOT fall back to PUT /:id to avoid triggering organizationalScope
+ * middleware and ZodParse that can produce 500 errors for GURU role.
  */
 export function useUpdateGuruMe() {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
 
   return useMutation({
     mutationFn: async (data: Record<string, any>) => {
-      // 1. Try dedicated endpoint /academic/guru/me
-      try {
-        const meRes = await guruApi.updateMe(data);
-        if (meRes?.success) return meRes;
-      } catch (err) {
-        console.warn('guruApi.updateMe failed, falling back to update by targetId:', err);
-      }
-
-      // 2. Fallback to update by ID
-      const targetId = user?.guru_profile?.id || (user as any)?.guru?.id;
-      if (!targetId) {
-        throw new Error('ID guru tidak ditemukan.');
-      }
-      return guruApi.update(targetId, data as any);
+      // Always use the dedicated /me endpoint — it's exempted for GURU role
+      const meRes = await guruApi.updateMe(data);
+      return meRes;
     },
     onSuccess: () => {
       // Invalidate relevant React Query caches

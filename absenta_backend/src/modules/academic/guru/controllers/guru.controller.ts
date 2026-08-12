@@ -1,6 +1,7 @@
 import { guruService, CreateGuruInput, UpdateGuruInput } from '../services/guru.service';
 import { createGuruSchema, updateGuruSchema } from '../services/guru.schema';
 import { updateGuruMaxJpCommand } from '../services/commands/update-guru-max-jp.command';
+import { ZodError } from 'zod';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { getPaginationParams } from '../../../../utils/pagination';
@@ -250,13 +251,24 @@ export class GuruController {
         data: guru,
       };
     } catch (error) {
+      // Handle Zod validation errors with 400 (not 500)
+      if (error instanceof ZodError) {
+        reply.status(400);
+        return {
+          success: false,
+          message: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '),
+        };
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to update guru';
       
       // Handle specific error cases
       if (errorMessage.includes('not found') || 
-          errorMessage.includes('NIP already exists')) {
+          errorMessage.includes('NIP already exists') ||
+          errorMessage.includes('Email sudah terdaftar')) {
         reply.status(400);
-      } else if (errorMessage.includes('insufficient permissions')) {
+      } else if (errorMessage.includes('insufficient permissions') ||
+                 errorMessage.includes('Forbidden')) {
         reply.status(403);
       } else {
         reply.status(500);
