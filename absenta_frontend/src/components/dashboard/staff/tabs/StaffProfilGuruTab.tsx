@@ -1,17 +1,180 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2 } from 'lucide-react';
+import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen } from 'lucide-react';
 import { Button, Modal, SearchableSelect } from '../../../ui';
 import { toast } from 'react-hot-toast';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
 import { formatAlamatLengkap } from '../../../../lib/alamat.util';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
+import { uploadGuruDocument, getMemberDocPreviewUrl } from '../../../../api/memberDocs.api';
+import { resolveProfilePhotoUrl } from '../../../../lib/utils';
+
+// ─── Webcam Modal ─────────────────────────────────────────────────────────────
+
+interface WebcamModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCapture: (file: File) => void;
+}
+
+const WebcamModal: React.FC<WebcamModalProps> = ({ isOpen, onClose, onCapture }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Browser tidak mendukung fitur kamera live.');
+      return;
+    }
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode, width: { ideal: 640 }, height: { ideal: 640 } } })
+      .then((stream) => {
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      })
+      .catch(() => setCameraError('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.'));
+
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, [isOpen, facingMode]);
+
+  const handleSnap = () => {
+    if (!videoRef.current) return;
+    const v = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = v.videoWidth || 640;
+    canvas.height = v.videoHeight || 640;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      if (facingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) onCapture(new File([blob], `foto_guru_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        onClose();
+      }, 'image/jpeg', 0.9);
+    }
+  };
+
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2 text-white font-extrabold text-sm">
+            <Camera size={18} className="text-emerald-400" />
+            <span>Kamera — Foto Profil Guru</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setFacingMode(m => m === 'user' ? 'environment' : 'user')}
+              className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-slate-700">
+              <RotateCcw size={13} /><span>Switch</span>
+            </button>
+            <button type="button" onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="relative aspect-square w-full rounded-2xl bg-black overflow-hidden border-2 border-emerald-500/50 flex items-center justify-center">
+          {cameraError ? (
+            <div className="p-4 text-xs font-bold text-rose-400 text-center space-y-2">
+              <AlertCircle size={24} className="mx-auto" /><p>{cameraError}</p>
+            </div>
+          ) : (
+            <video ref={videoRef} autoPlay playsInline muted
+              className={`w-full h-full object-cover${facingMode === 'user' ? ' scale-x-[-1]' : ''}`} />
+          )}
+        </div>
+        <div className="flex justify-center gap-3">
+          <Button variant="outline" onClick={onClose} className="rounded-xl text-xs font-bold border-slate-700 text-slate-300 cursor-pointer">Batal</Button>
+          {!cameraError && (
+            <button type="button" onClick={handleSnap}
+              className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer transition-all active:scale-95">
+              <Camera size={16} /><span>📸 Jepret Foto</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Jabatan Badge ─────────────────────────────────────────────────────────────
+
+interface JabatanBadgeProps { nama: string; color?: string; icon?: React.ReactNode; }
+const JabatanBadge: React.FC<JabatanBadgeProps> = ({ nama, color, icon }) => (
+  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl border text-[10px] font-bold ${color ?? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'}`}>
+    {icon}<span>{nama}</span>
+  </span>
+);
+
+// ─── Hook: Guru Jabatan dari Struktur Organisasi ──────────────────────────────
+
+function useGuruJabatan(guruId: string | undefined) {
+  return useQuery({
+    queryKey: ['guru-jabatan-struktur', guruId],
+    queryFn: async () => {
+      if (!guruId) return [];
+      try {
+        const res = await getStrukturList({ is_active: true });
+        const list: Array<{ id: string; nama: string; kode: string; kelas?: string }> = [];
+        for (const s of (res?.data ?? [])) {
+          const assigns = s.organizationalAssigns ?? [];
+          const match = assigns.find((a: any) => {
+            const gId = a.User?.Guru?.id ?? a.guru_id;
+            return gId === guruId;
+          });
+          if (match) {
+            // Resolve kelas name for wali-kelas type assignments
+            const kelasName = (match as any).kelas_name || (match as any).Kelas?.nama_kelas || s.kelas_name || undefined;
+            list.push({ id: s.id, nama: s.nama, kode: s.kode, kelas: kelasName });
+          }
+        }
+        return list;
+      } catch { return []; }
+    },
+    enabled: !!guruId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function getJabatanColor(kode: string) {
+  const k = kode.toUpperCase();
+  if (k.includes('KEPALA') || k.includes('PRINCIPAL')) return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+  if (k.includes('WALI') || k.includes('WALAS')) return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+  if (k.includes('WAKASEK') || k.includes('WAKIL')) return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+  if (k.includes('BK') || k.includes('KONSELOR')) return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+  if (k.includes('KURIKULUM')) return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+  return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+}
+
+function getJabatanIcon(kode: string): React.ReactNode {
+  const k = kode.toUpperCase();
+  if (k.includes('KEPALA') || k.includes('WAKASEK') || k.includes('WAKIL')) return <Shield size={11} />;
+  if (k.includes('WALI') || k.includes('WALAS')) return <Users size={11} />;
+  if (k.includes('EKSKUL') || k.includes('PEMBINA')) return <BookOpen size={11} />;
+  return <Briefcase size={11} />;
+}
+
 
 interface StaffProfilGuruTabProps {
   user: any;
   teacherInitials: string;
   nipText: string;
   waliKelasNama?: string;
+  /** Callback after photo upload so parent can re-fetch photo */
+  onPhotoUpdate?: () => void;
 }
 
 export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
@@ -19,10 +182,35 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   teacherInitials,
   nipText,
   waliKelasNama,
+  onPhotoUpdate,
 }) => {
   // 1. Fetch live teacher profile via React Query Hook
-  const { guruProfile } = useGuruMe();
+  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
   const updateGuruMeMutation = useUpdateGuruMe();
+  const queryClient = useQueryClient();
+
+  // ── Photo state ──────────────────────────────────────────────────────────────
+  const [isWebcamOpen, setIsWebcamOpen] = useState(false);
+  const [localPhotoPreview, setLocalPhotoPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const guruId: string | undefined = guruProfile?.id;
+
+  // Resolve display photo: local preview → guruProfile.foto → fallback initials
+  const rawGuruPhoto = guruProfile?.foto || guruProfile?.foto_url || null;
+  const resolvedPhotoUrl = rawGuruPhoto ? resolveProfilePhotoUrl(rawGuruPhoto) : null;
+  const displayPhotoUrl = localPhotoPreview ?? resolvedPhotoUrl;
+
+  // ── Jabatan Struktur Organisasi ───────────────────────────────────────────────
+  const { data: jabatanList = [], isLoading: isJabatanLoading } = useGuruJabatan(guruId);
+
+  // Build human-readable tugas tambahan label from jabatan list
+  const tugasTambahanLabel = jabatanList.length > 0
+    ? jabatanList.map(j => j.kelas ? `${j.nama} — ${j.kelas}` : j.nama).join(', ')
+    : waliKelasNama
+      ? `Wali Kelas ${waliKelasNama}`
+      : 'Guru Mata Pelajaran';
 
   // 2. Account Settings Form State
   const [noHp, setNoHp] = useState('');
@@ -185,6 +373,49 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const activeNama = guruProfile?.nama_guru || user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd';
   const activeNip = guruProfile?.nip || nipText;
 
+  // ── Photo upload handler ─────────────────────────────────────────────────────
+  const handleUploadPhoto = useCallback(async (file: File) => {
+    if (!guruId) { toast.error('ID guru tidak ditemukan. Coba refresh halaman.'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('File harus berupa gambar (JPG, PNG, WebP).'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Ukuran file maksimum adalah 5 MB.'); return; }
+
+    // Optimistic blob preview while uploading
+    const blobUrl = URL.createObjectURL(file);
+    setLocalPhotoPreview(blobUrl);
+    setIsUploadingPhoto(true);
+    const tid = toast.loading('Mengunggah foto profil guru...');
+    try {
+      const res = await uploadGuruDocument({ guruId, file, judul: 'Foto Profil Guru', kategori: 'FOTO' });
+      if (res.success && res.data?.id) {
+        // Replace blob URL with permanent served URL from memberDocs download endpoint
+        const servedUrl = getMemberDocPreviewUrl('GURU', guruId, res.data.id);
+        setLocalPhotoPreview(servedUrl);
+        toast.success('Foto profil berhasil diunggah!', { id: tid });
+        queryClient.invalidateQueries({ queryKey: ['guru-profile-me'] });
+        refetchGuruProfile();
+        onPhotoUpdate?.();
+      } else {
+        toast.error(res.message || 'Gagal mengunggah foto.', { id: tid });
+        setLocalPhotoPreview(null);
+      }
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg: string = err?.response?.data?.message || err?.message || '';
+      if (status === 413 || msg.includes('too large')) toast.error('File terlalu besar. Maks 5 MB.', { id: tid, duration: 5000 });
+      else if (status === 500 || msg.includes('storage')) toast.error('Layanan penyimpanan belum aktif. Hubungi Admin.', { id: tid, duration: 6000 });
+      else toast.error(`Gagal: ${msg || 'Koneksi terputus.'}`, { id: tid, duration: 5000 });
+      setLocalPhotoPreview(null);
+    } finally {
+      setIsUploadingPhoto(false);
+      // Always revoke blob URL — we've either replaced it with servedUrl or cleared it
+      URL.revokeObjectURL(blobUrl);
+    }
+  }, [guruId, queryClient, refetchGuruProfile, onPhotoUpdate]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (f) handleUploadPhoto(f); e.target.value = '';
+  }, [handleUploadPhoto]);
+
   return (
     <motion.div
       key="tab-profil"
@@ -194,28 +425,94 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-5 sm:space-y-6"
     >
+      {/* Webcam Modal */}
+      <WebcamModal isOpen={isWebcamOpen} onClose={() => setIsWebcamOpen(false)} onCapture={handleUploadPhoto} />
+
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
       {/* 1. TOP ROW: 2 COLUMNS (Avatar Card & Account Settings Card) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
         
         {/* Left Column (Avatar & Quick Info Card) - 4 cols on lg */}
         <div className="lg:col-span-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-5 text-center sm:text-left">
           <div className="space-y-4">
-            {/* Photo Avatar Frame */}
-            <div className="relative w-28 h-28 mx-auto rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/30 p-1 shadow-md flex items-center justify-center font-black text-3xl text-emerald-600 dark:text-emerald-400">
-              {teacherInitials}
-              <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white shadow-sm">
-                <Check size={12} strokeWidth={4} />
+            {/* Photo Avatar Frame with hover overlay */}
+            <div className="relative w-28 h-28 mx-auto group cursor-pointer">
+              {/* Photo / initials display */}
+              <div className="w-full h-full rounded-3xl overflow-hidden border-2 border-emerald-500/30 shadow-md">
+                {isUploadingPhoto ? (
+                  <div className="w-full h-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                    <Loader2 size={28} className="text-emerald-500 animate-spin" />
+                  </div>
+                ) : displayPhotoUrl ? (
+                  <img src={displayPhotoUrl} alt={activeNama}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-emerald-500/10 flex items-center justify-center font-black text-3xl text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                    {teacherInitials}
+                  </div>
+                )}
+              </div>
+
+              {/* Hover action overlay */}
+              <div className="absolute inset-0 rounded-3xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button type="button" onClick={() => setIsWebcamOpen(true)} title="Ambil dari kamera"
+                  disabled={isUploadingPhoto}
+                  className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center justify-center text-white cursor-pointer transition-all active:scale-95 disabled:opacity-50">
+                  <Camera size={16} />
+                </button>
+                <button type="button" onClick={() => fileInputRef.current?.click()} title="Unggah dari galeri"
+                  disabled={isUploadingPhoto}
+                  className="w-9 h-9 bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center justify-center text-white cursor-pointer transition-all active:scale-95 disabled:opacity-50">
+                  <Upload size={16} />
+                </button>
+              </div>
+
+              {/* Camera shortcut badge (always visible) */}
+              <span onClick={() => setIsWebcamOpen(true)} title="Klik untuk foto"
+                className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white shadow-sm cursor-pointer group-hover:scale-110 transition-all">
+                <Camera size={13} />
               </span>
             </div>
 
-            {/* Teacher Name & Status Pill */}
-            <div className="text-center space-y-1">
+            {/* Photo hint */}
+            <p className="text-[10px] text-slate-400 font-medium text-center -mt-1">
+              Hover foto untuk ubah via kamera atau galeri
+            </p>
+
+            {/* Teacher Name & Dynamic Jabatan Badges */}
+            <div className="text-center space-y-1.5">
               <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 {activeNama}
               </h3>
+              {/* Status pill */}
               <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                Guru Aktif — {waliKelasNama || 'Wali Kelas XI RPL 1'}
+                Guru Aktif
               </span>
+              {/* Jabatan badges from struktur organisasi */}
+              {isJabatanLoading ? (
+                <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400">
+                  <Loader2 size={11} className="animate-spin" /><span>Memuat jabatan...</span>
+                </div>
+              ) : jabatanList.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 justify-center pt-0.5">
+                  {jabatanList.map((j) => (
+                    <JabatanBadge key={j.id}
+                      nama={j.kelas ? `${j.nama} — ${j.kelas}` : j.nama}
+                      color={getJabatanColor(j.kode)}
+                      icon={getJabatanIcon(j.kode)}
+                    />
+                  ))}
+                </div>
+              ) : waliKelasNama ? (
+                <JabatanBadge nama={`Wali Kelas ${waliKelasNama}`} icon={<Users size={11} />}
+                  color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" />
+              ) : (
+                <JabatanBadge nama="Guru Mata Pelajaran" icon={<Briefcase size={11} />} />
+              )}
             </div>
 
             {/* Quick Detail Key-Value List */}
@@ -234,27 +531,35 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Golongan / Pangkat</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {editPangkatGolongan}
-                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{editPangkatGolongan || '-'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Jenis PTK</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {editJenisPtk}
-                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{editJenisPtk || '-'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Status Pegawai</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {editStatusKepegawaian}
-                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{editStatusKepegawaian || '-'}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-bold">Tugas Tambahan</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran'}
-                </span>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-400 font-bold shrink-0">Tugas Tambahan</span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {isJabatanLoading ? (
+                    <Loader2 size={12} className="animate-spin text-slate-400" />
+                  ) : jabatanList.length > 0 ? (
+                    jabatanList.map((j) => (
+                      <JabatanBadge key={j.id}
+                        nama={j.kelas ? `${j.nama} — ${j.kelas}` : j.nama}
+                        color={getJabatanColor(j.kode)}
+                        icon={getJabatanIcon(j.kode)}
+                      />
+                    ))
+                  ) : (
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -489,10 +794,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNpwp || '-'}</span>
             </div>
             <div className="col-span-2">
-              <span className="text-[10px] font-semibold text-slate-400 block">Jabatan Struktural</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                {guruProfile?.jabatan || (waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran')}
-              </span>
+              <span className="text-[10px] font-semibold text-slate-400 block mb-1">Jabatan Struktural</span>
+              {isJabatanLoading ? (
+                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <Loader2 size={11} className="animate-spin" /><span>Memuat jabatan...</span>
+                </div>
+              ) : jabatanList.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {jabatanList.map((j) => (
+                    <JabatanBadge key={j.id}
+                      nama={j.kelas ? `${j.nama} — ${j.kelas}` : j.nama}
+                      color={getJabatanColor(j.kode)}
+                      icon={getJabatanIcon(j.kode)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {guruProfile?.jabatan || (waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran')}
+                </span>
+              )}
             </div>
           </div>
         </div>

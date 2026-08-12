@@ -60,5 +60,84 @@ export const nonaktifWaliKelasStruktur = async (
   return requestWithFallback<{ success: boolean; message: string; data: null }>('put', `/kurikulum/wali-kelas/struktur/${id}/nonaktif`);
 };
 
+// ── Jurnal Wali Kelas ──
+export const getJurnalWaliKelasList = async (
+  page = 1,
+  limit = 20,
+  search = '',
+  kelas_id?: string
+) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) params.set('search', search);
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  return requestWithFallback<any>('get', `/kurikulum/wali-kelas/jurnal?${params.toString()}`);
+};
+
+export const createJurnalWaliKelas = async (payload: {
+  tanggal: string;
+  kategori: string;
+  judul: string;
+  isi: string;
+  kelas_id?: string;
+  tags?: string[];
+  attached_students?: string[];
+}) => {
+  return requestWithFallback<any>('post', `/kurikulum/wali-kelas/jurnal`, { data: payload });
+};
+
+export const deleteJurnalWaliKelas = async (id: string) => {
+  return requestWithFallback<any>('delete', `/kurikulum/wali-kelas/jurnal/${id}`);
+};
+
+// ── Permohonan Izin Siswa ──
+export const getPermohonanIzinList = async (
+  status?: string,
+  kelas_id?: string,
+  search = ''
+) => {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  if (search) params.set('search', search);
+  return requestWithFallback<any>('get', `/kurikulum/wali-kelas/permohonan-izin?${params.toString()}`);
+};
+
+export const createPermohonanIzin = async (payload: any) => {
+  return requestWithFallback<any>('post', `/kurikulum/wali-kelas/permohonan-izin`, { data: payload });
+};
+
+export const updatePermohonanIzinStatus = async (id: string, payload: { status: string; catatan_penolakan?: string }) => {
+  return requestWithFallback<any>('patch', `/kurikulum/wali-kelas/permohonan-izin/${id}/status`, { data: payload });
+};
+
+// ── EWS Per Kelas ──
+export const getEwsPerKelasList = async (kelas_id?: string) => {
+  const params = new URLSearchParams();
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  return requestWithFallback<any>('get', `/kurikulum/wali-kelas/ews?${params.toString()}`);
+};
+
+// ── Pelanggaran Siswa ──
+export const getPelanggaranList = async (kelas_id?: string) => {
+  const params = new URLSearchParams();
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  return requestWithFallback<any>('get', `/kesiswaan/pelanggaran?${params.toString()}`);
+};
+
+// ── Prestasi Siswa ──
+export const getPrestasiList = async (kelas_id?: string) => {
+  const params = new URLSearchParams();
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  return requestWithFallback<any>('get', `/kesiswaan/prestasi/prestasi?${params.toString()}`);
+};
+
+// ── Siswa & Presensi Matrix Rombel ──
+export const getSiswaWalasList = async (kelas_id?: string) => {
+  const params = new URLSearchParams();
+  if (kelas_id) params.set('kelas_id', kelas_id);
+  return requestWithFallback<any>('get', `/academic/siswa?${params.toString()}`);
+};
+
+
 
 

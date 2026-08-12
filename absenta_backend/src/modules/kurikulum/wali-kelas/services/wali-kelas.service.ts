@@ -539,7 +539,329 @@ export class WaliKelasService {
       where: { id, tenant_id: tenantId },
     });
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // WALAS DASHBOARD EXTENSIONS (Jurnal, Permohonan Izin, EWS)
+  // ─────────────────────────────────────────────────────────────
+
+  async getKelasIdForWalas(tenantId: string, userId: string): Promise<string | null> {
+    const assignment = await prisma.organizationalAssignment.findFirst({
+      where: {
+        tenant_id: tenantId,
+        user_id: userId,
+        is_active: true,
+        kelas_id: { not: null },
+      },
+      select: { kelas_id: true },
+    });
+    return assignment?.kelas_id || null;
+  }
+
+  // ── Jurnal Wali Kelas ──
+  async getJurnal(tenantId: string, user: any, query: { kelas_id?: string; page?: number; limit?: number; search?: string }) {
+    const kelasId = query.kelas_id || (await this.getKelasIdForWalas(tenantId, user.id));
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId };
+    if (kelasId) where.kelas_id = kelasId;
+    if (query.search) {
+      where.OR = [
+        { judul: { contains: query.search, mode: 'insensitive' } },
+        { konten: { contains: query.search, mode: 'insensitive' } },
+        { kategori: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      prisma.jurnalWaliKelas.count({ where }),
+      prisma.jurnalWaliKelas.findMany({
+        where,
+        orderBy: { tanggal: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async createJurnal(tenantId: string, user: any, input: { kelas_id?: string; tanggal: string; jam?: string; kategori: string; judul: string; isi: string; tags?: string[]; attached_students?: string[] }) {
+    let kelasId = input.kelas_id || (await this.getKelasIdForWalas(tenantId, user.id));
+    
+    const guru = await prisma.guru.findFirst({
+      where: { tenant_id: tenantId, user_id: user.id },
+      select: { id: true },
+    });
+
+    if (!guru) {
+      throw new Error('Data guru tidak ditemukan untuk user ini');
+    }
+    if (!kelasId) {
+      throw new Error('Kelas ID wajib diisi atau user tidak bertugas sebagai Wali Kelas');
+    }
+
+    return await prisma.jurnalWaliKelas.create({
+      data: {
+        tenant_id: tenantId,
+        guru_id: guru.id,
+        kelas_id: kelasId,
+        tanggal: new Date(input.tanggal),
+        jam: input.jam || null,
+        kategori: input.kategori,
+        judul: input.judul,
+        konten: input.isi,
+        tags: input.tags || [],
+        siswa_terlibat: input.attached_students || [],
+      },
+      include: {
+        Guru: { select: { id: true, nama_guru: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+      },
+    });
+  }
+
+  async deleteJurnal(tenantId: string, id: string) {
+    return await prisma.jurnalWaliKelas.deleteMany({
+      where: { id, tenant_id: tenantId },
+    });
+  }
+
+  // ── Permohonan Izin Siswa ──
+  async getPermohonanIzin(tenantId: string, user: any, query: { kelas_id?: string; status?: string; page?: number; limit?: number; search?: string }) {
+    const kelasId = query.kelas_id || (await this.getKelasIdForWalas(tenantId, user.id));
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId };
+    if (kelasId) {
+      where.Siswa = { kelas_id: kelasId };
+    }
+    if (query.status) where.status = query.status;
+    if (query.search) {
+      where.OR = [
+        { Siswa: { nama_siswa: { contains: query.search, mode: 'insensitive' } } },
+        { alasan: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      prisma.permohonanIzinSiswa.count({ where }),
+      prisma.permohonanIzinSiswa.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          Siswa: {
+            select: {
+              id: true,
+              nama_siswa: true,
+              nis: true,
+              foto: true,
+              no_hp_ortu: true,
+              nama_ayah: true,
+              nama_ibu: true,
+              Kelas: { select: { id: true, nama_kelas: true } },
+            },
+          },
+          Pengaju: { select: { id: true, full_name: true, email: true } },
+          Pemroses: { select: { id: true, full_name: true, email: true } },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async createPermohonanIzin(tenantId: string, user: any, input: { siswa_id: string; jenis_izin: string; tanggal_mulai: string; tanggal_selesai: string; alasan: string; lampiran_url?: string; lampiran_tipe?: string }) {
+    const siswa = await prisma.siswa.findFirst({
+      where: { id: input.siswa_id, tenant_id: tenantId },
+      select: { id: true },
+    });
+
+    if (!siswa) {
+      throw new Error('Siswa tidak ditemukan');
+    }
+
+    return await prisma.permohonanIzinSiswa.create({
+      data: {
+        tenant_id: tenantId,
+        siswa_id: input.siswa_id,
+        diajukan_oleh: user.id,
+        tipe_izin: input.jenis_izin,
+        tanggal_mulai: new Date(input.tanggal_mulai),
+        tanggal_selesai: new Date(input.tanggal_selesai),
+        alasan: input.alasan,
+        attachment_url: input.lampiran_url || null,
+        attachment_type: input.lampiran_tipe || null,
+        status: 'PENDING',
+      },
+      include: {
+        Siswa: { select: { id: true, nama_siswa: true, nis: true } },
+      },
+    });
+  }
+
+  async updatePermohonanIzinStatus(tenantId: string, user: any, id: string, input: { status: 'DISETUJUI' | 'DITOLAK' | 'BATAL'; catatan_penolakan?: string }) {
+    const existing = await prisma.permohonanIzinSiswa.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+
+    if (!existing) {
+      throw new Error('Permohonan izin tidak ditemukan');
+    }
+
+    return await prisma.permohonanIzinSiswa.update({
+      where: { id },
+      data: {
+        status: input.status,
+        catatan_penolakan: input.catatan_penolakan || null,
+        diproses_oleh: user.id,
+      },
+      include: {
+        Siswa: { select: { id: true, nama_siswa: true, nis: true } },
+      },
+    });
+  }
+
+  // ── Early Warning System (EWS) ──
+  async getEwsPerKelas(tenantId: string, user: any, queryParams?: { kelas_id?: string }) {
+    const kelasId = queryParams?.kelas_id || (await this.getKelasIdForWalas(tenantId, user.id));
+    if (!kelasId) {
+      return [];
+    }
+
+    const siswaList = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId, kelas_id: kelasId, status: 'AKTIF' },
+      select: {
+        id: true,
+        nama_siswa: true,
+        nis: true,
+        foto: true,
+        jenis_kelamin: true,
+      },
+    });
+
+    const siswaIds = siswaList.map(s => s.id);
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+    const [absensiRecs, pelanggaranRecs] = await Promise.all([
+      prisma.absenSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: siswaIds },
+          created_at: { gte: startOfMonth },
+          status: { in: ['A', 'I', 'S'] },
+        },
+        select: {
+          siswa_id: true,
+          status: true,
+        },
+      }),
+      prisma.pelanggaranSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: { in: siswaIds },
+        },
+        select: {
+          siswa_id: true,
+          poin: true,
+        },
+      }),
+    ]);
+
+    const statsMap = new Map<string, { alpha: number; sakit: number; izin: number; poin: number }>();
+    siswaIds.forEach(id => statsMap.set(id, { alpha: 0, sakit: 0, izin: 0, poin: 0 }));
+
+    absensiRecs.forEach(r => {
+      if (!r.siswa_id) return;
+      const curr = statsMap.get(r.siswa_id);
+      if (curr) {
+        if (r.status === 'A') curr.alpha++;
+        else if (r.status === 'S') curr.sakit++;
+        else if (r.status === 'I') curr.izin++;
+      }
+    });
+
+    pelanggaranRecs.forEach(r => {
+      if (!r.siswa_id) return;
+      const curr = statsMap.get(r.siswa_id);
+      if (curr) {
+        curr.poin += r.poin || 0;
+      }
+    });
+
+    const results: any[] = [];
+    siswaList.forEach(s => {
+      const st = statsMap.get(s.id);
+      if (!st) return;
+
+      const totalSakitIzin = st.sakit + st.izin;
+      let atRiskReason = '';
+      let riskCategory = '';
+      let status = 'Perlu Tindakan';
+      let recommendation = '';
+
+      if (st.alpha >= 3) {
+        riskCategory = 'Alpha Tinggi (≥3 Hari)';
+        atRiskReason = `Alpha ${st.alpha} Hari dalam sebulan`;
+        recommendation = 'Perlu Pemanggilan Ortu';
+      } else if (totalSakitIzin >= 5) {
+        riskCategory = 'Sakit/Izin Beruntun (≥5 Hari)';
+        atRiskReason = `Sakit/Izin ${totalSakitIzin} Hari`;
+        recommendation = 'Koordinasi Guru BK';
+        status = 'Dalam Proses Pembinaan';
+      } else if (st.poin >= 15) {
+        riskCategory = 'Poin Pelanggaran Tinggi';
+        atRiskReason = `Poin Pelanggaran ${st.poin}`;
+        recommendation = 'Pembinaan Walas & BK';
+      }
+
+      if (atRiskReason) {
+        results.push({
+          studentId: s.id,
+          studentName: s.nama_siswa,
+          nis: s.nis,
+          avatar: s.foto || null,
+          gender: s.jenis_kelamin,
+          riskCategory,
+          consecutiveDays: st.alpha || totalSakitIzin,
+          totalAlphaThisMonth: st.alpha,
+          recommendation,
+          status,
+          atRiskReason,
+        });
+      }
+    });
+
+    return results;
+  }
+
 }
 
 export const waliKelasService = new WaliKelasService();
+
 

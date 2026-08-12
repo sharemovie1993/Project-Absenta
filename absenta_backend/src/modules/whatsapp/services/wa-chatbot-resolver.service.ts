@@ -16,6 +16,10 @@ export const lidToPhoneGlobalMap = new Map<string, string>();
 
 export async function persistLidMapping(key: string, value: string, tenantId?: string) {
   try {
+    if (lidToPhoneGlobalMap.size > 10000) {
+      const firstKey = lidToPhoneGlobalMap.keys().next().value;
+      if (firstKey) lidToPhoneGlobalMap.delete(firstKey);
+    }
     lidToPhoneGlobalMap.set(key, value);
 
     const redis = getRedisConnection();
@@ -90,6 +94,14 @@ export async function removeLidMappingByPhone(phone: string) {
     console.warn('[Chatbot] Failed to load LID mappings from Database:', err.message);
   }
 })();
+
+function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V, maxCapacity = 5000) {
+  if (map.size >= maxCapacity) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+  map.set(key, value);
+}
 
 /**
  * State per-JID untuk user yang sedang memilih peran.
@@ -293,8 +305,8 @@ export class WaChatbotResolverService {
       activeRoleSession.delete(fullJid);
       pendingGuruEditSession.delete(cleanJid);
       pendingGuruEditSession.delete(fullJid);
-      pendingIdentification.set(cleanJid, true);
-      pendingIdentification.set(fullJid, true);
+      safeSetMap(pendingIdentification, cleanJid, true);
+      safeSetMap(pendingIdentification, fullJid, true);
 
       try {
         await prisma.waLidMapping.deleteMany({

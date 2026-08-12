@@ -149,6 +149,8 @@ model Tenant {
   WaChatLog                WaChatLog[]
   SettingDeskripsiPkl      SettingDeskripsiPkl[]
   KospConfig               KospConfig[]
+  JurnalWaliKelas          JurnalWaliKelas[]
+  PermohonanIzinSiswa      PermohonanIzinSiswa[]
 }
 
 enum BackupStatus {
@@ -472,6 +474,8 @@ model User {
   templateSuratCreator TemplateSurat[]        @relation("templateSuratCreator")
   guruBkBookings       BkKonsultasiBooking[]  @relation("guruBkBookings")
   GuruDocument         GuruDocument[]
+  permohonanIzinDiajukan PermohonanIzinSiswa[] @relation("PermohonanIzinDiajukan")
+  permohonanIzinDiproses PermohonanIzinSiswa[] @relation("PermohonanIzinDiproses")
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -797,6 +801,7 @@ model Kelas {
   GuruMapel                 GuruMapel[]
   RaporSiswa                RaporSiswa[]
   AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
+  JurnalWaliKelas           JurnalWaliKelas[]
 
   @@index([tenant_id])
 }
@@ -858,6 +863,7 @@ model Guru {
   JadwalKontrakKbm      JadwalKontrakKbm[]
 
   Member Member?
+  JurnalWaliKelas     JurnalWaliKelas[]
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
@@ -1053,6 +1059,7 @@ model Siswa {
   RujukanKasus        RujukanKasus[]
   KasusBK             KasusBK[]
   EwsSnapshot         EwsSnapshot[]
+  PermohonanIzinSiswa PermohonanIzinSiswa[]
 
   Member              Member?
   SiswaPkl            SiswaPkl[]
@@ -4500,4 +4507,64 @@ model KospConfig {
   @@unique([tenant_id, tahun_pelajaran_id])
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
+}
+
+// ── Jurnal Wali Kelas ─────────────────────────────────────────────────────────
+// Catatan harian aktivitas wali kelas: pembinaan, koordinasi BK, rapat ortu, dll.
+model JurnalWaliKelas {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  kelas_id       String
+  guru_id        String
+  tanggal        DateTime @db.Date
+  jam            String?  @db.VarChar(20)  // e.g. "14:30 WIB"
+  kategori       String   @db.VarChar(50)  // PEMBINAAN_KELAS, KOORDINASI_BK, RAPAT_ORTU, KASUS_SELESAI, LAINNYA
+  judul          String
+  konten         String   @db.Text
+  tags           String[]
+  siswa_terlibat String[] // array siswa_id (opsional)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Kelas  Kelas  @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  Guru   Guru   @relation(fields: [guru_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([kelas_id])
+  @@index([guru_id])
+  @@index([tanggal])
+  @@index([tenant_id, kelas_id, tanggal])
+}
+
+// ── Permohonan Izin Siswa (dari Orang Tua) ────────────────────────────────────
+// Permohonan izin yang diajukan orang tua via app/form, disetujui oleh Wali Kelas.
+// Berbeda dari IzinKeluarSiswa (piket) — ini adalah permohonan akademik resmi.
+model PermohonanIzinSiswa {
+  id                String    @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  tipe_izin         String    @db.VarChar(30)  // SAKIT, IZIN_KELUARGA, DISPENSASI, PULANG_AWAL
+  tanggal_mulai     DateTime  @db.Date
+  tanggal_selesai   DateTime  @db.Date
+  alasan            String    @db.Text
+  status            String    @default("PENDING") @db.VarChar(20)  // PENDING, DISETUJUI, DITOLAK
+  diajukan_oleh     String    // user_id (ortu atau guru yang input manual)
+  diproses_oleh     String?   // user_id wali kelas yang approve/tolak
+  catatan_penolakan String?   @db.Text
+  attachment_url    String?   // URL file lampiran
+  attachment_type   String?   @db.VarChar(30)  // doctor_note, family_letter, dispensasi
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  Tenant            Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa             Siswa     @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Pengaju           User      @relation("PermohonanIzinDiajukan", fields: [diajukan_oleh], references: [id])
+  Pemroses          User?     @relation("PermohonanIzinDiproses", fields: [diproses_oleh], references: [id])
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, tanggal_mulai])
+  @@index([diajukan_oleh])
 }

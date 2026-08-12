@@ -182,5 +182,95 @@ export const waliKelasController = {
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
+
+  // ── Jurnal Wali Kelas ──
+  async getJurnal(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const result = await waliKelasService.getJurnal(tenantId, request.user, request.query);
+      return reply.status(200).send({ success: true, message: 'OK', data: result.data, pagination: result.pagination });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async createJurnal(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const data = await waliKelasService.createJurnal(tenantId, request.user, request.body);
+      return reply.status(201).send({ success: true, message: 'Jurnal berhasil disimpan', data });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
+    }
+  },
+
+  async deleteJurnal(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id } = request.params;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      await waliKelasService.deleteJurnal(tenantId, id);
+      return reply.status(200).send({ success: true, message: 'Jurnal berhasil dihapus' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  // ── Permohonan Izin Siswa ──
+  async getPermohonanIzin(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const result = await waliKelasService.getPermohonanIzin(tenantId, request.user, request.query);
+      return reply.status(200).send({ success: true, message: 'OK', data: result.data, pagination: result.pagination });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async createPermohonanIzin(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const data = await waliKelasService.createPermohonanIzin(tenantId, request.user, request.body);
+      return reply.status(201).send({ success: true, message: 'Permohonan izin berhasil diajukan', data });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
+    }
+  },
+
+  async updatePermohonanIzinStatus(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id } = request.params;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const data = await waliKelasService.updatePermohonanIzinStatus(tenantId, request.user, id, request.body);
+      return reply.status(200).send({ success: true, message: 'Status permohonan izin berhasil diperbarui', data });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
+    }
+  },
+
+  // ── Early Warning System (EWS) ──
+  async getEwsPerKelas(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+
+      const data = await waliKelasService.getEwsPerKelas(tenantId, request.user, request.query);
+      return reply.status(200).send({ success: true, message: 'OK', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
 };
+
 

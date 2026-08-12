@@ -74,6 +74,40 @@ async function getTenantDbCredsInfo(tenantId: string): Promise<{ hasCreds: boole
 
 const pool = new Map<string, WaConnectionState>();
 
+let watchdogInterval: NodeJS.Timeout | null = null;
+
+function startWaWatchdog() {
+  if (watchdogInterval || !isMasterInstance()) return;
+  console.log('[WA-Watchdog] 🛡️ Memulai Self-Healing Watchdog Daemon (Pemeriksaan berkala tiap 60s)...');
+  watchdogInterval = setInterval(async () => {
+    try {
+      for (const [tenantId, entry] of pool.entries()) {
+        const { hasCreds } = await getTenantDbCredsInfo(tenantId);
+        if (!hasCreds) continue;
+
+        const wsState = entry.sock?.ws?.readyState;
+        const isWsActive = entry.sock && (wsState === 0 || wsState === 1);
+
+        if (!isWsActive && entry.status !== 'connecting') {
+          console.warn(`[WA-Watchdog:${tenantId}] Socket terdeteksi tidak aktif/zombie (wsState: ${wsState}, status: ${entry.status}). Memulihkan koneksi otomatis...`);
+          try {
+            entry.sock?.ev?.removeAllListeners('connection.update');
+            entry.sock?.ev?.removeAllListeners('creds.update');
+            entry.sock?.end?.(undefined);
+          } catch (_) {}
+          entry.sock = null;
+          entry.status = 'connecting';
+          connectTenant(tenantId).catch(err => {
+            console.error(`[WA-Watchdog:${tenantId}] Restorasi gagal:`, err.message);
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('[WA-Watchdog] Error dalam health check watchdog:', e.message);
+    }
+  }, 60_000);
+}
+
 // ─── Connect (per-tenant) ────────────────────────────────────────────────────
 
 function isMasterInstance(): boolean {
@@ -129,9 +163,13 @@ async function connectTenant(tenantId: string): Promise<void> {
     entry.status = 'connecting';
   }
 
-  // Jika status sudah terhubung, jangan re-koneksi untuk menghindari konflik sesi
-  if (entry.status === 'connected' && entry.sock) {
-    console.log(`[WA-Pool:${tenantId}] Sesi sudah terhubung. Mengabaikan connect.`);
+  // Cek apakah socket fisik benar-benar aktif (ws.readyState === 0 CONNECTING atau 1 OPEN)
+  const wsState = entry.sock?.ws?.readyState;
+  const isWsActive = wsState === 0 || wsState === 1;
+
+  // Jika status sudah terhubung DAN socket fisiknya masih aktif, abaikan connect
+  if (entry.status === 'connected' && entry.sock && isWsActive) {
+    console.log(`[WA-Pool:${tenantId}] Sesi sudah terhubung dan WebSocket aktif. Mengabaikan connect.`);
     return;
   }
 
@@ -141,7 +179,7 @@ async function connectTenant(tenantId: string): Promise<void> {
       console.log(`[WA-Pool:${tenantId}] Menutup socket lama sebelum membuat koneksi baru...`);
       entry.sock.ev.removeAllListeners('connection.update');
       entry.sock.ev.removeAllListeners('creds.update');
-      entry.sock.end();
+      entry.sock.end(undefined);
     } catch (e: any) {
       console.warn(`[WA-Pool:${tenantId}] Gagal menutup socket lama:`, e.message);
     }
@@ -220,23 +258,25 @@ async function connectTenant(tenantId: string): Promise<void> {
 
       console.log(`[WA-Pool:${tenantId}] Koneksi terputus (kode: ${statusCode}).`);
       
-      // Bersihkan listener dari socket yang sudah ditutup
+      // Bersihkan listener dan null-kan socket yang terputus agar tidak terdeteksi sebagai active zombie
       try {
         sock.ev.removeAllListeners('connection.update');
         sock.ev.removeAllListeners('creds.update');
+        sock.end(undefined);
       } catch (_) {}
+      if (entry.sock === sock) {
+        entry.sock = null;
+      }
 
       entry.emitter.emit('disconnected', statusCode);
 
       if (!isLoggedOut) {
         const { hasCreds: stillHasCreds } = await getTenantDbCredsInfo(tenantId);
-        if (stillHasCreds) {
-          entry.status = 'connected';
-          if (sock.user?.id) {
-            entry.connectedNumber = sock.user.id.split(':')[0];
-          }
-        } else {
-          entry.status = 'connecting';
+        entry.status = 'connecting';
+        if (sock.user?.id) {
+          entry.connectedNumber = sock.user.id.split(':')[0];
+        }
+        if (!stillHasCreds) {
           entry.connectedNumber = null;
           await syncStatusToDB(tenantId, 'connecting', null);
         }
@@ -451,7 +491,7 @@ const waGatewayServiceLocal = {
       if (isClosedOrTimeout) {
         console.warn(`[WA-Pool:${tenantId}] Pengiriman WA terputus (${err.message}). Memulai reconnect otomatis dari DB creds...`);
         try {
-          entry.sock?.end();
+          entry.sock?.end(undefined);
         } catch (_) {}
         entry.sock = null;
         entry.status = 'connecting';
@@ -769,6 +809,7 @@ const waGatewayServiceLocal = {
   },
 
   async restoreConnections(): Promise<void> {
+    startWaWatchdog();
     try {
       const connections = await prisma.waTenantConnection.findMany({
         where: { status: { in: ['connected', 'connecting'] } },
@@ -798,6 +839,7 @@ const waGatewayServiceLocal = {
           }
         }
       }
+      startWaWatchdog();
     } catch (e: any) {
       console.error('[WA-Pool] Gagal restore connections:', e.message);
     }

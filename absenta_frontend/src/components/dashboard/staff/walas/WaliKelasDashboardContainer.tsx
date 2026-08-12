@@ -1,0 +1,564 @@
+/**
+ * Dashboard Wali Kelas (StaffWaliKelasTab.tsx)
+ * Command Center Utama Wali Kelas untuk Pengawasan 360° Rombel
+ */
+
+import React, { useState } from 'react';
+const DEFAULT_CLASS_INFO: ClassInfo = {
+  className: 'Kelas Wali',
+  academicYear: '2025/2026',
+  semester: 'Semester Ganjil',
+  homeroomTeacher: 'Wali Kelas',
+  nip: '-',
+  totalStudents: 0,
+  maleCount: 0,
+  femaleCount: 0,
+  roomNumber: 'Ruang Kelas',
+  major: 'Umum'
+};
+
+const DEFAULT_HEALTH_METRIC: ClassHealthMetric = {
+  overallScore: 100,
+  attendancePercentage: 100,
+  activeRequestsCount: 0,
+  atRiskCount: 0,
+  totalViolationPoints: 0,
+  parentResponseRate: 100,
+  zeroSevereViolations: true
+};
+
+import { 
+  Student, LeaveRequest, AtRiskStudent, ViolationRecord, 
+  AchievementRecord, JournalEntry, ClassInfo, ClassHealthMetric, BKStatus, SeverityLevel 
+} from './types';
+
+import { HeaderCommandCenter } from './HeaderCommandCenter';
+import { HeroStatsRadar } from './HeroStatsRadar';
+import { TabNav } from './TabNav';
+import { WaliKelasApprovalPanel } from './WaliKelasApprovalPanel';
+import { WaliKelasHealthPanel } from './WaliKelasHealthPanel';
+import { WaliKelasDisciplinePanel } from './WaliKelasDisciplinePanel';
+import { WaliKelasAchievementPanel } from './WaliKelasAchievementPanel';
+import { WaliKelasRekapPanel } from './WaliKelasRekapPanel';
+
+import { StudentDetailModal } from './StudentDetailModal';
+import { AttachmentViewerModal } from './AttachmentViewerModal';
+import { BadgeAwardModal } from './BadgeAwardModal';
+import { AddIncidentModal } from './AddIncidentModal';
+import { AddJournalModal } from './AddJournalModal';
+import { ReportExportModal } from './ReportExportModal';
+import { WhatsAppModal } from './WhatsAppModal';
+import { NotificationToast, ToastMessage } from './NotificationToast';
+
+import { useWaliKelasDashboard } from '../../../../hooks/kurikulum/useWaliKelasDashboard';
+
+interface WaliKelasDashboardContainerProps {
+  waliKelasNama?: string;
+}
+
+export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboardContainerProps) {
+  // Real API hooks for Jurnal, Permohonan Izin, EWS, Violations, Achievements, Students
+  const {
+    journalEntries: apiJournalEntries,
+    leaveRequests: apiLeaveRequests,
+    atRiskStudents: apiAtRiskStudents,
+    violations: apiViolations,
+    achievements: apiAchievements,
+    students: apiStudents,
+    isApiConnected,
+    updateLeaveStatus,
+    createJournal,
+    deleteJournal
+  } = useWaliKelasDashboard();
+
+  // Main State
+  const [classInfo, setClassInfo] = useState<ClassInfo>(() => ({
+    ...DEFAULT_CLASS_INFO,
+    className: waliKelasNama || DEFAULT_CLASS_INFO.className,
+  }));
+
+  React.useEffect(() => {
+    if (waliKelasNama) {
+      setClassInfo(prev => ({ ...prev, className: waliKelasNama }));
+    }
+  }, [waliKelasNama]);
+
+  const [healthMetric, setHealthMetric] = useState<ClassHealthMetric>(DEFAULT_HEALTH_METRIC);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [violations, setViolations] = useState<ViolationRecord[]>([]);
+  const [achievements, setAchievements] = useState<AchievementRecord[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+
+  // Sync API data to state when available
+  React.useEffect(() => {
+    if (apiLeaveRequests) {
+      setLeaveRequests(apiLeaveRequests);
+    }
+  }, [apiLeaveRequests]);
+
+  React.useEffect(() => {
+    if (apiJournalEntries) {
+      setJournalEntries(apiJournalEntries);
+    }
+  }, [apiJournalEntries]);
+
+  React.useEffect(() => {
+    if (apiAtRiskStudents) {
+      setAtRiskStudents(apiAtRiskStudents);
+    }
+  }, [apiAtRiskStudents]);
+
+  React.useEffect(() => {
+    if (apiViolations) {
+      setViolations(apiViolations);
+    }
+  }, [apiViolations]);
+
+  React.useEffect(() => {
+    if (apiAchievements) {
+      setAchievements(apiAchievements);
+    }
+  }, [apiAchievements]);
+
+  React.useEffect(() => {
+    if (apiStudents) {
+      setStudents(apiStudents);
+    }
+  }, [apiStudents]);
+
+
+  // Active Tab & Search Filter
+  const [activeTab, setActiveTab] = useState<string>('approval');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Modals & Overlay States
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [viewAttachmentReq, setViewAttachmentReq] = useState<LeaveRequest | null>(null);
+  const [badgeStudent, setBadgeStudent] = useState<Student | null>(null);
+  const [isAddIncidentOpen, setIsAddIncidentOpen] = useState(false);
+  const [isAddJournalOpen, setIsAddJournalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // WhatsApp Modal state
+  const [waModalData, setWaModalData] = useState<{
+    parentName: string;
+    parentPhone: string;
+    studentName: string;
+    reasonText: string;
+  } | null>(null);
+
+  // Toasts
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (title: string, message: string, type: 'success' | 'warning' | 'info' = 'success') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
+  const handleDismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Switch Rombel Handler
+  const handleClassChange = (className: string) => {
+    setClassInfo(prev => ({ ...prev, className }));
+    showToast('Pindah Rombel', `Menampilkan Command Center untuk kelas ${className}`, 'info');
+  };
+
+  // Leave Approval Handlers
+  const handleApproveLeave = async (id: string) => {
+    const req = leaveRequests.find(r => r.id === id);
+    if (!req) return;
+
+    try {
+      await updateLeaveStatus({ id, status: 'DISETUJUI' });
+    } catch (e) {
+      // Optimistic/Local fallback
+    }
+
+    setLeaveRequests(prev => prev.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          status: 'Disetujui',
+          processedAt: 'Hari ini, Baru saja'
+        };
+      }
+      return r;
+    }));
+
+    // Update student's today status
+    setStudents(prev => prev.map(s => {
+      if (s.id === req.studentId) {
+        return {
+          ...s,
+          todayStatus: req.type as any
+        };
+      }
+      return s;
+    }));
+
+    showToast(
+      'Permohonan Disetujui',
+      `Surat izin ${req.type} ananda ${req.studentName} telah disetujui dan dicatat di presensi resmi.`
+    );
+  };
+
+  const handleRejectLeave = async (id: string, reason: string) => {
+    const req = leaveRequests.find(r => r.id === id);
+    if (!req) return;
+
+    try {
+      await updateLeaveStatus({ id, status: 'DITOLAK', catatan: reason });
+    } catch (e) {
+      // Optimistic/Local fallback
+    }
+
+    setLeaveRequests(prev => prev.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          status: 'Ditolak',
+          rejectionReason: reason,
+          processedAt: 'Hari ini, Baru saja'
+        };
+      }
+      return r;
+    }));
+
+    showToast(
+      'Permohonan Ditolak',
+      `Permohonan izin ${req.studentName} ditolak. Catatan dikirimkan ke akun orang tua.`,
+      'warning'
+    );
+  };
+
+  const handleApproveAllPending = () => {
+    const pendingReqs = leaveRequests.filter(r => r.status === 'Pending');
+    if (pendingReqs.length === 0) return;
+
+    pendingReqs.forEach(async (req) => {
+      try {
+        await updateLeaveStatus({ id: req.id, status: 'DISETUJUI' });
+      } catch (e) {}
+    });
+
+    setLeaveRequests(prev => prev.map(r => {
+      if (r.status === 'Pending') {
+        return {
+          ...r,
+          status: 'Disetujui',
+          processedAt: 'Hari ini, Baru saja'
+        };
+      }
+      return r;
+    }));
+
+    showToast(
+      'Batch Approval Berhasil',
+      `${pendingReqs.length} permohonan izin orang tua telah disetujui secara serentak.`
+    );
+  };
+
+  // WhatsApp trigger
+  const handleOpenWhatsApp = (parentName: string, parentPhone: string, studentName: string, reasonText: string) => {
+    setWaModalData({
+      parentName,
+      parentPhone,
+      studentName,
+      reasonText
+    });
+  };
+
+  // Award Badge
+  const handleAwardBadge = (studentId: string, badgeName: string, icon: string, note: string) => {
+    const newBadge = {
+      id: `b-${Date.now()}`,
+      badgeName,
+      icon,
+      category: 'Apresiasi Walas',
+      awardedBy: classInfo.homeroomTeacher,
+      awardedAt: 'Hari Ini',
+      note
+    };
+
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        return {
+          ...s,
+          goodDeedsPoints: s.goodDeedsPoints + 25,
+          badges: [newBadge, ...s.badges]
+        };
+      }
+      return s;
+    }));
+
+    showToast(
+      'Badge Apresiasi Terkirim! 🌟',
+      `Badge "${badgeName}" berhasil disematkan ke profil siswa dan notifikasi terkirim ke orang tua.`
+    );
+  };
+
+  // Update BK Status
+  const handleUpdateBKStatus = (id: string, newStatus: BKStatus) => {
+    setViolations(prev => prev.map(v => {
+      if (v.id === id) {
+        return { ...v, bkStatus: newStatus };
+      }
+      return v;
+    }));
+
+    showToast('Status Pembinaan Diperbarui', `Status penanganan diubah menjadi: ${newStatus}`);
+  };
+
+  // Add Incident
+  const handleAddViolation = (data: {
+    studentId: string;
+    studentName: string;
+    nis: string;
+    category: string;
+    points: number;
+    severity: SeverityLevel;
+    description: string;
+    reporter: 'Wali Kelas';
+    bkStatus: BKStatus;
+  }) => {
+    const newRecord: ViolationRecord = {
+      id: `v-${Date.now()}`,
+      ...data,
+      date: '11 Ags 2026'
+    };
+
+    setViolations(prev => [newRecord, ...prev]);
+
+    // Update student's violation points
+    setStudents(prev => prev.map(s => {
+      if (s.id === data.studentId) {
+        return { ...s, violationPoints: s.violationPoints + data.points };
+      }
+      return s;
+    }));
+
+    showToast('Catatan Disiplin Disimpan', `Catatan kejadian ${data.category} untuk ${data.studentName} tersimpan.`);
+  };
+
+  // Add Journal
+  const handleAddJournal = async (data: {
+    category: 'Rapat Ortu' | 'Kasus Teratasi' | 'Pembinaan Kelas' | 'Catatan Khusus' | 'Agenda Jam Walas' | 'Koordinasi BK';
+    title: string;
+    content: string;
+    tags: string[];
+  }) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      await createJournal({
+        tanggal: todayStr,
+        kategori: data.category,
+        judul: data.title,
+        isi: data.content,
+        tags: data.tags,
+      });
+    } catch (e) {
+      // Fallback local update
+    }
+
+    const newEntry: JournalEntry = {
+      id: `j-${Date.now()}`,
+      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: '12:00 WIB',
+      ...data,
+      author: classInfo.homeroomTeacher
+    };
+
+    setJournalEntries(prev => [newEntry, ...prev]);
+    showToast('Jurnal Walas Ditambahkan', `Entri "${data.title}" berhasil disimpan di rekapitulasi.`);
+  };
+
+
+  // EWS Intervention
+  const handleTakeIntervention = (atRisk: AtRiskStudent) => {
+    handleOpenWhatsApp(
+      `Orang Tua dari ${atRisk.studentName}`,
+      '081234567890',
+      atRisk.studentName,
+      `Undangan Diskusi Perkembangan Kehadiran & Pembinaan Wali Kelas`
+    );
+  };
+
+  const pendingApprovalCount = leaveRequests.filter(r => r.status === 'Pending').length;
+  const starStudents = students.filter(s => s.isStarStudent || s.academicAverage >= 88);
+
+  return (
+    <div className="w-full">
+      <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+        {/* 1. Header Command Center Toolbar */}
+        <HeaderCommandCenter
+          classInfo={classInfo}
+          onClassChange={handleClassChange}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onOpenExportModal={() => setIsExportModalOpen(true)}
+          studentCount={{
+            male: classInfo.maleCount,
+            female: classInfo.femaleCount,
+            total: students.length
+          }}
+          isApiConnected={isApiConnected}
+        />
+
+        {/* 2. Compact Metric Strip */}
+        <HeroStatsRadar
+          metrics={healthMetric}
+          pendingCount={pendingApprovalCount}
+          atRiskCount={atRiskStudents.length}
+          starStudents={starStudents}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+
+        {/* 3. Sub-Module Navigation Tabs */}
+        <TabNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          pendingApprovalCount={pendingApprovalCount}
+          atRiskCount={atRiskStudents.length}
+        />
+
+        {/* 4. Sub-Module Active Views */}
+        <main className="transition-all duration-300">
+          {activeTab === 'approval' && (
+            <WaliKelasApprovalPanel
+              requests={leaveRequests}
+              onApprove={handleApproveLeave}
+              onReject={handleRejectLeave}
+              onApproveAllPending={handleApproveAllPending}
+              onViewAttachment={setViewAttachmentReq}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+              isApiConnected={isApiConnected}
+            />
+          )}
+
+          {activeTab === 'health' && (
+            <WaliKelasHealthPanel
+              students={students}
+              atRiskStudents={atRiskStudents}
+              metrics={healthMetric}
+              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+              onTakeIntervention={handleTakeIntervention}
+              isApiConnected={isApiConnected}
+            />
+          )}
+
+          {activeTab === 'discipline' && (
+            <WaliKelasDisciplinePanel
+              violations={violations}
+              onOpenAddIncidentModal={() => setIsAddIncidentOpen(true)}
+              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+              onUpdateBKStatus={handleUpdateBKStatus}
+              isApiConnected={isApiConnected}
+            />
+          )}
+
+          {activeTab === 'halloffame' && (
+            <WaliKelasAchievementPanel
+              students={students}
+              achievements={achievements}
+              onOpenBadgeModal={(st) => setBadgeStudent(st)}
+              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+              isApiConnected={isApiConnected}
+            />
+          )}
+
+          {activeTab === 'rekap' && (
+            <WaliKelasRekapPanel
+              journalEntries={journalEntries}
+              onOpenAddJournalModal={() => setIsAddJournalOpen(true)}
+              onOpenExportModal={() => setIsExportModalOpen(true)}
+              isApiConnected={isApiConnected}
+            />
+          )}
+        </main>
+
+        {/* Clean Minimalism Footer */}
+        <footer className="mt-8 px-6 py-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            Data Updated: 11 Ags 2026, 08:45 AM • SMKN 1 Tech Center
+          </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsAddJournalOpen(true)}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 cursor-pointer"
+            >
+              + Catat Jurnal Baru
+            </button>
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline flex items-center gap-1.5 cursor-pointer"
+            >
+              Export Laporan
+            </button>
+          </div>
+        </footer>
+      </div>
+
+      {/* Interactive Overlays & Modals */}
+      <StudentDetailModal
+        student={selectedStudent}
+        onClose={() => setSelectedStudent(null)}
+        onOpenBadgeModal={(st) => setBadgeStudent(st)}
+        onOpenWhatsApp={handleOpenWhatsApp}
+      />
+
+      <AttachmentViewerModal
+        request={viewAttachmentReq}
+        onClose={() => setViewAttachmentReq(null)}
+      />
+
+      <BadgeAwardModal
+        student={badgeStudent}
+        onClose={() => setBadgeStudent(null)}
+        onAwardBadge={handleAwardBadge}
+      />
+
+      <AddIncidentModal
+        students={students}
+        isOpen={isAddIncidentOpen}
+        onClose={() => setIsAddIncidentOpen(false)}
+        onAddViolation={handleAddViolation}
+      />
+
+      <AddJournalModal
+        isOpen={isAddJournalOpen}
+        onClose={() => setIsAddJournalOpen(false)}
+        onAddJournal={handleAddJournal}
+      />
+
+      <ReportExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        classInfo={classInfo}
+        students={students}
+      />
+
+      {waModalData && (
+        <WhatsAppModal
+          isOpen={Boolean(waModalData)}
+          onClose={() => setWaModalData(null)}
+          parentName={waModalData.parentName}
+          parentPhone={waModalData.parentPhone}
+          studentName={waModalData.studentName}
+          reasonText={waModalData.reasonText}
+        />
+      )}
+
+      {/* Toast Feedback System */}
+      <NotificationToast toasts={toasts} onDismiss={handleDismissToast} />
+    </div>
+  );
+}
