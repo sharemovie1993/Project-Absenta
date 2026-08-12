@@ -44,6 +44,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [editJenisPtk, setEditJenisPtk] = useState('');
   const [editNik, setEditNik] = useState('');
   const [editNoKk, setEditNoKk] = useState('');
+  const [editNip, setEditNip] = useState('');
   const [editNuptk, setEditNuptk] = useState('');
   const [editNpwp, setEditNpwp] = useState('');
   const [editNamaIbuKandung, setEditNamaIbuKandung] = useState('');
@@ -96,6 +97,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       setEditJenisPtk(activeGuru.jenis_ptk || 'PENDIDIK');
       setEditNik(activeGuru.nik || '');
       setEditNoKk(activeGuru.no_kk || '');
+      setEditNip(activeGuru.nip || '');
       setEditNuptk(activeGuru.nuptk || '');
       setEditNpwp(activeGuru.npwp || '');
       setEditNamaIbuKandung(activeGuru.nama_ibu_kandung || '');
@@ -142,6 +144,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
     e.preventDefault();
     try {
       const payload = {
+        nip: editNip,
         alamat: editAlamat,
         tempat_lahir: editTempatLahir,
         tanggal_lahir: editTanggalLahir,
@@ -470,6 +473,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               </span>
             </div>
             <div>
+              <span className="text-[10px] font-semibold text-slate-400 block">NIP</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNip || activeNip || '-'}</span>
+            </div>
+            <div>
               <span className="text-[10px] font-semibold text-slate-400 block">NUPTK</span>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNuptk || '-'}</span>
             </div>
@@ -686,6 +693,19 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
             {activeEditSection === 'kepegawaian' && (
               <>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    NIP (Nomor Induk Pegawai)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNip}
+                    onChange={(e) => setEditNip(e.target.value)}
+                    placeholder="18-digit NIP ASN / NIP Sekolah"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
