@@ -448,10 +448,13 @@ export class RestoreService {
   private targetRolesByNameCache = new Map<string, string>();
 
   private async resolveTargetRoleId(
-    sourceRoleId: string,
+    userRow: any,
     metaRoles: { id: string; name: string }[],
     tx: any
   ): Promise<string> {
+    const sourceRoleId = userRow?.role_id;
+    if (!sourceRoleId) return sourceRoleId;
+
     if (this.roleIdMapCache.has(sourceRoleId)) {
       return this.roleIdMapCache.get(sourceRoleId)!;
     }
@@ -506,9 +509,30 @@ export class RestoreService {
       }
     } catch {}
 
-    // 5. Fallback: ADMIN
+    // 5. Smart Fallback for Legacy Backups based on user email / structure
+    if (userRow?.email) {
+      const emailLower = String(userRow.email).toLowerCase();
+      // Student emails: NISN/NIS@absenta.id, siswa.xxx@absenta.id, or siswa2025...
+      if (emailLower.includes('siswa') || /^\d{7,12}@absenta\.id$/.test(emailLower) || /^\d{7,12}\.\d+@absenta\.id$/.test(emailLower)) {
+        const siswaId = this.targetRolesByNameCache.get('SISWA');
+        if (siswaId) {
+          console.log(`[RESTORE] Smart Fallback to SISWA role for user ${userRow.email}`);
+          return siswaId;
+        }
+      }
+      // Teacher emails
+      if (emailLower.includes('guru')) {
+        const guruId = this.targetRolesByNameCache.get('GURU');
+        if (guruId) {
+          console.log(`[RESTORE] Smart Fallback to GURU role for user ${userRow.email}`);
+          return guruId;
+        }
+      }
+    }
+
+    // 6. Final Fallback: ADMIN
     const defaultAdminId = this.targetRolesByNameCache.get('ADMIN') || sourceRoleId;
-    console.warn(`[RESTORE] Could not resolve role_id ${sourceRoleId}, falling back to ADMIN (${defaultAdminId})`);
+    console.warn(`[RESTORE] Could not resolve role_id ${sourceRoleId} for user ${userRow?.email}, falling back to ADMIN (${defaultAdminId})`);
     this.roleIdMapCache.set(sourceRoleId, defaultAdminId);
     return defaultAdminId;
   }
@@ -570,7 +594,7 @@ export class RestoreService {
                   
                   // Role ID Resolution & Mapping for User table
                   if (tableName === 'User' && row.role_id) {
-                      row.role_id = await this.resolveTargetRoleId(row.role_id, metaRoles, tx);
+                      row.role_id = await this.resolveTargetRoleId(row, metaRoles, tx);
                   }
 
                   buffer.push(row);
