@@ -904,32 +904,30 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Alamat Jalan / Blok
-                    </label>
-                    <input
-                      type="text"
-                      value={editAlamat}
-                      onChange={(e) => setEditAlamat(e.target.value)}
-                      placeholder="Jl. Raya No. 123"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    Alamat Jalan / Blok (Lengkap dengan Nomor Rumah / Gang)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editAlamat}
+                    onChange={(e) => setEditAlamat(e.target.value)}
+                    placeholder="Jl. Raya No. 123 / Gang Masjid"
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                      Dusun / Kampung
-                    </label>
-                    <input
-                      type="text"
-                      value={editDusun}
-                      onChange={(e) => setEditDusun(e.target.value)}
-                      placeholder="Kampung Krajan"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    Dusun / Kampung
+                  </label>
+                  <input
+                    type="text"
+                    value={editDusun}
+                    onChange={(e) => setEditDusun(e.target.value)}
+                    placeholder="Kampung Krajan / Dusun Mekar"
+                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </>
             )}
