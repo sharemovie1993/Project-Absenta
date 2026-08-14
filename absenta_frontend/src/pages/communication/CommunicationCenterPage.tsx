@@ -5,10 +5,11 @@ import {
   PlusIcon, 
   MagnifyingGlassIcon,
   ChevronLeftIcon,
-  ClockIcon,
-  DocumentTextIcon,
   FunnelIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  EllipsisVerticalIcon,
+  CheckBadgeIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { 
   internalCommunicationApi, 
@@ -22,27 +23,29 @@ import {
 import { ChatConversationPanel } from '@/components/communication/ChatConversationPanel';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
 import { useSocket } from '@/hooks/useSocket';
-import { format } from 'date-fns';
+import { useAuthStore } from '@/store/authStore';
+import { format, isToday, isYesterday } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 
 export default function CommunicationCenterPage() {
   const queryClient = useQueryClient();
   const { socket } = useSocket();
+  const { user } = useAuthStore();
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<string>('ALL');
-  const [filterCategory, setFilterCategory] = useState<string>('ALL');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'DISPOSISI' | 'DIRECT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
 
   // ── 1. Query: Ambil Daftar Thread Percakapan (TanStack Query v5) ─────────────
   const { 
     data: threads = [], 
-    isLoading: isLoadingThreads 
+    isLoading: isLoadingThreads,
+    refetch: refetchThreads
   } = useQuery({
-    queryKey: communicationKeys.threads({ type: filterType, category: filterCategory, search: searchQuery }),
+    queryKey: communicationKeys.threads({ filter: activeFilter, search: searchQuery }),
     queryFn: () => internalCommunicationApi.getThreads({
-      type: filterType !== 'ALL' ? filterType : undefined,
-      category: filterCategory !== 'ALL' ? filterCategory : undefined,
+      type: activeFilter === 'DIRECT' ? 'DIRECT' : activeFilter === 'DISPOSISI' ? 'DISPOSISI' : undefined,
       search: searchQuery.trim() || undefined
     }),
     staleTime: 10 * 1000,
@@ -156,200 +159,244 @@ export default function CommunicationCenterPage() {
     return threads.find((t: InternalThreadItem) => t.id === selectedThreadId) || activeThreadDetail?.thread;
   }, [threads, selectedThreadId, activeThreadDetail]);
 
+  // Filter threads client-side jika memilih unread
+  const filteredThreads = useMemo(() => {
+    if (activeFilter === 'UNREAD') {
+      return threads.filter((t: InternalThreadItem) => t.isUnread);
+    }
+    return threads;
+  }, [threads, activeFilter]);
+
+  const formatThreadTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isToday(d)) return format(d, 'HH:mm');
+      if (isYesterday(d)) return 'Kemarin';
+      return format(d, 'dd/MM/yy');
+    } catch {
+      return '';
+    }
+  };
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-slate-100 dark:bg-slate-950 overflow-hidden font-sans">
-      {/* ── TOP ACTION BAR ──────────────────────────────────────────────── */}
-      <header className="px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400">
-            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+    <div className="h-[calc(100vh-4.2rem)] flex bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden font-sans border-t border-slate-200/50 dark:border-slate-800">
+      {/* ── WHATSAPP LEFT PANEL (CONVERSATION LIST) ───────────────────────── */}
+      <aside
+        className={`w-full md:w-96 lg:w-[420px] bg-[#ffffff] dark:bg-[#111b21] border-r border-[#e9edef] dark:border-[#202c33] flex flex-col shrink-0 ${
+          selectedThreadId ? 'hidden md:flex' : 'flex'
+        }`}
+      >
+        {/* Panel Header */}
+        <div className="px-4 py-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center justify-between shrink-0 border-b border-[#e9edef] dark:border-[#2a3942]">
+          <div className="flex items-center gap-3">
+            {/* User Profile Avatar */}
+            <div className="w-10 h-10 rounded-full bg-[#00a884] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+              {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'US'}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#111b21] dark:text-[#e9edef] truncate max-w-[140px]">
+                {user?.full_name || 'Pengguna'}
+              </p>
+              <p className="text-[10px] text-[#667781] dark:text-[#8696a0] truncate">
+                {user?.role?.name || 'GTK'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              Pusat Komunikasi & Perpesanan Sekolah
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-              Koordinasi internal piket, wali kelas, guru mata pelajaran, konseling BK & disposisi tugas
-            </p>
+
+          <div className="flex items-center gap-1 text-[#54656f] dark:text-[#aebac1]">
+            <button
+              onClick={() => refetchThreads()}
+              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              title="Perbarui Obrolan"
+            >
+              <ArrowPathIcon className={`w-5 h-5 ${isLoadingThreads ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setIsNewModalOpen(true)}
+              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#00a884]"
+              title="Mulai Percakapan Baru"
+            >
+              <PlusIcon className="w-5 h-5 stroke-[2.5]" />
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white text-xs font-semibold rounded-xl shadow-xs transition-all"
-        >
-          <PlusIcon className="w-4 h-4 stroke-[2.5]" />
-          <span>Percakapan Baru</span>
-        </button>
-      </header>
-
-      {/* ── SPLIT VIEW CONTAINER ────────────────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* ── SIDEBAR THREAD LIST ──────────────────────────────────────── */}
-        <aside
-          className={`w-full md:w-80 lg:w-96 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col shrink-0 ${
-            selectedThreadId ? 'hidden md:flex' : 'flex'
-          }`}
-        >
-          {/* Search Bar */}
-          <div className="p-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="relative">
-              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari obrolan, kontak, topik..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-hidden transition-all"
-              />
-            </div>
+        {/* WhatsApp Search Bar & Filter Chips */}
+        <div className="p-2.5 border-b border-[#e9edef] dark:border-[#202c33] bg-[#ffffff] dark:bg-[#111b21] space-y-2">
+          <div className="relative">
+            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-2.5 text-[#54656f] dark:text-[#8696a0]" />
+            <input
+              type="text"
+              placeholder="Cari atau mulai chat baru"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-[#f0f2f5] dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden focus:ring-1 focus:ring-[#00a884]"
+            />
           </div>
 
           {/* Filter Pills */}
-          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex gap-1.5 overflow-x-auto scrollbar-none">
-            {[
-              { id: 'ALL', label: 'Semua' },
-              { id: 'DIRECT', label: 'Chat 1-on-1' },
-              { id: 'DISPOSISI', label: 'Disposisi Tugas' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setFilterType(tab.id)}
-                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg whitespace-nowrap transition-all ${
-                  filterType === tab.id
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-semibold no-scrollbar">
+            <button
+              onClick={() => setActiveFilter('ALL')}
+              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                activeFilter === 'ALL'
+                  ? 'bg-[#e7fce3] text-[#008069] dark:bg-[#005c4b] dark:text-[#d9fdd3]'
+                  : 'bg-[#f0f2f5] dark:bg-[#202c33] text-[#54656f] dark:text-[#8696a0] hover:bg-slate-200'
+              }`}
+            >
+              Semua
+            </button>
+            <button
+              onClick={() => setActiveFilter('UNREAD')}
+              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                activeFilter === 'UNREAD'
+                  ? 'bg-[#e7fce3] text-[#008069] dark:bg-[#005c4b] dark:text-[#d9fdd3]'
+                  : 'bg-[#f0f2f5] dark:bg-[#202c33] text-[#54656f] dark:text-[#8696a0] hover:bg-slate-200'
+              }`}
+            >
+              Belum Dibaca
+            </button>
+            <button
+              onClick={() => setActiveFilter('DIRECT')}
+              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                activeFilter === 'DIRECT'
+                  ? 'bg-[#e7fce3] text-[#008069] dark:bg-[#005c4b] dark:text-[#d9fdd3]'
+                  : 'bg-[#f0f2f5] dark:bg-[#202c33] text-[#54656f] dark:text-[#8696a0] hover:bg-slate-200'
+              }`}
+            >
+              Chat 1-on-1
+            </button>
+            <button
+              onClick={() => setActiveFilter('DISPOSISI')}
+              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                activeFilter === 'DISPOSISI'
+                  ? 'bg-[#e7fce3] text-[#008069] dark:bg-[#005c4b] dark:text-[#d9fdd3]'
+                  : 'bg-[#f0f2f5] dark:bg-[#202c33] text-[#54656f] dark:text-[#8696a0] hover:bg-slate-200'
+              }`}
+            >
+              Disposisi Tugas
+            </button>
           </div>
+        </div>
 
-          {/* List Threads */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-            {isLoadingThreads ? (
-              <div className="p-6 text-center text-xs text-slate-400">Memuat percakapan...</div>
-            ) : threads.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 space-y-2">
-                <ChatBubbleLeftRightIcon className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700" />
-                <p className="text-xs font-medium">Belum ada percakapan</p>
-                <p className="text-[11px] text-slate-400">Klik 'Percakapan Baru' untuk memulai</p>
-              </div>
-            ) : (
-              threads.map((t: InternalThreadItem) => {
-                const isSelected = t.id === selectedThreadId;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedThreadId(t.id)}
-                    className={`w-full text-left p-3.5 transition-all flex items-start gap-3 relative ${
-                      isSelected
-                        ? 'bg-blue-50/80 dark:bg-blue-950/30'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                    }`}
-                  >
-                    {/* Status Pill Indicator */}
-                    {isSelected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-r-full" />
-                    )}
-
-                    {/* Avatar Initials */}
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                      {t.title.charAt(0).toUpperCase()}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <h3 className={`text-xs font-semibold truncate ${
-                          t.isUnread ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-800 dark:text-slate-200'
-                        }`}>
-                          {t.title}
-                        </h3>
-                        {t.lastMessage && (
-                          <span className="text-[10px] text-slate-400 shrink-0 ml-1">
-                            {format(new Date(t.lastMessage.created_at), 'HH:mm')}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Snippet Pesan Terakhir */}
-                      <p className={`text-[11px] truncate ${
-                        t.isUnread ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                        {t.lastMessage ? t.lastMessage.content : 'Belum ada pesan'}
-                      </p>
-
-                      {/* Tag Kategori & Prioritas */}
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
-                          {t.category}
-                        </span>
-                        {t.priority === 'URGENT' && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-bold">
-                            Mendesak
-                          </span>
-                        )}
-                        {t.is_confidential && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold flex items-center gap-0.5">
-                            <ShieldCheckIcon className="w-2.5 h-2.5" />
-                            BK
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Badge Pesan Belum Dibaca */}
-                    {t.isUnread && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 mt-1.5 shadow-2xs" />
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </aside>
-
-        {/* ── MAIN CHAT VIEW ────────────────────────────────────────────── */}
-        <main className={`flex-1 flex flex-col ${!selectedThreadId ? 'hidden md:flex' : 'flex'}`}>
-          {selectedThreadId && activeThread ? (
-            <div className="flex-1 flex flex-col h-full relative">
-              {/* Tombol Kembali di Mobile */}
-              <div className="md:hidden p-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center">
-                <button
-                  onClick={() => setSelectedThreadId(null)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 p-1"
-                >
-                  <ChevronLeftIcon className="w-4 h-4" />
-                  <span>Daftar Obrolan</span>
-                </button>
-              </div>
-
-              <ChatConversationPanel
-                thread={activeThread}
-                messages={activeThreadDetail?.messages || []}
-                isLoadingMessages={isLoadingMessages}
-                onSendMessage={(payload) => sendMessageMutation.mutate(payload)}
-                isSendingMessage={sendMessageMutation.isPending}
-                onUpdateStatus={(status) => updateStatusMutation.mutate({ threadId: activeThread.id, status })}
-                isUpdatingStatus={updateStatusMutation.isPending}
-              />
+        {/* Conversation List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5] dark:divide-[#202c33]">
+          {isLoadingThreads ? (
+            <div className="p-8 text-center text-xs text-[#667781] dark:text-[#8696a0]">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#00a884] border-t-transparent mx-auto mb-2" />
+              <p>Memuat percakapan sekolah...</p>
+            </div>
+          ) : filteredThreads.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#667781] dark:text-[#8696a0]">
+              <ChatBubbleLeftRightIcon className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+              <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada obrolan</p>
+              <p className="mt-1 text-[11px]">Klik ikon '+' di atas untuk memulai chat dengan guru / staf.</p>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400 bg-slate-50/50 dark:bg-slate-950">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
-                <ChatBubbleLeftRightIcon className="w-8 h-8" />
-              </div>
-              <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                Pilih atau Mulai Obrolan
-              </h2>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Pilih percakapan dari panel sebelah kiri atau klik 'Percakapan Baru' untuk menghubungkan guru, wali kelas, piket, dan BK.
-              </p>
-            </div>
+            filteredThreads.map((t: InternalThreadItem) => {
+              const isSelected = t.id === selectedThreadId;
+              const other = t.participants?.find(p => p.user_id !== t.created_by) || t.participants?.[0];
+              const titleDisplay = t.title || other?.name || 'Obrolan Internal';
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedThreadId(t.id)}
+                  className={`flex items-center gap-3 px-3.5 py-3 cursor-pointer transition-colors relative ${
+                    isSelected
+                      ? 'bg-[#f0f2f5] dark:bg-[#2a3942]'
+                      : 'hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className="relative w-12 h-12 rounded-full bg-[#00a884] text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-2xs overflow-hidden">
+                    {other?.avatar ? (
+                      <img src={other.avatar} alt={titleDisplay} className="w-full h-full object-cover" />
+                    ) : (
+                      titleDisplay.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <h3 className={`text-[14px] truncate font-semibold ${
+                        t.isUnread ? 'text-[#111b21] dark:text-[#e9edef] font-bold' : 'text-[#111b21] dark:text-[#e9edef]'
+                      }`}>
+                        {titleDisplay}
+                      </h3>
+                      <span className={`text-[11px] shrink-0 ${
+                        t.isUnread ? 'text-[#25d366] font-bold' : 'text-[#667781] dark:text-[#8696a0]'
+                      }`}>
+                        {t.lastMessage?.created_at ? formatThreadTime(t.lastMessage.created_at) : ''}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <p className="text-[12.5px] text-[#667781] dark:text-[#8696a0] truncate max-w-[200px] lg:max-w-[240px]">
+                        {t.lastMessage?.content || 'Mulai percakapan baru...'}
+                      </p>
+
+                      {/* WhatsApp Green Unread Badge */}
+                      {t.isUnread && (
+                        <span className="w-5 h-5 rounded-full bg-[#25d366] text-white text-[10px] font-extrabold flex items-center justify-center shrink-0 shadow-xs">
+                          1
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
-        </main>
-      </div>
+        </div>
+      </aside>
+
+      {/* ── WHATSAPP RIGHT PANEL (MAIN CHAT AREA) ────────────────────────── */}
+      <main className="flex-1 flex flex-col h-full bg-[#efeae2] dark:bg-[#0b141a] overflow-hidden">
+        {activeThread ? (
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            {/* Mobile Back Button */}
+            <div className="md:hidden px-3 py-2 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-[#e9edef] dark:border-[#2a3942] flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setSelectedThreadId(null)}
+                className="p-1 rounded-lg text-[#54656f] dark:text-[#aebac1] hover:bg-black/5"
+              >
+                <ChevronLeftIcon className="w-5 h-5 stroke-[2.5]" />
+              </button>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Kembali ke Daftar Chat
+              </span>
+            </div>
+
+            <ChatConversationPanel
+              thread={activeThread}
+              messages={activeThreadDetail?.messages || []}
+              isLoadingMessages={isLoadingMessages}
+              onSendMessage={(payload) => sendMessageMutation.mutate(payload)}
+              isSendingMessage={sendMessageMutation.isPending}
+              onUpdateStatus={(status) => updateStatusMutation.mutate({ threadId: activeThread.id, status })}
+              isUpdatingStatus={updateStatusMutation.isPending}
+            />
+          </div>
+        ) : (
+          /* WhatsApp Web Empty Screen */
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-[#54656f] dark:text-[#8696a0] bg-[#f0f2f5] dark:bg-[#222e35] select-none">
+            <div className="w-24 h-24 rounded-full bg-white dark:bg-[#111b21] text-[#00a884] flex items-center justify-center mb-6 shadow-md border border-slate-200/50 dark:border-slate-800">
+              <ChatBubbleLeftRightIcon className="w-12 h-12 stroke-[1.8]" />
+            </div>
+            <h2 className="text-xl font-bold text-[#111b21] dark:text-[#e9edef]">
+              Pusat Komunikasi Absenta Sekolah
+            </h2>
+            <p className="text-xs text-[#667781] dark:text-[#8696a0] max-w-md mt-2 leading-relaxed">
+              Kirim dan terima pesan dari guru piket, wali kelas, guru mapel, dan bimbingan konseling secara instan dalam lingkup tenant sekolah Anda.
+            </p>
+            <div className="mt-8 flex items-center gap-2 text-[11px] text-[#667781] dark:text-[#8696a0]">
+              <span>🔒 Terenkripsi & Terisolasi Multi-Tenant</span>
+            </div>
+          </div>
+        )}
+      </main>
 
       {/* ── MODAL PERCAKAPAN BARU ───────────────────────────────────────── */}
       <NewConversationModal

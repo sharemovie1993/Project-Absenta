@@ -11,8 +11,7 @@ import {
   ChatBubbleLeftRightIcon, 
   XMarkIcon, 
   PaperAirplaneIcon, 
-  ArrowTopRightOnSquareIcon,
-  PlusIcon
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -109,38 +108,37 @@ export default function FloatingMessenger() {
 
     return () => {
       socket.off('internal_comm:new_message', handleNewMsg);
-      socket.off('internal_comm:new_thread');
     };
   }, [socket, selectedThreadId, queryClient]);
 
-  // Sembunyikan widget floating jika sedang berada di halaman utama komunikasi
-  if (isCommunicationPage || !user?.id) {
-    return null;
-  }
-
-  const activeThread = threads.find((t: InternalThreadItem) => t.id === selectedThreadId) || activeThreadDetail?.thread;
+  // Jangan render floating button jika sudah berada di halaman Pusat Komunikasi
+  if (isCommunicationPage) return null;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim() || sendMessageMutation.isPending || !selectedThreadId) return;
+    if (!replyText.trim() || !selectedThreadId || sendMessageMutation.isPending) return;
     sendMessageMutation.mutate(replyText.trim());
   };
 
+  const activeThread = threads.find((t: InternalThreadItem) => t.id === selectedThreadId);
+
   return (
-    <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-40 font-sans">
-      {/* ── POPUP WINDOW CHAT ────────────────────────────────────────── */}
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
+      {/* ── POPUP CHAT WINDOW (WhatsApp Mini Persona) ────────────────── */}
       {isOpen && (
-        <div className="mb-3 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-[480px] animate-in slide-in-from-bottom-4 duration-200">
-          {/* Header Widget */}
-          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between shadow-xs">
+        <div className="mb-3 w-80 sm:w-96 h-[460px] bg-[#efeae2] dark:bg-[#0b141a] rounded-2xl shadow-2xl border border-[#e9edef] dark:border-[#202c33] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200">
+          {/* WhatsApp Header */}
+          <div className="px-4 py-3 bg-[#075e54] dark:bg-[#202c33] text-white flex items-center justify-between shrink-0 shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-1.5 rounded-lg bg-white/20">
-                <ChatBubbleLeftRightIcon className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                {activeThread?.title ? activeThread.title.slice(0, 2).toUpperCase() : 'WA'}
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs font-bold truncate">Pusat Komunikasi Cepat</h3>
-                <p className="text-[10px] text-blue-100 truncate">
-                  {activeThread?.title || 'Obrolan Sekolah'}
+                <h4 className="font-bold text-xs truncate">
+                  {activeThread?.title || 'Pesan Sekolah'}
+                </h4>
+                <p className="text-[10px] text-emerald-100 dark:text-[#8696a0] truncate">
+                  {activeThread?.type === 'DISPOSISI' ? 'Disposisi Tugas' : 'Online'}
                 </p>
               </div>
             </div>
@@ -151,31 +149,31 @@ export default function FloatingMessenger() {
                   setIsOpen(false);
                   navigate('/komunikasi');
                 }}
-                title="Buka Halaman Penuh"
-                className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors"
+                title="Buka Layar Penuh"
+                className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
               >
                 <ArrowTopRightOnSquareIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
               >
                 <XMarkIcon className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Quick Thread Selector Tabs (Jika > 1 obrolan) */}
+          {/* Quick Thread Selector Tabs */}
           {threads.length > 1 && (
-            <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 flex gap-1.5 overflow-x-auto scrollbar-none">
+            <div className="px-3 py-1.5 bg-[#f0f2f5] dark:bg-[#111b21] border-b border-[#e9edef] dark:border-[#202c33] flex gap-1.5 overflow-x-auto no-scrollbar">
               {threads.slice(0, 5).map((t: InternalThreadItem) => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedThreadId(t.id)}
-                  className={`px-2 py-0.5 text-[10px] font-semibold rounded-md whitespace-nowrap transition-all ${
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded-md whitespace-nowrap transition-all cursor-pointer ${
                     selectedThreadId === t.id
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                      ? 'bg-[#00a884] text-white shadow-2xs'
+                      : 'bg-white dark:bg-[#202c33] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                   }`}
                 >
                   {t.title}
@@ -185,18 +183,24 @@ export default function FloatingMessenger() {
           )}
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50 dark:bg-slate-950 text-xs">
+          <div 
+            className="flex-1 overflow-y-auto p-3 space-y-2 text-xs"
+            style={{
+              backgroundImage: `radial-gradient(#00a88410 1px, transparent 1px)`,
+              backgroundSize: '16px 16px'
+            }}
+          >
             {isLoadingMessages ? (
-              <div className="text-center text-slate-400 py-8">Memuat obrolan...</div>
+              <div className="text-center text-[#667781] dark:text-[#8696a0] py-8">Memuat obrolan...</div>
             ) : !activeThreadDetail?.messages || activeThreadDetail.messages.length === 0 ? (
-              <div className="text-center text-slate-400 py-12">
-                <p className="font-medium">Belum ada pesan</p>
+              <div className="text-center text-[#667781] dark:text-[#8696a0] py-12">
+                <p className="font-semibold">Belum ada pesan</p>
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     navigate('/komunikasi');
                   }}
-                  className="mt-2 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                  className="mt-2 text-[#00a884] font-bold hover:underline"
                 >
                   Buka Menu Komunikasi Lengkap
                 </button>
@@ -207,17 +211,17 @@ export default function FloatingMessenger() {
                 return (
                   <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[80%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
+                      className={`max-w-[85%] rounded-lg px-3 py-1.5 text-xs shadow-2xs ${
                         isMe
-                          ? 'bg-blue-600 text-white rounded-tr-xs'
-                          : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-tl-xs'
+                          ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-none'
+                          : 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-none border border-slate-200/50 dark:border-slate-700'
                       }`}
                     >
                       {!isMe && m.sender_name && (
-                        <p className="text-[10px] font-bold text-blue-500 mb-0.5">{m.sender_name}</p>
+                        <p className="text-[10px] font-bold text-[#008069] dark:text-[#00a884] mb-0.5">{m.sender_name}</p>
                       )}
                       <p className="leading-relaxed whitespace-pre-wrap break-words">{m.content}</p>
-                      <span className={`block text-[9px] text-right mt-0.5 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                      <span className="block text-[9px] text-right mt-0.5 text-[#667781] dark:text-[#8696a0]">
                         {format(new Date(m.created_at), 'HH:mm')}
                       </span>
                     </div>
@@ -229,36 +233,39 @@ export default function FloatingMessenger() {
           </div>
 
           {/* Input Footer */}
-          <form onSubmit={handleSend} className="p-2 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-1.5">
+          <form onSubmit={handleSend} className="p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-1.5">
             <input
               type="text"
-              placeholder="Tulis balasan cepat..."
+              placeholder="Ketik pesan..."
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
-              className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 border border-transparent focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 outline-hidden"
+              className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden shadow-2xs"
             />
             <button
               type="submit"
               disabled={!replyText.trim() || sendMessageMutation.isPending || !selectedThreadId}
-              className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0"
+              className="p-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
             >
-              <PaperAirplaneIcon className="w-4 h-4 -rotate-45" />
+              <PaperAirplaneIcon className="w-4 h-4" />
             </button>
           </form>
         </div>
       )}
 
-      {/* ── FLOATING TRIGGER BUTTON ──────────────────────────────────── */}
+      {/* ── FLOATING TRIGGER BUTTON (WhatsApp Icon & Badge) ───────────── */}
       <button
         onClick={() => setIsOpen(prev => !prev)}
-        className="relative flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all group"
-        title="Buka Pesan Masuk Cepat"
+        className="relative flex items-center justify-center w-12 h-12 rounded-full bg-[#25d366] hover:bg-[#20bd5a] text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+        title="Buka WhatsApp Internal Sekolah"
       >
-        <ChatBubbleLeftRightIcon className="w-6 h-6" />
+        {/* WhatsApp Chat SVG Icon */}
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+          <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm0 18.06c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.15 8.15 0 0 1-1.25-4.29c0-4.51 3.67-8.18 8.19-8.18 2.19 0 4.25.85 5.8 2.4 1.55 1.55 2.4 3.61 2.4 5.8 0 4.51-3.68 8.18-8.2 8.18z" />
+        </svg>
 
         {/* Unread Counter Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1 bg-red-500 text-white text-[11px] font-bold rounded-full border-2 border-white dark:border-slate-900 shadow-xs animate-bounce">
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1 bg-red-500 text-white text-[11px] font-extrabold rounded-full border-2 border-white dark:border-slate-900 shadow-xs animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
