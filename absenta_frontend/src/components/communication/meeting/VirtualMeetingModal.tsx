@@ -215,10 +215,23 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
-    // Add local stream tracks to this peer
+    // Pre-configure transceivers for bi-directional audio and video
+    try {
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
+      pc.addTransceiver('video', { direction: 'sendrecv' });
+    } catch {}
+
+    // Add local stream tracks to this peer if available
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
-        pc.addTrack(track, localStreamRef.current!);
+        const sender = pc.getSenders().find(s => s.track?.kind === track.kind || (s as any).kind === track.kind);
+        if (sender) {
+          sender.replaceTrack(track).catch(() => {});
+        } else {
+          try {
+            pc.addTrack(track, localStreamRef.current!);
+          } catch {}
+        }
       });
     }
 
@@ -235,10 +248,20 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
 
     // Receive Remote Track
     pc.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        const remoteStream = event.streams[0];
-        setRemoteStreams((prev) => ({ ...prev, [targetUserId]: remoteStream }));
-      }
+      const incomingStream = event.streams && event.streams[0] 
+        ? event.streams[0] 
+        : new MediaStream([event.track]);
+
+      setRemoteStreams((prev) => {
+        const existing = prev[targetUserId];
+        if (existing) {
+          if (!existing.getTracks().some(t => t.id === event.track.id)) {
+            existing.addTrack(event.track);
+          }
+          return { ...prev, [targetUserId]: new MediaStream(existing.getTracks()) };
+        }
+        return { ...prev, [targetUserId]: incomingStream };
+      });
     };
 
     peerConnectionsRef.current.set(targetUserId, pc);
@@ -469,28 +492,43 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         let stream: MediaStream | null = null;
         try {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: !isAudioMuted
+            video: { width: { ideal: 640 }, height: { ideal: 480 } }
           });
-        } catch {
+        } catch (err) {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         }
 
-        if (localStreamRef.current) {
-          localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
-          stream.getVideoTracks().forEach((t) => localStreamRef.current?.addTrack(t));
-        } else {
-          localStreamRef.current = stream;
-        }
+        const newVideoTrack = stream.getVideoTracks()[0];
+        if (newVideoTrack) {
+          if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
+            localStreamRef.current.addTrack(newVideoTrack);
+          } else {
+            localStreamRef.current = stream;
+          }
 
-        // Add tracks to all existing peer connections
-        peerConnectionsRef.current.forEach((pc) => {
-          stream?.getVideoTracks().forEach((track) => pc.addTrack(track, stream!));
-        });
+          // Add / Replace track on all existing peer connections
+          peerConnectionsRef.current.forEach(async (pc, targetUserId) => {
+            const sender = pc.getSenders().find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
+            if (sender) {
+              await sender.replaceTrack(newVideoTrack).catch(() => {});
+            } else {
+              try {
+                pc.addTrack(newVideoTrack, localStreamRef.current!);
+              } catch {}
+            }
+            // Renegotiate SDP
+            try {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              socket?.emit('meeting:offer', { targetUserId, roomId, offer });
+            } catch {}
+          });
 
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.play().catch(() => {});
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStreamRef.current;
+            localVideoRef.current.play().catch(() => {});
+          }
         }
         setIsVideoDisabled(false);
         return;
@@ -520,19 +558,44 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   // Dynamic Microphone Toggle
   const handleToggleAudio = async () => {
     try {
+      if (navigator.mediaDevices?.enumerateDevices) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioDevices = devices.filter((d) => d.kind === 'audioinput');
+        if (audioDevices.length === 0) {
+          alert('Perangkat mikrofon fisik tidak ditemukan pada perangkat komputer ini.');
+          setIsAudioMuted(true);
+          return;
+        }
+      }
+
       if (!localStreamRef.current || localStreamRef.current.getAudioTracks().length === 0) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (localStreamRef.current) {
-          stream.getAudioTracks().forEach((t) => localStreamRef.current?.addTrack(t));
-        } else {
-          localStreamRef.current = stream;
-        }
-        setupAudioMeter(localStreamRef.current);
+        const newAudioTrack = stream.getAudioTracks()[0];
+        if (newAudioTrack) {
+          if (localStreamRef.current) {
+            localStreamRef.current.addTrack(newAudioTrack);
+          } else {
+            localStreamRef.current = stream;
+          }
+          setupAudioMeter(localStreamRef.current);
 
-        // Add audio track to peer connections
-        peerConnectionsRef.current.forEach((pc) => {
-          stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
-        });
+          // Add / Replace audio track to peer connections
+          peerConnectionsRef.current.forEach(async (pc, targetUserId) => {
+            const sender = pc.getSenders().find((s) => s.track?.kind === 'audio' || (s as any).kind === 'audio');
+            if (sender) {
+              await sender.replaceTrack(newAudioTrack).catch(() => {});
+            } else {
+              try {
+                pc.addTrack(newAudioTrack, localStreamRef.current!);
+              } catch {}
+            }
+            try {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              socket?.emit('meeting:offer', { targetUserId, roomId, offer });
+            } catch {}
+          });
+        }
 
         setIsAudioMuted(false);
         return;
@@ -544,7 +607,11 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         setIsAudioMuted(!audioTrack.enabled);
       }
     } catch (err: any) {
-      alert('Tidak dapat mengakses mikrofon: ' + (err.message || 'Izin mikrofon ditolak.'));
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('Perangkat mikrofon fisik tidak terdeteksi pada sistem ini.');
+      } else {
+        alert('Tidak dapat mengakses mikrofon: ' + (err.message || 'Izin mikrofon ditolak.'));
+      }
       setIsAudioMuted(true);
     }
   };
@@ -557,45 +624,61 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
 
     const initMedia = async () => {
       try {
-        let hasCamera = true;
+        let hasCamera = false;
+        let hasMic = false;
         if (navigator.mediaDevices?.enumerateDevices) {
           const devices = await navigator.mediaDevices.enumerateDevices();
           hasCamera = devices.some((d) => d.kind === 'videoinput');
+          hasMic = devices.some((d) => d.kind === 'audioinput');
         }
 
-        if (hasCamera) {
+        if (!hasCamera) setIsVideoDisabled(true);
+        if (!hasMic) setIsAudioMuted(true);
+
+        if (hasCamera && hasMic) {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               audio: true,
               video: { width: { ideal: 640 }, height: { ideal: 480 } }
             });
             setIsVideoDisabled(false);
+            setIsAudioMuted(false);
           } catch {
-            // Fallback audio only
+            // fallback camera only or mic only
             try {
-              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch {}
-            setIsVideoDisabled(true);
+              stream = await navigator.mediaDevices.getUserMedia({ video: true });
+              setIsVideoDisabled(false);
+            } catch {
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setIsAudioMuted(false);
+              } catch {}
+            }
           }
-        } else {
-          // No physical camera, get mic only
+        } else if (hasCamera) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 640 }, height: { ideal: 480 } }
+            });
+            setIsVideoDisabled(false);
+          } catch {}
+        } else if (hasMic) {
           try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setIsAudioMuted(false);
           } catch {}
-          setIsVideoDisabled(true);
         }
 
         localStreamRef.current = stream;
         if (stream) {
           setupAudioMeter(stream);
         }
-        if (localVideoRef.current && stream && !isVideoDisabled) {
+        if (localVideoRef.current && stream && hasCamera) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.play().catch(() => {});
         }
       } catch (err: any) {
         console.warn('[Meeting] Media init fallback:', err.message);
-        setIsVideoDisabled(true);
       }
     };
 
