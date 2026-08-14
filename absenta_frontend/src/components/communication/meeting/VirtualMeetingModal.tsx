@@ -122,6 +122,70 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const localStreamRef = useRef<MediaStream | null>(null);
   const meetingContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Dynamic Camera Toggle (Requests hardware if not already streaming)
+  const handleToggleVideo = async () => {
+    try {
+      if (!localStreamRef.current || localStreamRef.current.getVideoTracks().length === 0) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: isAudioMuted ? false : true
+        });
+
+        if (localStreamRef.current) {
+          localStreamRef.current.getVideoTracks().forEach(t => t.stop());
+          stream.getVideoTracks().forEach(t => localStreamRef.current?.addTrack(t));
+        } else {
+          localStreamRef.current = stream;
+        }
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.play().catch(() => {});
+        }
+        setIsVideoDisabled(false);
+        return;
+      }
+
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoDisabled(!videoTrack.enabled);
+        if (videoTrack.enabled && localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.play().catch(() => {});
+        }
+      }
+    } catch (err: any) {
+      alert('Tidak dapat mengakses kamera: ' + (err.message || 'Izin kamera ditolak. Pastikan browser mengizinkan kamera pada https://localhost:5173'));
+      setIsVideoDisabled(true);
+    }
+  };
+
+  // Dynamic Microphone Toggle
+  const handleToggleAudio = async () => {
+    try {
+      if (!localStreamRef.current || localStreamRef.current.getAudioTracks().length === 0) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (localStreamRef.current) {
+          stream.getAudioTracks().forEach(t => localStreamRef.current?.addTrack(t));
+        } else {
+          localStreamRef.current = stream;
+        }
+        setIsAudioMuted(false);
+        return;
+      }
+
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioMuted(!audioTrack.enabled);
+      }
+    } catch (err: any) {
+      alert('Tidak dapat mengakses mikrofon: ' + (err.message || 'Izin mikrofon ditolak.'));
+      setIsAudioMuted(true);
+    }
+  };
+
   // Initialize camera & mic on room join
   useEffect(() => {
     if (!isOpen) return;
@@ -135,8 +199,11 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       localStreamRef.current = s;
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = s;
+        localVideoRef.current.play().catch(() => {});
       }
-    }).catch(() => {
+      setIsVideoDisabled(false);
+    }).catch((err) => {
+      console.warn('Initial camera access failed:', err.message);
       setIsVideoDisabled(true);
     });
 
@@ -146,6 +213,14 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     };
   }, [isOpen]);
+
+  // Sync video element whenever isVideoDisabled changes
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current && !isVideoDisabled) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [isVideoDisabled]);
 
   // Recording Timer
   useEffect(() => {
@@ -725,15 +800,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           <div className="flex items-center">
             <button
               type="button"
-              onClick={() => {
-                if (localStreamRef.current) {
-                  const track = localStreamRef.current.getAudioTracks()[0];
-                  if (track) {
-                    track.enabled = !track.enabled;
-                    setIsAudioMuted(!track.enabled);
-                  }
-                }
-              }}
+              onClick={handleToggleAudio}
               className="flex flex-col items-center justify-center w-14 h-12 rounded-lg hover:bg-[#2b2b2b] text-slate-200 hover:text-white transition-colors cursor-pointer group"
             >
               <div className="relative">
@@ -751,15 +818,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           <div className="flex items-center">
             <button
               type="button"
-              onClick={() => {
-                if (localStreamRef.current) {
-                  const track = localStreamRef.current.getVideoTracks()[0];
-                  if (track) {
-                    track.enabled = !track.enabled;
-                    setIsVideoDisabled(!track.enabled);
-                  }
-                }
-              }}
+              onClick={handleToggleVideo}
               className="flex flex-col items-center justify-center w-14 h-12 rounded-lg hover:bg-[#2b2b2b] text-slate-200 hover:text-white transition-colors cursor-pointer"
             >
               <div className="relative">
