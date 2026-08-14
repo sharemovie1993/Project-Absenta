@@ -25,7 +25,7 @@ const Sidebar = React.lazy(() => import('./Sidebar').then(module => ({ default: 
 const CommandPalette = React.lazy(() => import('./CommandPalette').then(module => ({ default: module.CommandPalette })));
 const InstructionPanel = React.lazy(() => import('@/components/dashboard/shared/InstructionPanel').then(module => ({ default: module.InstructionPanel })));
 
-import FloatingMessenger from '@/components/support/FloatingMessenger';
+import FloatingMessenger from '@/components/common/FloatingMessenger';
 
 export default function MainLayout() {
   return (

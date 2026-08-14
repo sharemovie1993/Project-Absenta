@@ -78,9 +78,8 @@ const CalendarPresetsPage = lazy(() => import('./pages/superadmin/CalendarPreset
 
 const KurikulumStandardsPage = lazy(() => import('./pages/superadmin/KurikulumStandardsPage'));
 const JurusanPresetsPage = lazy(() => import('./pages/superadmin/JurusanPresetsPage'));
-const SupportTicketPage = lazy(() => import('./pages/support/SupportTicketPage'));
-const AdminSupportTicketPage = lazy(() => import('./pages/superadmin/support/AdminSupportTicketPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
+const CommunicationCenterPage = lazy(() => import('./pages/communication/CommunicationCenterPage'));
 const DocumentCenterPage = lazy(() => import('./pages/documents/DocumentCenterPage'));
 const DocumentActivityPage = lazy(() => import('./pages/documents/DocumentActivityPage'));
 const MemberDocsPage = lazy(() => import('./pages/documents/MemberDocsPage'));
@@ -1182,11 +1181,6 @@ function App() {
                             <BackupsPage />
                           </ProtectedRoute>
                         } />
-                        <Route path="/superadmin/support" element={
-                          <ProtectedRoute requiredCapability="admin.tickets.view.list">
-                            <AdminSupportTicketPage />
-                          </ProtectedRoute>
-                        } />
                       </>
                     )}
 
@@ -1218,11 +1212,9 @@ function App() {
 
 
 
-                    <Route path="/support" element={
-                      <ProtectedRoute requiredCapability="support.tickets.view">
-                        <SupportTicketPage />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/komunikasi" element={<CommunicationCenterPage />} />
+                    <Route path="/support" element={<Navigate to="/komunikasi" replace />} />
+                    <Route path="/superadmin/support" element={<Navigate to="/komunikasi" replace />} />
                     {/* Services Catalog (Internal Admin Only) */}
                     {/* Unified Service Hub (Satu Pintu) */}
                     <Route path="/service-center" element={

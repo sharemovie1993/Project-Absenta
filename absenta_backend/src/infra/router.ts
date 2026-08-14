@@ -411,10 +411,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { observabilityRoutes } = await import('../modules/observability/routes/observability.routes');
       await fastify.register(observabilityRoutes, { prefix: '/system/observability' });
 
-      const { supportTicketRoutes } = await import(
-        '../modules/support-ticket/routes/support-ticket.routes'
+      const { communicationRoutes } = await import(
+        '../modules/communication/routes/communication.routes'
       );
-      await fastify.register(supportTicketRoutes, { prefix: '/support' });
+      await fastify.register(communicationRoutes, { prefix: '/communication' });
       // (Moved sekolahRoutes to public block above)
       const { consentRoutes } = await import('../modules/consent/routes/consent.routes');
       await fastify.register(consentRoutes, { prefix: '/consent' });
