@@ -478,6 +478,15 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       setMeetingChat((prev) => [...prev, chatMsg]);
     };
 
+    const handleChatHistory = (history: { senderId?: string; sender: string; role?: string; text: string; time: string }[]) => {
+      if (Array.isArray(history) && history.length > 0) {
+        setMeetingChat((prev) => {
+          const sysMsg = prev.filter((p) => p.role === 'Sistem');
+          return [...sysMsg, ...history];
+        });
+      }
+    };
+
     // 8. Peer Left
     const handlePeerLeft = (data: { userId: string }) => {
       const pc = peerConnectionsRef.current.get(data.userId);
@@ -499,6 +508,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     socket.on('meeting:answer', handleMeetingAnswer);
     socket.on('meeting:ice_candidate', handleMeetingIceCandidate);
     socket.on('meeting:chat', handleMeetingChat);
+    socket.on('meeting:chat_history', handleChatHistory);
     socket.on('meeting:peer_left', handlePeerLeft);
 
     return () => {
@@ -509,6 +519,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       socket.off('meeting:answer', handleMeetingAnswer);
       socket.off('meeting:ice_candidate', handleMeetingIceCandidate);
       socket.off('meeting:chat', handleMeetingChat);
+      socket.off('meeting:chat_history', handleChatHistory);
       socket.off('meeting:peer_left', handlePeerLeft);
 
       // Close all peer connections
@@ -887,6 +898,31 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     setChatInput('');
   };
 
+  const handleDownloadNotulen = () => {
+    const header =
+      `========================================================\n` +
+      `NOTULEN & RIWAYAT CHAT RAPAT - ABSENTA\n` +
+      `Judul Rapat   : ${roomTitle}\n` +
+      `Room ID       : ${roomId}\n` +
+      `Tanggal       : ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n` +
+      `Penyelenggara : ${user?.full_name || 'Host'}\n` +
+      `Total Pesan   : ${meetingChat.filter((c) => c.role !== 'Sistem').length}\n` +
+      `========================================================\n\n`;
+
+    const body = meetingChat
+      .filter((c) => c.role !== 'Sistem')
+      .map((c) => `[${c.time}] ${c.sender} (${c.role || 'Peserta'}):\n${c.text}\n`)
+      .join('\n');
+
+    const blob = new Blob([header + body], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Notulen-Rapat-${roomId}-${new Date().toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleLeave = () => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -1229,11 +1265,23 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           <aside className="w-80 bg-[#242424] border-l border-[#333] flex flex-col shrink-0 animate-in slide-in-from-right duration-150 z-20">
             {/* Sidebar Header */}
             <div className="px-4 py-3 border-b border-[#333] flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                {activeSidebar === 'PARTICIPANTS' && `Peserta (${participants.length})`}
-                {activeSidebar === 'CHAT' && 'Chat Rapat'}
-                {activeSidebar === 'SECURITY' && 'Keamanan & Izin Rapat'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  {activeSidebar === 'PARTICIPANTS' && `Peserta (${participants.length})`}
+                  {activeSidebar === 'CHAT' && 'Chat Rapat'}
+                  {activeSidebar === 'SECURITY' && 'Keamanan & Izin Rapat'}
+                </span>
+                {activeSidebar === 'CHAT' && meetingChat.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadNotulen}
+                    className="text-[10px] bg-[#18382c] hover:bg-[#1f4738] text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Unduh Notulen & Riwayat Chat Rapat"
+                  >
+                    <span>📥 Unduh Notulen</span>
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveSidebar(null)}

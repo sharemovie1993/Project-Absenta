@@ -216,6 +216,45 @@ export function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
     // Broadcast ke peserta lain di ruangan
     socket.to(meetingRoom).emit('meeting:peer_joined', participant);
 
+    // Database persistence: Sync session and load history for late joiner
+    if (tenantId) {
+      prisma.meetingSession.findFirst({
+        where: { tenant_id: tenantId, room_id: cleanRoomId }
+      }).then(async (existingSession) => {
+        if (!existingSession) {
+          await prisma.meetingSession.create({
+            data: {
+              tenant_id: tenantId,
+              room_id: cleanRoomId,
+              title: data.roomTitle || 'Rapat Koordinasi KBM',
+              host_id: user.id,
+              host_name: participant.name,
+              status: 'ACTIVE'
+            }
+          });
+        }
+
+        // Fetch previous chat history and send to joiner
+        const msgs = await prisma.meetingMessage.findMany({
+          where: { tenant_id: tenantId, room_id: cleanRoomId },
+          orderBy: { created_at: 'asc' },
+          take: 100
+        });
+
+        if (msgs && msgs.length > 0) {
+          socket.emit('meeting:chat_history', msgs.map((m) => ({
+            senderId: m.sender_id,
+            sender: m.sender_name,
+            role: m.sender_role || 'Peserta',
+            text: m.message,
+            time: new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+          })));
+        }
+      }).catch((err) => {
+        fastify.log.warn(`[Meeting DB] Sync error: ${err.message}`);
+      });
+    }
+
     // Broadcast daftar meeting aktif ke seluruh tenant
     if (tenantId) {
       io.to(`tenant:${tenantId}`).emit('meeting:active_list_update', getActiveMeetingsForTenant(tenantId));
@@ -278,12 +317,30 @@ export function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
     const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
     const senderName = data.senderName || user.full_name || user.name || (user as any).username || 'Peserta';
     const senderRole = data.senderRole || user.roleName || 'Peserta Rapat';
+    const currentTime = data.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    // Persist chat message to PostgreSQL database
+    if (tenantId) {
+      prisma.meetingMessage.create({
+        data: {
+          tenant_id: tenantId,
+          room_id: cleanRoomId,
+          sender_id: user.id,
+          sender_name: senderName,
+          sender_role: senderRole,
+          message: data.text
+        }
+      }).catch((err) => {
+        fastify.log.warn(`[Meeting DB] Message persist error: ${err.message}`);
+      });
+    }
+
     io.to(`meeting:${cleanRoomId}`).emit('meeting:chat', {
       senderId: user.id,
       sender: senderName,
       role: senderRole,
       text: data.text,
-      time: data.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      time: currentTime
     });
   });
 
