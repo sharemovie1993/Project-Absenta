@@ -261,7 +261,47 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     });
 
-    // 2. Peer joined -> Initiate offer
+    // 2. Receive existing room state (all peers already in room)
+    const handleRoomState = async (data: { peers: Array<{ userId: string; name: string; role?: string; avatar?: string }> }) => {
+      if (!data?.peers || data.peers.length === 0) return;
+
+      setParticipants((prev) => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newPeers = data.peers
+          .filter(p => !existingIds.has(p.userId) && p.userId !== user?.id)
+          .map(p => ({
+            id: p.userId,
+            name: p.name,
+            role: p.role || 'GTK',
+            isHost: false,
+            isAudioMuted: false,
+            isVideoOff: false,
+            isHandRaised: false,
+            avatarColor: 'bg-[#742774]'
+          }));
+        return [...prev, ...newPeers];
+      });
+
+      // Initiate WebRTC offer to each existing peer
+      for (const peer of data.peers) {
+        if (peer.userId === user?.id) continue;
+        try {
+          const pc = createPeerConnection(peer.userId);
+          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+          await pc.setLocalDescription(offer);
+
+          socket.emit('meeting:offer', {
+            targetUserId: peer.userId,
+            roomId: cleanRoom,
+            offer
+          });
+        } catch (err: any) {
+          console.warn('Error creating offer for existing peer:', err);
+        }
+      }
+    };
+
+    // 3. Peer joined -> Initiate offer
     const handlePeerJoined = async (peer: { userId: string; name: string; role?: string; avatar?: string }) => {
       if (peer.userId === user?.id) return;
 
@@ -299,7 +339,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     };
 
-    // 3. Receive Offer -> Send Answer
+    // 4. Receive Offer -> Send Answer
     const handleMeetingOffer = async (data: { fromUserId: string; roomId: string; offer: any; senderInfo?: any }) => {
       try {
         if (data.fromUserId === user?.id) return;
@@ -337,7 +377,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     };
 
-    // 4. Receive Answer
+    // 5. Receive Answer
     const handleMeetingAnswer = async (data: { fromUserId: string; answer: any }) => {
       try {
         const pc = peerConnectionsRef.current.get(data.fromUserId);
@@ -349,7 +389,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     };
 
-    // 5. Receive ICE Candidate
+    // 6. Receive ICE Candidate
     const handleMeetingIceCandidate = async (data: { fromUserId: string; candidate: any }) => {
       try {
         const pc = peerConnectionsRef.current.get(data.fromUserId);
@@ -361,12 +401,12 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       }
     };
 
-    // 6. In-Meeting Chat
+    // 7. In-Meeting Chat
     const handleMeetingChat = (chatMsg: { sender: string; text: string; time: string }) => {
       setMeetingChat((prev) => [...prev, chatMsg]);
     };
 
-    // 7. Peer Left
+    // 8. Peer Left
     const handlePeerLeft = (data: { userId: string }) => {
       const pc = peerConnectionsRef.current.get(data.userId);
       if (pc) {
@@ -381,6 +421,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       });
     };
 
+    socket.on('meeting:room_state', handleRoomState);
     socket.on('meeting:peer_joined', handlePeerJoined);
     socket.on('meeting:offer', handleMeetingOffer);
     socket.on('meeting:answer', handleMeetingAnswer);
@@ -390,6 +431,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
 
     return () => {
       socket.emit('meeting:leave', { roomId: cleanRoom });
+      socket.off('meeting:room_state', handleRoomState);
       socket.off('meeting:peer_joined', handlePeerJoined);
       socket.off('meeting:offer', handleMeetingOffer);
       socket.off('meeting:answer', handleMeetingAnswer);

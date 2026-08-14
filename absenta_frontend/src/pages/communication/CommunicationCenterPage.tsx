@@ -38,6 +38,44 @@ export default function CommunicationCenterPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState<boolean>(false);
 
+  const defaultRoom = user?.tenant_id ? `kbm-${user.tenant_id.slice(0, 8)}` : 'kbm-sekolah-2026';
+  const [meetingRoomId, setMeetingRoomId] = useState<string>(defaultRoom);
+  const [activeMeetings, setActiveMeetings] = useState<Array<{
+    roomId: string;
+    roomTitle: string;
+    hostName: string;
+    hostRole?: string;
+    startedAt: string;
+    participantCount: number;
+    participants: any[];
+  }>>([]);
+
+  // Check URL query parameters for ?meeting=xyz
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const meetingParam = params.get('meeting');
+    if (meetingParam) {
+      setMeetingRoomId(meetingParam);
+      setIsMeetingModalOpen(true);
+    }
+  }, []);
+
+  // Listen for Live Ongoing Meetings in School Tenant
+  useEffect(() => {
+    if (!socket) return;
+    socket.emit('meeting:get_active_list');
+
+    const handleActiveMeetings = (list: any[]) => {
+      setActiveMeetings(list || []);
+    };
+
+    socket.on('meeting:active_list_update', handleActiveMeetings);
+
+    return () => {
+      socket.off('meeting:active_list_update', handleActiveMeetings);
+    };
+  }, [socket]);
+
   // ── WebRTC Calling Hook ───────────────────────────────────────────────────
   const {
     callState,
@@ -321,8 +359,65 @@ export default function CommunicationCenterPage() {
             >
               Disposisi Tugas
             </button>
+            {activeMeetings.length > 0 && (
+              <button
+                onClick={() => {
+                  if (activeMeetings[0]) {
+                    setMeetingRoomId(activeMeetings[0].roomId);
+                    setIsMeetingModalOpen(true);
+                  }
+                }}
+                className="px-3 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/40 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer animate-pulse"
+              >
+                <span className="w-2 h-2 bg-red-500 rounded-full" />
+                <span>Rapat Aktif ({activeMeetings.length})</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* ── LIVE ONGOING MEETING ALERT BANNER ────────────────────────────── */}
+        {activeMeetings.length > 0 && (
+          <div className="p-2.5 bg-gradient-to-r from-red-950/30 via-slate-900/50 to-indigo-950/30 border-b border-red-500/20 space-y-2">
+            {activeMeetings.map((m) => (
+              <div
+                key={m.roomId}
+                className="p-3 bg-[#1e2329]/95 border border-red-500/40 rounded-2xl flex items-center justify-between shadow-lg"
+              >
+                <div className="min-w-0 flex items-center gap-3">
+                  <div className="relative">
+                    <span className="w-3 h-3 bg-red-500 rounded-full absolute -top-1 -right-1 animate-ping" />
+                    <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/50 flex items-center justify-center text-red-400">
+                      <VideoCameraIcon className="w-5 h-5 stroke-[2]" />
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold text-[9px] rounded uppercase tracking-wider">
+                        Sedang Berlangsung
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-100 truncate">{m.roomTitle}</h4>
+                    </div>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                      Host: <span className="text-slate-200 font-semibold">{m.hostName}</span> • <span className="text-emerald-400 font-bold">{m.participantCount} Peserta Hadir</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeetingRoomId(m.roomId);
+                    setIsMeetingModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-[#0E71EB] hover:bg-[#0060d6] active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0 ml-2"
+                >
+                  Masuk Rapat
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5] dark:divide-[#202c33]">
@@ -494,7 +589,13 @@ export default function CommunicationCenterPage() {
       {/* ── RUANG RAPAT VIRTUAL MODAL ────────────────────────────────────── */}
       <VirtualMeetingModal
         isOpen={isMeetingModalOpen}
-        onClose={() => setIsMeetingModalOpen(false)}
+        roomId={meetingRoomId}
+        onClose={() => {
+          setIsMeetingModalOpen(false);
+          if (window.location.search.includes('meeting=')) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }}
       />
     </div>
   );

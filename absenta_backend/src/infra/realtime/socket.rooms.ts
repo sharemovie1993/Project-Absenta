@@ -18,8 +18,44 @@ export type TenantDetailProvider = {
   getTenantUsers: (tenantId: string, page: number, limit: number) => Promise<any>;
 };
 
-function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
+// In-memory active meeting room tracking: Map<roomId, { tenantId, roomTitle, hostName, startedAt, participants: Map<userId, participantInfo> }>
+const activeMeetingRooms = new Map<string, {
+  roomId: string;
+  tenantId: string;
+  roomTitle: string;
+  hostName: string;
+  hostRole?: string;
+  startedAt: string;
+  participants: Map<string, any>;
+}>();
+
+function getActiveMeetingsForTenant(tenantId: string) {
+  const list: any[] = [];
+  activeMeetingRooms.forEach((room) => {
+    if (!room.tenantId || room.tenantId === tenantId) {
+      list.push({
+        roomId: room.roomId,
+        roomTitle: room.roomTitle,
+        hostName: room.hostName,
+        hostRole: room.hostRole,
+        startedAt: room.startedAt,
+        participantCount: room.participants.size,
+        participants: Array.from(room.participants.values())
+      });
+    }
+  });
+  return list;
+}
+
+export function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
   const user = socket.data.user || {};
+  const tenantId = String(user.tenantId || '');
+
+  // 0. Kirim daftar meeting aktif saat diminta
+  socket.on('meeting:get_active_list', () => {
+    const list = getActiveMeetingsForTenant(tenantId);
+    socket.emit('meeting:active_list_update', list);
+  });
 
   // 1. Inisiasi Panggilan
   socket.on('call:initiate', async (data: {
@@ -142,6 +178,7 @@ function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
   // ── 6. Virtual Meeting Room Multi-Participant WebRTC Signaling ──
   socket.on('meeting:join', (data: {
     roomId: string;
+    roomTitle?: string;
     participantInfo?: { name: string; role?: string; avatar?: string };
   }) => {
     if (!data?.roomId) return;
@@ -156,9 +193,34 @@ function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
       avatar: data.participantInfo?.avatar || user.avatar
     };
 
+    if (!activeMeetingRooms.has(cleanRoomId)) {
+      activeMeetingRooms.set(cleanRoomId, {
+        roomId: cleanRoomId,
+        tenantId,
+        roomTitle: data.roomTitle || 'Rapat Koordinasi KBM',
+        hostName: participant.name,
+        hostRole: participant.role,
+        startedAt: new Date().toISOString(),
+        participants: new Map()
+      });
+    }
+    const room = activeMeetingRooms.get(cleanRoomId)!;
+
+    // Send existing peers in this room back to the new participant
+    const existingPeers = Array.from(room.participants.values()).filter(p => p.userId !== user.id);
+    socket.emit('meeting:room_state', { peers: existingPeers });
+
+    // Store new participant
+    room.participants.set(user.id, participant);
+
     // Broadcast ke peserta lain di ruangan
     socket.to(meetingRoom).emit('meeting:peer_joined', participant);
-    fastify.log.info(`[Meeting] User ${user.id} (${participant.name}) joined ${meetingRoom}`);
+
+    // Broadcast daftar meeting aktif ke seluruh tenant
+    if (tenantId) {
+      io.to(`tenant:${tenantId}`).emit('meeting:active_list_update', getActiveMeetingsForTenant(tenantId));
+    }
+    fastify.log.info(`[Meeting] User ${user.id} (${participant.name}) joined ${meetingRoom}. Total peers: ${room.participants.size}`);
   });
 
   socket.on('meeting:offer', (data: {
@@ -226,7 +288,21 @@ function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
     const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
     const meetingRoom = `meeting:${cleanRoomId}`;
     socket.leave(meetingRoom);
+
+    const room = activeMeetingRooms.get(cleanRoomId);
+    if (room) {
+      room.participants.delete(user.id);
+      if (room.participants.size === 0) {
+        activeMeetingRooms.delete(cleanRoomId);
+      }
+    }
+
     socket.to(meetingRoom).emit('meeting:peer_left', { userId: user.id });
+
+    // Update tenant active meeting list
+    if (tenantId) {
+      io.to(`tenant:${tenantId}`).emit('meeting:active_list_update', getActiveMeetingsForTenant(tenantId));
+    }
     fastify.log.info(`[Meeting] User ${user.id} left ${meetingRoom}`);
   });
 }
