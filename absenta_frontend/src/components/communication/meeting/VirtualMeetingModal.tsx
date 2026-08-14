@@ -49,13 +49,16 @@ const ICE_SERVERS: RTCConfiguration = {
   ]
 };
 
-// ── Remote Video Tile Component with Active Stream Attachment ───────────────
-const RemoteVideoTile: React.FC<{
+// ── Unified Video Tile Component (Local & Remote with Auto-Attachment) ────────
+const VideoTile: React.FC<{
   participant: Participant;
-  stream?: MediaStream;
+  isLocal?: boolean;
+  stream?: MediaStream | null;
   isActiveSpeaker: boolean;
-  onClick: () => void;
-}> = ({ participant, stream, isActiveSpeaker, onClick }) => {
+  onClick?: () => void;
+  className?: string;
+  isCompact?: boolean;
+}> = ({ participant, isLocal = false, stream, isActiveSpeaker, onClick, className, isCompact = false }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hasVideoTrack, setHasVideoTrack] = useState<boolean>(false);
 
@@ -66,6 +69,7 @@ const RemoteVideoTile: React.FC<{
     }
 
     videoRef.current.srcObject = stream;
+    videoRef.current.muted = isLocal ? true : false;
     videoRef.current.play().catch(() => {});
 
     const updateTrackState = () => {
@@ -86,30 +90,46 @@ const RemoteVideoTile: React.FC<{
     stream.onremovetrack = () => {
       updateTrackState();
     };
-  }, [stream]);
+  }, [stream, isLocal]);
 
   return (
     <div
       onClick={onClick}
-      className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl cursor-pointer ${
-        isActiveSpeaker ? 'border-[#2DA771]' : 'border-[#333333]'
-      }`}
+      className={
+        className ||
+        `relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl cursor-pointer ${
+          isActiveSpeaker ? 'border-[#2DA771]' : 'border-[#333333]'
+        }`
+      }
     >
       <video
         ref={videoRef}
         autoPlay
         playsInline
+        muted={isLocal}
         className={`w-full h-full object-cover ${hasVideoTrack ? 'block' : 'hidden'}`}
       />
       {!hasVideoTrack && (
-        <div className={`w-20 h-20 rounded-full ${participant.avatarColor || 'bg-[#742774]'} text-white flex items-center justify-center text-2xl font-bold shadow-2xl`}>
+        <div
+          className={`${
+            isCompact ? 'w-10 h-10 text-xs' : 'w-20 h-20 text-2xl'
+          } rounded-full ${participant.avatarColor || 'bg-[#742774]'} text-white flex items-center justify-center font-bold shadow-2xl`}
+        >
           {participant.name.slice(0, 2).toUpperCase()}
         </div>
       )}
 
-      <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
-        <span className="truncate max-w-[200px]">{participant.name}</span>
-        {participant.isAudioMuted ? <span className="text-rose-500 font-bold">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
+      <div
+        className={`absolute bottom-2 left-2 ${
+          isCompact ? 'px-1.5 py-0.5 text-[9px]' : 'px-3 py-1 text-xs'
+        } bg-black/70 backdrop-blur-md rounded-lg font-semibold flex items-center gap-1.5 z-20`}
+      >
+        <span className={`truncate ${isCompact ? 'max-w-[90px]' : 'max-w-[200px]'}`}>{participant.name}</span>
+        {participant.isAudioMuted ? (
+          <span className="text-rose-500 font-bold">🔇</span>
+        ) : (
+          <span className="text-[#2DA771]">🎙️</span>
+        )}
       </div>
     </div>
   );
@@ -1066,229 +1086,287 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           )}
 
           {/* ── MODE A: GALLERY VIEW (EQUAL GRID) ────────────────────────── */}
-          {viewMode === 'GALLERY' && (
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-center justify-center p-2">
-              {/* Local Participant Card */}
-              <div className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl ${
-                !isAudioMuted && audioLevel > 12 
-                  ? 'border-[#2DA771] ring-4 ring-[#2DA771]/30 shadow-[#2DA771]/20' 
-                  : activeSpeakerId === 'local' 
-                  ? 'border-[#2DA771]' 
+          <div
+            className={`flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-center justify-center p-2 ${
+              viewMode === 'GALLERY' ? 'grid' : 'hidden'
+            }`}
+          >
+            {/* Local Participant Card */}
+            <div
+              className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl ${
+                !isAudioMuted && audioLevel > 12
+                  ? 'border-[#2DA771] ring-4 ring-[#2DA771]/30 shadow-[#2DA771]/20'
+                  : activeSpeakerId === 'local'
+                  ? 'border-[#2DA771]'
                   : 'border-[#333333]'
-              }`}>
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full h-full object-cover ${isVideoDisabled ? 'hidden' : ''}`}
-                />
-                {isVideoDisabled && (
-                  <div className="relative flex flex-col items-center">
-                    {!isAudioMuted && audioLevel > 12 && (
-                      <span className="absolute -inset-3 rounded-full bg-[#2DA771]/30 animate-ping" />
-                    )}
-                    <div className="w-20 h-20 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-2xl font-bold shadow-2xl z-10">
-                      {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'ME'}
-                    </div>
+              }`}
+            >
+              <video
+                ref={(el) => {
+                  localVideoRef.current = el;
+                  if (el && localStreamRef.current) {
+                    if (el.srcObject !== localStreamRef.current) {
+                      el.srcObject = localStreamRef.current;
+                    }
+                    el.muted = true;
+                    el.play().catch(() => {});
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${isVideoDisabled ? 'hidden' : ''}`}
+              />
+              {isVideoDisabled && (
+                <div className="relative flex flex-col items-center">
+                  {!isAudioMuted && audioLevel > 12 && (
+                    <span className="absolute -inset-3 rounded-full bg-[#2DA771]/30 animate-ping" />
+                  )}
+                  <div className="w-20 h-20 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-2xl font-bold shadow-2xl z-10">
+                    {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'ME'}
+                  </div>
+                </div>
+              )}
+
+              {/* Name Tag & Real-time Audio Equalizer Badges */}
+              <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
+                <span>{user?.full_name || 'Saya'} (Host, Me)</span>
+
+                {isAudioMuted ? (
+                  <span className="text-rose-500 font-bold">🔇</span>
+                ) : (
+                  <div className="flex items-center gap-0.5 h-3" title={`Level Suara: ${audioLevel}%`}>
+                    <span
+                      style={{ height: `${Math.max(25, audioLevel * 0.9)}%` }}
+                      className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75"
+                    />
+                    <span
+                      style={{ height: `${Math.max(40, audioLevel * 1.1)}%` }}
+                      className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75"
+                    />
+                    <span
+                      style={{ height: `${Math.max(20, audioLevel * 0.8)}%` }}
+                      className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75"
+                    />
                   </div>
                 )}
 
-                {/* Name Tag & Real-time Audio Equalizer Badges */}
-                <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
-                  <span>{user?.full_name || 'Saya'} (Host, Me)</span>
-
-                  {isAudioMuted ? (
-                    <span className="text-rose-500 font-bold">🔇</span>
-                  ) : (
-                    <div className="flex items-center gap-0.5 h-3" title={`Level Suara: ${audioLevel}%`}>
-                      <span style={{ height: `${Math.max(25, audioLevel * 0.9)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
-                      <span style={{ height: `${Math.max(40, audioLevel * 1.1)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
-                      <span style={{ height: `${Math.max(20, audioLevel * 0.8)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
-                    </div>
-                  )}
-
-                  {isHandRaised && <span className="animate-bounce">✋</span>}
-                </div>
+                {isHandRaised && <span className="animate-bounce">✋</span>}
               </div>
+            </div>
 
-              {/* Remote Participants with WebRTC Live Video Stream */}
-              {participants.filter((p) => p.id !== 'local').map((p) => (
-                <RemoteVideoTile
+            {/* Remote Participants with WebRTC Live Video Stream */}
+            {participants
+              .filter((p) => p.id !== 'local')
+              .map((p) => (
+                <VideoTile
                   key={p.id}
                   participant={p}
+                  isLocal={false}
                   stream={remoteStreams[p.id]}
                   isActiveSpeaker={activeSpeakerId === p.id}
                   onClick={() => setActiveSpeakerId(p.id)}
                 />
               ))}
-            </div>
-          )}
+          </div>
 
           {/* ── MODE B: SPEAKER VIEW (SPOTLIGHT + FILMSTRIP) ──────────────── */}
-          {viewMode === 'SPEAKER' && (
-            <div className="flex-1 flex flex-col gap-3">
-              {/* Top Filmstrip */}
-              <div className="h-28 flex gap-2 overflow-x-auto pb-1">
-                {participants.map((p) => (
+          <div
+            className={`flex-1 flex-col gap-3 overflow-hidden ${
+              viewMode === 'SPEAKER' ? 'flex' : 'hidden'
+            }`}
+          >
+            {/* Top Filmstrip (All participants with live video tiles) */}
+            <div className="h-28 flex gap-2 overflow-x-auto pb-1 shrink-0">
+              {participants.map((p) => {
+                const pStream = p.id === 'local' ? localStreamRef.current : remoteStreams[p.id];
+                const isSelected = activeSpeakerId === p.id;
+                return (
                   <div
                     key={p.id}
                     onClick={() => setActiveSpeakerId(p.id)}
-                    className={`w-40 h-full bg-[#222] rounded-xl overflow-hidden border-2 shrink-0 flex items-center justify-center relative cursor-pointer ${
-                      activeSpeakerId === p.id ? 'border-[#2DA771]' : 'border-[#333]'
+                    className={`w-40 h-full rounded-xl overflow-hidden border-2 shrink-0 relative cursor-pointer transition-all ${
+                      isSelected ? 'border-[#2DA771] ring-2 ring-[#2DA771]/40' : 'border-[#333] hover:border-slate-500'
                     }`}
                   >
-                    <span className="text-xs font-bold">{p.name.slice(0, 2).toUpperCase()}</span>
-                    <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 px-1.5 py-0.5 rounded truncate max-w-[120px]">
-                      {p.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Main Spotlight Video */}
-              <div className="flex-1 bg-[#1a1a1a] rounded-2xl border border-[#333] flex items-center justify-center relative overflow-hidden shadow-2xl">
-                {activeSpeakerId === 'local' ? (
-                  <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                ) : remoteStreams[activeSpeakerId] ? (
-                  <video
-                    autoPlay
-                    playsInline
-                    ref={(el) => {
-                      if (el && remoteStreams[activeSpeakerId]) {
-                        el.srcObject = remoteStreams[activeSpeakerId];
-                        el.play().catch(() => {});
-                      }
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-28 h-28 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-4xl font-bold">
-                    {participants.find((p) => p.id === activeSpeakerId)?.name.slice(0, 2).toUpperCase() || 'SP'}
-                  </div>
-                )}
-                <div className="absolute bottom-4 left-4 px-4 py-1.5 bg-black/70 backdrop-blur-md rounded-xl text-sm font-bold">
-                  {participants.find((p) => p.id === activeSpeakerId)?.name || 'Active Speaker'}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── MODE C: DIGITAL WHITEBOARD (PAPAN TULIS KBM) ──────────────── */}
-          {viewMode === 'WHITEBOARD' && (
-            <div className="flex-1 flex flex-col bg-[#1c1c1c] rounded-2xl border border-[#333] overflow-hidden shadow-2xl">
-              {/* Whiteboard Toolbar */}
-              <div className="px-4 py-2 bg-[#282828] border-b border-[#333] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-white">🖍️ Papan Tulis Digital KBM</span>
-
-                  <div className="flex items-center gap-1 bg-[#1f1f1f] p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setToolMode('PEN')}
-                      className={`px-2.5 py-1 text-xs rounded-md font-semibold cursor-pointer ${
-                        toolMode === 'PEN' ? 'bg-[#0E71EB] text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Pena
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setToolMode('ERASER')}
-                      className={`px-2.5 py-1 text-xs rounded-md font-semibold cursor-pointer ${
-                        toolMode === 'ERASER' ? 'bg-[#0E71EB] text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Penghapus
-                    </button>
-                  </div>
-
-                  {/* Color Palette */}
-                  <div className="flex items-center gap-1.5">
-                    {['#ffffff', '#0E71EB', '#2DA771', '#E02424', '#FACA15'].map((col) => (
-                      <button
-                        key={col}
-                        type="button"
-                        onClick={() => {
-                          setBrushColor(col);
-                          setToolMode('PEN');
-                        }}
-                        style={{ backgroundColor: col }}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
-                          brushColor === col && toolMode === 'PEN' ? 'scale-125 border-white' : 'border-transparent'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Brush Size */}
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
-                    <span>Ukuran:</span>
-                    <input
-                      type="range"
-                      min="1"
-                      max="12"
-                      value={brushSize}
-                      onChange={(e) => setBrushSize(Number(e.target.value))}
-                      className="w-20 accent-[#0E71EB]"
+                    <VideoTile
+                      participant={p}
+                      isLocal={p.id === 'local'}
+                      stream={pStream}
+                      isActiveSpeaker={isSelected}
+                      isCompact={true}
+                      className="w-full h-full relative"
                     />
                   </div>
+                );
+              })}
+            </div>
+
+            {/* Main Spotlight Video */}
+            <div className="flex-1 bg-[#1a1a1a] rounded-2xl border border-[#333] flex items-center justify-center relative overflow-hidden shadow-2xl">
+              {(() => {
+                const spotlightParticipant =
+                  participants.find((p) => p.id === activeSpeakerId) ||
+                  participants[0] || {
+                    id: 'local',
+                    name: user?.full_name || 'Saya',
+                    role: 'HOST',
+                    isHost: true,
+                    isAudioMuted,
+                    isVideoOff: isVideoDisabled,
+                    isHandRaised,
+                    avatarColor: 'bg-[#0E71EB]'
+                  };
+                const spotlightStream =
+                  activeSpeakerId === 'local' ? localStreamRef.current : remoteStreams[activeSpeakerId];
+
+                return (
+                  <VideoTile
+                    participant={spotlightParticipant}
+                    isLocal={activeSpeakerId === 'local'}
+                    stream={spotlightStream}
+                    isActiveSpeaker={true}
+                    className="w-full h-full relative flex items-center justify-center"
+                  />
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── MODE C: DIGITAL WHITEBOARD (PAPAN TULIS KBM) ──────────────── */}
+          <div
+            className={`flex-1 flex-col bg-[#1c1c1c] rounded-2xl border border-[#333] overflow-hidden shadow-2xl ${
+              viewMode === 'WHITEBOARD' ? 'flex' : 'hidden'
+            }`}
+          >
+            {/* Whiteboard Toolbar */}
+            <div className="px-4 py-2 bg-[#282828] border-b border-[#333] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-white">🖍️ Papan Tulis Digital KBM</span>
+
+                <div className="flex items-center gap-1 bg-[#1f1f1f] p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setToolMode('PEN')}
+                    className={`px-2.5 py-1 text-xs rounded-md font-semibold cursor-pointer ${
+                      toolMode === 'PEN' ? 'bg-[#0E71EB] text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Pena
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setToolMode('ERASER')}
+                    className={`px-2.5 py-1 text-xs rounded-md font-semibold cursor-pointer ${
+                      toolMode === 'ERASER' ? 'bg-[#0E71EB] text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Penghapus
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={clearWhiteboard}
-                  className="flex items-center gap-1 px-3 py-1 text-xs bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-colors cursor-pointer"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                  <span>Bersihkan</span>
-                </button>
+                {/* Color Palette */}
+                <div className="flex items-center gap-1.5">
+                  {['#ffffff', '#0E71EB', '#2DA771', '#E02424', '#FACA15'].map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => {
+                        setBrushColor(col);
+                        setToolMode('PEN');
+                      }}
+                      style={{ backgroundColor: col }}
+                      className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
+                        brushColor === col && toolMode === 'PEN' ? 'scale-125 border-white' : 'border-transparent'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Brush Size */}
+                <div className="flex items-center gap-1 text-xs text-slate-400">
+                  <span>Ukuran:</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="12"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-20 accent-[#0E71EB]"
+                  />
+                </div>
               </div>
 
-              {/* Drawing Canvas Area */}
-              <canvas
-                ref={canvasRef}
-                width={1200}
-                height={700}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                className="flex-1 bg-[#1c1c1c] cursor-crosshair w-full h-full"
-              />
+              <button
+                type="button"
+                onClick={clearWhiteboard}
+                className="flex items-center gap-1 px-3 py-1 text-xs bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
+                <TrashIcon className="w-4 h-4" />
+                <span>Bersihkan</span>
+              </button>
             </div>
-          )}
+
+            {/* Drawing Canvas Area */}
+            <canvas
+              ref={canvasRef}
+              width={1200}
+              height={700}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              className="flex-1 bg-[#1c1c1c] cursor-crosshair w-full h-full"
+            />
+          </div>
         </div>
 
         {/* ── 3. ZOOM SIDEBARS (PARTICIPANTS / CHAT / SECURITY) ───────────── */}
         {activeSidebar && (
           <aside className="w-80 bg-[#242424] border-l border-[#333] flex flex-col shrink-0 animate-in slide-in-from-right duration-150 z-20">
             {/* Sidebar Header */}
-            <div className="px-4 py-3 border-b border-[#333] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  {activeSidebar === 'PARTICIPANTS' && `Peserta (${participants.length})`}
-                  {activeSidebar === 'CHAT' && 'Chat Rapat'}
-                  {activeSidebar === 'SECURITY' && 'Keamanan & Izin Rapat'}
-                </span>
+            <div
+              className={`px-4 py-2.5 border-b flex items-center justify-between ${
+                activeSidebar === 'CHAT' ? 'bg-[#202c33] border-[#2a3942]' : 'bg-[#242424] border-[#333]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                {activeSidebar === 'CHAT' && (
+                  <div className="w-7 h-7 rounded-full bg-[#00a884] text-[#111b21] flex items-center justify-center text-xs font-black shrink-0 shadow-sm">
+                    💬
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-[#e9edef] uppercase tracking-wider block truncate">
+                    {activeSidebar === 'PARTICIPANTS' && `Peserta (${participants.length})`}
+                    {activeSidebar === 'CHAT' && `Chat Rapat (${meetingChat.filter((c) => c.role !== 'Sistem').length})`}
+                    {activeSidebar === 'SECURITY' && 'Keamanan & Izin Rapat'}
+                  </span>
+                  {activeSidebar === 'CHAT' && (
+                    <p className="text-[10px] text-[#00a884] font-medium leading-none mt-0.5">Online • WebRTC Terenkripsi</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
                 {activeSidebar === 'CHAT' && meetingChat.length > 1 && (
                   <button
                     type="button"
                     onClick={handleDownloadNotulen}
-                    className="text-[10px] bg-[#18382c] hover:bg-[#1f4738] text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-[10px] bg-[#005c4b] hover:bg-[#007a63] text-emerald-200 px-2 py-1 rounded-lg font-bold border border-[#02735e] flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
                     title="Unduh Notulen & Riwayat Chat Rapat"
                   >
-                    <span>📥 Unduh Notulen</span>
+                    <span>📥 Notulen</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar(null)}
+                  className="text-[#8696a0] hover:text-[#e9edef] p-1 cursor-pointer transition-colors"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveSidebar(null)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <XMarkIcon className="w-4 h-4" />
-              </button>
             </div>
 
             {/* A. Participants Panel */}
@@ -1335,19 +1413,29 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
               </div>
             )}
 
-            {/* B. Chat Panel */}
+            {/* B. Chat Panel (WhatsApp Persona) */}
             {activeSidebar === 'CHAT' && (
-              <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                <div className="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
+              <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#0b141a]">
+                {/* WhatsApp Messages Scroll Area */}
+                <div className="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs flex flex-col custom-scrollbar">
+                  {/* WhatsApp Encryption Notice Pill */}
+                  <div className="flex justify-center my-1">
+                    <div className="bg-[#182229] border border-[#ffd279]/20 text-[#ffd279] px-3 py-1.5 rounded-lg text-[10px] text-center max-w-[90%] shadow-xs leading-relaxed flex items-center gap-1.5">
+                      <span>🔒</span>
+                      <span>Pesan terenkripsi end-to-end multi-tenant WebRTC. Tersimpan di database sekolah.</span>
+                    </div>
+                  </div>
+
                   {meetingChat.map((c, idx) => {
                     const isMe = c.senderId === 'local' || c.senderId === user?.id || c.sender === (user?.full_name || 'Saya');
                     const isSystem = c.role === 'Sistem' || c.sender === 'Sistem Absenta';
 
                     if (isSystem) {
                       return (
-                        <div key={idx} className="bg-[#1e293b]/60 p-2.5 rounded-xl border border-sky-500/30 text-center">
-                          <p className="text-[10px] text-sky-400 font-bold mb-0.5">ℹ️ {c.sender}</p>
-                          <p className="text-slate-300 text-[11px]">{c.text}</p>
+                        <div key={idx} className="flex justify-center my-1">
+                          <div className="bg-[#182229] text-[#8696a0] border border-slate-700/40 px-3 py-1 rounded-lg text-[10px] text-center max-w-[85%] shadow-xs">
+                            <span className="font-semibold text-sky-400">ℹ️ {c.sender}:</span> {c.text}
+                          </div>
                         </div>
                       );
                     }
@@ -1359,45 +1447,80 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                     return (
                       <div
                         key={idx}
-                        className={`p-2.5 rounded-xl border ${
+                        className={`flex flex-col max-w-[85%] shadow-sm ${
                           isMe
-                            ? 'bg-[#18382c]/80 border-emerald-500/40 ml-3'
-                            : 'bg-[#2a2a2a] border-slate-700/60 mr-3'
-                        }`}
+                            ? 'self-end bg-[#005c4b] border border-[#02735e]/30 rounded-2xl rounded-tr-xs'
+                            : 'self-start bg-[#202c33] border border-[#2a3942]/40 rounded-2xl rounded-tl-xs'
+                        } p-2 px-3 transition-all`}
                       >
-                        <div className="flex items-center justify-between text-[11px] font-bold mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`truncate max-w-[140px] ${isMe ? 'text-emerald-400' : 'text-[#2D8CFF]'}`}>
-                              {senderDisplayName}
+                        {/* Header: Sender Name & Role */}
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span
+                            className={`font-bold text-[11px] truncate max-w-[150px] ${
+                              isMe ? 'text-[#25d366]' : 'text-[#53bdeb]'
+                            }`}
+                          >
+                            {senderDisplayName}
+                          </span>
+                          {c.role && (
+                            <span
+                              className={`text-[9px] px-1.5 py-0.2 rounded font-medium ${
+                                isMe ? 'bg-[#004d3e] text-[#aebac1]' : 'bg-[#111b21] text-[#8696a0]'
+                              }`}
+                            >
+                              {c.role}
                             </span>
-                            {c.role && (
-                              <span className="text-[9px] px-1.5 py-0.2 bg-black/40 text-slate-300 rounded font-normal shrink-0">
-                                {c.role}
-                              </span>
-                            )}
-                            {isMe && <span className="text-[9px] text-emerald-300 font-normal shrink-0">(Saya)</span>}
-                          </div>
-                          <span className="text-slate-400 text-[10px] shrink-0 ml-1">{c.time}</span>
+                          )}
+                          {isMe && <span className="text-[9px] text-emerald-200/70 font-normal">(Anda)</span>}
                         </div>
-                        <p className="text-slate-100 text-xs break-words">{c.text}</p>
+
+                        {/* Message Content */}
+                        <p className="text-[#e9edef] text-[12px] leading-relaxed break-words font-normal">
+                          {c.text}
+                        </p>
+
+                        {/* Footer: Time & Double Tick */}
+                        <div className="flex items-center justify-end gap-1 mt-0.5 self-end">
+                          <span className="text-[#8696a0] text-[9px]">{c.time}</span>
+                          {isMe && (
+                            <span className="text-[#53bdeb] text-[10px] font-bold tracking-tighter" title="Terkirim & Tersimpan di Database">
+                              ✓✓
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
 
-                <form onSubmit={handleSendMeetingChat} className="p-2.5 bg-[#1f1f1f] border-t border-[#333] flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Kirim pesan ke Semua..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-[#2e2e2e] text-white placeholder-slate-400 border border-slate-700 outline-hidden focus:border-[#0E71EB]"
-                  />
+                {/* WhatsApp Input Bar */}
+                <form
+                  onSubmit={handleSendMeetingChat}
+                  className="p-2.5 bg-[#202c33] border-t border-[#2a3942] flex items-center gap-2"
+                >
+                  <div className="flex-1 relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Ketik pesan..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      className="w-full pl-3.5 pr-8 py-2 text-xs rounded-xl bg-[#2a3942] text-[#e9edef] placeholder-[#8696a0] border-0 outline-hidden focus:ring-1 focus:ring-[#00a884] transition-all"
+                    />
+                    <span className="absolute right-2.5 text-slate-400 text-xs">💬</span>
+                  </div>
                   <button
                     type="submit"
-                    className="px-3.5 py-1.5 bg-[#0E71EB] hover:bg-[#0060d6] text-white font-bold rounded-xl text-xs cursor-pointer"
+                    disabled={!chatInput.trim()}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-md ${
+                      chatInput.trim()
+                        ? 'bg-[#00a884] hover:bg-[#06cf9c] text-[#111b21] scale-100'
+                        : 'bg-[#2a3942] text-slate-500 cursor-not-allowed scale-95'
+                    }`}
+                    title="Kirim Pesan"
                   >
-                    Kirim
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current ml-0.5">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
                   </button>
                 </form>
               </div>
@@ -1863,12 +1986,17 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveSidebar((prev) => (prev === 'CHAT' ? null : 'CHAT'))}
-            className={`flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer ${
+            className={`flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer relative ${
               activeSidebar === 'CHAT' ? 'bg-[#2b2b2b] text-white' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
           >
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
             <span className="text-[10px] font-medium mt-0.5">Chat</span>
+            {meetingChat.filter((c) => c.role !== 'Sistem').length > 0 && (
+              <span className="absolute top-1 right-2 text-[9px] bg-[#0E71EB] text-white px-1.5 rounded-full font-bold">
+                {meetingChat.filter((c) => c.role !== 'Sistem').length}
+              </span>
+            )}
           </button>
 
           {/* Share Screen (Zoom Green Button) */}
