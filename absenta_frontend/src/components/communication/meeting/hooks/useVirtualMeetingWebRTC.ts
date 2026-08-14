@@ -221,9 +221,13 @@ export function useVirtualMeetingWebRTC({
           // Distribute new tracks to all existing peer connections immediately
           peerConnectionsRef.current.forEach(async (pc) => {
             stream.getTracks().forEach((track) => {
-              const sender = pc.getSenders().find((s) => s.track?.kind === track.kind);
-              if (sender) {
-                sender.replaceTrack(track).catch(() => {});
+              const transceiver = pc.getTransceivers().find((t) =>
+                t.sender.track === track ||
+                t.sender.track?.kind === track.kind ||
+                t.receiver.track.kind === track.kind
+              );
+              if (transceiver && transceiver.sender) {
+                transceiver.sender.replaceTrack(track).catch(() => {});
               } else {
                 try { pc.addTrack(track, stream); } catch {}
               }
@@ -528,8 +532,14 @@ export function useVirtualMeetingWebRTC({
 
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach((track) => {
-            const sender = pc!.getSenders().find((s) => s.track?.kind === track.kind);
-            if (!sender) {
+            const transceiver = pc!.getTransceivers().find((t) =>
+              t.sender.track === track ||
+              t.sender.track?.kind === track.kind ||
+              t.receiver.track.kind === track.kind
+            );
+            if (transceiver && transceiver.sender) {
+              transceiver.sender.replaceTrack(track).catch(() => {});
+            } else {
               try { pc!.addTrack(track, localStreamRef.current!); } catch {}
             }
           });
@@ -749,9 +759,13 @@ export function useVirtualMeetingWebRTC({
         }
 
         peerConnectionsRef.current.forEach(async (pc) => {
-          const sender = pc.getSenders().find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
-          if (sender) {
-            await sender.replaceTrack(newTrack).catch(() => {});
+          const transceiver = pc.getTransceivers().find((t) =>
+            t.sender.track === newTrack ||
+            t.sender.track?.kind === 'video' ||
+            t.receiver.track.kind === 'video'
+          );
+          if (transceiver && transceiver.sender) {
+            await transceiver.sender.replaceTrack(newTrack).catch(() => {});
           } else {
             try {
               pc.addTrack(newTrack, localStreamRef.current!);
@@ -797,9 +811,13 @@ export function useVirtualMeetingWebRTC({
         }
 
         peerConnectionsRef.current.forEach(async (pc) => {
-          const sender = pc.getSenders().find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
-          if (sender) {
-            await sender.replaceTrack(newTrack).catch(() => {});
+          const transceiver = pc.getTransceivers().find((t) =>
+            t.sender.track === newTrack ||
+            t.sender.track?.kind === 'video' ||
+            t.receiver.track.kind === 'video'
+          );
+          if (transceiver && transceiver.sender) {
+            await transceiver.sender.replaceTrack(newTrack).catch(() => {});
           } else {
             try {
               pc.addTrack(newTrack, localStreamRef.current!);
