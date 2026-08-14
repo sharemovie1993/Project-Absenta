@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft, LogOut } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft, LogOut, MessageSquare } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
@@ -17,6 +17,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
+import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -37,6 +38,15 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
   const { user, subscription, tenantMode, logout } = useAuthStore();
   
+  // 💬 Pusat Komunikasi Unread Count
+  const { data: commUnreadCount = 0 } = useQuery({
+    queryKey: communicationKeys.unreadCount(),
+    queryFn: () => internalCommunicationApi.getUnreadCount(),
+    enabled: !!user?.id,
+    staleTime: 15 * 1000,
+    refetchInterval: 20 * 1000
+  });
+
   // Use Mapper for consistent UI state
   const _uiState = subscription ? mapSubscriptionToUI(subscription) : null;
 
@@ -207,6 +217,20 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
         <div className="flex items-center px-4 gap-2 sm:gap-4 ml-auto">
+
+          {/* 💬 Pusat Komunikasi Sekolah */}
+          <Link
+            to="/komunikasi"
+            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            title="Pusat Komunikasi & Perpesanan Sekolah"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {commUnreadCount > 0 && (
+              <span className="absolute top-1 right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-xs">
+                {commUnreadCount > 99 ? '99+' : commUnreadCount}
+              </span>
+            )}
+          </Link>
 
           {/* Notifications */}
           <div className="relative">

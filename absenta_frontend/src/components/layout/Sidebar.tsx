@@ -7,7 +7,7 @@ import {
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
   Award, LayoutDashboard, Users, UserCheck, MailOpen,
   Home, ClipboardList, Send, BarChart3, History, List,
-  ShieldAlert, BookOpen, LogOut
+  ShieldAlert, BookOpen, LogOut, MessageSquare
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -23,6 +23,7 @@ import { MASTER_HUBS, getHubByLabel, ROLE_WORKSPACES, resolveUserWorkspaces } fr
 import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '../../hooks/useJenjang';
+import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -187,6 +188,15 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
   const navigate = useNavigate();
   const { isTvMode } = useTvStore();
   const { jenjang } = useJenjang();
+
+  // 💬 Pusat Komunikasi Unread Count
+  const { data: commUnreadCount = 0 } = useQuery({
+    queryKey: communicationKeys.unreadCount(),
+    queryFn: () => internalCommunicationApi.getUnreadCount(),
+    enabled: !!user?.id,
+    staleTime: 15 * 1000,
+    refetchInterval: 20 * 1000
+  });
 
   const handleLogout = () => {
     logout();
@@ -1188,6 +1198,37 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             </div>
           )}
           <ul className="space-y-2">
+            {/* 💬 Pusat Komunikasi Sekolah */}
+            <li>
+              <Link
+                to="/komunikasi"
+                onClick={isInline ? undefined : onClose}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative group shadow-2xs mb-1",
+                  location.pathname.startsWith('/komunikasi')
+                    ? "bg-blue-600 text-white shadow-blue-500/20"
+                    : "bg-blue-50/70 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100/80 dark:hover:bg-blue-900/40 border border-blue-200/60 dark:border-blue-800/40"
+                )}
+              >
+                <div className={cn(
+                  "p-1.5 rounded-lg shrink-0",
+                  location.pathname.startsWith('/komunikasi') ? "bg-white/20 text-white" : "bg-blue-600 text-white"
+                )}>
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                {isOpen && (
+                  <div className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="truncate font-bold">Pusat Komunikasi</span>
+                    {commUnreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white shadow-2xs animate-pulse">
+                        {commUnreadCount > 99 ? '99+' : commUnreadCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Link>
+            </li>
+
             {renderNavItems(getFilteredNavigation())}
           </ul>
         </nav>
