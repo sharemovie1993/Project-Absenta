@@ -17,7 +17,8 @@ import {
   LockClosedIcon,
   TrashIcon,
   VideoCameraIcon,
-  MicrophoneIcon
+  MicrophoneIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
 import { useSocket } from '@/hooks/useSocket';
@@ -135,9 +136,47 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const [activeSidebar, setActiveSidebar] = useState<'PARTICIPANTS' | 'CHAT' | 'SECURITY' | null>(null);
   const [showReactions, setShowReactions] = useState(false);
   const [showMeetingInfo, setShowMeetingInfo] = useState(false);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [showVideoMenu, setShowVideoMenu] = useState(false);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoInputDevices, setVideoInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioInput, setSelectedAudioInput] = useState<string>('');
+  const [selectedVideoInput, setSelectedVideoInput] = useState<string>('');
+  const [isVirtualMicActive, setIsVirtualMicActive] = useState(false);
   const [floatingReaction, setFloatingReaction] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Enumerate devices on demand
+  const refreshDevices = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setAudioInputDevices(devices.filter((d) => d.kind === 'audioinput'));
+      setAudioOutputDevices(devices.filter((d) => d.kind === 'audiooutput'));
+      setVideoInputDevices(devices.filter((d) => d.kind === 'videoinput'));
+    } catch {}
+  };
+
+  const playAudioTestChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    } catch {}
+  };
 
   // Security & Host Controls
   const [isMeetingLocked, setIsMeetingLocked] = useState(false);
@@ -1329,7 +1368,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         {/* Left: Audio & Video Controls (Zoom Style) */}
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Mute / Unmute */}
-          <div className="flex items-center">
+          <div className="flex items-center relative">
             <button
               type="button"
               onClick={handleToggleAudio}
@@ -1347,13 +1386,196 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
               </div>
               <span className="text-[10px] font-medium mt-0.5">{isAudioMuted ? 'Unmute' : 'Mute'}</span>
             </button>
-            <button type="button" className="p-1 text-slate-400 hover:text-white -ml-1">
-              <ChevronUpIcon className="w-3 h-3" />
+            <button 
+              type="button" 
+              onClick={() => {
+                setShowAudioMenu((v) => !v);
+                setShowVideoMenu(false);
+                refreshDevices();
+              }}
+              className={`p-1.5 rounded hover:bg-[#2b2b2b] text-slate-400 hover:text-white -ml-1 cursor-pointer ${
+                showAudioMenu ? 'bg-[#2b2b2b] text-white' : ''
+              }`}
+              title="Pengaturan Mikrofon & Speaker"
+            >
+              <ChevronUpIcon className="w-3.5 h-3.5" />
             </button>
+
+            {/* Audio Settings Popover (Zoom Style) */}
+            {showAudioMenu && (
+              <div className="absolute bottom-16 left-0 w-80 bg-[#222222] border border-slate-700 rounded-xl shadow-2xl p-3 text-xs text-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 space-y-3">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                  <span className="font-bold text-white text-[11px] uppercase tracking-wider">Pengaturan Audio Zoom</span>
+                  <button type="button" onClick={() => setShowAudioMenu(false)} className="text-slate-400 hover:text-white">
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Section 1: Microphone Selection */}
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 flex items-center justify-between">
+                    <span>PILIH MIKROFON (INPUT)</span>
+                    <button
+                      type="button"
+                      onClick={() => refreshDevices(true)}
+                      className="text-emerald-400 hover:text-emerald-300 normal-case text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowPathIcon className="w-3 h-3" />
+                      <span>Pindai Perangkat</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {/* Option: Virtual Mic */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsVirtualMicActive(true);
+                        setShowAudioMenu(false);
+                        try {
+                          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                          if (AudioCtx) {
+                            const ctx = new AudioCtx();
+                            const dest = ctx.createMediaStreamDestination();
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(440, ctx.currentTime);
+                            gain.gain.setValueAtTime(0.01, ctx.currentTime);
+                            osc.connect(gain);
+                            gain.connect(dest);
+                            osc.start();
+                            const track = dest.stream.getAudioTracks()[0];
+                            if (track) {
+                              if (localStreamRef.current) {
+                                localStreamRef.current.getAudioTracks().forEach((t) => t.stop());
+                                localStreamRef.current.addTrack(track);
+                              } else {
+                                localStreamRef.current = dest.stream;
+                              }
+                              setupAudioMeter(localStreamRef.current);
+                              peerConnectionsRef.current.forEach(async (pc) => {
+                                const sender = pc.getSenders().find((s) => s.track?.kind === 'audio');
+                                if (sender) await sender.replaceTrack(track).catch(() => {});
+                              });
+                              setIsAudioMuted(false);
+                            }
+                          }
+                        } catch {}
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-[#333333] transition-colors cursor-pointer ${
+                        isVirtualMicActive || audioInputDevices.length === 0 ? 'text-emerald-400 font-bold bg-[#2a2a2a]' : 'text-slate-200'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span>✨ Mikrofon Virtual Absenta</span>
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.2 rounded font-semibold">Aktif</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-normal">Simulasi suara Web Audio (Tanpa colokan mic fisik)</p>
+                      </div>
+                      {(isVirtualMicActive || audioInputDevices.length === 0) && <CheckIcon className="w-4 h-4 shrink-0 text-emerald-400" />}
+                    </button>
+
+                    {/* Physical Hardware Mics */}
+                    {audioInputDevices.map((dev, idx) => (
+                      <button
+                        key={dev.deviceId || idx}
+                        type="button"
+                        onClick={async () => {
+                          setIsVirtualMicActive(false);
+                          setSelectedAudioInput(dev.deviceId);
+                          setShowAudioMenu(false);
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                              audio: { deviceId: { exact: dev.deviceId } }
+                            });
+                            const track = stream.getAudioTracks()[0];
+                            if (track && localStreamRef.current) {
+                              localStreamRef.current.getAudioTracks().forEach((t) => t.stop());
+                              localStreamRef.current.addTrack(track);
+                              setupAudioMeter(localStreamRef.current);
+                              peerConnectionsRef.current.forEach(async (pc) => {
+                                const sender = pc.getSenders().find((s) => s.track?.kind === 'audio');
+                                if (sender) await sender.replaceTrack(track).catch(() => {});
+                              });
+                              setIsAudioMuted(false);
+                            }
+                          } catch {}
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-[#333333] transition-colors cursor-pointer ${
+                          !isVirtualMicActive && selectedAudioInput === dev.deviceId ? 'text-emerald-400 font-bold bg-[#2a2a2a]' : 'text-slate-200'
+                        }`}
+                      >
+                        <span className="truncate max-w-[220px]">
+                          {dev.label ? `🎙️ ${dev.label}` : `🎙️ Mikrofon Hardware ${idx + 1}`}
+                        </span>
+                        {!isVirtualMicActive && selectedAudioInput === dev.deviceId && <CheckIcon className="w-4 h-4 shrink-0 text-emerald-400" />}
+                      </button>
+                    ))}
+                    {audioInputDevices.length === 0 && (
+                      <div className="p-2.5 bg-[#181818] rounded-lg border border-slate-800 space-y-1.5">
+                        <p className="text-[11px] text-slate-400">
+                          Mikrofon fisik belum terhubung atau belum diizinkan oleh browser.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => refreshDevices(true)}
+                          className="w-full py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold text-[11px] rounded-md border border-emerald-500/40 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span>Izinkan Akses Mikrofon Browser</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 2: Speaker Selection */}
+                {audioOutputDevices.length > 0 && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">
+                      PILIH SPEAKER (OUTPUT)
+                    </div>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                      {audioOutputDevices.map((dev, idx) => (
+                        <div
+                          key={dev.deviceId || idx}
+                          className="px-2.5 py-1 rounded-lg text-slate-300 text-[11px] flex items-center gap-2"
+                        >
+                          <span>🔊</span>
+                          <span className="truncate">{dev.label || `Speaker ${idx + 1}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 3: Live Mic Level & Audio Test */}
+                <div className="pt-2 border-t border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">Level Suara Mikrofon:</span>
+                    <div className="w-32 h-2 bg-[#1a1a1a] rounded-full overflow-hidden border border-slate-700">
+                      <div
+                        style={{ width: `${Math.min(100, audioLevel)}%` }}
+                        className="h-full bg-emerald-500 transition-all duration-75"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => playAudioTestChime()}
+                    className="w-full py-1.5 bg-[#2d2d2d] hover:bg-[#383838] text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <span>🔊 Uji Speaker & Mikrofon</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Start / Stop Video */}
-          <div className="flex items-center">
+          <div className="flex items-center relative">
             <button
               type="button"
               onClick={handleToggleVideo}
@@ -1365,9 +1587,89 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
               </div>
               <span className="text-[10px] font-medium mt-0.5">{isVideoDisabled ? 'Start Video' : 'Stop Video'}</span>
             </button>
-            <button type="button" className="p-1 text-slate-400 hover:text-white -ml-1">
-              <ChevronUpIcon className="w-3 h-3" />
+            <button 
+              type="button" 
+              onClick={() => {
+                setShowVideoMenu((v) => !v);
+                setShowAudioMenu(false);
+                refreshDevices();
+              }}
+              className={`p-1.5 rounded hover:bg-[#2b2b2b] text-slate-400 hover:text-white -ml-1 cursor-pointer ${
+                showVideoMenu ? 'bg-[#2b2b2b] text-white' : ''
+              }`}
+              title="Pengaturan Kamera & Video"
+            >
+              <ChevronUpIcon className="w-3.5 h-3.5" />
             </button>
+
+            {/* Video Settings Popover (Zoom Style) */}
+            {showVideoMenu && (
+              <div className="absolute bottom-16 left-0 w-72 bg-[#222222] border border-slate-700 rounded-xl shadow-2xl p-2.5 text-xs text-slate-200 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-700 mb-2">
+                  <span className="font-bold text-white text-[11px] uppercase tracking-wider">Pilih Kamera</span>
+                  <button type="button" onClick={() => setShowVideoMenu(false)} className="text-slate-400 hover:text-white">
+                    <XMarkIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-1 max-h-36 overflow-y-auto mb-2">
+                  {videoInputDevices.length > 0 ? (
+                    videoInputDevices.map((dev, idx) => (
+                      <button
+                        key={dev.deviceId || idx}
+                        type="button"
+                        onClick={async () => {
+                          setSelectedVideoInput(dev.deviceId);
+                          setShowVideoMenu(false);
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                              video: { deviceId: { exact: dev.deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+                            });
+                            const track = stream.getVideoTracks()[0];
+                            if (track && localStreamRef.current) {
+                              localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
+                              localStreamRef.current.addTrack(track);
+                              if (localVideoRef.current) {
+                                localVideoRef.current.srcObject = localStreamRef.current;
+                                localVideoRef.current.play().catch(() => {});
+                              }
+                              peerConnectionsRef.current.forEach(async (pc) => {
+                                const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+                                if (sender) await sender.replaceTrack(track).catch(() => {});
+                              });
+                              setIsVideoDisabled(false);
+                            }
+                          } catch {}
+                        }}
+                        className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center justify-between hover:bg-[#333333] transition-colors cursor-pointer ${
+                          selectedVideoInput === dev.deviceId ? 'text-emerald-400 font-bold bg-[#2a2a2a]' : ''
+                        }`}
+                      >
+                        <span className="truncate max-w-[200px]">{dev.label || `Kamera ${idx + 1}`}</span>
+                        {selectedVideoInput === dev.deviceId && <CheckIcon className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-[11px] text-slate-400 italic">
+                      Tidak ada perangkat webcam terdeteksi.
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowVideoMenu(false);
+                      handleToggleVideo();
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-[#333333] text-slate-300 transition-colors cursor-pointer"
+                  >
+                    🔄 Sambungkan Ulang Kamera
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
