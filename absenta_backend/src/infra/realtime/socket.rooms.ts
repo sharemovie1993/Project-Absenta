@@ -138,6 +138,97 @@ function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
     }
     fastify.log.info(`[WebRTC] Call ${data.callId} ended by ${user.id} (duration: ${data.durationSeconds}s)`);
   });
+
+  // ── 6. Virtual Meeting Room Multi-Participant WebRTC Signaling ──
+  socket.on('meeting:join', (data: {
+    roomId: string;
+    participantInfo?: { name: string; role?: string; avatar?: string };
+  }) => {
+    if (!data?.roomId) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    const meetingRoom = `meeting:${cleanRoomId}`;
+    socket.join(meetingRoom);
+
+    const participant = {
+      userId: user.id,
+      name: data.participantInfo?.name || user.full_name || user.name || 'Peserta',
+      role: data.participantInfo?.role || user.roleName || 'GTK',
+      avatar: data.participantInfo?.avatar || user.avatar
+    };
+
+    // Broadcast ke peserta lain di ruangan
+    socket.to(meetingRoom).emit('meeting:peer_joined', participant);
+    fastify.log.info(`[Meeting] User ${user.id} (${participant.name}) joined ${meetingRoom}`);
+  });
+
+  socket.on('meeting:offer', (data: {
+    targetUserId: string;
+    roomId: string;
+    offer: any;
+  }) => {
+    if (!data?.targetUserId || !data?.offer) return;
+    io.to(`user:${data.targetUserId}`).emit('meeting:offer', {
+      fromUserId: user.id,
+      roomId: data.roomId,
+      offer: data.offer,
+      senderInfo: {
+        name: user.full_name || user.name || 'Peserta',
+        role: user.roleName || 'GTK',
+        avatar: user.avatar
+      }
+    });
+  });
+
+  socket.on('meeting:answer', (data: {
+    targetUserId: string;
+    roomId: string;
+    answer: any;
+  }) => {
+    if (!data?.targetUserId || !data?.answer) return;
+    io.to(`user:${data.targetUserId}`).emit('meeting:answer', {
+      fromUserId: user.id,
+      roomId: data.roomId,
+      answer: data.answer
+    });
+  });
+
+  socket.on('meeting:ice_candidate', (data: {
+    targetUserId: string;
+    roomId: string;
+    candidate: any;
+  }) => {
+    if (!data?.targetUserId || !data?.candidate) return;
+    io.to(`user:${data.targetUserId}`).emit('meeting:ice_candidate', {
+      fromUserId: user.id,
+      roomId: data.roomId,
+      candidate: data.candidate
+    });
+  });
+
+  socket.on('meeting:chat', (data: {
+    roomId: string;
+    text: string;
+    time?: string;
+  }) => {
+    if (!data?.roomId || !data?.text) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    io.to(`meeting:${cleanRoomId}`).emit('meeting:chat', {
+      senderId: user.id,
+      sender: user.full_name || user.name || 'Peserta',
+      role: user.roleName || 'GTK',
+      text: data.text,
+      time: data.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    });
+  });
+
+  socket.on('meeting:leave', (data: { roomId: string }) => {
+    if (!data?.roomId) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    const meetingRoom = `meeting:${cleanRoomId}`;
+    socket.leave(meetingRoom);
+    socket.to(meetingRoom).emit('meeting:peer_left', { userId: user.id });
+    fastify.log.info(`[Meeting] User ${user.id} left ${meetingRoom}`);
+  });
 }
 
 export function setupSocketRooms(

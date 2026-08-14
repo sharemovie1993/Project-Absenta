@@ -15,12 +15,12 @@ import {
   ArrowsPointingInIcon,
   ChevronUpIcon,
   LockClosedIcon,
-  EllipsisVerticalIcon,
   TrashIcon,
   VideoCameraIcon,
   MicrophoneIcon
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/store/authStore';
+import { useSocket } from '@/hooks/useSocket';
 
 interface VirtualMeetingModalProps {
   isOpen: boolean;
@@ -40,13 +40,67 @@ interface Participant {
   avatarColor: string;
 }
 
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
+  ]
+};
+
+// ── Remote Video Tile Component with Active Stream Attachment ───────────────
+const RemoteVideoTile: React.FC<{
+  participant: Participant;
+  stream?: MediaStream;
+  isActiveSpeaker: boolean;
+  onClick: () => void;
+}> = ({ participant, stream, isActiveSpeaker, onClick }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stream]);
+
+  const hasVideoStream = Boolean(stream && stream.getVideoTracks().some(t => t.enabled));
+
+  return (
+    <div
+      onClick={onClick}
+      className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl cursor-pointer ${
+        isActiveSpeaker ? 'border-[#2DA771]' : 'border-[#333333]'
+      }`}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={`w-full h-full object-cover ${hasVideoStream ? '' : 'hidden'}`}
+      />
+      {!hasVideoStream && (
+        <div className={`w-20 h-20 rounded-full ${participant.avatarColor} text-white flex items-center justify-center text-2xl font-bold shadow-2xl`}>
+          {participant.name.slice(0, 2).toUpperCase()}
+        </div>
+      )}
+
+      <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
+        <span className="truncate max-w-[200px]">{participant.name}</span>
+        {participant.isAudioMuted ? <span className="text-rose-500">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
+      </div>
+    </div>
+  );
+};
+
 export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   isOpen,
   onClose,
   roomTitle = 'Rapat Koordinasi KBM & Kurikulum',
-  roomId = `892 4102 ${Math.floor(1000 + Math.random() * 9000)}`
+  roomId = `meet-kbm-${Date.now().toString(36)}`
 }) => {
   const { user } = useAuthStore();
+  const { socket } = useSocket();
 
   // Media & Call States
   const [isAudioMuted, setIsAudioMuted] = useState(false);
@@ -70,7 +124,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const [allowScreenShare, setAllowScreenShare] = useState(true);
   const [allowChat, setAllowChat] = useState(true);
 
-  // Simulated Participants
+  // Participants & Remote Streams
   const [participants, setParticipants] = useState<Participant[]>([
     {
       id: 'local',
@@ -81,33 +135,16 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       isVideoOff: false,
       isHandRaised: false,
       avatarColor: 'bg-[#0E71EB]'
-    },
-    {
-      id: 'p1',
-      name: 'TRISNAWATI, S.T. (Waka Kurikulum)',
-      role: 'WAKA',
-      isHost: false,
-      isAudioMuted: false,
-      isVideoOff: false,
-      isHandRaised: false,
-      avatarColor: 'bg-[#107C41]'
-    },
-    {
-      id: 'p2',
-      name: 'DEWI SINTAWATI, S.Pd. (Guru Mapel)',
-      role: 'GURU',
-      isHost: false,
-      isAudioMuted: true,
-      isVideoOff: false,
-      isHandRaised: false,
-      avatarColor: 'bg-[#742774]'
     }
   ]);
+  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+
+  // WebRTC Peer Connections Map
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
   // Meeting Chat
   const [meetingChat, setMeetingChat] = useState<{ sender: string; text: string; time: string; isHost?: boolean }[]>([
-    { sender: 'Sistem Absenta', text: 'Ruang Rapat Zoom Absenta dimulai dengan enkripsi multi-tenant.', time: 'Sekarang' },
-    { sender: 'TRISNAWATI, S.T.', text: 'Selamat pagi Bapak/Ibu guru sekalian, mari kita mulai koordinasi.', time: '08:00' }
+    { sender: 'Sistem Absenta', text: 'Ruang Rapat Zoom Absenta aktif dengan enkripsi WebRTC multi-tenant.', time: 'Sekarang' }
   ]);
   const [chatInput, setChatInput] = useState('');
 
@@ -122,6 +159,250 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const localStreamRef = useRef<MediaStream | null>(null);
   const meetingContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Real-time Audio Level Meter States (Web Audio API)
+  const [audioLevel, setAudioLevel] = useState<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  // Setup Web Audio API Analyser for dynamic voice metering
+  const setupAudioMeter = (stream: MediaStream) => {
+    try {
+      if (stream.getAudioTracks().length === 0) return;
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch {}
+      }
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const audioCtx = new AudioCtx();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.4;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const checkVolume = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalized = Math.min(100, Math.round((avg / 120) * 100));
+        setAudioLevel(normalized);
+        animFrameRef.current = requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (e) {
+      console.warn('Audio meter init error:', e);
+    }
+  };
+
+  // Helper: Create Peer Connection for a Remote User
+  const createPeerConnection = (targetUserId: string) => {
+    if (peerConnectionsRef.current.has(targetUserId)) {
+      return peerConnectionsRef.current.get(targetUserId)!;
+    }
+
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+
+    // Add local stream tracks to this peer
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
+    }
+
+    // Handle ICE Candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate && socket) {
+        socket.emit('meeting:ice_candidate', {
+          targetUserId,
+          roomId,
+          candidate: event.candidate
+        });
+      }
+    };
+
+    // Receive Remote Track
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        const remoteStream = event.streams[0];
+        setRemoteStreams((prev) => ({ ...prev, [targetUserId]: remoteStream }));
+      }
+    };
+
+    peerConnectionsRef.current.set(targetUserId, pc);
+    return pc;
+  };
+
+  // ── WebRTC Socket Signaling Effect ─────────────────────────────────────────
+  useEffect(() => {
+    if (!isOpen || !socket) return;
+
+    const cleanRoom = roomId.replace(/\s+/g, '').toLowerCase();
+
+    // 1. Join room
+    socket.emit('meeting:join', {
+      roomId: cleanRoom,
+      participantInfo: {
+        name: user?.full_name || 'Pengguna Absenta',
+        role: user?.role?.name || 'GTK',
+        avatar: user?.avatar
+      }
+    });
+
+    // 2. Peer joined -> Initiate offer
+    const handlePeerJoined = async (peer: { userId: string; name: string; role?: string; avatar?: string }) => {
+      if (peer.userId === user?.id) return;
+
+      // Add to participants
+      setParticipants((prev) => {
+        if (prev.some((p) => p.id === peer.userId)) return prev;
+        return [
+          ...prev,
+          {
+            id: peer.userId,
+            name: peer.name,
+            role: peer.role || 'GTK',
+            isHost: false,
+            isAudioMuted: false,
+            isVideoOff: false,
+            isHandRaised: false,
+            avatarColor: 'bg-[#107C41]'
+          }
+        ];
+      });
+
+      // Create WebRTC Offer
+      try {
+        const pc = createPeerConnection(peer.userId);
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+
+        socket.emit('meeting:offer', {
+          targetUserId: peer.userId,
+          roomId: cleanRoom,
+          offer
+        });
+      } catch (err: any) {
+        console.warn('Error creating meeting offer:', err);
+      }
+    };
+
+    // 3. Receive Offer -> Send Answer
+    const handleMeetingOffer = async (data: { fromUserId: string; roomId: string; offer: any; senderInfo?: any }) => {
+      try {
+        if (data.fromUserId === user?.id) return;
+
+        // Add to participants if not present
+        setParticipants((prev) => {
+          if (prev.some((p) => p.id === data.fromUserId)) return prev;
+          return [
+            ...prev,
+            {
+              id: data.fromUserId,
+              name: data.senderInfo?.name || 'Peserta Rapat',
+              role: data.senderInfo?.role || 'GTK',
+              isHost: false,
+              isAudioMuted: false,
+              isVideoOff: false,
+              isHandRaised: false,
+              avatarColor: 'bg-[#742774]'
+            }
+          ];
+        });
+
+        const pc = createPeerConnection(data.fromUserId);
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit('meeting:answer', {
+          targetUserId: data.fromUserId,
+          roomId: cleanRoom,
+          answer
+        });
+      } catch (err: any) {
+        console.warn('Error handling meeting offer:', err);
+      }
+    };
+
+    // 4. Receive Answer
+    const handleMeetingAnswer = async (data: { fromUserId: string; answer: any }) => {
+      try {
+        const pc = peerConnectionsRef.current.get(data.fromUserId);
+        if (pc) {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        }
+      } catch (err: any) {
+        console.warn('Error setting remote answer:', err);
+      }
+    };
+
+    // 5. Receive ICE Candidate
+    const handleMeetingIceCandidate = async (data: { fromUserId: string; candidate: any }) => {
+      try {
+        const pc = peerConnectionsRef.current.get(data.fromUserId);
+        if (pc) {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        }
+      } catch (err: any) {
+        console.warn('Error adding ICE candidate:', err);
+      }
+    };
+
+    // 6. In-Meeting Chat
+    const handleMeetingChat = (chatMsg: { sender: string; text: string; time: string }) => {
+      setMeetingChat((prev) => [...prev, chatMsg]);
+    };
+
+    // 7. Peer Left
+    const handlePeerLeft = (data: { userId: string }) => {
+      const pc = peerConnectionsRef.current.get(data.userId);
+      if (pc) {
+        pc.close();
+        peerConnectionsRef.current.delete(data.userId);
+      }
+      setParticipants((prev) => prev.filter((p) => p.id !== data.userId));
+      setRemoteStreams((prev) => {
+        const next = { ...prev };
+        delete next[data.userId];
+        return next;
+      });
+    };
+
+    socket.on('meeting:peer_joined', handlePeerJoined);
+    socket.on('meeting:offer', handleMeetingOffer);
+    socket.on('meeting:answer', handleMeetingAnswer);
+    socket.on('meeting:ice_candidate', handleMeetingIceCandidate);
+    socket.on('meeting:chat', handleMeetingChat);
+    socket.on('meeting:peer_left', handlePeerLeft);
+
+    return () => {
+      socket.emit('meeting:leave', { roomId: cleanRoom });
+      socket.off('meeting:peer_joined', handlePeerJoined);
+      socket.off('meeting:offer', handleMeetingOffer);
+      socket.off('meeting:answer', handleMeetingAnswer);
+      socket.off('meeting:ice_candidate', handleMeetingIceCandidate);
+      socket.off('meeting:chat', handleMeetingChat);
+      socket.off('meeting:peer_left', handlePeerLeft);
+
+      // Close all peer connections
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+    };
+  }, [isOpen, socket, roomId, user]);
+
   // Dynamic Camera Toggle with Device Enumeration & Graceful Fallback
   const handleToggleVideo = async () => {
     try {
@@ -131,10 +412,10 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         return;
       }
 
-      // 1. Periksa ketersediaan perangkat kamera fisik
+      // Check physical camera
       if (navigator.mediaDevices.enumerateDevices) {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput');
         if (videoDevices.length === 0) {
           alert('Perangkat kamera (Webcam) tidak terdeteksi pada komputer ini.\n\nAnda tetap dapat berbicara menggunakan mikrofon dan berbagi layar (Screen Share).');
           setIsVideoDisabled(true);
@@ -147,19 +428,23 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: isAudioMuted ? false : true
+            audio: !isAudioMuted
           });
-        } catch (initialErr: any) {
-          // Fallback ke generic video
+        } catch {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         }
 
         if (localStreamRef.current) {
-          localStreamRef.current.getVideoTracks().forEach(t => t.stop());
-          stream.getVideoTracks().forEach(t => localStreamRef.current?.addTrack(t));
+          localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
+          stream.getVideoTracks().forEach((t) => localStreamRef.current?.addTrack(t));
         } else {
           localStreamRef.current = stream;
         }
+
+        // Add tracks to all existing peer connections
+        peerConnectionsRef.current.forEach((pc) => {
+          stream?.getVideoTracks().forEach((track) => pc.addTrack(track, stream!));
+        });
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStreamRef.current;
@@ -196,10 +481,17 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
       if (!localStreamRef.current || localStreamRef.current.getAudioTracks().length === 0) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (localStreamRef.current) {
-          stream.getAudioTracks().forEach(t => localStreamRef.current?.addTrack(t));
+          stream.getAudioTracks().forEach((t) => localStreamRef.current?.addTrack(t));
         } else {
           localStreamRef.current = stream;
         }
+        setupAudioMeter(localStreamRef.current);
+
+        // Add audio track to peer connections
+        peerConnectionsRef.current.forEach((pc) => {
+          stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+        });
+
         setIsAudioMuted(false);
         return;
       }
@@ -226,7 +518,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         let hasCamera = true;
         if (navigator.mediaDevices?.enumerateDevices) {
           const devices = await navigator.mediaDevices.enumerateDevices();
-          hasCamera = devices.some(d => d.kind === 'videoinput');
+          hasCamera = devices.some((d) => d.kind === 'videoinput');
         }
 
         if (hasCamera) {
@@ -252,6 +544,9 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         }
 
         localStreamRef.current = stream;
+        if (stream) {
+          setupAudioMeter(stream);
+        }
         if (localVideoRef.current && stream && !isVideoDisabled) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.play().catch(() => {});
@@ -265,8 +560,14 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     initMedia();
 
     return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch {}
+      }
       if (stream) {
-        stream.getTracks().forEach(t => t.stop());
+        stream.getTracks().forEach((t) => t.stop());
       }
     };
   }, [isOpen]);
@@ -283,7 +584,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   useEffect(() => {
     let interval: any;
     if (isRecording) {
-      interval = setInterval(() => setRecordTimer(t => t + 1), 1000);
+      interval = setInterval(() => setRecordTimer((t) => t + 1), 1000);
     } else {
       setRecordTimer(0);
     }
@@ -300,7 +601,8 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.origin + `/komunikasi?meeting=${roomId.replace(/\s+/g, '')}`);
+    const cleanRoom = roomId.replace(/\s+/g, '').toLowerCase();
+    navigator.clipboard.writeText(window.location.origin + `/komunikasi?meeting=${cleanRoom}`);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -308,11 +610,13 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   // Mute All by Host (Zoom Feature)
   const handleMuteAll = () => {
     if (confirm('Bisukan semua peserta saat ini dan peserta baru yang bergabung?')) {
-      setParticipants(prev => prev.map(p => p.id === 'local' ? p : { ...p, isAudioMuted: true }));
-      setMeetingChat(prev => [
-        ...prev,
-        { sender: 'Host', text: '🔇 Host telah membisukan mikrofon seluruh peserta.', time: 'Sekarang', isHost: true }
-      ]);
+      setParticipants((prev) => prev.map((p) => (p.id === 'local' ? p : { ...p, isAudioMuted: true })));
+      if (socket) {
+        socket.emit('meeting:chat', {
+          roomId,
+          text: '🔇 Host telah membisukan mikrofon seluruh peserta.'
+        });
+      }
     }
   };
 
@@ -375,20 +679,28 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const handleSendMeetingChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setMeetingChat(prev => [
-      ...prev,
-      {
-        sender: user?.full_name || 'Saya',
-        text: chatInput.trim(),
-        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
+    const text = chatInput.trim();
+    if (socket) {
+      socket.emit('meeting:chat', { roomId, text });
+    } else {
+      setMeetingChat((prev) => [
+        ...prev,
+        {
+          sender: user?.full_name || 'Saya',
+          text,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    }
     setChatInput('');
   };
 
   const handleLeave = () => {
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+    }
+    if (socket) {
+      socket.emit('meeting:leave', { roomId });
     }
     onClose();
   };
@@ -404,7 +716,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         <div className="relative">
           <button
             type="button"
-            onClick={() => setShowMeetingInfo(v => !v)}
+            onClick={() => setShowMeetingInfo((v) => !v)}
             className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-[#2b2b2b] text-slate-300 hover:text-white transition-colors cursor-pointer"
             title="Informasi Rapat"
           >
@@ -444,7 +756,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                   <p className="text-[10px] text-slate-400 uppercase font-semibold">Enkripsi</p>
                   <p className="text-slate-300 flex items-center gap-1">
                     <LockClosedIcon className="w-3.5 h-3.5 text-[#2DA771]" />
-                    <span>Terenkripsi E2EE Multi-Tenant</span>
+                    <span>Terenkripsi E2EE WebRTC Mesh</span>
                   </p>
                 </div>
               </div>
@@ -530,7 +842,11 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-center justify-center p-2">
               {/* Local Participant Card */}
               <div className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl ${
-                activeSpeakerId === 'local' ? 'border-[#2DA771]' : 'border-[#333333]'
+                !isAudioMuted && audioLevel > 12 
+                  ? 'border-[#2DA771] ring-4 ring-[#2DA771]/30 shadow-[#2DA771]/20' 
+                  : activeSpeakerId === 'local' 
+                  ? 'border-[#2DA771]' 
+                  : 'border-[#333333]'
               }`}>
                 <video
                   ref={localVideoRef}
@@ -540,36 +856,43 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                   className={`w-full h-full object-cover ${isVideoDisabled ? 'hidden' : ''}`}
                 />
                 {isVideoDisabled && (
-                  <div className="w-20 h-20 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-2xl font-bold shadow-2xl">
-                    {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'ME'}
+                  <div className="relative flex flex-col items-center">
+                    {!isAudioMuted && audioLevel > 12 && (
+                      <span className="absolute -inset-3 rounded-full bg-[#2DA771]/30 animate-ping" />
+                    )}
+                    <div className="w-20 h-20 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-2xl font-bold shadow-2xl z-10">
+                      {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'ME'}
+                    </div>
                   </div>
                 )}
-                {/* Name Tag & Status Badges */}
-                <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2">
+
+                {/* Name Tag & Real-time Audio Equalizer Badges */}
+                <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
                   <span>{user?.full_name || 'Saya'} (Host, Me)</span>
-                  {isAudioMuted ? <span className="text-rose-500 font-bold">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
+
+                  {isAudioMuted ? (
+                    <span className="text-rose-500 font-bold">🔇</span>
+                  ) : (
+                    <div className="flex items-center gap-0.5 h-3" title={`Level Suara: ${audioLevel}%`}>
+                      <span style={{ height: `${Math.max(25, audioLevel * 0.9)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
+                      <span style={{ height: `${Math.max(40, audioLevel * 1.1)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
+                      <span style={{ height: `${Math.max(20, audioLevel * 0.8)}%` }} className="w-0.5 bg-[#2DA771] rounded-full transition-all duration-75" />
+                    </div>
+                  )}
+
                   {isHandRaised && <span className="animate-bounce">✋</span>}
                 </div>
               </div>
 
-              {/* Remote Participants */}
-              {participants.filter(p => p.id !== 'local').map((p) => (
-                <div
+              {/* Remote Participants with WebRTC Live Video Stream */}
+              {participants.filter((p) => p.id !== 'local').map((p) => (
+                <RemoteVideoTile
                   key={p.id}
+                  participant={p}
+                  stream={remoteStreams[p.id]}
+                  isActiveSpeaker={activeSpeakerId === p.id}
                   onClick={() => setActiveSpeakerId(p.id)}
-                  className={`relative w-full h-full min-h-[220px] max-h-[420px] bg-[#222222] rounded-2xl overflow-hidden border-2 transition-all flex items-center justify-center shadow-xl cursor-pointer ${
-                    activeSpeakerId === p.id ? 'border-[#2DA771]' : 'border-[#333333]'
-                  }`}
-                >
-                  <div className={`w-20 h-20 rounded-full ${p.avatarColor} text-white flex items-center justify-center text-2xl font-bold shadow-2xl`}>
-                    {p.name.slice(0, 2).toUpperCase()}
-                  </div>
-
-                  <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2">
-                    <span className="truncate max-w-[200px]">{p.name}</span>
-                    {p.isAudioMuted ? <span className="text-rose-500">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
-                  </div>
-                </div>
+                />
               ))}
             </div>
           )}
@@ -599,13 +922,25 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
               <div className="flex-1 bg-[#1a1a1a] rounded-2xl border border-[#333] flex items-center justify-center relative overflow-hidden shadow-2xl">
                 {activeSpeakerId === 'local' ? (
                   <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                ) : remoteStreams[activeSpeakerId] ? (
+                  <video
+                    autoPlay
+                    playsInline
+                    ref={(el) => {
+                      if (el && remoteStreams[activeSpeakerId]) {
+                        el.srcObject = remoteStreams[activeSpeakerId];
+                        el.play().catch(() => {});
+                      }
+                    }}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-28 h-28 rounded-full bg-[#0E71EB] text-white flex items-center justify-center text-4xl font-bold">
-                    {participants.find(p => p.id === activeSpeakerId)?.name.slice(0, 2).toUpperCase() || 'SP'}
+                    {participants.find((p) => p.id === activeSpeakerId)?.name.slice(0, 2).toUpperCase() || 'SP'}
                   </div>
                 )}
                 <div className="absolute bottom-4 left-4 px-4 py-1.5 bg-black/70 backdrop-blur-md rounded-xl text-sm font-bold">
-                  {participants.find(p => p.id === activeSpeakerId)?.name || 'Active Speaker'}
+                  {participants.find((p) => p.id === activeSpeakerId)?.name || 'Active Speaker'}
                 </div>
               </div>
             </div>
@@ -666,7 +1001,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                       min="1"
                       max="12"
                       value={brushSize}
-                      onChange={e => setBrushSize(Number(e.target.value))}
+                      onChange={(e) => setBrushSize(Number(e.target.value))}
                       className="w-20 accent-[#0E71EB]"
                     />
                   </div>
@@ -780,7 +1115,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                     type="text"
                     placeholder="Kirim pesan ke Semua..."
                     value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
+                    onChange={(e) => setChatInput(e.target.value)}
                     className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-[#2e2e2e] text-white placeholder-slate-400 border border-slate-700 outline-hidden focus:border-[#0E71EB]"
                   />
                   <button
@@ -803,7 +1138,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                       <input
                         type="checkbox"
                         checked={isMeetingLocked}
-                        onChange={e => setIsMeetingLocked(e.target.checked)}
+                        onChange={(e) => setIsMeetingLocked(e.target.checked)}
                         className="w-4 h-4 text-[#0E71EB] rounded"
                       />
                       <span>Kunci Rapat (Lock Meeting)</span>
@@ -812,7 +1147,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                       <input
                         type="checkbox"
                         checked={isWaitingRoomEnabled}
-                        onChange={e => setIsWaitingRoomEnabled(e.target.checked)}
+                        onChange={(e) => setIsWaitingRoomEnabled(e.target.checked)}
                         className="w-4 h-4 text-[#0E71EB] rounded"
                       />
                       <span>Aktifkan Ruang Tunggu (Waiting Room)</span>
@@ -827,7 +1162,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                       <input
                         type="checkbox"
                         checked={allowScreenShare}
-                        onChange={e => setAllowScreenShare(e.target.checked)}
+                        onChange={(e) => setAllowScreenShare(e.target.checked)}
                         className="w-4 h-4 text-[#0E71EB] rounded"
                       />
                       <span>Bolehkan Berbagi Layar (Share Screen)</span>
@@ -836,7 +1171,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                       <input
                         type="checkbox"
                         checked={allowChat}
-                        onChange={e => setAllowChat(e.target.checked)}
+                        onChange={(e) => setAllowChat(e.target.checked)}
                         className="w-4 h-4 text-[#0E71EB] rounded"
                       />
                       <span>Bolehkan Obrolan Chat</span>
@@ -858,11 +1193,17 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
             <button
               type="button"
               onClick={handleToggleAudio}
-              className="flex flex-col items-center justify-center w-14 h-12 rounded-lg hover:bg-[#2b2b2b] text-slate-200 hover:text-white transition-colors cursor-pointer group"
+              className="flex flex-col items-center justify-center w-14 h-12 rounded-lg hover:bg-[#2b2b2b] text-slate-200 hover:text-white transition-colors cursor-pointer group relative"
             >
-              <div className="relative">
+              <div className="relative flex items-center justify-center">
                 <SpeakerWaveIcon className={`w-5 h-5 ${isAudioMuted ? 'text-rose-500' : 'text-[#2DA771]'}`} />
                 {isAudioMuted && <span className="absolute inset-0 border-t-2 border-rose-500 rotate-45 top-2.5" />}
+                {!isAudioMuted && audioLevel > 5 && (
+                  <span 
+                    style={{ height: `${Math.min(100, Math.max(20, audioLevel))}%` }} 
+                    className="absolute -right-1.5 bottom-0.5 w-1 bg-[#2DA771] rounded-full transition-all duration-75"
+                  />
+                )}
               </div>
               <span className="text-[10px] font-medium mt-0.5">{isAudioMuted ? 'Unmute' : 'Mute'}</span>
             </button>
@@ -895,7 +1236,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Security */}
           <button
             type="button"
-            onClick={() => setActiveSidebar(prev => prev === 'SECURITY' ? null : 'SECURITY')}
+            onClick={() => setActiveSidebar((prev) => (prev === 'SECURITY' ? null : 'SECURITY'))}
             className={`flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer ${
               activeSidebar === 'SECURITY' ? 'bg-[#2b2b2b] text-white' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
@@ -907,7 +1248,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Participants */}
           <button
             type="button"
-            onClick={() => setActiveSidebar(prev => prev === 'PARTICIPANTS' ? null : 'PARTICIPANTS')}
+            onClick={() => setActiveSidebar((prev) => (prev === 'PARTICIPANTS' ? null : 'PARTICIPANTS'))}
             className={`flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer relative ${
               activeSidebar === 'PARTICIPANTS' ? 'bg-[#2b2b2b] text-white' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
@@ -922,7 +1263,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Chat */}
           <button
             type="button"
-            onClick={() => setActiveSidebar(prev => prev === 'CHAT' ? null : 'CHAT')}
+            onClick={() => setActiveSidebar((prev) => (prev === 'CHAT' ? null : 'CHAT'))}
             className={`flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer ${
               activeSidebar === 'CHAT' ? 'bg-[#2b2b2b] text-white' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
@@ -934,7 +1275,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Share Screen (Zoom Green Button) */}
           <button
             type="button"
-            onClick={() => setIsScreenSharing(v => !v)}
+            onClick={() => setIsScreenSharing((v) => !v)}
             className="flex flex-col items-center justify-center w-16 sm:w-20 h-12 rounded-lg hover:bg-[#2b2b2b] text-[#2DA771] hover:text-[#38c98c] transition-colors cursor-pointer"
           >
             <ArrowUpTrayIcon className="w-5 h-5 stroke-[2.5]" />
@@ -946,7 +1287,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Whiteboard */}
           <button
             type="button"
-            onClick={() => setViewMode(v => v === 'WHITEBOARD' ? 'GALLERY' : 'WHITEBOARD')}
+            onClick={() => setViewMode((v) => (v === 'WHITEBOARD' ? 'GALLERY' : 'WHITEBOARD'))}
             className={`hidden sm:flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer ${
               viewMode === 'WHITEBOARD' ? 'bg-[#0E71EB] text-white' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
@@ -958,7 +1299,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           {/* Record */}
           <button
             type="button"
-            onClick={() => setIsRecording(v => !v)}
+            onClick={() => setIsRecording((v) => !v)}
             className={`hidden sm:flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg transition-colors cursor-pointer ${
               isRecording ? 'text-red-500 animate-pulse' : 'hover:bg-[#2b2b2b] text-slate-300'
             }`}
@@ -975,7 +1316,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           <div className="relative">
             <button
               type="button"
-              onClick={() => setShowReactions(v => !v)}
+              onClick={() => setShowReactions((v) => !v)}
               className="flex flex-col items-center justify-center w-14 sm:w-16 h-12 rounded-lg hover:bg-[#2b2b2b] text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
               <FaceSmileIcon className="w-5 h-5" />
@@ -999,7 +1340,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsHandRaised(v => !v);
+                    setIsHandRaised((v) => !v);
                     setShowReactions(false);
                   }}
                   className="w-full py-1.5 bg-[#333] hover:bg-[#444] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 text-white"
