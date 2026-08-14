@@ -79,7 +79,7 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
   const { user } = useAuthStore();
-  const { can } = useCapabilities();
+  const { isKurikulum, isAdmin, can } = useCapabilities();
   const { jenjang, config, tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -100,7 +100,6 @@ const MapelList = React.memo<MapelListProps>(({
   const totalPages = listRes?.pagination?.totalPages || 1;
   const totalItems = listRes?.pagination?.total || 0;
   
-  const { isKurikulum, isAdmin, can } = useCapabilities();
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
     return (
