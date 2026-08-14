@@ -142,6 +142,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoInputDevices, setVideoInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedAudioInput, setSelectedAudioInput] = useState<string>('');
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>('');
   const [selectedVideoInput, setSelectedVideoInput] = useState<string>('');
   const [isVirtualMicActive, setIsVirtualMicActive] = useState(false);
   const [floatingReaction, setFloatingReaction] = useState<string | null>(null);
@@ -1536,16 +1537,36 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                     <div className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">
                       PILIH SPEAKER (OUTPUT)
                     </div>
-                    <div className="space-y-1 max-h-24 overflow-y-auto">
-                      {audioOutputDevices.map((dev, idx) => (
-                        <div
-                          key={dev.deviceId || idx}
-                          className="px-2.5 py-1 rounded-lg text-slate-300 text-[11px] flex items-center gap-2"
-                        >
-                          <span>🔊</span>
-                          <span className="truncate">{dev.label || `Speaker ${idx + 1}`}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-1 max-h-28 overflow-y-auto">
+                      {audioOutputDevices.map((dev, idx) => {
+                        const isSelected = selectedAudioOutput === dev.deviceId || (!selectedAudioOutput && idx === 0);
+                        return (
+                          <button
+                            key={dev.deviceId || idx}
+                            type="button"
+                            onClick={async () => {
+                              setSelectedAudioOutput(dev.deviceId);
+                              try {
+                                const videoElements = document.querySelectorAll('video, audio');
+                                videoElements.forEach((el: any) => {
+                                  if (typeof el.setSinkId === 'function') {
+                                    el.setSinkId(dev.deviceId).catch(() => {});
+                                  }
+                                });
+                              } catch {}
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center justify-between hover:bg-[#333333] transition-colors cursor-pointer ${
+                              isSelected ? 'text-emerald-400 font-bold bg-[#2a2a2a]' : 'text-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate max-w-[220px]">
+                              <span>🔊</span>
+                              <span className="truncate">{dev.label || `Speaker ${idx + 1}`}</span>
+                            </div>
+                            {isSelected && <CheckIcon className="w-4 h-4 shrink-0 text-emerald-400" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
