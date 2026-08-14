@@ -12,7 +12,6 @@ import { iconForName } from '@/lib/iconForName';
 import { ChevronRight, HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
-import { BottomNavigation } from './BottomNavigation';
 import { useTvStore } from '@/store/tvStore';
 import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui';
@@ -276,9 +275,6 @@ function MainLayoutContent() {
           </div>
         </footer>
       </div>
-
-      {/* Navigasi Bawah Seluler Berbasis 5 Varian Persona */}
-      <BottomNavigation />
 
       {/* Floating Support Messenger Widget */}
       <FloatingMessenger />
