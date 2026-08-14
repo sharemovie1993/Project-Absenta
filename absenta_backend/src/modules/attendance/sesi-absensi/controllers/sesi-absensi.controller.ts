@@ -175,6 +175,25 @@ export const sesiAbsensiController = {
 
       const updated = await sesiService.updateAbsenGuru(tenantId, scope, id, guru_id, data);
       
+      // 📡 Real-time Broadcast: Notify all connected clients across the school
+      try {
+        const { getRedisConnection } = await import('@/queue/redis');
+        const redis = getRedisConnection();
+        const eventPayload = {
+          tenant_id: tenantId,
+          sesi_id: id,
+          guru_id,
+          status: data.status,
+          catatan: data.catatan,
+          updated_at: new Date().toISOString()
+        };
+        await redis.publish('events:absen_guru_update', JSON.stringify(eventPayload));
+        await redis.publish('events:sesi_status_update', JSON.stringify(eventPayload));
+        await redis.publish('events:session_attendance_update', JSON.stringify(eventPayload));
+      } catch (wsErr) {
+        console.warn('[updateAbsenGuru] WebSocket broadcast warning:', wsErr);
+      }
+
       reply.status(200);
       return { success: true, message: 'Absen guru tersimpan', data: updated };
     } catch (error: any) {

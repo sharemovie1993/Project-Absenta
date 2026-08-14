@@ -125,23 +125,37 @@ export function useUnifiedKbmSessions(options: UnifiedKbmSessionQueryOptions = {
     refetchInterval: isToday ? 30000 : false,
   });
 
-  // 2. Real-time Socket.io invalidation listener
+  // 2. Real-time Socket.io invalidation listener across ALL KBM modules
   useEffect(() => {
     const handleRealtimeUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
       queryClient.invalidateQueries({ queryKey: ['my-schedule-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance-monitoring'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-sesi-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['presensi-terpadu-sesi'] });
+      queryClient.invalidateQueries({ queryKey: ['today-kbm-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-today'] });
     };
 
     subscribe('SESI_CREATED', handleRealtimeUpdate);
     subscribe('SESI_UPDATED', handleRealtimeUpdate);
     subscribe('SESSION_ATTENDANCE_UPDATE', handleRealtimeUpdate);
+    subscribe('session_attendance_update', handleRealtimeUpdate);
+    subscribe('attendance_feed_update', handleRealtimeUpdate);
+    subscribe('absen_guru_update', handleRealtimeUpdate);
+    subscribe('sesi_status_update', handleRealtimeUpdate);
 
     return () => {
       unsubscribe('SESI_CREATED', handleRealtimeUpdate);
       unsubscribe('SESI_UPDATED', handleRealtimeUpdate);
       unsubscribe('SESSION_ATTENDANCE_UPDATE', handleRealtimeUpdate);
+      unsubscribe('session_attendance_update', handleRealtimeUpdate);
+      unsubscribe('attendance_feed_update', handleRealtimeUpdate);
+      unsubscribe('absen_guru_update', handleRealtimeUpdate);
+      unsubscribe('sesi_status_update', handleRealtimeUpdate);
     };
   }, [queryClient, subscribe, unsubscribe]);
 

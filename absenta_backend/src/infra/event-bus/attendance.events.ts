@@ -24,6 +24,24 @@ export async function handleSesiStatusUpdate(io: any, _ioApi: any, payload: any)
     const tenantId = payload?.tenant_id;
     if (tenantId) {
       io.to(`tenant:${tenantId}`).emit('sesi_status_update', payload);
+      io.to(`tenant:${tenantId}`).emit('SESI_UPDATED', payload);
+    }
+  } catch {}
+}
+
+export async function handleAbsenGuruUpdate(io: any, ioApi: any, payload: any) {
+  try {
+    const tenantId = payload?.tenant_id;
+    if (tenantId) {
+      io.to(`tenant:${tenantId}`).emit('absen_guru_update', payload);
+      io.to(`tenant:${tenantId}`).emit('sesi_status_update', payload);
+      io.to(`tenant:${tenantId}`).emit('SESI_UPDATED', payload);
+      io.to(`tenant:${tenantId}`).emit('attendance_feed_update', payload);
+      if (ioApi) {
+        ioApi.to(`tenant:${tenantId}`).emit('absen_guru_update', payload);
+        ioApi.to(`tenant:${tenantId}`).emit('sesi_status_update', payload);
+        ioApi.to(`tenant:${tenantId}`).emit('attendance_feed_update', payload);
+      }
     }
   } catch {}
 }

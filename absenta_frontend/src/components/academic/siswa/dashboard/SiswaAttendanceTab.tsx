@@ -5,6 +5,9 @@ import { UnconnectedBadge, Modal } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { usePresensiTerpaduSesi } from '@/hooks/useAttendanceHooks';
 import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceList';
+import { getTeacherStatusMeta, getSessionStatusMeta } from '@/utils/kbm-normalizer';
+import { UniversalKbmCard } from '@/components/dashboard/shared/kbm/UniversalKbmCard';
+import { PhotoPreviewModal } from '@/components/dashboard/shared/kbm/PhotoPreviewModal';
 
 export interface SiswaAttendanceTabProps {
   gamification: {
@@ -53,6 +56,58 @@ export interface SiswaAttendanceTabProps {
   kelasId?: string;
 }
 
+const SiswaSesiExpandedContent: React.FC<{ sesiId: string; sesi: any; monthlyRecap?: any }> = React.memo(({
+  sesiId,
+  sesi,
+  monthlyRecap,
+}) => {
+  const { data: presensiRes, isLoading } = usePresensiTerpaduSesi(sesiId, Boolean(sesiId));
+
+  const records = React.useMemo(() => {
+    const raw = presensiRes?.data || presensiRes;
+    const fetchedList = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    if (fetchedList.length > 0) return fetchedList;
+    if (Array.isArray(monthlyRecap?.students) && monthlyRecap.students.length > 0) {
+      return monthlyRecap.students.map((st: any) => ({
+        id: st.id || st.siswa_id,
+        siswa_id: st.siswa_id || st.id,
+        nama_siswa: st.nama_siswa || st.nama || '-',
+        nisn: st.nis || st.nisn || '-',
+        is_guru: false,
+        status: st.status || 'BELUM_TAP',
+        waktu_tap: null,
+        Siswa: {
+          id: st.siswa_id || st.id,
+          nama_siswa: st.nama_siswa || st.nama || '-',
+          nis: st.nis || st.nisn || '-'
+        }
+      }));
+    }
+    return [];
+  }, [presensiRes, monthlyRecap]);
+
+  if (isLoading && records.length === 0) {
+    return (
+      <div className="py-8 text-center space-y-2">
+        <div className="w-6 h-6 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-1 space-y-3">
+      <SesiAttendanceList
+        records={records}
+        sesi={sesi}
+        isReportMode={true}
+      />
+    </div>
+  );
+});
+
+SiswaSesiExpandedContent.displayName = 'SiswaSesiExpandedContent';
+
 export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   gamification,
   handlePrevMonth,
@@ -73,21 +128,14 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   const { user } = useAuthStore();
   const attendanceRate = gamification?.attendanceRate ?? 100;
   const selectedDate = propSelectedDate || todayIso;
-  const [selectedSesiModal, setSelectedSesiModal] = useState<{
-    isOpen: boolean;
-    sesiId?: string;
-    sesiTitle?: string;
-    guruName?: string;
-    guruStatus?: string;
-    guruWaktuTap?: string;
-    waktuTap?: string;
-  }>({ isOpen: false });
-
-  // Purely fetch backend pre-calculated session attendance records via custom hook
-  const { data: sesiAttendanceData, isLoading: isLoadingSesiDetails } = usePresensiTerpaduSesi(
-    selectedSesiModal.sesiId,
-    selectedSesiModal.isOpen
-  );
+  const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
+  const [previewPhotoData, setPreviewPhotoData] = useState<{
+    photoUrl: string;
+    guruNama?: string;
+    kelasNama?: string;
+    mapelNama?: string;
+    timestamp?: string;
+  } | null>(null);
 
   const formattedSelectedDateText = React.useMemo(() => {
     if (!selectedDate) return 'Hari Ini';
@@ -253,145 +301,52 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
               </span>
             </div>
 
-            <div className="space-y-3 pt-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-3 pt-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
               {sessionAttendanceHistory.length > 0 ? (
                 sessionAttendanceHistory.map((item) => {
                   const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
                   const isTerlambat = item.status === 'TERLAMBAT';
                   const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
                   const isAlpa = item.status === 'ALPA';
+                  const isStudentTapped = isHadir || isTerlambat || isSakit || isAlpa;
+                  const targetId = (item as any).sesi_id || (item as any).sesi_absensi_id || item.id;
+                  const isExpanded = expandedSesiId === targetId;
 
                   return (
-                    <div
+                    <UniversalKbmCard
                       key={item.id}
-                      onClick={() => {
-                        const targetId = (item as any).sesi_id || (item as any).sesi_absensi_id || item.id;
-                        setSelectedSesiModal({
-                          isOpen: true,
-                          sesiId: targetId,
-                          sesiTitle: item.sesi || 'Sesi KBM',
-                          guruName: item.nama_guru || (item as any).guru || 'Guru Pengajar',
-                          guruStatus: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'BELUM_TAP'),
-                          guruWaktuTap: (item as any).waktu_guru || null,
-                          waktuTap: item.waktu
-                        });
+                      mode="SISWA"
+                      item={{
+                        ...item,
+                        mapel_nama: item.mapel || item.mapel_nama || (item.sesi ? item.sesi.replace(/^KBM\s*-\s*/i, '').trim() : '') || 'Sesi Pembelajaran',
+                        guru_nama: item.nama_guru || (item as any).guru || 'Guru Pengampu',
+                        guru_status: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'BELUM_TAP'),
                       }}
-                      className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md cursor-pointer transition-all group"
-                      title="Klik untuk melihat rincian presensi teman sekelas"
-                    >
-                      {(() => {
-                        const rawTitle = item.sesi || 'Sesi Presensi';
-                        const displayTitle = rawTitle.replace(/^KBM\s*-\s*/i, '').trim() || rawTitle;
-
-                        const isMendatang = (item.status === 'MENDATANG' || item.metode === 'Terjadwal') && item.status !== 'TERLEWAT';
-                        const isBerlangsung = item.status === 'BERLANGSUNG';
-                        const isTerlewat = item.status === 'TERLEWAT';
-                        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
-                        const isTerlambat = item.status === 'TERLAMBAT';
-                        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
-                        const isAlpa = item.status === 'ALPA' && !isMendatang && !isTerlewat;
-
-                        return (
-                          <>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 truncate max-w-[220px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                  {displayTitle}
-                                </span>
-                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
-                                  <Eye size={11} /> Lihat Presensi
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {item.metode && item.metode !== '-' && item.metode !== 'Terjadwal' && (
-                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
-                                    {item.metode}
-                                  </span>
-                                )}
-                                <span className={cn(
-                                  "px-2.5 py-0.5 rounded-full text-[10px] font-black border",
-                                  isHadir && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-                                  isTerlambat && "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-                                  isSakit && "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
-                                  isAlpa && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
-                                  isBerlangsung && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 animate-pulse",
-                                  isTerlewat && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
-                                  isMendatang && !isBerlangsung && !isTerlewat && "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/40"
-                                )}>
-                                  {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Izin / Sakit' : isBerlangsung ? 'Sedang Berlangsung' : isTerlewat ? 'Terlewat' : isMendatang ? 'Belum Berlangsung' : 'Alpa'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-700 dark:text-slate-300 pt-0.5">
-                              {item.jamLabel && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 uppercase tracking-wider font-mono">
-                                  {item.jamLabel}
-                                </span>
-                              )}
-
-                              <div className="flex items-center gap-1.5 font-mono font-extrabold text-slate-800 dark:text-slate-200">
-                                <Clock size={13} className="text-slate-400 shrink-0" />
-                                <span>{item.waktu}</span>
-                                {item.waktu_tap && (
-                                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-sans">
-                                    • Tap {item.waktu_tap}
-                                  </span>
-                                )}
-                              </div>
-
-                              {item.nama_guru && item.nama_guru !== 'Guru Pengampu' ? (
-                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                                  <User size={12} className="text-indigo-500 shrink-0" />
-                                  <span className="font-extrabold text-slate-900 dark:text-white truncate max-w-[180px]">{item.nama_guru}</span>
-                                  {(() => {
-                                    const isGuruHadir = item.status_guru === 'HADIR' || item.status_guru === 'SUDAH_TAP' || item.status_guru === 'TEPAT_WAKTU';
-                                    const isGuruTelat = item.status_guru === 'TERLAMBAT';
-                                    const isGuruIzin = item.status_guru === 'IZIN' || item.status_guru === 'SAKIT';
-                                    const isGuruDigantikan = item.status_guru === 'DIGANTIKAN';
-
-                                    if (isGuruHadir) {
-                                      return (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                          Guru Hadir
-                                        </span>
-                                      );
-                                    }
-                                    if (isGuruTelat) {
-                                      return (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                          Guru Telat
-                                        </span>
-                                      );
-                                    }
-                                    if (isGuruIzin) {
-                                      return (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                          Guru Izin
-                                        </span>
-                                      );
-                                    }
-                                    if (isGuruDigantikan) {
-                                      return (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                                          Guru Inval
-                                        </span>
-                                      );
-                                    }
-                                    return (
-                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/40">
-                                        Guru Belum Tap
-                                      </span>
-                                    );
-                                  })()}
-                                </div>
-                              ) : null}
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
+                      studentStatus={isStudentTapped ? (isHadir ? 'HADIR' : isTerlambat ? 'TERLAMBAT' : isSakit ? 'IZIN' : 'ALPA') : undefined}
+                      studentWaktuTap={item.waktu_tap}
+                      studentMetode={item.metode}
+                      isExpanded={isExpanded}
+                      onToggleExpand={() => setExpandedSesiId(isExpanded ? null : targetId)}
+                      onViewPhoto={(it) => {
+                        const pUrl = it.foto_kegiatan || it.foto_masuk || (it as any).session?.foto_kegiatan || (it as any).session?.foto_masuk || (it as any).AbsenGuru?.[0]?.foto_masuk;
+                        if (pUrl) {
+                          setPreviewPhotoData({
+                            photoUrl: pUrl,
+                            guruNama: it.guru_nama || (it as any).nama_guru || 'Guru Pengampu',
+                            kelasNama: (it as any).kelas_nama || 'Kelas',
+                            mapelNama: it.mapel_nama || (it as any).kegiatan || 'KBM',
+                            timestamp: `${it.waktu || it.jam_mulai || ''} WIB`,
+                          });
+                        }
+                      }}
+                      expandedContent={
+                        <SiswaSesiExpandedContent 
+                          sesiId={targetId} 
+                          sesi={item} 
+                          monthlyRecap={monthlyRecap} 
+                        />
+                      }
+                    />
                   );
                 })
               ) : (
@@ -409,82 +364,18 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         </div>
       </div>
 
-      {/* Read-Only Session Attendance Modal for Students */}
-      {(() => {
-        const computedRecords = Array.isArray(sesiAttendanceData) && sesiAttendanceData.length > 0
-          ? sesiAttendanceData
-          : (Array.isArray(monthlyRecap?.students) && monthlyRecap.students.length > 0
-              ? [
-                  {
-                    id: 'guru-header-rec',
-                    guru_id: 'guru-id-selected',
-                    is_guru: true,
-                    nama_siswa: selectedSesiModal.guruName || 'Guru Pengajar',
-                    nisn: 'GURU',
-                    status: selectedSesiModal.guruStatus || 'BELUM_TAP',
-                    waktu_tap: selectedSesiModal.guruWaktuTap || null,
-                    Guru: {
-                      id: 'guru-id-selected',
-                      nama_guru: selectedSesiModal.guruName || 'Guru Pengajar'
-                    }
-                  },
-                  ...monthlyRecap.students.map((st: any) => ({
-                    id: st.id || st.siswa_id,
-                    siswa_id: st.siswa_id || st.id,
-                    nama_siswa: st.nama_siswa || st.nama || '-',
-                    nisn: st.nis || st.nisn || '-',
-                    is_guru: false,
-                    status: st.status || 'BELUM_TAP',
-                    waktu_tap: null,
-                    Siswa: {
-                      id: st.siswa_id || st.id,
-                      nama_siswa: st.nama_siswa || st.nama || '-',
-                      nis: st.nis || st.nisn || '-'
-                    }
-                  }))
-                ]
-              : ((sesiAttendanceData as any) || [])
-            );
-
-        const teacherRecord = Array.isArray(computedRecords) ? (computedRecords as any[]).find(r => r.is_guru || r.nisn === 'GURU') : null;
-        const effectiveGuruName = teacherRecord?.nama_siswa || teacherRecord?.Guru?.nama_guru || selectedSesiModal.guruName || 'Guru Pengajar';
-        const effectiveGuruStatus = teacherRecord?.status || selectedSesiModal.guruStatus || 'BELUM_TAP';
-        const effectiveGuruWaktuTap = teacherRecord?.waktu_tap || selectedSesiModal.guruWaktuTap || null;
-
-        return (
-          <Modal
-            isOpen={selectedSesiModal.isOpen}
-            onClose={() => setSelectedSesiModal({ isOpen: false })}
-            title={`Presensi Kelas — ${selectedSesiModal.sesiTitle || 'Sesi KBM'}`}
-            size="5xl"
-          >
-            <div className="p-2 space-y-3">
-              {isLoadingSesiDetails && computedRecords.length === 0 ? (
-                <div className="py-12 text-center space-y-2">
-                  <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs font-bold text-slate-500">Memuat rincian presensi kelas...</p>
-                </div>
-              ) : (
-                <SesiAttendanceList
-                  records={computedRecords}
-                  sesi={{
-                    id: selectedSesiModal.sesiId || '',
-                    status: 'SELESAI',
-                    nama_guru: effectiveGuruName,
-                    guru_status: effectiveGuruStatus,
-                    waktu_tap_guru: effectiveGuruWaktuTap,
-                    Guru: {
-                      id: 'guru-sesi-selected',
-                      nama_guru: effectiveGuruName
-                    }
-                  }}
-                  isReportMode={true}
-                />
-              )}
-            </div>
-          </Modal>
-        );
-      })()}
+      {/* Modal Preview Foto Lightbox untuk Siswa */}
+      {previewPhotoData && (
+        <PhotoPreviewModal
+          isOpen={Boolean(previewPhotoData)}
+          onClose={() => setPreviewPhotoData(null)}
+          photoUrl={previewPhotoData.photoUrl}
+          guruNama={previewPhotoData.guruNama}
+          kelasNama={previewPhotoData.kelasNama}
+          mapelNama={previewPhotoData.mapelNama}
+          timestamp={previewPhotoData.timestamp}
+        />
+      )}
     </div>
   );
 };

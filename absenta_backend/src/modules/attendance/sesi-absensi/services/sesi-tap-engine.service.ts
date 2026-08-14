@@ -1,5 +1,6 @@
 import { prisma } from '../../../../utils/prisma';
 import { AttendanceRuleEngine } from '../../../../domain/attendance/AttendanceRuleEngine';
+import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
 
 export class SesiTapEngineService {
   private static instance: SesiTapEngineService;
@@ -12,11 +13,14 @@ export class SesiTapEngineService {
   }
 
   async propagateGateAbsenceToSessions(tenantId: string, siswaId: string, status: string, tanggal: Date | string) {
-    const targetDate = typeof tanggal === 'string' ? new Date(tanggal) : tanggal;
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const targetDateStr = typeof tanggal === 'string' 
+      ? (tanggal.includes('T') ? tanggal.split('T')[0] : tanggal)
+      : new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(tanggal);
+    
+    const startOfDay = new Date(`${targetDateStr}T00:00:00.000${tzOffset}`);
+    const endOfDay = new Date(`${targetDateStr}T23:59:59.999${tzOffset}`);
 
     const activeSessions = await prisma.sesiAbsensi.findMany({
       where: {
@@ -34,7 +38,7 @@ export class SesiTapEngineService {
         siswa_id: siswaId,
         status,
         catatan: `Propagated from Gate Absensi (${status})`,
-        waktu_tap: targetDate
+        waktu_tap: startOfDay
       }, 'GATE_PROPAGATION');
     }
 
@@ -60,13 +64,15 @@ export class SesiTapEngineService {
     // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), Guru/Petugas manual, atau status non-HADIR (IZIN, SAKIT, DISPEN).
     const isSystemOrManualOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId) || Boolean(siswa_akademik_id) || status !== 'HADIR';
     if (!isSystemOrManualOp && status === 'HADIR' && sesi.waktu_mulai) {
+      const tz = await getTenantTimezone(tenantId);
+      const tzLabel = getTimezoneLabel(tz);
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
       const earliestAllowed = new Date(sesi.waktu_mulai.getTime() - EARLY_TOLERANCE_MS);
       if (tapTime < earliestAllowed) {
-        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz });
         const openTimeStr = fmt(earliestAllowed);
         const startTimeStr = fmt(sesi.waktu_mulai);
-        throw new Error(`Sesi KBM belum dibuka. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} (15 menit sebelum jam mulai).`);
+        throw new Error(`Sesi KBM belum dibuka. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
       }
     }
 
@@ -211,15 +217,72 @@ export class SesiTapEngineService {
   async updateAbsenGuru(tenantId: string, _org: any, sesiId: string, guruId: string, data: any) {
     const { status = 'HADIR', catatan, waktu_tap } = data;
 
-    const sesi = await prisma.sesiAbsensi.findFirst({
+    let sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesiId, tenant_id: tenantId }
     });
+
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const tzLabel = getTimezoneLabel(tz);
+
+    // 🛡️ Auto-Materialization: If session is virtual (sched_...) or not in DB yet, auto-create physical SesiAbsensi for today
+    if (!sesi) {
+      const cleanJadwalId = String(sesiId).replace(/^(sched-hist-|sched_|sched-)/, '');
+      const jadwal = await prisma.jadwalKBM.findFirst({
+        where: { id: cleanJadwalId, tenant_id: tenantId },
+        include: {
+          Kelas: true,
+          Mapel: true,
+          Guru: true
+        }
+      });
+
+      if (jadwal) {
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+        const startOfDay = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+        const endOfDay = new Date(`${todayDateStr}T23:59:59.999${tzOffset}`);
+        const today = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+
+        // Check if another session for this jadwal was already created today
+        const existingForJadwal = await prisma.sesiAbsensi.findFirst({
+          where: {
+            tenant_id: tenantId,
+            jadwal_kbm_id: jadwal.id,
+            tanggal: { gte: startOfDay, lte: endOfDay }
+          }
+        });
+
+        if (existingForJadwal) {
+          sesi = existingForJadwal;
+        } else {
+          // Materialize physical session
+          sesi = await prisma.sesiAbsensi.create({
+            data: {
+              tenant_id: tenantId,
+              jadwal_kbm_id: jadwal.id,
+              kelas_id: jadwal.kelas_id,
+              mapel_id: jadwal.mapel_id,
+              guru_id: guruId || jadwal.guru_id,
+              tahun_pelajaran_id: jadwal.tahun_pelajaran_id || 'default-tp',
+              semester_id: jadwal.semester_id || 'default-sem',
+              jenis_kegiatan: 'KBM',
+              tanggal: today,
+              waktu_mulai: jadwal.jam_mulai ? new Date(`${todayDateStr}T${jadwal.jam_mulai}:00.000${tzOffset}`) : today,
+              waktu_selesai: jadwal.jam_selesai ? new Date(`${todayDateStr}T${jadwal.jam_selesai}:00.000${tzOffset}`) : null,
+              status: 'MENDATANG',
+              created_by_user_id: null
+            }
+          });
+        }
+      }
+    }
+
     if (!sesi) throw new Error('Sesi tidak ditemukan');
     if (sesi.status === 'SELESAI') {
       throw new Error('Sesi KBM telah selesai. Presensi guru sudah ditutup.');
     }
 
-    const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
+    const tapTime = waktu_tap ? new Date(waktu_tap) : (status === 'HADIR' ? new Date() : null);
 
     // 🛡️ Time-Window Validation for Guru Attendance:
     // Cegah guru mengabsenkan diri untuk sesi jam siang/sore dari pagi hari secara remote.
@@ -227,26 +290,29 @@ export class SesiTapEngineService {
     if (status === 'HADIR' && sesi.waktu_mulai) {
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
       const earliestAllowed = new Date(sesi.waktu_mulai.getTime() - EARLY_TOLERANCE_MS);
-      if (tapTime < earliestAllowed) {
-        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      if (tapTime && tapTime < earliestAllowed) {
+        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz });
         const openTimeStr = fmt(earliestAllowed);
         const startTimeStr = fmt(sesi.waktu_mulai);
-        throw new Error(`Sesi KBM belum dibuka. Presensi kehadiran guru untuk sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} (15 menit sebelum jam mulai).`);
+        throw new Error(`Sesi KBM belum dibuka. Presensi kehadiran guru untuk sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
       }
     }
 
     let isTerlambat = false;
     let menitKeterlambatan = 0;
-    if (sesi.waktu_mulai && tapTime > sesi.waktu_mulai) {
+    if (status === 'HADIR' && sesi.waktu_mulai && tapTime && tapTime > sesi.waktu_mulai) {
       isTerlambat = true;
       menitKeterlambatan = Math.max(0, Math.floor((tapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
     }
 
+    const effectiveGuruId = guruId || sesi.guru_id;
+    if (!effectiveGuruId) throw new Error('Guru ID tidak ditemukan untuk sesi ini');
+
     const existing = await prisma.absenGuru.findFirst({
       where: {
         tenant_id: tenantId,
-        sesi_id: sesiId,
-        guru_id: guruId
+        sesi_id: sesi.id,
+        guru_id: effectiveGuruId
       }
     });
 
@@ -259,7 +325,7 @@ export class SesiTapEngineService {
           waktu_tap: tapTime,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
-          catatan: catatan || existing.catatan,
+          catatan: catatan !== undefined ? catatan : existing.catatan,
           updated_at: new Date()
         }
       });
@@ -267,8 +333,8 @@ export class SesiTapEngineService {
       result = await prisma.absenGuru.create({
         data: {
           tenant_id: tenantId,
-          sesi_id: sesiId,
-          guru_id: guruId,
+          sesi_id: sesi.id,
+          guru_id: effectiveGuruId,
           tahun_pelajaran_id: sesi.tahun_pelajaran_id,
           semester_id: sesi.semester_id,
           status,
@@ -278,6 +344,22 @@ export class SesiTapEngineService {
           catatan: catatan || null
         }
       });
+    }
+
+    if (status === 'HADIR') {
+      const updateData: any = {};
+      if (sesi.status === 'MENDATANG') {
+        updateData.status = 'BERLANGSUNG';
+      }
+      if (data.foto || data.foto_kegiatan) {
+        updateData.foto_kegiatan = data.foto || data.foto_kegiatan;
+      }
+      if (Object.keys(updateData).length > 0) {
+        await prisma.sesiAbsensi.update({
+          where: { id: sesi.id },
+          data: updateData
+        });
+      }
     }
 
     return result;
@@ -297,7 +379,7 @@ export class SesiTapEngineService {
         Guru: { select: { nama_guru: true } },
         AbsenGuru: {
           take: 1,
-          select: { id: true, guru_id: true, status: true, waktu_tap: true, catatan: true }
+          select: { id: true, guru_id: true, status: true, waktu_tap: true, catatan: true, is_terlambat: true }
         }
       }
     });
@@ -459,19 +541,21 @@ export class SesiTapEngineService {
       if (g?.nama_guru) realGuruName = g.nama_guru;
     }
 
+    const teacherAbsen = sesi.AbsenGuru?.[0];
     const teacherRec = {
-      id: sesi.AbsenGuru?.[0]?.id || `guru-${sesi.guru_id || 'unassigned'}`,
+      id: teacherAbsen?.id || `guru-${sesi.guru_id || 'unassigned'}`,
       siswa_akademik_id: `guru-${sesi.guru_id || 'unassigned'}`,
       siswa_id: sesi.guru_id || 'unassigned',
       nama_siswa: realGuruName || 'Guru Pengajar Sesi',
       nisn: 'GURU',
       is_guru: true,
-      status: sesi.AbsenGuru?.[0]?.status === 'HADIR' ? 'HADIR' : 'Belum Hadir',
-      is_terlambat: false,
+      status: teacherAbsen?.status || 'BELUM_HADIR',
+      is_terlambat: teacherAbsen?.is_terlambat || false,
       poin_kehadiran: 0,
-      waktu_tap: sesi.AbsenGuru?.[0]?.waktu_tap ? sesi.AbsenGuru[0].waktu_tap.toISOString() : sesi.created_at.toISOString(),
-      catatan: sesi.AbsenGuru?.[0]?.catatan || null,
+      waktu_tap: teacherAbsen?.waktu_tap ? teacherAbsen.waktu_tap.toISOString() : (teacherAbsen?.status === 'HADIR' ? sesi.created_at.toISOString() : null),
+      catatan: teacherAbsen?.catatan || null,
       Guru: {
+        id: sesi.guru_id,
         nama_guru: realGuruName || 'Guru Pengajar Sesi'
       }
     };

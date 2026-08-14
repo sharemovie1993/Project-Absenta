@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { 
   BookOpen, Clock, Camera, CheckCircle2, AlertCircle, X, 
-  ChevronDown, ChevronUp, PlayCircle, FileText, Users, Sparkles, RefreshCw, LogIn, Volume2, Layers
+  ChevronDown, ChevronUp, PlayCircle, FileText, Users, Sparkles, RefreshCw, LogIn, Volume2, Layers, Eye
 } from 'lucide-react';
 
 import { 
@@ -18,8 +18,11 @@ import { toLocalDate, formatLocalDateTime, getVirtualDate } from '../../../../ut
 import { SesiAttendanceList, type SesiAttendanceRecord } from '../../../attendance/sesi/SesiAttendanceList';
 import { JurnalKbmModal } from '../../../kurikulum/JurnalKbmModal';
 import { BukaSesiFotoModal } from '../modals/BukaSesiFotoModal';
+import { PhotoPreviewModal } from '../../../dashboard/shared/kbm/PhotoPreviewModal';
 import { Button } from '../../../ui';
 import { cn } from '../../../../lib/utils';
+import { getTeacherStatusMeta, getSessionStatusMeta } from '../../../../utils/kbm-normalizer';
+import { UniversalKbmCard } from '../../../dashboard/shared/kbm/UniversalKbmCard';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
   playSessionAlarmSound, 
@@ -95,6 +98,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
   // Jurnal Modal State
   const [journalModalOpen, setJournalModalOpen] = useState<boolean>(false);
   const [targetJournalSesi, setTargetJournalSesi] = useState<{ id: string; progres?: any } | null>(null);
+
+  // Photo Preview Lightbox State
+  const [previewPhotoData, setPreviewPhotoData] = useState<{
+    photoUrl: string;
+    guruNama?: string;
+    kelasNama?: string;
+    mapelNama?: string;
+    timestamp?: string;
+  } | null>(null);
 
   // Satu Kabel: Data timelineItems sudah digabung & diagregasi oleh Server (SesiLifecycleService)
   const mergedTimelineItems = (timelineItems as unknown as TimelineItem[]) || [];
@@ -385,285 +397,156 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               const hasSession = Boolean(item.session);
               const sesi = item.session;
               const isLive = item.isLive ?? item.status?.isLive ?? false;
+              const isReadyToOpen = (item as any).isReadyToOpen ?? item.status?.isReadyToOpen ?? false;
               const isFinished = item.isFinished ?? item.status?.isFinished ?? (sesi?.status === 'SELESAI');
               const isOverdue = item.is_overdue ?? item.status?.isOverdue ?? false;
               const isStartedByTeacher = Boolean(sesi?.foto_kegiatan || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA'));
 
               return (
-                <div
+                <UniversalKbmCard
                   key={item.id}
-                  className={cn(
-                    "rounded-3xl border transition-all overflow-hidden shadow-lg",
-                    isLive
-                      ? "bg-slate-900 border-emerald-500/50 shadow-emerald-950/20"
-                      : isOverdue
-                      ? "bg-slate-900 border-rose-500/30 shadow-rose-950/10"
-                      : "bg-slate-900 border-slate-800"
-                  )}
-                >
-                  {/* CARD HEADER (ACCORDION TRIGGER) */}
-                  <div
-                    onClick={() => setExpandedScheduleId(isExpanded ? null : item.id)}
-                    className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors select-none"
-                  >
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* Status Badge */}
-                        {isOverdue ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/40 uppercase tracking-wider">
-                            TERLEWAT
-                          </span>
-                        ) : isLive ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            SESI BERLANGSUNG
-                          </span>
-                        ) : isFinished ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider">
-                            SELESAI
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/40 uppercase tracking-wider">
-                            BELUM MULAI
-                          </span>
-                        )}
-
-                        {/* Teacher Status Badge */}
-                        {(() => {
-                          const tStatus = item.guru_status || (item as any).session?.guru_status || item.status?.teacherStatus || (item as any).teacherStatus || (item as any).session?._summary?.teacherStatus || 'BELUM_TAP';
-                          if (tStatus === 'TEPAT_WAKTU' || tStatus === 'HADIR') {
-                            return (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                                GURU HADIR
-                              </span>
-                            );
-                          }
-                          if (tStatus === 'TERLAMBAT') {
-                            return (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider">
-                                GURU TERLAMBAT
-                              </span>
-                            );
-                          }
-                          if (tStatus === 'ALPA') {
-                            return (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 uppercase tracking-wider">
-                                GURU ALPA
-                              </span>
-                            );
-                          }
-                          return (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/40 uppercase tracking-wider">
-                              GURU BELUM TAP
-                            </span>
-                          );
-                        })()}
-
-                        {/* Slot Jam ke-X s/d Y Badge (Pola Visual Jadwal Builder / Monitoring KBM) */}
-                        {item.jamLabel && (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 uppercase tracking-wider flex items-center gap-1">
-                            <Layers size={10} className="text-indigo-400" />
-                            <span>{item.jamLabel}</span>
-                          </span>
-                        )}
-
-                        <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1">
-                          <Clock size={12} />
-                          {item.jam_mulai} - {item.jam_selesai} WIB
-                        </span>
-                      </div>
-
-                      <h4 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
-                        {item.kelas_nama} • {item.kegiatan}
-                      </h4>
-                    </div>
-
-                    {/* Right Header Summary & Accordion Chevron */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleTestAlertForSession(item);
-                        }}
-                        title="Uji coba alarm & notifikasi untuk sesi KBM ini"
-                        className="px-2 py-1 rounded-xl text-[10px] font-extrabold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 border border-slate-700 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                      >
-                        <Volume2 size={11} className="text-emerald-400" />
-                        <span className="hidden md:inline">Uji Alarm Sesi</span>
-                      </button>
-
-                      {sesi?._summary && (
-                        <div className="text-right hidden sm:block">
-                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Presensi</span>
-                          <span className="text-xs font-black text-emerald-400">
-                            {sesi._summary.HADIR || 0} / {sesi._summary.total || 0} Hadir
-                          </span>
+                  mode="GURU"
+                  item={item}
+                  isExpanded={isExpanded}
+                  onToggleExpand={() => setExpandedScheduleId(isExpanded ? null : item.id)}
+                  onOpenPhotoModal={handleOpenPhotoModal}
+                  onViewPhoto={(it) => {
+                    const pUrl = it.session?.foto_kegiatan || it.foto_kegiatan || it.session?.foto_bukti_url || (it as any).AbsenGuru?.[0]?.foto_masuk;
+                    if (pUrl) {
+                      setPreviewPhotoData({
+                        photoUrl: pUrl,
+                        guruNama: guruNama || it.guru_nama,
+                        kelasNama: it.kelas_nama,
+                        mapelNama: it.kegiatan || it.mapel_nama,
+                        timestamp: `${it.jam_mulai} - ${it.jam_selesai} WIB`,
+                      });
+                    }
+                  }}
+                  onOpenJournalModal={() => handleOpenJournalModal({ id: sesi?.id || item.id })}
+                  onCloseSession={(sId) => closeSessionMutation.mutate(sId)}
+                  onTestAlert={handleTestAlertForSession}
+                  expandedContent={(
+                    <div className="space-y-5">
+                      {/* CASE 0: JADWAL KBM TELAH TERLEWAT (OVERDUE LOCK) */}
+                      {isOverdue && !isFinished && (
+                        <div className="p-6 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-4">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
+                            <AlertCircle size={24} />
+                          </div>
+                          <div className="space-y-1 max-w-sm mx-auto">
+                            <h5 className="text-sm font-extrabold text-white">
+                              Sesi KBM Telah Terlewat & Terkunci
+                            </h5>
+                            <p className="text-xs text-slate-400">
+                              Sesi ini terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan batas waktu KBM telah berakhir. Aksi presensi dikunci secara otomatis. Silakan hubungi Meja Piket atau Tim Kurikulum jika memerlukan koreksi kehadiran.
+                            </p>
+                          </div>
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold font-mono">
+                            <Clock size={13} className="text-rose-400" />
+                            Batas Waktu Telah Berakhir ({item.jam_selesai} WIB)
+                          </div>
                         </div>
                       )}
 
-                      <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </div>
-                    </div>
-                  </div>
+                      {/* CASE 1: GURU BELUM MULAI KBM (WAJIB FOTO) */}
+                      {!isOverdue && !isStartedByTeacher && !isFinished && (() => {
+                        const now = new Date();
+                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                        let isTimeEligible = true;
+                        let openTimeStr = '';
 
-                  {/* ACCORDION EXPANDED CONTENT */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="border-t border-slate-800/80 bg-slate-950/60 p-5 space-y-5"
-                      >
-                        {/* CASE 0: JADWAL KBM TELAH TERLEWAT (OVERDUE LOCK) */}
-                        {isOverdue && !isStartedByTeacher && (
-                          <div className="p-6 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-4">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
-                              <AlertCircle size={24} />
+                        if (item.jam_mulai && item.jam_mulai.includes(':')) {
+                          const [sH, sM] = item.jam_mulai.split(':').map(Number);
+                          const startMinutes = (sH || 0) * 60 + (sM || 0);
+                          const openMinutes = startMinutes - 15;
+                          const oH = Math.floor(openMinutes / 60);
+                          const oM = openMinutes % 60;
+                          openTimeStr = `${String(oH >= 0 ? oH : oH + 24).padStart(2, '0')}:${String(oM >= 0 ? oM : oM + 60).padStart(2, '0')}`;
+                          if (currentMinutes < openMinutes) {
+                            isTimeEligible = false;
+                          }
+                        }
+
+                        return (
+                          <div className={cn(
+                            "p-6 rounded-2xl border border-dashed text-center space-y-4",
+                            isTimeEligible ? "bg-slate-900/90 border-slate-800" : "bg-blue-950/20 border-blue-800/40"
+                          )}>
+                            <div className={cn(
+                              "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto",
+                              isTimeEligible ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
+                            )}>
+                              <Camera size={24} />
                             </div>
                             <div className="space-y-1 max-w-sm mx-auto">
                               <h5 className="text-sm font-extrabold text-white">
-                                Sesi KBM Telah Terlewat
+                                {isTimeEligible ? "Sesi KBM Siap Dimulai" : "Sesi KBM Belum Masuk Jam Pelajaran"}
                               </h5>
                               <p className="text-xs text-slate-400">
-                                Sesi ini terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan tidak dibuka hingga waktu pelajaran berakhir. Kehadiran guru tercatat sebagai Alpa.
+                                {isTimeEligible
+                                  ? "Silakan mulai sesi KBM dengan mengambil foto bukti kegiatan pembelajaran di kelas. Kehadiran Anda akan langsung otomatis tercatat."
+                                  : `Sesi ini terjadwal pukul ${item.jam_mulai} WIB. Presensi & pembukaan sesi baru dapat dilakukan mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`}
                               </p>
                             </div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold font-mono">
-                              <Clock size={13} className="text-rose-400" />
-                              Batas Waktu Telah Berakhir ({item.jam_selesai} WIB)
+
+                            <Button
+                              type="button"
+                              onClick={() => handleOpenPhotoModal(item)}
+                              disabled={!isTimeEligible}
+                              className={cn(
+                                "h-11 px-6 rounded-2xl text-xs font-black border-none flex items-center justify-center gap-2 mx-auto transition-all",
+                                isTimeEligible
+                                  ? "bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
+                                  : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-60"
+                              )}
+                            >
+                              <Camera size={16} />
+                              <span>
+                                {isTimeEligible ? "Mulai KBM & Ambil Foto Bukti" : `Belum Dibuka (Buka Pukul ${openTimeStr} WIB)`}
+                              </span>
+                            </Button>
+                          </div>
+                        );
+                      })()}
+
+                      {/* CASE 2: SESI TELAH DIMULAI GURU ATAU SELESAI */}
+                      {(isStartedByTeacher || isFinished || (isOverdue && hasSession)) && (
+                        <div className="space-y-4">
+                          {/* Header Detail Sesi */}
+                          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-mono font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                ID Sesi: {sesi?.id}
+                              </span>
+                              <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Presensi Terpadu Siswa ({studentRecords.length || sesi?._summary?.total || 0} Siswa)
+                              </h5>
                             </div>
                           </div>
-                        )}
 
-                        {/* CASE 1: GURU BELUM MULAI KBM (WAJIB FOTO) */}
-                        {!isOverdue && !isStartedByTeacher && !isFinished && (() => {
-                          const now = new Date();
-                          const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                          let isTimeEligible = true;
-                          let openTimeStr = '';
-
-                          if (item.jam_mulai && item.jam_mulai.includes(':')) {
-                            const [sH, sM] = item.jam_mulai.split(':').map(Number);
-                            const startMinutes = (sH || 0) * 60 + (sM || 0);
-                            const openMinutes = startMinutes - 15;
-                            const oH = Math.floor(openMinutes / 60);
-                            const oM = openMinutes % 60;
-                            openTimeStr = `${String(oH >= 0 ? oH : oH + 24).padStart(2, '0')}:${String(oM >= 0 ? oM : oM + 60).padStart(2, '0')}`;
-                            if (currentMinutes < openMinutes) {
-                              isTimeEligible = false;
-                            }
-                          }
-
-                          return (
-                            <div className={cn(
-                              "p-6 rounded-2xl border border-dashed text-center space-y-4",
-                              isTimeEligible ? "bg-slate-900/90 border-slate-800" : "bg-blue-950/20 border-blue-800/40"
-                            )}>
-                              <div className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto",
-                                isTimeEligible ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
-                              )}>
-                                <Camera size={24} />
-                              </div>
-                              <div className="space-y-1 max-w-sm mx-auto">
-                                <h5 className="text-sm font-extrabold text-white">
-                                  {isTimeEligible ? "Sesi KBM Siap Dimulai" : "Sesi KBM Belum Masuk Jam Pelajaran"}
-                                </h5>
-                                <p className="text-xs text-slate-400">
-                                  {isTimeEligible
-                                    ? "Silakan mulai sesi KBM dengan mengambil foto bukti kegiatan pembelajaran di kelas. Kehadiran Anda akan langsung otomatis tercatat."
-                                    : `Sesi ini terjadwal pukul ${item.jam_mulai} WIB. Presensi & pembukaan sesi baru dapat dilakukan mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`}
-                                </p>
-                              </div>
-
-                              <Button
-                                type="button"
-                                onClick={() => handleOpenPhotoModal(item)}
-                                disabled={!isTimeEligible}
-                                className={cn(
-                                  "h-11 px-6 rounded-2xl text-xs font-black border-none flex items-center justify-center gap-2 mx-auto transition-all",
-                                  isTimeEligible
-                                    ? "bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
-                                    : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-60"
-                                )}
-                              >
-                                <Camera size={16} />
-                                <span>
-                                  {isTimeEligible ? "Mulai KBM & Ambil Foto Bukti" : `Belum Dibuka (Buka Pukul ${openTimeStr} WIB)`}
-                                </span>
-                              </Button>
+                          {/* Daftar Presensi Siswa Component (Read-only if overdue or finished) */}
+                          {loadingPresensi ? (
+                            <div className="py-12 text-center space-y-2">
+                              <RefreshCw className="animate-spin text-emerald-400 mx-auto" size={24} />
+                              <p className="text-xs font-semibold text-slate-400">Memuat Daftar Presensi Siswa...</p>
                             </div>
-                          );
-                        })()}
-
-                        {/* CASE 2: SESI TELAH DIMULAI GURU ATAU SELESAI */}
-                        {(isStartedByTeacher || isFinished) && (
-                          <div className="space-y-5">
-                            {/* Action Bar per Sesi */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                              <div className="space-y-0.5">
-                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                                  ID Sesi: {sesi?.id}
-                                </span>
-                                <h5 className="text-xs font-bold text-slate-200">
-                                  Presensi Terpadu Siswa ({studentRecords.length || sesi?._summary?.total || 0} Siswa)
-                                </h5>
-                              </div>
-
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {/* Tombol Jurnal */}
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={() => handleOpenJournalModal({ id: sesi!.id })}
-                                  className="h-9 px-3.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-900/30"
-                                >
-                                  <FileText size={14} />
-                                  <span>Isi Jurnal KBM</span>
-                                </Button>
-
-                                {/* Tombol Tutup Sesi */}
-                                {!isFinished && (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => closeSessionMutation.mutate(sesi!.id)}
-                                    disabled={closeSessionMutation.isPending}
-                                    className="h-9 px-3.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-900/30"
-                                  >
-                                    <X size={14} />
-                                    <span>Tutup Sesi KBM</span>
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Daftar Presensi Siswa Component (Production Ready with Optimistic Update & Slide Mode) */}
-                            {loadingPresensi ? (
-                              <div className="py-12 text-center space-y-2">
-                                <RefreshCw className="animate-spin text-emerald-400 mx-auto" size={24} />
-                                <p className="text-xs font-semibold text-slate-400">Memuat Daftar Presensi Siswa...</p>
-                              </div>
-                            ) : (
-                              <SesiAttendanceList
-                                records={studentRecords}
-                                sesi={{
-                                  id: sesi!.id,
-                                  status: isFinished ? 'SELESAI' : 'BERLANGSUNG',
-                                  guru_id: guruId,
-                                  nama_guru: guruNama,
-                                }}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                          ) : (
+                            <SesiAttendanceList
+                              records={studentRecords}
+                              isReportMode={Boolean(isOverdue || isFinished)}
+                              sesi={{
+                                id: sesi!.id,
+                                status: isFinished ? 'SELESAI' : isOverdue ? 'SELESAI' : 'BERLANGSUNG',
+                                guru_id: guruId,
+                                nama_guru: guruNama,
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                />
               );
             })}
           </div>
@@ -690,6 +573,19 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           onClose={() => { setJournalModalOpen(false); setTargetJournalSesi(null); }}
           sesiId={targetJournalSesi.id}
           initialData={targetJournalSesi.progres}
+        />
+      )}
+
+      {/* MODAL 3: PHOTO PREVIEW MODAL (LIGHTBOX) */}
+      {previewPhotoData && (
+        <PhotoPreviewModal
+          isOpen={Boolean(previewPhotoData)}
+          onClose={() => setPreviewPhotoData(null)}
+          photoUrl={previewPhotoData.photoUrl}
+          guruNama={previewPhotoData.guruNama}
+          kelasNama={previewPhotoData.kelasNama}
+          mapelNama={previewPhotoData.mapelNama}
+          timestamp={previewPhotoData.timestamp}
         />
       )}
     </motion.div>

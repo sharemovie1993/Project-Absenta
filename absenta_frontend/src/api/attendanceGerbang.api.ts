@@ -459,10 +459,15 @@ export async function getSesiAbsensiList(params?: {
   semester_id?: string;
   jenis_kegiatan?: string; 
   slot_kbm?: number; 
+  status?: string;
+  status_filter?: 'READY_UNOPENED' | 'LIVE' | 'OVERDUE' | 'FINISHED' | 'UPCOMING' | string;
+  include_scheduled?: boolean;
   summary?: boolean;
   journals?: boolean;
-}): Promise<{ success: boolean; message: string; data: any[] }> {
-  return requestWithFallback<{ success: boolean; message: string; data: any[] }>('get', '/attendance/sesi-absensi', { 
+  limit?: number;
+  page?: number;
+}): Promise<{ success: boolean; message: string; data: any }> {
+  return requestWithFallback<{ success: boolean; message: string; data: any }>('get', '/attendance/sesi-absensi', { 
     params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });

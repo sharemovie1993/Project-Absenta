@@ -15,7 +15,7 @@ import {
   getRekapBulananKelasMe,
   getSesiAbsensiList 
 } from '../../../api/attendanceGerbang.api';
-import { normalizeFromSesiAbsensi } from '../../../utils/kbm-normalizer';
+import { normalizeFromSesiAbsensi, getSessionStatusMeta } from '../../../utils/kbm-normalizer';
 import { toLocalDate, toLocalMonth, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
 import { calculateStudentGamification } from '../../../utils/attendance/attendanceGamification.utils';
 import { 
@@ -660,6 +660,7 @@ export const SiswaDashboard: React.FC = () => {
       const isOverdue = norm.status.isOverdue;
       const isFinished = norm.status.isFinished;
       const isLive = norm.status.isLive;
+      const isReadyToOpen = norm.status.isReadyToOpen;
 
       const calcStatus = isOverdue 
         ? 'Terlewat' 
@@ -667,6 +668,8 @@ export const SiswaDashboard: React.FC = () => {
         ? 'Selesai' 
         : isLive 
         ? 'Sedang Berlangsung' 
+        : isReadyToOpen
+        ? 'Siap Dimulai'
         : 'Mendatang';
 
       return {
@@ -748,18 +751,17 @@ export const SiswaDashboard: React.FC = () => {
         const isTapped = matchedTap && (matchedTap.status === 'HADIR' || matchedTap.status === 'TEPAT_WAKTU' || matchedTap.status === 'TERLAMBAT' || matchedTap.status === 'SAKIT' || matchedTap.status === 'IZIN');
         const tapWaktuRaw = matchedTap ? (matchedTap.waktu_tap || matchedTap.waktu || matchedTap.waktu_masuk || matchedTap.created_at) : null;
         const tapWaktuStr = tapWaktuRaw ? formatWaktu(tapWaktuRaw) : null;
+        const rawStatusObj = sch._raw?.status || {
+          isLive: sch.status === 'Sedang Berlangsung' || sch.status === 'BERLANGSUNG',
+          isReadyToOpen: sch.status === 'Siap Dimulai' || sch.status === 'SIAP DIMULAI',
+          isFinished: sch.status === 'Selesai' || sch.status === 'SELESAI',
+          isOverdue: sch.status === 'Terlewat' || sch.status === 'TERLEWAT',
+          isUpcoming: sch.status === 'Mendatang' || sch.status === 'MENDATANG',
+        };
+        const sMeta = getSessionStatusMeta(rawStatusObj);
 
-        const resolvedStatus = isTapped 
-          ? matchedTap.status 
-          : sch.status === 'Sedang Berlangsung' 
-          ? 'BERLANGSUNG' 
-          : sch.status === 'Selesai' 
-          ? 'SELESAI' 
-          : sch.status === 'Terlewat' 
-          ? 'TERLEWAT' 
-          : 'MENDATANG';
-
-        const rawTeacherStatus = sch._raw?.status?.teacherStatus 
+        const rawTeacherStatus = sch._raw?.guru_status
+          || sch._raw?.status?.teacherStatus 
           || sch._raw?._summary?.teacherStatus
           || (sch._raw?.session?.waktu_tap ? (sch._raw?.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : (sch._raw?.status?.isLive ? 'HADIR' : 'BELUM_TAP'));
 
@@ -767,7 +769,12 @@ export const SiswaDashboard: React.FC = () => {
           id: sch.id || `sch-${idx}`,
           sesi_id: sch.id,
           date: formattedDate,
-          status: resolvedStatus,
+          status: rawStatusObj,
+          isLive: rawStatusObj.isLive,
+          isReadyToOpen: rawStatusObj.isReadyToOpen,
+          isFinished: rawStatusObj.isFinished,
+          isOverdue: rawStatusObj.isOverdue,
+          isUpcoming: rawStatusObj.isUpcoming,
           metode: isTapped ? (matchedTap?.metode_absen || matchedTap?.metode || 'RFID') : 'Terjadwal',
           jamLabel: sch.jamLabel,
           waktu: sch.jam.includes('WIB') ? sch.jam : `${sch.jam} WIB`,
@@ -777,6 +784,7 @@ export const SiswaDashboard: React.FC = () => {
           status_guru: rawTeacherStatus,
           waktu_guru: sch._raw?.session?.waktu_tap || null,
           keterangan: isTapped ? (matchedTap?.keterangan || 'Presensi KBM Tercatat') : 'Sesi Terjadwal Hari Ini',
+          _raw: sch._raw,
         });
       });
 

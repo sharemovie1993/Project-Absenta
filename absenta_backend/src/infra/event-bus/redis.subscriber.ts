@@ -1,4 +1,4 @@
-import { handleSesiSummaryUpdate, handleSessionAttendanceUpdate, handleSesiStatusUpdate, handleGerbangTapUpdate, handleGateTapDomainEvent } from './attendance.events';
+import { handleSesiSummaryUpdate, handleSessionAttendanceUpdate, handleSesiStatusUpdate, handleAbsenGuruUpdate, handleGerbangTapUpdate, handleGateTapDomainEvent } from './attendance.events';
 import { createRedisConnection } from '../redis/redisClient';
 import { DOMAIN_EVENT_CHANNEL } from './index';
 
@@ -11,6 +11,7 @@ export async function subscribeRedisEvents(opts: { redis: any; io: any; ioApi: a
     'events:sesi_summary_update': async (payload) => handleSesiSummaryUpdate(io, ioApi, payload),
     'events:session_attendance_update': async (payload) => handleSessionAttendanceUpdate(io, ioApi, payload),
     'events:sesi_status_update': async (payload) => handleSesiStatusUpdate(io, ioApi, payload),
+    'events:absen_guru_update': async (payload) => handleAbsenGuruUpdate(io, ioApi, payload),
     'events:gerbang_tap_update': async (payload) => handleGerbangTapUpdate(io, ioApi, payload),
     [DOMAIN_EVENT_CHANNEL]: async (payload) => {
       if (payload.event_type === 'attendance.tap') {

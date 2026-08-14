@@ -124,6 +124,7 @@ export const MonitoringKbmWidget: React.FC = () => {
   const [kelasOptions, setKelasOptions] = useState<any[]>([]);
   const [jurusanOptions, setJurusanOptions] = useState<any[]>([]);
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
+  const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
 
   // 1. Debounced Search Term to prevent lag on keypresses
@@ -365,7 +366,8 @@ export const MonitoringKbmWidget: React.FC = () => {
                   key={sesi.id}
                   session={sesi}
                   viewMode={viewMode}
-                  onSelectSession={setSelectedSesi}
+                  isExpanded={expandedSesiId === sesi.id}
+                  onToggleExpand={() => setExpandedSesiId(expandedSesiId === sesi.id ? null : sesi.id)}
                   formatTime={formatTime}
                 />
               ))}

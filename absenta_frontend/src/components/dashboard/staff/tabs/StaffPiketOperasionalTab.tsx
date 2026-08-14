@@ -15,16 +15,22 @@ import {
   Briefcase, 
   ChevronRight, 
   Info,
-  Building2
+  Building2,
+  Scan,
+  UserX
 } from 'lucide-react';
 import { Button, Badge } from '../../../ui';
+import { TabSwitcher, type TabOption } from '../../../ui/TabSwitcher';
 import { PiketOperations } from '../../../piket/PiketOperations';
+import { PiketTeacherMonitoring } from '../../../piket/PiketTeacherMonitoring';
 import { PiketPrintSlip } from '../../../piket/PiketPrintSlip';
 import { useAuthStore } from '../../../../store/authStore';
 import { useGuruMe } from '../../../../hooks/useGuruMe';
 import { useCapabilities } from '../../../../hooks/useCapabilities';
 import { usePiketGuruOptions } from '../../../../hooks/usePiketGuruOptions';
 import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
+import { getSesiAbsensiList } from '../../../../api/attendanceGerbang.api';
+import { toLocalDate } from '../../../../utils/attendance/time';
 import { useQuery } from '@tanstack/react-query';
 
 interface StaffPiketOperasionalTabProps {
@@ -119,15 +125,52 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
   const canAccessPiket = isAuthorized || isBypassed;
   const isLoading = loadingPiketJadwal || loadingStruktur;
 
-  // Format today's date in Indonesian
-  const formattedTodayDate = useMemo(() => {
-    return new Date().toLocaleDateString('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  }, []);
+  const [activePiketSubTab, setActivePiketSubTab] = useState<'IZIN_SISWA' | 'GURU_KBM'>('IZIN_SISWA');
+
+  const today = toLocalDate();
+  const { data: sesiDataToday } = useQuery({
+    queryKey: ['monitoring-sesi-absensi-piket', today],
+    queryFn: () => getSesiAbsensiList({ tanggal: today, include_scheduled: true, summary: true, status_filter: 'READY_UNOPENED', limit: 500 }),
+    refetchInterval: 15000,
+  });
+
+  const pendingTeacherCount = useMemo(() => {
+    const rawData = (sesiDataToday as any)?.data;
+    const rawSessions: any[] = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(rawData?.sessions)
+      ? rawData.sessions
+      : Array.isArray((sesiDataToday as any)?.sessions)
+      ? (sesiDataToday as any).sessions
+      : [];
+    return Array.isArray(rawSessions) ? rawSessions.length : 0;
+  }, [sesiDataToday]);
+
+  const piketSubTabs: TabOption[] = useMemo(() => [
+    {
+      id: 'IZIN_SISWA',
+      label: 'Izin Siswa',
+      icon: Scan,
+      colorClass: 'text-indigo-600 dark:text-indigo-400'
+    },
+    {
+      id: 'GURU_KBM',
+      label: (
+        <span className="relative flex items-center gap-1.5">
+          Pantau Guru KBM
+          {pendingTeacherCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-slate-950 animate-pulse">
+              {pendingTeacherCount}
+            </span>
+          )}
+        </span>
+      ),
+      icon: UserX,
+      colorClass: 'text-amber-600 dark:text-amber-400'
+    }
+  ], [pendingTeacherCount]);
 
   return (
     <motion.div
@@ -258,7 +301,6 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
             )}
           </div>
 
-          {/* Management / Supervisor Emergency Override Option */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
               <Building2 size={15} className="text-slate-400 shrink-0" />
@@ -276,16 +318,14 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
         </div>
       )}
 
-      {/* ── ACTIVE PIKET OPERATIONAL VIEW (AKSES DIIZINKAN ATAU BYPASSED) ────── */}
       {!isLoading && canAccessPiket && (
         <>
-          {/* Active Duty Status Header Card */}
           <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
             <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                    Operasional Guru Piket Harian &amp; Izin Keluar Siswa
+                    Operasional Piket Harian
                   </h2>
                   {myPiketScheduleToday ? (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
@@ -300,12 +340,12 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
                   ) : (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
                       <UserCheck size={11} />
-                      <span>Pengelola Piket Sekolah</span>
+                      <span>Pengelola Piket</span>
                     </span>
                   )}
                 </div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
-                  Kelola penerbitan surat izin keluar sementara, dispensasi, dan penanganan piket harian sekolah.
+                  Kelola izin keluar siswa dan pantau kehadiran guru di kelas secara realtime.
                 </p>
               </div>
 
@@ -321,14 +361,25 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
               )}
             </div>
 
-            <PiketOperations
-              dailyPermits={dailyPermits}
-              refetchPermits={refetchPermits}
-              onPrintPermit={(permit) => setPrintedPermit(permit)}
-            />
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <TabSwitcher
+                options={piketSubTabs}
+                activeTab={activePiketSubTab}
+                onChange={(id) => setActivePiketSubTab(id as any)}
+              />
+            </div>
+
+            {activePiketSubTab === 'IZIN_SISWA' ? (
+              <PiketOperations
+                dailyPermits={dailyPermits}
+                refetchPermits={refetchPermits}
+                onPrintPermit={(permit) => setPrintedPermit(permit)}
+              />
+            ) : (
+              <PiketTeacherMonitoring />
+            )}
           </div>
 
-          {/* Slip Cetak Surat Izin Piket */}
           {printedPermit && (
             <PiketPrintSlip
               permit={printedPermit}

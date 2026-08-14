@@ -68,11 +68,11 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.remove,
   });
 
-  // 6. Guru Self Scan - PARTICIPANT ONLY (GURU)
+  // 6. Guru Self Scan & Piket Teacher Status Assignment
   fastify.patch('/:id/absen-guru/:guru_id', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.update.attendance'), 
+        requireCapability(['attendance.sessions.update.attendance', 'attendance.piket.manage']), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateSessionAccess

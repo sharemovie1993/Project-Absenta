@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../../components/ui/Alert';
@@ -28,6 +28,7 @@ import { jenisKegiatanMasterApi } from '../../../../api/academic/jenisKegiatanMa
 import { useSocket } from '../../../../hooks/useSocket';
 import { useUnifiedKbmSessions } from '../../../../hooks/attendance/useUnifiedKbmSessions';
 import { useSessionWindowAlert } from '../../../../hooks/attendance/useSessionWindowAlert';
+import { getTeacherStatusMeta } from '../../../../utils/kbm-normalizer';
 import { 
   BookOpen, 
   Activity, 
@@ -44,10 +45,13 @@ import { AnalyticsCard } from '../../../../components/ui/AnalyticsCard';
 import ConfirmDialog from '../../../../components/ui/ConfirmDialog';
 import { AttendanceErrorBoundary } from '../../../../components/attendance/AttendanceErrorBoundary';
 import PremiumFeatureGate from '../../../../components/auth/PremiumFeatureGate';
+import { cn } from '../../../../lib/utils';
 
 // Import subcomponents
 import { SesiCreateModal } from '../../../../components/attendance/sesi/SesiCreateModal';
 import { SesiScanningModal } from '../../../../components/attendance/sesi/SesiScanningModal';
+import { BukaSesiFotoModal } from '../../../../components/dashboard/staff/modals/BukaSesiFotoModal';
+import { PhotoPreviewModal } from '../../../../components/dashboard/shared/kbm/PhotoPreviewModal';
 
 interface SessionManagerModuleProps {
   selectedKelasId: string;
@@ -85,7 +89,7 @@ interface SessionData {
   guru_status?: string;
 }
 
-const SesiExpandedContent: React.FC<{ sesiId: string; sesi: SesiDetail }> = React.memo(({ sesiId, sesi }) => {
+const SesiExpandedContent: React.FC<{ sesiId: string; sesi: SesiDetail; isReportMode?: boolean }> = React.memo(({ sesiId, sesi, isReportMode }) => {
   const { data: presensiRes, isLoading } = useQuery({
     queryKey: ['sesi-detail-attendance', sesiId],
     queryFn: () => getSesiAbsenSiswa(sesiId),
@@ -107,7 +111,7 @@ const SesiExpandedContent: React.FC<{ sesiId: string; sesi: SesiDetail }> = Reac
     );
   }
 
-  return <SesiAttendanceList records={records} sesi={sesi} />;
+  return <SesiAttendanceList records={records} sesi={sesi} isReportMode={isReportMode} />;
 });
 SesiExpandedContent.displayName = 'SesiExpandedContent';
 
@@ -126,8 +130,21 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   user,
 }) => {
   const { subscribe, unsubscribe } = useSocket();
+  const queryClient = useQueryClient();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
   const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
+
+  const invalidateAllKbmQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
+    queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+    queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance-monitoring'] });
+    queryClient.invalidateQueries({ queryKey: ['siswa-sesi-attendance'] });
+    queryClient.invalidateQueries({ queryKey: ['presensi-terpadu-sesi'] });
+    queryClient.invalidateQueries({ queryKey: ['today-kbm-schedule'] });
+    queryClient.invalidateQueries({ queryKey: ['my-schedule-timeline'] });
+  }, [queryClient]);
   
   // State
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
@@ -314,6 +331,24 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   const [journalSesiId, setJournalSesiId] = useState('');
   const [journalInitialData, setJournalInitialData] = useState<unknown>(null);
 
+  // Helper Functions for Labels
+  const getKelasLabel = useCallback(
+    (id?: string) => kelasOptions.find((k) => k.value === id)?.label || id || 'Semua Kelas',
+    [kelasOptions]
+  );
+  const getGuruLabel = useCallback(
+    (id?: string) => guruOptions.find((g) => g.value === id)?.label || 'Semua Guru',
+    [guruOptions]
+  );
+  const getMapelLabel = useCallback(
+    (id?: string) => mapelOptions.find((m) => m.value === id)?.label || '-',
+    [mapelOptions]
+  );
+
+  const fetchSessions = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
   const playBeep = useCallback(async () => {
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -337,7 +372,66 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       osc.stop(ctx.currentTime + 0.2);
     } catch {}
   }, []);
-  
+
+  // Photo Guru Verification State (Petugas snaps photo of teacher in front of classroom)
+  const [photoGuruModalOpen, setPhotoGuruModalOpen] = useState(false);
+  const [photoGuruTarget, setPhotoGuruTarget] = useState<{
+    sesiId: string;
+    guruId: string;
+    guruNama: string;
+    kelasNama: string;
+    mapelNama: string;
+  } | null>(null);
+
+  // Photo Preview Lightbox State for Petugas
+  const [previewPhotoData, setPreviewPhotoData] = useState<{
+    photoUrl: string;
+    guruNama?: string;
+    kelasNama?: string;
+    mapelNama?: string;
+    timestamp?: string;
+  } | null>(null);
+
+  const handleOpenPhotoGuruModal = useCallback((item: any) => {
+    const sesiId = item.id || item.session?.id;
+    const guruId = item.guru_id || item.Guru?.id;
+    const guruNama = item.guru_nama || item.Guru?.nama_guru || 'Guru Pengampu';
+    const kelasNama = item.kelas_nama || item.Kelas?.nama_kelas || getKelasLabel(item.kelas_id) || 'Kelas';
+    const mapelNama = item.mapel_nama || item.Mapel?.nama_mapel || item.kegiatan || 'KBM';
+
+    if (!guruId) {
+      toast.error('Data Guru pengampu belum terdaftar pada jadwal sesi ini');
+      return;
+    }
+
+    setPhotoGuruTarget({ sesiId, guruId, guruNama, kelasNama, mapelNama });
+    setPhotoGuruModalOpen(true);
+  }, [getKelasLabel]);
+
+  const handleConfirmPhotoGuru = useCallback(async (photoDataUrl: string) => {
+    if (!photoGuruTarget) return;
+    try {
+      setScanLoading(true);
+      await updateAbsenGuru(photoGuruTarget.sesiId, photoGuruTarget.guruId, {
+        status: 'HADIR',
+        foto: photoDataUrl,
+        foto_kegiatan: photoDataUrl,
+      });
+      toast.success(`Foto Terverifikasi! Guru ${photoGuruTarget.guruNama} berhasil dicatat hadir di depan kelas.`, { duration: 8000 });
+      await playBeep();
+      fetchSessions();
+      invalidateAllKbmQueries();
+      setPhotoGuruModalOpen(false);
+      setPhotoGuruTarget(null);
+    } catch (e: any) {
+      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
+      const m = errObj?.response?.data?.message || errObj?.message || 'Gagal mencatat presensi guru';
+      toast.error(String(m));
+    } finally {
+      setScanLoading(false);
+    }
+  }, [photoGuruTarget, playBeep, fetchSessions, invalidateAllKbmQueries]);
+
   const [generatingTemplate, setGeneratingTemplate] = useState(false);
   const handleGenerateFromTemplate = useCallback(async () => {
     setGeneratingTemplate(true);
@@ -359,27 +453,9 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     } finally {
       setGeneratingTemplate(false);
     }
-  }, []);
-
-  // Helper Functions for Labels
-  const getKelasLabel = useCallback(
-    (id?: string) => kelasOptions.find((k) => k.value === id)?.label || id || 'Semua Kelas',
-    [kelasOptions]
-  );
-  const getGuruLabel = useCallback(
-    (id?: string) => guruOptions.find((g) => g.value === id)?.label || 'Semua Guru',
-    [guruOptions]
-  );
-  const getMapelLabel = useCallback(
-    (id?: string) => mapelOptions.find((m) => m.value === id)?.label || '-',
-    [mapelOptions]
-  );
+  }, [fetchSessions]);
 
   const errorMsg = isError ? 'Gagal memuat sesi.' : null;
-
-  const fetchSessions = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
 
 
 
@@ -513,12 +589,9 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       const sesi = activeSessions.find((s) => String(s.id) === String(currentSesiId));
       const expectedGuruId = sesi?.guru_id;
 
-      if (isGuruFromUniversal) {
-        if (expectedGuruId && token === expectedGuruId) {
-          await updateAbsenGuru(currentSesiId, expectedGuruId, { status: 'HADIR' });
-          toast.success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
-          await playBeep();
-          fetchSessions();
+      if (isGuruFromUniversal || (expectedGuruId && token === expectedGuruId)) {
+        if (expectedGuruId && (token === expectedGuruId || isGuruFromUniversal)) {
+          handleOpenPhotoGuruModal(sesi);
           setScannerInput('');
           scannerInputRef.current?.focus();
         } else {
@@ -529,20 +602,11 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         return;
       }
 
-      if (expectedGuruId && token === expectedGuruId) {
-        await updateAbsenGuru(currentSesiId, expectedGuruId, { status: 'HADIR' });
-        toast.success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
-        await playBeep();
-        fetchSessions();
-        setScannerInput('');
-        scannerInputRef.current?.focus();
-        return;
-      }
-
       const tapRes = await tapSiswaKeSesi(currentSesiId, { siswa_id: token });
       if (tapRes?.success) {
         toast.success('Berhasil dicatat', { duration: 8000 });
         await playBeep();
+        invalidateAllKbmQueries();
         const resList = await getSesiAbsenSiswa(currentSesiId);
         const list = Array.isArray(resList?.data) ? resList.data : Array.isArray(resList) ? resList : [];
         setSessionAttendance((p) => ({ ...p, [currentSesiId]: list }));
@@ -565,7 +629,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     } finally {
       setScanLoading(false);
     }
-  }, [scannerInput, playBeep, fetchSessions]);
+  }, [scannerInput, playBeep, fetchSessions, invalidateAllKbmQueries]);
 
   const handleFinishSesi = useCallback(async (sesiId: string) => {
     try {
@@ -573,6 +637,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       if (res.success) {
         toast.success('Sesi berhasil diselesaikan. Absensi ALPA otomatis telah diproses.');
         fetchSessions();
+        invalidateAllKbmQueries();
         if (expandedRef.current[sesiId]) {
           const attRes = await getSesiAbsenSiswa(sesiId);
           const list = Array.isArray(attRes?.data) ? attRes.data : Array.isArray(attRes) ? attRes : [];
@@ -585,12 +650,16 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       const errObj = e as { response?: { data?: { message?: string } } };
       toast.error(errObj?.response?.data?.message || 'Gagal menyelesaikan sesi');
     }
-  }, [fetchSessions]);
+  }, [fetchSessions, invalidateAllKbmQueries]);
 
   // Socket
   useEffect(() => {
-    const handleSesiUpdate = () => fetchSessions();
+    const handleSesiUpdate = () => {
+      fetchSessions();
+      invalidateAllKbmQueries();
+    };
     const handleSessionAttendanceUpdate = (payload: SocketPayload) => {
+      invalidateAllKbmQueries();
       const isExpanded = expandedRef.current[payload.sesi_id];
       const isModalOpen = inputModalOpenRef.current && inputModalSesiIdRef.current === payload.sesi_id;
       
@@ -812,83 +881,108 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                       className="relative pl-5 sm:pl-10"
                     >
                       {/* Timeline Node */}
-                      <div className="absolute left-[3px] sm:left-[11px] top-4 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-500/20 z-10"></div>
+                      {(() => {
+                        const isFin = String(session.status || '').toUpperCase() === 'SELESAI' || (session as any)?._summary?.isFinished === true;
+                        const isLiv = !isFin && Boolean((session as any)?._summary?.isLive ?? (session as any)?.status?.isLive);
+                        const isOvd = !isFin && !isLiv && Boolean((session as any)?._summary?.isOverdue ?? (session as any)?.status?.isOverdue);
+                        const isRdy = !isFin && !isLiv && !isOvd && Boolean((session as any)?._summary?.isReadyToOpen ?? (session as any)?.status?.isReadyToOpen);
+
+                        return (
+                          <div className={cn(
+                            "absolute left-[3px] sm:left-[11px] top-4 w-2.5 h-2.5 rounded-full z-10",
+                            isLiv
+                              ? "bg-emerald-500 ring-4 ring-emerald-500/25 animate-pulse"
+                              : isRdy
+                              ? "bg-amber-500 ring-4 ring-amber-500/25 animate-pulse"
+                              : isOvd
+                              ? "bg-rose-500 ring-4 ring-rose-500/20"
+                              : isFin
+                              ? "bg-slate-400 ring-2 ring-slate-300 dark:ring-slate-700"
+                              : "bg-blue-600 ring-4 ring-blue-500/20"
+                          )}></div>
+                        );
+                      })()}
                       
                       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xs hover:shadow-md transition-all">
-                        <SesiCard
-                          sesi={session}
-                          isExpanded={!!expanded[session.id]}
-                          counts={session.summary || {}}
-                          guruStatusText={
-                            (() => {
-                              const tStat = String((session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus || '').toUpperCase();
-                              if (tStat === 'TERLAMBAT') return 'Terlambat';
-                              if (tStat === 'TEPAT_WAKTU' || tStat === 'HADIR') return 'Hadir';
-                              if (tStat === 'ALPA') return 'Alpa';
-                              if (tStat === 'IZIN') return 'Izin';
-                              if (tStat === 'SAKIT') return 'Sakit';
-                              if (tStat === 'PENUGASAN' || tStat === 'DISPEN') return 'Penugasan';
-                              
-                              const raw = String(session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || '').trim();
-                              const upper = raw.toUpperCase().replace(/\s+/g, '_');
-                              if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'Belum Hadir';
-                              if (upper.includes('TERLAMBAT')) return 'Terlambat';
-                              if (upper === 'ALPA') return 'Alpa';
-                              if (upper.includes('HADIR') || upper === 'TEPAT_WAKTU') return 'Hadir';
-                              return raw || 'Belum Hadir';
-                            })()
-                          }
-                          guruStatusVariant={
-                            (() => {
-                              const tStat = String((session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus || '').toUpperCase();
-                              if (tStat === 'TERLAMBAT') return 'warning';
-                              if (tStat === 'TEPAT_WAKTU' || tStat === 'HADIR') return 'success';
-                              if (tStat === 'ALPA') return 'destructive';
-                              if (tStat === 'IZIN' || tStat === 'SAKIT' || tStat === 'PENUGASAN' || tStat === 'DISPEN') return 'secondary';
+                        {(() => {
+                          const isSessionOverdue = Boolean(
+                            (session as any).isOverdue ||
+                            (session as any).is_overdue ||
+                            (session as any).status?.isOverdue ||
+                            (session as any)._summary?.isOverdue ||
+                            (session.status !== 'SELESAI' && session.waktu_selesai && new Date(session.waktu_selesai).getTime() < Date.now())
+                          );
+                          const isSessionFinished = session.status === 'SELESAI' || (session as any).isFinished;
+                          const isReportOnly = isReadOnlyExecutive || isSessionFinished || (isPetugasSiswa && isSessionOverdue);
 
-                              const raw = String(session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || '').trim();
-                              const upper = raw.toUpperCase().replace(/\s+/g, '_');
-                              if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'warning';
-                              if (upper.includes('TERLAMBAT')) return 'warning';
-                              if (upper === 'ALPA') return 'destructive';
-                              if (upper.includes('HADIR') || upper === 'TEPAT_WAKTU') return 'success';
-                              return 'warning';
-                            })()
-                          }
-                          canFinish={String(session.status) !== 'SELESAI'}
-                          onToggleExpand={() => toggleExpand(session.id)}
-                          onFinish={() => handleFinishSesi(session.id)}
-                          onDelete={() => handleDeleteSesi(session.id)}
-                          onScan={() => handleOpenScan(session.id)}
-                          isGuru={isPetugasSiswa}
-                          jenisBadgeVariant="secondary"
-                          Icon={BookOpen}
-                          iconClass="w-4 h-4"
-                          mapelLabel={getMapelLabel}
-                          guruLabel={getGuruLabel}
-                          waktuMulaiText={formatLocalTimeFromISO(session.waktu_mulai) || ''}
-                          waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai) || ''}
-                          showScanGuru={!isReadOnlyExecutive}
-                          showScanSiswa={!isReadOnlyExecutive}
-                          canManage={isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa)}
-                          onOpenJournal={() => handleOpenJournal(session)}
-                          hideKelas={false}
-                        />
-                        
-                        <AnimatePresence>
-                          {expanded[session.id] && (
-                            <motion.div 
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800"
-                            >
-                              <div className="p-8">
-                                <SesiExpandedContent sesiId={session.id} sesi={session as unknown as SesiDetail} />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                          return (
+                            <>
+                              <SesiCard
+                                sesi={session}
+                                isExpanded={!!expanded[session.id]}
+                                counts={session.summary || {}}
+                                guruStatusText={(() => {
+                                  const rawStatus = session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || (session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus;
+                                  return getTeacherStatusMeta(rawStatus).label;
+                                })()}
+                                guruStatusVariant={(() => {
+                                  const rawStatus = session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || (session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus;
+                                  return getTeacherStatusMeta(rawStatus).badgePropsVariant;
+                                })()}
+                                canFinish={String(session.status) !== 'SELESAI' && !isSessionOverdue}
+                                onToggleExpand={() => toggleExpand(session.id)}
+                                onFinish={() => handleFinishSesi(session.id)}
+                                onDelete={() => handleDeleteSesi(session.id)}
+                                onScan={() => handleOpenScan(session.id)}
+                                isGuru={isPetugasSiswa}
+                                jenisBadgeVariant="secondary"
+                                Icon={BookOpen}
+                                iconClass="w-4 h-4"
+                                mapelLabel={getMapelLabel}
+                                guruLabel={getGuruLabel}
+                                waktuMulaiText={formatLocalTimeFromISO(session.waktu_mulai) || ''}
+                                waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai) || ''}
+                                showScanGuru={!isReadOnlyExecutive && !isSessionOverdue}
+                                showScanSiswa={!isReadOnlyExecutive && !isSessionOverdue}
+                                canManage={!isReportOnly && (isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa))}
+                                onOpenJournal={() => handleOpenJournal(session)}
+                                onOpenPhotoModal={() => handleOpenPhotoGuruModal(session)}
+                                onViewPhoto={(item) => {
+                                  const pUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk;
+                                  if (pUrl) {
+                                    setPreviewPhotoData({
+                                      photoUrl: pUrl,
+                                      guruNama: item.guru_nama || getGuruLabel(item.guru_id),
+                                      kelasNama: item.kelas_nama || getKelasLabel(item.kelas_id),
+                                      mapelNama: item.mapel_nama || getMapelLabel(item.mapel_id),
+                                      timestamp: `${formatLocalTimeFromISO(item.waktu_mulai) || ''} - ${formatLocalTimeFromISO(item.waktu_selesai) || ''} WIB`,
+                                    });
+                                  }
+                                }}
+                                hideKelas={false}
+                              />
+                              
+                              <AnimatePresence>
+                                {expanded[session.id] && (
+                                  <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800"
+                                  >
+                                    <div className="p-8">
+                                      <SesiExpandedContent 
+                                        sesiId={session.id} 
+                                        sesi={session as unknown as SesiDetail} 
+                                        isReportMode={Boolean(isReportOnly || isSessionOverdue)}
+                                      />
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </>
+                          );
+                        })()}
                       </div>
                     </motion.div>
                   ))}
@@ -926,6 +1020,35 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
             currentSession={sessions.find((s) => s.id === inputModalSesiId) as unknown as SesiDetail}
             kelasLabel={getKelasLabel(sessions.find((s) => s.id === inputModalSesiId)?.kelas_id)}
           />
+
+          {/* Modal Foto Bukti Guru di Depan Kelas (Khusus Petugas Siswa) */}
+          {photoGuruTarget && (
+            <BukaSesiFotoModal
+              isOpen={photoGuruModalOpen}
+              onClose={() => {
+                setPhotoGuruModalOpen(false);
+                setPhotoGuruTarget(null);
+              }}
+              onConfirm={handleConfirmPhotoGuru}
+              kelasNama={photoGuruTarget.kelasNama}
+              mapelNama={photoGuruTarget.mapelNama}
+              guruNama={photoGuruTarget.guruNama}
+              isLoading={scanLoading}
+            />
+          )}
+
+          {/* Modal Preview Foto Lightbox (Khusus Petugas Siswa / Admin) */}
+          {previewPhotoData && (
+            <PhotoPreviewModal
+              isOpen={Boolean(previewPhotoData)}
+              onClose={() => setPreviewPhotoData(null)}
+              photoUrl={previewPhotoData.photoUrl}
+              guruNama={previewPhotoData.guruNama}
+              kelasNama={previewPhotoData.kelasNama}
+              mapelNama={previewPhotoData.mapelNama}
+              timestamp={previewPhotoData.timestamp}
+            />
+          )}
 
           {/* Jurnal KBM Modal */}
           <JurnalKbmModal

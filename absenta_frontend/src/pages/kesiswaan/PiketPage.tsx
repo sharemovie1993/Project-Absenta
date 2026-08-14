@@ -17,12 +17,15 @@ import {
   CheckCircle,
   Lock,
   UserCheck,
+  UserX,
   Calendar,
   Briefcase
 } from 'lucide-react';
 import { piketApi, piketQueryKeys } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { type JadwalPiketGuru } from '../../api/piketGuru.api';
+import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
+import { toLocalDate } from '../../utils/attendance/time';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
@@ -39,6 +42,7 @@ import { PiketOperations } from '../../components/piket/PiketOperations';
 import { PiketMonitoring } from '../../components/piket/PiketMonitoring';
 import { PiketHistory } from '../../components/piket/PiketHistory';
 import { PiketRecap } from '../../components/piket/PiketRecap';
+import { PiketTeacherMonitoring } from '../../components/piket/PiketTeacherMonitoring';
 import { PiketPrintSlip } from '../../components/piket/PiketPrintSlip';
 import { PiketPrintRecap } from '../../components/piket/PiketPrintRecap';
 
@@ -268,8 +272,44 @@ export default function PiketPage() {
     return dailyPermits.filter(p => p.status === 'DISETUJUI');
   }, [dailyPermits]);
 
+  const today = toLocalDate();
+  const { data: sesiDataToday } = useQuery({
+    queryKey: ['monitoring-sesi-absensi-piket', today],
+    queryFn: () => getSesiAbsensiList({ tanggal: today, include_scheduled: true, summary: true, status_filter: 'READY_UNOPENED', limit: 500 }),
+    refetchInterval: 15000,
+  });
+
+  const pendingTeacherCount = useMemo(() => {
+    const rawData = (sesiDataToday as any)?.data;
+    const rawSessions: any[] = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(rawData?.sessions)
+      ? rawData.sessions
+      : Array.isArray((sesiDataToday as any)?.sessions)
+      ? (sesiDataToday as any).sessions
+      : [];
+    return Array.isArray(rawSessions) ? rawSessions.length : 0;
+  }, [sesiDataToday]);
+
   const tabOptions = useMemo(() => [
     { id: 'scan', label: 'Operasional Piket', icon: Scan, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+    {
+      id: 'guru_kbm',
+      label: (
+        <span className="relative flex items-center">
+          Pantau Guru KBM
+          {pendingTeacherCount > 0 && (
+            <Badge variant="outline" className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-slate-950 animate-pulse border-none">
+              {pendingTeacherCount}
+            </Badge>
+          )}
+        </span>
+      ),
+      icon: UserX,
+      colorClass: 'text-amber-600 dark:text-amber-400'
+    },
     {
       id: 'monitoring',
       label: (
@@ -287,7 +327,7 @@ export default function PiketPage() {
     },
     { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-600 dark:text-blue-400' },
     { id: 'rekap', label: 'Rekap Harian', icon: FileText, colorClass: 'text-violet-600 dark:text-violet-400' }
-  ], [activeOutStudents]);
+  ], [activeOutStudents, pendingTeacherCount]);
 
   const filteredHistory = useMemo(() => {
     if (!historySearch.trim()) return dailyPermits;
@@ -458,6 +498,11 @@ export default function PiketPage() {
                       personaMode={personaMode}
                       namaJurusan={selectedJurusanNama}
                     />
+                  </TabsContent>
+
+                  {/* TAB: PANTAU GURU KBM (SIAP MULAI TAPI BELUM TAP) */}
+                  <TabsContent value="guru_kbm" className="mt-4 space-y-6">
+                    <PiketTeacherMonitoring />
                   </TabsContent>
 
                   {/* TAB 2: ACTIVE MONITORING */}

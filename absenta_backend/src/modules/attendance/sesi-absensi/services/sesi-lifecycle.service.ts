@@ -1,7 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
 import { storageService } from '../../../../infra/storage/storage.service';
 import { emitDomainEvent } from '../../../../infra/event-bus';
-import { getTenantTimezone, getTenantOffsetString } from '../../../../utils/timezone.utils';
+import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -30,12 +30,14 @@ function resolveSlotTimeSesi(
   const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
   const shift = shiftConfig.shifts.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts[0];
   if (!shift) return null;
+
   const upperHari = (hari || '').toUpperCase();
+  // Prioritaskan day_patterns[hari] jika punya slots
   const daySlots =
     (shift.day_patterns?.[upperHari]?.slots?.length > 0)
       ? shift.day_patterns[upperHari].slots
       : (shift.slots || []);
-  const found = daySlots.find((sl: any) => sl.slot === slotIndex);
+  const found = daySlots.find((sl: any) => (sl.slot !== undefined ? sl.slot === slotIndex : sl.slot_index === slotIndex));
   return found ? { start: found.start, end: found.end } : null;
 }
 
@@ -43,13 +45,110 @@ function resolveSlotTimeSesi(
  * Enrich JadwalKBM array with correct jam_mulai/jam_selesai from shift config.
  * Identical to JadwalKBMService.enrichJadwalWithDayTimes.
  */
-function enrichJadwalWithDayTimesSesi(jadwalList: any[], shiftConfig: any | null): any[] {
-  if (!shiftConfig) return jadwalList;
-  return jadwalList.map((j: any) => {
-    const resolved = resolveSlotTimeSesi(shiftConfig, j.kelas_id, j.hari || '', j.slot_index);
-    if (resolved) return { ...j, jam_mulai: resolved.start, jam_selesai: resolved.end };
-    return j;
+function enrichJadwalWithDayTimesSesi(rawSchedules: any[], shiftConfig: any, defaultHari: string): any[] {
+  if (!shiftConfig) return rawSchedules;
+  return rawSchedules.map((item) => {
+    if (item.slot_index === undefined || item.slot_index === null) return item;
+    const effectiveHari = item.hari || defaultHari || '';
+    const resolved = resolveSlotTimeSesi(shiftConfig, item.kelas_id, effectiveHari, item.slot_index);
+    if (!resolved) return item;
+    return {
+      ...item,
+      jam_mulai: resolved.start,
+      jam_selesai: resolved.end,
+    };
   });
+}
+
+/**
+ * Validate Early Tolerance (15m before start) and Late Cutoff (after end time) in Tenant Timezone.
+ */
+function validateSessionTimeWindow(
+  startTarget: Date | null,
+  endTarget: Date | null,
+  hasFoto: boolean,
+  timezone: string = 'Asia/Jakarta'
+): void {
+  if (!hasFoto) return;
+  const now = new Date();
+  const tzLabel = getTimezoneLabel(timezone);
+
+  if (startTarget && !isNaN(startTarget.getTime())) {
+    const EARLY_TOLERANCE_MS = 15 * 60 * 1000;
+    const earliestAllowed = new Date(startTarget.getTime() - EARLY_TOLERANCE_MS);
+    if (now.getTime() < earliestAllowed.getTime()) {
+      const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
+      const openTimeStr = fmt(earliestAllowed);
+      const startTimeStr = fmt(startTarget);
+      throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
+    }
+  }
+
+  if (endTarget && !isNaN(endTarget.getTime())) {
+    if (now.getTime() > endTarget.getTime()) {
+      const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
+      const endTimeStr = fmt(endTarget);
+      throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} ${tzLabel}. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
+    }
+  }
+}
+
+/**
+ * Upsert AbsenGuru record as HADIR upon teacher opening session with photo.
+ */
+async function upsertTeacherAttendanceOnOpen(
+  tenantId: string,
+  sesiId: string,
+  guruId: string,
+  startTarget: Date | null,
+  tahunPelajaranId: string,
+  semesterId: string,
+  catatan: string = 'Hadir saat pembukaan sesi KBM (Foto)'
+): Promise<void> {
+  try {
+    const now = new Date();
+    let isTerlambat = false;
+    let menitKeterlambatan = 0;
+    if (startTarget && !isNaN(startTarget.getTime()) && now.getTime() > startTarget.getTime()) {
+      isTerlambat = true;
+      menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - startTarget.getTime()) / (60 * 1000)));
+    }
+
+    const existingAbsen = await prisma.absenGuru.findFirst({
+      where: { tenant_id: tenantId, sesi_id: sesiId, guru_id: guruId }
+    });
+
+    if (existingAbsen) {
+      await prisma.absenGuru.update({
+        where: { id: existingAbsen.id },
+        data: {
+          status: 'HADIR',
+          waktu_tap: now,
+          is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
+          catatan,
+          updated_at: new Date()
+        }
+      });
+    } else {
+      await prisma.absenGuru.create({
+        data: {
+          tenant_id: tenantId,
+          sesi_id: sesiId,
+          guru_id: guruId,
+          status: 'HADIR',
+          waktu_tap: now,
+          is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
+          catatan,
+          tahun_pelajaran_id: tahunPelajaranId || 'default-tp',
+          semester_id: semesterId || 'default-sem',
+        }
+      });
+    }
+  } catch (err) {
+    console.error('[SesiLifecycleService] Error in upsertTeacherAttendanceOnOpen:', err);
+  }
 }
 
 export class SesiLifecycleService {
@@ -149,6 +248,8 @@ export class SesiLifecycleService {
       orderBy: { created_at: 'desc' }
     });
 
+    const tz = await getTenantTimezone(tenantId);
+
     if (existingSesi) {
       if (existingSesi.status === 'SELESAI') {
         throw new Error('Sesi KBM telah selesai. Tidak dapat membuka kembali sesi yang sudah ditutup.');
@@ -157,114 +258,45 @@ export class SesiLifecycleService {
         throw new Error('Jadwal sesi KBM telah terlewat dan ditutup. Anda tidak dapat lagi membuka sesi yang sudah terlewat.');
       }
 
-        // 🛡️ Time-Window Guard saat Guru Buka Sesi dengan Foto
-        const now = new Date();
-        const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? new Date(waktu_mulai) : now);
-        const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? new Date(waktu_selesai) : null);
-        
-        if (finalFotoUrl && startTarget) {
-          const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
-          const earliestAllowed = new Date(startTarget.getTime() - EARLY_TOLERANCE_MS);
-          if (now.getTime() < earliestAllowed.getTime()) {
-            const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const openTimeStr = fmt(earliestAllowed);
-            const startTimeStr = fmt(startTarget);
-            throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`);
+      const now = new Date();
+      const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? new Date(waktu_mulai) : now);
+      const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? new Date(waktu_selesai) : null);
+      
+      // 🛡️ Centralized Time-Window & Cutoff Guard (Timezone-Aware)
+      validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz);
+
+      if (finalFotoUrl || waktu_mulai) {
+        const updatedSesi = await prisma.sesiAbsensi.update({
+          where: { id: existingSesi.id },
+          data: {
+            ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl, status: 'BERLANGSUNG' } : {}),
+            ...(waktu_mulai ? { waktu_mulai: new Date(waktu_mulai) } : {}),
+            updated_at: new Date()
           }
+        });
+
+        if (guru_id && finalFotoUrl) {
+          await upsertTeacherAttendanceOnOpen(
+            tenantId,
+            existingSesi.id,
+            guru_id,
+            startTarget,
+            existingSesi.tahun_pelajaran_id,
+            existingSesi.semester_id,
+            'Hadir saat pembukaan sesi KBM (Foto)'
+          );
         }
-
-        // 🛡️ Late-Window Cutoff Guard (Tidak boleh buka sesi yang jam selesainya sudah terlewati)
-        if (finalFotoUrl && endTarget && !isNaN(endTarget.getTime())) {
-          if (now.getTime() > endTarget.getTime()) {
-            const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const endTimeStr = fmt(endTarget);
-            throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} WIB. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
-          }
-        }
-
-        if (finalFotoUrl || waktu_mulai) {
-          const updatedSesi = await prisma.sesiAbsensi.update({
-            where: { id: existingSesi.id },
-            data: {
-              ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl, status: 'BERLANGSUNG' } : {}),
-              ...(waktu_mulai ? { waktu_mulai: new Date(waktu_mulai) } : {}),
-              updated_at: new Date()
-            }
-          });
-
-          if (guru_id && finalFotoUrl) {
-            try {
-              let isTerlambat = false;
-              let menitKeterlambatan = 0;
-              if (startTarget && now.getTime() > startTarget.getTime()) {
-                isTerlambat = true;
-                menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - startTarget.getTime()) / (60 * 1000)));
-              }
-
-              const existingAbsen = await prisma.absenGuru.findFirst({
-                where: { tenant_id: tenantId, sesi_id: existingSesi.id, guru_id }
-              });
-              if (existingAbsen) {
-                await prisma.absenGuru.update({
-                  where: { id: existingAbsen.id },
-                  data: {
-                    status: 'HADIR',
-                    waktu_tap: now,
-                    is_terlambat: isTerlambat,
-                    menit_keterlambatan: menitKeterlambatan,
-                    catatan: 'Hadir saat pembukaan sesi KBM (Foto)',
-                    updated_at: new Date()
-                  }
-                });
-              } else {
-                await prisma.absenGuru.create({
-                  data: {
-                    tenant_id: tenantId,
-                    sesi_id: existingSesi.id,
-                    guru_id,
-                    status: 'HADIR',
-                    waktu_tap: now,
-                    is_terlambat: isTerlambat,
-                    menit_keterlambatan: menitKeterlambatan,
-                    catatan: 'Hadir saat pembukaan sesi KBM (Foto)',
-                    tahun_pelajaran_id: existingSesi.tahun_pelajaran_id,
-                    semester_id: existingSesi.semester_id,
-                  }
-                });
-              }
-            } catch (err) {
-              console.error('[SesiLifecycleService] Error recording AbsenGuru on existing session update:', err);
-            }
-          }
-          return updatedSesi;
-        }
-        return existingSesi;
+        return updatedSesi;
       }
+      return existingSesi;
+    }
 
     const parsedStart = waktu_mulai ? new Date(waktu_mulai) : new Date();
     const parsedEnd = waktu_selesai ? new Date(waktu_selesai) : null;
     const now = new Date();
 
-    // 🛡️ Time-Window Guard saat membuat sesi baru dengan Foto
-    if (finalFotoUrl && parsedStart) {
-      const EARLY_TOLERANCE_MS = 15 * 60 * 1000;
-      const earliestAllowed = new Date(parsedStart.getTime() - EARLY_TOLERANCE_MS);
-      if (now.getTime() < earliestAllowed.getTime()) {
-        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const openTimeStr = fmt(earliestAllowed);
-        const startTimeStr = fmt(parsedStart);
-        throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`);
-      }
-    }
-
-    // 🛡️ Late-Window Cutoff Guard saat membuat sesi baru
-    if (finalFotoUrl && parsedEnd && !isNaN(parsedEnd.getTime())) {
-      if (now.getTime() > parsedEnd.getTime()) {
-        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const endTimeStr = fmt(parsedEnd);
-        throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} WIB. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
-      }
-    }
+    // 🛡️ Centralized Time-Window & Cutoff Guard saat membuat sesi baru (Timezone-Aware)
+    validateSessionTimeWindow(parsedStart, parsedEnd, Boolean(finalFotoUrl), tz);
 
     const isFutureSchedule = parsedStart.getTime() - now.getTime() > 15 * 60 * 1000;
     const initialStatus = finalFotoUrl ? 'BERLANGSUNG' : isFutureSchedule ? 'MENDATANG' : 'BERLANGSUNG';
@@ -306,31 +338,15 @@ export class SesiLifecycleService {
     });
 
     if (guru_id && finalFotoUrl) {
-      try {
-        let isTerlambat = false;
-        let menitKeterlambatan = 0;
-        if (parsedStart && now.getTime() > parsedStart.getTime()) {
-          isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - parsedStart.getTime()) / (60 * 1000)));
-        }
-
-        await prisma.absenGuru.create({
-          data: {
-            tenant_id: tenantId,
-            sesi_id: sesi.id,
-            guru_id: guru_id,
-            status: 'HADIR',
-            waktu_tap: now,
-            is_terlambat: isTerlambat,
-            menit_keterlambatan: menitKeterlambatan,
-            catatan: 'Otomatis HADIR saat pembukaan sesi KBM (Foto)',
-            tahun_pelajaran_id: targetTpId || 'default-tp',
-            semester_id: targetSemId || 'default-sem',
-          }
-        });
-      } catch (absenGuruErr) {
-        console.error('[SesiLifecycleService] Error auto-recording AbsenGuru:', absenGuruErr);
-      }
+      await upsertTeacherAttendanceOnOpen(
+        tenantId,
+        sesi.id,
+        guru_id,
+        parsedStart,
+        targetTpId || 'default-tp',
+        targetSemId || 'default-sem',
+        'Otomatis HADIR saat pembukaan sesi KBM (Foto)'
+      );
     }
 
     emitDomainEvent({
@@ -344,7 +360,10 @@ export class SesiLifecycleService {
   }
 
   async list(tenantId: string, _org: any, query: any) {
-    const { kelas_id, guru_id, allowedKelasIds, guruIdFilter, tanggal, status, include_scheduled, limit = 50, page = 1 } = query;
+    const { kelas_id, guru_id, allowedKelasIds, guruIdFilter, tanggal, status, status_filter, include_scheduled, limit = 50, page = 1 } = query;
+
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
 
     const where: any = { tenant_id: tenantId };
 
@@ -370,8 +389,6 @@ export class SesiLifecycleService {
     if (status) where.status = status;
     if (tanggal) {
       const dayStr = tanggal;
-      const tz = await getTenantTimezone(tenantId);
-      const tzOffset = getTenantOffsetString(tz);
       const startOfDay = new Date(`${dayStr}T00:00:00.000${tzOffset}`);
       const endOfDay = new Date(`${dayStr}T23:59:59.999${tzOffset}`);
       where.tanggal = { gte: startOfDay, lte: endOfDay };
@@ -399,7 +416,7 @@ export class SesiLifecycleService {
         created_at: true,
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, nama_guru: true, nip: true } },
+        Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } }
       },
       orderBy: { waktu_mulai: 'desc' }
@@ -428,6 +445,7 @@ export class SesiLifecycleService {
         kelas_nama: item.Kelas?.nama_kelas || null,
         mapel_nama: item.Mapel?.nama_mapel || item.Mapel?.kode_mapel || null,
         guru_nama: item.Guru?.nama_guru || null,
+        guru_no_hp: item.Guru?.no_hp || null,
         guru_status: item.AbsenGuru?.[0]?.status || (item.status === 'SELESAI' ? 'ALPA' : 'BELUM_HADIR'),
         absenGuru: item.AbsenGuru?.[0] || null,
         AbsenGuru: item.AbsenGuru || [],
@@ -442,13 +460,10 @@ export class SesiLifecycleService {
       return { total, page: Number(page), limit: take, data: physicalSessions.slice(skip, skip + take) };
     }
 
-    // Determine Day of Week for JadwalKBM query
-    const dateStr = tanggal || new Date().toISOString().split('T')[0];
-    const targetDateObj = new Date(`${dateStr}T00:00:00.000Z`);
-    // Adjust to WIB (+7h) to get correct local day
-    const wibDayIndex = new Date(targetDateObj.getTime() + (7 * 3600 * 1000)).getUTCDay();
-    const daysMap = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-    const hariName = daysMap[wibDayIndex];
+    // Determine Day of Week in Tenant Timezone for JadwalKBM query
+    const dateStr = tanggal || new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+    const targetDateObj = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+    const hariName = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: tz }).format(targetDateObj).toUpperCase();
 
     const scheduleWhere: any = {
       tenant_id: tenantId,
@@ -478,7 +493,7 @@ export class SesiLifecycleService {
       include: {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, nama_guru: true, nip: true } }
+        Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
       },
       orderBy: [{ kelas_id: 'asc' }, { slot_index: 'asc' }, { jam_mulai: 'asc' }]
     });
@@ -486,7 +501,7 @@ export class SesiLifecycleService {
     // 🔑 Apply day_patterns shift config enrichment — same as JadwalKBMService.enrichJadwalWithDayTimes
     // This ensures jam_mulai/jam_selesai are resolved identically across Siswa, Guru, Ops, and Monitoring modules.
     const shiftConfig = await loadShiftConfig(tenantId);
-    const rawSchedules = enrichJadwalWithDayTimesSesi(rawSchedulesFetched, shiftConfig);
+    const rawSchedules = enrichJadwalWithDayTimesSesi(rawSchedulesFetched, shiftConfig, hariName);
 
     // Group consecutive slots per class for same teacher, mapel, and activity in backend
     const mergedRanges: any[] = [];
@@ -550,9 +565,6 @@ export class SesiLifecycleService {
     // Match merged schedule ranges with physical sessions
     const matchedPhysicalIds = new Set<string>();
 
-    const tz = await getTenantTimezone(tenantId);
-    const tzOffset = getTenantOffsetString(tz);
-
     const unifiedList = mergedRanges.map((mRange: any) => {
       // Find matching physical session:
       // Priority 1 = Matches schedule link OR (kelas_id + mapel_id) with active (BERLANGSUNG) or completed (SELESAI) status
@@ -614,6 +626,7 @@ export class SesiLifecycleService {
         kelas_nama: mRange.Kelas?.nama_kelas || null,
         mapel_nama: mRange.Mapel?.nama_mapel || mRange.Mapel?.kode_mapel || null,
         guru_nama: mRange.Guru?.nama_guru || null,
+        guru_no_hp: mRange.Guru?.no_hp || null,
         summary: { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 }
       };
     });
@@ -721,13 +734,12 @@ export class SesiLifecycleService {
       finalData = consolidatedList.filter((item: any) => item.status === status);
     }
 
-    const total = finalData.length;
     const serverNow = new Date();
 
     // 🏛️ SERVER-SIDE STATUS ENRICHMENT — Single Source of Truth
     // Compute isLive, isFinished, isOverdue, isUpcoming, teacherStatus, hadir, total
     // on the server so NO frontend component needs to calculate time manually.
-    const enrichedData = finalData.slice(skip, skip + take).map((item: any) => {
+    const enrichedData = finalData.map((item: any) => {
       const startAt = item.waktu_mulai ? new Date(item.waktu_mulai) : null;
       const endAt = item.waktu_selesai ? new Date(item.waktu_selesai) : null;
       const hasValidTime = !!startAt && !!endAt && !isNaN(startAt.getTime()) && !isNaN(endAt.getTime());
@@ -743,28 +755,22 @@ export class SesiLifecycleService {
       const hasTeacherCheckInOrPhoto = Boolean(item.foto_kegiatan) || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA') || !isPlaceholderAbsenGuru;
 
       // 1. isLive:
-      // - Untuk sesi fisik aktif di DB (status === 'BERLANGSUNG' dan belum SELESAI):
-      //   Jika sudah dibuka oleh guru (ada foto / absen guru valid), status TETAP LIVE sampai ditutup oleh guru/auto-close.
-      //   Jika sesi fisik belum dibuka oleh guru, status Live hanya jika waktu saat ini sudah masuk jadwal (isLiveByTime).
-      // - Untuk sesi virtual: Live jika waktu saat ini dalam rentang jadwal.
-      let isLive = false;
-      if (!isFinished) {
-        if (!isVirtualSession && item.status === 'BERLANGSUNG') {
-          isLive = hasTeacherCheckInOrPhoto ? true : isLiveByTime;
-        } else {
-          isLive = isLiveByTime;
-        }
-      }
+      // - HANYA bernilai TRUE jika sesi fisik sudah resmi dibuka/dimulai oleh guru (ada foto / check-in guru)
+      //   dan sesi belum selesai ditutup.
+      const isLive = !isFinished && !isVirtualSession && item.status === 'BERLANGSUNG' && hasTeacherCheckInOrPhoto;
 
       // 2. isOverdue (TERLEWAT):
       // - HANYA untuk jadwal virtual atau sesi yang TIDAK PERNAH DIBUKA sama sekali (tanpa foto / tanpa check-in guru)
       //   yang jam jadwalnya sudah lewat.
       const isOverdue = !isFinished && !isLive && isPastSchedule && (!hasTeacherCheckInOrPhoto || isVirtualSession);
 
-      // 3. isUpcoming:
-      const isUpcoming = !isFinished && !isLive && !isOverdue;
+      // 3. isReadyToOpen (SIAP DIMULAI / MASUK JAM JADWAL TAPI BELUM DIBUKA GURU):
+      const isReadyToOpen = !isFinished && !isLive && !isOverdue && isLiveByTime && (!hasTeacherCheckInOrPhoto || isVirtualSession);
 
-      // 4. Teacher status derived from AbsenGuru record
+      // 4. isUpcoming (BELUM MASUK JAM JADWAL):
+      const isUpcoming = !isFinished && !isLive && !isOverdue && !isReadyToOpen;
+
+      // 5. Teacher status derived from AbsenGuru record
       let teacherStatus: string;
       if (absenGuru && !isPlaceholderAbsenGuru) {
         if (absenGuru.is_terlambat) teacherStatus = 'TERLAMBAT';
@@ -781,17 +787,28 @@ export class SesiLifecycleService {
         teacherStatus = 'BELUM_TAP';
       }
 
-      const effectiveGuruStatus = teacherStatus === 'TERLAMBAT' ? 'TERLAMBAT' : (teacherStatus === 'TEPAT_WAKTU' ? 'HADIR' : (isFinished || isOverdue ? 'ALPA' : (item.guru_status && !item.guru_status.toUpperCase().includes('BELUM') ? item.guru_status : 'BELUM_TAP')));
+      const effectiveGuruStatus = (teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR')
+        ? 'HADIR'
+        : (teacherStatus === 'TERLAMBAT' || teacherStatus === 'IZIN' || teacherStatus === 'SAKIT' || teacherStatus === 'PENUGASAN' || teacherStatus === 'ALPA')
+        ? teacherStatus
+        : (isFinished || isOverdue ? 'ALPA' : (item.guru_status && !item.guru_status.toUpperCase().includes('BELUM') ? item.guru_status : 'BELUM_TAP'));
 
       const baseSummary = item.summary || {};
       const hadir = (baseSummary.HADIR || 0) + (baseSummary.TERLAMBAT || 0);
 
       return {
         ...item,
+        isLive,
+        isReadyToOpen,
+        isFinished,
+        isOverdue,
+        is_overdue: isOverdue,
+        isUpcoming,
         guru_status: effectiveGuruStatus,
         _summary: {
           ...baseSummary,
           isLive,
+          isReadyToOpen,
           isFinished,
           isOverdue,
           isUpcoming,
@@ -802,11 +819,37 @@ export class SesiLifecycleService {
       };
     });
 
+    // 🎯 Filter by status_filter if query provided (e.g. READY_UNOPENED for Meja Piket)
+    let processedData = enrichedData;
+    if (status_filter) {
+      const upperFilter = String(status_filter).toUpperCase();
+      if (upperFilter === 'READY_UNOPENED' || upperFilter === 'PIKET') {
+        processedData = enrichedData.filter(item => 
+          item.isReadyToOpen && 
+          !item.isLive && 
+          !item.isOverdue && 
+          !item.isFinished && 
+          (!item.guru_status || item.guru_status.includes('BELUM') || item.guru_status === 'BELUM_TAP' || item.guru_status === 'BELUM_HADIR')
+        );
+      } else if (upperFilter === 'LIVE') {
+        processedData = enrichedData.filter(item => item.isLive);
+      } else if (upperFilter === 'OVERDUE') {
+        processedData = enrichedData.filter(item => item.isOverdue);
+      } else if (upperFilter === 'FINISHED') {
+        processedData = enrichedData.filter(item => item.isFinished);
+      } else if (upperFilter === 'UPCOMING') {
+        processedData = enrichedData.filter(item => item.isUpcoming);
+      }
+    }
+
+    const total = processedData.length;
+    const paginatedData = processedData.slice(skip, skip + take);
+
     return {
       total,
       page: Number(page),
       limit: take,
-      data: enrichedData
+      data: paginatedData
     };
   }
 

@@ -17,6 +17,7 @@ import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { cn } from '../../../lib/utils';
 import { getVirtualDate } from '../../../utils/attendance/time';
+import { getTeacherStatusMeta } from '../../../utils/kbm-normalizer';
 
 interface TimelineItem {
   id: string;
@@ -121,17 +122,17 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
               </div>
               <span className="text-[9px] font-black uppercase tracking-widest opacity-80 mr-auto">Sesi Berlangsung</span>
 
-              {/* Live Attendance Status */}
-              {activeSession.teacherStatus === 'TEPAT_WAKTU' && (
-                <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-400/30 uppercase tracking-tighter">
-                  <CheckCircle2 size={10} /> Tepat Waktu
-                </span>
-              )}
-              {activeSession.teacherStatus === 'TERLAMBAT' && (
-                <span className="text-[8px] font-black bg-rose-500/20 text-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-400/30 uppercase tracking-tighter">
-                  <AlertCircle size={10} /> Terlambat
-                </span>
-              )}
+              {/* Live Attendance Status (SSOT) */}
+              {(() => {
+                const meta = getTeacherStatusMeta(activeSession.teacherStatus);
+                if (meta.key === 'BELUM_TAP') return null;
+                return (
+                  <span className={cn("text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 border uppercase tracking-tighter", meta.badgeClass)}>
+                    {meta.key === 'HADIR' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                    {meta.titleCaseLabel}
+                  </span>
+                );
+              })()}
             </div>
             
             <h4 className="text-base font-extrabold tracking-tight leading-snug">{activeSession.kegiatan}</h4>
@@ -239,27 +240,22 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
                   <div className="flex items-center justify-between gap-2 mb-0.5">
                     <h5 className="text-[11px] font-bold text-gray-800 dark:text-white truncate">{item.kegiatan}</h5>
                     
-                    {/* Teacher Attendance Badge */}
+                    {/* Teacher Attendance Badge (SSOT) */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       {isProcessing(item.id) ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
                       ) : (
                         <>
-                          {item.teacherStatus === 'TEPAT_WAKTU' && (
-                            <div className="flex items-center gap-1 text-[9px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20 uppercase tracking-tighter">
-                              <CheckCircle2 size={10} /> Tepat Waktu
-                            </div>
-                          )}
-                          {item.teacherStatus === 'TERLAMBAT' && (
-                            <div className="flex items-center gap-1 text-[9px] font-black text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-500/20 uppercase tracking-tighter">
-                              <Clock size={10} /> Terlambat
-                            </div>
-                          )}
-                          {item.teacherStatus === 'ALPA' && (
-                            <div className="flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-100 dark:border-rose-500/20 uppercase tracking-tighter">
-                              <AlertCircle size={10} /> Alpa
-                            </div>
-                          )}
+                          {(() => {
+                            const meta = getTeacherStatusMeta(item.teacherStatus);
+                            if (meta.key === 'BELUM_TAP' || meta.key === 'BELUM_MULAI') return null;
+                            return (
+                              <div className={cn("flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-tighter", meta.badgeClass)}>
+                                {meta.key === 'HADIR' ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                                {meta.titleCaseLabel}
+                              </div>
+                            );
+                          })()}
                           {item.isAdHoc && (
                             <Badge variant="outline" className="text-[8px] h-4 border-amber-200 text-amber-600 dark:border-amber-900/50 bg-amber-50/50">Manual</Badge>
                           )}

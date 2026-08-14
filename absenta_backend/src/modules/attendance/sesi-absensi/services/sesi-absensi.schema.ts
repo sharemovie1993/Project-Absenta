@@ -46,6 +46,9 @@ export const updateSesiStatusSchema = z.object({
 export const updateAbsenGuruSchema = z.object({
   status: z.string().optional().nullable(),
   catatan: z.string().optional().nullable(),
+  foto: z.string().optional().nullable(),
+  foto_kegiatan: z.string().optional().nullable(),
+  waktu_tap: z.string().optional().nullable(),
 });
 
 export const tapSiswaSchema = z.object({

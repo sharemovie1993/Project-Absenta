@@ -62,9 +62,20 @@ export class SesiGuard {
     const org = request.organizationalScope;
     const positions = org?.positions || [];
     const isManagement = managementRoles.includes(roleName) || positions.some((p: any) => managementRoles.includes(p.code));
+    const userCaps = Array.isArray(request.user?.capabilities) ? request.user.capabilities : [];
+    const isPiketAuthorized = userCaps.includes('attendance.piket.manage') || positions.some((p: any) => p.code === 'GURU_PIKET' || p.code === 'STAFF_PIKET');
 
     // READ-ONLY access (GET requests like /presensi-terpadu) is allowed for all authenticated users in tenant
     if (method === 'GET') return;
+
+    const url = String(request.url || request.raw?.url || '');
+    const isAbsenGuruRoute = url.includes('/absen-guru');
+
+    // 🏛️ Pimpinan (Kurikulum/Kesiswaan/Kepsek) & Petugas Piket memiliki kewenangan penuh
+    // untuk menentukan status kehadiran guru (IZIN, SAKIT, PENUGASAN, ALPA) dan Guru Inval di Meja Piket.
+    if (isAbsenGuruRoute && (isManagement || isPiketAuthorized || org?.tenant_wide)) {
+      return; // Allowed for Management / Piket
+    }
 
     if (isManagement) {
       reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca.' });
@@ -81,14 +92,24 @@ export class SesiGuard {
         return; 
     }
 
-    const sesi = await prisma.sesiAbsensi.findFirst({ where: { id, tenant_id: tenantId }, select: { id: true, kelas_id: true, guru_id: true } });
+    let sesi: any = await prisma.sesiAbsensi.findFirst({ where: { id, tenant_id: tenantId }, select: { id: true, kelas_id: true, guru_id: true } });
+    if (!sesi && typeof id === 'string' && (id.startsWith('sched_') || id.startsWith('sched-'))) {
+      const cleanJadwalId = id.replace(/^(sched-hist-|sched_|sched-)/, '');
+      const jadwal = await prisma.jadwalKBM.findFirst({
+        where: { id: cleanJadwalId, tenant_id: tenantId },
+        select: { id: true, kelas_id: true, guru_id: true }
+      });
+      if (jadwal) {
+        sesi = { id, kelas_id: jadwal.kelas_id, guru_id: jadwal.guru_id };
+      }
+    }
+
     if (!sesi) {
         reply.status(404).send({ success: false, message: 'Sesi tidak ditemukan atau ID tidak valid' });
         return;
     }
 
-
-     const isWaliKelas = positions.some((p: any) => p.code === 'WALIKELAS');
+    const isWaliKelas = positions.some((p: any) => p.code === 'WALIKELAS');
     const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS');
 
     const isGuru = await prisma.guru.count({ where: { user_id: userId, tenant_id: tenantId } });
@@ -101,6 +122,18 @@ export class SesiGuard {
     if (isGuru) {
         const guruRecord = await prisma.guru.findFirst({ where: { user_id: userId, tenant_id: tenantId }, select: { id: true } });
         
+        // 0. Jika Guru adalah Petugas Piket hari ini
+        if (guruRecord) {
+          const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+          const hariIni = todayDays[new Date().getDay()];
+          const isPiketToday = await (prisma as any).jadwalPiketGuru.findFirst({
+            where: { guru_id: guruRecord.id, hari: hariIni as any, tenant_id: tenantId }
+          });
+          if (isPiketToday || isPiketAuthorized) {
+            return; // Allowed for Piket Teacher
+          }
+        }
+
         // 1. Jika Guru adalah pengajar di sesi ini, berikan akses (termasuk DELETE)
         if (guruRecord && String(sesi.guru_id || '') === String(guruRecord.id)) {
             return; // Allowed

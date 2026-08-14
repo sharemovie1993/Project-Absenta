@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '../../../ui';
 import { motion } from 'framer-motion';
+import { getTeacherStatusMeta, getSessionStatusMeta } from '../../../../utils/kbm-normalizer';
 
 interface KbmSessionTableProps {
   sessions: any[];
@@ -35,49 +36,49 @@ export const KbmSessionTable = React.memo<KbmSessionTableProps>(({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-            {sessions.map((sesi) => (
-              <tr 
-                key={sesi.id} 
-                onClick={() => onSelectSession(sesi)}
-                className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 cursor-pointer transition-colors"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-black text-gray-900 dark:text-white">{formatTime(sesi.waktu_mulai)}</span>
-                    <Badge 
-                      variant={sesi.isLive ? 'success' : sesi.isFinished ? 'secondary' : 'info'} 
-                      size="sm" 
-                      className="text-[7px] px-1 py-0 mt-1 w-fit"
-                    >
-                      {sesi.isLive ? 'LIVE' : sesi.isFinished ? 'DONE' : 'SOON'}
-                    </Badge>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{sesi.Kelas?.nama_kelas || '-'}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 line-clamp-1">{sesi.Mapel?.nama_mapel || '-'}</span>
-                </td>
-                <td className="px-6 py-4">
-                   <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] font-black text-gray-500">
-                        {sesi.Guru?.nama_guru?.charAt(0) || '-'}
-                      </div>
-                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate max-w-[150px]">{sesi.Guru?.nama_guru || '-'}</span>
-                   </div>
-                </td>
-                <td className="px-6 py-4">
-                   {sesi._summary?.teacherStatus === 'TEPAT_WAKTU' && <Badge variant="success" className="text-[8px] font-black">TEPAT WAKTU</Badge>}
-                   {sesi._summary?.teacherStatus === 'TERLAMBAT' && <Badge variant="warning" className="text-[8px] font-black">TERLAMBAT</Badge>}
-                   {sesi._summary?.teacherStatus === 'ALPA' && <Badge variant="error" className="text-[8px] font-black">ALPA</Badge>}
-                   {sesi._summary?.teacherStatus === 'BELUM_TAP' && <Badge variant="info" className="text-[8px] font-black animate-pulse">BELUM TAP</Badge>}
-                   {sesi._summary?.teacherStatus === 'BELUM_MULAI' && <Badge variant="secondary" className="text-[8px] font-black">BELUM MULAI</Badge>}
-                   {!sesi._summary?.teacherStatus && <Badge variant="secondary" className="text-[8px] font-black">-</Badge>}
-                </td>
-                <td className="px-6 py-4 text-center">
-                   <span className="text-xs font-black text-gray-600 dark:text-gray-400">{sesi._summary?.hadir ?? 0} / {sesi._summary?.total ?? 0}</span>
-                </td>
+            {sessions.map((sesi) => {
+              const teacherMeta = getTeacherStatusMeta(sesi.status?.teacherStatus ?? sesi._summary?.teacherStatus ?? sesi.guru_status ?? (sesi.AbsenGuru?.[0]?.status));
+              const sessionMeta = getSessionStatusMeta(sesi.status || { isLive: sesi.isLive, isFinished: sesi.isFinished, isOverdue: sesi.isOverdue });
+              return (
+                <tr 
+                  key={sesi.id} 
+                  onClick={() => onSelectSession(sesi)}
+                  className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 cursor-pointer transition-colors"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black text-gray-900 dark:text-white">{formatTime(sesi.waktu_mulai)}</span>
+                      <Badge 
+                        variant={sessionMeta.badgePropsVariant} 
+                        size="sm" 
+                        className="text-[7px] px-1 py-0 mt-1 w-fit"
+                      >
+                        {sessionMeta.shortLabel}
+                      </Badge>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{sesi.Kelas?.nama_kelas || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 line-clamp-1">{sesi.Mapel?.nama_mapel || '-'}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                     <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] font-black text-gray-500">
+                          {sesi.Guru?.nama_guru?.charAt(0) || '-'}
+                        </div>
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate max-w-[150px]">{sesi.Guru?.nama_guru || '-'}</span>
+                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                     <Badge variant={teacherMeta.badgePropsVariant} className="text-[8px] font-black uppercase">
+                       {teacherMeta.label}
+                     </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                     <span className="text-xs font-black text-gray-600 dark:text-gray-400">{sesi._summary?.hadir ?? 0} / {sesi._summary?.total ?? 0}</span>
+                  </td>
                 <td className="px-6 py-4">
                    {sesi.ProgresMateri ? (
                      <div className="flex items-center gap-2">
@@ -93,12 +94,13 @@ export const KbmSessionTable = React.memo<KbmSessionTableProps>(({
                    ) : <span className="text-[9px] font-black text-gray-300 uppercase">KOSONG</span>}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </motion.div>
-  );
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </motion.div>
+);
 });
 
 KbmSessionTable.displayName = 'KbmSessionTable';
