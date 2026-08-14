@@ -78,6 +78,8 @@ const CooperativeDashboard = React.lazy(() => import('@/pages/cooperative/Dashbo
 const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
 // Admin Overview Dashboard — dirender di tab Admin untuk role ADMIN/SUPERADMIN
 const AdminOverviewDashboard = React.lazy(() => import('@/pages/dashboard/DashboardOverview'));
+// Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
+const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -177,6 +179,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isBkk,
     isGerbang,
     isTU,
+    isTUKepegawaian,
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
@@ -496,10 +499,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isBpbk)      parts.push('Guru BK');
     if (isBkk)       parts.push('Pengelola BKK');
     if (isGerbang)   parts.push('Petugas Gerbang');
+    if (isTUKepegawaian) parts.push('TU Kepegawaian');
     return parts.length > 0 
       ? `Guru / ${parts.join(' & ')}` 
       : (isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran');
-  }, [jabatan, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTuStaff]);
+  }, [jabatan, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepegawaian, isTuStaff]);
 
   const teacherInitials = useMemo(() => {
     const name = user?.full_name || user?.name || 'Hendra Wijaya';
@@ -564,12 +568,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
-    // 10. Piket Harian
+    // 10. TU Kepegawaian (Data Induk & Dapodik)
+    if (isTUKepegawaian || isTU || isAdminRole || isKepsek) {
+      list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
+    }
+
+    // 11. Piket Harian
     if (isKurikulum || isKesiswaan || isGerbang || isAdminRole || isKepsek || !isTuStaff) {
       list.push({ id: 'kelola', label: 'Piket Harian', icon: ClipboardList });
     }
 
-    // 11. Profil Guru
+    // 12. Profil Guru
     list.push({ id: 'profil', label: 'Profil Guru', icon: User });
 
     return list;
@@ -591,6 +600,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKoperasi,
     isBpbk,
     isGerbang,
+    isTUKepegawaian,
+    isTU,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -887,6 +898,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
         {activeTab === 'admin' && (
           <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
             <AdminOverviewDashboard />
+          </Suspense>
+        )}
+
+        {/* 🧑‍💼 TAB 10: TU KEPEGAWAIAN (DATA INDUK & DAPODIK) */}
+        {activeTab === 'kepegawaian' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <AcademicDashboard />
           </Suspense>
         )}
 

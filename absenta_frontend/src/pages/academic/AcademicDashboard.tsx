@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from "framer-motion";
 import {
   GraduationCap,
@@ -19,7 +19,8 @@ import {
   ClipboardList,
   Network,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight
 } from "lucide-react";
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
@@ -151,14 +152,25 @@ const AcademicDashboard: React.FC = React.memo(() => {
 
   return (
     <AcademicPageLayout
-      title="Pusat Kendali Akademik"
-      description="Kelola seluruh infrastruktur data dan operasional pendidikan dalam satu dashboard terintegrasi."
+      title="Pusat Kendali Akademik & Kepegawaian"
+      description="Kelola seluruh infrastruktur data master, kepegawaian PTK, dan data induk siswa dalam satu dashboard terintegrasi."
       isLoading={isLoading}
+      hardeningModuleKey="academic_dashboard"
+      toolbar={
+        <Link
+          to="/academic/siswa"
+          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer select-none"
+        >
+          <span>Buka Ruang Kerja</span>
+          <ArrowRight size={14} />
+        </Link>
+      }
       instruction={{
-        title: "Panduan Modul Akademik",
+        title: "Panduan Modul Akademik & Kepegawaian",
         description: "Gunakan modul ini untuk membangun pondasi data sekolah. Pastikan data master (Tahun & Semester) diatur terlebih dahulu.",
         items: [
           { text: "Lakukan Registrasi Siswa di awal setiap semester." },
+          { text: "Kelola data PTK & Guru pada menu Data Guru." },
           { text: "Gunakan Transisi Akademik untuk kenaikan kelas massal." },
           { text: "Cadangkan data secara berkala melalui menu Backup." }
         ]
