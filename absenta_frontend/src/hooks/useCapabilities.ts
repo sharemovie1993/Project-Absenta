@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from './useAuth';
 import type { CapabilityCode } from '../types/capabilities';
+import { getUserPositions } from '../config/navigation.config';
 
 /**
  * 🛡️ Centralized Capability & Persona Helper Hook (DRY Single Source of Truth)
@@ -18,66 +19,62 @@ export function useCapabilities() {
   const caps = useMemo(() => user?.capabilities || [], [user?.capabilities]);
 
   const personaHelpers = useMemo(() => {
+    const userPositions = getUserPositions(user);
+
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 1: OPERASIONAL LAPANGAN & KELAS
     // ═══════════════════════════════════════════════════════════════════
     const isPetugasKelas =
-      can('dashboard.view.petugas') ||
-      can('attendance.sessions.create') ||
-      can('attendance.sessions.update.journal');
+      userPositions.includes('PETUGAS_KELAS') ||
+      can('dashboard.view.petugas');
 
     const isGerbang =
-      can('dashboard.view.gerbang') ||
-      can('attendance.gate.tap.entry') ||
-      can('attendance.gate.tap.exit');
+      userPositions.includes('GERBANG') ||
+      can('dashboard.view.gerbang');
 
     const isToolman =
-      can('sarpras.loans.request') &&
-      !can('sarpras.inventory.manage');
+      userPositions.includes('TOOLMAN');
 
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TU & KOPERASI)
     // ═══════════════════════════════════════════════════════════════════
     const isTUPersuratan =
-      can('correspondence.inbox.view') ||
+      userPositions.includes('TU_PERSURATAN') ||
       can('correspondence.outbox.manage') ||
       can('correspondence.template.manage');
 
     const isTUKeuangan =
+      userPositions.includes('TU_KEUANGAN') ||
       can('tu.finance.invoices.view.list') ||
-      can('tu.finance.payments.create') ||
-      can('tu.finance.reports.view');
+      can('tu.finance.payments.create');
 
     const isTUKepegawaian =
-      can('academic.students.send.access.token') ||
-      can('academic.students.manage') ||
-      can('academic.teachers.manage');
+      userPositions.includes('TU_KEPEGAWAIAN') ||
+      can('academic.teachers.manage') ||
+      can('academic.students.send.access.token');
 
     const isTUSarpras =
-      can('sarpras.inventory.view.list') &&
-      !can('sarpras.inventory.delete');
+      userPositions.includes('TU_SARPRAS');
 
     const isKoperasiStore =
       can('cooperative.store.orders.manage') ||
       can('cooperative.store.inventory.manage');
 
     const isKoperasiFinance =
-      can('cooperative.savings.view.list') ||
-      can('cooperative.reports.view.financial');
-
-    const isKoperasiHead =
       can('cooperative.loans.approve') ||
       can('cooperative.reports.view.financial');
 
+    const isKoperasiHead =
+      can('cooperative.loans.approve');
+
     const isKoperasiSecretary =
-      can('cooperative.members.manage') ||
-      can('cooperative.announcements.create');
+      can('cooperative.members.manage');
 
     const isKoperasiAuditor =
-      can('cooperative.settings.view') ||
-      can('cooperative.reports.view.financial');
+      can('cooperative.settings.view');
 
     const isTU =
+      userPositions.includes('TU_KEPALA') ||
       isTUPersuratan ||
       isTUKeuangan ||
       isTUKepegawaian ||
@@ -85,6 +82,7 @@ export function useCapabilities() {
       can('tu.staff.manage');
 
     const isKoperasi =
+      userPositions.includes('KOPERASI') ||
       isKoperasiStore ||
       isKoperasiFinance ||
       isKoperasiHead ||
@@ -95,65 +93,59 @@ export function useCapabilities() {
     // LEVEL 3: KOORDINATOR UNIT & PEMBINA
     // ═══════════════════════════════════════════════════════════════════
     const isWaliKelas =
-      can('dashboard.view.walikelas') ||
-      can('academic.homeroom.manage') ||
-      can('attendance.gate.tap.exit');
+      userPositions.includes('WALIKELAS') ||
+      !!user?.guru_profile?.wali_kelas_di ||
+      can('dashboard.view.walikelas');
 
     const isBpbk =
+      userPositions.includes('BPBK') ||
       can('bk.counseling.view.sensitive') ||
-      can('bk.cases.manage') ||
-      can('bk.referrals.manage');
+      can('bk.cases.manage');
 
     const isPembinaEskul =
-      can('affairs.achievements.create') ||
-      can('affairs.achievements.create') ||
-      can('attendance.schedules.view.list');
+      userPositions.includes('PEMBINA_ESKUL');
 
     const isKaprog =
-      can('academic.teaching.rekap') ||
-      (can('hubin.pkl.manage') && !can('hubin.partners.manage'));
+      userPositions.includes('KAPROG');
 
     const isKabeng =
-      can('sarpras.inventory.delete') &&
-      !can('sarpras.inventory.manage');
+      userPositions.includes('KABENG');
 
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 4 & 5: MANAJEMEN MANAJERIAL & PIMPINAN EKSEKUTIF
     // ═══════════════════════════════════════════════════════════════════
     const isKurikulum =
+      userPositions.includes('KURIKULUM') ||
       can('dashboard.view.kurikulum') ||
-      can('academic.manage.academic') ||
-      can('curriculum.piket.schedules.manage') ||
-      can('academic.schedules.manage');
+      can('academic.manage.academic');
 
     const isKesiswaan =
+      userPositions.includes('KESISWAAN') ||
       can('dashboard.view.kesiswaan') ||
-      can('affairs.violations.manage') ||
-      can('affairs.violations.report') ||
-      can('affairs.violation.types.manage');
+      can('affairs.violations.manage');
 
     const isHubin =
+      userPositions.includes('HUBIN') ||
       can('dashboard.view.hubin') ||
-      can('hubin.pkl.manage') ||
       can('hubin.partners.manage') ||
       can('hubin.mou.manage');
 
     const isBkk =
-      can('hubin.tracer.view') ||
+      userPositions.includes('BKK') ||
       can('hubin.bkk.manage');
 
     const isSarpras =
+      userPositions.includes('SARPRAS') ||
       can('dashboard.view.sarpras') ||
-      can('sarpras.inventory.manage') ||
-      can('sarpras.inventory.view.list');
+      can('sarpras.inventory.manage');
 
     const isTUKepala =
-      can('tu.staff.manage') &&
-      can('correspondence.outbox.sign');
+      userPositions.includes('TU_KEPALA') ||
+      (can('tu.staff.manage') && can('correspondence.outbox.sign'));
 
     const isKepsek =
+      userPositions.includes('KEPALA_SEKOLAH') ||
       can('dashboard.view.kepsek') ||
-      can('correspondence.outbox.sign') ||
       can('curriculum.supervision.manage');
 
     const isBillingAdmin =
