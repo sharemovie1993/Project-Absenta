@@ -204,8 +204,8 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
   // Meeting Chat
-  const [meetingChat, setMeetingChat] = useState<{ sender: string; text: string; time: string; isHost?: boolean }[]>([
-    { sender: 'Sistem Absenta', text: 'Ruang Rapat Zoom Absenta aktif dengan enkripsi WebRTC multi-tenant.', time: 'Sekarang' }
+  const [meetingChat, setMeetingChat] = useState<{ senderId?: string; sender: string; role?: string; text: string; time: string; isHost?: boolean }[]>([
+    { sender: 'Sistem Absenta', role: 'Sistem', text: 'Ruang Rapat Zoom Absenta aktif dengan enkripsi WebRTC multi-tenant.', time: 'Sekarang' }
   ]);
   const [chatInput, setChatInput] = useState('');
 
@@ -474,7 +474,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     };
 
     // 7. In-Meeting Chat
-    const handleMeetingChat = (chatMsg: { sender: string; text: string; time: string }) => {
+    const handleMeetingChat = (chatMsg: { senderId?: string; sender: string; role?: string; text: string; time: string }) => {
       setMeetingChat((prev) => [...prev, chatMsg]);
     };
 
@@ -860,15 +860,27 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     e.preventDefault();
     if (!chatInput.trim()) return;
     const text = chatInput.trim();
+    const myName = user?.full_name || (user as any)?.name || (user as any)?.username || 'Saya';
+    const myRole = (user as any)?.role?.name || (user as any)?.roleName || 'Peserta';
+    const currentTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
     if (socket) {
-      socket.emit('meeting:chat', { roomId, text });
+      socket.emit('meeting:chat', {
+        roomId,
+        text,
+        senderName: myName,
+        senderRole: myRole,
+        time: currentTime
+      });
     } else {
       setMeetingChat((prev) => [
         ...prev,
         {
-          sender: user?.full_name || 'Saya',
+          senderId: 'local',
+          sender: myName,
+          role: myRole,
           text,
-          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+          time: currentTime
         }
       ]);
     }
@@ -1279,15 +1291,50 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
             {activeSidebar === 'CHAT' && (
               <div className="flex-1 flex flex-col justify-between overflow-hidden">
                 <div className="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs">
-                  {meetingChat.map((c, idx) => (
-                    <div key={idx} className="bg-[#2e2e2e] p-2.5 rounded-xl border border-slate-700/50">
-                      <div className="flex items-center justify-between text-[10px] text-[#2D8CFF] font-bold mb-1">
-                        <span>{c.sender}</span>
-                        <span className="text-slate-400">{c.time}</span>
+                  {meetingChat.map((c, idx) => {
+                    const isMe = c.senderId === 'local' || c.senderId === user?.id || c.sender === (user?.full_name || 'Saya');
+                    const isSystem = c.role === 'Sistem' || c.sender === 'Sistem Absenta';
+
+                    if (isSystem) {
+                      return (
+                        <div key={idx} className="bg-[#1e293b]/60 p-2.5 rounded-xl border border-sky-500/30 text-center">
+                          <p className="text-[10px] text-sky-400 font-bold mb-0.5">ℹ️ {c.sender}</p>
+                          <p className="text-slate-300 text-[11px]">{c.text}</p>
+                        </div>
+                      );
+                    }
+
+                    const senderDisplayName = isMe
+                      ? (user?.full_name || 'Saya')
+                      : (c.sender && c.sender !== 'Peserta' ? c.sender : (participants.find((p) => p.id === c.senderId)?.name || c.sender || 'Peserta Rapat'));
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-2.5 rounded-xl border ${
+                          isMe
+                            ? 'bg-[#18382c]/80 border-emerald-500/40 ml-3'
+                            : 'bg-[#2a2a2a] border-slate-700/60 mr-3'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-bold mb-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`truncate max-w-[140px] ${isMe ? 'text-emerald-400' : 'text-[#2D8CFF]'}`}>
+                              {senderDisplayName}
+                            </span>
+                            {c.role && (
+                              <span className="text-[9px] px-1.5 py-0.2 bg-black/40 text-slate-300 rounded font-normal shrink-0">
+                                {c.role}
+                              </span>
+                            )}
+                            {isMe && <span className="text-[9px] text-emerald-300 font-normal shrink-0">(Saya)</span>}
+                          </div>
+                          <span className="text-slate-400 text-[10px] shrink-0 ml-1">{c.time}</span>
+                        </div>
+                        <p className="text-slate-100 text-xs break-words">{c.text}</p>
                       </div>
-                      <p className="text-slate-100">{c.text}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <form onSubmit={handleSendMeetingChat} className="p-2.5 bg-[#1f1f1f] border-t border-[#333] flex gap-1.5">

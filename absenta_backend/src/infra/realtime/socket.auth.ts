@@ -41,6 +41,7 @@ export function setupSocketAuth(
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || '';
+        const userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username || '';
         if (!userRole) {
           fastify.log.warn('[WS AUTH] Unauthorized: missing role');
           return next(new Error('Unauthorized: missing role'));
@@ -53,8 +54,8 @@ export function setupSocketAuth(
           return next(new Error('Unauthorized: Tenant mismatch'));
         }
 
-        fastify.log.info(`[WS AUTH] Token verified userId=${userId} tenantId=${userTenant} roleName=${userRole}`);
-        socket.data.user = { id: userId, tenantId: userTenant, roleName: userRole };
+        fastify.log.info(`[WS AUTH] Token verified userId=${userId} name=${userName} tenantId=${userTenant} roleName=${userRole}`);
+        socket.data.user = { id: userId, name: userName, full_name: userName, tenantId: userTenant, roleName: userRole };
         return next();
       } catch (jwtError) {
         // If JWT fails, try validating as Parent Token
@@ -121,6 +122,7 @@ export function setupSocketAuth(
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || '';
+        const userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username || '';
         
         // Guard: Ensure provided tenantId (if any) matches token
         const providedTenantId = (socket.handshake.query as any)?.tenantId || (socket.handshake.auth as any)?.tenantId;
@@ -129,8 +131,8 @@ export function setupSocketAuth(
           return next(new Error('Unauthorized: Tenant mismatch'));
         }
 
-        fastify.log.info(`[WS AUTH] Token verified userId=${userId} tenantId=${userTenant} roleName=${userRole}`);
-        socket.data.user = { id: userId, tenantId: userTenant, roleName: userRole };
+        fastify.log.info(`[WS AUTH] Token verified userId=${userId} name=${userName} tenantId=${userTenant} roleName=${userRole}`);
+        socket.data.user = { id: userId, name: userName, full_name: userName, tenantId: userTenant, roleName: userRole };
         return next();
       } catch (jwtError) {
          // If JWT fails, try validating as Parent Token

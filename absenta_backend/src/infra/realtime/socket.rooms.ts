@@ -270,14 +270,18 @@ export function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
   socket.on('meeting:chat', (data: {
     roomId: string;
     text: string;
+    senderName?: string;
+    senderRole?: string;
     time?: string;
   }) => {
     if (!data?.roomId || !data?.text) return;
     const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    const senderName = data.senderName || user.full_name || user.name || (user as any).username || 'Peserta';
+    const senderRole = data.senderRole || user.roleName || 'Peserta Rapat';
     io.to(`meeting:${cleanRoomId}`).emit('meeting:chat', {
       senderId: user.id,
-      sender: user.full_name || user.name || 'Peserta',
-      role: user.roleName || 'GTK',
+      sender: senderName,
+      role: senderRole,
       text: data.text,
       time: data.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
     });
