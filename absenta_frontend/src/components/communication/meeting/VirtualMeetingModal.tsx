@@ -1488,16 +1488,23 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                           setSelectedAudioInput(dev.deviceId);
                           setShowAudioMenu(false);
                           try {
+                            if (localStreamRef.current) {
+                              localStreamRef.current.getAudioTracks().forEach((t) => t.stop());
+                            }
                             const stream = await navigator.mediaDevices.getUserMedia({
-                              audio: { deviceId: { exact: dev.deviceId } }
+                              audio: dev.deviceId ? { deviceId: { ideal: dev.deviceId } } : true
                             });
                             const track = stream.getAudioTracks()[0];
-                            if (track && localStreamRef.current) {
-                              localStreamRef.current.getAudioTracks().forEach((t) => t.stop());
-                              localStreamRef.current.addTrack(track);
+                            if (track) {
+                              if (localStreamRef.current) {
+                                localStreamRef.current.getAudioTracks().forEach((t) => localStreamRef.current?.removeTrack(t));
+                                localStreamRef.current.addTrack(track);
+                              } else {
+                                localStreamRef.current = stream;
+                              }
                               setupAudioMeter(localStreamRef.current);
                               peerConnectionsRef.current.forEach(async (pc) => {
-                                const sender = pc.getSenders().find((s) => s.track?.kind === 'audio');
+                                const sender = pc.getSenders().find((s) => s.track?.kind === 'audio' || (s as any).kind === 'audio');
                                 if (sender) await sender.replaceTrack(track).catch(() => {});
                               });
                               setIsAudioMuted(false);
@@ -1643,24 +1650,58 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
                           setSelectedVideoInput(dev.deviceId);
                           setShowVideoMenu(false);
                           try {
-                            const stream = await navigator.mediaDevices.getUserMedia({
-                              video: { deviceId: { exact: dev.deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
-                            });
-                            const track = stream.getVideoTracks()[0];
-                            if (track && localStreamRef.current) {
+                            // 1. Release previous video tracks to prevent hardware lock
+                            if (localStreamRef.current) {
                               localStreamRef.current.getVideoTracks().forEach((t) => t.stop());
-                              localStreamRef.current.addTrack(track);
+                            }
+
+                            // 2. Safely acquire new video stream with fallback
+                            let stream: MediaStream | null = null;
+                            const videoConstraint = dev.deviceId
+                              ? { deviceId: { ideal: dev.deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+                              : { width: { ideal: 640 }, height: { ideal: 480 } };
+
+                            try {
+                              stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint });
+                            } catch {
+                              stream = await navigator.mediaDevices.getUserMedia({
+                                video: dev.deviceId ? { deviceId: dev.deviceId } : true
+                              });
+                            }
+
+                            const newTrack = stream?.getVideoTracks()[0];
+                            if (newTrack) {
+                              if (localStreamRef.current) {
+                                // Remove old video tracks
+                                localStreamRef.current.getVideoTracks().forEach((t) => localStreamRef.current?.removeTrack(t));
+                                localStreamRef.current.addTrack(newTrack);
+                              } else {
+                                localStreamRef.current = stream;
+                              }
+
                               if (localVideoRef.current) {
                                 localVideoRef.current.srcObject = localStreamRef.current;
                                 localVideoRef.current.play().catch(() => {});
                               }
+
+                              // Replace track across all active WebRTC peers
                               peerConnectionsRef.current.forEach(async (pc) => {
-                                const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-                                if (sender) await sender.replaceTrack(track).catch(() => {});
+                                const sender = pc.getSenders().find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
+                                if (sender) {
+                                  await sender.replaceTrack(newTrack).catch(() => {});
+                                } else {
+                                  try {
+                                    pc.addTrack(newTrack, localStreamRef.current!);
+                                  } catch {}
+                                }
                               });
+
                               setIsVideoDisabled(false);
                             }
-                          } catch {}
+                          } catch (err: any) {
+                            console.warn('Gagal beralih kamera:', err.message);
+                            setIsVideoDisabled(true);
+                          }
                         }}
                         className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center justify-between hover:bg-[#333333] transition-colors cursor-pointer ${
                           selectedVideoInput === dev.deviceId ? 'text-emerald-400 font-bold bg-[#2a2a2a]' : ''
