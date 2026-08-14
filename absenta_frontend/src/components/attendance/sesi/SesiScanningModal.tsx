@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutList, PlayCircle } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getPresensiTerpaduSesi } from '../../../api/attendanceGerbang.api';
 import { Modal } from '../../ui';
 import { ModuleSopTrigger } from '../../common/ModuleSopTrigger';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
-import { cn } from '../../../lib/utils';
 
 interface SesiScanningModalProps {
   isOpen: boolean;
@@ -31,9 +31,20 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   inputModalSesiId,
   sessionAttendanceRecords,
   currentSession,
-  kelasLabel,
 }) => {
-  const [isSlideMode, setIsSlideMode] = useState(false);
+  // Reaktif dengan React Query — Kabel Tunggal Presensi Terpadu Detail
+  const { data: presensiRes } = useQuery({
+    queryKey: ['sesi-detail-attendance', inputModalSesiId],
+    queryFn: () => getPresensiTerpaduSesi(inputModalSesiId),
+    enabled: isOpen && !!inputModalSesiId,
+    refetchInterval: 5000, // 5 detik auto refresh selama modal scan terbuka
+  });
+
+  const records: SesiAttendanceRecord[] = useMemo(() => {
+    const raw = presensiRes?.data || presensiRes;
+    const fetchedList = Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+    return fetchedList.length > 0 ? fetchedList : (sessionAttendanceRecords || []);
+  }, [presensiRes, sessionAttendanceRecords]);
 
   // Auto-focus input when modal opens
   useEffect(() => {
@@ -48,23 +59,15 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
     }
   }, [isOpen, scannerInputRef]);
 
+  const sessionLabel = currentSession?.mapel_nama || (currentSession as any)?.jenis_kegiatan_nama || (currentSession as any)?.jenis_kegiatan || 'Sesi';
+  const kelasInfo = (currentSession as any)?.kelas_nama || (currentSession as any)?.Kelas?.nama_kelas || '';
+
   const modalTitle = (
-    <div className="flex items-center gap-2 whitespace-nowrap">
-      <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white shrink-0">Tap/Scan</span>
+    <div className="flex items-center gap-2 whitespace-nowrap overflow-hidden">
+      <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white shrink-0">
+        Tap/Scan • <span className="text-blue-600 dark:text-blue-400">{sessionLabel}</span> {kelasInfo ? `(${kelasInfo})` : ''}
+      </span>
       <ModuleSopTrigger moduleKey="kbm_absensi" buttonLabel="SOP" />
-      <button
-        onClick={() => setIsSlideMode(prev => !prev)}
-        className={cn(
-          "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all border shrink-0",
-          isSlideMode
-            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-            : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-        )}
-        title={isSlideMode ? "Kembali ke Mode List" : "Buka Mode Slideshow"}
-      >
-        {isSlideMode ? <LayoutList size={13} /> : <PlayCircle size={13} />}
-        <span className="text-[11px] font-bold">{isSlideMode ? "List" : "Slideshow"}</span>
-      </button>
     </div>
   );
 
@@ -93,15 +96,12 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
           scope="global"
         />
 
-
         {/* Daftar Hadir */}
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
           <div className="max-h-[60vh] sm:max-h-[580px] overflow-y-auto pr-1 custom-scrollbar">
             <SesiAttendanceList 
-              records={sessionAttendanceRecords} 
+              records={records} 
               sesi={currentSession}
-              isSlideMode={isSlideMode}
-              onToggleSlideMode={() => setIsSlideMode(prev => !prev)}
             />
           </div>
         </div>

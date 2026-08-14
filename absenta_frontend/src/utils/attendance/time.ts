@@ -120,3 +120,10 @@ export const toLocalDayNameUpper = (d?: Date): 'MINGGU' | 'SENIN' | 'SELASA' | '
     return days[idx] as any;
   }
 };
+
+export const getTimezoneLabel = (tz?: string): string => {
+  const activeTz = tz || getTimezone();
+  if (activeTz.includes('Makassar') || activeTz.includes('WITA')) return 'WITA';
+  if (activeTz.includes('Jayapura') || activeTz.includes('WIT')) return 'WIT';
+  return 'WIB';
+};

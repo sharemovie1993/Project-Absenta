@@ -6,11 +6,17 @@ import { Button, Badge, UnconnectedBadge, renderApiValue } from '../../../compon
 import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useCapabilities } from '../../../hooks/useCapabilities';
+import { useSocket } from '../../../hooks/useSocket';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
-import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
-import { toLocalDate, toLocalMonth, formatLocalTimeFromISO } from '../../../utils/attendance/time';
+import { 
+  getRekapBulananSiswaMe, 
+  getRekapHarianSiswaMe, 
+  getRekapBulananKelasMe,
+  getSesiAbsensiList 
+} from '../../../api/attendanceGerbang.api';
+import { normalizeFromSesiAbsensi } from '../../../utils/kbm-normalizer';
+import { toLocalDate, toLocalMonth, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
 import { calculateStudentGamification } from '../../../utils/attendance/attendanceGamification.utils';
 import { 
   CheckCircle2, 
@@ -163,13 +169,15 @@ export const SiswaDashboard: React.FC = () => {
 
   // 1. Get Student Detailed Profile via Custom Hook
   const { siswaProfile, isApiConnected, refetch: refetchProfile } = useSiswaMe();
+  const { subscribe, unsubscribe } = useSocket();
 
   const { tenantId } = useTenant();
   const {
     notPresent: notPresentData = [],
     notPresentLoading,
     miniStats: miniStatsData = { masuk: 0, keluar: 0 },
-    refreshAll: refetchNotPresent,
+    fetchNotPresent: refetchNotPresent,
+    refreshStats: refetchMiniStats,
   } = useGerbangAttendanceData({
     tenantId,
     selectedKelasId: siswaProfile?.kelas_id || '',
@@ -236,6 +244,8 @@ export const SiswaDashboard: React.FC = () => {
   }, [siswaProfile, user?.siswa_id, user?.id]);
 
   // 2. Attendance & Schedule Data
+  const studentKelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id;
+
   const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
     queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
     queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
@@ -249,14 +259,16 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
-    queryKey: ['jadwal-kbm-siswa-me', selectedDate, user?.siswa_id],
-    queryFn: async () => {
-      console.log('🚀 [FRONTEND DASHBOARD] Querying getMyJadwalKBM for selectedDate:', selectedDate, 'user siswa_id:', user?.siswa_id);
-      const res = await getMyJadwalKBM({ tanggal: selectedDate });
-      console.log('🎯 [FRONTEND DASHBOARD] Query getMyJadwalKBM returned:', res);
-      return res;
-    },
-    enabled: !!user && !!user?.siswa_id,
+    queryKey: ['jadwal-kbm-siswa-unified', selectedDate, studentKelasId],
+    queryFn: () => getSesiAbsensiList({ 
+      tanggal: selectedDate, 
+      kelas_id: studentKelasId || undefined, 
+      include_scheduled: true, 
+      summary: true, 
+      limit: 100 
+    } as any),
+    enabled: !!user && !!studentKelasId,
+    staleTime: 30000,
   });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
@@ -265,11 +277,8 @@ export const SiswaDashboard: React.FC = () => {
       try {
         const axios = (await import('../../../lib/axiosInstance')).default;
         const res = await axios.get('/kesiswaan/pelanggaran/me');
-        console.log('🚨 [DEBUG PELANGGARAN-ME] Raw API response:', res?.data);
-        console.log('🚨 [DEBUG PELANGGARAN-ME] Inner data payload:', res?.data?.data, 'Keys:', res?.data?.data ? Object.keys(res.data.data) : []);
         return res.data;
       } catch (err) {
-        console.error('❌ [DEBUG PELANGGARAN-ME] Error fetching pelanggaran:', err);
         return null;
       }
     },
@@ -282,11 +291,8 @@ export const SiswaDashboard: React.FC = () => {
       try {
         const axios = (await import('../../../lib/axiosInstance')).default;
         const res = await axios.get('/kesiswaan/prestasi/me');
-        console.log('🏆 [DEBUG PRESTASI-ME] Raw API response:', res?.data);
-        console.log('🏆 [DEBUG PRESTASI-ME] Inner data payload:', res?.data?.data, 'Keys:', res?.data?.data ? Object.keys(res.data.data) : []);
         return res.data;
       } catch (err) {
-        console.error('❌ [DEBUG PRESTASI-ME] Error fetching prestasi:', err);
         return null;
       }
     },
@@ -329,6 +335,37 @@ export const SiswaDashboard: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+
+  // Socket updates
+  useEffect(() => {
+    if (!user) return;
+    const studentId = user.siswa_id || user.id;
+    const kelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id;
+
+    const handleFeedUpdate = () => {
+      refetchDailyRecap();
+      refetchMonthlyRecap();
+      refetchSchedule();
+    };
+
+    subscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
+    subscribe('attendance_feed_update', handleFeedUpdate);
+    subscribe('sesi_status_update', handleFeedUpdate);
+    if (kelasId) {
+      subscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
+      subscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);
+    }
+
+    return () => {
+      unsubscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
+      unsubscribe('attendance_feed_update', handleFeedUpdate);
+      unsubscribe('sesi_status_update', handleFeedUpdate);
+      if (kelasId) {
+        unsubscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
+        unsubscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);
+      }
+    };
+  }, [user, siswaProfile, subscribe, unsubscribe, refetchDailyRecap, refetchMonthlyRecap, refetchSchedule]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -557,25 +594,29 @@ export const SiswaDashboard: React.FC = () => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   }, [selectedMonth]);
 
-  // Calendar Grid Calculator for Kehadiran Tab
+  // Calendar Grid Data Builder
   const calendarGridData = useMemo(() => {
-    const [yStr, mStr] = selectedMonth.split('-');
-    const year = parseInt(yStr, 10);
-    const month = parseInt(mStr, 10); // 1-indexed
+    const [yearStr, monthStr] = selectedMonth.split('-');
+    const year = Number(yearStr) || new Date().getFullYear();
+    const month = Number(monthStr) || (new Date().getMonth() + 1);
 
     const daysInMonth = new Date(year, month, 0).getDate();
-    const firstDayIndex = new Date(year, month - 1, 1).getDay(); // 0 = Sun, 1 = Mon ...
+    const firstDayIndex = new Date(year, month - 1, 1).getDay();
 
-    const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    const statusMap = new Map<string, { status: string; waktu_masuk?: string; keterangan?: string; metode?: string }>();
-
-    for (const item of detailList) {
+    const detail = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
+    const statusMap = new Map<string, any>();
+    detail.forEach((item: any) => {
       if (item.tanggal) {
-        statusMap.set(item.tanggal, {
-          status: item.status,
-          waktu_masuk: item.waktu_masuk,
-          keterangan: item.keterangan,
-          metode: item.metode_absen
+        statusMap.set(item.tanggal, item);
+      }
+    });
+
+    if (dailyRecap && selectedDate) {
+      const isDailyInMonth = selectedDate.startsWith(selectedMonth);
+      if (isDailyInMonth && !statusMap.has(selectedDate)) {
+        statusMap.set(selectedDate, {
+          tanggal: selectedDate,
+          status: dailyRecap.status || (dailyRecap.rincian?.length ? dailyRecap.rincian[0].status : null),
         });
       }
     }
@@ -599,61 +640,172 @@ export const SiswaDashboard: React.FC = () => {
       firstDayIndex,
       days,
     };
-  }, [selectedMonth, monthlyRecap]);
+  }, [selectedMonth, monthlyRecap, dailyRecap, selectedDate]);
+
+  // Today KBM Schedule for Kehadiran Tab (Satu Kabel: Konsisten dengan Guru, Ops & Monitoring)
+  const todayKbmSchedule = useMemo(() => {
+    const rawList = scheduleRes?.data;
+    const list = Array.isArray(rawList)
+      ? rawList
+      : Array.isArray((rawList as any)?.data)
+        ? (rawList as any).data
+        : Array.isArray(scheduleRes?.items)
+          ? scheduleRes.items
+          : [];
+
+    if (list.length === 0) return [];
+
+    return list.map((item: any, idx: number) => {
+      const norm = normalizeFromSesiAbsensi(item);
+      const isOverdue = norm.status.isOverdue;
+      const isFinished = norm.status.isFinished;
+      const isLive = norm.status.isLive;
+
+      const calcStatus = isOverdue 
+        ? 'Terlewat' 
+        : isFinished 
+        ? 'Selesai' 
+        : isLive 
+        ? 'Sedang Berlangsung' 
+        : 'Mendatang';
+
+      return {
+        id: norm.id || String(idx),
+        kode: item.Mapel?.kode_mapel || norm.mapel_nama,
+        mapel: norm.mapel_nama,
+        guru: norm.guru_nama,
+        lokasi: norm.kelas_nama,
+        jam: `${norm.jam_mulai} - ${norm.jam_selesai}`,
+        jamLabel: norm.jamLabel,
+        status: calcStatus,
+        _raw: norm,
+      };
+    });
+  }, [scheduleRes]);
 
   // Historis Sesi Absensi & Tap for Kehadiran Tab Right Column
   const sessionAttendanceHistory = useMemo(() => {
     const formatWaktu = (raw: any) => {
       if (!raw || raw === '-') return '-';
       const str = String(raw).trim();
+      const tzLabel = getTimezoneLabel();
       if (str.includes('T') || str.includes('Z')) {
         const formatted = formatLocalTimeFromISO(str);
-        if (formatted) return `${formatted} WIB`;
+        if (formatted) return `${formatted} ${tzLabel}`;
       }
-      const clean = str.replace(/WIB/gi, '').trim();
-      return clean ? `${clean} WIB` : '-';
+      const clean = str.replace(/(WIB|WITA|WIT)/gi, '').trim();
+      return clean ? `${clean} ${tzLabel}` : '-';
     };
 
-    // 1. First check dailyRecapRes for selectedDate
+    let formattedDate = selectedDate;
+    if (selectedDate && selectedDate.includes('-')) {
+      try {
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch {}
+    }
+
     const dailyData = dailyRecapRes?.data;
     const rincianList = Array.isArray(dailyData?.rincian) ? dailyData.rincian : [];
 
+    // If today or selectedDate is today, build unified cards anchored directly on todayKbmSchedule!
+    if (selectedDate === todayIso || !selectedDate) {
+      const result: any[] = [];
+
+      // 1. Gate attendance if exists in rincianList
+      const gateItem = rincianList.find(
+        (r: any) => r.asal_gerbang || r.is_gerbang || r.jenis_kegiatan === 'Pintu Gerbang' || r.sesi_nama === 'Pintu Gerbang'
+      );
+      if (gateItem) {
+        const waktuRaw = gateItem.waktu_tap || gateItem.waktu || gateItem.waktu_masuk || gateItem.created_at || '-';
+        result.push({
+          id: gateItem.id || 'gate-entry',
+          sesi_id: gateItem.sesi_absensi_id || gateItem.sesi_id || 'gate',
+          date: formattedDate,
+          status: gateItem.status || 'HADIR',
+          metode: gateItem.metode_absen || gateItem.metode || 'RFID',
+          jamLabel: undefined,
+          waktu: formatWaktu(waktuRaw),
+          sesi: 'Presensi Pintu Gerbang',
+          nama_guru: 'Petugas Piket Gerbang',
+          status_guru: 'HADIR',
+          keterangan: gateItem.keterangan || 'Presensi Gerbang Masuk',
+        });
+      }
+
+      // 2. Map every KBM session from todayKbmSchedule (100% same source as Guru & Monitoring)
+      todayKbmSchedule.forEach((sch: any, idx: number) => {
+        // Match with student's tap in rincianList
+        const matchedTap = rincianList.find((r: any) => {
+          const rSesiId = r.sesi_absensi_id || r.sesi_id;
+          if (rSesiId && sch.id && rSesiId === sch.id) return true;
+          const rMapel = String(r.jenis_kegiatan || r.sesi_nama || r.nama_sesi || r.mapel || '').toLowerCase();
+          const schMapel = String(sch.mapel || sch.kode || '').toLowerCase();
+          return schMapel && rMapel && (rMapel.includes(schMapel) || schMapel.includes(rMapel));
+        });
+
+        const isTapped = matchedTap && (matchedTap.status === 'HADIR' || matchedTap.status === 'TEPAT_WAKTU' || matchedTap.status === 'TERLAMBAT' || matchedTap.status === 'SAKIT' || matchedTap.status === 'IZIN');
+        const tapWaktuRaw = matchedTap ? (matchedTap.waktu_tap || matchedTap.waktu || matchedTap.waktu_masuk || matchedTap.created_at) : null;
+        const tapWaktuStr = tapWaktuRaw ? formatWaktu(tapWaktuRaw) : null;
+
+        const resolvedStatus = isTapped 
+          ? matchedTap.status 
+          : sch.status === 'Sedang Berlangsung' 
+          ? 'BERLANGSUNG' 
+          : sch.status === 'Selesai' 
+          ? 'SELESAI' 
+          : sch.status === 'Terlewat' 
+          ? 'TERLEWAT' 
+          : 'MENDATANG';
+
+        const rawTeacherStatus = sch._raw?.status?.teacherStatus 
+          || (sch._raw?.session?.waktu_tap ? 'HADIR' : (sch._raw?.status?.isLive ? 'HADIR' : 'BELUM_TAP'));
+
+        result.push({
+          id: sch.id || `sch-${idx}`,
+          sesi_id: sch.id,
+          date: formattedDate,
+          status: resolvedStatus,
+          metode: isTapped ? (matchedTap?.metode_absen || matchedTap?.metode || 'RFID') : 'Terjadwal',
+          jamLabel: sch.jamLabel,
+          waktu: sch.jam.includes('WIB') ? sch.jam : `${sch.jam} WIB`,
+          waktu_tap: tapWaktuStr,
+          sesi: `KBM - ${sch.mapel}`,
+          nama_guru: sch.guru || 'Guru Pengampu',
+          status_guru: rawTeacherStatus,
+          waktu_guru: sch._raw?.session?.waktu_tap || null,
+          keterangan: isTapped ? (matchedTap?.keterangan || 'Presensi KBM Tercatat') : 'Sesi Terjadwal Hari Ini',
+        });
+      });
+
+      if (result.length > 0) return result;
+    }
+
+    // 3. Fallback for historical dates (monthlyRecap or dailyRecap)
     if (rincianList.length > 0) {
       return rincianList.map((item: any, idx: number) => {
         const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
-        const isTerlambat = item.status === 'TERLAMBAT';
-        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
-
         const waktuRaw = item.waktu_tap || item.waktu || item.waktu_masuk || item.created_at || '-';
         const waktuStr = formatWaktu(waktuRaw);
-
-        let formattedDate = selectedDate;
-        if (selectedDate && selectedDate.includes('-')) {
-          try {
-            const [y, m, d] = selectedDate.split('-').map(Number);
-            const dt = new Date(y, m - 1, d);
-            formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-          } catch {}
-        }
-
         const sesiNama = item.jenis_kegiatan || item.sesi_nama || item.nama_sesi || item.mapel || 'Sesi Presensi';
 
         return {
           id: item.id || `rincian-${idx}`,
           sesi_id: item.sesi_absensi_id || item.sesi_id || item.id,
           date: formattedDate,
-          status: item.status || 'HADIR',
+          status: item.status || 'BELUM_TAP',
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
+          jamLabel: item.jamLabel,
           waktu: waktuStr,
           sesi: sesiNama,
-          nama_guru: item.nama_guru || item.guru || item.Guru?.nama_guru || null,
-          status_guru: item.status_guru || 'HADIR',
+          nama_guru: item.nama_guru || item.guru || item.Guru?.nama_guru || item.SesiAbsensi?.Guru?.nama_guru || null,
+          status_guru: item.status_guru || 'BELUM_HADIR',
           keterangan: item.keterangan || '',
         };
       });
     }
 
-    // 2. Strict filtering by selectedDate or todayIso to ensure today's data is isolated
     const detailList = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
     const targetDate = selectedDate || todayIso;
     const listToMap = detailList.filter((item: any) => item.tanggal === targetDate);
@@ -661,97 +813,26 @@ export const SiswaDashboard: React.FC = () => {
     if (listToMap.length > 0) {
       return listToMap.map((item: any, idx: number) => {
         const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
-        const isTerlambat = item.status === 'TERLAMBAT';
-        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
-
         const waktuRaw = item.waktu_masuk || item.waktu || item.waktu_tap || '-';
         const waktuStr = formatWaktu(waktuRaw);
-
-        let formattedDate = item.tanggal || '-';
-        if (item.tanggal && item.tanggal.includes('-')) {
-          try {
-            const [y, m, d] = item.tanggal.split('-').map(Number);
-            const dt = new Date(y, m - 1, d);
-            formattedDate = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-          } catch {}
-        }
-
         const sesiNama = item.sesi_nama || item.nama_sesi || item.jenis_kegiatan || item.mapel || 'Sesi Presensi';
 
         return {
           id: item.id || item.tanggal || `session-${idx}`,
           sesi_id: item.sesi_absensi_id || item.sesi_id || item.id,
           date: formattedDate,
-          status: item.status || 'HADIR',
+          status: item.status || 'BELUM_TAP',
           metode: item.metode_absen || item.metode || (isHadir ? 'RFID' : 'Manual'),
           waktu: waktuStr,
           sesi: sesiNama,
-          nama_guru: item.nama_guru || item.guru || null,
-          status_guru: item.status_guru || 'HADIR',
+          nama_guru: item.nama_guru || item.guru || item.Guru?.nama_guru || item.SesiAbsensi?.Guru?.nama_guru || null,
+          status_guru: item.status_guru || 'BELUM_HADIR',
           keterangan: item.keterangan || '',
         };
       });
     }
     return [];
-  }, [dailyRecapRes, monthlyRecap, selectedDate]);
-
-  // Today KBM Schedule for Kehadiran Tab Bottom Section
-  const todayKbmSchedule = useMemo(() => {
-    console.log('📊 [FRONTEND USEMEMO] scheduleRes raw object:', scheduleRes);
-    const rawList = scheduleRes?.data;
-    const list = Array.isArray(rawList)
-      ? rawList
-      : Array.isArray((rawList as any)?.data)
-        ? (rawList as any).data
-        : Array.isArray(scheduleRes)
-          ? scheduleRes
-          : [];
-
-    console.log('📋 [FRONTEND USEMEMO] Parsed todayKbmSchedule list count:', list.length, list);
-
-    if (list.length > 0) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-      return list.map((item: any, idx: number) => {
-        const jamMulai = item.jam_mulai || item.jam?.split('-')[0]?.trim() || '';
-        const jamSelesai = item.jam_selesai || item.jam?.split('-')[1]?.trim() || '';
-
-        let calcStatus = 'Mendatang';
-        if (jamMulai && jamMulai !== '??:??') {
-          const [sH, sM] = jamMulai.split(':').map(Number);
-          const startMin = (sH || 0) * 60 + (sM || 0);
-          let endMin = startMin + 90;
-          if (jamSelesai && jamSelesai !== '??:??') {
-            const [eH, eM] = jamSelesai.split(':').map(Number);
-            endMin = (eH || 0) * 60 + (eM || 0);
-          }
-
-          if (currentMinutes >= startMin && currentMinutes <= endMin) {
-            calcStatus = 'Sedang Berlangsung';
-          } else if (currentMinutes > endMin) {
-            calcStatus = 'Selesai';
-          }
-        }
-
-        const kodeMapel = item.Mapel?.kode_mapel || item.kode_mapel || item.kode || `KBM-${idx + 1}`;
-        const namaMapel = item.Mapel?.nama_mapel || item.nama_mapel || item.kegiatan || item.jenis_kegiatan || item.mapel || 'Mata Pelajaran';
-        const namaGuru = item.Guru?.User?.full_name || item.Guru?.nama_guru || item.nama_guru || item.guru || 'Guru Pengampu';
-        const namaKelas = item.Kelas?.nama_kelas || item.kelas_nama || item.lokasi || item.ruang || 'Ruang Kelas';
-
-        return {
-          id: item.id || String(idx),
-          kode: kodeMapel,
-          mapel: namaMapel,
-          guru: namaGuru,
-          lokasi: namaKelas,
-          jam: item.jam || (jamMulai && jamSelesai ? `${jamMulai} - ${jamSelesai}` : '07:00 - 08:30'),
-          status: calcStatus,
-        };
-      });
-    }
-    return [];
-  }, [scheduleRes]);
+  }, [dailyRecapRes, monthlyRecap, selectedDate, todayKbmSchedule, todayIso]);
 
   // Buku Catatan Kedisiplinan & Prestasi for Catatan Poin Tab
   const bukuCatatanList = useMemo(() => {
@@ -1018,6 +1099,9 @@ export const SiswaDashboard: React.FC = () => {
                       if (sesi.status === 'Sedang Berlangsung') {
                         displayStatusLabel = isStudentAtSchool ? 'KBM' : 'Belum';
                         badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 animate-pulse';
+                      } else if (sesi.status === 'Terlewat') {
+                        displayStatusLabel = 'Terlewat';
+                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
                       } else if (sesi.status === 'Mendatang') {
                         displayStatusLabel = 'Jadwal';
                         badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
@@ -1910,7 +1994,7 @@ export const SiswaDashboard: React.FC = () => {
                     isPetugasSiswa={true}
                     userRole="PETUGAS_KELAS"
                     socketConnected={true}
-                    refreshData={refetchNotPresent}
+                    refreshData={async () => { await refetchMiniStats(); await refetchNotPresent(); }}
                   />
                 </Suspense>
               </div>

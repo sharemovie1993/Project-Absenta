@@ -7,12 +7,12 @@ import { SesiGuard } from '../guards/sesi.guard';
 import { RoleName } from '../../../../constants/enums';
 
 export async function sesiAbsensiRoutes(fastify: any) {
-  // 1. Start Sesi (Create SesiAbsensi) - OPERATOR ONLY (SISWA Petugas)
+  // 1. Start Sesi (Create SesiAbsensi) - GURU & OPERATOR (SISWA Petugas)
   // POST /api/attendance/sesi-absensi
   fastify.post('/', {
     preHandler: [
         requireMultiSesiMode,
-        requireCapability('attendance.sessions.create'), 
+        requireCapability('attendance.sessions.create', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateCreate
@@ -32,11 +32,11 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.list,
   });
 
-  // 3. Update Status (Close Sesi) - OPERATOR ONLY
+  // 3. Update Status (Close Sesi) - GURU & OPERATOR ONLY
   fastify.patch('/:id/status', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.close'), 
+        requireCapability('attendance.sessions.close', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateSessionAccess
@@ -44,11 +44,11 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.updateStatus,
   });
 
-  // 4. Update Sesi Details - OPERATOR ONLY
+  // 4. Update Sesi Details - GURU & OPERATOR ONLY
   fastify.put('/:id', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.update'), 
+        requireCapability('attendance.sessions.update', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateSessionAccess

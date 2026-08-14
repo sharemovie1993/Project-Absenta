@@ -42,40 +42,121 @@ export class SesiTapEngineService {
   }
 
   async tapSiswa(tenantId: string, _org: any, sesi_id: string, data: any, _userId: string) {
-    const { siswa_id, status = 'HADIR', catatan, waktu_tap, nisn, rfid } = data;
+    const { siswa_id, siswa_akademik_id, status = 'HADIR', catatan, waktu_tap, nisn, rfid } = data;
 
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesi_id, tenant_id: tenantId }
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
+    if (sesi.status === 'SELESAI') {
+      throw new Error('Sesi KBM telah selesai. Presensi sudah ditutup.');
+    }
 
-    let targetSiswaId = siswa_id;
-    if (!targetSiswaId && (nisn || rfid)) {
-      const found = await prisma.siswa.findFirst({
+    const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
+
+    // 🛡️ Time-Window Validation:
+    // Cegah siswa mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
+    // Presensi HADIR mandiri hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
+    // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), Guru/Petugas manual, atau status non-HADIR (IZIN, SAKIT, DISPEN).
+    const isSystemOrManualOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId) || Boolean(siswa_akademik_id) || status !== 'HADIR';
+    if (!isSystemOrManualOp && status === 'HADIR' && sesi.waktu_mulai) {
+      const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
+      const earliestAllowed = new Date(sesi.waktu_mulai.getTime() - EARLY_TOLERANCE_MS);
+      if (tapTime < earliestAllowed) {
+        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const openTimeStr = fmt(earliestAllowed);
+        const startTimeStr = fmt(sesi.waktu_mulai);
+        throw new Error(`Sesi KBM belum dibuka. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} (15 menit sebelum jam mulai).`);
+      }
+    }
+
+    let siswaAkademik: any = null;
+
+    // 1. Direct match by explicit siswa_akademik_id (Manual list Guru / Petugas)
+    if (siswa_akademik_id) {
+      siswaAkademik = await prisma.siswaAkademik.findFirst({
+        where: { id: siswa_akademik_id },
+        select: { id: true, siswa_id: true }
+      });
+    }
+
+    // 2. Resolve via siswa_id (could be SiswaAkademik.id, Siswa.id, or NIS/NISN/RFID token)
+    if (!siswaAkademik && siswa_id) {
+      // 2a. Check if passed siswa_id is directly a SiswaAkademik ID
+      siswaAkademik = await prisma.siswaAkademik.findFirst({
+        where: { id: siswa_id },
+        select: { id: true, siswa_id: true }
+      });
+
+      // 2b. Check if passed siswa_id is Siswa.id in this class
+      if (!siswaAkademik) {
+        siswaAkademik = await prisma.siswaAkademik.findFirst({
+          where: { siswa_id: siswa_id, kelas_id: sesi.kelas_id },
+          select: { id: true, siswa_id: true }
+        });
+      }
+
+      // 2c. Check if passed siswa_id is Siswa.id in any class
+      if (!siswaAkademik) {
+        siswaAkademik = await prisma.siswaAkademik.findFirst({
+          where: { siswa_id: siswa_id },
+          select: { id: true, siswa_id: true }
+        });
+      }
+
+      // 2d. Check if passed siswa_id is NIS, NISN, or RFID barcode token
+      if (!siswaAkademik) {
+        const foundSiswa = await prisma.siswa.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nis: siswa_id },
+              { nisn: siswa_id },
+              { no_rfid: siswa_id }
+            ]
+          },
+          select: { id: true }
+        });
+        if (foundSiswa) {
+          siswaAkademik = await prisma.siswaAkademik.findFirst({
+            where: { siswa_id: foundSiswa.id, kelas_id: sesi.kelas_id },
+            select: { id: true, siswa_id: true }
+          }) || await prisma.siswaAkademik.findFirst({
+            where: { siswa_id: foundSiswa.id },
+            select: { id: true, siswa_id: true }
+          });
+        }
+      }
+    }
+
+    // 3. Resolve via explicit nisn or rfid fields
+    if (!siswaAkademik && (nisn || rfid)) {
+      const foundSiswa = await prisma.siswa.findFirst({
         where: {
           tenant_id: tenantId,
           OR: [
-            { nisn: nisn || undefined },
-            { no_rfid: rfid || undefined }
+            ...(nisn ? [{ nisn }, { nis: nisn }] : []),
+            ...(rfid ? [{ no_rfid: rfid }] : [])
           ]
         },
         select: { id: true }
       });
-      if (found) targetSiswaId = found.id;
+      if (foundSiswa) {
+        siswaAkademik = await prisma.siswaAkademik.findFirst({
+          where: { siswa_id: foundSiswa.id, kelas_id: sesi.kelas_id },
+          select: { id: true, siswa_id: true }
+        }) || await prisma.siswaAkademik.findFirst({
+          where: { siswa_id: foundSiswa.id },
+          select: { id: true, siswa_id: true }
+        });
+      }
     }
 
-    if (!targetSiswaId) throw new Error('Siswa tidak ditemukan');
+    if (!siswaAkademik) {
+      throw new Error('Siswa tidak ditemukan');
+    }
 
-    const siswaAkademik = await prisma.siswaAkademik.findFirst({
-      where: { siswa_id: targetSiswaId, kelas_id: sesi.kelas_id },
-      select: { id: true }
-    });
-
-    if (!siswaAkademik) throw new Error('Siswa tidak terdaftar di kelas sesi ini');
-
-    const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
     let isTerlambat = false;
-
     if (sesi.waktu_mulai && tapTime > sesi.waktu_mulai) {
       isTerlambat = true;
     }
@@ -104,7 +185,7 @@ export class SesiTapEngineService {
           is_terlambat: isTerlambat,
           poin_kehadiran: poin,
           waktu_tap: tapTime,
-          catatan: catatan || existing.catatan,
+          catatan: catatan !== undefined ? catatan : existing.catatan,
           updated_at: new Date()
         }
       });
@@ -113,6 +194,7 @@ export class SesiTapEngineService {
         data: {
           tenant_id: tenantId,
           sesi_id,
+          siswa_id: siswaAkademik.siswa_id || null,
           siswa_akademik_id: siswaAkademik.id,
           status,
           is_terlambat: isTerlambat,
@@ -133,8 +215,32 @@ export class SesiTapEngineService {
       where: { id: sesiId, tenant_id: tenantId }
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
+    if (sesi.status === 'SELESAI') {
+      throw new Error('Sesi KBM telah selesai. Presensi guru sudah ditutup.');
+    }
 
     const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
+
+    // 🛡️ Time-Window Validation for Guru Attendance:
+    // Cegah guru mengabsenkan diri untuk sesi jam siang/sore dari pagi hari secara remote.
+    // Check-in HADIR hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
+    if (status === 'HADIR' && sesi.waktu_mulai) {
+      const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
+      const earliestAllowed = new Date(sesi.waktu_mulai.getTime() - EARLY_TOLERANCE_MS);
+      if (tapTime < earliestAllowed) {
+        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const openTimeStr = fmt(earliestAllowed);
+        const startTimeStr = fmt(sesi.waktu_mulai);
+        throw new Error(`Sesi KBM belum dibuka. Presensi kehadiran guru untuk sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} (15 menit sebelum jam mulai).`);
+      }
+    }
+
+    let isTerlambat = false;
+    let menitKeterlambatan = 0;
+    if (sesi.waktu_mulai && tapTime > sesi.waktu_mulai) {
+      isTerlambat = true;
+      menitKeterlambatan = Math.max(0, Math.floor((tapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
+    }
 
     const existing = await prisma.absenGuru.findFirst({
       where: {
@@ -151,6 +257,8 @@ export class SesiTapEngineService {
         data: {
           status,
           waktu_tap: tapTime,
+          is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
           catatan: catatan || existing.catatan,
           updated_at: new Date()
         }
@@ -165,6 +273,8 @@ export class SesiTapEngineService {
           semester_id: sesi.semester_id,
           status,
           waktu_tap: tapTime,
+          is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
           catatan: catatan || null
         }
       });
@@ -174,12 +284,14 @@ export class SesiTapEngineService {
   }
 
   async listAbsenSiswa(tenantId: string, _org: any, sesi_id: string, _userId: string) {
-    const sesi = await prisma.sesiAbsensi.findFirst({
+    let sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesi_id, tenant_id: tenantId },
       select: {
         id: true,
         kelas_id: true,
         guru_id: true,
+        tahun_pelajaran_id: true,
+        semester_id: true,
         status: true,
         created_at: true,
         Guru: { select: { nama_guru: true } },
@@ -189,17 +301,76 @@ export class SesiTapEngineService {
         }
       }
     });
+
+    // Fallback: If physical session does not exist in DB yet, resolve from JadwalKBM (virtual schedule slot)
+    if (!sesi) {
+      const cleanId = sesi_id.replace(/^(sched-hist-|sched_|sched-)/, '');
+      const jadwal = await prisma.jadwalKBM.findFirst({
+        where: { id: cleanId, tenant_id: tenantId },
+        select: { 
+          id: true, 
+          kelas_id: true, 
+          guru_id: true, 
+          tahun_pelajaran_id: true, 
+          semester_id: true, 
+          Guru: { select: { nama_guru: true } } 
+        }
+      });
+
+      if (jadwal) {
+        sesi = {
+          id: sesi_id,
+          kelas_id: jadwal.kelas_id,
+          guru_id: jadwal.guru_id,
+          tahun_pelajaran_id: jadwal.tahun_pelajaran_id,
+          semester_id: jadwal.semester_id,
+          status: 'MENDATANG',
+          created_at: new Date(),
+          Guru: jadwal.Guru,
+          AbsenGuru: []
+        } as any;
+      }
+    }
+
     if (!sesi) throw new Error('Sesi tidak ditemukan');
 
-    // 1. Fetch Students from SiswaAkademik
-    let siswaAkademikList = await prisma.siswaAkademik.findMany({
-      where: { kelas_id: sesi.kelas_id },
+    // 1. Fetch Students from SiswaAkademik with Active Filter
+    const saWhere: any = {
+      kelas_id: sesi.kelas_id,
+      status: 'AKTIF'
+    };
+    if (sesi.tahun_pelajaran_id && sesi.tahun_pelajaran_id !== 'default-tp') {
+      saWhere.tahun_pelajaran_id = sesi.tahun_pelajaran_id;
+    }
+
+    let rawSiswaAkademikList = await prisma.siswaAkademik.findMany({
+      where: saWhere,
       select: {
         id: true,
         siswa_id: true,
         siswa: { select: { id: true, nama_siswa: true, nisn: true, no_rfid: true } }
       }
     });
+
+    if (rawSiswaAkademikList.length === 0) {
+      rawSiswaAkademikList = await prisma.siswaAkademik.findMany({
+        where: { kelas_id: sesi.kelas_id },
+        select: {
+          id: true,
+          siswa_id: true,
+          siswa: { select: { id: true, nama_siswa: true, nisn: true, no_rfid: true } }
+        }
+      });
+    }
+
+    // Deduplicate by unique siswa_id to prevent duplicates across academic years/semesters
+    const uniqueMap = new Map<string, typeof rawSiswaAkademikList[0]>();
+    rawSiswaAkademikList.forEach(sa => {
+      if (sa.siswa_id && !uniqueMap.has(sa.siswa_id)) {
+        uniqueMap.set(sa.siswa_id, sa);
+      }
+    });
+    const siswaAkademikList = Array.from(uniqueMap.values());
 
     // 1b. Fallback: If SiswaAkademik list is empty, fetch directly from Siswa table
     let directStudents: any[] = [];
@@ -242,7 +413,7 @@ export class SesiTapEngineService {
           nama_siswa: sa.siswa?.nama_siswa || '-',
           nisn: sa.siswa?.nisn || '-',
           is_guru: false,
-          status: a?.status || 'ALPA',
+          status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
           is_terlambat: a?.is_terlambat || false,
           poin_kehadiran: a?.poin_kehadiran || 0,
           waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
@@ -264,7 +435,7 @@ export class SesiTapEngineService {
           nama_siswa: s.nama_siswa || '-',
           nisn: s.nisn || s.nis || '-',
           is_guru: false,
-          status: a?.status || 'ALPA',
+          status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
           is_terlambat: a?.is_terlambat || false,
           poin_kehadiran: a?.poin_kehadiran || 0,
           waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,

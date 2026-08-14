@@ -382,7 +382,7 @@ export async function getStatistikHarian(
 }
 
 // Sesi Absensi APIs (MULTI_SESI)
-export async function createSesiAbsensi(payload: { kelas_id: string; guru_id?: string; mapel_id?: string; jenis_kegiatan: string; slot_kbm?: number; tanggal: string; waktu_mulai: string; waktu_selesai?: string; tahun_pelajaran_id?: string; sumber_sesi?: string; jadwal_template_id?: string }): Promise<{ success: boolean; message: string; data: any }> {
+export async function createSesiAbsensi(payload: { kelas_id: string; guru_id?: string; mapel_id?: string; jenis_kegiatan: string; slot_kbm?: number; tanggal: string; waktu_mulai: string; waktu_selesai?: string; tahun_pelajaran_id?: string; sumber_sesi?: string; jadwal_template_id?: string; foto_bukti_url?: string }): Promise<{ success: boolean; message: string; data: any }> {
   const tz = (localStorage.getItem('active_timezone') || 'Asia/Jakarta');
   const offset = ((): string => {
     switch (tz) {

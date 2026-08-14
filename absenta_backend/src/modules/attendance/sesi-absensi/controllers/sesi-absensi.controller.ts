@@ -27,17 +27,35 @@ export const sesiAbsensiController = {
       return { success: true, message: 'Sesi absensi created', data: created };
     } catch (error: any) {
       console.error('Create sesi absensi error:', error);
-      if (error.message.includes('Forbidden')) {
-        reply.status(403);
-      } else if (error.message.includes('Sesi sudah ada')) {
-        reply.status(409);
-      } else if (error.message.includes('required') || error.message.includes('tidak valid') || error.message.includes('tumpang tindih')) {
+      let readableMsg = error.message || 'Internal server error';
+
+      if (error?.name === 'ZodError' || error?.issues) {
+        const issues = error?.issues || [];
+        readableMsg = 'Validasi input tidak valid: ' + (issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ') || 'sintaks data salah');
         reply.status(400);
-        if (error.message.includes('tumpang tindih')) reply.status(409);
-      } else {
-        reply.status(500);
+        return { success: false, message: readableMsg };
       }
-      return { success: false, message: error.message || 'Internal server error' };
+
+      if (typeof error.message === 'string' && error.message.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(error.message);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            readableMsg = 'Validasi data tidak valid: ' + (parsed[0].message || parsed[0].code || 'Format salah');
+          }
+        } catch (_) {}
+      }
+
+      if (readableMsg.includes('Forbidden')) {
+        reply.status(403);
+      } else if (readableMsg.includes('Sesi sudah ada')) {
+        reply.status(409);
+      } else if (readableMsg.includes('required') || readableMsg.includes('tidak valid') || readableMsg.includes('tumpang tindih')) {
+        reply.status(400);
+        if (readableMsg.includes('tumpang tindih')) reply.status(409);
+      } else {
+        reply.status(400);
+      }
+      return { success: false, message: readableMsg };
     }
   },
 

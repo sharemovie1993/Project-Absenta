@@ -20,7 +20,7 @@ export const HeroStatsRadar: React.FC<HeroStatsRadarProps> = ({
   onTabChange
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-2 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800/80">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800/80">
       {/* 1. Kehadiran Hari Ini Card */}
       <div 
         onClick={() => onTabChange('health')}

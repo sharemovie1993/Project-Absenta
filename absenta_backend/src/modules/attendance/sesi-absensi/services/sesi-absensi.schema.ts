@@ -21,15 +21,18 @@ function parseSafeDate(input: any): Date {
 }
 
 export const createSesiAbsensiSchema = z.object({
+  jadwal_kbm_id: z.string().optional().nullable(),
   kelas_id: z.string().min(1, 'kelas_id wajib diisi'),
   guru_id: z.string().optional().nullable().or(z.literal('')),
   mapel_id: z.string().optional().nullable(),
-  waktu_mulai: z.union([z.date(), z.string()]).transform((v) => parseSafeDate(v)),
-  waktu_selesai: z.union([z.date(), z.string()]).transform((v) => parseSafeDate(v)),
+  waktu_mulai: z.union([z.date(), z.string()]).transform((v) => parseSafeDate(v)).optional().nullable(),
+  waktu_selesai: z.union([z.date(), z.string()]).transform((v) => (v ? parseSafeDate(v) : null)).optional().nullable(),
   jenis_kegiatan_id: z.string().optional().nullable(),
   jenis_kegiatan: z.string().optional().nullable(),
   tanggal: z.string().optional().nullable(),
   keterangan: z.string().optional().nullable(),
+  foto_kegiatan: z.string().optional().nullable(),
+  foto_bukti_url: z.string().optional().nullable(),
   tipe_kegiatan: z.string().optional().nullable(),
   is_active: z.boolean().optional().default(true),
 });

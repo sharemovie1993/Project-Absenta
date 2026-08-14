@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParentAuthStore } from '../../../store/parentAuthStore';
-import { getStudentNotifications, getParentDashboard, type NotificationRecord } from '../../../api/parent.api';
+import { getStudentNotifications, getParentDashboard, reportStudentAbsence, type NotificationRecord } from '../../../api/parent.api';
 import { getTimezone } from '../../../utils/attendance/time';
 import { useParentSocket } from '../hooks/useParentSocket';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -58,6 +58,67 @@ export default function ParentDashboard() {
   // Form Perizinan 1-Tap State
   const [jenisIzin, setJenisIzin] = useState<'sakit' | 'izin'>('sakit');
   const [alasanIzin, setAlasanIzin] = useState('');
+  const [isSubmittingIzin, setIsSubmittingIzin] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [leaveHistory, setLeaveHistory] = useState<any[]>([
+    {
+      id: 'rz1',
+      jenis: 'Sakit',
+      badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+      timestamp: '2026-08-10 06:15 WIB',
+      alasan: 'Demam tinggi dan flu berat, saran dokter istirahat total 2 hari.',
+      statusText: 'Disetujui / Terdaftar',
+      statusColor: 'text-emerald-600 dark:text-emerald-400',
+    },
+  ]);
+
+  const handleSendLeaveRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student?.siswa_id) {
+      toast.error('Data anak belum teridentifikasi.');
+      return;
+    }
+    if (!alasanIzin.trim()) {
+      toast.error('Mohon isi alasan / keterangan perizinan.');
+      return;
+    }
+
+    setIsSubmittingIzin(true);
+    try {
+      const statusPayload = jenisIzin === 'sakit' ? 'SAKIT' : 'IZIN';
+      await reportStudentAbsence(student.siswa_id, {
+        status: statusPayload,
+        keterangan: alasanIzin,
+        attachment: attachmentFile || undefined,
+      });
+
+      toast.success('Surat perizinan berhasil terkirim ke sistem & Wali Kelas!');
+
+      const newRecord = {
+        id: 'l-' + Date.now(),
+        jenis: jenisIzin === 'sakit' ? 'Sakit' : 'Izin',
+        badgeColor: jenisIzin === 'sakit'
+          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+          : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
+        timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB (Hari ini)',
+        alasan: alasanIzin,
+        statusText: 'Disetujui / Terdaftar',
+        statusColor: 'text-emerald-600 dark:text-emerald-400',
+      };
+      setLeaveHistory(prev => [newRecord, ...prev]);
+
+      setAlasanIzin('');
+      setAttachmentFile(null);
+
+      // Refresh dashboard info
+      getParentDashboard().then(setData).catch(console.error);
+    } catch (err: any) {
+      console.error('Lapor absen error:', err);
+      toast.error(err?.response?.data?.message || 'Gagal mengirim perizinan.');
+    } finally {
+      setIsSubmittingIzin(false);
+    }
+  };
 
   // 1. Refresh Dashboard Data (Background)
   const handleRefresh = async () => {
@@ -589,13 +650,13 @@ export default function ParentDashboard() {
                   </p>
                 </div>
 
-                <form onSubmit={(e) => { e.preventDefault(); toast.success('Surat izin berhasil dikirimkan ke Wali Kelas!'); }} className="space-y-4">
+                <form onSubmit={handleSendLeaveRequest} className="space-y-4">
                   {/* Jenis Perizinan (Segmented Buttons) */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                       Jenis Perizinan
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => setJenisIzin('sakit')}
@@ -606,7 +667,7 @@ export default function ParentDashboard() {
                             : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
                         )}
                       >
-                        Sakit
+                        🩺 Sakit
                       </button>
                       <button
                         type="button"
@@ -614,23 +675,11 @@ export default function ParentDashboard() {
                         className={cn(
                           "py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer",
                           jenisIzin === 'izin'
-                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
                             : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
                         )}
                       >
-                        Izin
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setJenisIzin('pulang_cepat' as any)}
-                        className={cn(
-                          "py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer",
-                          (jenisIzin as any) === 'pulang_cepat'
-                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
-                            : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
-                        )}
-                      >
-                        Pulang Cepat
+                        🏠 Izin
                       </button>
                     </div>
                   </div>
@@ -644,7 +693,7 @@ export default function ParentDashboard() {
                       rows={3}
                       value={alasanIzin}
                       onChange={(e) => setAlasanIzin(e.target.value)}
-                      placeholder="Contoh: Ananda Fahrizal sakit demam tinggi sejak semalam, saran dokter istirahat."
+                      placeholder="Contoh: Ananda sakit demam tinggi sejak semalam, saran dokter istirahat total 2 hari."
                       className="w-full p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 text-xs font-medium focus:outline-none focus:border-amber-500 transition-all placeholder:text-slate-400"
                     />
                   </div>
@@ -652,61 +701,56 @@ export default function ParentDashboard() {
                   {/* Lampiran Foto Surat Dokter / Catatan */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                      Lampiran Foto Surat Dokter / Catatan
+                      Lampiran Foto Surat Dokter / Bukti (Opsional)
                     </label>
-                    <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 text-center hover:border-amber-500/50 transition-all cursor-pointer group">
-                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
-                        <FileText size={20} />
+                    <label className="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 text-center hover:border-amber-500/50 transition-all cursor-pointer block group">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      <div className="w-9 h-9 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-1.5 group-hover:scale-110 transition-transform">
+                        <FileText size={18} />
                       </div>
                       <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                        Klik untuk Unggah Surat Dokter / Bukti
+                        {attachmentFile ? attachmentFile.name : 'Klik untuk Unggah Surat Dokter / Bukti'}
                       </p>
                       <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
-                        JPG, PNG, PDF maks 5MB
+                        {attachmentFile ? `${(attachmentFile.size / 1024).toFixed(1)} KB` : 'JPG, PNG, PDF maks 5MB'}
                       </p>
-                    </div>
+                    </label>
                   </div>
 
                   {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full h-11 rounded-2xl text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white border-none flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 cursor-pointer"
+                    disabled={isSubmittingIzin}
+                    className="w-full h-11 rounded-2xl text-xs font-extrabold bg-amber-600 hover:bg-amber-700 text-white border-none flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 cursor-pointer disabled:opacity-50"
                   >
-                    <Send size={15} />
-                    <span>Kirim Surat Izin ke Wali Kelas</span>
+                    {isSubmittingIzin ? (
+                      <RefreshCw size={15} className="animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
+                    <span>{isSubmittingIzin ? 'Mengirim Surat Izin...' : 'Kirim Surat Izin ke Wali Kelas'}</span>
                   </Button>
                 </form>
               </div>
 
               {/* Right Column: Riwayat Surat Izin Diajukan */}
               <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-                <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
                     Riwayat Surat Izin Diajukan
                   </h3>
+                  <span className="text-xs font-bold text-slate-400 font-mono">
+                    {leaveHistory.length} Surat
+                  </span>
                 </div>
 
                 <div className="space-y-3">
-                  {[
-                    {
-                      id: 'rz1',
-                      jenis: 'Sakit',
-                      badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-                      timestamp: '2026-08-10 06:15 WIB',
-                      alasan: 'Demam tinggi dan flu berat, saran dokter istirahat total 2 hari.',
-                      statusText: 'Disetujui Wali Kelas',
-                      statusColor: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                    {
-                      id: 'rz2',
-                      jenis: 'Pulang Cepat',
-                      badgeColor: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
-                      timestamp: '2026-08-10 07:05 WIB',
-                      alasan: 'Mengikuti seleksi tim sepakbola daerah jam 11.00 WIB',
-                      statusText: 'Menunggu Persetujuan',
-                      statusColor: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                  ].map((item) => (
+                  {leaveHistory.map((item) => (
                     <div
                       key={item.id}
                       className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
@@ -721,11 +765,11 @@ export default function ParentDashboard() {
                       </div>
 
                       <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
-                        {item.alasan}
+                        "{item.alasan}"
                       </p>
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-xs font-medium">
-                        <span className="text-slate-400 text-[11px]">Status Persetujuan:</span>
+                        <span className="text-slate-400 text-[11px]">Status Sistem &amp; Walas:</span>
                         <span className={cn("font-bold flex items-center gap-1.5", item.statusColor)}>
                           <CheckCircle2 size={14} />
                           {item.statusText}

@@ -27,7 +27,7 @@ export class SessionPresenter {
       jenis_kegiatan: sesi.jenis_kegiatan || 'KBM',
       nama_kelas: sesi.Kelas?.nama_kelas || '-',
       nama_guru: sesi.Guru?.nama_guru || '-',
-      status: absen.status || 'ALPA',
+      status: absen.status || 'BELUM_TAP',
       waktu_tap_str: formattedTimeStr || (absen.created_at ? new Date(absen.created_at).toISOString() : null),
       catatan: absen.catatan || null
     };
@@ -45,7 +45,7 @@ export class SessionPresenter {
       jenis_kegiatan: sesi.jenis_kegiatan || 'KBM',
       nama_kelas: sesi.Kelas?.nama_kelas || '-',
       nama_guru: absen.Guru?.nama_guru || '-',
-      status: absen.status || 'HADIR',
+      status: absen.status || 'BELUM_HADIR',
       waktu_tap_str: formattedTimeStr || (absen.waktu_tap ? new Date(absen.waktu_tap).toISOString() : null),
       catatan: absen.catatan || null
     };

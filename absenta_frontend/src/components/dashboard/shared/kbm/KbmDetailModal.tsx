@@ -44,7 +44,16 @@ export const KbmDetailModal = React.memo<KbmDetailModalProps>(({
             </div>
           ) : (
             <div className="space-y-6">
-              <SesiAttendanceList records={detailAttendance?.data || []} sesi={selectedSesi} isReportMode={true} />
+              {(() => {
+                const recordsArray = Array.isArray(detailAttendance?.data)
+                  ? detailAttendance.data
+                  : Array.isArray(detailAttendance)
+                  ? detailAttendance
+                  : [];
+                return (
+                  <SesiAttendanceList records={recordsArray} sesi={selectedSesi} isReportMode={true} />
+                );
+              })()}
               
               {selectedSesi?.ProgresMateri && (
                 <div className="flex justify-center pt-4">

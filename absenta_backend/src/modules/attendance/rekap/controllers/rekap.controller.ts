@@ -680,9 +680,10 @@ export async function getTrackingHarianGuruMe(request: AuthenticatedRequest, rep
   try {
     const tenantId = request.tenant?.id || (request as any).tenantId;
     const userId = request.user?.id;
+    const guruId = (request.user as any)?.guru_profile?.id || (request.user as any)?.guru_id || userId;
     if (!userId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
     const tanggal = (request.query as any)?.tanggal || new Date().toISOString().slice(0, 10);
-    const data = await rekapService.getTrackingHarianGuru(userId, tanggal, tenantId);
+    const data = await rekapService.getTrackingHarianGuru(guruId, tanggal, tenantId);
     return reply.status(200).send(data);
   } catch (error: any) {
     return reply.status(500).send({

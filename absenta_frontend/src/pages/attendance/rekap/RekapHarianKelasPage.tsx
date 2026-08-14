@@ -290,7 +290,7 @@ export function RekapHarianKelasContent({
       label: 'Status Kehadiran',
       key: 'status',
       render: (v: unknown) => {
-        const statusStr = String(v || 'ALPA').toUpperCase();
+        const statusStr = String(v || 'BELUM_TAP').toUpperCase();
         switch (statusStr) {
           case 'HADIR':
             return (

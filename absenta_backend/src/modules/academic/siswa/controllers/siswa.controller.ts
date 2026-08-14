@@ -322,6 +322,8 @@ export const siswaController = {
       return reply.status(200).send({
         success: true,
         message: result.message,
+        waSent: result.waSent,
+        waError: result.waError,
         data: result.target
       });
 

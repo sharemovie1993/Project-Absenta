@@ -20,13 +20,11 @@ export class SocketService {
   }
 
   public connect(token: string, tenantId?: string): Socket | null {
-    if (this.socket?.connected && this.token === token) {
+    if (this.socket && this.token === token) {
+        if (!this.socket.connected && !this.socket.active) {
+            this.socket.connect();
+        }
         return this.socket;
-    }
-
-    // Disconnect existing if token changed
-    if (this.socket) {
-        this.socket.disconnect();
     }
 
     this.token = token;

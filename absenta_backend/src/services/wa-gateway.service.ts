@@ -85,8 +85,8 @@ function startWaWatchdog() {
         const { hasCreds } = await getTenantDbCredsInfo(tenantId);
         if (!hasCreds) continue;
 
-        const wsState = entry.sock?.ws?.readyState;
-        const isWsActive = entry.sock && (wsState === 0 || wsState === 1);
+        const wsState = entry.sock?.ws?.socket?.readyState ?? entry.sock?.ws?.readyState;
+        const isWsActive = entry.sock && (entry.sock.ws?.isOpen === true || wsState === 0 || wsState === 1);
 
         if (!isWsActive && entry.status !== 'connecting') {
           console.warn(`[WA-Watchdog:${tenantId}] Socket terdeteksi tidak aktif/zombie (wsState: ${wsState}, status: ${entry.status}). Memulihkan koneksi otomatis...`);
@@ -164,8 +164,8 @@ async function connectTenant(tenantId: string): Promise<void> {
   }
 
   // Cek apakah socket fisik benar-benar aktif (ws.readyState === 0 CONNECTING atau 1 OPEN)
-  const wsState = entry.sock?.ws?.readyState;
-  const isWsActive = wsState === 0 || wsState === 1;
+  const wsState = entry.sock?.ws?.socket?.readyState ?? entry.sock?.ws?.readyState;
+  const isWsActive = entry.sock && (entry.sock.ws?.isOpen === true || wsState === 0 || wsState === 1);
 
   // Jika status sudah terhubung DAN socket fisiknya masih aktif, abaikan connect
   if (entry.status === 'connected' && entry.sock && isWsActive) {

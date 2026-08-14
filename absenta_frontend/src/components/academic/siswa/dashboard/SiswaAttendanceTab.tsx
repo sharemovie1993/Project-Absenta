@@ -241,10 +241,10 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
             <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Historis Sesi Absensi
+                  Presensi &amp; Jadwal KBM
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Catatan riwayat presensi sesi KBM &amp; pintu gerbang
+                  Status presensi pintu gerbang &amp; sesi KBM kelas hari ini
                 </p>
               </div>
 
@@ -271,7 +271,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                           sesiId: targetId,
                           sesiTitle: item.sesi || 'Sesi KBM',
                           guruName: item.nama_guru || (item as any).guru || 'Guru Pengajar',
-                          guruStatus: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'HADIR'),
+                          guruStatus: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'BELUM_TAP'),
                           guruWaktuTap: (item as any).waktu_guru || null,
                           waktuTap: item.waktu
                         });
@@ -279,63 +279,118 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                       className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 space-y-2 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md cursor-pointer transition-all group"
                       title="Klik untuk melihat rincian presensi teman sekelas"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-100 truncate max-w-[200px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {item.sesi}
-                          </span>
-                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
-                            <Eye size={11} /> Lihat Presensi
-                          </span>
-                        </div>
+                      {(() => {
+                        const rawTitle = item.sesi || 'Sesi Presensi';
+                        const displayTitle = rawTitle.replace(/^KBM\s*-\s*/i, '').trim() || rawTitle;
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {item.metode && item.metode !== '-' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
-                              {item.metode}
-                            </span>
-                          )}
-                          <span className={cn(
-                            "px-2.5 py-0.5 rounded-full text-[10px] font-black border",
-                            isHadir && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-                            isTerlambat && "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-                            isSakit && "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
-                            isAlpa && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                          )}>
-                            {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Izin / Sakit' : 'Alpa'}
-                          </span>
-                        </div>
-                      </div>
+                        const isMendatang = (item.status === 'MENDATANG' || item.metode === 'Terjadwal') && item.status !== 'TERLEWAT';
+                        const isBerlangsung = item.status === 'BERLANGSUNG';
+                        const isTerlewat = item.status === 'TERLEWAT';
+                        const isHadir = item.status === 'HADIR' || item.status === 'TEPAT_WAKTU';
+                        const isTerlambat = item.status === 'TERLAMBAT';
+                        const isSakit = item.status === 'SAKIT' || item.status === 'IZIN';
+                        const isAlpa = item.status === 'ALPA' && !isMendatang && !isTerlewat;
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-700 dark:text-slate-300">
-                        <div className="flex items-center gap-1.5 font-mono font-extrabold text-slate-900 dark:text-white">
-                          <Clock size={13} className="text-slate-400 shrink-0" />
-                          <span>Waktu Tap: {item.waktu}</span>
-                        </div>
+                        return (
+                          <>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 truncate max-w-[220px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                  {displayTitle}
+                                </span>
+                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
+                                  <Eye size={11} /> Lihat Presensi
+                                </span>
+                              </div>
 
-                        {item.nama_guru ? (
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-indigo-50/70 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400">👨‍🏫 Guru:</span>
-                            <span className="font-extrabold text-slate-900 dark:text-white">{item.nama_guru}</span>
-                            {item.status_guru === 'HADIR' ? (
-                              <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">HADIR</span>
-                            ) : (
-                              <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-500 border border-slate-300/60 dark:border-slate-700">BELUM TAP</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-800/40 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-800">
-                            <span>👨‍🏫 Guru Pengajar Sesi</span>
-                          </div>
-                        )}
-                      </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {item.metode && item.metode !== '-' && item.metode !== 'Terjadwal' && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
+                                    {item.metode}
+                                  </span>
+                                )}
+                                <span className={cn(
+                                  "px-2.5 py-0.5 rounded-full text-[10px] font-black border",
+                                  isHadir && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+                                  isTerlambat && "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+                                  isSakit && "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+                                  isAlpa && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+                                  isBerlangsung && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 animate-pulse",
+                                  isTerlewat && "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+                                  isMendatang && !isBerlangsung && !isTerlewat && "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/40"
+                                )}>
+                                  {isHadir ? 'Hadir' : isTerlambat ? 'Terlambat' : isSakit ? 'Izin / Sakit' : isBerlangsung ? 'Sedang Berlangsung' : isTerlewat ? 'Terlewat' : isMendatang ? 'Belum Berlangsung' : 'Alpa'}
+                                </span>
+                              </div>
+                            </div>
 
-                      {item.keterangan && 
-                        !['alpa', 'hadir', 'hadir tepat waktu', 'terlambat', 'terlambat mengikuti presensi', 'sakit/izin', 'sakit', 'izin', 'tepat waktu via gerbang / sesi presensi', 'izin / sakit terlampir via portal', 'belum ada catatan presensi dari wali kelas'].includes(item.keterangan.trim().toLowerCase()) && (
-                        <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
-                          {item.keterangan}
-                        </p>
-                      )}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-700 dark:text-slate-300 pt-0.5">
+                              {item.jamLabel && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 uppercase tracking-wider font-mono">
+                                  {item.jamLabel}
+                                </span>
+                              )}
+
+                              <div className="flex items-center gap-1.5 font-mono font-extrabold text-slate-800 dark:text-slate-200">
+                                <Clock size={13} className="text-slate-400 shrink-0" />
+                                <span>{item.waktu}</span>
+                                {item.waktu_tap && (
+                                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-sans">
+                                    • Tap {item.waktu_tap}
+                                  </span>
+                                )}
+                              </div>
+
+                              {item.nama_guru && item.nama_guru !== 'Guru Pengampu' ? (
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                                  <User size={12} className="text-indigo-500 shrink-0" />
+                                  <span className="font-extrabold text-slate-900 dark:text-white truncate max-w-[180px]">{item.nama_guru}</span>
+                                  {(() => {
+                                    const isGuruHadir = item.status_guru === 'HADIR' || item.status_guru === 'SUDAH_TAP' || item.status_guru === 'TEPAT_WAKTU';
+                                    const isGuruTelat = item.status_guru === 'TERLAMBAT';
+                                    const isGuruIzin = item.status_guru === 'IZIN' || item.status_guru === 'SAKIT';
+                                    const isGuruDigantikan = item.status_guru === 'DIGANTIKAN';
+
+                                    if (isGuruHadir) {
+                                      return (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                          Guru Hadir
+                                        </span>
+                                      );
+                                    }
+                                    if (isGuruTelat) {
+                                      return (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                          Guru Telat
+                                        </span>
+                                      );
+                                    }
+                                    if (isGuruIzin) {
+                                      return (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                          Guru Izin
+                                        </span>
+                                      );
+                                    }
+                                    if (isGuruDigantikan) {
+                                      return (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                          Guru Inval
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200/60 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/40">
+                                        Guru Belum Tap
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                              ) : null}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })
@@ -354,102 +409,9 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* ROW 2: JADWAL JAM MASUK KELAS KBM HARI INI (BOTTOM FULL CARD)       */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              Jadwal Jam Masuk Kelas KBM Hari Ini
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Mata pelajaran dan ruang kelas yang harus diikuti hari ini
-            </p>
-          </div>
-
-          <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 shrink-0 self-start sm:self-auto font-mono">
-            {todayKbmSchedule.length} Sesi Terjadwal
-          </span>
-        </div>
-
-        {isLoadingSchedule ? (
-          <div className="py-10 text-center text-xs font-semibold text-slate-400">
-            Memuat jadwal KBM hari ini...
-          </div>
-        ) : todayKbmSchedule.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
-            {todayKbmSchedule.map((item) => {
-              const isOngoing = item.status === 'Sedang Berlangsung';
-              const isFinished = item.status === 'Selesai';
-
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "p-4 sm:p-5 rounded-2xl border space-y-3 transition-all",
-                    isOngoing
-                      ? "bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-500/40 shadow-sm ring-1 ring-emerald-500/20"
-                      : isFinished
-                      ? "bg-slate-50/60 dark:bg-slate-950/40 border-slate-200/60 dark:border-slate-800/60 opacity-80"
-                      : "bg-slate-50/90 dark:bg-slate-950/70 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
-                      {item.kode}
-                    </span>
-                    <span className={cn(
-                      "px-2.5 py-0.5 rounded-full text-[10px] font-black border",
-                      isOngoing
-                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
-                        : isFinished
-                        ? "bg-slate-200/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300/40 dark:border-slate-700/40"
-                        : "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
-                    )}>
-                      {item.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                      {item.mapel}
-                    </h4>
-                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                      <User size={13} className="shrink-0 text-slate-400" />
-                      <span className="truncate">{item.guru}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
-                    <span className="truncate flex items-center gap-1">
-                      <MapPin size={12} className="shrink-0 text-slate-400" />
-                      <span>{item.lokasi}</span>
-                    </span>
-                    <span className="font-mono font-extrabold text-slate-800 dark:text-slate-100 shrink-0 flex items-center gap-1">
-                      <Clock size={12} className="shrink-0 text-slate-400" />
-                      <span>{item.jam}</span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="py-10 text-center space-y-2">
-            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-              <Calendar size={20} />
-            </div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              Tidak ada jadwal KBM untuk hari ini.
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Read-Only Session Attendance Modal for Students */}
       {(() => {
-        const computedRecords = Array.isArray(sesiAttendanceData) && sesiAttendanceData.length > 1
+        const computedRecords = Array.isArray(sesiAttendanceData) && sesiAttendanceData.length > 0
           ? sesiAttendanceData
           : (Array.isArray(monthlyRecap?.students) && monthlyRecap.students.length > 0
               ? [
@@ -459,7 +421,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                     is_guru: true,
                     nama_siswa: selectedSesiModal.guruName || 'Guru Pengajar',
                     nisn: 'GURU',
-                    status: selectedSesiModal.guruStatus || 'HADIR',
+                    status: selectedSesiModal.guruStatus || 'BELUM_TAP',
                     waktu_tap: selectedSesiModal.guruWaktuTap || null,
                     Guru: {
                       id: 'guru-id-selected',
@@ -472,7 +434,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                     nama_siswa: st.nama_siswa || st.nama || '-',
                     nisn: st.nis || st.nisn || '-',
                     is_guru: false,
-                    status: st.status || (st.hadir > 0 || st.HADIR > 0 ? 'HADIR' : (st.terlambat > 0 || st.TERLAMBAT > 0 ? 'TERLAMBAT' : 'HADIR')),
+                    status: st.status || 'BELUM_TAP',
                     waktu_tap: null,
                     Siswa: {
                       id: st.siswa_id || st.id,
@@ -486,7 +448,7 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
 
         const teacherRecord = Array.isArray(computedRecords) ? (computedRecords as any[]).find(r => r.is_guru || r.nisn === 'GURU') : null;
         const effectiveGuruName = teacherRecord?.nama_siswa || teacherRecord?.Guru?.nama_guru || selectedSesiModal.guruName || 'Guru Pengajar';
-        const effectiveGuruStatus = teacherRecord?.status || selectedSesiModal.guruStatus || 'HADIR';
+        const effectiveGuruStatus = teacherRecord?.status || selectedSesiModal.guruStatus || 'BELUM_TAP';
         const effectiveGuruWaktuTap = teacherRecord?.waktu_tap || selectedSesiModal.guruWaktuTap || null;
 
         return (

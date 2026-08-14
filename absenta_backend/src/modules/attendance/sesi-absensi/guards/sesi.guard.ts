@@ -63,11 +63,13 @@ export class SesiGuard {
     const positions = org?.positions || [];
     const isManagement = managementRoles.includes(roleName) || positions.some((p: any) => managementRoles.includes(p.code));
 
+    // READ-ONLY access (GET requests like /presensi-terpadu) is allowed for all authenticated users in tenant
+    if (method === 'GET') return;
+
     if (isManagement) {
-         if (method === 'GET') return; // Read-only access allowed
-         reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca.' });
-         return;
-     }
+      reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca.' });
+      return;
+    }
 
     const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
     const { device_id } = request.body || {};
@@ -90,7 +92,11 @@ export class SesiGuard {
     const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS');
 
     const isGuru = await prisma.guru.count({ where: { user_id: userId, tenant_id: tenantId } });
-    const siswa = await prisma.siswa.findFirst({ where: { user_id: userId, tenant_id: tenantId } });
+    const siswa = await prisma.siswa.findFirst({
+      where: { user_id: userId, tenant_id: tenantId },
+      include: { SiswaAkademik: true }
+    });
+    const siswaKelasId = siswa?.SiswaAkademik?.[0]?.kelas_id || (siswa as any)?.kelas_id;
 
     if (isGuru) {
         const guruRecord = await prisma.guru.findFirst({ where: { user_id: userId, tenant_id: tenantId }, select: { id: true } });
@@ -133,7 +139,7 @@ export class SesiGuard {
 
         // Regular student: allow READ only for their own class
         if (method === 'GET') {
-           if (siswa.kelas_id === sesi.kelas_id) {
+           if (siswaKelasId === sesi.kelas_id) {
              return; // Allowed to view their own class session
            }
            reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melihat sesi kelas Anda sendiri.' });
@@ -167,12 +173,15 @@ export class SesiGuard {
     if (isManagement) return;
 
     const isGuru = await prisma.guru.count({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] } });
-    const siswa = await prisma.siswa.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] } });
+    const siswa = await prisma.siswa.findFirst({
+      where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] },
+      include: { SiswaAkademik: true }
+    });
+    const siswaKelasId = siswa?.SiswaAkademik?.[0]?.kelas_id || (siswa as any)?.kelas_id;
 
     if (siswa) {
         const org = request.organizationalScope;
         const activePetugasKelasIds = Array.isArray(org?.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-
 
         if (activePetugasKelasIds.length > 0) {
             if (kelas_id) {
@@ -184,15 +193,15 @@ export class SesiGuard {
                  request.query.allowedKelasIds = activePetugasKelasIds;
             }
         } else {
-            if (!siswa.kelas_id) {
+            if (!siswaKelasId) {
                  reply.status(403).send({ success: false, message: 'Forbidden: Siswa tidak memiliki kelas aktif' });
                  return;
             }
-            if (kelas_id && kelas_id !== siswa.kelas_id) {
+            if (kelas_id && kelas_id !== siswaKelasId) {
                  reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melihat sesi kelas Anda sendiri' });
                  return;
             }
-            request.query.allowedKelasIds = [siswa.kelas_id];
+            request.query.allowedKelasIds = [siswaKelasId];
         }
     } else if (isGuru) {
         const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] }, select: { id: true } });

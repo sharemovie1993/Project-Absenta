@@ -42,28 +42,28 @@ export async function parentAppRoutes(fastify: any) {
   fastify.get('/siswa/:id/riwayat-kehadiran', {
     config: { skipAuth: true },
     preHandler: [parentAuthGuard, determineDataScope()],
-    handler: parentAppController.getAttendanceHistory
+    handler: parentAppController.getAttendanceHistory.bind(parentAppController)
   });
 
   // Student Notifications (Paginated)
   fastify.get('/siswa/:id/notifikasi', {
     config: { skipAuth: true },
     preHandler: [parentAuthGuard, determineDataScope()],
-    handler: parentAppController.getNotifications
+    handler: parentAppController.getNotifications.bind(parentAppController)
   });
 
   // Student Monthly Recap
   fastify.get('/siswa/:id/rekap-bulanan', {
     config: { skipAuth: true },
     preHandler: [parentAuthGuard, determineDataScope()],
-    handler: parentAppController.getMonthlyRecap
+    handler: parentAppController.getMonthlyRecap.bind(parentAppController)
   });
 
   // Student Daily Tracking
   fastify.get('/siswa/:id/tracking-harian', {
     config: { skipAuth: true },
     preHandler: [parentAuthGuard, determineDataScope()],
-    handler: parentAppController.getDailyTracking
+    handler: parentAppController.getDailyTracking.bind(parentAppController)
   });
 
   // Report Absence (SAKIT/IZIN)

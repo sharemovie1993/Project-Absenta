@@ -18,6 +18,20 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
   onSelectSession,
   formatTime
 }) => {
+  // Support both normalized KbmItem shape and legacy raw properties
+  const isLive        = sesi.status?.isLive        ?? sesi.isLive        ?? false;
+  const isFinished    = sesi.status?.isFinished    ?? sesi.isFinished    ?? false;
+  const isOverdue     = sesi.status?.isOverdue     ?? sesi.isOverdue     ?? false;
+  const isUpcoming    = sesi.status?.isUpcoming    ?? sesi.isUpcoming    ?? (!isLive && !isFinished && !isOverdue);
+  const teacherStatus = sesi.status?.teacherStatus ?? sesi._summary?.teacherStatus ?? 'BELUM_TAP';
+
+  const kelasNama = sesi.kelas_nama || sesi.Kelas?.nama_kelas || '-';
+  const mapelNama = sesi.mapel_nama || sesi.Mapel?.nama_mapel || sesi.kegiatan || sesi.jenis_kegiatan || '-';
+  const guruNama  = sesi.guru_nama  || sesi.Guru?.nama_guru  || '-';
+
+  const hadirVal = sesi.summary?.hadir ?? sesi._summary?.hadir ?? 0;
+  const totalVal = sesi.summary?.total ?? sesi._summary?.total ?? 0;
+
   return (
     <motion.div
       layout
@@ -32,8 +46,8 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
         className={cn(
           "group relative transition-all duration-200 hover:shadow-md border border-gray-100 dark:border-gray-700 rounded-sm overflow-hidden",
           viewMode === 'GRID' ? "p-3" : "p-0",
-          sesi.isLive ? 'bg-emerald-50/10 border-emerald-200 ring-1 ring-emerald-100/50' : 
-          sesi.isFinished ? 'opacity-70 bg-gray-50/30' : 'bg-white dark:bg-gray-800'
+          isLive ? 'bg-emerald-50/10 border-emerald-200 ring-1 ring-emerald-100/50' : 
+          isFinished ? 'opacity-70 bg-gray-50/30' : 'bg-white dark:bg-gray-800'
         )}
       >
         <div className={cn(
@@ -45,16 +59,30 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
           <div className={cn(
             "flex shrink-0 transition-all",
             viewMode === 'GRID' 
-              ? "w-full h-7 flex-row items-center justify-between px-2 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800" 
+              ? "w-full h-8 flex-row items-center justify-between px-2 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800" 
               : "h-full flex-col items-center justify-center py-2 md:py-3 border-r border-gray-50 dark:border-gray-700/50",
-            viewMode === 'LIST' && (sesi.isLive ? 'bg-emerald-500 text-white' : 
-            sesi.isFinished ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600')
+            viewMode === 'LIST' && (isLive ? 'bg-emerald-500 text-white' : 
+            isFinished ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 
+            isOverdue ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600' :
+            'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600')
           )}>
-            <div className={cn("flex items-center gap-1.5", viewMode === 'GRID' ? "" : "flex-col")}>
+            <div className={cn("flex items-center gap-1", viewMode === 'GRID' ? "" : "flex-col")}>
               <Clock size={12} className={viewMode === 'GRID' ? "text-indigo-500" : ""} />
-              <span className={cn("font-black tracking-tighter", viewMode === 'GRID' ? "text-[10px] text-gray-700 dark:text-gray-300" : "text-[9px]")}>
-                {formatTime(sesi.waktu_mulai)}
-              </span>
+              <div className={cn("flex items-center gap-0.5", viewMode === 'LIST' ? "flex-col" : "flex-row")}>
+                <span className={cn("font-black tracking-tighter", viewMode === 'GRID' ? "text-[10px] text-gray-700 dark:text-gray-300" : "text-[9px]")}>
+                  {formatTime(sesi.waktu_mulai)}
+                </span>
+                {sesi.waktu_selesai && (
+                  <>
+                    <span className={cn("font-bold opacity-60", viewMode === 'GRID' ? "text-[9px] text-gray-500" : "text-[8px]")}>
+                      {viewMode === 'LIST' ? '–' : ' – '}
+                    </span>
+                    <span className={cn("font-black tracking-tighter", viewMode === 'GRID' ? "text-[10px] text-gray-700 dark:text-gray-300" : "text-[9px]")}>
+                      {formatTime(sesi.waktu_selesai)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
             
             <div className="flex items-center gap-1.5">
@@ -62,32 +90,33 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
               {viewMode === 'GRID' && (
                  <div className={cn(
                    "flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm",
-                   sesi._summary?.teacherStatus === 'ALPA' ? 'border-rose-200' : ''
+                   teacherStatus === 'ALPA' ? 'border-rose-200' : ''
                  )}>
                     <div className={cn(
                       "w-1.5 h-1.5 rounded-full",
-                      sesi._summary?.teacherStatus === 'TEPAT_WAKTU' ? 'bg-emerald-500' :
-                      sesi._summary?.teacherStatus === 'TERLAMBAT' ? 'bg-amber-500' :
-                      sesi._summary?.teacherStatus === 'ALPA' ? 'bg-rose-500' : 
-                      sesi._summary?.teacherStatus === 'BELUM_TAP' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
+                      teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR' ? 'bg-emerald-500' :
+                      teacherStatus === 'TERLAMBAT' ? 'bg-amber-500' :
+                      teacherStatus === 'ALPA' ? 'bg-rose-500' : 
+                      teacherStatus === 'BELUM_TAP' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
                     )} />
                     <span className={cn(
                       "text-[7px] font-black uppercase tracking-tighter",
-                      sesi._summary?.teacherStatus === 'ALPA' ? 'text-rose-600' : 'text-gray-500'
+                      teacherStatus === 'ALPA' ? 'text-rose-600' : 'text-gray-500'
                     )}>
-                      {sesi._summary?.teacherStatus === 'BELUM_TAP' ? 'BT' : sesi._summary?.teacherStatus?.charAt(0) || '-'}
+                      {teacherStatus === 'BELUM_TAP' ? 'BT' : teacherStatus?.charAt(0) || '-'}
                     </span>
                  </div>
               )}
               <Badge 
-                variant={sesi.isLive ? 'success' : sesi.isFinished ? 'secondary' : 'info'} 
+                variant={isLive ? 'success' : isFinished ? 'secondary' : isOverdue ? 'danger' : 'info'} 
                 size="sm" 
                 className="text-[6px] font-black px-1 py-0 rounded-sm uppercase tracking-tighter"
               >
-                {sesi.isLive ? 'LIVE' : sesi.isFinished ? 'DONE' : 'SOON'}
+                {isLive ? 'LIVE' : isFinished ? 'DONE' : isOverdue ? 'TERLEWAT' : 'SOON'}
               </Badge>
             </div>
           </div>
+
 
           {/* 2. Main Info Area */}
           <div className={cn(
@@ -96,18 +125,18 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
           )}>
             <div className="flex items-center justify-between mb-0.5">
               <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest truncate">
-                {sesi.Kelas?.nama_kelas || '-'}
+                {kelasNama}
               </span>
               <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
                 <Users size={10} />
-                <span>{sesi._summary?.hadir ?? 0}/{sesi._summary?.total ?? 0}</span>
+                <span>{hadirVal}/{totalVal}</span>
               </div>
             </div>
             <h4 className={cn(
               "font-black text-gray-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors leading-tight",
               viewMode === 'GRID' ? "text-[13px] mb-1" : "text-xs"
             )}>
-              {sesi.Mapel?.nama_mapel || '-'}
+              {mapelNama}
             </h4>
           </div>
 
@@ -117,11 +146,11 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
             viewMode === 'GRID' ? "mb-2" : "h-full border-l border-gray-50 dark:border-gray-700/30"
           )}>
             <div className="w-6 h-6 rounded-sm bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-[9px] font-black text-indigo-600 border border-indigo-100 dark:border-indigo-800 shadow-sm shrink-0">
-              {sesi.Guru?.nama_guru?.charAt(0) || '-'}
+              {guruNama.charAt(0) || '-'}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[7px] font-black text-gray-400 uppercase leading-none mb-0.5">Guru Pengampu</span>
-              <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300 truncate">{sesi.Guru?.nama_guru || '-'}</span>
+              <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300 truncate">{guruNama}</span>
             </div>
           </div>
 
@@ -130,17 +159,17 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
             <div className="flex items-center gap-1.5 px-4 h-full border-l border-gray-50 dark:border-gray-700/30">
               <div className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                sesi._summary?.teacherStatus === 'TEPAT_WAKTU' ? 'bg-emerald-500' :
-                sesi._summary?.teacherStatus === 'TERLAMBAT' ? 'bg-amber-500' :
-                sesi._summary?.teacherStatus === 'ALPA' ? 'bg-rose-500' : 
-                sesi._summary?.teacherStatus === 'BELUM_TAP' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
+                teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR' ? 'bg-emerald-500' :
+                teacherStatus === 'TERLAMBAT' ? 'bg-amber-500' :
+                teacherStatus === 'ALPA' ? 'bg-rose-500' : 
+                teacherStatus === 'BELUM_TAP' ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'
               )} />
               <span className={cn(
                 "uppercase tracking-tighter text-[8px] font-black",
-                sesi._summary?.teacherStatus === 'ALPA' ? 'text-rose-500' : 
-                sesi._summary?.teacherStatus === 'TEPAT_WAKTU' ? 'text-emerald-600' : 'text-gray-400'
+                teacherStatus === 'ALPA' ? 'text-rose-500' : 
+                teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR' ? 'text-emerald-600' : 'text-gray-400'
               )}>
-                {sesi._summary?.teacherStatus === 'BELUM_TAP' ? 'BELUM TAP' : sesi._summary?.teacherStatus?.replace('_', ' ') || 'BELUM MULAI'}
+                {teacherStatus === 'BELUM_TAP' ? 'BELUM TAP' : teacherStatus.replace('_', ' ')}
               </span>
             </div>
           )}

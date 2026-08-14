@@ -31,14 +31,7 @@ const PLATFORM_DEFAULT_JENIS_KEGIATAN: Array<{ nama: string; tipe: JenisKegiatan
   { nama: 'Apel Pulang', tipe: JenisKegiatan.PEMBIASAAN, urutan: 4 },
   { nama: 'Duha', tipe: JenisKegiatan.PEMBIASAAN, urutan: 5 },
 
-  { nama: 'KBM 1', tipe: JenisKegiatan.KBM, urutan: 6 },
-  { nama: 'KBM 2', tipe: JenisKegiatan.KBM, urutan: 7 },
-  { nama: 'KBM 3', tipe: JenisKegiatan.KBM, urutan: 8 },
-  { nama: 'KBM 4', tipe: JenisKegiatan.KBM, urutan: 9 },
-  { nama: 'KBM 5', tipe: JenisKegiatan.KBM, urutan: 10 },
-  { nama: 'KBM 6', tipe: JenisKegiatan.KBM, urutan: 11 },
-
-  { nama: 'Pramuka', tipe: JenisKegiatan.ESKUL, urutan: 12 },
+  { nama: 'Pramuka', tipe: JenisKegiatan.ESKUL, urutan: 6 },
   { nama: 'Paskibra', tipe: JenisKegiatan.ESKUL, urutan: 13 },
   { nama: 'PMR', tipe: JenisKegiatan.ESKUL, urutan: 14 },
   { nama: 'Rohis', tipe: JenisKegiatan.ESKUL, urutan: 15 },

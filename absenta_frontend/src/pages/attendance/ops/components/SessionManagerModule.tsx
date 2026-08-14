@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../../../../components/ui/Loader';
@@ -25,6 +26,8 @@ import { guruApi, mapelApi } from '../../../../api/academic.api';
 import { listGuruMapel } from '../../../../api/kurikulum/guru-mapel.api';
 import { jenisKegiatanMasterApi } from '../../../../api/academic/jenisKegiatanMaster.api';
 import { useSocket } from '../../../../hooks/useSocket';
+import { useUnifiedKbmSessions } from '../../../../hooks/attendance/useUnifiedKbmSessions';
+import { useSessionWindowAlert } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
   BookOpen, 
   Activity, 
@@ -53,6 +56,8 @@ interface SessionManagerModuleProps {
   isPetugasSiswa: boolean;
   userRole?: string;
   canCreateSession: boolean;
+  managedKelasIds?: string[];
+  user?: any;
 }
 
 interface PetugasFormState {
@@ -80,6 +85,32 @@ interface SessionData {
   guru_status?: string;
 }
 
+const SesiExpandedContent: React.FC<{ sesiId: string; sesi: SesiDetail }> = React.memo(({ sesiId, sesi }) => {
+  const { data: presensiRes, isLoading } = useQuery({
+    queryKey: ['sesi-detail-attendance', sesiId],
+    queryFn: () => getSesiAbsenSiswa(sesiId),
+    enabled: !!sesiId,
+    refetchInterval: 15000,
+  });
+
+  const records: SesiAttendanceRecord[] = useMemo(() => {
+    const raw = presensiRes?.data || presensiRes;
+    return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+  }, [presensiRes]);
+
+  if (isLoading && records.length === 0) {
+    return (
+      <div className="py-8 text-center space-y-2">
+        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-gray-400 font-bold">Memuat daftar presensi kelas...</p>
+      </div>
+    );
+  }
+
+  return <SesiAttendanceList records={records} sesi={sesi} />;
+});
+SesiExpandedContent.displayName = 'SesiExpandedContent';
+
 interface SocketPayload {
   sesi_id: string;
 }
@@ -91,6 +122,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   isPetugasSiswa,
   userRole,
   canCreateSession,
+  managedKelasIds,
+  user,
 }) => {
   const { subscribe, unsubscribe } = useSocket();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
@@ -98,6 +131,60 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   
   // State
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
+
+  const autoSiswaKelasId = (user as any)?.siswa_profile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id;
+  const effectiveKelasId = selectedKelasId || (isPetugasSiswa ? (managedKelasIds?.[0] || autoSiswaKelasId) : undefined);
+
+  const {
+    sessions,
+    isLoading: loading,
+    isError,
+    refetch,
+    bukaSesiPenugasan,
+  } = useUnifiedKbmSessions({
+    tanggal,
+    kelas_id: effectiveKelasId,
+    allowedKelasIds: isPetugasSiswa ? (managedKelasIds?.length ? managedKelasIds : effectiveKelasId ? [effectiveKelasId] : undefined) : undefined,
+  });
+
+  // 🔔 Automatic Session Window Audio & Vibration Alert for Petugas Kelas / Ops (H-15 Menit)
+  useSessionWindowAlert({
+    schedules: Array.isArray(sessions) ? (sessions as any) : [],
+    enabled: true,
+    roleLabel: isPetugasSiswa ? 'petugas_kelas' : 'ops',
+  });
+
+  // Tab Switcher State: KBM vs Kegiatan Sekolah (Supported via ?subtab=kegiatan)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSubtab = (searchParams.get('subtab') || searchParams.get('type') || '').toUpperCase();
+  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>(() => {
+    return initialSubtab === 'KEGIATAN' ? 'KEGIATAN' : 'KBM';
+  });
+
+  const handleTabChange = useCallback((newTab: 'KBM' | 'KEGIATAN') => {
+    setActiveTab(newTab);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('subtab', newTab.toLowerCase());
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const kbmSessions = useMemo(() => {
+    const safe = Array.isArray(sessions) ? sessions : [];
+    return safe.filter((s) => {
+      const raw = String(s.jenis_kegiatan || 'KBM').toUpperCase();
+      return (raw === 'KBM' || raw === 'PELAJARAN') && !s.jadwal_kegiatan_id;
+    });
+  }, [sessions]);
+
+  const kegiatanSessions = useMemo(() => {
+    const safe = Array.isArray(sessions) ? sessions : [];
+    return safe.filter((s) => {
+      const raw = String(s.jenis_kegiatan || '').toUpperCase();
+      return (raw !== 'KBM' && raw !== 'PELAJARAN') || !!s.jadwal_kegiatan_id;
+    });
+  }, [sessions]);
+
+  const activeSessionsList = activeTab === 'KBM' ? kbmSessions : kegiatanSessions;
   
   // Delete Confirmation State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -288,39 +375,11 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     [mapelOptions]
   );
 
-  // Sessions Query
-  const sessionsQuery = useQuery({
-    queryKey: ['attendance-sessions-list', tanggal, selectedKelasId],
-    queryFn: async () => {
-      const params: Record<string, unknown> = { summary: true };
-      if (tanggal) params.tanggal = tanggal;
-      if (selectedKelasId) params.kelas_id = selectedKelasId;
-      
-      const res = await getSesiAbsensiList(params);
-      const raw = res?.data;
-      if (Array.isArray(raw)) return raw as SessionData[];
-      if (Array.isArray((raw as any)?.data)) return (raw as any).data as SessionData[];
-      if (Array.isArray((raw as any)?.sessions)) return (raw as any).sessions as SessionData[];
-      if (Array.isArray(res)) return res as unknown as SessionData[];
-      return [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const rawSessionsData = sessionsQuery.data;
-  const sessions: SessionData[] = useMemo(() => {
-    if (Array.isArray(rawSessionsData)) return rawSessionsData;
-    if (Array.isArray((rawSessionsData as any)?.data)) return (rawSessionsData as any).data;
-    if (Array.isArray((rawSessionsData as any)?.sessions)) return (rawSessionsData as any).sessions;
-    return [];
-  }, [rawSessionsData]);
-
-  const loading = sessionsQuery.isLoading;
-  const errorMsg = sessionsQuery.error ? 'Gagal memuat sesi.' : null;
+  const errorMsg = isError ? 'Gagal memuat sesi.' : null;
 
   const fetchSessions = useCallback(async () => {
-    await sessionsQuery.refetch();
-  }, [sessionsQuery]);
+    await refetch();
+  }, [refetch]);
 
 
 
@@ -411,7 +470,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     if (!isEx) {
       try {
         const res = await getSesiAbsenSiswa(sesiId);
-        setSessionAttendance((p) => ({ ...p, [sesiId]: (res.data as SesiAttendanceRecord[]) || [] }));
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
       } catch {}
     }
   }, []);
@@ -425,7 +485,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     
     try {
       const res = await getSesiAbsenSiswa(sesiId);
-      setSessionAttendance((p) => ({ ...p, [sesiId]: (res.data as SesiAttendanceRecord[]) || [] }));
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
     } catch {}
   }, []);
 
@@ -443,7 +504,12 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     try {
       const currentSesiId = inputModalSesiIdRef.current;
       const resSessionsList = await getSesiAbsensiList({ summary: true });
-      const activeSessions = (resSessionsList.data as SessionData[]) || [];
+      const rawData = (resSessionsList as any)?.data;
+      const activeSessions: SessionData[] = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.sessions)
+          ? rawData.sessions
+          : [];
       const sesi = activeSessions.find((s) => String(s.id) === String(currentSesiId));
       const expectedGuruId = sesi?.guru_id;
 
@@ -478,7 +544,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         toast.success('Berhasil dicatat', { duration: 8000 });
         await playBeep();
         const resList = await getSesiAbsenSiswa(currentSesiId);
-        setSessionAttendance((p) => ({ ...p, [currentSesiId]: (resList.data as SesiAttendanceRecord[]) || [] }));
+        const list = Array.isArray(resList?.data) ? resList.data : Array.isArray(resList) ? resList : [];
+        setSessionAttendance((p) => ({ ...p, [currentSesiId]: list }));
         setScannerInput('');
         scannerInputRef.current?.focus();
       } else {
@@ -508,7 +575,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         fetchSessions();
         if (expandedRef.current[sesiId]) {
           const attRes = await getSesiAbsenSiswa(sesiId);
-          setSessionAttendance((p) => ({ ...p, [sesiId]: (attRes.data as SesiAttendanceRecord[]) || [] }));
+          const list = Array.isArray(attRes?.data) ? attRes.data : Array.isArray(attRes) ? attRes : [];
+          setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
         }
       } else {
         toast.error(res.message || 'Gagal menyelesaikan sesi');
@@ -528,7 +596,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       
       if (payload?.sesi_id && (isExpanded || isModalOpen)) {
         getSesiAbsenSiswa(payload.sesi_id).then((res) => {
-          setSessionAttendance((p) => ({ ...p, [payload.sesi_id]: (res.data as SesiAttendanceRecord[]) || [] }));
+          const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+          setSessionAttendance((p) => ({ ...p, [payload.sesi_id]: list }));
         });
       }
     };
@@ -538,7 +607,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       Object.keys(expandedRef.current).forEach((sesiId) => {
         if (expandedRef.current[sesiId]) {
           getSesiAbsenSiswa(sesiId).then((res) => {
-            setSessionAttendance((p) => ({ ...p, [sesiId]: (res.data as SesiAttendanceRecord[]) || [] }));
+            const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+            setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
           });
         }
       });
@@ -611,16 +681,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                   <span>{generatingTemplate ? 'Sinkronisasi...' : 'Tarik Sesi Jadwal'}</span>
                 </button>
               )}
-              {canCreateSession && (
-                <button 
-                  type="button"
-                  onClick={() => setShowCreateSessionForm(true)}
-                  className="flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all"
-                >
-                  <Plus size={14} />
-                  <span>Buat Sesi Manual</span>
-                </button>
-              )}
+
             </div>
           </div>
 
@@ -651,21 +712,50 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                   <span>{generatingTemplate ? 'Sinkron...' : 'Tarik'}</span>
                 </button>
               )}
-              {canCreateSession && (
-                <button
-                  type="button"
-                  onClick={() => setShowCreateSessionForm(true)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-[11px] shadow-md shadow-blue-600/25 transition-all"
-                >
-                  <Plus size={14} />
-                  <span>Buat Sesi</span>
-                </button>
-              )}
             </div>
           </div>
 
           {/* 3. MAIN CONTENT / LIST */}
           <div className="relative">
+            {/* Segmented Tab Switcher: KBM vs Kegiatan Sekolah */}
+            <div className="flex items-center gap-2 mb-4 border-b border-gray-200 dark:border-gray-800 pb-3">
+              <button
+                type="button"
+                onClick={() => handleTabChange('KBM')}
+                className={`px-4 py-2 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'KBM'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500'
+                    : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <BookOpen size={14} />
+                <span>Sesi KBM Reguler</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                  activeTab === 'KBM' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  {kbmSessions.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTabChange('KEGIATAN')}
+                className={`px-4 py-2 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'KEGIATAN'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20 ring-1 ring-amber-500'
+                    : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Activity size={14} />
+                <span>Kegiatan & Pembiasaan</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                  activeTab === 'KEGIATAN' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  {kegiatanSessions.length}
+                </span>
+              </button>
+            </div>
+
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32">
                 <Loader className="mb-6" />
@@ -676,7 +766,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 <AlertCircle className="h-5 w-5" />
                 <AlertDescription className="font-bold">{errorMsg}</AlertDescription>
               </Alert>
-            ) : (Array.isArray(sessions) ? sessions : []).length === 0 ? (
+            ) : activeSessionsList.length === 0 ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -686,26 +776,23 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                   <Layers className="w-10 h-10 text-indigo-200 dark:text-indigo-800" />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white">Log Sesi Kosong</h3>
+                  <h3 className="text-2xl font-black text-gray-900 dark:text-white">
+                    {activeTab === 'KBM' ? 'Tidak Ada Sesi KBM' : 'Tidak Ada Sesi Kegiatan'}
+                  </h3>
                   <p className="text-gray-400 font-medium max-w-sm mx-auto leading-relaxed">
-                    Sistem belum menemukan sesi tercatat untuk hari ini. Silakan sinkronisasi dari jadwal atau buat sesi manual jika diperlukan.
+                    {activeTab === 'KBM' 
+                      ? 'Sistem belum menemukan sesi KBM tercatat untuk hari ini. Silakan tarik dari jadwal resmi.' 
+                      : 'Tidak ada sesi kegiatan sekolah atau pembiasaan yang tercatat untuk hari ini.'}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowCreateSessionForm(true)}
-                    className="h-12 px-8 rounded-xl border-gray-200 text-gray-600 font-black text-xs uppercase tracking-widest"
-                  >
-                    Buat Manual
-                  </Button>
                   {canCreateSession && (
                     <Button 
                       onClick={handleGenerateFromTemplate} 
                       disabled={generatingTemplate}
                       className="h-12 px-8 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20"
                     >
-                      {generatingTemplate ? 'Memproses...' : 'Tarik dari Jadwal'}
+                      {generatingTemplate ? 'Memproses...' : 'Sinkronkan Sesi'}
                     </Button>
                   )}
                 </div>
@@ -715,7 +802,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                 <div className="absolute left-2 sm:left-4 top-2 bottom-2 w-0.5 bg-gradient-to-b from-blue-500/40 via-indigo-500/20 to-transparent"></div>
                 
                 <div className="grid grid-cols-1 gap-2 sm:gap-4">
-                  {(Array.isArray(sessions) ? sessions : []).map((session, idx) => (
+                  {activeSessionsList.map((session, idx) => (
                     <motion.div 
                       key={session.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -781,7 +868,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           showScanSiswa={!isReadOnlyExecutive}
                           canManage={isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa)}
                           onOpenJournal={() => handleOpenJournal(session)}
-                          hideKelas={isPetugasSiswa}
+                          hideKelas={false}
                         />
                         
                         <AnimatePresence>
@@ -793,7 +880,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                               className="overflow-hidden bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800"
                             >
                               <div className="p-8">
-                                <SesiAttendanceList records={sessionAttendance[session.id] || []} sesi={session as unknown as SesiDetail} />
+                                <SesiExpandedContent sesiId={session.id} sesi={session as unknown as SesiDetail} />
                               </div>
                             </motion.div>
                           )}

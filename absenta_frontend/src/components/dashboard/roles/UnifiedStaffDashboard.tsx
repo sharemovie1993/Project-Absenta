@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSessionWindowAlert } from '../../../hooks/attendance/useSessionWindowAlert';
 import { 
   User, 
   BookOpen, 
@@ -42,7 +43,8 @@ import {
   ClipboardList,
   X,
   QrCode,
-  MapPin
+  MapPin,
+  Flag
 } from 'lucide-react';
 
 // Components
@@ -112,21 +114,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Synchronize Active Tab with Query Param (?tab=ringkasan)
   const activeTab = searchParams.get('tab') || 'ringkasan';
 
-  const handleTabChange = (newTab: string) => {
-    setSearchParams({ tab: newTab });
-  };
+  const handleTabChange = React.useCallback((newTab: string) => {
+    setSearchParams({ tab: newTab }, { replace: true });
+  }, [setSearchParams]);
 
   // ── 1. Base Data ──────────────────────────────────────────────────────────────
   const { data: guruProfileRes, refetch: refetchGuruProfile } = useQuery({
     queryKey: ['guru-profile-me'],
     queryFn: () => guruApi.getMe(),
     enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
   });
   const guruProfile = guruProfileRes?.data as any;
   const isTuStaff = user?.guru_profile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' || guruProfile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
-  const { timelineItems, isLoading: timelineLoading } = useStaffTimeline(guruId);
+  const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
+
+  // 🔔 Global KBM Window Alert for Teacher (works across all tabs in dashboard)
+  useSessionWindowAlert({
+    schedules: Array.isArray(timelineItems) ? (timelineItems as any) : [],
+    enabled: !isTuStaff && !!guruId,
+    roleLabel: 'guru',
+  });
 
   // ── 2. Role Detection ─────────────────────────────────────────────────────────
   const jabatanList: string[] = useMemo(() => {
@@ -169,7 +179,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
 
-  // ── 3. Role-Specific Queries ───────────────────────────────────────────────────
+  // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
   const { rawList: waliKelasAssignments } = useWaliKelasOptions();
 
   const waliKelasStrukturItem = useMemo(() => {
@@ -200,87 +210,101 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const { data: classPresence, isLoading: classPresenceLoading } = useQuery({
     queryKey: ['attendance-today-me-class', waliKelasId],
     queryFn: () => kesiswaanApi.getRekapHarianSiswa({ kelas_id: waliKelasId }).catch(() => ({ success: true, data: [] })),
-    enabled: !!isWaliKelas && !!waliKelasId,
+    enabled: !!isWaliKelas && !!waliKelasId && (activeTab === 'binaan' || activeTab === 'ringkasan'),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: kbmStatsRes, isLoading: kbmLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'kbm-stats'],
     queryFn: () => getDailyClassStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isKurikulum || !!isKepsek,
+    enabled: (!!isKurikulum || !!isKepsek) && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: teacherStatsRes, isLoading: teacherStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'teacher-stats'],
     queryFn: () => getDailyTeacherStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isKurikulum || !!isKepsek,
+    enabled: (!!isKurikulum || !!isKepsek) && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: escalationsRes } = useQuery({
     queryKey: ['dashboard', 'kepsek', 'escalations'],
     queryFn: () => getKepsekEscalations().catch(() => ({ success: true, data: [] })),
-    enabled: !!isKepsek,
+    enabled: !!isKepsek && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: dailyPermitsRes, isLoading: permitsLoading } = useQuery({
     queryKey: ['dashboard', 'kesiswaan', 'daily-permits'],
     queryFn: () => piketApi.getDailyPermits().catch(() => ({ success: true, data: [] })),
-    enabled: !!isKesiswaan && (can('attendance.piket.view') || can('attendance.gate.scan')),
+    enabled: !!isKesiswaan && (can('attendance.piket.view') || can('attendance.gate.scan')) && (activeTab === 'kelola' || activeTab === 'ringkasan'),
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: violationsRes, isLoading: violationsLoading } = useQuery({
     queryKey: ['dashboard', 'kesiswaan', 'violations'],
     queryFn: () => kesiswaanApi.getPelanggaran({ limit: 100 }).catch(() => ({ success: true, data: { list: [] } })),
-    enabled: !!isKesiswaan,
+    enabled: !!isKesiswaan && (activeTab === 'ringkasan' || activeTab === 'binaan'),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: kurikulumMonitoringRes, isLoading: kurikulumMonitoringLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'monitoring-global', toLocalDate()],
     queryFn: () => kurikulumApi.getKbmGlobalMonitoring(toLocalDate()).catch(() => ({ success: true, data: null })),
-    enabled: !!isKurikulum,
+    enabled: !!isKurikulum && activeTab === 'ringkasan',
+    staleTime: 60 * 1000,
     refetchInterval: 60000,
   });
 
   const { data: hubinStatsRes, isLoading: hubinStatsLoading } = useQuery({
     queryKey: ['dashboard', 'hubin', 'stats'],
     queryFn: () => hubinApi.getStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isHubin,
+    enabled: !!isHubin && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: sarprasStatsRes, isLoading: sarprasStatsLoading } = useQuery({
     queryKey: ['dashboard', 'sarpras', 'stats'],
     queryFn: () => getSarprasStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isSarpras,
+    enabled: !!isSarpras && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: gerbangStatsRes, isLoading: gerbangStatsLoading } = useQuery({
     queryKey: ['dashboard', 'gerbang', 'stats'],
     queryFn: () => getGerbangDashboardStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isGerbang && (can('attendance.gate.scan') || can('attendance.piket.view')),
+    enabled: !!isGerbang && (can('attendance.gate.scan') || can('attendance.piket.view')) && (activeTab === 'kelola' || activeTab === 'ringkasan'),
+    staleTime: 60 * 1000,
     refetchInterval: 60000,
   });
 
   const { data: kaprogStatsRes, isLoading: kaprogStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kaprog', 'stats'],
     queryFn: () => getKaprogStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isKaprog && can('dashboard.view.kaprog'),
+    enabled: !!isKaprog && can('dashboard.view.kaprog') && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: toolmanStatsRes, isLoading: toolmanStatsLoading } = useQuery({
     queryKey: ['dashboard', 'toolman', 'stats'],
     queryFn: () => getToolmanStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isToolman && can('dashboard.view.toolman'),
+    enabled: !!isToolman && can('dashboard.view.toolman') && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: kabengStatsRes, isLoading: kabengStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kabeng', 'stats'],
     queryFn: () => getKabengStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isKabeng && can('dashboard.view.kabeng'),
+    enabled: !!isKabeng && can('dashboard.view.kabeng') && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: bkkStatsRes, isLoading: bkkStatsLoading } = useQuery({
     queryKey: ['dashboard', 'bkk', 'stats'],
     queryFn: () => getBkkStats().catch(() => ({ success: true, data: null })),
-    enabled: !!isBkk && can('dashboard.view.bkk'),
+    enabled: !!isBkk && can('dashboard.view.bkk') && activeTab === 'ringkasan',
+    staleTime: 5 * 60 * 1000,
   });
 
   // ── 4. UI State & Piket Operations ─────────────────────────────────────────────
@@ -602,25 +626,28 @@ export const UnifiedStaffDashboard: React.FC = () => {
             </p>
           </div>
 
-          {/* Right Card: Teacher Attendance Badge */}
-          <div className="p-3 px-4 rounded-2xl bg-black/20 backdrop-blur-md border border-white/20 flex items-center gap-3 shrink-0 self-start md:self-auto shadow-inner">
-            <div className="relative">
-              <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute inset-0" />
-              <div className="w-3 h-3 rounded-full bg-emerald-400 border-2 border-indigo-900" />
+          {/* Right Action: Sesi Kegiatan Sekolah Button */}
+          <button
+            type="button"
+            onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
+            className="group relative px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs sm:text-sm flex items-center gap-3 shrink-0 self-start md:self-auto shadow-lg shadow-amber-950/40 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
+          >
+            <div className="p-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
+              <Flag className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <span className="text-[9px] font-black text-indigo-200 uppercase tracking-widest block">
-                PRESENSI PEGAWAI HARI INI
+            <div className="text-left">
+              <span className="text-[10px] font-black text-amber-100 uppercase tracking-widest block">
+                PRESENSI KEGIATAN
               </span>
-              <span className="text-xs sm:text-sm font-black text-white tracking-tight">
-                HADIR (06.30 WIB - Tepat Waktu)
+              <span className="text-xs sm:text-sm font-black text-white tracking-tight group-hover:underline">
+                Apel, Upacara &amp; Pembiasaan ➔
               </span>
             </div>
-          </div>
+          </button>
         </div>
 
-        {/* Tab Navigation Row Inset (Embedded Dark Navigation Bar) */}
-        <div className="p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
+        {/* Tab Navigation Row Inset (Embedded Dark Navigation Bar) — hidden on mobile, replaced by bottom nav */}
+        <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
           {tabs.map((tab) => {
             const TabIcon = tab.icon;
             const isTabActive = activeTab === tab.id;
@@ -653,11 +680,25 @@ export const UnifiedStaffDashboard: React.FC = () => {
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* TAB CONTENT AREA                                                   */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* TAB CONTENT AREA (Instant 0ms Scoped Render)                       */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 3 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
+        className="w-full min-w-0"
+      >
         {/* 📌 TAB 1: BERANDA GURU */}
         {activeTab === 'ringkasan' && (
           <StaffBerandaTab
+            guruId={guruId}
+            guruNama={guruProfile?.nama_guru || user?.full_name}
             waliKelasNama={waliKelasNama}
+            waliKelasId={waliKelasId}
+            isWaliKelas={isWaliKelas}
+            timelineItems={timelineItems || []}
             onNavigateTab={handleTabChange}
           />
         )}
@@ -665,12 +706,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
         {/* 🗓️ TAB 2: KBM & ABSEN */}
         {activeTab === 'jadwal' && (
           <StaffKbmAbsenTab
-            waliKelasNama={waliKelasNama}
-            kbmSiswaList={kbmSiswaList}
-            jurnalMateri={jurnalMateri}
-            onMarkAllHadir={handleMarkAllHadir}
-            onStatusChange={handleStatusChange}
-            onJurnalChange={setJurnalMateri}
+            guruId={guruId}
+            guruNama={guruProfile?.nama_guru || user?.full_name}
+            timelineItems={timelineItems || []}
+            isLoadingTimeline={timelineLoading}
+            onRefreshTimeline={refetchTimeline}
           />
         )}
 
@@ -703,7 +743,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             waliKelasNama={waliKelasNama}
           />
         )}
-      </AnimatePresence>
+      </motion.div>
 
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* MOBILE FIXED BOTTOM NAVIGATION BAR (lg:hidden)                     */}

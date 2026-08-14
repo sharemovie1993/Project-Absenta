@@ -126,6 +126,7 @@ export async function generateSessionsForTenantDirect(
         // Group and merge consecutive slots for the same class + guru + mapel + jenis_kegiatan
         const grouped: Record<string, typeof schedules> = {};
         for (const s of schedules) {
+          if (!s.mapel_id && !s.guru_id) continue;
           const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(s);
@@ -193,7 +194,7 @@ export async function generateSessionsForTenantDirect(
                 jenis_kegiatan: schedule.jenis_kegiatan || 'KBM',
                 sumber_sesi: 'TEMPLATE',
                 jadwal_kbm_id: schedule.id,
-                status: 'BERLANGSUNG',
+                status: 'MENDATANG',
               }
             });
 
@@ -283,7 +284,7 @@ export async function generateSessionsForTenantDirect(
               jenis_kegiatan: kegiatan.nama,
               sumber_sesi: 'TEMPLATE',
               jadwal_kegiatan_id: kegiatan.id,
-              status: 'BERLANGSUNG'
+              status: 'MENDATANG'
             }
           });
           createdCount++;

@@ -90,13 +90,26 @@ export default React.memo(function GuruMonitoringPage() {
       if (selectedKelasId) params.kelas_id = selectedKelasId;
       if (selectedGuruId) params.guru_id = selectedGuruId;
       const res = await getSesiAbsensiList(params);
-      return (res.data as SesiMonitoringData[]) || [];
+      const rawData = res.data;
+      const items = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray((rawData as any)?.data)
+        ? (rawData as any).data
+        : Array.isArray((res as any)?.items)
+        ? (res as any).items
+        : [];
+      return items as SesiMonitoringData[];
     },
     enabled: !isLocked,
     staleTime: 5 * 60 * 1000,
   });
 
-  const sessions = sessionsQuery.data || [];
+  const sessions = Array.isArray(sessionsQuery.data)
+    ? sessionsQuery.data
+    : Array.isArray((sessionsQuery.data as any)?.data)
+    ? (sessionsQuery.data as any).data
+    : [];
+
   const loading = sessionsQuery.isLoading;
 
   const fetchSessions = useCallback(async () => {
@@ -139,7 +152,7 @@ export default React.memo(function GuruMonitoringPage() {
         if (k.id) {
           const name = k.nama_kelas || k.nama || String(k.id);
           km[k.id] = name;
-          kOpts.push({ value: String(k.id), label: name });
+          kOpts.push({ value: k.id, label: name });
         }
       });
 
@@ -161,7 +174,7 @@ export default React.memo(function GuruMonitoringPage() {
   const stats = useMemo(() => [
     {
       title: "Sesi Aktif",
-      value: sessions.length.toString(),
+      value: (sessions?.length || 0).toString(),
       icon: <Presentation size={14} />,
       gradient: "from-blue-500 to-indigo-600",
       subtitle: "Monitoring realtime"
@@ -173,7 +186,7 @@ export default React.memo(function GuruMonitoringPage() {
       gradient: "from-emerald-55 to-teal-600",
       subtitle: isConnected ? "Terhubung ke Socket" : "Offline Reconnecting"
     }
-  ], [sessions.length, isConnected]);
+  ], [sessions, isConnected]);
 
   const instructionData = {
     title: "Monitoring Mengajar Guru",

@@ -71,30 +71,41 @@ Harap simpan link ini dan jangan bagikan kepada orang lain.
 
 Terima kasih.`;
 
-  const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
-  const waService = new WhatsAppService();
+  let waSent = false;
+  let waError = '';
 
-  const sent = await waService.sendWhatsApp({
-    phoneNumber: targetParent.no_hp,
-    message: message,
-    tenantId: tenantId,
-    relatedId: siswa.id,
-    event: 'PARENT_ACCESS_SENT',
-    subject: 'Akses Parent App',
-    force: true,
-    throwOnError: true,
-  });
+  try {
+    const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
+    const waService = new WhatsAppService();
 
-  if (!sent) {
-    throw new Error('Gagal mengirim WhatsApp: WA Gateway belum terhubung (Scan QR di menu Settings WhatsApp) atau pesan ditolak');
+    waSent = await waService.sendWhatsApp({
+      phoneNumber: targetParent.no_hp,
+      message: message,
+      tenantId: tenantId,
+      relatedId: siswa.id,
+      event: 'PARENT_ACCESS_SENT',
+      subject: 'Akses Parent App',
+      force: true,
+      throwOnError: false,
+    });
+  } catch (err: any) {
+    waSent = false;
+    waError = err?.message || 'WA Gateway Offline';
   }
 
   return {
     success: true,
-    message: 'Akses Orang Tua berhasil dikirim',
+    message: waSent 
+      ? `Akses Orang Tua berhasil dikirim via WhatsApp ke ${targetParent.nama}`
+      : `Token & Link Akses Orang Tua berhasil dibuat. (WA Gateway Offline)`,
+    waSent,
+    waError,
     target: {
       nama: targetParent.nama,
       phone: targetParent.no_hp,
+      token: tokenRecord.token,
+      loginLink: loginLink,
+      rawMessage: message,
     },
   };
 }

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -95,6 +95,28 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
   const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
+
+  // State Modal Copy-Paste Magic Token & Link Akses Ortu
+  const [parentAccessModalData, setParentAccessModalData] = useState<{
+    isOpen: boolean;
+    siswaName: string;
+    parentName: string;
+    parentPhone: string;
+    token: string;
+    loginLink: string;
+    rawMessage: string;
+    waSent: boolean;
+    waError: string;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyText = (text: string, fieldLabel: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldLabel);
+    toast.success(`${fieldLabel} berhasil disalin!`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   // Bulk Class Change States
   const [isBulkClassModalOpen, setIsBulkClassModalOpen] = useState(false);
@@ -489,56 +511,35 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   }, [confirm, totalItems, queryClient, refetch, invalidateSiswaCache, onRefresh]);
 
   const handleSendParentAccess = useCallback(async (siswa: Siswa) => {
-    // Check local data if available
-    if (siswa.OrangTua && Array.isArray(siswa.OrangTua)) {
-      if (siswa.OrangTua.length === 0) {
-      toast.error('Siswa belum memiliki data Orang Tua');
-        return;
-      }
-      const hasPhone = siswa.OrangTua.some(p => p.no_hp);
-      if (!hasPhone) {
-      toast.error('Orang Tua tidak memiliki nomor HP');
-        return;
-      }
-    }
-
-    // Confirm dialog
-    const parentName = siswa.OrangTua?.[0]?.nama || 'Orang Tua';
-    const parentPhone = siswa.OrangTua?.find(p => p.no_hp)?.no_hp || siswa.OrangTua?.[0]?.no_hp || '';
-    
-    const ok = await confirm({
-      title: 'Kirim Akses Orang Tua',
-      description: (
-        <div>
-          <p>Kirim link akses Parent App ke <strong>{parentName}</strong> {parentPhone ? `(${parentPhone})` : ''}?</p>
-          <p className="text-sm text-gray-500 mt-1">Link akan dikirim melalui WhatsApp.</p>
-        </div>
-      ),
-      confirmText: 'Kirim',
-      cancelText: 'Batal',
-      style: 'primary',
-    });
-
-    if (!ok) return;
-
     try {
-      toast('Mengirim akses...', { icon: 'ℹ️' });
+      toast('Memproses token & link akses orang tua...', { icon: '🔑' });
       const res = await sendParentAccess(siswa.id);
-      if (res.success) {
-        if (res.data && res.data.nama && res.data.phone) {
-          toast.success(`Akses berhasil dikirim ke ${res.data.nama} (${res.data.phone})`);
+      if (res.success && res.data) {
+        setParentAccessModalData({
+          isOpen: true,
+          siswaName: siswa.nama_siswa,
+          parentName: res.data.nama || siswa.OrangTua?.[0]?.nama || 'Orang Tua',
+          parentPhone: res.data.phone || siswa.OrangTua?.[0]?.no_hp || '-',
+          token: res.data.token || '',
+          loginLink: res.data.loginLink || '',
+          rawMessage: res.data.rawMessage || '',
+          waSent: !!res.waSent,
+          waError: res.waError || '',
+        });
+        if (res.waSent) {
+          toast.success(`Akses berhasil terkirim via WhatsApp ke ${res.data.nama}!`);
         } else {
-          toast.success('Akses Orang Tua berhasil dikirim');
+          toast('Token & Link Magic Ortu berhasil dibuat. (Bisa disalin manual)', { icon: '🔑' });
         }
       } else {
-        toast.error(res.message || 'Gagal mengirim akses');
+        toast.error(res.message || 'Gagal membuat token akses orang tua');
       }
     } catch (error: any) {
       console.error('Error sending access:', error);
       const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan';
       toast.error(msg);
     }
-  }, [confirm]);
+  }, []);
 
   const handleResetPassword = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2104,6 +2105,175 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         kelasOptions={kelasList.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
         onSuccess={() => refetch()}
       />
+
+      {/* ── Modal Token & Link Magic Login Orang Tua ── */}
+      {parentAccessModalData?.isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setParentAccessModalData(null)}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
+            style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)', border: '1px solid rgba(255,255,255,0.08)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20">
+                  <Key size={20} className="text-indigo-400" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white leading-tight">Token & Link Magic Login</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {parentAccessModalData.siswaName} · {parentAccessModalData.parentName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setParentAccessModalData(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* WA Gateway Status Banner */}
+            <div className="mx-6 mb-4">
+              {parentAccessModalData.waSent ? (
+                <div className="flex items-center gap-2.5 rounded-xl px-4 py-2.5" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                  <CheckCircle2 size={16} className="text-green-400 flex-shrink-0" />
+                  <p className="text-xs text-green-300 font-medium">
+                    Terkirim otomatis via WA Gateway ke <span className="font-bold">{parentAccessModalData.parentPhone}</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2.5 rounded-xl px-4 py-2.5" style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.25)' }}>
+                  <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-amber-300 font-semibold">WA Gateway Offline — Salin & kirim manual</p>
+                    {parentAccessModalData.waError && (
+                      <p className="text-[11px] text-amber-400/70 mt-0.5">{parentAccessModalData.waError}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Body — Copy Fields */}
+            <div className="px-6 pb-2 space-y-3">
+              {/* Link Magic */}
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  <ExternalLink size={11} /> Link Magic Login
+                </label>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 truncate select-all cursor-text"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    title={parentAccessModalData.loginLink}
+                  >
+                    {parentAccessModalData.loginLink || '—'}
+                  </div>
+                  <button
+                    onClick={() => handleCopyText(parentAccessModalData.loginLink, 'Link')}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all"
+                    style={{ background: copiedField === 'Link' ? 'rgba(34,197,94,0.20)' : 'rgba(99,102,241,0.20)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    title="Salin Link"
+                  >
+                    {copiedField === 'Link' ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-indigo-400" />}
+                  </button>
+                  <a
+                    href={parentAccessModalData.loginLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    title="Buka Link di Tab Baru"
+                  >
+                    <ExternalLink size={14} className="text-slate-400 hover:text-white" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Token Magic */}
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                  <Key size={11} /> Token Magic
+                </label>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2 text-xs font-mono text-slate-300 truncate select-all cursor-text"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    title={parentAccessModalData.token}
+                  >
+                    {parentAccessModalData.token || '—'}
+                  </div>
+                  <button
+                    onClick={() => handleCopyText(parentAccessModalData.token, 'Token')}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all"
+                    style={{ background: copiedField === 'Token' ? 'rgba(34,197,94,0.20)' : 'rgba(99,102,241,0.20)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    title="Salin Token"
+                  >
+                    {copiedField === 'Token' ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-indigo-400" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Pesan WA Siap Kirim */}
+              {parentAccessModalData.rawMessage && (
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                    <MessageSquare size={11} /> Pesan WhatsApp Siap Kirim
+                  </label>
+                  <div
+                    className="w-full rounded-lg px-3 py-2.5 text-xs text-slate-300 whitespace-pre-line leading-relaxed max-h-36 overflow-y-auto select-all cursor-text scrollbar-thin scrollbar-thumb-slate-600"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  >
+                    {parentAccessModalData.rawMessage}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      onClick={() => handleCopyText(parentAccessModalData.rawMessage, 'Pesan WA')}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all"
+                      style={{ background: copiedField === 'Pesan WA' ? 'rgba(34,197,94,0.20)' : 'rgba(99,102,241,0.20)', border: '1px solid rgba(99,102,241,0.30)' }}
+                    >
+                      {copiedField === 'Pesan WA' ? <Check size={13} className="text-green-400" /> : <Copy size={13} className="text-indigo-400" />}
+                      <span className={copiedField === 'Pesan WA' ? 'text-green-300' : 'text-indigo-300'}>
+                        {copiedField === 'Pesan WA' ? 'Tersalin!' : 'Salin Pesan'}
+                      </span>
+                    </button>
+                    {parentAccessModalData.parentPhone && parentAccessModalData.parentPhone !== '-' && (
+                      <a
+                        href={`https://wa.me/${parentAccessModalData.parentPhone.replace(/\D/g, '').replace(/^0/, '62')}?text=${encodeURIComponent(parentAccessModalData.rawMessage)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-green-300 transition-all"
+                        style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.30)' }}
+                      >
+                        <ExternalLink size={13} />
+                        Buka WA
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 pt-4">
+              <button
+                onClick={() => setParentAccessModalData(null)}
+                className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-300 transition-all hover:text-white"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

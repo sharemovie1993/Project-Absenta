@@ -3,7 +3,9 @@
  * Command Center Utama Wali Kelas untuk Pengawasan 360° Rombel
  */
 
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
+import { Loader } from '../../../ui/Loader';
+
 const DEFAULT_CLASS_INFO: ClassInfo = {
   className: 'Kelas Wali',
   academicYear: '2025/2026',
@@ -35,11 +37,13 @@ import {
 import { HeaderCommandCenter } from './HeaderCommandCenter';
 import { HeroStatsRadar } from './HeroStatsRadar';
 import { TabNav } from './TabNav';
-import { WaliKelasApprovalPanel } from './WaliKelasApprovalPanel';
-import { WaliKelasHealthPanel } from './WaliKelasHealthPanel';
-import { WaliKelasDisciplinePanel } from './WaliKelasDisciplinePanel';
-import { WaliKelasAchievementPanel } from './WaliKelasAchievementPanel';
-import { WaliKelasRekapPanel } from './WaliKelasRekapPanel';
+
+// Code-Splitting via React.lazy() for Sub-Panels (Standar Multi-Tenant Google Platform)
+const WaliKelasApprovalPanel = lazy(() => import('./WaliKelasApprovalPanel').then(m => ({ default: m.WaliKelasApprovalPanel })));
+const WaliKelasHealthPanel = lazy(() => import('./WaliKelasHealthPanel').then(m => ({ default: m.WaliKelasHealthPanel })));
+const WaliKelasDisciplinePanel = lazy(() => import('./WaliKelasDisciplinePanel').then(m => ({ default: m.WaliKelasDisciplinePanel })));
+const WaliKelasAchievementPanel = lazy(() => import('./WaliKelasAchievementPanel').then(m => ({ default: m.WaliKelasAchievementPanel })));
+const WaliKelasRekapPanel = lazy(() => import('./WaliKelasRekapPanel').then(m => ({ default: m.WaliKelasRekapPanel })));
 
 import { StudentDetailModal } from './StudentDetailModal';
 import { AttachmentViewerModal } from './AttachmentViewerModal';
@@ -84,49 +88,14 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
   }, [waliKelasNama]);
 
   const [healthMetric, setHealthMetric] = useState<ClassHealthMetric>(DEFAULT_HEALTH_METRIC);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
-  const [violations, setViolations] = useState<ViolationRecord[]>([]);
-  const [achievements, setAchievements] = useState<AchievementRecord[]>([]);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
-  // Sync API data to state when available
-  React.useEffect(() => {
-    if (apiLeaveRequests) {
-      setLeaveRequests(apiLeaveRequests);
-    }
-  }, [apiLeaveRequests]);
-
-  React.useEffect(() => {
-    if (apiJournalEntries) {
-      setJournalEntries(apiJournalEntries);
-    }
-  }, [apiJournalEntries]);
-
-  React.useEffect(() => {
-    if (apiAtRiskStudents) {
-      setAtRiskStudents(apiAtRiskStudents);
-    }
-  }, [apiAtRiskStudents]);
-
-  React.useEffect(() => {
-    if (apiViolations) {
-      setViolations(apiViolations);
-    }
-  }, [apiViolations]);
-
-  React.useEffect(() => {
-    if (apiAchievements) {
-      setAchievements(apiAchievements);
-    }
-  }, [apiAchievements]);
-
-  React.useEffect(() => {
-    if (apiStudents) {
-      setStudents(apiStudents);
-    }
-  }, [apiStudents]);
+  // Directly derive data from useWaliKelasDashboard hook without dangerous useEffect sync loops
+  const students = apiStudents || [];
+  const leaveRequests = apiLeaveRequests || [];
+  const atRiskStudents = apiAtRiskStudents || [];
+  const violations = apiViolations || [];
+  const achievements = apiAchievements || [];
+  const journalEntries = apiJournalEntries || [];
 
 
   // Active Tab & Search Filter
@@ -429,60 +398,68 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
           atRiskCount={atRiskStudents.length}
         />
 
-        {/* 4. Sub-Module Active Views */}
+        {/* 4. Sub-Module Active Views (Wrapped in Suspense for Lazy Loading) */}
         <main className="transition-all duration-300">
-          {activeTab === 'approval' && (
-            <WaliKelasApprovalPanel
-              requests={leaveRequests}
-              onApprove={handleApproveLeave}
-              onReject={handleRejectLeave}
-              onApproveAllPending={handleApproveAllPending}
-              onViewAttachment={setViewAttachmentReq}
-              onOpenWhatsApp={handleOpenWhatsApp}
-              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
-              isApiConnected={isApiConnected}
-            />
-          )}
+          <Suspense fallback={
+            <div className="py-16 flex flex-col items-center justify-center gap-3">
+              <Loader />
+              <span className="text-xs font-bold text-slate-400">Memuat Modul Wali Kelas...</span>
+            </div>
+          }>
+            {activeTab === 'approval' && (
+              <WaliKelasApprovalPanel
+                requests={leaveRequests}
+                onApprove={handleApproveLeave}
+                onReject={handleRejectLeave}
+                onApproveAllPending={handleApproveAllPending}
+                onViewAttachment={setViewAttachmentReq}
+                onOpenWhatsApp={handleOpenWhatsApp}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                isApiConnected={isApiConnected}
+              />
+            )}
 
-          {activeTab === 'health' && (
-            <WaliKelasHealthPanel
-              students={students}
-              atRiskStudents={atRiskStudents}
-              metrics={healthMetric}
-              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
-              onTakeIntervention={handleTakeIntervention}
-              isApiConnected={isApiConnected}
-            />
-          )}
+            {activeTab === 'health' && (
+              <WaliKelasHealthPanel
+                students={students}
+                atRiskStudents={atRiskStudents}
+                metrics={healthMetric}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                onTakeIntervention={handleTakeIntervention}
+                isApiConnected={isApiConnected}
+              />
+            )}
 
-          {activeTab === 'discipline' && (
-            <WaliKelasDisciplinePanel
-              violations={violations}
-              onOpenAddIncidentModal={() => setIsAddIncidentOpen(true)}
-              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
-              onUpdateBKStatus={handleUpdateBKStatus}
-              isApiConnected={isApiConnected}
-            />
-          )}
+            {activeTab === 'discipline' && (
+              <WaliKelasDisciplinePanel
+                violations={violations}
+                onOpenAddIncidentModal={() => setIsAddIncidentOpen(true)}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                onUpdateBKStatus={handleUpdateBKStatus}
+                isApiConnected={isApiConnected}
+              />
+            )}
 
-          {activeTab === 'halloffame' && (
-            <WaliKelasAchievementPanel
-              students={students}
-              achievements={achievements}
-              onOpenBadgeModal={(st) => setBadgeStudent(st)}
-              onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
-              isApiConnected={isApiConnected}
-            />
-          )}
+            {activeTab === 'halloffame' && (
+              <WaliKelasAchievementPanel
+                students={students}
+                achievements={achievements}
+                onOpenBadgeModal={(st) => setBadgeStudent(st)}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                isApiConnected={isApiConnected}
+                className={classInfo.className}
+              />
+            )}
 
-          {activeTab === 'rekap' && (
-            <WaliKelasRekapPanel
-              journalEntries={journalEntries}
-              onOpenAddJournalModal={() => setIsAddJournalOpen(true)}
-              onOpenExportModal={() => setIsExportModalOpen(true)}
-              isApiConnected={isApiConnected}
-            />
-          )}
+            {activeTab === 'rekap' && (
+              <WaliKelasRekapPanel
+                journalEntries={journalEntries}
+                onOpenAddJournalModal={() => setIsAddJournalOpen(true)}
+                onOpenExportModal={() => setIsExportModalOpen(true)}
+                isApiConnected={isApiConnected}
+              />
+            )}
+          </Suspense>
         </main>
 
         {/* Clean Minimalism Footer */}

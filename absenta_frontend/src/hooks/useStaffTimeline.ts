@@ -1,68 +1,47 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMyJadwalKBM } from '../api/attendance/jadwalKBM.api';
+import { getSesiAbsensiList } from '../api/attendanceGerbang.api';
 import { useAuthStore } from '../store/authStore';
 import { useSocket } from './useSocket';
 import { toLocalDate } from '../utils/attendance/time';
+import { normalizeFromSesiAbsensi, KbmItem } from '../utils/kbm-normalizer';
 
 /**
  * useStaffTimeline
- * Menangani logika tampilan lini masa staf dengan mengambil data yang sudah di-merge dari backend.
+ * Menggunakan SATU KABEL tunggal (GET /attendance/sesi-absensi?include_scheduled=true)
+ * yang sama persis dengan Monitoring KBM & Presensi Ops.
+ * Seluruh agregasi slot jam, kalkulasi shift, status server-side dihitung di Backend.
  */
 export const useStaffTimeline = (guruId?: string) => {
   const { token } = useAuthStore();
   const { subscribe, unsubscribe } = useSocket();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const today = toLocalDate();
 
-  // Real-time clock update untuk indikator isLive secara visual (opsional, karena backend sudah memberikan is_live)
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Kita gunakan endpoint tunggal yang sudah melakukan merging di backend
+  // Endpoint tunggal terpadu: Sumber yang sama, Mesin yang sama
   const { data: timelineRes, isLoading, refetch } = useQuery({
-    queryKey: ['staff-timeline-me', toLocalDate()],
-    queryFn: () => getMyJadwalKBM({ tanggal: toLocalDate() }),
+    queryKey: ['staff-timeline-unified', guruId, today],
+    queryFn: () => getSesiAbsensiList({ 
+      tanggal: today, 
+      guru_id: guruId, 
+      include_scheduled: true, 
+      summary: true, 
+      limit: 100 
+    } as any),
     enabled: !!token && !!guruId,
+    staleTime: 30000,
   });
 
-  const timelineItems = useMemo(() => {
-    const rawData = timelineRes?.data || [];
-    
-    return rawData.map((item: any) => {
-      // Normalisasi status kehadiran guru
-      const absenRecord = item.session?.AbsenGuru?.[0] || null;
-      const isGuruHadir = item.attendance_status === 'HADIR' || !!item.waktu_tap || !!absenRecord?.waktu_tap;
-      
-      let teacherStatus = 'BELUM_HADIR';
-      if (isGuruHadir) {
-        teacherStatus = absenRecord?.is_terlambat ? 'TERLAMBAT' : 'TEPAT_WAKTU';
-      } else if (item.is_finished) {
-        teacherStatus = 'ALPA';
-      }
-      
-      return {
-        id: item.id,
-        jam_mulai: item.jam_mulai,
-        jam_selesai: item.jam_selesai,
-        kelas_nama: item.Kelas?.nama_kelas || item.kelas_nama || '-',
-        kelas_id: item.kelas_id,
-        mapel_id: item.mapel_id,
-        kegiatan: item.Mapel?.nama_mapel || item.kegiatan || item.jenis_kegiatan || 'Kegiatan',
-        kegiatan_raw: item.jenis_kegiatan,
-        isLive: item.is_live,
-        isFinished: item.is_finished,
-        session: item.session,
-        isGuruHadir,
-        teacherStatus,
-        myAbsenRecord: absenRecord,
-        isAdHoc: !!item.is_adhoc,
-        isPiket: !!item.is_piket,
-        posPiket: item.pos_piket,
-        catatan: item.catatan
-      };
-    });
+  // Gunakan normalizer tunggal — shape identik dengan Monitoring KBM & Ops
+  const timelineItems: KbmItem[] = useMemo(() => {
+    const rawData = timelineRes?.data;
+    const items = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(timelineRes?.items)
+      ? timelineRes.items
+      : [];
+    return items.map((item: any) => normalizeFromSesiAbsensi(item));
   }, [timelineRes]);
 
   // Sockets untuk update real-time
@@ -73,23 +52,27 @@ export const useStaffTimeline = (guruId?: string) => {
     };
     subscribe(`sesi:created:${guruId}`, handleSesiChange);
     subscribe(`sesi:updated:${guruId}`, handleSesiChange);
+    subscribe('sesi_status_update', handleSesiChange);
+    subscribe('absen_guru_update', handleSesiChange);
     return () => {
       unsubscribe(`sesi:created:${guruId}`, handleSesiChange);
       unsubscribe(`sesi:updated:${guruId}`, handleSesiChange);
+      unsubscribe('sesi_status_update', handleSesiChange);
+      unsubscribe('absen_guru_update', handleSesiChange);
     };
   }, [guruId, subscribe, unsubscribe, refetch]);
 
   return {
     timelineItems,
     isLoading,
-    currentTime,
+    refetch,
     impact: {
-      totalStudents: timelineItems.reduce((acc: number, curr: any) => acc + (curr.session?._summary?.total || 0), 0),
+      totalStudents: timelineItems.reduce((acc: number, curr: KbmItem) => acc + (curr.summary?.total || 0), 0),
       totalSessions: timelineItems.length,
       attendanceRate: (() => {
-        const total = timelineItems.reduce((acc: number, curr: any) => acc + (curr.session?._summary?.total || 0), 0);
+        const total = timelineItems.reduce((acc: number, curr: KbmItem) => acc + (curr.summary?.total || 0), 0);
         if (total === 0) return 0;
-        const hadir = timelineItems.reduce((acc: number, curr: any) => acc + ((curr.session?._summary?.HADIR || 0) + (curr.session?._summary?.TERLAMBAT || 0)), 0);
+        const hadir = timelineItems.reduce((acc: number, curr: KbmItem) => acc + (curr.summary?.hadir || 0), 0);
         return Math.round((hadir / total) * 100);
       })()
     }

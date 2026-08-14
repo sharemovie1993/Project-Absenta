@@ -82,7 +82,6 @@ export const SesiCard = React.memo(function SesiCard({
   const now = new Date();
   const startAt = (sesi as any)?.waktu_mulai ? new Date((sesi as any).waktu_mulai) : null;
   const endAt = (sesi as any)?.waktu_selesai ? new Date((sesi as any).waktu_selesai) : null;
-  const hasValidTime = !!startAt && !!endAt && !Number.isNaN(startAt.getTime()) && !Number.isNaN(endAt.getTime());
   const isLiveByTime = hasValidTime && now >= (startAt as Date) && now <= (endAt as Date);
   const isPastByTime = hasValidTime && now > (endAt as Date);
   const isFutureByTime = hasValidTime && now < (startAt as Date);
@@ -109,24 +108,25 @@ export const SesiCard = React.memo(function SesiCard({
   })();
 
   const mapelText = (() => {
-    const fromRel = String((sesi as any)?.Mapel?.nama_mapel || (sesi as any)?.Mapel?.nama || '').trim();
+    const fromRel = String((sesi as any)?.Mapel?.nama_mapel || (sesi as any)?.Mapel?.nama || (sesi as any)?.mapel_nama || (sesi as any)?.mapel || '').trim();
     if (fromRel) return fromRel;
     const fromLabel = String(mapelLabel((sesi as any)?.mapel_id)).trim();
     if (fromLabel && fromLabel !== '-') return fromLabel;
-    return jk;
+    return jk && jk !== '-' ? jk : 'Mata Pelajaran KBM';
   })();
 
   const guruText = (() => {
     const fromRel = String((sesi as any)?.Guru?.nama_guru || (sesi as any)?.guru_nama || '').trim();
     if (fromRel) return fromRel;
     const id = (sesi as any)?.guru_id;
-    if (!id) return '-';
-    return String(guruLabel(id)).trim() || '-';
+    if (!id) return 'Guru Pengajar';
+    const label = String(guruLabel(id)).trim();
+    return label && label !== '-' ? label : 'Guru Pengajar';
   })();
 
   const kelasText = (() => {
     const fromRel = String((sesi as any)?.Kelas?.nama_kelas || (sesi as any)?.kelas_nama || (sesi as any)?.kelas || '').trim();
-    return fromRel || '-';
+    return fromRel || 'Kelas';
   })();
 
   const stGuru = String(guruStatusText || '').toUpperCase();
@@ -166,12 +166,18 @@ export const SesiCard = React.memo(function SesiCard({
             {mapelText}
           </h3>
 
-          {/* Guru */}
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300">
+          {/* Guru & Teacher Status Label */}
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-300 flex-wrap">
             <span className="truncate font-semibold text-slate-700 dark:text-slate-200">
               {guruText}
             </span>
-            <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${isGuruHadir ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : 'bg-amber-500 ring-2 ring-amber-500/20'}`} title={guruStatusText} />
+            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${
+              guruStatusVariant === 'success' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' :
+              guruStatusVariant === 'destructive' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30' :
+              'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+            }`}>
+              Guru: {guruStatusText}
+            </span>
           </div>
         </div>
 

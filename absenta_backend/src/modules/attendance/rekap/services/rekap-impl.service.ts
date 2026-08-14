@@ -1554,7 +1554,7 @@ export class RekapImplService {
     classTaps.forEach(tap => {
       const mapelName = tap.SesiAbsensi?.Mapel?.nama_mapel;
       const guruName = tap.SesiAbsensi?.Guru?.nama_guru || null;
-      const statusGuru = tap.SesiAbsensi?.AbsenGuru?.[0]?.status || 'HADIR';
+      const statusGuru = tap.SesiAbsensi?.AbsenGuru?.[0]?.status || (tap.SesiAbsensi?.status === 'SELESAI' ? 'ALPA' : 'BELUM_HADIR');
       const rawJenis = tap.SesiAbsensi?.jenis_kegiatan || 'KBM';
       const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
       const cleanJenis = isUUID(rawJenis) ? 'KBM' : rawJenis;
@@ -1681,7 +1681,7 @@ export class RekapImplService {
         waktu: effectiveTime ? formatTime(effectiveTime) : '-',
         timestamp: effectiveTime,
         jenis_kegiatan: activityName,
-        status: (tap.status === 'HADIR' && tap.is_terlambat) ? 'TERLAMBAT' : (tap.status || 'HADIR'),
+        status: (tap.status === 'HADIR' && tap.is_terlambat) ? 'TERLAMBAT' : (tap.status || 'BELUM_TAP'),
         keterangan: tap.catatan || null
       };
     }));

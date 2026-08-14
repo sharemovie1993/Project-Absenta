@@ -68,17 +68,34 @@ export class GuruRekapService {
     const tenantTimezone = await getTenantTimezone(tenantId);
 
     const guru = await prisma.guru.findFirst({
-      where: { id: guruId, tenant_id: tenantId },
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { id: guruId },
+          { user_id: guruId }
+        ]
+      },
       select: { id: true, nama_guru: true, nip: true }
     });
 
-    if (!guru) throw new Error('Guru tidak ditemukan');
+    if (!guru) {
+      return {
+        success: true,
+        data: {
+          guru_id: guruId,
+          nama_guru: 'Pengajar',
+          status: 'BELUM_HADIR',
+          timeline: []
+        }
+      };
+    }
 
+    const realGuruId = guru.id;
     const { startOfDay, endOfDay } = getTenantDayRange(tanggal, tenantTimezone);
 
     const gateTaps = await prisma.absenGerbangGuru.findMany({
       where: {
-        guru_id: guruId,
+        guru_id: realGuruId,
         tenant_id: tenantId,
         waktu_tap: { gte: startOfDay, lte: endOfDay }
       },
@@ -88,7 +105,7 @@ export class GuruRekapService {
 
     const classTaps = await prisma.absenGuru.findMany({
       where: {
-        guru_id: guruId,
+        guru_id: realGuruId,
         tenant_id: tenantId,
         waktu_tap: { gte: startOfDay, lte: endOfDay }
       },

@@ -117,7 +117,7 @@ export function evaluateTeacherDisciplineAspects(params: {
  * Computes Timeline Item visual styles and flags
  */
 export function getTeacherTimelineItemStyle(status?: string, jenisKegiatan?: string): TeacherTimelineStyle {
-  const st = String(status || 'HADIR').toUpperCase();
+  const st = String(status || '').toUpperCase();
   const isGate = !!jenisKegiatan?.includes('Gerbang');
   const isDatang = !!jenisKegiatan?.includes('Datang');
   const isPulang = !!jenisKegiatan?.includes('Pulang');

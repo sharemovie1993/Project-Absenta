@@ -44,7 +44,7 @@ export default React.memo(function ModeSimpleView({
   isPetugasGuru,
   kelasLabel,
 }: ModeSimpleViewProps) {
-  const { isAdmin, isGateOfficer, can } = useCapabilities();
+  const { isAdmin, isGateOfficer, isPetugasKelas, can } = useCapabilities();
   const isGerbangPos = isGateOfficer || can('attendance.gate.tap.entry');
 
   const { tenantId } = useTenant();
@@ -94,10 +94,12 @@ export default React.memo(function ModeSimpleView({
 
   const canAccessInput =
     isAdmin ||
-    isGerbangPos ||
-    isOperator ||
-    can('attendance.gate.tap.entry');
-  const canAccessManual = isAdmin || isPetugasSiswa || (can('attendance.sessions.update.attendance') && !isGerbangPos);
+    isGerbangPos;
+  const canAccessManual =
+    isAdmin ||
+    isPetugasSiswa ||
+    isPetugasKelas ||
+    can('attendance.sessions.update.attendance');
 
   const totalArrived = miniStats?.masuk || 0;
   const totalStudents = miniStats?.total_target || 0;

@@ -1124,6 +1124,7 @@ model SesiAbsensi {
   jadwal_kbm_id      String?
   jadwal_kegiatan_id String?
   keterangan         String?         @db.Text
+  foto_kegiatan      String?         @db.Text
   JadwalKBM          JadwalKBM?      @relation(fields: [jadwal_kbm_id], references: [id])
   JadwalKegiatan     JadwalKegiatan? @relation(fields: [jadwal_kegiatan_id], references: [id])
   created_at         DateTime        @default(now()) @db.Timestamptz

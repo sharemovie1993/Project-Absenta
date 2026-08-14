@@ -454,12 +454,13 @@ export class JadwalKBMController {
     const scheduledItems = jadwal.map((j: any) => {
       let session = sessionMap.get(j.id);
       
-      // Fuzzy match if no direct link
+      // Match session if direct link or 1-to-1 mapel_id match
       if (!session) {
         session = sessions.find((s: any) => 
           !s.jadwal_kbm_id && 
+          !matchedSessionIds.has(s.id) &&
           String(s.kelas_id) === String(j.kelas_id) && 
-          (s.mapel_id === j.mapel_id || (!s.mapel_id && String(s.jenis_kegiatan).toUpperCase() === String(j.jenis_kegiatan).toUpperCase()))
+          s.mapel_id && String(s.mapel_id) === String(j.mapel_id)
         );
       }
 
@@ -470,24 +471,55 @@ export class JadwalKBMController {
 
       const sessionWithSummary = session ? { ...session, _summary: summaryMap.get(session.id) } : null;
 
+      // Server-side overdue and live computation — accurate & time-aware
+      const serverNow = new Date();
+      const sessionStartAt = session?.waktu_mulai ? new Date(session.waktu_mulai) : null;
+      const sessionEndAt = session?.waktu_selesai ? new Date(session.waktu_selesai) : null;
+
+      const todayStr = serverNow.toLocaleDateString('sv-SE');
+      const jadwalStartAt = !sessionStartAt && j.jam_mulai ? new Date(`${todayStr}T${j.jam_mulai}:00`) : null;
+      const effectiveStartAt = sessionStartAt || jadwalStartAt;
+
+      const jadwalEndAt = !sessionEndAt && j.jam_selesai ? new Date(`${todayStr}T${j.jam_selesai}:00`) : null;
+      const effectiveEndAt = sessionEndAt || jadwalEndAt;
+
+      const sched_is_finished = session ? session.status === 'SELESAI' : false;
+      const hasTeacherOpened = Boolean(session?.foto_kegiatan);
+      
+      const isWithinWindow = Boolean(
+        effectiveStartAt && effectiveEndAt &&
+        (serverNow.getTime() >= effectiveStartAt.getTime() - 15 * 60 * 1000) &&
+        (serverNow.getTime() <= effectiveEndAt.getTime())
+      );
+
+      // is_live only if teacher opened it OR within window and session not finished/overdue
+      const sched_is_live = !sched_is_finished && (hasTeacherOpened || isWithinWindow);
+      const is_overdue = !sched_is_live && !sched_is_finished && !hasTeacherOpened && Boolean(effectiveEndAt && serverNow > effectiveEndAt);
+
       return {
         ...j,
         jenis_kegiatan: resolvedNama || j.jenis_kegiatan || 'KBM',
         session: sessionWithSummary,
         attendance_status: attendance?.status || (session ? 'BELUM_PRESENSI' : null), 
         waktu_tap: attendance?.waktu_tap || null,
-        is_live: session ? session.status === 'BERLANGSUNG' : false,
-        is_finished: session ? session.status === 'SELESAI' : false
+        is_live: sched_is_live,
+        is_finished: sched_is_finished,
+        is_overdue,
       };
     });
 
     // 6. Add orphan sessions (AdHoc / JadwalKegiatan)
+    const serverNowOrphan = new Date();
     const adhocItems = sessions
       .filter((s: any) => !matchedSessionIds.has(s.id))
       .map((s: any) => {
         const attendance = roleName === RoleName.SISWA ? s.AbsenSiswa?.[0] : s.AbsenGuru?.[0];
         const sessionWithSummary = { ...s, _summary: summaryMap.get(s.id) };
         const resolvedNamaKegiatan = s.Mapel?.nama_mapel || (s.jenis_kegiatan && s.jenis_kegiatan !== 'KEGIATAN' ? s.jenis_kegiatan : 'Mata Pelajaran');
+        const adhocEndAt = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
+        const adhoc_is_live = s.status === 'BERLANGSUNG';
+        const adhoc_is_finished = s.status === 'SELESAI';
+        const adhoc_is_overdue = !adhoc_is_live && !adhoc_is_finished && !!adhocEndAt && serverNowOrphan > adhocEndAt;
         return {
           id: `adhoc-${s.id}`,
           jam_mulai: s.waktu_mulai ? new Date(s.waktu_mulai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') : '??:??',
@@ -503,8 +535,9 @@ export class JadwalKBMController {
           session: sessionWithSummary,
           attendance_status: attendance?.status || 'BELUM_PRESENSI',
           waktu_tap: attendance?.waktu_tap || null,
-          is_live: s.status === 'BERLANGSUNG',
-          is_finished: s.status === 'SELESAI',
+          is_live: adhoc_is_live,
+          is_finished: adhoc_is_finished,
+          is_overdue: adhoc_is_overdue,
           is_adhoc: true
         };
       });

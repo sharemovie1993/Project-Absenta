@@ -1,7 +1,9 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../../api/attendanceGerbang.api';
-import { toLocalDate } from '../../../utils/attendance/time';
+import { normalizeFromSesiAbsensi, KbmItem, getKbmStatusKey } from '../../../utils/kbm-normalizer';
+import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
+import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import { BookOpen, Lock, ShieldAlert } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
@@ -80,9 +82,40 @@ const SAMPLE_DEMO_SESSIONS = [
 ];
 
 export const MonitoringKbmWidget: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { isConnected, subscribe, unsubscribe } = useSocket();
   const { tenantMode } = useAuthStore();
   const [targetDate, setTargetDate] = useState(toLocalDate());
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Real-time cache invalidation via Socket.io
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleInvalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+    };
+
+    subscribe('attendance_feed_update', handleInvalidate);
+    subscribe('sesi_status_update', handleInvalidate);
+    subscribe('absen_guru_update', handleInvalidate);
+    subscribe('session_attendance_update', handleInvalidate);
+    subscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
+    subscribe('SESI_CREATED', handleInvalidate);
+    subscribe('SESI_UPDATED', handleInvalidate);
+
+    return () => {
+      unsubscribe('attendance_feed_update', handleInvalidate);
+      unsubscribe('sesi_status_update', handleInvalidate);
+      unsubscribe('absen_guru_update', handleInvalidate);
+      unsubscribe('session_attendance_update', handleInvalidate);
+      unsubscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
+      unsubscribe('SESI_CREATED', handleInvalidate);
+      unsubscribe('SESI_UPDATED', handleInvalidate);
+    };
+  }, [isConnected, subscribe, unsubscribe, queryClient]);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL'>('ALL');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST' | 'TABLE'>('LIST');
   const [selectedKelasId, setSelectedKelasId] = useState<string>('ALL');
@@ -119,10 +152,10 @@ export const MonitoringKbmWidget: React.FC = () => {
     retry: false,
   });
 
-  // 3. Fetch Session List
+  // 3. Fetch Session List (Unified Source with include_scheduled: true)
   const { data: sesiData, isLoading: sesiLoading, error: sesiError, refetch: refetchSessions } = useQuery({
     queryKey: ['monitoring-sesi-absensi', targetDate],
-    queryFn: () => getSesiAbsensiList({ tanggal: targetDate, summary: true } as any),
+    queryFn: () => getSesiAbsensiList({ tanggal: targetDate, include_scheduled: true, summary: true, limit: 500 } as any),
     enabled: tenantMode !== 'SIMPLE',
     refetchInterval: isToday && tenantMode !== 'SIMPLE' ? 30000 : false, 
     retry: false,
@@ -161,27 +194,31 @@ export const MonitoringKbmWidget: React.FC = () => {
     queryKey: ['sesi-detail-attendance', selectedSesi?.id],
     queryFn: () => getSesiAbsenSiswa(selectedSesi?.id),
     enabled: !!selectedSesi?.id,
+    refetchInterval: !!selectedSesi?.id ? 4000 : false,
   });
 
   const formatTime = useCallback((iso?: string) => {
     if (!iso) return '--:--';
-    return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const formatted = formatLocalTimeFromISO(iso);
+    const tzLabel = getTimezoneLabel();
+    return formatted ? `${formatted} ${tzLabel}` : '--:--';
   }, []);
 
-  const enrichedSessions = useMemo(() => {
-    const items = sesiData?.data || [];
+  // Satu kabel: semua sesi dinormalisasi lewat kbm-normalizer
+  const enrichedSessions: KbmItem[] = useMemo(() => {
+    const rawData = sesiData?.data;
+    const items = Array.isArray(rawData)
+      ? rawData
+      : Array.isArray(rawData?.data)
+      ? rawData.data
+      : Array.isArray(sesiData?.items)
+      ? sesiData.items
+      : [];
     if (!Array.isArray(items) || items.length === 0) {
       return isSubscriptionRequired ? SAMPLE_DEMO_SESSIONS : [];
     }
-    
-    return items.map((s: any) => {
-      const isLive = s._summary?.isLive ?? false;
-      const isFinished = s._summary?.isFinished ?? false;
-      const isUpcoming = !isLive && !isFinished && new Date() < new Date(s.waktu_mulai);
-      
-      return { ...s, isLive, isFinished, isUpcoming };
-    });
-  }, [sesiData, currentTime, isSubscriptionRequired]);
+    return items.map((s: any) => normalizeFromSesiAbsensi(s));
+  }, [sesiData, isSubscriptionRequired]);
 
   const processedSessions = useMemo(() => {
     return enrichedSessions.filter((s: any) => {
@@ -193,15 +230,15 @@ export const MonitoringKbmWidget: React.FC = () => {
       const matchKelas = selectedKelasId === 'ALL' || String(s.kelas_id) === selectedKelasId;
       const matchJurusan = selectedJurusanId === 'ALL' || String(s.Kelas?.jurusan_id) === selectedJurusanId;
       
-      // Strict matching for teacher status from backend summary
-      const matchTeacherStatus = teacherStatusFilter === 'ALL' || String(s._summary?.teacherStatus) === teacherStatusFilter;
-      
       const statusMatch = 
         statusFilter === 'ALL' || 
-        (statusFilter === 'LIVE' && s.isLive) || 
-        (statusFilter === 'FINISHED' && s.isFinished) || 
-        (statusFilter === 'UPCOMING' && s.isUpcoming) ||
-        (statusFilter === 'JURNAL' && !!s.ProgresMateri);
+        (statusFilter === 'LIVE'     && s.status.isLive) || 
+        (statusFilter === 'FINISHED' && s.status.isFinished) || 
+        (statusFilter === 'OVERDUE'  && s.status.isOverdue) ||
+        (statusFilter === 'UPCOMING' && s.status.isUpcoming) ||
+        (statusFilter === 'JURNAL'   && !!(s as any).ProgresMateri);
+
+      const matchTeacherStatus = teacherStatusFilter === 'ALL' || s.status.teacherStatus === teacherStatusFilter;
 
       return matchSearch && matchKelas && matchJurusan && matchTeacherStatus && statusMatch;
     });

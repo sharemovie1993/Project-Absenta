@@ -5,9 +5,9 @@ import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { getTimezone, formatLocalTimeFromISO, getVirtualDate, formatLocalDateTime } from '../../../utils/attendance/time';
 import { 
   BookOpen, CheckCircle2, Users, Search, 
-  RefreshCw, ChevronLeft, ChevronRight, LayoutList, PlayCircle
+  RefreshCw
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { requestWithFallback, formatErrorMessage } from '../../../api/apiUtils';
 import { toast } from 'react-hot-toast';
@@ -71,8 +71,6 @@ type Props = {
   records: SesiAttendanceRecord[];
   sesi?: SesiDetail;
   isReportMode?: boolean;
-  isSlideMode?: boolean;
-  onToggleSlideMode?: () => void;
 };
 
 // Memoized Sub-Component for High-Performance Rendering (Fase 2)
@@ -87,8 +85,8 @@ const SesiAttendanceRow = React.memo(({
   isPending: boolean;
   onUpdateStatus: (siswaAkademikId: string, status: string) => void;
 }) => {
-  const studentId = record.siswa_akademik_id || record.siswa_id || record.guru_id || record.id || '';
-  const isGuru = record.is_guru || Boolean(record.Guru) || Boolean(record.guru_id) || (record as any)._type === 'guru';
+  const studentId = record.siswa_akademik_id || record.siswa_id || record.id || '';
+  const isGuru = record.is_guru === true || (record as any).nisn === 'GURU' || (record as any)._type === 'guru';
   
   const rawGuruName = record.Guru?.nama_guru || (record as any).nama_guru || (isGuru ? sesi?.nama_guru : null);
   const rawSiswaName = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama;
@@ -238,21 +236,11 @@ const SesiAttendanceRow = React.memo(({
 
 SesiAttendanceRow.displayName = 'SesiAttendanceRow';
 
-export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlideMode: propIsSlideMode, onToggleSlideMode }: Props) {
+export function SesiAttendanceList({ records, sesi, isReportMode = false }: Props) {
   const queryClient = useQueryClient();
   const progres = sesi?.ProgresMateri;
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [internalSlideMode, setInternalSlideMode] = useState(false);
-  const isSlideMode = propIsSlideMode !== undefined ? propIsSlideMode : internalSlideMode;
-  const setIsSlideMode = (val: boolean | ((prev: boolean) => boolean)) => {
-    if (onToggleSlideMode) {
-      onToggleSlideMode();
-    } else {
-      setInternalSlideMode(val);
-    }
-  };
-  const [slideIndex, setSlideIndex] = useState(0);
 
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
@@ -283,7 +271,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
         id: `guru-${gId}`,
         guru_id: gId,
         is_guru: true,
-        status: savedGuruData?.status || sesi?.guru_status || 'HADIR',
+        status: savedGuruData?.status || sesi?.guru_status || 'BELUM_TAP',
         waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : (sesi?.waktu_tap_guru ?? null),
         is_terlambat: savedGuruData?.is_terlambat || false,
         Guru: guruDetail,
@@ -390,11 +378,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
             catatan: variables.catatan !== undefined ? variables.catatan : targetRec?.catatan
           }));
         } catch {}
-      }
-
-      // Auto-next logic for Slide Mode
-      if (isSlideMode && slideIndex < filteredRecords.length - 1) {
-        setTimeout(() => setSlideIndex(prev => prev + 1), 300);
       }
     },
     onError: (error: any, variables, context) => {
@@ -528,8 +511,6 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
     handleUpdateStatus(siswaAkademikId, status, catatan);
   };
 
-  const currentSlideSiswa = filteredRecords[slideIndex];
-
   return (
     <div className="space-y-4 py-1">
 
@@ -545,144 +526,50 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
         </div>
       )}
 
-      {/* 3. Content Section (Slide vs List) */}
-      <AnimatePresence mode="wait">
-        {isSlideMode && filteredRecords.length > 0 ? (
-          <motion.div
-            key="slide-mode"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-xl p-8 shadow-xl shadow-indigo-100/20"
-          >
-            <div className="flex flex-col items-center text-center space-y-6">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Siswa {slideIndex + 1} dari {filteredRecords.length}</p>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">
-                  {currentSlideSiswa.Siswa?.nama_siswa}
-                </h3>
-                <p className="text-sm font-bold text-gray-400">NIS: {currentSlideSiswa.Siswa?.nis || '-'}</p>
-              </div>
+      {/* 3. Content Section (List Mode Only) */}
+      <div className="space-y-2.5">
+        {/* Status Tabs dengan Badge Count — compact & proporsional */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {[
+            { key: 'ALL', label: 'All', count: stats.total },
+            { key: 'HADIR', label: 'Hadir', count: stats.hadir },
+            { key: 'BELUM_TAP', label: 'Belum', count: stats.belum_tap },
+            ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
+            ...(stats.dispen > 0 ? [{ key: 'DISPEN', label: 'Dispen', count: stats.dispen }] : []),
+            { key: 'ALPA', label: 'Alpa', count: stats.alpa }
+          ].map((tab) => {
+            const isActive = filterStatus === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setFilterStatus(tab.key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 h-7 rounded-lg text-[10px] font-bold transition-all shrink-0 border",
+                  isActive
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                )}
+              >
+                <span>{tab.label}</span>
+                <span className={cn(
+                  "px-1.5 py-0.2 text-[9px] font-extrabold rounded-full",
+                  isActive ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                )}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-              <div className="flex flex-col gap-4 w-full max-w-xs">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pilih Kehadiran</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'HADIR', val: 'HADIR', color: 'emerald' },
-                    { label: 'IZIN', val: 'IZIN', color: 'blue' },
-                    { label: 'SAKIT', val: 'SAKIT', color: 'amber' },
-                    { label: 'DISPEN', val: 'DISPEN', color: 'violet' },
-                    { label: 'ALPA', val: 'ALPA', color: 'rose' }
-                  ].map((btn) => {
-                    const studentId = currentSlideSiswa.siswa_akademik_id || currentSlideSiswa.siswa_id || '';
-                    const isPending = updateAttendanceMutation.isPending &&
-                                     updateAttendanceMutation.variables?.siswaAkademikId === studentId;
-                    const isActive = currentSlideSiswa.status === btn.val;
-                    const isCurrentPending = isPending && updateAttendanceMutation.variables?.status === btn.val;
-
-                    return (
-                      <button
-                        key={btn.val}
-                        disabled={isPending}
-                        onClick={() => handleUpdateStatus(studentId, btn.val)}
-                        className={cn(
-                          "h-14 flex items-center justify-center rounded-xl text-xs font-black transition-all border-2 relative",
-                          isActive
-                            ? `bg-${btn.color}-500 border-${btn.color}-500 text-white shadow-lg shadow-${btn.color}-200 dark:shadow-none scale-[1.02]`
-                            : `bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-${btn.color}-400 hover:text-${btn.color}-500`,
-                          isPending && !isActive && "opacity-40 cursor-not-allowed"
-                        )}
-                      >
-                        {isCurrentPending ? (
-                          <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                        ) : (
-                          btn.label
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between w-full pt-4 border-t border-gray-100 dark:border-gray-700">
-                <button
-                  disabled={slideIndex === 0}
-                  onClick={() => setSlideIndex(prev => prev - 1)}
-                  className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-20 transition-colors"
-                >
-                  <ChevronLeft size={24} className="text-gray-400" />
-                </button>
-                <div className="flex gap-1">
-                  {filteredRecords.map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-1.5 h-1.5 rounded-full transition-all",
-                        i === slideIndex ? "bg-indigo-600 w-4" : "bg-gray-200 dark:bg-gray-700"
-                      )}
-                    />
-                  )).slice(Math.max(0, slideIndex - 5), Math.min(filteredRecords.length, slideIndex + 5))}
-                </div>
-                <button
-                  disabled={slideIndex === filteredRecords.length - 1}
-                  onClick={() => setSlideIndex(prev => prev + 1)}
-                  className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-20 transition-colors"
-                >
-                  <ChevronRight size={24} className="text-gray-400" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
+        {/* List Records */}
+        {filteredRecords.length === 0 ? (
+          <div className="py-8 text-center bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-semibold text-gray-400">Tidak ada siswa pada kategori status ini.</p>
+          </div>
         ) : (
-          <motion.div
-            key="list-mode"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-2.5"
-          >
-            {/* Status Tabs dengan Badge Count — compact & proporsional */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-              {[
-                { key: 'ALL', label: 'All', count: stats.total },
-                { key: 'HADIR', label: 'Hadir', count: stats.hadir },
-                { key: 'BELUM_TAP', label: 'Belum', count: stats.belum_tap },
-                ...(stats.izin + stats.sakit > 0 ? [{ key: 'IZIN', label: 'Izin', count: stats.izin + stats.sakit }] : []),
-                ...(stats.dispen > 0 ? [{ key: 'DISPEN', label: 'Dispen', count: stats.dispen }] : []),
-                { key: 'ALPA', label: 'Alpa', count: stats.alpa }
-              ].map((tab) => {
-                const isActive = filterStatus === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setFilterStatus(tab.key)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 h-7 rounded-lg text-[10px] font-bold transition-all shrink-0 border",
-                      isActive
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
-                    )}
-                  >
-                    <span>{tab.label}</span>
-                    <span className={cn(
-                      "px-1.5 py-0.2 rounded-full text-[9px] font-extrabold shrink-0",
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                    )}>
-                      {tab.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {!localRecords || localRecords.length === 0 ? (
-              <div className="bg-gray-50/30 rounded-sm p-8 text-center border border-dashed border-gray-200 dark:border-gray-800">
-                <p className="text-gray-400 font-bold uppercase tracking-widest text-[9px]">Kosong.</p>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
+          <div className="space-y-1.5">
+            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
                 <div className={cn(
                   "grid bg-slate-50/80 dark:bg-gray-900/60 px-4 py-2.5 text-[9px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-gray-800",
                   isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]"
@@ -715,10 +602,9 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false, isSlid
                   )}
                 </div>
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </div>
 
       <CatatanAbsensiModal
         isOpen={noteModalOpen}

@@ -196,29 +196,14 @@ async function start() {
       return;
     }
 
-    // ðŸ” DEBUG: Hook level tertinggi untuk melacak SEMUA request
+    // 🔍 DEBUG: Hook level tertinggi untuk melacak SEMUA request secara rapi
     const enableHighestLevelDebug =
-      String(process.env.HIGHEST_LEVEL_DEBUG || '').trim().toLowerCase() === 'true' ||
-      (process.env.NODE_ENV !== 'production' && String(process.env.HIGHEST_LEVEL_DEBUG || '').trim() !== 'false');
+      String(process.env.HIGHEST_LEVEL_DEBUG || '').trim().toLowerCase() === 'true';
+
     if (enableHighestLevelDebug) {
       const lastLogAt = new Map<string, number>();
       const getUrlPath = (url: any) => String(url || '').split('?')[0];
-      const redactHeaders = (headers: any) => {
-        const safe = { ...(headers || {}) } as Record<string, any>;
-        const redactKeys = [
-          'authorization',
-          'cookie',
-          'set-cookie',
-          'x-api-key',
-          'x-callback-token',
-          'x-callback-signature',
-          'stripe-signature'
-        ];
-        for (const key of redactKeys) {
-          if (typeof safe[key] !== 'undefined') safe[key] = '[REDACTED]';
-        }
-        return safe;
-      };
+
       const shouldLog = (kind: 'request' | 'response', method: string, urlPath: string) => {
         if (urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) return false;
         if (urlPath === '/api/system/config' || urlPath === '/system/config') return false;
@@ -227,7 +212,7 @@ async function start() {
         const now = Date.now();
         const key = `${kind}:${method}:${urlPath}`;
         const last = lastLogAt.get(key) || 0;
-        if (now - last < 250) return false;
+        if (now - last < 500) return false;
         lastLogAt.set(key, now);
 
         return true;
@@ -236,25 +221,14 @@ async function start() {
       fastify.addHook('onRequest', async (request: any) => {
         const urlPath = getUrlPath(request.url);
         if (!shouldLog('request', request.method, urlPath)) return;
-        const safeHeaders = redactHeaders(request.headers);
-        console.log('ðŸš€ [HIGHEST LEVEL DEBUG] Request masuk:', {
-          method: request.method,
-          url: request.url,
-          headers: safeHeaders,
-          timestamp: new Date().toISOString()
-        });
-        appendLog({ type: 'request_high', method: request.method, url: request.url, headers: safeHeaders, ts: Date.now() });
+        fastify.log.info(`🚀 [HTTP IN] ${request.method} ${request.url}`);
       });
 
       fastify.addHook('onResponse', async (request: any, reply: any) => {
         const urlPath = getUrlPath(request.url);
         if (!shouldLog('response', request.method, urlPath)) return;
-        console.log('📰 [HIGHEST LEVEL DEBUG] Response keluar:', {
-          method: request.method,
-          url: request.url,
-          statusCode: reply.statusCode,
-          timestamp: new Date().toISOString()
-        });
+        const duration = Math.round(reply.getResponseTime());
+        fastify.log.info(`🏁 [HTTP OUT] ${request.method} ${request.url} → ${reply.statusCode} (${duration}ms)`);
         appendLog({ type: 'response_high', method: request.method, url: request.url, statusCode: reply.statusCode, ts: Date.now() });
       });
       fastify.addHook('onError', async (request: any, reply: any, error: any) => {

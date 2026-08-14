@@ -76,20 +76,38 @@ export default React.memo(function ModeMultiSesiView({
   useEffect(() => {
     if (selectedKelasId) return;
 
-    // 1. Wali Kelas auto-filter ke kelas bimbingan
-    const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
-    const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
-    if (waliKelasId && kelasOptions.length > 0) {
-      const match = kelasOptions.find(o => String(o.value) === String(waliKelasId) || String(o.label).toLowerCase() === String(waliKelasId).toLowerCase());
-      if (match) {
-        setSelectedKelasId(String(match.value));
-        return;
-      }
-    }
-
-    // 2. Petugas Kelas auto-filter ke managedKelasIds
+    // 1. Petugas Kelas auto-filter ke managedKelasIds
     if (managedKelasIds && managedKelasIds.length > 0) {
       setSelectedKelasId(managedKelasIds[0]);
+      return;
+    }
+
+    // 2. Wali Kelas auto-filter ke kelas bimbingan
+    const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
+    const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
+    if (waliKelasId) {
+      if (kelasOptions.length > 0) {
+        const match = kelasOptions.find(o => String(o.value) === String(waliKelasId) || String(o.label).toLowerCase() === String(waliKelasId).toLowerCase());
+        if (match) {
+          setSelectedKelasId(String(match.value));
+          return;
+        }
+      }
+      setSelectedKelasId(String(waliKelasId));
+      return;
+    }
+
+    // 3. Siswa auto-filter ke kelas_id miliknya
+    const siswaKelasId = (user as any)?.siswa_profile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id || (user as any)?.siswa?.kelas_id;
+    if (siswaKelasId) {
+      if (kelasOptions.length > 0) {
+        const match = kelasOptions.find(o => String(o.value) === String(siswaKelasId));
+        if (match) {
+          setSelectedKelasId(String(match.value));
+          return;
+        }
+      }
+      setSelectedKelasId(String(siswaKelasId));
       return;
     }
   }, [managedKelasIds, selectedKelasId, user, kelasOptions]);
@@ -277,6 +295,8 @@ export default React.memo(function ModeMultiSesiView({
                   isPetugasSiswa={isPetugasSiswa}
                   userRole={user?.role?.name}
                   canCreateSession={canCreateSession}
+                  managedKelasIds={managedKelasIds}
+                  user={user}
                 />
               </section>
             )}

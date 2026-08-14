@@ -6,6 +6,7 @@ import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { DataScope } from '@/types/fastify';
 import { applyDataScope } from '@/utils/applyDataScope';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
+import { SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
 
 export class DashboardService {
   
@@ -397,29 +398,19 @@ export class DashboardService {
         const startOfDay = new Date(`${dateStr}T00:00:00.000${offsetStr}`);
         const endOfDay = new Date(`${dateStr}T23:59:59.999${offsetStr}`);
 
-        const rangeStart = new Date(startOfDay.getTime() - 12 * 3600 * 1000);
-        const rangeEnd = new Date(endOfDay.getTime() + 12 * 3600 * 1000);
-
         const where: any = { tenant_id: tenantId || undefined };
 
         // 1. Total & Active Classes
         const totalClasses = await prisma.kelas.count({ where });
-        
-        const allSessionsInExtendedRange = await prisma.sesiAbsensi.findMany({
-          where: {
-            ...where,
-            tanggal: { gte: rangeStart, lte: rangeEnd }
-          },
-          include: {
-            AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
-            ProgresMateri: { select: { id: true } }
-          }
-        });
 
-        const sessionList = allSessionsInExtendedRange.filter(s => {
-          const sDateStr = new Date(s.tanggal).toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
-          return sDateStr === dateStr;
-        });
+        // Unify session list with SesiLifecycleService (includes scheduled KBM sessions)
+        const lifecycleRes = await SesiLifecycleService.getInstance().list(
+          tenantId || '',
+          {},
+          { tanggal: dateStr, include_scheduled: true, summary: true, limit: 1000 }
+        );
+
+        const sessionList = Array.isArray(lifecycleRes.data) ? lifecycleRes.data : [];
 
         const activeClasses = sessionList.filter(s => s.status === 'BERLANGSUNG').length;
 
@@ -469,17 +460,19 @@ export class DashboardService {
 
           const absenGuru = s.AbsenGuru?.[0];
           const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
-          const isExplicitNonHadir = ['IZIN', 'SAKIT', 'ALPA'].includes(sStatus);
+          const isExplicitNonHadir = ['IZIN', 'SAKIT', 'ALPA', 'PENUGASAN', 'TUGAS_LUAR'].includes(sStatus);
           const hasTap = !isExplicitNonHadir && !!absenGuru?.waktu_tap;
-          const isPresent = (sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap) && !isExplicitNonHadir;
+          const isPresent = (sStatus === 'HADIR' || sStatus === 'TEPAT_WAKTU' || sStatus === 'HADIR_/_MENGAJAR' || hasTap) && !isExplicitNonHadir;
 
           if (isPresent) {
-            if (absenGuru?.is_terlambat) sessionStats.teacherLate++;
+            if (absenGuru?.is_terlambat || sStatus === 'TERLAMBAT') sessionStats.teacherLate++;
             else sessionStats.teacherOnTime++;
           } else if (sStatus === 'IZIN') {
             sessionStats.teacherIzin++;
           } else if (sStatus === 'SAKIT') {
             sessionStats.teacherSakit++;
+          } else if (sStatus === 'PENUGASAN' || sStatus === 'TUGAS_LUAR') {
+            sessionStats.teacherIzin++;
           } else if (sStatus === 'ALPA') {
             sessionStats.teacherAlpa++;
           } else if (sStatus === 'BELUM_HADIR' || sStatus === 'BELUM_TAP' || sStatus === '' || !absenGuru) {
@@ -530,7 +523,7 @@ export class DashboardService {
     }
 
     if (scope) {
-      whereClause = applyDataScope(whereClause, scope);
+      whereClause = applyDataScope(whereClause, scope, { classField: 'id' });
     }
 
     // Ambil semua kelas
@@ -768,7 +761,7 @@ export class DashboardService {
         hadir: hadir,
         persentase: persentase,
         // Detailed status breakdown for pie chart
-        status: guru.AbsenGuru[0]?.status || 'ALPA'
+        status: guru.AbsenGuru[0]?.status || 'BELUM_HADIR'
       };
     });
 
