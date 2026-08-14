@@ -5,7 +5,8 @@ import {
   DocumentTextIcon, 
   CheckCircleIcon,
   ShieldCheckIcon,
-  UserIcon
+  UserIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { 
   InternalThreadCategory, 
@@ -13,6 +14,7 @@ import {
   InternalThreadType,
   EligibleContactItem 
 } from '@/api/internal-communication.api';
+import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 
 interface NewConversationModalProps {
@@ -42,7 +44,9 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'DIRECT' | 'DISPOSISI'>('DIRECT');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
   const [selectedMultipleUserIds, setSelectedMultipleUserIds] = useState<string[]>([]);
+  const [pickerType, setPickerType] = useState<'SMART' | 'SELECT'>('SMART');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<InternalThreadCategory>('UMUM');
   const [priority, setPriority] = useState<InternalThreadPriority>('NORMAL');
@@ -58,13 +62,30 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     }));
   }, [contacts]);
 
-  // Selected contact details
+  // Selected contact details from contacts directory
   const selectedContact = useMemo(() => {
+    if (selectedEntity) return selectedEntity;
     if (!selectedUserId) return null;
     return contacts.find(c => c.id === selectedUserId) || null;
-  }, [contacts, selectedUserId]);
+  }, [contacts, selectedUserId, selectedEntity]);
 
   if (!isOpen) return null;
+
+  const handleSmartSelect = (student: Student) => {
+    const targetUserId = student.user_id || (student as any).userId || student.id;
+    if (targetUserId) {
+      setSelectedUserId(targetUserId);
+      setSelectedEntity({
+        id: targetUserId,
+        name: student.nama_guru || student.nama_siswa || student.full_name || 'Pengguna',
+        role_label: student.nama_guru ? (student.nip ? `Guru (NIP: ${student.nip})` : 'Guru') : (student.Kelas?.nama_kelas ? `Siswa (${student.Kelas.nama_kelas})` : 'Siswa/GTK'),
+        avatar: student.foto_profile_url
+      });
+      if (activeTab === 'DISPOSISI' && !selectedMultipleUserIds.includes(targetUserId)) {
+        setSelectedMultipleUserIds(prev => [...prev, targetUserId]);
+      }
+    }
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,11 +117,11 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
           <div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
               Mulai Percakapan Baru
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Pilih kontak sah di lingkungan sekolah Anda
+              Pilih kontak tujuan di lingkungan sekolah Anda (Guru, Wali Kelas, Siswa, BK)
             </p>
           </div>
           <button
@@ -118,6 +139,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             onClick={() => {
               setActiveTab('DIRECT');
               setSelectedUserId('');
+              setSelectedEntity(null);
               setSelectedMultipleUserIds([]);
             }}
             className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
@@ -134,6 +156,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             onClick={() => {
               setActiveTab('DISPOSISI');
               setSelectedUserId('');
+              setSelectedEntity(null);
               setSelectedMultipleUserIds([]);
             }}
             className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
@@ -222,43 +245,90 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             </div>
           )}
 
-          {/* Pemilihan Kontak Menggunakan Komponen Standar SearchableSelect */}
+          {/* Pemilihan Kontak Menggunakan SmartStudentPicker */}
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              {activeTab === 'DIRECT' ? 'Pilih Kontak Tujuan' : 'Pilih Penerima Disposisi'}
-              <span className="text-red-500 ml-1">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span>{activeTab === 'DIRECT' ? 'Pilih Kontak Tujuan' : 'Pilih Penerima Disposisi'}</span>
+                <span className="text-red-500">*</span>
+              </label>
 
-            <SearchableSelect
-              id="comm-contact-select"
-              value={selectedUserId}
-              onValueChange={(val) => {
-                setSelectedUserId(val);
-                if (activeTab === 'DISPOSISI' && val && !selectedMultipleUserIds.includes(val)) {
-                  setSelectedMultipleUserIds(prev => [...prev, val]);
-                }
-              }}
-              options={contactOptions}
-              placeholder="Ketik untuk mencari nama guru, wali kelas, mapel, atau staf..."
-              searchPlaceholder="Cari berdasarkan nama atau peran..."
-              emptyMessage={isLoadingContacts ? "Sedang memuat kontak..." : "Tidak ada kontak yang cocok"}
-              isLoading={isLoadingContacts}
-              clearable={true}
-              triggerClassName="h-11 text-xs font-medium bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
-            />
+              {/* Switcher Mode Pencarian */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPickerType('SMART')}
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    pickerType === 'SMART'
+                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  ⚡ Smart Picker
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerType('SELECT')}
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    pickerType === 'SELECT'
+                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  📋 List Kontak
+                </button>
+              </div>
+            </div>
+
+            {pickerType === 'SMART' ? (
+              <div className="relative">
+                <SmartStudentPicker
+                  mode="universal"
+                  allowCamera={true}
+                  placeholder="Ketik nama guru, NIP, siswa, wali kelas, atau scan kartu..."
+                  onSelect={handleSmartSelect}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <SearchableSelect
+                id="comm-contact-select"
+                value={selectedUserId}
+                onValueChange={(val) => {
+                  setSelectedUserId(val);
+                  setSelectedEntity(null);
+                  if (activeTab === 'DISPOSISI' && val && !selectedMultipleUserIds.includes(val)) {
+                    setSelectedMultipleUserIds(prev => [...prev, val]);
+                  }
+                }}
+                options={contactOptions}
+                placeholder="Pilih nama guru, wali kelas, mapel, atau staf..."
+                searchPlaceholder="Cari berdasarkan nama atau peran..."
+                emptyMessage={isLoadingContacts ? "Sedang memuat kontak..." : "Tidak ada kontak yang cocok"}
+                isLoading={isLoadingContacts}
+                clearable={true}
+                triggerClassName="h-11 text-xs font-medium bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+              />
+            )}
 
             {/* Info Card Kontak Terpilih */}
             {selectedContact && (
-              <div className="mt-2.5 p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
+              <div className="mt-2.5 p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
-                    {selectedContact.name ? selectedContact.name.slice(0, 2).toUpperCase() : <UserIcon className="w-4 h-4" />}
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-xs border-2 border-white dark:border-slate-800 overflow-hidden">
+                    {selectedContact.avatar ? (
+                      <img src={selectedContact.avatar} alt={selectedContact.name} className="w-full h-full object-cover" />
+                    ) : selectedContact.name ? (
+                      selectedContact.name.slice(0, 2).toUpperCase()
+                    ) : (
+                      <UserIcon className="w-5 h-5" />
+                    )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
                       {selectedContact.name}
                     </p>
-                    <p className="text-[11px] text-blue-700 dark:text-blue-300 truncate">
+                    <p className="text-[11px] font-medium text-blue-700 dark:text-blue-300 truncate">
                       {selectedContact.role_label || selectedContact.role}
                       {selectedContact.sub_label && ` • ${selectedContact.sub_label}`}
                     </p>
@@ -268,7 +338,18 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
                     Terpilih
                   </span>
-                  <CheckCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId('');
+                      setSelectedEntity(null);
+                      setSelectedMultipleUserIds([]);
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                    title="Hapus Pemilihan"
+                  >
+                    <XCircleIcon className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
             )}
