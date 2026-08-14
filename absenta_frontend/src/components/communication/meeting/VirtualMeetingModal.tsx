@@ -56,15 +56,36 @@ const RemoteVideoTile: React.FC<{
   onClick: () => void;
 }> = ({ participant, stream, isActiveSpeaker, onClick }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hasVideoTrack, setHasVideoTrack] = useState<boolean>(false);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(() => {});
+    if (!videoRef.current || !stream) {
+      setHasVideoTrack(false);
+      return;
     }
-  }, [stream]);
 
-  const hasVideoStream = Boolean(stream && stream.getVideoTracks().some(t => t.enabled));
+    videoRef.current.srcObject = stream;
+    videoRef.current.play().catch(() => {});
+
+    const updateTrackState = () => {
+      const vTracks = stream.getVideoTracks();
+      setHasVideoTrack(vTracks.length > 0 && vTracks.some((t) => t.enabled));
+    };
+
+    updateTrackState();
+
+    stream.onaddtrack = () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+      updateTrackState();
+    };
+
+    stream.onremovetrack = () => {
+      updateTrackState();
+    };
+  }, [stream]);
 
   return (
     <div
@@ -77,17 +98,17 @@ const RemoteVideoTile: React.FC<{
         ref={videoRef}
         autoPlay
         playsInline
-        className={`w-full h-full object-cover ${hasVideoStream ? '' : 'hidden'}`}
+        className={`w-full h-full object-cover ${hasVideoTrack ? 'block' : 'hidden'}`}
       />
-      {!hasVideoStream && (
-        <div className={`w-20 h-20 rounded-full ${participant.avatarColor} text-white flex items-center justify-center text-2xl font-bold shadow-2xl`}>
+      {!hasVideoTrack && (
+        <div className={`w-20 h-20 rounded-full ${participant.avatarColor || 'bg-[#742774]'} text-white flex items-center justify-center text-2xl font-bold shadow-2xl`}>
           {participant.name.slice(0, 2).toUpperCase()}
         </div>
       )}
 
       <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-semibold flex items-center gap-2 z-20">
         <span className="truncate max-w-[200px]">{participant.name}</span>
-        {participant.isAudioMuted ? <span className="text-rose-500">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
+        {participant.isAudioMuted ? <span className="text-rose-500 font-bold">🔇</span> : <span className="text-[#2DA771]">🎙️</span>}
       </div>
     </div>
   );
@@ -305,22 +326,10 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         return [...prev, ...newPeers];
       });
 
-      // Initiate WebRTC offer to each existing peer
+      // Prepare peer connections to receive incoming tracks
       for (const peer of data.peers) {
         if (peer.userId === user?.id) continue;
-        try {
-          const pc = createPeerConnection(peer.userId);
-          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-          await pc.setLocalDescription(offer);
-
-          socket.emit('meeting:offer', {
-            targetUserId: peer.userId,
-            roomId: cleanRoom,
-            offer
-          });
-        } catch (err: any) {
-          console.warn('Error creating offer for existing peer:', err);
-        }
+        createPeerConnection(peer.userId);
       }
     };
 
@@ -468,6 +477,64 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     };
   }, [isOpen, socket, roomId, user]);
 
+  // Multi-Strategy Audio Stream Acquisition with Virtual Carrier Fallback
+  const acquireAudioStream = async (): Promise<{ stream: MediaStream; isVirtual: boolean }> => {
+    // Strategy 1: Standard Audio
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      return { stream: s, isVirtual: false };
+    } catch {}
+
+    // Strategy 2: Simple Audio
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return { stream: s, isVirtual: false };
+    } catch {}
+
+    // Strategy 3: Relaxed Audio Constraints (for basic / older USB mics)
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      return { stream: s, isVirtual: false };
+    } catch {}
+
+    // Strategy 4: Virtual Audio Track Generator (for PCs without physical microphone)
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const dest = ctx.createMediaStreamDestination();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime); // silent background carrier
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start();
+      return { stream: dest.stream, isVirtual: true };
+    }
+
+    throw new Error('Perangkat mikrofon tidak ditemukan.');
+  };
+
+  // Multi-Strategy Video Stream Acquisition
+  const acquireVideoStream = async (): Promise<MediaStream> => {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+    } catch {}
+
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch {}
+
+    throw new Error('Kamera tidak ditemukan.');
+  };
+
   // Dynamic Camera Toggle with Device Enumeration & Graceful Fallback
   const handleToggleVideo = async () => {
     try {
@@ -477,27 +544,8 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         return;
       }
 
-      // Check physical camera
-      if (navigator.mediaDevices.enumerateDevices) {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter((d) => d.kind === 'videoinput');
-        if (videoDevices.length === 0) {
-          alert('Perangkat kamera (Webcam) tidak terdeteksi pada komputer ini.\n\nAnda tetap dapat berbicara menggunakan mikrofon dan berbagi layar (Screen Share).');
-          setIsVideoDisabled(true);
-          return;
-        }
-      }
-
       if (!localStreamRef.current || localStreamRef.current.getVideoTracks().length === 0) {
-        let stream: MediaStream | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } }
-          });
-        } catch (err) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        }
-
+        const stream = await acquireVideoStream();
         const newVideoTrack = stream.getVideoTracks()[0];
         if (newVideoTrack) {
           if (localStreamRef.current) {
@@ -544,13 +592,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         }
       }
     } catch (err: any) {
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        alert('Perangkat kamera (Webcam) tidak ditemukan atau sedang digunakan oleh aplikasi lain.');
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        alert('Izin kamera ditolak. Silakan klik ikon gembok di bilah URL browser Anda untuk mengizinkan akses kamera.');
-      } else {
-        alert('Gagal mengakses kamera: ' + err.message);
-      }
+      alert('Gagal mengakses kamera: ' + (err.message || 'Perangkat kamera tidak terdeteksi.'));
       setIsVideoDisabled(true);
     }
   };
@@ -558,24 +600,14 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   // Dynamic Microphone Toggle
   const handleToggleAudio = async () => {
     try {
-      if (navigator.mediaDevices?.enumerateDevices) {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioDevices = devices.filter((d) => d.kind === 'audioinput');
-        if (audioDevices.length === 0) {
-          alert('Perangkat mikrofon fisik tidak ditemukan pada perangkat komputer ini.');
-          setIsAudioMuted(true);
-          return;
-        }
-      }
-
       if (!localStreamRef.current || localStreamRef.current.getAudioTracks().length === 0) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const newAudioTrack = stream.getAudioTracks()[0];
+        const { stream: audioStream } = await acquireAudioStream();
+        const newAudioTrack = audioStream.getAudioTracks()[0];
         if (newAudioTrack) {
           if (localStreamRef.current) {
             localStreamRef.current.addTrack(newAudioTrack);
           } else {
-            localStreamRef.current = stream;
+            localStreamRef.current = audioStream;
           }
           setupAudioMeter(localStreamRef.current);
 
@@ -607,11 +639,7 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         setIsAudioMuted(!audioTrack.enabled);
       }
     } catch (err: any) {
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        alert('Perangkat mikrofon fisik tidak terdeteksi pada sistem ini.');
-      } else {
-        alert('Tidak dapat mengakses mikrofon: ' + (err.message || 'Izin mikrofon ditolak.'));
-      }
+      alert('Info Mikrofon: ' + (err.message || 'Mikrofon disenyapkan.'));
       setIsAudioMuted(true);
     }
   };
@@ -632,41 +660,28 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
           hasMic = devices.some((d) => d.kind === 'audioinput');
         }
 
-        if (!hasCamera) setIsVideoDisabled(true);
-        if (!hasMic) setIsAudioMuted(true);
-
-        if (hasCamera && hasMic) {
+        if (hasCamera) {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
-              video: { width: { ideal: 640 }, height: { ideal: 480 } }
-            });
+            const vStream = await acquireVideoStream();
+            stream = vStream;
             setIsVideoDisabled(false);
-            setIsAudioMuted(false);
           } catch {
-            // fallback camera only or mic only
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({ video: true });
-              setIsVideoDisabled(false);
-            } catch {
-              try {
-                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                setIsAudioMuted(false);
-              } catch {}
-            }
+            setIsVideoDisabled(true);
           }
-        } else if (hasCamera) {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { width: { ideal: 640 }, height: { ideal: 480 } }
-            });
-            setIsVideoDisabled(false);
-          } catch {}
-        } else if (hasMic) {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            setIsAudioMuted(false);
-          } catch {}
+        } else {
+          setIsVideoDisabled(true);
+        }
+
+        try {
+          const { stream: aStream, isVirtual } = await acquireAudioStream();
+          if (stream) {
+            aStream.getAudioTracks().forEach((t) => stream?.addTrack(t));
+          } else {
+            stream = aStream;
+          }
+          setIsAudioMuted(isVirtual);
+        } catch {
+          setIsAudioMuted(true);
         }
 
         localStreamRef.current = stream;
