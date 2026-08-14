@@ -3,9 +3,9 @@ import {
   XMarkIcon, 
   ChatBubbleLeftRightIcon, 
   DocumentTextIcon, 
-  MagnifyingGlassIcon,
   CheckCircleIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 import { 
   InternalThreadCategory, 
@@ -13,6 +13,7 @@ import {
   InternalThreadType,
   EligibleContactItem 
 } from '@/api/internal-communication.api';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 
 interface NewConversationModalProps {
   isOpen: boolean;
@@ -40,60 +41,54 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
   isSubmitting
 }) => {
   const [activeTab, setActiveTab] = useState<'DIRECT' | 'DISPOSISI'>('DIRECT');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedMultipleUserIds, setSelectedMultipleUserIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<InternalThreadCategory>('UMUM');
   const [priority, setPriority] = useState<InternalThreadPriority>('NORMAL');
   const [initialMessage, setInitialMessage] = useState('');
   const [isConfidential, setIsConfidential] = useState(false);
 
-  // Filter contacts by search query
-  const filteredContacts = useMemo(() => {
-    if (!searchQuery.trim()) return contacts;
-    const q = searchQuery.toLowerCase();
-    return contacts.filter(
-      c => c.name.toLowerCase().includes(q) || c.role_label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q)
-    );
-  }, [contacts, searchQuery]);
+  // Transform contacts to SearchableSelectOption
+  const contactOptions: SearchableSelectOption[] = useMemo(() => {
+    return contacts.map(c => ({
+      value: c.id,
+      label: `${c.name} • ${c.role_label || c.role}${c.sub_label ? ` (${c.sub_label})` : ''}`,
+      raw: c
+    }));
+  }, [contacts]);
 
-  // Group contacts by category
-  const groupedContacts = useMemo(() => {
-    const map = new Map<string, EligibleContactItem[]>();
-    filteredContacts.forEach(c => {
-      const g = c.group || 'Lainnya';
-      if (!map.has(g)) map.set(g, []);
-      map.get(g)!.push(c);
-    });
-    return Array.from(map.entries());
-  }, [filteredContacts]);
+  // Selected contact details
+  const selectedContact = useMemo(() => {
+    if (!selectedUserId) return null;
+    return contacts.find(c => c.id === selectedUserId) || null;
+  }, [contacts, selectedUserId]);
 
   if (!isOpen) return null;
 
-  const toggleUserSelection = (userId: string) => {
-    if (activeTab === 'DIRECT') {
-      setSelectedUserIds([userId]);
-    } else {
-      setSelectedUserIds(prev => 
-        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-      );
-    }
-  };
-
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedUserIds.length === 0) return;
+    
+    const targetIds = activeTab === 'DIRECT' 
+      ? (selectedUserId ? [selectedUserId] : [])
+      : selectedMultipleUserIds.length > 0 ? selectedMultipleUserIds : (selectedUserId ? [selectedUserId] : []);
+
+    if (targetIds.length === 0) return;
 
     onSubmit({
       type: activeTab === 'DIRECT' ? 'DIRECT' : 'DISPOSISI',
       title: activeTab === 'DISPOSISI' ? title : undefined,
       category,
       priority,
-      targetUserIds: selectedUserIds,
+      targetUserIds: targetIds,
       initialMessage: initialMessage.trim() || undefined,
-      isConfidential
+      isConfidential: activeTab === 'DISPOSISI' && category === 'BK' ? isConfidential : false
     });
   };
+
+  const isFormValid = activeTab === 'DIRECT' 
+    ? Boolean(selectedUserId)
+    : Boolean(title.trim() && (selectedUserId || selectedMultipleUserIds.length > 0));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -110,7 +105,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -122,9 +117,10 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             type="button"
             onClick={() => {
               setActiveTab('DIRECT');
-              setSelectedUserIds([]);
+              setSelectedUserId('');
+              setSelectedMultipleUserIds([]);
             }}
-            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all ${
+            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === 'DIRECT'
                 ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -137,9 +133,10 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             type="button"
             onClick={() => {
               setActiveTab('DISPOSISI');
-              setSelectedUserIds([]);
+              setSelectedUserId('');
+              setSelectedMultipleUserIds([]);
             }}
-            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all ${
+            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
               activeTab === 'DISPOSISI'
                 ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -161,10 +158,10 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Laporan Siswa Sakit di Piket / Permohonan Proyektor"
+                  placeholder="Contoh: Laporan Siswa Sakit di Piket / Koordinasi Modul Ajar"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden shadow-2xs"
                 />
               </div>
 
@@ -176,7 +173,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as InternalThreadCategory)}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden shadow-2xs"
                   >
                     <option value="UMUM">Umum</option>
                     <option value="PIKET">Piket Harian</option>
@@ -196,7 +193,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                   <select
                     value={priority}
                     onChange={e => setPriority(e.target.value as InternalThreadPriority)}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden shadow-2xs"
                   >
                     <option value="LOW">Rendah (Low)</option>
                     <option value="NORMAL">Normal</option>
@@ -214,9 +211,9 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                     id="confidential"
                     checked={isConfidential}
                     onChange={e => setIsConfidential(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 rounded-sm border-slate-300 dark:border-slate-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <label htmlFor="confidential" className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <label htmlFor="confidential" className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer">
                     <ShieldCheckIcon className="w-4 h-4 text-indigo-500" />
                     <span>Tandai sebagai <strong>Konseling Rahasia (Confidential)</strong></span>
                   </label>
@@ -225,68 +222,56 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             </div>
           )}
 
-          {/* Pencarian Kontak */}
+          {/* Pemilihan Kontak Menggunakan Komponen Standar SearchableSelect */}
           <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              {activeTab === 'DIRECT' ? 'Pilih Kontak Tujuan' : 'Pilih Peserta / Penerima Disposisi'}
+              {activeTab === 'DIRECT' ? 'Pilih Kontak Tujuan' : 'Pilih Penerima Disposisi'}
               <span className="text-red-500 ml-1">*</span>
             </label>
-            <div className="relative mb-3">
-              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama guru, wali kelas, mapel, atau staf..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden"
-              />
-            </div>
 
-            {/* List Kontak Terfilter */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-              {isLoadingContacts ? (
-                <div className="p-4 text-center text-xs text-slate-400">Memuat direktori kontak...</div>
-              ) : groupedContacts.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400">Tidak ada kontak yang sesuai</div>
-              ) : (
-                groupedContacts.map(([grp, items]) => (
-                  <div key={grp} className="p-2">
-                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase px-2 py-1">
-                      {grp}
-                    </div>
-                    {items.map(c => {
-                      const isSelected = selectedUserIds.includes(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => toggleUserSelection(c.id)}
-                          className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                            isSelected
-                              ? 'bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                          }`}
-                        >
-                          <div className="min-w-0 pr-2">
-                            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                              {c.name}
-                            </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {c.role_label}
-                            </p>
-                          </div>
-                          {isSelected ? (
-                            <CheckCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          ) : (
-                            <div className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })}
+            <SearchableSelect
+              id="comm-contact-select"
+              value={selectedUserId}
+              onValueChange={(val) => {
+                setSelectedUserId(val);
+                if (activeTab === 'DISPOSISI' && val && !selectedMultipleUserIds.includes(val)) {
+                  setSelectedMultipleUserIds(prev => [...prev, val]);
+                }
+              }}
+              options={contactOptions}
+              placeholder="Ketik untuk mencari nama guru, wali kelas, mapel, atau staf..."
+              searchPlaceholder="Cari berdasarkan nama atau peran..."
+              emptyMessage={isLoadingContacts ? "Sedang memuat kontak..." : "Tidak ada kontak yang cocok"}
+              isLoading={isLoadingContacts}
+              clearable={true}
+              triggerClassName="h-11 text-xs font-medium bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+            />
+
+            {/* Info Card Kontak Terpilih */}
+            {selectedContact && (
+              <div className="mt-2.5 p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                    {selectedContact.name ? selectedContact.name.slice(0, 2).toUpperCase() : <UserIcon className="w-4 h-4" />}
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {selectedContact.name}
+                    </p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300 truncate">
+                      {selectedContact.role_label || selectedContact.role}
+                      {selectedContact.sub_label && ` • ${selectedContact.sub_label}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                    Terpilih
+                  </span>
+                  <CheckCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pesan Pembuka */}
@@ -299,7 +284,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               placeholder="Tulis pesan pengantar atau instruksi awal..."
               value={initialMessage}
               onChange={e => setInitialMessage(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden resize-none"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-hidden resize-none shadow-2xs"
             />
           </div>
 
@@ -308,14 +293,14 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              disabled={selectedUserIds.length === 0 || isSubmitting}
-              className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-xs transition-all flex items-center gap-1.5"
+              disabled={!isFormValid || isSubmitting}
+              className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               {isSubmitting ? 'Memproses...' : activeTab === 'DIRECT' ? 'Mulai Obrolan' : 'Terbitkan Disposisi'}
             </button>
