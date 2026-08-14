@@ -191,4 +191,54 @@ export async function communicationRoutes(fastify: any) {
       }
     }
   });
+
+  /**
+   * 8. Ambil Kredensial ICE Servers (STUN & Coturn Relay)
+   * GET /api/v1/communication/ice-servers
+   */
+  fastify.get('/ice-servers', {
+    handler: async (request: any, reply: any) => {
+      try {
+        const userId = request.user?.id || 'guest';
+        const coturnDomain = process.env.COTURN_DOMAIN;
+        const coturnSecret = process.env.COTURN_SECRET;
+        const coturnPort = process.env.COTURN_PORT || '3478';
+        const coturnTlsPort = process.env.COTURN_TLS_PORT || '5349';
+
+        const iceServers: any[] = [
+          { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+        ];
+
+        // Jika Coturn terkonfigurasi di server
+        if (coturnDomain && coturnSecret) {
+          const crypto = await import('crypto');
+          const ttlSeconds = 86400; // 24 jam
+          const timestamp = Math.floor(Date.now() / 1000) + ttlSeconds;
+          const username = `${timestamp}:${userId}`;
+          const credential = crypto.createHmac('sha1', coturnSecret).update(username).digest('base64');
+
+          iceServers.push({
+            urls: [
+              `turn:${coturnDomain}:${coturnPort}?transport=udp`,
+              `turn:${coturnDomain}:${coturnPort}?transport=tcp`,
+              `turns:${coturnDomain}:${coturnTlsPort}?transport=tcp`
+            ],
+            username,
+            credential
+          });
+        }
+
+        return {
+          success: true,
+          data: {
+            iceServers,
+            coturnEnabled: Boolean(coturnDomain && coturnSecret)
+          }
+        };
+      } catch (err: any) {
+        reply.status(500);
+        return { success: false, message: err.message || 'Gagal mengambil konfigurasi ICE.' };
+      }
+    }
+  });
 }

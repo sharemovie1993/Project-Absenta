@@ -344,6 +344,70 @@ export function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
     });
   });
 
+  socket.on('meeting:reaction', (data: { roomId: string; emoji: string }) => {
+    if (!data?.roomId || !data?.emoji) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    io.to(`meeting:${cleanRoomId}`).emit('meeting:reaction', {
+      emoji: data.emoji,
+      userId: user.id,
+      userName: user.full_name || user.name || 'Peserta'
+    });
+  });
+
+  socket.on('meeting:raise_hand', (data: { roomId: string; isRaised: boolean }) => {
+    if (!data?.roomId) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    io.to(`meeting:${cleanRoomId}`).emit('meeting:raise_hand', {
+      userId: user.id,
+      isRaised: data.isRaised
+    });
+  });
+
+  socket.on('meeting:mute_all', (data: { roomId: string }) => {
+    if (!data?.roomId) return;
+    const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();
+    socket.to(`meeting:${cleanRoomId}`).emit('meeting:mute_all', {
+      byUserId: user.id
+    });
+  });
+
+  socket.on('meeting:save_notulen', async (payload: any) => {
+    if (!payload?.roomId) return;
+    const cleanRoomId = String(payload.roomId).replace(/\s+/g, '').toLowerCase();
+    try {
+      if (tenantId) {
+        const existing = await prisma.meetingSession.findFirst({
+          where: { tenant_id: tenantId, room_id: cleanRoomId }
+        });
+        if (existing) {
+          await prisma.meetingSession.update({
+            where: { id: existing.id },
+            data: {
+              status: 'COMPLETED',
+              ended_at: new Date()
+            }
+          });
+        } else {
+          await prisma.meetingSession.create({
+            data: {
+              tenant_id: tenantId,
+              room_id: cleanRoomId,
+              title: payload.roomTitle || 'Rapat Koordinasi',
+              host_id: user.id,
+              host_name: payload.hostName || user.full_name || 'Host',
+              status: 'COMPLETED',
+              ended_at: new Date()
+            }
+          });
+        }
+      }
+      socket.emit('meeting:notulen_saved', { success: true, roomId: cleanRoomId });
+    } catch (err: any) {
+      fastify.log.warn(`[Meeting Notulen DB] Failed to save: ${err.message}`);
+      socket.emit('meeting:notulen_saved', { success: false, error: err.message });
+    }
+  });
+
   socket.on('meeting:leave', (data: { roomId: string }) => {
     if (!data?.roomId) return;
     const cleanRoomId = data.roomId.replace(/\s+/g, '').toLowerCase();

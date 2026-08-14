@@ -2893,7 +2893,7 @@
     "usesMemo": false,
     "noAnyType": false,
     "safeMapping": false,
-    "strictColors": true,
+    "strictColors": false,
     "tableSorting": true,
     "emptyState": true,
     "loadingGuard": true,
