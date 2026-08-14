@@ -77,17 +77,13 @@ export const SesiCard = React.memo(function SesiCard({
     if (rawJenis.toUpperCase() === 'KBM' && slotKbm) return `KBM ${slotKbm}`;
     return '-';
   })();
-  const isFinished = String(sesi.status || '').toUpperCase() === 'SELESAI';
+  const isFinished = String(sesi.status || '').toUpperCase() === 'SELESAI' || (sesi as any)?._summary?.isFinished === true;
   const canDelete = canManage && !isFinished;
-  const now = new Date();
-  const startAt = (sesi as any)?.waktu_mulai ? new Date((sesi as any).waktu_mulai) : null;
-  const endAt = (sesi as any)?.waktu_selesai ? new Date((sesi as any).waktu_selesai) : null;
-  const isLiveByTime = hasValidTime && now >= (startAt as Date) && now <= (endAt as Date);
-  const isPastByTime = hasValidTime && now > (endAt as Date);
-  const isFutureByTime = hasValidTime && now < (startAt as Date);
-  const isLive = !isFinished && isLiveByTime;
-  const isOverdue = !isFinished && isPastByTime;
-  const isUpcoming = !isFinished && isFutureByTime;
+
+  // 🏛️ Read pure server-calculated flags from _summary / status
+  const isLive = !isFinished && Boolean((sesi as any)?._summary?.isLive ?? (sesi as any)?.status?.isLive ?? (String(sesi.status || '').toUpperCase() === 'BERLANGSUNG'));
+  const isOverdue = !isFinished && !isLive && Boolean((sesi as any)?._summary?.isOverdue ?? (sesi as any)?.status?.isOverdue);
+  const isUpcoming = !isFinished && !isLive && !isOverdue;
 
   // Source badge: TEMPLATE = otomatis/sistem, else = manual
   const sumberSesi = String((sesi as any)?.sumber_sesi || '').toUpperCase();

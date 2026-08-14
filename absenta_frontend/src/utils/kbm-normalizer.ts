@@ -121,7 +121,7 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     kegiatan: raw.Mapel?.nama_mapel || raw.mapel_nama || raw.jenis_kegiatan || raw.kegiatan || '-',
     guru_id: raw.guru_id,
     guru_nama: raw.Guru?.nama_guru || raw.guru_nama || '-',
-    guru_status: raw.guru_status || (raw.status === 'BERLANGSUNG' || raw.foto_kegiatan ? 'HADIR' : (raw.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP')),
+    guru_status: raw.guru_status || (status.teacherStatus === 'TERLAMBAT' ? 'TERLAMBAT' : (status.teacherStatus === 'TEPAT_WAKTU' ? 'HADIR' : (status.isFinished || status.isOverdue ? 'ALPA' : 'BELUM_TAP'))),
     jenis_kegiatan: raw.jenis_kegiatan || 'KBM',
     tanggal: raw.tanggal,
     session: raw, // physical session IS the item here
@@ -184,8 +184,10 @@ export function normalizeFromJadwalKbm(raw: any): KbmItem {
     isOverdue,
     isUpcoming,
     teacherStatus: sessionSummary.teacherStatus ?? (
-      raw.attendance_status === 'HADIR' ? 'TEPAT_WAKTU' : 
-      (isFinished || isOverdue) ? 'ALPA' : 'BELUM_TAP'
+      raw.attendance_status === 'HADIR' ? (raw.is_terlambat ? 'TERLAMBAT' : 'TEPAT_WAKTU') : 
+      (raw.guru_status === 'TERLAMBAT' || physicalSession?.guru_status === 'TERLAMBAT' || raw.absenGuru?.is_terlambat) ? 'TERLAMBAT' :
+      (raw.guru_status === 'HADIR' || raw.is_live ? 'TEPAT_WAKTU' :
+      (isFinished || isOverdue) ? 'ALPA' : 'BELUM_TAP')
     ),
   };
 

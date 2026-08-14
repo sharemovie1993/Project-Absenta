@@ -153,10 +153,15 @@ export class SesiLifecycleService {
       if (existingSesi.status === 'SELESAI') {
         throw new Error('Sesi KBM telah selesai. Tidak dapat membuka kembali sesi yang sudah ditutup.');
       }
+      if (existingSesi.status === 'TERLEWAT') {
+        throw new Error('Jadwal sesi KBM telah terlewat dan ditutup. Anda tidak dapat lagi membuka sesi yang sudah terlewat.');
+      }
 
         // 🛡️ Time-Window Guard saat Guru Buka Sesi dengan Foto
         const now = new Date();
         const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? new Date(waktu_mulai) : now);
+        const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? new Date(waktu_selesai) : null);
+        
         if (finalFotoUrl && startTarget) {
           const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
           const earliestAllowed = new Date(startTarget.getTime() - EARLY_TOLERANCE_MS);
@@ -165,6 +170,15 @@ export class SesiLifecycleService {
             const openTimeStr = fmt(earliestAllowed);
             const startTimeStr = fmt(startTarget);
             throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`);
+          }
+        }
+
+        // 🛡️ Late-Window Cutoff Guard (Tidak boleh buka sesi yang jam selesainya sudah terlewati)
+        if (finalFotoUrl && endTarget && !isNaN(endTarget.getTime())) {
+          if (now.getTime() > endTarget.getTime()) {
+            const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            const endTimeStr = fmt(endTarget);
+            throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} WIB. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
           }
         }
 
@@ -228,6 +242,7 @@ export class SesiLifecycleService {
       }
 
     const parsedStart = waktu_mulai ? new Date(waktu_mulai) : new Date();
+    const parsedEnd = waktu_selesai ? new Date(waktu_selesai) : null;
     const now = new Date();
 
     // 🛡️ Time-Window Guard saat membuat sesi baru dengan Foto
@@ -239,6 +254,15 @@ export class SesiLifecycleService {
         const openTimeStr = fmt(earliestAllowed);
         const startTimeStr = fmt(parsedStart);
         throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`);
+      }
+    }
+
+    // 🛡️ Late-Window Cutoff Guard saat membuat sesi baru
+    if (finalFotoUrl && parsedEnd && !isNaN(parsedEnd.getTime())) {
+      if (now.getTime() > parsedEnd.getTime()) {
+        const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const endTimeStr = fmt(parsedEnd);
+        throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} WIB. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
       }
     }
 
@@ -710,28 +734,61 @@ export class SesiLifecycleService {
 
       const isFinished = item.status === 'SELESAI';
       const isLiveByTime = hasValidTime && serverNow >= (startAt as Date) && serverNow <= (endAt as Date);
-      // isLive = DB status BERLANGSUNG AND time is within schedule
-      // A session past its end time is OVERDUE even if DB status is still BERLANGSUNG
-      const isLive = !isFinished && item.status === 'BERLANGSUNG' && isLiveByTime;
-      const isOverdue = !isFinished && !isLive && hasValidTime && serverNow > (endAt as Date);
+      const isPastSchedule = hasValidTime && serverNow > (endAt as Date);
+      
+      const isVirtualSession = typeof item.id === 'string' && (item.id.startsWith('sched_') || item.status === 'MENDATANG');
+      
+      const absenGuru = item.absenGuru || (Array.isArray(item.AbsenGuru) ? item.AbsenGuru[0] : null);
+      const isPlaceholderAbsenGuru = !absenGuru || (!absenGuru.waktu_tap && (!absenGuru.status || String(absenGuru.status).toUpperCase().includes('BELUM')));
+      const hasTeacherCheckInOrPhoto = Boolean(item.foto_kegiatan) || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA') || !isPlaceholderAbsenGuru;
+
+      // 1. isLive:
+      // - Untuk sesi fisik aktif di DB (status === 'BERLANGSUNG' dan belum SELESAI):
+      //   Jika sudah dibuka oleh guru (ada foto / absen guru valid), status TETAP LIVE sampai ditutup oleh guru/auto-close.
+      //   Jika sesi fisik belum dibuka oleh guru, status Live hanya jika waktu saat ini sudah masuk jadwal (isLiveByTime).
+      // - Untuk sesi virtual: Live jika waktu saat ini dalam rentang jadwal.
+      let isLive = false;
+      if (!isFinished) {
+        if (!isVirtualSession && item.status === 'BERLANGSUNG') {
+          isLive = hasTeacherCheckInOrPhoto ? true : isLiveByTime;
+        } else {
+          isLive = isLiveByTime;
+        }
+      }
+
+      // 2. isOverdue (TERLEWAT):
+      // - HANYA untuk jadwal virtual atau sesi yang TIDAK PERNAH DIBUKA sama sekali (tanpa foto / tanpa check-in guru)
+      //   yang jam jadwalnya sudah lewat.
+      const isOverdue = !isFinished && !isLive && isPastSchedule && (!hasTeacherCheckInOrPhoto || isVirtualSession);
+
+      // 3. isUpcoming:
       const isUpcoming = !isFinished && !isLive && !isOverdue;
 
-      // Teacher status derived from AbsenGuru record
-      const absenGuru = item.absenGuru;
+      // 4. Teacher status derived from AbsenGuru record
       let teacherStatus: string;
-      if (isFinished || isLive || isOverdue) {
-        if (!absenGuru) teacherStatus = 'ALPA';
-        else if (absenGuru.is_terlambat) teacherStatus = 'TERLAMBAT';
+      if (absenGuru && !isPlaceholderAbsenGuru) {
+        if (absenGuru.is_terlambat) teacherStatus = 'TERLAMBAT';
+        else if (absenGuru.status === 'IZIN') teacherStatus = 'IZIN';
+        else if (absenGuru.status === 'SAKIT') teacherStatus = 'SAKIT';
+        else if (absenGuru.status === 'PENUGASAN') teacherStatus = 'PENUGASAN';
+        else if (absenGuru.status === 'ALPA') teacherStatus = 'ALPA';
         else teacherStatus = 'TEPAT_WAKTU';
+      } else if (item.guru_status === 'HADIR' && Boolean(item.foto_kegiatan)) {
+        teacherStatus = 'TEPAT_WAKTU';
+      } else if (isFinished || isOverdue) {
+        teacherStatus = 'ALPA';
       } else {
         teacherStatus = 'BELUM_TAP';
       }
+
+      const effectiveGuruStatus = teacherStatus === 'TERLAMBAT' ? 'TERLAMBAT' : (teacherStatus === 'TEPAT_WAKTU' ? 'HADIR' : (isFinished || isOverdue ? 'ALPA' : (item.guru_status && !item.guru_status.toUpperCase().includes('BELUM') ? item.guru_status : 'BELUM_TAP')));
 
       const baseSummary = item.summary || {};
       const hadir = (baseSummary.HADIR || 0) + (baseSummary.TERLAMBAT || 0);
 
       return {
         ...item,
+        guru_status: effectiveGuruStatus,
         _summary: {
           ...baseSummary,
           isLive,
