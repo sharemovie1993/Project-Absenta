@@ -512,29 +512,93 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const nipText = guruProfile?.nip || (user as any)?.nip || '19850314 201001 1 008';
 
-  // Navigation Tabs Definition for Guru & Staff (Unguarded Mode untuk Kemudahan Akses Lintas Modul)
+  // Navigation Tabs Definition with RBAC & Capabilities Filter
   const tabs = useMemo(() => {
-    const list = [
-      { id: 'ringkasan', label: 'Beranda Guru', icon: UserCheck },
-      { id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' },
-      { id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' },
-      { id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' },
-      { id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' },
-      { id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' },
-      { id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' },
-      { id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' },
-      { id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' },
-      { id: 'kelola', label: 'Piket Harian', icon: ClipboardList },
-      { id: 'profil', label: 'Profil Guru', icon: User },
-    ];
+    const list: Array<{ id: string; label: string; icon: any; badge?: string }> = [];
 
-    // Tab khusus Admin — diletakkan di posisi pertama (sebelum Beranda Guru)
+    // 0. Tab khusus Admin
     if (isAdminRole) {
-      list.unshift({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' } as any);
+      list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
+    // 1. Beranda Guru (selalu untuk guru / staf)
+    list.push({ id: 'ringkasan', label: 'Beranda Guru', icon: UserCheck });
+
+    // 2. KBM & Absen
+    if (!isTuStaff || isAdminRole || isKurikulum) {
+      list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
+    }
+
+    // 3. Wali Kelas
+    if (canAccessWaliKelasTab || isWaliKelas || isAdminRole) {
+      list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
+    }
+
+    // 4. Kurikulum
+    if (isKurikulum || isAdminRole || isKepsek) {
+      list.push({ id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' });
+    }
+
+    // 5. Kesiswaan
+    if (isKesiswaan || isAdminRole || isKepsek) {
+      list.push({ id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' });
+    }
+
+    // 6. Sarpras
+    if (isSarpras || isToolman || isKabeng || isAdminRole || isKepsek) {
+      list.push({ id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' });
+    }
+
+    // 7. Hubin
+    if (isHubin || isBkk || isKaprog || isAdminRole || isKepsek) {
+      list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
+    }
+
+    // 8. Koperasi
+    if (isKoperasi || isAdminRole || isKepsek) {
+      list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
+    }
+
+    // 9. BP/BK
+    if (isBpbk || isAdminRole || isKepsek) {
+      list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
+    }
+
+    // 10. Piket Harian
+    if (isKurikulum || isKesiswaan || isGerbang || isAdminRole || isKepsek || !isTuStaff) {
+      list.push({ id: 'kelola', label: 'Piket Harian', icon: ClipboardList });
+    }
+
+    // 11. Profil Guru
+    list.push({ id: 'profil', label: 'Profil Guru', icon: User });
+
     return list;
-  }, [waliKelasNama, isAdminRole]);
+  }, [
+    isAdminRole,
+    isTuStaff,
+    isKurikulum,
+    canAccessWaliKelasTab,
+    isWaliKelas,
+    waliKelasNama,
+    isKesiswaan,
+    isKepsek,
+    isSarpras,
+    isToolman,
+    isKabeng,
+    isHubin,
+    isBkk,
+    isKaprog,
+    isKoperasi,
+    isBpbk,
+    isGerbang,
+  ]);
+
+  // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
+      setSearchParams({ tab: tabs[0].id }, { replace: true });
+    }
+  }, [tabs, activeTab, setSearchParams]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
