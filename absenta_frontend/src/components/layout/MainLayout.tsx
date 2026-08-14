@@ -12,6 +12,7 @@ import { iconForName } from '@/lib/iconForName';
 import { ChevronRight, HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
+import { BottomNavigation } from './BottomNavigation';
 import { useTvStore } from '@/store/tvStore';
 import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui';
@@ -259,7 +260,7 @@ function MainLayoutContent() {
           </div>
         </div>
 
-        <footer className="px-4 md:px-10 py-6 border-t border-slate-100 dark:border-slate-800/50 bg-white/50 dark:bg-[#020617]/50 backdrop-blur-sm min-h-[64px]">
+        <footer className="px-4 md:px-10 py-6 mb-16 lg:mb-0 border-t border-slate-100 dark:border-slate-800/50 bg-white/50 dark:bg-[#020617]/50 backdrop-blur-sm min-h-[64px]">
           <div className="w-full">
               <div className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-500">
                 {!systemConfig ? (
@@ -275,6 +276,9 @@ function MainLayoutContent() {
           </div>
         </footer>
       </div>
+
+      {/* Navigasi Bawah Seluler Terpadu (Mobile Fixed Bottom Navigation) */}
+      <BottomNavigation />
 
       {/* Floating Support Messenger Widget */}
       <FloatingMessenger />

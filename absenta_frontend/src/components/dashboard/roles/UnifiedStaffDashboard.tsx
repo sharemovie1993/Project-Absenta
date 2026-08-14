@@ -917,36 +917,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
         )}
       </motion.div>
 
-      {/* ────────────────────────────────────────────────────────────────── */}
-      {/* MOBILE FIXED BOTTOM NAVIGATION BAR (lg:hidden)                     */}
-      {/* ────────────────────────────────────────────────────────────────── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-around items-center shadow-xl">
-        {tabs.map((tab) => {
-          const TabIcon = tab.icon;
-          const isTabActive = activeTab === tab.id;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-0",
-                isTabActive
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              )}
-            >
-              <div className={cn(
-                "p-1.5 rounded-xl transition-all",
-                isTabActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-transparent"
-              )}>
-                <TabIcon size={18} />
-              </div>
-              <span className="truncate max-w-[64px] font-extrabold">{tab.label.split(' ')[0]}</span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* Modals */}
       {journalModalOpen && sessionForJournal && (
