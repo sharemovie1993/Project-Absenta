@@ -1,20 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMyJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
+import { WORKDAYS_HARI_KEYS, getDayLabel, type HariKey } from '../../constants/day.constants';
 
-export const ACADEMIC_WORKDAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
-export type AcademicDayName = typeof ACADEMIC_WORKDAYS[number];
-
-export const ACADEMIC_DAY_LABELS: Record<AcademicDayName, string> = {
-  SENIN: 'Senin',
-  SELASA: 'Selasa',
-  RABU: 'Rabu',
-  KAMIS: 'Kamis',
-  JUMAT: 'Jumat',
-  SABTU: 'Sabtu',
-};
-
-export const mapDayIndexToAcademicDay = (idx: number): AcademicDayName => {
+export const mapDayIndexToHariKey = (idx: number): HariKey => {
   switch (idx) {
     case 1: return 'SENIN';
     case 2: return 'SELASA';
@@ -22,7 +11,7 @@ export const mapDayIndexToAcademicDay = (idx: number): AcademicDayName => {
     case 4: return 'KAMIS';
     case 5: return 'JUMAT';
     case 6: return 'SABTU';
-    default: return 'SENIN'; // Default to Senin on Sunday
+    default: return 'SENIN';
   }
 };
 
@@ -43,15 +32,15 @@ export interface MergedScheduleBlock {
 export function useStaffWeeklySchedule() {
   const [viewMode, setViewMode] = useState<'agenda' | 'grid'>('agenda');
 
-  // Compute today's Indonesian academic day name
+  // Compute today's academic day name using existing day.constants
   const todayDayName = useMemo(() => {
     const dayIdx = new Date().getDay();
-    return mapDayIndexToAcademicDay(dayIdx);
+    return mapDayIndexToHariKey(dayIdx);
   }, []);
 
-  const [selectedDay, setSelectedDay] = useState<AcademicDayName>(todayDayName);
+  const [selectedDay, setSelectedDay] = useState<HariKey>(todayDayName);
 
-  // Fetch Teacher's complete weekly schedule from backend
+  // Fetch Teacher's full weekly schedule from SSOT endpoint
   const { data: scheduleRes, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['teacher-weekly-kbm-me'],
     queryFn: () => getMyJadwalKBM(),
@@ -64,25 +53,15 @@ export function useStaffWeeklySchedule() {
 
   // Aggregate and merge consecutive slots into clean course blocks per day
   const groupedData = useMemo(() => {
-    const groups: Record<AcademicDayName, MergedScheduleBlock[]> = {
-      SENIN: [],
-      SELASA: [],
-      RABU: [],
-      KAMIS: [],
-      JUMAT: [],
-      SABTU: [],
-    };
+    const groups: Partial<Record<HariKey, MergedScheduleBlock[]>> = {};
+    const jpCounts: Partial<Record<HariKey, number>> = {};
 
-    const jpCounts: Record<AcademicDayName, number> = {
-      SENIN: 0,
-      SELASA: 0,
-      RABU: 0,
-      KAMIS: 0,
-      JUMAT: 0,
-      SABTU: 0,
-    };
+    WORKDAYS_HARI_KEYS.forEach((day) => {
+      groups[day] = [];
+      jpCounts[day] = 0;
+    });
 
-    ACADEMIC_WORKDAYS.forEach((day) => {
+    WORKDAYS_HARI_KEYS.forEach((day) => {
       const daySlots = rawSchedules
         .filter((s) => String(s.hari).toUpperCase() === day)
         .sort((a, b) => (a.slot_index ?? 0) - (b.slot_index ?? 0));
@@ -159,5 +138,6 @@ export function useStaffWeeklySchedule() {
     isLoading,
     isFetching,
     refetch,
+    getDayLabel,
   };
 }

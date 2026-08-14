@@ -5,19 +5,13 @@ import {
   Clock, 
   LayoutGrid, 
   ListOrdered, 
-  ChevronRight,
-  CalendarDays,
-  Sparkles,
-  BookOpen
+  ChevronRight, 
+  CalendarDays 
 } from 'lucide-react';
 import { JadwalGrid } from '../../kurikulum/JadwalGrid';
 import { cn } from '../../../lib/utils';
-import { 
-  useStaffWeeklySchedule, 
-  ACADEMIC_WORKDAYS, 
-  ACADEMIC_DAY_LABELS, 
-  type AcademicDayName 
-} from '../../../hooks/attendance/useStaffWeeklySchedule';
+import { WORKDAYS_HARI_KEYS, type HariKey } from '../../../constants/day.constants';
+import { useStaffWeeklySchedule } from '../../../hooks/attendance/useStaffWeeklySchedule';
 
 interface StaffWeeklyScheduleWidgetProps {
   onNavigateToKbm?: () => void;
@@ -40,6 +34,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
     activeDayBlocks,
     activeDayJp,
     isLoading,
+    getDayLabel,
   } = useStaffWeeklySchedule();
 
   return (
@@ -97,7 +92,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
         <div className="space-y-4">
           {/* Day Selector Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {ACADEMIC_WORKDAYS.map((day) => {
+            {WORKDAYS_HARI_KEYS.map((day) => {
               const isSelected = selectedDay === day;
               const isToday = todayDayName === day;
               const dayJp = dailyJpCounts[day] || 0;
@@ -114,7 +109,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                       : "bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/70 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >
-                  <span>{ACADEMIC_DAY_LABELS[day]}</span>
+                  <span>{getDayLabel(day)}</span>
                   {isToday && (
                     <span className={cn(
                       "text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider",
@@ -157,7 +152,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                   className="space-y-3"
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
-                    <span>Daftar Sesi Mengajar Hari {ACADEMIC_DAY_LABELS[selectedDay]}</span>
+                    <span>Daftar Sesi Mengajar Hari {getDayLabel(selectedDay)}</span>
                     <span className="text-blue-600 dark:text-blue-400">{activeDayJp} Jam Pelajaran (JP)</span>
                   </div>
 
@@ -212,7 +207,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                   <CalendarDays size={20} />
                 </div>
                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                  Tidak Ada Jadwal Mengajar Hari {ACADEMIC_DAY_LABELS[selectedDay]}
+                  Tidak Ada Jadwal Mengajar Hari {getDayLabel(selectedDay)}
                 </h4>
                 <p className="text-xs font-medium text-slate-400 max-w-sm mx-auto">
                   Anda tidak memiliki alokasi jam tatap muka KBM pada hari ini. Gunakan waktu untuk persiapan administrasi ajar.
