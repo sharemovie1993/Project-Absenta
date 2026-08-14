@@ -32,7 +32,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
   
-  const { isAdmin, isKesiswaan, isKurikulum, can: capCan } = useCapabilities();
+  const { isAdmin, isKesiswaan, isKurikulum, can } = useCapabilities();
   
   // Permissions
   const canManage = isAdmin || isKesiswaan || isKurikulum || can('academic.students.manage');

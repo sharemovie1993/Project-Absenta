@@ -64,7 +64,7 @@ export const KelasPage: React.FC = () => {
   const { tingkatList: hookTingkatList } = useJenjang();
   const guruIdFromUrl = searchParams.get('guru_id') || '';
 
-  const { isKurikulum, isHomeroomTeacher, isTeacher, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isHomeroomTeacher, isTeacher, isAdmin, can } = useCapabilities();
 
   // Permissions — harus di atas useQuery agar 'canView' sudah terdefinisi saat dipakai di 'enabled'
   const canCreate = isAdmin || isKurikulum || can('academic.structures.create');

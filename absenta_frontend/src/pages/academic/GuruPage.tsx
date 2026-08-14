@@ -34,7 +34,7 @@ interface ModalState {
 
 export const GuruPage: React.FC = () => {
   
-  const { isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isKepalaSekolah, isTuHead, isTuStaff, isAdmin, can } = useCapabilities();
 
   const navigate = useNavigate();
 

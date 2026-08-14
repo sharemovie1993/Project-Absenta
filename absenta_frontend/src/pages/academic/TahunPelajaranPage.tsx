@@ -17,7 +17,7 @@ const TahunPelajaranForm = lazy(() => import('../../components/academic/tahun-pe
 
 export const TahunPelajaranPage: React.FC = () => {
   
-  const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isAdmin, can } = useCapabilities();
   const queryClient = useQueryClient();
   const { modal, openCreate, openEdit, openView, close } = useModalState();
 

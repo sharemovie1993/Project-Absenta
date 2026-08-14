@@ -24,7 +24,7 @@ interface ModalState {
 
 export const SemesterPage: React.FC = () => {
   
-  const { isKurikulum, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isAdmin, can } = useCapabilities();
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [wizardOpen, setWizardOpen] = useState(false);

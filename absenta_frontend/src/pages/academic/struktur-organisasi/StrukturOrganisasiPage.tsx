@@ -51,7 +51,7 @@ const StrukturOrganisasiPage: React.FC = () => {
 
   const { confirm } = useConfirm();
   const { user } = useAuthStore();
-  const { isKurikulum, isKepalaSekolah, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
   const { jenjang, sekolah } = useJenjang();
 
   const isGlobalStrukturAdmin = isAdmin || isKurikulum || can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');

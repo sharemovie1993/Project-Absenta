@@ -59,7 +59,7 @@ const SiswaPage: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
 
-  const { isKesiswaan, isKurikulum, isAdmin, can: capCan } = useCapabilities();
+  const { isKesiswaan, isKurikulum, isAdmin, can } = useCapabilities();
 
   // Permissions
   const canCreate = isAdmin || isKesiswaan || isKurikulum || can('academic.students.create');

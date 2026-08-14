@@ -36,7 +36,7 @@ interface ModalState {
 // v1.1.0 - Added Program Keahlian Tab (Kurikulum Merdeka)
 export const JurusanPage: React.FC = () => {
   
-  const { isKurikulum, isProgramHead, isAdmin, can: capCan } = useCapabilities();
+  const { isKurikulum, isProgramHead, isAdmin, can } = useCapabilities();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
