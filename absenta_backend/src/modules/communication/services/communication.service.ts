@@ -92,7 +92,7 @@ export class CommunicationService {
                 no_hp: true,
                 Role: { select: { name: true } },
                 Guru: { select: { id: true, nip: true, nama_guru: true, jabatan: true } },
-                Siswa: { select: { id: true, nisn: true, nama_lengkap: true, Kelas: { select: { nama_kelas: true } } } }
+                Siswa: { select: { id: true, nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
               }
             }
           }
@@ -119,7 +119,7 @@ export class CommunicationService {
 
       // Cari lawan bicara jika direct chat
       const otherParticipant = t.Participants?.find((p: any) => p.user_id !== userId) || t.Participants?.[0];
-      const otherUserName = otherParticipant?.User?.full_name || otherParticipant?.User?.Guru?.nama_guru || otherParticipant?.User?.Siswa?.nama_lengkap || 'Pengguna';
+      const otherUserName = otherParticipant?.User?.full_name || otherParticipant?.User?.Guru?.nama_guru || otherParticipant?.User?.Siswa?.nama_siswa || 'Pengguna';
 
       return {
         id: t.id,
@@ -146,7 +146,7 @@ export class CommunicationService {
         participants: (t.Participants || []).map((p: any) => ({
           id: p.id,
           user_id: p.user_id,
-          name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_lengkap,
+          name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_siswa,
           role_label: p.role_label || p.User?.Role?.name || 'Pengguna',
           kelas: p.User?.Siswa?.Kelas?.nama_kelas || null
         })),
@@ -199,7 +199,7 @@ export class CommunicationService {
                 no_hp: true,
                 Role: { select: { name: true } },
                 Guru: { select: { nip: true, nama_guru: true, jabatan: true } },
-                Siswa: { select: { nisn: true, nama_lengkap: true, Kelas: { select: { nama_kelas: true } } } }
+                Siswa: { select: { nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
               }
             }
           }
@@ -245,7 +245,7 @@ export class CommunicationService {
         participants: (thread.Participants || []).map((p: any) => ({
           id: p.id,
           user_id: p.user_id,
-          name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_lengkap,
+          name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_siswa,
           role: p.User?.Role?.name,
           role_label: p.role_label,
           kelas: p.User?.Siswa?.Kelas?.nama_kelas
