@@ -6,6 +6,7 @@ import { Button } from '../../../ui';
 import { kesiswaanApi } from '../../../../api/kesiswaan.api';
 import { piketApi } from '../../../../api/piket.api';
 import { TimelineItem } from './StaffKbmAbsenTab';
+import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 
 interface StaffBerandaTabProps {
   guruId?: string;
@@ -243,6 +244,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
           </>
         )}
       </div>
+
+      {/* ── JADWAL GURU 1 MINGGU (DUAL VIEW: AGENDA & MATRIX GRID) ─────────── */}
+      <StaffWeeklyScheduleWidget
+        onNavigateToKbm={() => onNavigateTab('jadwal')}
+      />
     </motion.div>
   );
 };
