@@ -760,7 +760,8 @@ export const SiswaDashboard: React.FC = () => {
           : 'MENDATANG';
 
         const rawTeacherStatus = sch._raw?.status?.teacherStatus 
-          || (sch._raw?.session?.waktu_tap ? 'HADIR' : (sch._raw?.status?.isLive ? 'HADIR' : 'BELUM_TAP'));
+          || sch._raw?._summary?.teacherStatus
+          || (sch._raw?.session?.waktu_tap ? (sch._raw?.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : (sch._raw?.status?.isLive ? 'HADIR' : 'BELUM_TAP'));
 
         result.push({
           id: sch.id || `sch-${idx}`,

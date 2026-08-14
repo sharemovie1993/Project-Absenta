@@ -821,12 +821,15 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           counts={session.summary || {}}
                           guruStatusText={
                             (() => {
-                              const raw = String(
-                                session.guru_status || 
-                                (session as any)?.AbsenGuru?.[0]?.status || 
-                                (session as any)?._summary?.teacherStatus || 
-                                ''
-                              ).trim();
+                              const tStat = String((session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus || '').toUpperCase();
+                              if (tStat === 'TERLAMBAT') return 'Terlambat';
+                              if (tStat === 'TEPAT_WAKTU' || tStat === 'HADIR') return 'Hadir';
+                              if (tStat === 'ALPA') return 'Alpa';
+                              if (tStat === 'IZIN') return 'Izin';
+                              if (tStat === 'SAKIT') return 'Sakit';
+                              if (tStat === 'PENUGASAN' || tStat === 'DISPEN') return 'Penugasan';
+                              
+                              const raw = String(session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || '').trim();
                               const upper = raw.toUpperCase().replace(/\s+/g, '_');
                               if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'Belum Hadir';
                               if (upper.includes('TERLAMBAT')) return 'Terlambat';
@@ -837,12 +840,13 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           }
                           guruStatusVariant={
                             (() => {
-                              const raw = String(
-                                session.guru_status || 
-                                (session as any)?.AbsenGuru?.[0]?.status || 
-                                (session as any)?._summary?.teacherStatus || 
-                                ''
-                              ).trim();
+                              const tStat = String((session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus || '').toUpperCase();
+                              if (tStat === 'TERLAMBAT') return 'warning';
+                              if (tStat === 'TEPAT_WAKTU' || tStat === 'HADIR') return 'success';
+                              if (tStat === 'ALPA') return 'destructive';
+                              if (tStat === 'IZIN' || tStat === 'SAKIT' || tStat === 'PENUGASAN' || tStat === 'DISPEN') return 'secondary';
+
+                              const raw = String(session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || '').trim();
                               const upper = raw.toUpperCase().replace(/\s+/g, '_');
                               if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'warning';
                               if (upper.includes('TERLAMBAT')) return 'warning';

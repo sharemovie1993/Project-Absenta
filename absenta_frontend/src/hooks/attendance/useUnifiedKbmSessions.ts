@@ -94,7 +94,7 @@ export function useUnifiedKbmSessions(options: UnifiedKbmSessionQueryOptions = {
 
         const mapped = items.map((raw: any): UnifiedKbmSessionItem => {
           const canonicalStatus = normalizeSesiStatus(raw.status);
-          const teacherStat = raw.guru_status || raw.absenGuru?.status || raw.AbsenGuru?.[0]?.status || null;
+          const teacherStat = raw.status?.teacherStatus || raw._summary?.teacherStatus || raw.guru_status || raw.absenGuru?.status || raw.AbsenGuru?.[0]?.status || null;
           return {
             ...raw,
             guru_status: teacherStat,

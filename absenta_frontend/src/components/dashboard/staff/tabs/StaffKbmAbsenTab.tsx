@@ -517,8 +517,29 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                         exit={{ opacity: 0, height: 0 }}
                         className="border-t border-slate-800/80 bg-slate-950/60 p-5 space-y-5"
                       >
+                        {/* CASE 0: JADWAL KBM TELAH TERLEWAT (OVERDUE LOCK) */}
+                        {isOverdue && !isStartedByTeacher && (
+                          <div className="p-6 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-4">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
+                              <AlertCircle size={24} />
+                            </div>
+                            <div className="space-y-1 max-w-sm mx-auto">
+                              <h5 className="text-sm font-extrabold text-white">
+                                Sesi KBM Telah Terlewat
+                              </h5>
+                              <p className="text-xs text-slate-400">
+                                Sesi ini terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan tidak dibuka hingga waktu pelajaran berakhir. Kehadiran guru tercatat sebagai Alpa.
+                              </p>
+                            </div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold font-mono">
+                              <Clock size={13} className="text-rose-400" />
+                              Batas Waktu Telah Berakhir ({item.jam_selesai} WIB)
+                            </div>
+                          </div>
+                        )}
+
                         {/* CASE 1: GURU BELUM MULAI KBM (WAJIB FOTO) */}
-                        {!isStartedByTeacher && !isFinished && (() => {
+                        {!isOverdue && !isStartedByTeacher && !isFinished && (() => {
                           const now = new Date();
                           const currentMinutes = now.getHours() * 60 + now.getMinutes();
                           let isTimeEligible = true;

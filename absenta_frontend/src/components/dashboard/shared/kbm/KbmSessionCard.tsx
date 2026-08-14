@@ -167,7 +167,8 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
               <span className={cn(
                 "uppercase tracking-tighter text-[8px] font-black",
                 teacherStatus === 'ALPA' ? 'text-rose-500' : 
-                teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR' ? 'text-emerald-600' : 'text-gray-400'
+                teacherStatus === 'TERLAMBAT' ? 'text-amber-600 dark:text-amber-400' :
+                teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'
               )}>
                 {teacherStatus === 'BELUM_TAP' ? 'BELUM TAP' : teacherStatus.replace('_', ' ')}
               </span>
