@@ -201,20 +201,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const { setActiveWorkspaceId } = useNavStore();
 
-  const canAccessWaliKelasTab = useMemo(() => {
-    return Boolean(
-      can('dashboard.view.walikelas') ||
-      can('academic.homeroom.manage') ||
-      isWaliKelas ||
-      isKurikulum ||
-      isKesiswaan ||
-      isKepsek ||
-      isBpbk ||
-      isKaprog ||
-      user?.role === 'SUPERADMIN' ||
-      user?.role === 'ADMIN'
-    );
-  }, [can, isWaliKelas, isKurikulum, isKesiswaan, isKepsek, isBpbk, isKaprog, user?.role]);
 
   // Sync NavStore activeWorkspaceId based on active tab
   useEffect(() => {
@@ -516,7 +502,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const nipText = guruProfile?.nip || (user as any)?.nip || '19850314 201001 1 008';
 
-  // Navigation Tabs Definition with RBAC & Capabilities Filter
+  // Navigation Tabs Definition STRICTLY based on SK/Position Codes (Jabatan Nyata)
   const tabs = useMemo(() => {
     const list: Array<{ id: string; label: string; icon: any; badge?: string }> = [];
 
@@ -525,56 +511,56 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
-    // 1. Beranda Guru (selalu untuk guru / staf)
+    // 1. Beranda Guru (selalu untuk semua Guru / Staf)
     list.push({ id: 'ringkasan', label: 'Beranda Guru', icon: UserCheck });
 
-    // 2. KBM & Absen
-    if (!isTuStaff || isAdminRole || isKurikulum) {
+    // 2. KBM & Absen (untuk Guru Pengajar)
+    if (!isTuStaff || isKurikulum || isAdminRole) {
       list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
     }
 
-    // 3. Wali Kelas
-    if (canAccessWaliKelasTab || isWaliKelas || isAdminRole) {
+    // 3. Wali Kelas (hanya jika ditugaskan sebagai Wali Kelas)
+    if (isWaliKelas || isAdminRole) {
       list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
     }
 
-    // 4. Kurikulum
+    // 4. Kurikulum (hanya jika ada SK Kurikulum)
     if (isKurikulum || isAdminRole || isKepsek) {
       list.push({ id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' });
     }
 
-    // 5. Kesiswaan
+    // 5. Kesiswaan (hanya jika ada SK Kesiswaan)
     if (isKesiswaan || isAdminRole || isKepsek) {
       list.push({ id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' });
     }
 
-    // 6. Sarpras
+    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng)
     if (isSarpras || isToolman || isKabeng || isAdminRole || isKepsek) {
       list.push({ id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' });
     }
 
-    // 7. Hubin
+    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog)
     if (isHubin || isBkk || isKaprog || isAdminRole || isKepsek) {
       list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
     }
 
-    // 8. Koperasi
+    // 8. Koperasi (hanya jika ada SK Pengelola Koperasi)
     if (isKoperasi || isAdminRole || isKepsek) {
       list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
     }
 
-    // 9. BP/BK
+    // 9. BP/BK (hanya jika ada SK Guru BK)
     if (isBpbk || isAdminRole || isKepsek) {
       list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
-    // 10. TU Kepegawaian (Data Induk & Dapodik)
+    // 10. TU Kepegawaian (hanya jika ada SK TU Kepegawaian)
     if (isTUKepegawaian || isTU || isAdminRole || isKepsek) {
       list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
     }
 
-    // 11. Piket Harian
-    if (isKurikulum || isKesiswaan || isGerbang || isAdminRole || isKepsek || !isTuStaff) {
+    // 11. Piket Harian (hanya jika ada tugas Piket / Gerbang atau Waka)
+    if (isGerbang || isKurikulum || isKesiswaan || isAdminRole || isKepsek) {
       list.push({ id: 'kelola', label: 'Piket Harian', icon: ClipboardList });
     }
 
@@ -586,7 +572,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isAdminRole,
     isTuStaff,
     isKurikulum,
-    canAccessWaliKelasTab,
     isWaliKelas,
     waliKelasNama,
     isKesiswaan,

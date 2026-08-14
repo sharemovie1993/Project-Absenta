@@ -39,55 +39,26 @@ export function useCapabilities() {
     // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TU & KOPERASI)
     // ═══════════════════════════════════════════════════════════════════
     const isTUPersuratan =
-      userPositions.includes('TU_PERSURATAN') ||
-      can('correspondence.outbox.manage') ||
-      can('correspondence.template.manage');
+      userPositions.includes('TU_PERSURATAN');
 
     const isTUKeuangan =
-      userPositions.includes('TU_KEUANGAN') ||
-      can('tu.finance.invoices.view.list') ||
-      can('tu.finance.payments.create');
+      userPositions.includes('TU_KEUANGAN');
 
     const isTUKepegawaian =
-      userPositions.includes('TU_KEPEGAWAIAN') ||
-      can('academic.teachers.manage') ||
-      can('academic.students.send.access.token');
+      userPositions.includes('TU_KEPEGAWAIAN');
 
     const isTUSarpras =
       userPositions.includes('TU_SARPRAS');
 
-    const isKoperasiStore =
-      can('cooperative.store.orders.manage') ||
-      can('cooperative.store.inventory.manage');
-
-    const isKoperasiFinance =
-      can('cooperative.loans.approve') ||
-      can('cooperative.reports.view.financial');
-
-    const isKoperasiHead =
-      can('cooperative.loans.approve');
-
-    const isKoperasiSecretary =
-      can('cooperative.members.manage');
-
-    const isKoperasiAuditor =
-      can('cooperative.settings.view');
+    const isKoperasi =
+      userPositions.includes('KOPERASI');
 
     const isTU =
       userPositions.includes('TU_KEPALA') ||
       isTUPersuratan ||
       isTUKeuangan ||
       isTUKepegawaian ||
-      isTUSarpras ||
-      can('tu.staff.manage');
-
-    const isKoperasi =
-      userPositions.includes('KOPERASI') ||
-      isKoperasiStore ||
-      isKoperasiFinance ||
-      isKoperasiHead ||
-      isKoperasiSecretary ||
-      isKoperasiAuditor;
+      isTUSarpras;
 
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 3: KOORDINATOR UNIT & PEMBINA
@@ -98,9 +69,7 @@ export function useCapabilities() {
       can('dashboard.view.walikelas');
 
     const isBpbk =
-      userPositions.includes('BPBK') ||
-      can('bk.counseling.view.sensitive') ||
-      can('bk.cases.manage');
+      userPositions.includes('BPBK');
 
     const isPembinaEskul =
       userPositions.includes('PEMBINA_ESKUL');
@@ -116,37 +85,29 @@ export function useCapabilities() {
     // ═══════════════════════════════════════════════════════════════════
     const isKurikulum =
       userPositions.includes('KURIKULUM') ||
-      can('dashboard.view.kurikulum') ||
-      can('academic.manage.academic');
+      can('dashboard.view.kurikulum');
 
     const isKesiswaan =
       userPositions.includes('KESISWAAN') ||
-      can('dashboard.view.kesiswaan') ||
-      can('affairs.violations.manage');
+      can('dashboard.view.kesiswaan');
 
     const isHubin =
       userPositions.includes('HUBIN') ||
-      can('dashboard.view.hubin') ||
-      can('hubin.partners.manage') ||
-      can('hubin.mou.manage');
+      can('dashboard.view.hubin');
 
     const isBkk =
-      userPositions.includes('BKK') ||
-      can('hubin.bkk.manage');
+      userPositions.includes('BKK');
 
     const isSarpras =
       userPositions.includes('SARPRAS') ||
-      can('dashboard.view.sarpras') ||
-      can('sarpras.inventory.manage');
+      can('dashboard.view.sarpras');
 
     const isTUKepala =
-      userPositions.includes('TU_KEPALA') ||
-      (can('tu.staff.manage') && can('correspondence.outbox.sign'));
+      userPositions.includes('TU_KEPALA');
 
     const isKepsek =
       userPositions.includes('KEPALA_SEKOLAH') ||
-      can('dashboard.view.kepsek') ||
-      can('curriculum.supervision.manage');
+      can('dashboard.view.kepsek');
 
     const isBillingAdmin =
       can('billing.subscriptions.view.active');
@@ -165,11 +126,11 @@ export function useCapabilities() {
       isTUKeuangan,
       isTUKepegawaian,
       isTUSarpras,
-      isKoperasiStore,
-      isKoperasiFinance,
-      isKoperasiHead,
-      isKoperasiSecretary,
-      isKoperasiAuditor,
+      isKoperasiStore: isKoperasi,
+      isKoperasiFinance: isKoperasi,
+      isKoperasiHead: isKoperasi,
+      isKoperasiSecretary: isKoperasi,
+      isKoperasiAuditor: isKoperasi,
       isTU,
       isTuHead: isTUKepala,      // canonical alias
       isKoperasi,
@@ -193,7 +154,7 @@ export function useCapabilities() {
       isKepalaSekolah: isKepsek,  // canonical alias
       isBillingAdmin,
     };
-  }, [can]);
+  }, [user, can]);
 
   // Type-safe wrapper so callers get IDE autocompletion on all CapabilityCode values
   const typedCan = (permission: CapabilityCode): boolean => can(permission as string);
