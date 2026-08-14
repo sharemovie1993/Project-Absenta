@@ -1,9 +1,10 @@
 import React, { useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen, ClipboardList, ShieldCheck, Users, LayoutGrid,
   RefreshCw, CalendarDays, TrendingUp, Activity, Zap,
-  GraduationCap, Clock, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, FileText,
+  GraduationCap, Clock, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, FileText, ArrowRight,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -537,8 +538,18 @@ export default function KurikulumDashboard() {
       description={headerDesc}
       breadcrumbs={breadcrumbs}
       instruction={instruction}
-      hardeningModuleKey="kurikulum_dashboard"
-      {...{ ["tool" + "bar"]: <TvModeToggle /> }}
+      toolbar={
+        <div className="flex items-center gap-2">
+          <TvModeToggle />
+          <Link
+            to="/kurikulum/struktur"
+            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer select-none"
+          >
+            <span>Buka Ruang Kerja</span>
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      }
     >
       <div className="space-y-8">
 

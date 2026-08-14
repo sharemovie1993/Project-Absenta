@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import { cn } from '../../../lib/utils';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
@@ -41,6 +41,7 @@ import {
   Briefcase,
   UserCheck,
   ClipboardList,
+  ShoppingCart,
   X,
   QrCode,
   MapPin,
@@ -51,7 +52,7 @@ import {
 import { type QuickAction } from '../shared/QuickActionGrid';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
-import { Modal, Badge, Button } from '../../ui';
+import { Modal, Badge, Button, Loader } from '../../ui';
 import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
@@ -59,6 +60,7 @@ import { PiketOperations } from '../../piket/PiketOperations';
 import { PiketPrintSlip } from '../../piket/PiketPrintSlip';
 import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
 import { tenantApi } from '../../../api/tenants.api';
+import { useNavStore } from '../../../store/navStore';
 
 // Staff Dashboard Modular Tabs
 import { StaffBerandaTab } from '../staff/tabs/StaffBerandaTab';
@@ -66,6 +68,16 @@ import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
 import { StaffWaliKelasTab } from '../staff/tabs/StaffWaliKelasTab';
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
+
+// Lazy Module Dashboards for In-Tab Rendering (Bebas Sidebar, 100% Full Width)
+const KurikulumDashboard = React.lazy(() => import('@/pages/kurikulum/Dashboard'));
+const KesiswaanDashboard = React.lazy(() => import('@/pages/kesiswaan/MonitoringKesiswaanPage'));
+const SarprasDashboard = React.lazy(() => import('@/pages/sarpras/SarprasDashboard'));
+const HubinDashboard = React.lazy(() => import('@/pages/hubin/HubinDashboardPage'));
+const CooperativeDashboard = React.lazy(() => import('@/pages/cooperative/Dashboard'));
+const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
+// Admin Overview Dashboard — dirender di tab Admin untuk role ADMIN/SUPERADMIN
+const AdminOverviewDashboard = React.lazy(() => import('@/pages/dashboard/DashboardOverview'));
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -154,6 +166,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const {
     can,
+    isAdmin,
     isSarpras,
     isHubin,
     isKurikulum,
@@ -167,7 +180,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
+    isKoperasi,
   } = useCapabilities();
+
+  const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
 
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
@@ -178,6 +195,30 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
+
+  const { setActiveWorkspaceId } = useNavStore();
+
+  const canAccessWaliKelasTab = useMemo(() => {
+    return Boolean(
+      can('dashboard.view.walikelas') ||
+      can('academic.homeroom.manage') ||
+      isWaliKelas ||
+      isKurikulum ||
+      isKesiswaan ||
+      isKepsek ||
+      isBpbk ||
+      isKaprog ||
+      user?.role === 'SUPERADMIN' ||
+      user?.role === 'ADMIN'
+    );
+  }, [can, isWaliKelas, isKurikulum, isKesiswaan, isKepsek, isBpbk, isKaprog, user?.role]);
+
+  // Sync NavStore activeWorkspaceId based on active tab
+  useEffect(() => {
+    if (activeTab === 'binaan') {
+      setActiveWorkspaceId('WALIKELAS_WORKSPACE');
+    }
+  }, [activeTab, setActiveWorkspaceId]);
 
   // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
   const { rawList: waliKelasAssignments } = useWaliKelasOptions();
@@ -471,14 +512,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const nipText = guruProfile?.nip || (user as any)?.nip || '19850314 201001 1 008';
 
-  // Navigation Tabs Definition for Guru / Staff & Management (Adopsi Layout Mockup Guru)
-  const tabs = [
-    { id: 'ringkasan', label: 'Beranda Guru', icon: UserCheck },
-    { id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' },
-    { id: 'binaan', label: 'Wali Kelas', icon: Users, badge: '2' },
-    { id: 'kelola', label: 'Piket Harian', icon: ClipboardList },
-    { id: 'profil', label: 'Profil Guru', icon: User },
-  ];
+  // Navigation Tabs Definition for Guru & Staff (Unguarded Mode untuk Kemudahan Akses Lintas Modul)
+  const tabs = useMemo(() => {
+    const list = [
+      { id: 'ringkasan', label: 'Beranda Guru', icon: UserCheck },
+      { id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' },
+      { id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' },
+      { id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' },
+      { id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' },
+      { id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' },
+      { id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' },
+      { id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' },
+      { id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' },
+      { id: 'kelola', label: 'Piket Harian', icon: ClipboardList },
+      { id: 'profil', label: 'Profil Guru', icon: User },
+    ];
+
+    // Tab khusus Admin — diletakkan di posisi pertama (sebelum Beranda Guru)
+    if (isAdminRole) {
+      list.unshift({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' } as any);
+    }
+
+    return list;
+  }, [waliKelasNama, isAdminRole]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
@@ -721,7 +777,56 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 📋 TAB 4: PIKET HARIAN & OPERASIONAL */}
+        {/* 📘 TAB 4: KURIKULUM DASHBOARD */}
+        {activeTab === 'kurikulum' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <KurikulumDashboard />
+          </Suspense>
+        )}
+
+        {/* 👥 TAB 5: KESISWAAN DASHBOARD */}
+        {activeTab === 'kesiswaan' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <KesiswaanDashboard />
+          </Suspense>
+        )}
+
+        {/* 🏢 TAB 6: SARPRAS DASHBOARD */}
+        {activeTab === 'sarpras' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <SarprasDashboard />
+          </Suspense>
+        )}
+
+        {/* 💼 TAB 7: HUBIN DASHBOARD */}
+        {activeTab === 'hubin' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <HubinDashboard />
+          </Suspense>
+        )}
+
+        {/* 🛒 TAB 8: KOPERASI DASHBOARD */}
+        {activeTab === 'koperasi' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <CooperativeDashboard />
+          </Suspense>
+        )}
+
+        {/* 🤝 TAB 9: BP/BK DASHBOARD */}
+        {activeTab === 'bpbk' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <BpbkDashboard />
+          </Suspense>
+        )}
+
+        {/* 🛡️ TAB ADMIN: DASHBOARD OPERASIONAL ADMIN/SUPERADMIN */}
+        {activeTab === 'admin' && (
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+            <AdminOverviewDashboard />
+          </Suspense>
+        )}
+
+        {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}
         {activeTab === 'kelola' && (
           <StaffPiketOperasionalTab
             dailyPermits={dailyPermitsRes?.data || dailyPermits || []}
@@ -734,7 +839,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 👤 TAB 5: PROFIL GURU */}
+        {/* 👤 TAB 10: PROFIL GURU */}
         {activeTab === 'profil' && (
           <StaffProfilGuruTab
             user={user}

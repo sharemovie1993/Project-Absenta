@@ -40,6 +40,10 @@ const OnboardingDashboard = lazy(() => import('./pages/dashboard/OnboardingDashb
 const SuspendedPage = lazy(() => import('./pages/system/SuspendedPage'));
 const CancelledPage = lazy(() => import('./pages/system/CancelledPage'));
 const DashboardOverview = lazy(() => import('./pages/dashboard/DashboardOverview'));
+// UnifiedStaffDashboard — entry point utama untuk Admin & Guru
+const UnifiedStaffDashboardPage = lazy(() =>
+  import('./components/dashboard/roles/UnifiedStaffDashboard').then(m => ({ default: m.UnifiedStaffDashboard }))
+);
 const BillingsPage = lazy(() => import('./pages/billing/BillingsPage'));
 const BillingSettingsPage = lazy(() => import('./pages/billing/BillingSettingsPage'));
 const PaymentsPageBilling = lazy(() => import('./pages/billing/PaymentsPage'));
@@ -494,7 +498,11 @@ function App() {
                     <Route path="/onboarding" element={<OnboardingDashboard />} />
                     <Route path="/dashboard" element={
                       <ProtectedRoute requiredCapability="dashboard.view.overview">
-                        <DashboardOverview />
+                        <RoleSwitch
+                          superadmin={<DashboardOverview />}
+                          admin={<UnifiedStaffDashboardPage />}
+                          fallback={<DashboardOverview />}
+                        />
                       </ProtectedRoute>
                     } />
                     <Route path="/suspended" element={<SuspendedPage />} />

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarCheck, GraduationCap, Users, History, ShieldAlert } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { CalendarCheck, GraduationCap, Users, History, ShieldAlert, ArrowRight } from "lucide-react";
 import { getDashboardOverview, getAttendanceChart } from "../../api/dashboard.api";
 import { getAcademicStats, type AcademicStats } from "../../api/academic-stats.api";
 import { getAcademicRegistrationStats } from "../../api/academic/siswa.api";
@@ -143,6 +143,13 @@ export default function DashboardOverview() {
             Inilah ringkasan aktivitas sekolah Anda hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
+        <Link
+          to="/academic"
+          className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer select-none shrink-0"
+        >
+          <span>Buka Ruang Kerja Akademik</span>
+          <ArrowRight size={14} />
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

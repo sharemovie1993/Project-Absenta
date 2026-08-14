@@ -16,29 +16,31 @@ export const useNavStore = create<NavState>()(
     (set) => ({
       activeHub: 'AKADEMIK',
       setActiveHub: (hub) => set({ activeHub: hub }),
-      activeWorkspaceId: 'TEACHER_WORKSPACE',
+      activeWorkspaceId: 'WALIKELAS_WORKSPACE',
       setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
       detectHubFromPath: (path) => {
         const p = path.toLowerCase();
         
         if (p.startsWith('/bpbk')) {
-          set({ activeHub: 'BPBK' });
+          set({ activeHub: 'BPBK', activeWorkspaceId: 'BPBK_WORKSPACE' });
         } else if (p.startsWith('/kurikulum')) {
-          set({ activeHub: 'KURIKULUM' });
+          set({ activeHub: 'KURIKULUM', activeWorkspaceId: 'KURIKULUM_WORKSPACE' });
         } else if (p.startsWith('/kesiswaan')) {
-          set({ activeHub: 'KESISWAAN' });
+          set({ activeHub: 'KESISWAAN', activeWorkspaceId: 'KESISWAAN_WORKSPACE' });
         } else if (p.startsWith('/academic') || p.startsWith('/data-master') || p.startsWith('/master')) {
-          set({ activeHub: 'AKADEMIK' });
+          set({ activeHub: 'AKADEMIK', activeWorkspaceId: 'AKADEMIK_WORKSPACE' });
         } else if (p.startsWith('/attendance')) {
           set({ activeHub: 'ABSENSI' });
         } else if (p.startsWith('/sarpras') || p.includes('asset')) {
-          set({ activeHub: 'SARPRAS' });
+          set({ activeHub: 'SARPRAS', activeWorkspaceId: 'SARPRAS_WORKSPACE' });
         } else if (p.startsWith('/hubin') || p.startsWith('/pkl') || p.includes('mitra')) {
-          set({ activeHub: 'HUBIN' });
+          set({ activeHub: 'HUBIN', activeWorkspaceId: 'HUBIN_WORKSPACE' });
         } else if (p.startsWith('/cooperative') || p.includes('koperasi') || p.includes('kantin')) {
-          set({ activeHub: 'KOPERASI' });
+          set({ activeHub: 'KOPERASI', activeWorkspaceId: 'KOPERASI_WORKSPACE' });
         } else if (p.startsWith('/correspondence') || p.includes('persuratan') || p.includes('surat')) {
-          set({ activeHub: 'PERSURATAN' });
+          set({ activeHub: 'PERSURATAN', activeWorkspaceId: 'TU_PERSURATAN_WORKSPACE' });
+        } else if (p.startsWith('/rapor')) {
+          set({ activeHub: 'RAPOR', activeWorkspaceId: 'WALIKELAS_WORKSPACE' });
         }
       },
     }),

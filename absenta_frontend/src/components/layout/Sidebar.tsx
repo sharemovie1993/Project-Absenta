@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, ChevronDown, Lock, AlertTriangle, Sparkles, 
+  X, ChevronDown, ChevronLeft, Lock, AlertTriangle, Sparkles, 
   GraduationCap, Building2, Briefcase, Wallet, 
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
   Award, LayoutDashboard, Users, UserCheck, MailOpen,
@@ -19,8 +19,7 @@ import iconForName from '@/lib/iconForName';
 import Tooltip from '../ui/Tooltip';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { useNavStore, type HubType } from '../../store/navStore';
-import { HubSwitcher } from './HubSwitcher';
-import { getHubByLabel, ROLE_WORKSPACES, resolveUserWorkspaces } from '@/config/navigation.config';
+import { MASTER_HUBS, getHubByLabel, ROLE_WORKSPACES, resolveUserWorkspaces } from '@/config/navigation.config';
 import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '../../hooks/useJenjang';
@@ -202,6 +201,28 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
   const userWorkspaces = React.useMemo(() => {
     return resolveUserWorkspaces(user);
   }, [user]);
+
+  const currentWorkspaceInfo = React.useMemo(() => {
+    const ws = ROLE_WORKSPACES.find(w => w.id === activeWorkspaceId);
+    if (ws) return ws;
+    const hub = MASTER_HUBS.find(h => h.id === activeHub);
+    if (hub) {
+      return {
+        id: hub.id,
+        label: hub.label,
+        badge: 'MODUL',
+        icon: hub.icon,
+        desc: hub.desc,
+      };
+    }
+    return {
+      id: 'WORKSPACE',
+      label: 'Ruang Kerja',
+      badge: 'AKTIF',
+      icon: LayoutGrid,
+      desc: 'Workspace Aktif',
+    };
+  }, [activeWorkspaceId, activeHub]);
 
   const initializedUserIdRef = React.useRef<string | null>(null);
 
@@ -1115,10 +1136,39 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         )}
         
         {/* Navigation */}
-        <nav className={cn("flex-1", isOpen ? "p-4" : "lg:p-2 p-4")}>
-          <HubSwitcher isSidebarOpen={isOpen} menuTree={menuTree} />
-          
-          <div className="h-4" /> {/* Spacer */}
+        <nav className={cn("flex-1", isOpen ? "p-3 sm:p-4" : "lg:p-2 p-3")}>
+          {/* Domain Workspace Top Bar in Sidebar */}
+          {isOpen ? (
+            <div className="space-y-2 mb-3">
+              {/* Back to Central Dashboard Button */}
+              <Link
+                to="/dashboard?tab=ringkasan"
+                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs transition-all duration-150 group cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <ChevronLeft size={15} className="text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+                  <span>Kembali ke Dasbor</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">ESC / ⌂</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="mb-3 flex flex-col items-center gap-2">
+              <Tooltip content="Kembali ke Dasbor Utama" position="right">
+                <Link
+                  to="/dashboard?tab=ringkasan"
+                  className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                >
+                  <Home size={18} />
+                </Link>
+              </Tooltip>
+              <Tooltip content={`Ruang Kerja ${currentWorkspaceInfo.label}`} position="right">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center border border-slate-700">
+                  {React.createElement(currentWorkspaceInfo.icon || LayoutGrid, { size: 18 })}
+                </div>
+              </Tooltip>
+            </div>
+          )}
 
           {isLoadingTree && (
             <div className="space-y-2 px-2" aria-hidden="true">

@@ -537,13 +537,5 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
     }
   });
 
-  // 2. PUSH TEACHER WORKSPACE BELOW STRUCTURAL POSITION WORKSPACES
-  if (roleName === 'GURU' && user?.guru_profile?.jenis_ptk !== 'TENAGA_KEPENDIDIKAN') {
-    const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
-    if (teacherWs && !available.some(a => a.id === teacherWs.id)) {
-      available.push(teacherWs);
-    }
-  }
-
   return available;
 };

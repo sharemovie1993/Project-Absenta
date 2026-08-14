@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -176,8 +176,15 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         toolbar={
-          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-1 shadow-sm items-center">
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-2 shadow-sm items-center">
              <TvModeToggle />
+             <Link
+               to="/hubin/mitra"
+               className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer select-none shrink-0"
+             >
+               <span>Buka Ruang Kerja</span>
+               <ArrowRight size={14} />
+             </Link>
           </div>
         }
       >

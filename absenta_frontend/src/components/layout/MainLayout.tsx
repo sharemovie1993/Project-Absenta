@@ -70,8 +70,9 @@ function MainLayoutContent() {
   }, []);
 
   const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
+  const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/';
   const isPortalMode = dashboardMode === 'portal' || isSiswa;
-  const isHideSidebarForPortal = isPortalMode || isSiswa;
+  const isHideSidebarForPortal = isPortalMode || isSiswa || isDashboardPage;
 
   const configQuery = useQuery({
     queryKey: ['system-config','active'],

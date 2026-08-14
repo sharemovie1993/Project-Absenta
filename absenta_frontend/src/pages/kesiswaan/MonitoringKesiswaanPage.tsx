@@ -15,7 +15,7 @@ import {
 import { Card } from '../../components/ui/Card';
 import { kesiswaanApi, type Pelanggaran } from '../../api/kesiswaan.api';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -358,6 +358,13 @@ const MonitoringKesiswaanPage: React.FC = () => {
       actions={
         <div className="flex gap-2 items-center">
           <TvModeToggle />
+          <Link
+            to="/kesiswaan/pelanggaran"
+            className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer select-none"
+          >
+            <span>Buka Ruang Kerja</span>
+            <ChevronRight size={14} />
+          </Link>
           <Button 
             onClick={() => setTindakMasalModalOpen(true)}
             variant="outline"

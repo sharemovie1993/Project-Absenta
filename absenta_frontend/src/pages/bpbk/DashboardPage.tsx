@@ -1,4 +1,5 @@
 import React, { useState, useCallback, Suspense, lazy } from 'react';
+import { Link } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { DashboardSection } from './components/DashboardSection';
 import { Loader } from '../../components/ui/Loader';
@@ -40,6 +41,15 @@ export default React.memo(function DashboardPage() {
           { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' }
         ]}
         hardeningModuleKey="bpbk_dashboard"
+        toolbar={
+          <Link
+            to="/bpbk/konseling"
+            className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-violet-600/20 transition-all cursor-pointer select-none"
+          >
+            <span>Buka Ruang Kerja</span>
+            <span style={{fontSize: '14px'}}>→</span>
+          </Link>
+        }
         instruction={{
           title: "Panduan Dashboard BPBK",
           description: "Halaman ini menampilkan ringkasan data kasus, konseling aktif, dan tindak lanjut terbaru.",

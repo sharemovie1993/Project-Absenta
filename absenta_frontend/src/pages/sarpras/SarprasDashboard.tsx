@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { motion } from 'framer-motion';
@@ -205,7 +206,7 @@ const SarprasDashboard: React.FC = React.memo(() => {
         instruction={instruction}
         hardeningModuleKey="sarpras_dashboard"
         toolbar={
-          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-1 shadow-sm items-center">
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-2 shadow-sm items-center">
              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span className="text-xs font-bold text-primary uppercase tracking-wider">
@@ -213,6 +214,13 @@ const SarprasDashboard: React.FC = React.memo(() => {
                 </span>
              </div>
              <TvModeToggle />
+             <Link
+               to="/sarpras/inventory"
+               className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all cursor-pointer select-none shrink-0"
+             >
+               <span>Buka Ruang Kerja</span>
+               <ArrowRight size={14} />
+             </Link>
           </div>
         }
       >
