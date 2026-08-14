@@ -33,6 +33,7 @@ interface ChatConversationPanelProps {
   isSendingMessage: boolean;
   onUpdateStatus?: (status: InternalThreadStatus) => void;
   isUpdatingStatus?: boolean;
+  onStartCall?: (type: 'AUDIO' | 'VIDEO') => void;
 }
 
 export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
@@ -42,7 +43,8 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
   onSendMessage,
   isSendingMessage,
   onUpdateStatus,
-  isUpdatingStatus
+  isUpdatingStatus,
+  onStartCall
 }) => {
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -236,17 +238,17 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
 
           <button 
             type="button" 
-            onClick={() => alert('Panggilan suara internal sedang disimulasikan via WebRTC.')}
-            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" 
-            title="Panggilan Suara"
+            onClick={() => onStartCall && onStartCall('AUDIO')}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
+            title="Panggilan Suara (Voice Call)"
           >
             <PhoneIcon className="w-5 h-5" />
           </button>
           <button 
             type="button" 
-            onClick={() => alert('Panggilan video internal sedang disimulasikan.')}
-            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" 
-            title="Panggilan Video"
+            onClick={() => onStartCall && onStartCall('VIDEO')}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
+            title="Panggilan Video (Video Call)"
           >
             <VideoCameraIcon className="w-5 h-5" />
           </button>

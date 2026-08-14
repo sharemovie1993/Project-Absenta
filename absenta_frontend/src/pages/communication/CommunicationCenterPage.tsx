@@ -5,11 +5,8 @@ import {
   PlusIcon, 
   MagnifyingGlassIcon,
   ChevronLeftIcon,
-  FunnelIcon,
-  ShieldCheckIcon,
-  EllipsisVerticalIcon,
-  CheckBadgeIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  VideoCameraIcon
 } from '@heroicons/react/24/outline';
 import { 
   internalCommunicationApi, 
@@ -22,10 +19,13 @@ import {
 } from '@/api/internal-communication.api';
 import { ChatConversationPanel } from '@/components/communication/ChatConversationPanel';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
+import { IncomingCallModal } from '@/components/communication/calling/IncomingCallModal';
+import { ActiveCallOverlay } from '@/components/communication/calling/ActiveCallOverlay';
+import { VirtualMeetingModal } from '@/components/communication/meeting/VirtualMeetingModal';
+import { useWebRTCCall } from '@/hooks/communication/useWebRTCCall';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
 import { format, isToday, isYesterday } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
 
 export default function CommunicationCenterPage() {
   const queryClient = useQueryClient();
@@ -36,6 +36,30 @@ export default function CommunicationCenterPage() {
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'DISPOSISI' | 'DIRECT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState<boolean>(false);
+
+  // ── WebRTC Calling Hook ───────────────────────────────────────────────────
+  const {
+    callState,
+    callType,
+    targetUser: activeTargetUser,
+    incomingCall,
+    isAudioMuted,
+    isVideoDisabled,
+    isScreenSharing,
+    isMinimized,
+    callDuration,
+    localStream,
+    remoteStream,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMuteAudio,
+    toggleDisableVideo,
+    toggleScreenShare,
+    setIsMinimized
+  } = useWebRTCCall();
 
   // ── 1. Query: Ambil Daftar Thread Percakapan (TanStack Query v5) ─────────────
   const { 
@@ -159,6 +183,19 @@ export default function CommunicationCenterPage() {
     return threads.find((t: InternalThreadItem) => t.id === selectedThreadId) || activeThreadDetail?.thread;
   }, [threads, selectedThreadId, activeThreadDetail]);
 
+  // Target Lawan Bicara untuk Panggilan WebRTC
+  const interlocutorUser = useMemo(() => {
+    if (!activeThread?.participants) return null;
+    const other = activeThread.participants.find(p => p.user_id !== user?.id) || activeThread.participants[0];
+    if (!other) return null;
+    return {
+      id: other.user_id,
+      name: other.name || activeThread.title || 'Kontak',
+      role: other.role_label || other.role,
+      avatar: other.avatar
+    };
+  }, [activeThread, user]);
+
   // Filter threads client-side jika memilih unread
   const filteredThreads = useMemo(() => {
     if (activeFilter === 'UNREAD') {
@@ -179,7 +216,7 @@ export default function CommunicationCenterPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-4.2rem)] flex bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden font-sans border-t border-slate-200/50 dark:border-slate-800">
+    <div className="h-[calc(100vh-4.2rem)] flex bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden font-sans border-t border-slate-200/50 dark:border-slate-800 relative">
       {/* ── WHATSAPP LEFT PANEL (CONVERSATION LIST) ───────────────────────── */}
       <aside
         className={`w-full md:w-96 lg:w-[420px] bg-[#ffffff] dark:bg-[#111b21] border-r border-[#e9edef] dark:border-[#202c33] flex flex-col shrink-0 ${
@@ -194,7 +231,7 @@ export default function CommunicationCenterPage() {
               {user?.full_name ? user.full_name.slice(0, 2).toUpperCase() : 'US'}
             </div>
             <div>
-              <p className="text-xs font-bold text-[#111b21] dark:text-[#e9edef] truncate max-w-[140px]">
+              <p className="text-xs font-bold text-[#111b21] dark:text-[#e9edef] truncate max-w-[130px]">
                 {user?.full_name || 'Pengguna'}
               </p>
               <p className="text-[10px] text-[#667781] dark:text-[#8696a0] truncate">
@@ -204,6 +241,14 @@ export default function CommunicationCenterPage() {
           </div>
 
           <div className="flex items-center gap-1 text-[#54656f] dark:text-[#aebac1]">
+            {/* Ruang Rapat Virtual Button */}
+            <button
+              onClick={() => setIsMeetingModalOpen(true)}
+              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-indigo-600 dark:text-indigo-400"
+              title="Mulai Ruang Rapat Virtual"
+            >
+              <VideoCameraIcon className="w-5 h-5 stroke-[2]" />
+            </button>
             <button
               onClick={() => refetchThreads()}
               className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
@@ -377,6 +422,11 @@ export default function CommunicationCenterPage() {
               isSendingMessage={sendMessageMutation.isPending}
               onUpdateStatus={(status) => updateStatusMutation.mutate({ threadId: activeThread.id, status })}
               isUpdatingStatus={updateStatusMutation.isPending}
+              onStartCall={(type) => {
+                if (interlocutorUser) {
+                  startCall(interlocutorUser, type, activeThread.id);
+                }
+              }}
             />
           </div>
         ) : (
@@ -389,10 +439,18 @@ export default function CommunicationCenterPage() {
               Pusat Komunikasi Absenta Sekolah
             </h2>
             <p className="text-xs text-[#667781] dark:text-[#8696a0] max-w-md mt-2 leading-relaxed">
-              Kirim dan terima pesan dari guru piket, wali kelas, guru mapel, dan bimbingan konseling secara instan dalam lingkup tenant sekolah Anda.
+              Kirim dan terima pesan dari guru piket, wali kelas, guru mapel, dan bimbingan konseling serta lakukan panggilan suara / video berstandar WebRTC.
             </p>
-            <div className="mt-8 flex items-center gap-2 text-[11px] text-[#667781] dark:text-[#8696a0]">
+            <div className="mt-8 flex items-center gap-4 text-[11px] text-[#667781] dark:text-[#8696a0]">
               <span>🔒 Terenkripsi & Terisolasi Multi-Tenant</span>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="text-[#00a884] font-bold hover:underline"
+              >
+                📹 Buka Ruang Rapat Virtual
+              </button>
             </div>
           </div>
         )}
@@ -406,6 +464,37 @@ export default function CommunicationCenterPage() {
         isLoadingContacts={isLoadingContacts}
         onSubmit={(payload) => createThreadMutation.mutate(payload)}
         isSubmitting={createThreadMutation.isPending}
+      />
+
+      {/* ── WEBRTC CALLING OVERLAYS & MODALS ────────────────────────────── */}
+      <IncomingCallModal
+        incomingCall={incomingCall}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+      />
+
+      <ActiveCallOverlay
+        callState={callState}
+        callType={callType}
+        targetUser={activeTargetUser}
+        callDuration={callDuration}
+        isAudioMuted={isAudioMuted}
+        isVideoDisabled={isVideoDisabled}
+        isScreenSharing={isScreenSharing}
+        isMinimized={isMinimized}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        onEndCall={endCall}
+        onToggleMuteAudio={toggleMuteAudio}
+        onToggleDisableVideo={toggleDisableVideo}
+        onToggleScreenShare={toggleScreenShare}
+        onSetMinimized={setIsMinimized}
+      />
+
+      {/* ── RUANG RAPAT VIRTUAL MODAL ────────────────────────────────────── */}
+      <VirtualMeetingModal
+        isOpen={isMeetingModalOpen}
+        onClose={() => setIsMeetingModalOpen(false)}
       />
     </div>
   );

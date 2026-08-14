@@ -1,5 +1,6 @@
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SocketMonitor } from './socket.monitor';
+import { prisma } from '../../utils/prisma';
 
 export type AttendanceFeedBuilder = (
   tenantId: string,
@@ -16,6 +17,128 @@ export type TenantDetailProvider = {
   getTenantBilling: (tenantId: string) => Promise<any>;
   getTenantUsers: (tenantId: string, page: number, limit: number) => Promise<any>;
 };
+
+function registerWebRTCSignaling(socket: any, io: any, fastify: any) {
+  const user = socket.data.user || {};
+
+  // 1. Inisiasi Panggilan
+  socket.on('call:initiate', async (data: {
+    callId: string;
+    targetUserId: string;
+    threadId?: string;
+    callType: 'AUDIO' | 'VIDEO';
+    offer: any;
+    callerName?: string;
+    callerRole?: string;
+    callerAvatar?: string;
+  }) => {
+    try {
+      if (!data?.targetUserId || !data?.callId) return;
+
+      const callerName = data.callerName || user.full_name || user.name || 'Penelepon';
+      const callerRole = data.callerRole || user.roleName || 'GTK';
+
+      io.to(`user:${data.targetUserId}`).emit('call:incoming', {
+        callId: data.callId,
+        callerId: user.id,
+        callerName,
+        callerRole,
+        callerAvatar: data.callerAvatar || user.avatar,
+        callType: data.callType || 'AUDIO',
+        offer: data.offer,
+        threadId: data.threadId
+      });
+      fastify.log.info(`[WebRTC] Call initiated from ${user.id} to ${data.targetUserId} (type: ${data.callType})`);
+    } catch (err: any) {
+      fastify.log.error(`[WebRTC] Error initiating call: ${err.message}`);
+    }
+  });
+
+  // 2. Jawaban Panggilan (Accepted)
+  socket.on('call:accepted', (data: {
+    callId: string;
+    targetUserId: string;
+    answer: any;
+  }) => {
+    if (!data?.targetUserId || !data?.answer) return;
+    io.to(`user:${data.targetUserId}`).emit('call:accepted', {
+      callId: data.callId,
+      answer: data.answer,
+      calleeId: user.id
+    });
+    fastify.log.info(`[WebRTC] Call ${data.callId} accepted by ${user.id}`);
+  });
+
+  // 3. Panggilan Ditolak / Sibuk (Rejected)
+  socket.on('call:rejected', (data: {
+    callId: string;
+    targetUserId: string;
+    reason?: string;
+  }) => {
+    if (!data?.targetUserId) return;
+    io.to(`user:${data.targetUserId}`).emit('call:rejected', {
+      callId: data.callId,
+      reason: data.reason || 'Panggilan ditolak',
+      byUserId: user.id
+    });
+    fastify.log.info(`[WebRTC] Call ${data.callId} rejected by ${user.id}`);
+  });
+
+  // 4. Pertukaran ICE Candidate (NAT / Firewall Traversal)
+  socket.on('call:ice_candidate', (data: {
+    callId: string;
+    targetUserId: string;
+    candidate: any;
+  }) => {
+    if (!data?.targetUserId || !data?.candidate) return;
+    io.to(`user:${data.targetUserId}`).emit('call:ice_candidate', {
+      callId: data.callId,
+      candidate: data.candidate,
+      fromUserId: user.id
+    });
+  });
+
+  // 5. Panggilan Selesai / Ditutup (Ended)
+  socket.on('call:ended', async (data: {
+    callId: string;
+    targetUserId: string;
+    durationSeconds?: number;
+    threadId?: string;
+    callType?: 'AUDIO' | 'VIDEO';
+  }) => {
+    if (!data?.targetUserId) return;
+    io.to(`user:${data.targetUserId}`).emit('call:ended', {
+      callId: data.callId,
+      durationSeconds: data.durationSeconds || 0,
+      byUserId: user.id
+    });
+
+    // Logging ke Database Chat jika threadId ada
+    if (data.threadId && user.tenantId) {
+      try {
+        const durationSec = data.durationSeconds || 0;
+        const mins = Math.floor(durationSec / 60);
+        const secs = durationSec % 60;
+        const durStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        const icon = data.callType === 'VIDEO' ? '📹' : '📞';
+        const typeStr = data.callType === 'VIDEO' ? 'Panggilan Video' : 'Panggilan Suara';
+
+        await (prisma as any).internalMessage.create({
+          data: {
+            tenant_id: user.tenantId,
+            thread_id: data.threadId,
+            sender_id: user.id,
+            content: `${icon} ${typeStr} Selesai (${durStr})`,
+            is_system_event: true
+          }
+        });
+      } catch (logErr: any) {
+        fastify.log.warn(`[WebRTC] Failed to log call history: ${logErr.message}`);
+      }
+    }
+    fastify.log.info(`[WebRTC] Call ${data.callId} ended by ${user.id} (duration: ${data.durationSeconds}s)`);
+  });
+}
 
 export function setupSocketRooms(
   io: any,
@@ -146,6 +269,9 @@ export function setupSocketRooms(
       monitor.onDisconnect(socket, tenantId);
       fastify.log.warn(`[WS] Disconnected userId=${String(user.id || '')} tenantId=${String(user.tenantId || '')} reason=${String(reason || '')}`);
     });
+
+    // ── WebRTC Production Calling Signaling ──
+    registerWebRTCSignaling(socket, io, fastify);
   });
 
   ioApi.on('connection', (socket: any) => {
@@ -272,5 +398,8 @@ export function setupSocketRooms(
       monitor.onDisconnect(socket, tenantId);
       fastify.log.warn(`[WS] Disconnected userId=${String(user.id || '')} tenantId=${String(user.tenantId || '')} reason=${String(reason || '')}`);
     });
+
+    // ── WebRTC Production Calling Signaling ──
+    registerWebRTCSignaling(socket, ioApi, fastify);
   });
 }
