@@ -122,14 +122,37 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
   const localStreamRef = useRef<MediaStream | null>(null);
   const meetingContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Dynamic Camera Toggle (Requests hardware if not already streaming)
+  // Dynamic Camera Toggle with Device Enumeration & Graceful Fallback
   const handleToggleVideo = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('Fitur kamera tidak didukung pada peramban web ini.');
+        setIsVideoDisabled(true);
+        return;
+      }
+
+      // 1. Periksa ketersediaan perangkat kamera fisik
+      if (navigator.mediaDevices.enumerateDevices) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        if (videoDevices.length === 0) {
+          alert('Perangkat kamera (Webcam) tidak terdeteksi pada komputer ini.\n\nAnda tetap dapat berbicara menggunakan mikrofon dan berbagi layar (Screen Share).');
+          setIsVideoDisabled(true);
+          return;
+        }
+      }
+
       if (!localStreamRef.current || localStreamRef.current.getVideoTracks().length === 0) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: isAudioMuted ? false : true
-        });
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: isAudioMuted ? false : true
+          });
+        } catch (initialErr: any) {
+          // Fallback ke generic video
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
 
         if (localStreamRef.current) {
           localStreamRef.current.getVideoTracks().forEach(t => t.stop());
@@ -156,7 +179,13 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
         }
       }
     } catch (err: any) {
-      alert('Tidak dapat mengakses kamera: ' + (err.message || 'Izin kamera ditolak. Pastikan browser mengizinkan kamera pada https://localhost:5173'));
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('Perangkat kamera (Webcam) tidak ditemukan atau sedang digunakan oleh aplikasi lain.');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('Izin kamera ditolak. Silakan klik ikon gembok di bilah URL browser Anda untuk mengizinkan akses kamera.');
+      } else {
+        alert('Gagal mengakses kamera: ' + err.message);
+      }
       setIsVideoDisabled(true);
     }
   };
@@ -186,26 +215,54 @@ export const VirtualMeetingModal: React.FC<VirtualMeetingModalProps> = ({
     }
   };
 
-  // Initialize camera & mic on room join
+  // Initialize camera & mic on room join with device enumeration
   useEffect(() => {
     if (!isOpen) return;
 
     let stream: MediaStream | null = null;
-    navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: { width: { ideal: 640 }, height: { ideal: 480 } }
-    }).then((s) => {
-      stream = s;
-      localStreamRef.current = s;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = s;
-        localVideoRef.current.play().catch(() => {});
+
+    const initMedia = async () => {
+      try {
+        let hasCamera = true;
+        if (navigator.mediaDevices?.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          hasCamera = devices.some(d => d.kind === 'videoinput');
+        }
+
+        if (hasCamera) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: { width: { ideal: 640 }, height: { ideal: 480 } }
+            });
+            setIsVideoDisabled(false);
+          } catch {
+            // Fallback audio only
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch {}
+            setIsVideoDisabled(true);
+          }
+        } else {
+          // No physical camera, get mic only
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch {}
+          setIsVideoDisabled(true);
+        }
+
+        localStreamRef.current = stream;
+        if (localVideoRef.current && stream && !isVideoDisabled) {
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(() => {});
+        }
+      } catch (err: any) {
+        console.warn('[Meeting] Media init fallback:', err.message);
+        setIsVideoDisabled(true);
       }
-      setIsVideoDisabled(false);
-    }).catch((err) => {
-      console.warn('Initial camera access failed:', err.message);
-      setIsVideoDisabled(true);
-    });
+    };
+
+    initMedia();
 
     return () => {
       if (stream) {
