@@ -110,61 +110,46 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
-      {/* 3 SUMMARY STAT CARDS (REAL DATA) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-        {/* Stat 1: Jam Mengajar Hari Ini */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <BookOpen size={22} />
+      {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-5">
+        {/* Stat 1: Sesi Mengajar Hari Ini */}
+        <div 
+          onClick={() => onNavigateTab('jadwal')}
+          className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-blue-500/40 transition-all group"
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <BookOpen size={20} className="sm:w-5.5 sm:h-5.5" />
           </div>
           <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Jam Mengajar Hari Ini
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
+              Sesi Hari Ini
             </span>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-              {totalJp} JP <span className="text-xs font-bold text-slate-400">({totalMinutes} Menit)</span>
+            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+              {totalJp} Sesi <span className="text-[10px] sm:text-xs font-bold text-slate-400">({totalMinutes} Mnt)</span>
             </div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-              {activeKbm ? `Aktif: ${activeKbm.kelas_nama}` : nextKbm ? `Berikutnya: ${nextKbm.jam_mulai} WIB` : 'Semua KBM Selesai'}
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+              {activeKbm ? `Live: ${activeKbm.kelas_nama}` : nextKbm ? `${nextKbm.jam_mulai} WIB` : 'Semua Selesai'}
             </p>
           </div>
         </div>
 
-        {/* Stat 2: Rombel Binaan Walas */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-            <Users size={22} />
+        {/* Stat 2: Ajuan Izin Menunggu */}
+        <div 
+          onClick={() => onNavigateTab(isWaliKelas ? 'binaan' : 'kelola')}
+          className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-amber-500/40 transition-all group"
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <ClipboardList size={20} className="sm:w-5.5 sm:h-5.5" />
           </div>
           <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Rombel Binaan Walas
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
+              Ajuan Izin
             </span>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-              {waliKelasNama || (isWaliKelas ? 'Kelas Binaan' : 'Bukan Walas')} 
-              {walasStats.total > 0 && <span className="text-xs font-bold text-slate-400"> ({walasStats.total} Siswa)</span>}
-            </div>
-            <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
-              {isWaliKelas 
-                ? (loadingPresence ? 'Memuat presensi...' : `${walasStats.hadir} Hadir, ${walasStats.sakit} Sakit, ${walasStats.alpa} Alpa`)
-                : 'Bukan Guru Wali Kelas'}
-            </p>
-          </div>
-        </div>
-
-        {/* Stat 3: Surat Izin Menunggu */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <ClipboardList size={22} />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Surat Izin Menunggu
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
+            <div className="text-base sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">
               {pendingPermitsCount} Pengajuan
             </div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-              {pendingPermitsCount > 0 ? 'Butuh Validasi Wali Kelas / Piket' : 'Tidak Ada Antrean Validasi'}
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+              {pendingPermitsCount > 0 ? 'Menunggu Validasi' : 'Tidak Ada Antrean'}
             </p>
           </div>
         </div>
