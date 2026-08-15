@@ -245,10 +245,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         )}
       </div>
 
-      {/* ── JADWAL GURU 1 MINGGU (DUAL VIEW: AGENDA & MATRIX GRID) ─────────── */}
-      <StaffWeeklyScheduleWidget
-        onNavigateToKbm={() => onNavigateTab('jadwal')}
-      />
+      {/* ── MATRIKS JADWAL GURU 1 MINGGU ──────────────────────────────────── */}
+      <StaffWeeklyScheduleWidget />
     </motion.div>
   );
 };
