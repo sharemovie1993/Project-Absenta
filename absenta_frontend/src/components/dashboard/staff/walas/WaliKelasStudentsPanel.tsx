@@ -160,7 +160,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                 <th className="py-3.5 px-4 min-w-[220px]">Identitas Siswa</th>
                 <th className="py-3.5 px-3 text-center w-20">Gender</th>
                 <th className="py-3.5 px-4 min-w-[180px]">Orang Tua / Wali</th>
-                <th className="py-3.5 px-3 text-center w-28">Kehadiran</th>
                 <th className="py-3.5 px-4 text-center w-40">Aksi Wali Kelas</th>
               </tr>
             </thead>
@@ -232,27 +231,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                       </div>
                     </td>
 
-                    {/* Attendance Rate */}
-                    <td className="py-3.5 px-3 text-center">
-                      <div className="inline-flex flex-col items-center">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[11px] font-black font-mono",
-                          student.attendanceRate >= 90
-                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                            : student.attendanceRate >= 75
-                            ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
-                            : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
-                        )}>
-                          {student.attendanceRate}%
-                        </span>
-                        {student.alphaCount > 0 && (
-                          <span className="text-[10px] text-rose-500 font-bold mt-0.5">
-                            {student.alphaCount}x Alpa
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
                     {/* Actions: Edit & View Profile */}
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
@@ -282,7 +260,7 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-semibold">
+                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs font-semibold">
                     <Users size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
                     Tidak ada siswa yang sesuai dengan filter pencarian.
                   </td>
