@@ -472,9 +472,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isKesiswaanLoading = permitsLoading || violationsLoading;
 
   const jabatanLabel = useMemo(() => {
-    if (jabatan) return jabatan;
     const parts: string[] = [];
-    if (isWaliKelas) parts.push(`Wali Kelas ${waliKelasNama}`);
+    if (isWaliKelas) parts.push(`Wali Kelas ${waliKelasNama || ''}`.trim());
     if (isKurikulum) parts.push('Tim Kurikulum');
     if (isKesiswaan) parts.push('Tim Kesiswaan');
     if (isSarpras)   parts.push('Pengelola Sarpras');
@@ -486,9 +485,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isBkk)       parts.push('Pengelola BKK');
     if (isGerbang)   parts.push('Petugas Gerbang');
     if (isTUKepegawaian) parts.push('TU Kepegawaian');
-    return parts.length > 0 
-      ? `Guru / ${parts.join(' & ')}` 
-      : (isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran');
+    if (parts.length > 0) {
+      return `Guru / ${parts.join(' & ')}`;
+    }
+    if (jabatan) return jabatan;
+    return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
   }, [jabatan, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepegawaian, isTuStaff]);
 
   const teacherInitials = useMemo(() => {
@@ -716,46 +717,46 @@ export const UnifiedStaffDashboard: React.FC = () => {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Adopsi Gambar Guru)             */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="p-5 sm:p-7 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-xl space-y-6 relative overflow-hidden">
+      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden">
         
-        {/* Header Row: Badges, Title & Teacher Attendance Status Card */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
-          <div className="space-y-2">
-            {/* Top Badges */}
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-xs">
-                TEACHER &amp; WALAS OPERATIONAL
-              </span>
-              <span className="px-3 py-1 rounded-full bg-indigo-400/30 backdrop-blur-md text-indigo-100 text-[10px] font-mono font-extrabold border border-indigo-300/30">
-                NIP: {nipText}
-              </span>
-            </div>
-
+        {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
             {/* Teacher Name Greeting */}
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-sm">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
               {user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd'}
             </h1>
 
-            {/* Subtitle */}
-            <p className="text-xs sm:text-sm font-medium text-white/90">
-              {jabatanLabel}
-            </p>
+            {/* Subtitle & NIP Underneath */}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <span className="text-xs sm:text-sm font-bold text-indigo-100">
+                {jabatanLabel}
+              </span>
+              {nipText && nipText !== '-' && (
+                <>
+                  <span className="text-white/40 text-xs">•</span>
+                  <span className="text-[11px] sm:text-xs font-mono font-bold text-indigo-200 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/15">
+                    NIP: {nipText}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Right Action: Sesi Kegiatan Sekolah Button */}
           <button
             type="button"
             onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
-            className="group relative px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs sm:text-sm flex items-center gap-3 shrink-0 self-start md:self-auto shadow-lg shadow-amber-950/40 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
+            className="group relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs flex items-center gap-2.5 shrink-0 self-start sm:self-auto shadow-md shadow-amber-950/30 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
           >
-            <div className="p-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
-              <Flag className="w-5 h-5 text-white" />
+            <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
+              <Flag className="w-4 h-4 text-white" />
             </div>
             <div className="text-left">
-              <span className="text-[10px] font-black text-amber-100 uppercase tracking-widest block">
+              <span className="text-[9px] font-black text-amber-100 uppercase tracking-wider block">
                 PRESENSI KEGIATAN
               </span>
-              <span className="text-xs sm:text-sm font-black text-white tracking-tight group-hover:underline">
+              <span className="text-xs font-black text-white tracking-tight group-hover:underline">
                 Apel, Upacara &amp; Pembiasaan ➔
               </span>
             </div>
