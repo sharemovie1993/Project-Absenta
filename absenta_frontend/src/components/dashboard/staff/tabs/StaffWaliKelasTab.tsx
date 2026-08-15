@@ -4,10 +4,12 @@ import { WaliKelasDashboardContainer } from '../walas/WaliKelasDashboardContaine
 
 interface StaffWaliKelasTabProps {
   waliKelasNama?: string;
+  kelasId?: string;
 }
 
 export const StaffWaliKelasTab: React.FC<StaffWaliKelasTabProps> = ({
   waliKelasNama,
+  kelasId,
 }) => {
   return (
     <motion.div
@@ -18,7 +20,7 @@ export const StaffWaliKelasTab: React.FC<StaffWaliKelasTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-6"
     >
-      <WaliKelasDashboardContainer waliKelasNama={waliKelasNama} />
+      <WaliKelasDashboardContainer waliKelasNama={waliKelasNama} kelasId={kelasId} />
     </motion.div>
   );
 };

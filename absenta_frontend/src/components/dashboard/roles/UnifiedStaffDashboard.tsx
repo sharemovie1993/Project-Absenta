@@ -834,6 +834,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
         {activeTab === 'binaan' && (
           <StaffWaliKelasTab
             waliKelasNama={waliKelasNama}
+            kelasId={waliKelasId}
           />
         )}
 

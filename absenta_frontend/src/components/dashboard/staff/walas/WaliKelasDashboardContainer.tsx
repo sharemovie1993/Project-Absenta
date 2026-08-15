@@ -62,9 +62,10 @@ import { useWaliKelasDashboard } from '../../../../hooks/kurikulum/useWaliKelasD
 
 interface WaliKelasDashboardContainerProps {
   waliKelasNama?: string;
+  kelasId?: string;
 }
 
-export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboardContainerProps) {
+export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKelasDashboardContainerProps) {
   // Real API hooks for Jurnal, Permohonan Izin, EWS, Violations, Achievements, Students
   const {
     journalEntries: apiJournalEntries,
@@ -77,7 +78,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
     updateLeaveStatus,
     createJournal,
     deleteJournal
-  } = useWaliKelasDashboard();
+  } = useWaliKelasDashboard(kelasId);
 
   // Main State
   const [classInfo, setClassInfo] = useState<ClassInfo>(() => ({
