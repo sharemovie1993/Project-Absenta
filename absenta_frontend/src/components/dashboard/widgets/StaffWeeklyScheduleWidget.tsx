@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Sparkles, BookOpen, Clock, Layers, X, Info } from 'lucide-react';
+import { Calendar, Sparkles, Clock, X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { WORKDAYS_HARI_KEYS, getDayLabel, getDayShortLabel, type HariKey } from '../../../constants/day.constants';
+import { WORKDAYS_HARI_KEYS, getDayLabel, getDayShortLabel } from '../../../constants/day.constants';
 import { useStaffWeeklySchedule } from '../../../hooks/attendance/useStaffWeeklySchedule';
 
 interface StaffWeeklyScheduleWidgetProps {
@@ -54,7 +54,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
     return map;
   }, [rawSchedules]);
 
-  // Merge consecutive slots for the same class & mapel
+  // Merge consecutive slots for the same class & mapel and resolve merged end time
   const getMergedSlotsForDay = (day: string) => {
     const cells: { slot: number; colSpan: number; item: any }[] = [];
     let skipCount = 0;
@@ -75,6 +75,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
 
       // Check how many consecutive slots have the same class and mapel
       let colSpan = 1;
+      let finalEnd = item.jam_selesai;
       let nextIndex = i + 1;
       while (nextIndex < activeSlots.length) {
         const nextSlot = activeSlots[nextIndex];
@@ -87,6 +88,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
           String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
         ) {
           colSpan++;
+          finalEnd = nextItem.jam_selesai || finalEnd;
           nextIndex++;
         } else {
           break;
@@ -94,7 +96,11 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
       }
 
       skipCount = colSpan - 1;
-      cells.push({ slot, colSpan, item });
+      cells.push({ 
+        slot, 
+        colSpan, 
+        item: { ...item, jam_selesai_merged: finalEnd } 
+      });
     }
 
     return cells;
@@ -116,10 +122,10 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
   };
 
   return (
-    <div className={cn("p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4", className)}>
+    <div className={cn("p-3.5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4", className)}>
       
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
@@ -153,13 +159,13 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
         {/* Header Row (Slots 1 to N) */}
         <div 
           className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-800/70 text-center text-xs font-black text-slate-600 dark:text-slate-300"
-          style={{ gridTemplateColumns: `42px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `38px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
         >
-          <div className="p-1.5 sm:p-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[10px] uppercase font-black text-slate-400">
+          <div className="p-1 sm:p-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[9px] sm:text-[10px] uppercase font-black text-slate-400">
             HARI
           </div>
           {activeSlots.map((slot) => (
-            <div key={slot} className="p-1.5 sm:p-2 border-r last:border-r-0 border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center">
+            <div key={slot} className="p-1 sm:p-2 border-r last:border-r-0 border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center">
               <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-slate-200">
                 <span className="hidden sm:inline">JAM </span>{slot}
               </span>
@@ -181,7 +187,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                 <div
                   key={day}
                   className="grid border-b last:border-b-0 border-slate-200/80 dark:border-slate-800/60"
-                  style={{ gridTemplateColumns: `42px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+                  style={{ gridTemplateColumns: `38px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
                 >
                   {/* Day Column (Compact 3-letter label for mobile) */}
                   <div className="p-1 sm:p-2 bg-slate-100/60 dark:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-[10px] sm:text-xs text-slate-700 dark:text-slate-300">
@@ -193,43 +199,49 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                   {mergedCells.map(({ slot, colSpan, item }) => {
                     const kelasNama = item?.Kelas?.nama_kelas || item?.kelas_nama || 'Kelas';
                     const mapelNama = item?.Mapel?.nama_mapel || item?.mapel_nama || item?.jenis_kegiatan || 'Mapel';
+                    const jamText = item?.jam_mulai && (item?.jam_selesai_merged || item?.jam_selesai)
+                      ? `${item.jam_mulai}-${item.jam_selesai_merged || item.jam_selesai}`
+                      : null;
 
                     return (
                       <div
                         key={`${day}-${slot}`}
-                        className="p-0.5 sm:p-1.5 border-r last:border-r-0 border-slate-200/60 dark:border-slate-800/40 min-h-[46px] sm:min-h-[70px] flex"
+                        className="p-0.5 sm:p-1 border-r last:border-r-0 border-slate-200/60 dark:border-slate-800/40 min-h-[58px] sm:min-h-[74px] flex"
                         style={{ gridColumn: `span ${colSpan}` }}
                       >
                         {item ? (
                           <button
                             type="button"
                             onClick={() => setSelectedItem({ item, day, slot, colSpan })}
-                            className="w-full h-full rounded-lg sm:rounded-xl p-1 sm:p-2 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between items-start gap-0.5 shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition-all text-left cursor-pointer group"
+                            className="w-full h-full rounded-lg sm:rounded-xl p-1 sm:p-1.5 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between items-center text-center shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer group overflow-hidden"
                           >
+                            {/* ── BARIS 1: NAMA KELAS & BADGE JP ─────────── */}
                             <div className="w-full flex items-center justify-between gap-0.5">
                               <span className={cn(
-                                "px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-black truncate max-w-full leading-none",
+                                "px-1 py-0.5 rounded text-[7.5px] sm:text-[9.5px] font-black truncate max-w-full leading-none",
                                 getClassColor(kelasNama)
                               )}>
                                 {kelasNama}
                               </span>
                               {colSpan > 1 && (
-                                <span className="text-[7px] sm:text-[9px] font-black px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 leading-none">
+                                <span className="text-[7px] sm:text-[8.5px] font-black px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 leading-none">
                                   {colSpan} JP
                                 </span>
                               )}
                             </div>
 
+                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU JAM MENGAJAR ── */}
+                            <div className="w-full flex items-center justify-center my-auto py-0.5">
+                              <span className="text-[7.5px] sm:text-[9.5px] font-black text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/70 px-1 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40 font-mono text-center tracking-tighter truncate leading-none max-w-full">
+                                {jamText || '07:00-08:30'}
+                              </span>
+                            </div>
+
+                            {/* ── BARIS 3: NAMA MATA PELAJARAN ───────────── */}
                             <div className="w-full">
-                              <p className="text-[8px] sm:text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                              <p className="text-[7.5px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
                                 {mapelNama}
                               </p>
-                              {item.jam_mulai && item.jam_selesai && (
-                                <p className="hidden sm:flex text-[9px] font-bold text-slate-500 dark:text-slate-400 font-mono mt-0.5 items-center gap-1">
-                                  <Clock size={9} className="text-blue-500" />
-                                  <span>{item.jam_mulai} - {item.jam_selesai}</span>
-                                </p>
-                              )}
                             </div>
                           </button>
                         ) : (
@@ -305,7 +317,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                 <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jam Mengajar</p>
                   <p className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 font-mono">
-                    {selectedItem.item.jam_mulai || '-'} - {selectedItem.item.jam_selesai || '-'}
+                    {selectedItem.item.jam_mulai || '-'} - {selectedItem.item.jam_selesai_merged || selectedItem.item.jam_selesai || '-'}
                   </p>
                   <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                     Sifat: {selectedItem.item.jenis_kegiatan || 'TEORI'}
