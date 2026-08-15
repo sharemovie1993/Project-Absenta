@@ -157,10 +157,10 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 font-bold">
                 <th className="py-3.5 px-4 text-center w-12">No</th>
-                <th className="py-3.5 px-4 min-w-[220px]">Identitas Siswa</th>
-                <th className="py-3.5 px-3 text-center w-20">Gender</th>
+                <th className="py-3.5 px-4 min-w-[200px]">Identitas Siswa</th>
+                <th className="py-3.5 px-3 text-center w-36">Aksi Wali Kelas</th>
+                <th className="py-3.5 px-3 text-center w-24">Gender</th>
                 <th className="py-3.5 px-4 min-w-[180px]">Orang Tua / Wali</th>
-                <th className="py-3.5 px-4 text-center w-40">Aksi Wali Kelas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -170,12 +170,12 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                     key={student.id} 
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
                   >
-                    {/* Number with Pagination Offset */}
+                    {/* 1. Number with Pagination Offset */}
                     <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
                       {(page - 1) * pageSize + idx + 1}
                     </td>
 
-                    {/* Student Info */}
+                    {/* 2. Student Info */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <img
@@ -198,7 +198,33 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                       </div>
                     </td>
 
-                    {/* Gender Badge */}
+                    {/* 3. Actions: Edit & View Profile (KOLOM KE-3) */}
+                    <td className="py-3.5 px-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {/* Edit Student Button */}
+                        <button
+                          type="button"
+                          onClick={() => onEditStudent(student.id)}
+                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs shadow-blue-600/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                          title="Edit Biodata & Profil Siswa"
+                        >
+                          <Edit3 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        {/* View Profile Button */}
+                        <button
+                          type="button"
+                          onClick={() => onSelectStudent(student.id)}
+                          className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                          title="Lihat Rincian Siswa"
+                        >
+                          <Eye size={15} />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* 4. Gender Badge */}
                     <td className="py-3.5 px-3 text-center">
                       <span className={cn(
                         "px-2 py-0.5 rounded-md text-[10px] font-black uppercase inline-block",
@@ -210,7 +236,7 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                       </span>
                     </td>
 
-                    {/* Parent Info & WhatsApp Action */}
+                    {/* 5. Parent Info & WhatsApp Action */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-0.5">
                         <span className="font-bold text-slate-800 dark:text-slate-200 block truncate text-xs">
@@ -228,32 +254,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                         ) : (
                           <span className="text-[11px] text-slate-400 italic">No HP belum ada</span>
                         )}
-                      </div>
-                    </td>
-
-                    {/* Actions: Edit & View Profile */}
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Student Button */}
-                        <button
-                          type="button"
-                          onClick={() => onEditStudent(student.id)}
-                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs shadow-blue-600/20 transition-all cursor-pointer active:scale-95"
-                          title="Edit Biodata & Profil Siswa"
-                        >
-                          <Edit3 size={13} />
-                          <span>Edit</span>
-                        </button>
-
-                        {/* View Profile Button */}
-                        <button
-                          type="button"
-                          onClick={() => onSelectStudent(student.id)}
-                          className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                          title="Lihat Rincian Siswa"
-                        >
-                          <Eye size={15} />
-                        </button>
                       </div>
                     </td>
                   </tr>
