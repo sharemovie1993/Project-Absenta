@@ -9,7 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Download
 } from 'lucide-react';
 import { Student } from './types';
 import { cn } from '../../../../lib/utils';
@@ -19,6 +20,7 @@ interface WaliKelasStudentsPanelProps {
   onSelectStudent: (studentId: string) => void;
   onEditStudent: (studentId: string) => void;
   onOpenWhatsApp: (parentName: string, parentPhone: string, studentName: string, reason: string) => void;
+  onOpenExportModal?: () => void;
   isApiConnected?: boolean;
   className?: string;
 }
@@ -28,6 +30,7 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
   onSelectStudent,
   onEditStudent,
   onOpenWhatsApp,
+  onOpenExportModal,
   isApiConnected = true,
   className = 'Kelas Binaan'
 }) => {
@@ -66,6 +69,10 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
       return matchSearch && matchGender && matchAttendance;
     });
   }, [students, searchTerm, genderFilter, attendanceFilter]);
+
+  // Gender counts
+  const maleCount = useMemo(() => students.filter((s) => s.gender === 'L').length, [students]);
+  const femaleCount = useMemo(() => students.filter((s) => s.gender === 'P').length, [students]);
 
   // Pagination calculations
   const totalItems = filteredStudents.length;
@@ -327,16 +334,39 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
           </table>
         </div>
 
-        {/* ── TABLE FOOTER & PAGINATION CONTROLS ──────────────────────────── */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Summary info & Per-page selector */}
-          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>
-              Menampilkan <strong className="text-slate-800 dark:text-slate-200">{startEntry}</strong> - <strong className="text-slate-800 dark:text-slate-200">{endEntry}</strong> dari <strong className="text-slate-800 dark:text-slate-200">{totalItems}</strong> siswa
+        {/* ── TABLE FOOTER: STATS SUMMARY, PAGE SELECTOR & PAGINATION NAVIGATION ── */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-3.5">
+          {/* Left: Summary info, Gender Badge, Per-page selector & Export button */}
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {/* Total Siswa Summary */}
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              Total {totalItems} Siswa
             </span>
+
+            {/* Gender Counts Pill */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
+              <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span>{maleCount} L</span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-600">•</span>
+              <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                <span>{femaleCount} P</span>
+              </span>
+            </div>
+
+            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+
+            {/* Range info */}
+            <span className="hidden sm:inline text-slate-500 dark:text-slate-400 text-[11px]">
+              Menampilkan {startEntry} - {endEntry}
+            </span>
+
             <span className="text-slate-300 dark:text-slate-700">•</span>
+
+            {/* Page Size Dropdown */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px]">Tampilkan:</span>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
@@ -348,12 +378,24 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                 <option value={100}>100 / hal</option>
               </select>
             </div>
+
+            {/* Export Button Inline */}
+            {onOpenExportModal && (
+              <button
+                type="button"
+                onClick={onOpenExportModal}
+                className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer ml-1"
+                title="Export Data Siswa Kelas Binaan"
+              >
+                <Download size={13} />
+                <span>Export</span>
+              </button>
+            )}
           </div>
 
-          {/* Pagination Navigation Buttons */}
+          {/* Right: Pagination Navigation Buttons */}
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
-              {/* First Page */}
               <button
                 type="button"
                 disabled={page <= 1}
@@ -363,8 +405,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
               >
                 <ChevronsLeft size={15} />
               </button>
-
-              {/* Previous Page */}
               <button
                 type="button"
                 disabled={page <= 1}
@@ -374,8 +414,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
               >
                 <ChevronLeft size={15} />
               </button>
-
-              {/* Page Number Buttons */}
               {visiblePages.map((p) => (
                 <button
                   key={p}
@@ -391,8 +429,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                   {p}
                 </button>
               ))}
-
-              {/* Next Page */}
               <button
                 type="button"
                 disabled={page >= totalPages}
@@ -402,8 +438,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
               >
                 <ChevronRight size={15} />
               </button>
-
-              {/* Last Page */}
               <button
                 type="button"
                 disabled={page >= totalPages}

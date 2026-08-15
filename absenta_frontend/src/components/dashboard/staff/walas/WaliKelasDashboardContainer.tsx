@@ -35,7 +35,6 @@ import {
   AchievementRecord, JournalEntry, ClassInfo, ClassHealthMetric, BKStatus, SeverityLevel 
 } from './types';
 
-import { HeaderCommandCenter } from './HeaderCommandCenter';
 import { TabNav } from './TabNav';
 
 // Code-Splitting via React.lazy() for Sub-Panels (Standar Multi-Tenant Google Platform)
@@ -406,22 +405,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
   return (
     <div className="w-full">
       <div className="p-5 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-        {/* 1. Header Command Center Toolbar */}
-        <HeaderCommandCenter
-          classInfo={classInfo}
-          onClassChange={handleClassChange}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onOpenExportModal={() => setIsExportModalOpen(true)}
-          studentCount={{
-            male: maleCount,
-            female: femaleCount,
-            total: students.length
-          }}
-          isApiConnected={isApiConnected}
-        />
-
-        {/* 2. Sub-Module Navigation Tabs */}
+        {/* Sub-Module Navigation Tabs */}
         <TabNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -429,7 +413,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
           atRiskCount={atRiskStudents.length}
         />
 
-        {/* 4. Sub-Module Active Views (Wrapped in Suspense for Lazy Loading) */}
+        {/* Sub-Module Active Views (Wrapped in Suspense for Lazy Loading) */}
         <main className="transition-all duration-300">
           <Suspense fallback={
             <div className="py-16 flex flex-col items-center justify-center gap-3">
@@ -456,6 +440,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
                 onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
                 onEditStudent={(id) => setEditingStudentId(id)}
                 onOpenWhatsApp={handleOpenWhatsApp}
+                onOpenExportModal={() => setIsExportModalOpen(true)}
                 isApiConnected={isApiConnected}
                 className={classInfo.className}
               />
