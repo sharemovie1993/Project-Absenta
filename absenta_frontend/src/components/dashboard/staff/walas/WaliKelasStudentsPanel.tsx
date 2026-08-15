@@ -1,18 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   Search, 
   Edit3, 
-  Phone, 
   MessageCircle, 
-  ShieldCheck, 
-  UserCheck, 
-  Award, 
-  Filter, 
-  ChevronRight,
   Eye,
-  CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { Student } from './types';
 import { cn } from '../../../../lib/utils';
@@ -38,6 +35,15 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
   const [genderFilter, setGenderFilter] = useState<'ALL' | 'L' | 'P'>('ALL');
   const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PERFECT' | 'ATTENTION'>('ALL');
 
+  // Pagination states
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  // Reset pagination to page 1 when search or filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, genderFilter, attendanceFilter, pageSize]);
+
   // Filtered student list
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
@@ -61,65 +67,39 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
     });
   }, [students, searchTerm, genderFilter, attendanceFilter]);
 
-  // Quick stats for the top summary cards
-  const stats = useMemo(() => {
-    const total = students.length;
-    const laki = students.filter((s) => s.gender === 'L').length;
-    const perempuan = students.filter((s) => s.gender === 'P').length;
-    const avgAttendance = total > 0 
-      ? Math.round(students.reduce((acc, s) => acc + s.attendanceRate, 0) / total) 
-      : 0;
+  // Pagination calculations
+  const totalItems = filteredStudents.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-    return { total, laki, perempuan, avgAttendance };
-  }, [students]);
+  const paginatedStudents = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, page, pageSize]);
+
+  // Generate visible page numbers for pagination bar
+  const visiblePages = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }, [page, totalPages]);
+
+  const startEntry = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endEntry = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* ── TOP BANNER & QUICK STATS ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Users size={20} />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Siswa</span>
-            <strong className="text-lg font-black text-slate-900 dark:text-white">{stats.total} Orang</strong>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <UserCheck size={20} />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Laki-laki / Perempuan</span>
-            <strong className="text-lg font-black text-slate-900 dark:text-white">{stats.laki} L • {stats.perempuan} P</strong>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Rata-rata Kehadiran</span>
-            <strong className="text-lg font-black text-emerald-600 dark:text-emerald-400">{stats.avgAttendance}%</strong>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-            <Award size={20} />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Kelas Binaan</span>
-            <strong className="text-sm font-black text-purple-600 dark:text-purple-400 truncate block">{className}</strong>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-4 animate-fadeIn">
       {/* ── FILTER & SEARCH BAR ─────────────────────────────────────────────── */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -220,15 +200,15 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student, idx) => (
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((student, idx) => (
                   <tr 
                     key={student.id} 
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
                   >
-                    {/* Number */}
+                    {/* Number with Pagination Offset */}
                     <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
-                      {idx + 1}
+                      {(page - 1) * pageSize + idx + 1}
                     </td>
 
                     {/* Student Info */}
@@ -311,7 +291,7 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                     {/* Actions: Edit & View Profile */}
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Student Button (Main Feature Request) */}
+                        {/* Edit Student Button */}
                         <button
                           type="button"
                           onClick={() => onEditStudent(student.id)}
@@ -347,10 +327,94 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
           </table>
         </div>
 
-        {/* Table Footer */}
-        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 font-semibold px-4">
-          <span>Menampilkan {filteredStudents.length} dari {students.length} siswa binaan</span>
-          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">Wali Kelas memiliki akses pemutakhiran data</span>
+        {/* ── TABLE FOOTER & PAGINATION CONTROLS ──────────────────────────── */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Summary info & Per-page selector */}
+          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <span>
+              Menampilkan <strong className="text-slate-800 dark:text-slate-200">{startEntry}</strong> - <strong className="text-slate-800 dark:text-slate-200">{endEntry}</strong> dari <strong className="text-slate-800 dark:text-slate-200">{totalItems}</strong> siswa
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px]">Tampilkan:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-8 px-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              >
+                <option value={10}>10 / hal</option>
+                <option value={25}>25 / hal</option>
+                <option value={50}>50 / hal</option>
+                <option value={100}>100 / hal</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Pagination Navigation Buttons */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {/* First Page */}
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage(1)}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                title="Halaman Pertama"
+              >
+                <ChevronsLeft size={15} />
+              </button>
+
+              {/* Previous Page */}
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              {/* Page Number Buttons */}
+              {visiblePages.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={cn(
+                    "min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all",
+                    p === page
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+
+              {/* Next Page */}
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight size={15} />
+              </button>
+
+              {/* Last Page */}
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage(totalPages)}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                title="Halaman Terakhir"
+              >
+                <ChevronsRight size={15} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
