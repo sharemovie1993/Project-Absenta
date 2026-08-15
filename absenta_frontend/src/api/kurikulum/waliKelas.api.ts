@@ -93,9 +93,10 @@ export const deleteJurnalWaliKelas = async (id: string) => {
 export const getPermohonanIzinList = async (
   status?: string,
   kelas_id?: string,
-  search = ''
+  search = '',
+  limit = 100
 ) => {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ limit: String(limit) });
   if (status) params.set('status', status);
   if (kelas_id) params.set('kelas_id', kelas_id);
   if (search) params.set('search', search);
@@ -111,29 +112,29 @@ export const updatePermohonanIzinStatus = async (id: string, payload: { status: 
 };
 
 // ── EWS Per Kelas ──
-export const getEwsPerKelasList = async (kelas_id?: string) => {
-  const params = new URLSearchParams();
+export const getEwsPerKelasList = async (kelas_id?: string, limit = 100) => {
+  const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
   return requestWithFallback<any>('get', `/kurikulum/wali-kelas/ews?${params.toString()}`);
 };
 
 // ── Pelanggaran Siswa ──
-export const getPelanggaranList = async (kelas_id?: string) => {
-  const params = new URLSearchParams();
+export const getPelanggaranList = async (kelas_id?: string, limit = 100) => {
+  const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
   return requestWithFallback<any>('get', `/kesiswaan/pelanggaran?${params.toString()}`);
 };
 
 // ── Prestasi Siswa ──
-export const getPrestasiList = async (kelas_id?: string) => {
-  const params = new URLSearchParams();
+export const getPrestasiList = async (kelas_id?: string, limit = 100) => {
+  const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
   return requestWithFallback<any>('get', `/kesiswaan/prestasi/prestasi?${params.toString()}`);
 };
 
 // ── Siswa & Presensi Matrix Rombel ──
-export const getSiswaWalasList = async (kelas_id?: string) => {
-  const params = new URLSearchParams();
+export const getSiswaWalasList = async (kelas_id?: string, limit = 100) => {
+  const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
   return requestWithFallback<any>('get', `/academic/siswa?${params.toString()}`);
 };
