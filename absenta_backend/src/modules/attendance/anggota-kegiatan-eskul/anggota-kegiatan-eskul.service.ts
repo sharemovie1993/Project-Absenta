@@ -47,7 +47,76 @@ export const anggotaKegiatanEskulService = {
   },
 
 
+  /**
+   * Auto-sync siswa biodata ekskul (ekskul_1 & ekskul_2) to AnggotaKegiatanEskul table
+   */
+  async syncSiswaBiodataEskul(tenantId: string) {
+    try {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true }
+      });
+      if (!activeTp) return;
+
+      const eskulMasters = await prisma.jenisKegiatanMaster.findMany({
+        where: { tenant_id: tenantId, aktif: true, tipe: { not: 'KBM' } }
+      });
+      if (eskulMasters.length === 0) return;
+
+      const students = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { ekskul_1: { not: null } },
+            { ekskul_2: { not: null } },
+          ]
+        },
+        include: {
+          SiswaAkademik: {
+            where: {
+              status: 'AKTIF',
+            }
+          }
+        }
+      });
+
+      for (const s of students) {
+        const sa = s.SiswaAkademik.find(a => a.tahun_pelajaran_id === activeTp.id) || s.SiswaAkademik[0];
+        if (!sa) continue;
+
+        const targetEskulNames = [s.ekskul_1, s.ekskul_2]
+          .filter((e): e is string => Boolean(e && e.trim().length > 0))
+          .map(e => e.trim().toLowerCase());
+
+        for (const targetName of targetEskulNames) {
+          const matchedMaster = eskulMasters.find(m => m.nama.trim().toLowerCase() === targetName);
+          if (matchedMaster) {
+            await prisma.anggotaKegiatanEskul.upsert({
+              where: {
+                tenant_id_jenis_kegiatan_id_siswa_akademik_id: {
+                  tenant_id: tenantId,
+                  jenis_kegiatan_id: matchedMaster.id,
+                  siswa_akademik_id: sa.id,
+                }
+              },
+              create: {
+                tenant_id: tenantId,
+                jenis_kegiatan_id: matchedMaster.id,
+                siswa_akademik_id: sa.id,
+              },
+              update: {}
+            });
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[AutoSync Eskul] Failed syncing biodata eskul:', err.message || err);
+    }
+  },
+
   async getMembers(tenantId: string, jenisKegiatanId: string) {
+    // Auto-sync any student biodata choices into AnggotaKegiatanEskul table
+    await this.syncSiswaBiodataEskul(tenantId);
+
     const isAll = jenisKegiatanId === 'ALL';
     const members = await prisma.anggotaKegiatanEskul.findMany({
       where: {

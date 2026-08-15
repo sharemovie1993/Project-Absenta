@@ -472,6 +472,66 @@ export async function updateSiswaCommand(
     });
   }
 
+  // Real-time synchronization to AnggotaKegiatanEskul table
+  if (dataToUpdate.ekskul_1 !== undefined || dataToUpdate.ekskul_2 !== undefined) {
+    try {
+      const activeTp = await siswaDb.tahunPelajaran.findFirst({
+        where: { tenant_id: existingSiswa.tenant_id, is_active: true }
+      });
+      const activeSa = await siswaDb.siswaAkademik.findFirst({
+        where: {
+          siswa_id: siswaId,
+          ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
+          status: 'AKTIF' as any
+        }
+      });
+
+      if (activeSa) {
+        const eskulMasters = await siswaDb.jenisKegiatanMaster.findMany({
+          where: { tenant_id: existingSiswa.tenant_id, aktif: true, tipe: { not: 'KBM' } }
+        });
+
+        const targetEskulNames = [dataToUpdate.ekskul_1, dataToUpdate.ekskul_2]
+          .filter((e): e is string => Boolean(e && e.trim().length > 0))
+          .map(e => e.trim().toLowerCase());
+
+        const targetMasterIds: string[] = [];
+        for (const targetName of targetEskulNames) {
+          const matchedMaster = eskulMasters.find(m => m.nama.trim().toLowerCase() === targetName);
+          if (matchedMaster) {
+            targetMasterIds.push(matchedMaster.id);
+            await siswaDb.anggotaKegiatanEskul.upsert({
+              where: {
+                tenant_id_jenis_kegiatan_id_siswa_akademik_id: {
+                  tenant_id: existingSiswa.tenant_id,
+                  jenis_kegiatan_id: matchedMaster.id,
+                  siswa_akademik_id: activeSa.id,
+                }
+              },
+              create: {
+                tenant_id: existingSiswa.tenant_id,
+                jenis_kegiatan_id: matchedMaster.id,
+                siswa_akademik_id: activeSa.id,
+              },
+              update: {}
+            });
+          }
+        }
+
+        // Clean up any old eskul memberships that are no longer selected
+        await siswaDb.anggotaKegiatanEskul.deleteMany({
+          where: {
+            tenant_id: existingSiswa.tenant_id,
+            siswa_akademik_id: activeSa.id,
+            ...(targetMasterIds.length > 0 ? { jenis_kegiatan_id: { notIn: targetMasterIds } } : {})
+          }
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Eskul-Sync] Failed syncing student eskul membership:', err.message || err);
+    }
+  }
+
   const updatedSiswaWithRelations: any = await siswaDb.siswa.findFirst({
     where: { id: siswaId },
     include: {

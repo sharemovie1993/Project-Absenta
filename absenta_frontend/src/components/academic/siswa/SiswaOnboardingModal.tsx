@@ -506,9 +506,11 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
         queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
         queryClient.invalidateQueries({ queryKey: ['siswa-detail', siswa.id] });
+        queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
       } else {
         await updateMutationMe.mutateAsync(payload as any);
         queryClient.invalidateQueries({ queryKey: SISWA_ME_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
       }
       
       toast.success('Biodata siswa berhasil diperbarui!');
