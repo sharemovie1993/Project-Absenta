@@ -13,7 +13,7 @@ export function useStaffWeeklySchedule(guruIdProp?: string) {
 
   // Fetch Teacher's full weekly schedule using TanStack Query (SSOT Caching)
   const { data: scheduleRes, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['teacher-weekly-kbm-unified', effectiveGuruId],
+    queryKey: ['jadwal-kbm', 'teacher-weekly', effectiveGuruId],
     queryFn: async () => {
       const filters: any = {};
       if (effectiveGuruId) filters.guru_id = effectiveGuruId;
@@ -27,7 +27,6 @@ export function useStaffWeeklySchedule(guruIdProp?: string) {
   // Real-time WebSocket: Otomatis invalidate cache jika admin kurikulum mengedit jadwal di backend
   useEffect(() => {
     const handleJadwalUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['teacher-weekly-kbm-unified'] });
       queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
     };
 
