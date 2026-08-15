@@ -31,11 +31,10 @@ export interface MergedScheduleBlock {
 }
 
 export function useStaffWeeklySchedule() {
-  const queryClient = useQueryClient();
-  const { subscribe, unsubscribe } = useSocket();
+  // 1. State Hooks
   const [viewMode, setViewMode] = useState<'agenda' | 'grid'>('agenda');
 
-  // Compute today's academic day name using existing day.constants
+  // Compute today's academic day name
   const todayDayName = useMemo(() => {
     const dayIdx = new Date().getDay();
     return mapDayIndexToHariKey(dayIdx);
@@ -43,18 +42,22 @@ export function useStaffWeeklySchedule() {
 
   const [selectedDay, setSelectedDay] = useState<HariKey>(todayDayName);
 
-  // Fetch Teacher's full weekly schedule using TanStack Query (SSOT Caching)
+  // 2. Context / Service Hooks
+  const queryClient = useQueryClient();
+  const { subscribe, unsubscribe } = useSocket();
+
+  // 3. TanStack Query Hook (SSOT Caching)
   const { data: scheduleRes, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['teacher-weekly-kbm-unified'],
     queryFn: async () => {
       const res = await getJadwalKBM();
       return res;
     },
-    staleTime: 5 * 60 * 1000, // 5 Menit Cache: Bebas spam request saat pindah-pindah tab
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
-  // Real-time WebSocket: Otomatis invalidate cache jika admin kurikulum mengedit jadwal di backend
+  // 4. Real-time WebSocket Invalidation
   useEffect(() => {
     const handleJadwalUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-weekly-kbm-unified'] });
@@ -72,6 +75,7 @@ export function useStaffWeeklySchedule() {
     };
   }, [subscribe, unsubscribe, queryClient]);
 
+  // 5. Memoized Parsed Data
   const rawSchedules: JadwalKBM[] = useMemo(() => {
     const data = scheduleRes?.data ?? scheduleRes;
     return Array.isArray(data) ? data : (Array.isArray((data as any)?.data) ? (data as any).data : []);
