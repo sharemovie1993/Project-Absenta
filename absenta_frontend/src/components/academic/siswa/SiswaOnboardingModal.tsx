@@ -280,6 +280,18 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     return siswaProp || siswaData || siswaFromHook || null;
   }, [siswaProp, siswaData, siswaFromHook]);
 
+  const studentName = useMemo(() => {
+    return siswa?.nama_siswa || siswa?.nama || siswa?.name || '';
+  }, [siswa]);
+
+  const studentNisn = useMemo(() => {
+    return siswa?.nisn || siswa?.nis || '';
+  }, [siswa]);
+
+  const studentKelas = useMemo(() => {
+    return siswa?.Kelas?.nama_kelas || siswa?.nama_kelas || siswa?.kelas || '';
+  }, [siswa]);
+
   const renderFieldStatusBadge = (value: any) => {
     if (!isApiConnected) {
       return (
@@ -574,17 +586,38 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
             <X size={18} />
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
-              <SectionIcon size={22} />
+          <div className="flex items-start gap-3.5 pr-8">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 mt-0.5 shadow-sm">
+              <SectionIcon size={24} />
             </div>
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                {sectionMeta.badge}
-              </span>
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {sectionMeta.badge}
+                </span>
+                {studentKelas && (
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-mono">
+                    Kelas {studentKelas}
+                  </span>
+                )}
+                {studentNisn && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">
+                    NISN: {studentNisn}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight leading-snug">
                 {sectionMeta.title}
               </h2>
+              {studentName && (
+                <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-xs w-fit">
+                  <User size={13} className="text-emerald-500 shrink-0" />
+                  <span className="text-slate-400 font-normal">Siswa:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-wide">
+                    {studentName}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
