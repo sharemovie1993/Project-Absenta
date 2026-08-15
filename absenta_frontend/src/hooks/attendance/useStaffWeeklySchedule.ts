@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMyJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
+import { getJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { WORKDAYS_HARI_KEYS, getDayLabel, type HariKey } from '../../constants/day.constants';
 
 export const mapDayIndexToHariKey = (idx: number): HariKey => {
@@ -40,15 +40,19 @@ export function useStaffWeeklySchedule() {
 
   const [selectedDay, setSelectedDay] = useState<HariKey>(todayDayName);
 
-  // Fetch Teacher's full weekly schedule from SSOT endpoint
+  // Fetch Teacher's full weekly schedule using the EXACT same endpoint as /kurikulum/jadwal
   const { data: scheduleRes, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['teacher-weekly-kbm-me'],
-    queryFn: () => getMyJadwalKBM({ hari: 'ALL' }),
+    queryKey: ['teacher-weekly-kbm-unified'],
+    queryFn: async () => {
+      const res = await getJadwalKBM();
+      return res;
+    },
     staleTime: 5 * 60 * 1000,
   });
 
   const rawSchedules: JadwalKBM[] = useMemo(() => {
-    return Array.isArray(scheduleRes?.data) ? scheduleRes.data : [];
+    const data = scheduleRes?.data ?? scheduleRes;
+    return Array.isArray(data) ? data : (Array.isArray((data as any)?.data) ? (data as any).data : []);
   }, [scheduleRes]);
 
   // Aggregate and merge consecutive slots into clean course blocks per day
