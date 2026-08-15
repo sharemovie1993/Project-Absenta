@@ -491,6 +491,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
         queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
         queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
         queryClient.invalidateQueries({ queryKey: ['siswa-detail', siswa.id] });
       } else {
         await updateMutationMe.mutateAsync(payload as any);
