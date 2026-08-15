@@ -148,7 +148,11 @@ export function getDomainBases(): string[] {
 /**
  * Mendapatkan URL Parent App secara cerdas berdasarkan tenant data.
  */
-export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custom_domain?: string | null, domain?: string | null }, tenantId?: string): string {
+export function getSmartParentAppUrl(
+  tenant?: { subdomain?: string | null, custom_domain?: string | null, domain?: string | null }, 
+  tenantId?: string,
+  reqOrigin?: string
+): string {
   const parentAppBase = (process.env.PARENT_APP_URL || process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
   const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
   
@@ -162,27 +166,27 @@ export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custo
   
   let portStr = '';
   try {
-    const feUrl = new URL(process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL);
+    const baseToParse = reqOrigin || process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
+    const feUrl = new URL(baseToParse.startsWith('http') ? baseToParse : `http://${baseToParse}`);
     if (feUrl.port && feUrl.port !== '80' && feUrl.port !== '443') {
       portStr = `:${feUrl.port}`;
     }
   } catch {}
 
-  // 1. Prioritas: Custom Domain (FQDN)
+  // 1. Prioritas: Custom Domain (FQDN) jika diset pada Tenant
   if (tenant?.custom_domain) {
-    return `${scheme}://${tenant.custom_domain}${portStr}`;
+    const cd = tenant.custom_domain.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    return `${scheme}://${cd}${portStr}`;
   }
 
   // 2. Kedua: Subdomain (Slug) + Main Domain
   const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
   if (tenant?.subdomain && mainDomain && !isIp) {
     const sub = tenant.subdomain.toLowerCase().trim();
-    // Jika subdomain sudah mengandung mainDomain (misal data input salah), jangan tempel lagi
+    // Jika subdomain sudah mengandung mainDomain, jangan tempel lagi
     if (sub.endsWith(`.${mainDomain}`) || sub === mainDomain) {
       return `${scheme}://${sub}${portStr}`;
     }
-    // CEK REDUNDANSI: Jika subdomain adalah bagian awal dari mainDomain
-    // Misal: subdomain = 'app', mainDomain = 'app.absenta.id' -> Jangan jadi app.app.absenta.id
     const mainParts = mainDomain.split('.');
     if (mainParts[0] === sub && mainParts.length > 1) {
        return `${scheme}://${mainDomain}${portStr}`;
@@ -190,7 +194,12 @@ export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custo
     return `${scheme}://${sub}.${mainDomain}${portStr}`;
   }
 
-  // 4. Ultimate Fallback: Base URL + tenantId
+  // 3. Ketiga: Gunakan origin request aktif pemanggil jika valid
+  if (reqOrigin && reqOrigin.startsWith('http')) {
+    return reqOrigin.replace(/\/$/, '');
+  }
+
+  // 4. Fallback: Base URL + tenantId
   const baseUrl = mainDomain ? `${scheme}://${mainDomain}${portStr}` : parentAppBase;
   if (isIp && tenantId) {
     return `${baseUrl}/login?tenantId=${tenantId}`;

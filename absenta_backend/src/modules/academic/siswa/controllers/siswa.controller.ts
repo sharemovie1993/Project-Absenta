@@ -339,7 +339,10 @@ export const siswaController = {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      const result = await siswaService.sendParentAccess(id, tenantId, scope);
+      const reqOrigin = request.headers.origin || 
+        (request.headers.host ? `${request.protocol || 'http'}://${request.headers.host}` : undefined);
+
+      const result = await siswaService.sendParentAccess(id, tenantId, scope, reqOrigin);
 
       return reply.status(200).send({
         success: true,

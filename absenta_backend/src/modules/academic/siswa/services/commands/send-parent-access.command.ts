@@ -4,9 +4,9 @@ import { getSmartParentAppUrl } from '../../../../../utils/url-helper';
 
 export async function sendParentAccessCommand(
   siswaId: string,
-  scope: { tenantId: string; org: any }
+  scope: { tenantId: string; org: any; reqOrigin?: string }
 ): Promise<any> {
-  const { tenantId, org } = scope;
+  const { tenantId, org, reqOrigin } = scope;
   let whereClause: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
@@ -55,7 +55,7 @@ export async function sendParentAccessCommand(
     select: { subdomain: true, custom_domain: true },
   });
 
-  const appUrl = getSmartParentAppUrl(tenant as any);
+  const appUrl = getSmartParentAppUrl(tenant as any, targetTenantId, reqOrigin);
 
   const loginLink = `${appUrl}/parent-app/access?token=${tokenRecord.token}`;
 
