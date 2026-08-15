@@ -226,31 +226,20 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                               </span>
                             </div>
 
-                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU DENGAN CSS SCALE (ANTI-CLAMP) ── */}
-                            <div className="w-full flex items-center justify-center my-auto py-0.5 overflow-visible">
-                              {colSpan === 1 ? (
-                                <div 
-                                  className="flex flex-col items-center justify-center leading-none py-0.5 px-0.5 rounded bg-blue-100/60 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-800/40 origin-center"
-                                  style={{ transform: 'scale(0.76)', transformOrigin: 'center' }}
-                                >
-                                  <span className="text-[9px] font-black text-blue-700 dark:text-blue-300 font-mono tracking-tighter leading-none">
-                                    {item.jam_mulai}
-                                  </span>
-                                  <span className="text-[8.5px] font-bold text-blue-600/80 dark:text-blue-400/80 font-mono tracking-tighter leading-none mt-0.5">
-                                    {item.jam_selesai_merged || item.jam_selesai}
-                                  </span>
+                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU BERSIH (2-LINE STACKED) ── */}
+                            <div className="w-full flex items-center justify-center my-auto py-0.5">
+                              {colSpan >= 3 ? (
+                                <div className="px-1.5 py-0.5 rounded bg-blue-100/70 dark:bg-blue-950/70 border border-blue-200/60 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 font-mono text-[9px] font-black tracking-tight whitespace-nowrap text-center">
+                                  {item.jam_mulai} - {item.jam_selesai_merged || item.jam_selesai}
                                 </div>
                               ) : (
-                                <div 
-                                  className="px-1 py-0.5 rounded bg-blue-100/70 dark:bg-blue-950/70 border border-blue-200/60 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 font-mono font-black tracking-tight whitespace-nowrap text-center origin-center max-w-full"
-                                  style={{
-                                    fontSize: '9.5px',
-                                    transform: colSpan === 2 ? 'scale(0.78)' : 'scale(0.90)',
-                                    transformOrigin: 'center',
-                                    lineHeight: '1',
-                                  }}
-                                >
-                                  {jamText || '07:00-08:30'}
+                                <div className="flex flex-col items-center justify-center leading-none py-0.5 px-1 rounded bg-blue-100/75 dark:bg-blue-950/75 border border-blue-200/70 dark:border-blue-800/50 text-blue-700 dark:text-blue-300 font-mono">
+                                  <span className="text-[8px] sm:text-[9.5px] font-black tracking-tight leading-none">
+                                    {item.jam_mulai}
+                                  </span>
+                                  <span className="text-[7.5px] sm:text-[9px] font-bold text-blue-600 dark:text-blue-400 tracking-tight leading-none mt-0.5">
+                                    {item.jam_selesai_merged || item.jam_selesai}
+                                  </span>
                                 </div>
                               )}
                             </div>
