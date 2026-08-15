@@ -361,15 +361,15 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 
       const payload = {
         ...data,
-        tinggi_badan: data.tinggi_badan === '' || data.tinggi_badan === null || data.tinggi_badan === undefined ? undefined : Number(data.tinggi_badan),
-        berat_badan: data.berat_badan === '' || data.berat_badan === null || data.berat_badan === undefined ? undefined : Number(data.berat_badan),
-        tanggal_lahir: data.tanggal_lahir || undefined,
-        tanggal_keluar: data.tanggal_keluar || undefined,
-        alasan_keluar: data.alasan_keluar || undefined,
-        no_rfid: data.no_rfid?.trim() ? data.no_rfid : undefined,
-        orang_tua: (data.orang_tua || []).filter(o => o.nama.trim()).map(o => ({
+        tinggi_badan: data.tinggi_badan === '' || data.tinggi_badan === null || data.tinggi_badan === undefined ? null : Number(data.tinggi_badan),
+        berat_badan: data.berat_badan === '' || data.berat_badan === null || data.berat_badan === undefined ? null : Number(data.berat_badan),
+        tanggal_lahir: data.tanggal_lahir || null,
+        tanggal_keluar: data.tanggal_keluar || null,
+        alasan_keluar: data.alasan_keluar || null,
+        no_rfid: data.no_rfid?.trim() ? data.no_rfid : null,
+        orang_tua: (data.orang_tua || []).filter(o => o.nama?.trim()).map(o => ({
             ...o,
-            email: o.email || undefined
+            email: o.email || null
         }))
       };
 
