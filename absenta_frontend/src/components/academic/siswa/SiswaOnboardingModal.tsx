@@ -27,7 +27,7 @@ import { uploadSiswaDocument } from '@/api/memberDocs.api';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateSiswa, updateSiswaMe, siswaQueryKeys } from '@/api/academic/siswa.api';
-import { useSiswaMe, useUpdateSiswaMe } from '@/hooks/useSiswaMe';
+import { useSiswaMe, useUpdateSiswaMe, SISWA_ME_QUERY_KEY } from '@/hooks/useSiswaMe';
 import { 
   AGAMA_OPTIONS, 
   TRANSPORTASI_OPTIONS, 
