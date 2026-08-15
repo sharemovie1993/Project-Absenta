@@ -4,7 +4,6 @@ import {
   Search, 
   Edit3, 
   MessageCircle, 
-  Eye,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -198,10 +197,9 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                       </div>
                     </td>
 
-                    {/* 3. Actions: Edit & View Profile (KOLOM KE-3) */}
+                    {/* 3. Actions: Edit Profile (KOLOM KE-3) */}
                     <td className="py-3.5 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Student Button */}
+                      <div className="flex items-center justify-center">
                         <button
                           type="button"
                           onClick={() => onEditStudent(student.id)}
@@ -210,16 +208,6 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                         >
                           <Edit3 size={13} />
                           <span>Edit</span>
-                        </button>
-
-                        {/* View Profile Button */}
-                        <button
-                          type="button"
-                          onClick={() => onSelectStudent(student.id)}
-                          className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                          title="Lihat Rincian Siswa"
-                        >
-                          <Eye size={15} />
                         </button>
                       </div>
                     </td>
