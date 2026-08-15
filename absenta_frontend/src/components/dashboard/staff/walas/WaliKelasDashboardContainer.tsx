@@ -40,10 +40,12 @@ import { TabNav } from './TabNav';
 
 // Code-Splitting via React.lazy() for Sub-Panels (Standar Multi-Tenant Google Platform)
 const WaliKelasApprovalPanel = lazy(() => import('./WaliKelasApprovalPanel').then(m => ({ default: m.WaliKelasApprovalPanel })));
+const WaliKelasStudentsPanel = lazy(() => import('./WaliKelasStudentsPanel').then(m => ({ default: m.WaliKelasStudentsPanel })));
 const WaliKelasHealthPanel = lazy(() => import('./WaliKelasHealthPanel').then(m => ({ default: m.WaliKelasHealthPanel })));
 const WaliKelasDisciplinePanel = lazy(() => import('./WaliKelasDisciplinePanel').then(m => ({ default: m.WaliKelasDisciplinePanel })));
 const WaliKelasAchievementPanel = lazy(() => import('./WaliKelasAchievementPanel').then(m => ({ default: m.WaliKelasAchievementPanel })));
 const WaliKelasRekapPanel = lazy(() => import('./WaliKelasRekapPanel').then(m => ({ default: m.WaliKelasRekapPanel })));
+const SiswaForm = lazy(() => import('../../../academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
 
 import { StudentDetailModal } from './StudentDetailModal';
 import { AttachmentViewerModal } from './AttachmentViewerModal';
@@ -54,6 +56,7 @@ import { ReportExportModal } from './ReportExportModal';
 import { WhatsAppModal } from './WhatsAppModal';
 import { NotificationToast, ToastMessage } from './NotificationToast';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useWaliKelasDashboard } from '../../../../hooks/kurikulum/useWaliKelasDashboard';
 
 interface WaliKelasDashboardContainerProps {
@@ -98,12 +101,15 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
   const journalEntries = apiJournalEntries || [];
 
 
+  const queryClient = useQueryClient();
+
   // Active Tab & Search Filter
   const [activeTab, setActiveTab] = useState<string>('approval');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Modals & Overlay States
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [viewAttachmentReq, setViewAttachmentReq] = useState<LeaveRequest | null>(null);
   const [badgeStudent, setBadgeStudent] = useState<Student | null>(null);
   const [isAddIncidentOpen, setIsAddIncidentOpen] = useState(false);
@@ -419,6 +425,17 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
               />
             )}
 
+            {activeTab === 'students' && (
+              <WaliKelasStudentsPanel
+                students={students}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                onEditStudent={(id) => setEditingStudentId(id)}
+                onOpenWhatsApp={handleOpenWhatsApp}
+                isApiConnected={isApiConnected}
+                className={classInfo.className}
+              />
+            )}
+
             {activeTab === 'health' && (
               <WaliKelasHealthPanel
                 students={students}
@@ -490,7 +507,34 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
         onClose={() => setSelectedStudent(null)}
         onOpenBadgeModal={(st) => setBadgeStudent(st)}
         onOpenWhatsApp={handleOpenWhatsApp}
+        onEditStudent={(id) => setEditingStudentId(id)}
       />
+
+      {/* SiswaForm Modal for Homeroom Teacher Editing */}
+      {editingStudentId && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs">
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex items-center gap-3">
+              <Loader />
+              <span className="text-xs font-bold text-slate-500">Memuat Formulir Biodata Siswa...</span>
+            </div>
+          </div>
+        }>
+          <SiswaForm
+            siswaId={editingStudentId}
+            mode="edit"
+            onSuccess={() => {
+              setEditingStudentId(null);
+              queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+              showToast(
+                'Data Siswa Diperbarui',
+                'Biodata siswa binaan berhasil disimpan dan dimutakhirkan di sistem.'
+              );
+            }}
+            onCancel={() => setEditingStudentId(null)}
+          />
+        </Suspense>
+      )}
 
       <AttachmentViewerModal
         request={viewAttachmentReq}

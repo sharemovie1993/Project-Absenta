@@ -1,5 +1,5 @@
 import React from 'react';
-import { MailCheck, HeartPulse, Scale, Trophy, ScrollText } from 'lucide-react';
+import { MailCheck, HeartPulse, Scale, Trophy, ScrollText, Users } from 'lucide-react';
 
 interface TabNavProps {
   activeTab: string;
@@ -21,6 +21,12 @@ export const TabNav: React.FC<TabNavProps> = ({
       icon: MailCheck,
       badge: pendingApprovalCount > 0 ? pendingApprovalCount : null,
       badgeColor: 'bg-orange-500 text-white'
+    },
+    {
+      id: 'students',
+      label: 'Data Siswa',
+      icon: Users,
+      badge: null
     },
     {
       id: 'health',

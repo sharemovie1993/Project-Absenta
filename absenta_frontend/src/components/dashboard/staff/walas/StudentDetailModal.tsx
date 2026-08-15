@@ -1,19 +1,21 @@
 import React from 'react';
 import { Student } from './types';
-import { X, Phone, MessageCircle, Shield, Award, Calendar, AlertCircle, Star, User, BookOpen } from 'lucide-react';
+import { X, Phone, MessageCircle, Shield, Award, Calendar, AlertCircle, Star, User, BookOpen, Edit3 } from 'lucide-react';
 
 interface StudentDetailModalProps {
   student: Student | null;
   onClose: () => void;
   onOpenBadgeModal: (student: Student) => void;
   onOpenWhatsApp: (parentName: string, parentPhone: string, studentName: string, reason: string) => void;
+  onEditStudent?: (studentId: string) => void;
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   student,
   onClose,
   onOpenBadgeModal,
-  onOpenWhatsApp
+  onOpenWhatsApp,
+  onEditStudent
 }) => {
   if (!student) return null;
 
@@ -136,7 +138,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 rounded-b-3xl border-t border-slate-200 flex justify-end">
+        <div className="p-4 bg-slate-50 rounded-b-3xl border-t border-slate-200 flex items-center justify-between gap-3">
+          {onEditStudent ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onEditStudent(student.id);
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <Edit3 size={14} />
+              <span>Edit Biodata Siswa</span>
+            </button>
+          ) : <div />}
+
           <button
             onClick={onClose}
             className="px-5 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 cursor-pointer"
