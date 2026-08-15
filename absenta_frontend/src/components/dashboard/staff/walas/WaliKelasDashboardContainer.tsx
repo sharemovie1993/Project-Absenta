@@ -130,6 +130,9 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     return fullSiswaData || students.find((s) => s.id === editingStudentId) || null;
   }, [editingStudentId, fullSiswaData, students]);
 
+  const maleCount = useMemo(() => students.filter((s) => s.gender === 'L').length, [students]);
+  const femaleCount = useMemo(() => students.filter((s) => s.gender === 'P').length, [students]);
+
   // WhatsApp Modal state
   const [waModalData, setWaModalData] = useState<{
     parentName: string;
@@ -393,8 +396,8 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
           onSearchChange={setSearchTerm}
           onOpenExportModal={() => setIsExportModalOpen(true)}
           studentCount={{
-            male: classInfo.maleCount,
-            female: classInfo.femaleCount,
+            male: maleCount,
+            female: femaleCount,
             total: students.length
           }}
           isApiConnected={isApiConnected}

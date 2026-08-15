@@ -46,11 +46,19 @@ export const HeaderCommandCenter: React.FC<HeaderCommandCenterProps> = ({
           <Users size={14} className="text-blue-500" />
           <span>
             Total <strong className="text-slate-900 dark:text-white font-black">{studentCount.total} Siswa</strong>
-            {(studentCount.male > 0 || studentCount.female > 0) && (
-              <span className="text-slate-500 dark:text-slate-400 font-semibold ml-1.5">
-                ({studentCount.male} L / {studentCount.female} P)
-              </span>
-            )}
+          </span>
+        </div>
+
+        {/* Laki-laki & Perempuan Badge */}
+        <div className="flex items-center gap-2 text-xs font-bold bg-indigo-500/10 dark:bg-indigo-500/15 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl border border-indigo-500/20">
+          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-black">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>{studentCount.male} Laki-laki</span>
+          </span>
+          <span className="text-slate-300 dark:text-slate-600">•</span>
+          <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-black">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span>{studentCount.female} Perempuan</span>
           </span>
         </div>
       </div>
