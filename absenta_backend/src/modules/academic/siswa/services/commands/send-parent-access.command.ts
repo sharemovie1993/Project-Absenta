@@ -60,27 +60,25 @@ export async function sendParentAccessCommand(
 
     const hubungan = siswa.nama_ayah ? 'AYAH' : siswa.nama_ibu ? 'IBU' : 'WALI';
 
-    if (!candidatePhone) {
-      throw new Error(`Siswa (${siswa.nama_siswa}) belum memiliki nomor HP Orang Tua di database / tabel siswa`);
-    }
-
     if (targetParent) {
-      // Update nomor HP pada record OrangTua yang sudah ada
-      targetParent = await siswaDb.orangTua.update({
-        where: { id: targetParent.id },
-        data: {
-          no_hp: candidatePhone,
-          nama: targetParent.nama || candidateName,
-          hubungan: targetParent.hubungan || hubungan,
-        },
-      });
+      // Update nomor HP pada record OrangTua yang sudah ada jika candidatePhone ada
+      if (candidatePhone) {
+        targetParent = await siswaDb.orangTua.update({
+          where: { id: targetParent.id },
+          data: {
+            no_hp: candidatePhone,
+            nama: targetParent.nama || candidateName,
+            hubungan: targetParent.hubungan || hubungan,
+          },
+        });
+      }
     } else {
       // Auto-create record OrangTua dan link ke OrangTuaSiswa
       targetParent = await siswaDb.orangTua.create({
         data: {
           tenant_id: siswa.tenant_id,
           nama: candidateName,
-          no_hp: candidatePhone,
+          no_hp: candidatePhone || null,
           hubungan: hubungan,
           OrangTuaSiswa: {
             create: {
@@ -120,30 +118,35 @@ Terima kasih.`;
   let waSent = false;
   let waError = '';
 
-  try {
-    const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
-    const waService = new WhatsAppService();
+  if (targetParent.no_hp) {
+    try {
+      const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
+      const waService = new WhatsAppService();
 
-    waSent = await waService.sendWhatsApp({
-      phoneNumber: targetParent.no_hp,
-      message: message,
-      tenantId: tenantId,
-      relatedId: siswa.id,
-      event: 'PARENT_ACCESS_SENT',
-      subject: 'Akses Parent App',
-      force: true,
-      throwOnError: false,
-    });
-  } catch (err: any) {
+      waSent = await waService.sendWhatsApp({
+        phoneNumber: targetParent.no_hp,
+        message: message,
+        tenantId: tenantId,
+        relatedId: siswa.id,
+        event: 'PARENT_ACCESS_SENT',
+        subject: 'Akses Parent App',
+        force: true,
+        throwOnError: false,
+      });
+    } catch (err: any) {
+      waSent = false;
+      waError = err?.message || 'WA Gateway Offline';
+    }
+  } else {
     waSent = false;
-    waError = err?.message || 'WA Gateway Offline';
+    waError = 'Nomor WhatsApp belum diisi pada biodata siswa/orang tua';
   }
 
   return {
     success: true,
     message: waSent 
       ? `Akses Orang Tua berhasil dikirim via WhatsApp ke ${targetParent.nama}`
-      : `Token & Link Akses Orang Tua berhasil dibuat. (WA Gateway Offline)`,
+      : `Token & Link Akses Orang Tua berhasil dibuat.`,
     waSent,
     waError,
     target: {
