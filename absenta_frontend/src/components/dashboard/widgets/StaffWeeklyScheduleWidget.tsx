@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { Calendar, Sparkles, BookOpen, Clock, Layers } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calendar, Sparkles, BookOpen, Clock, Layers, X, Info } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { WORKDAYS_HARI_KEYS, getDayLabel, type HariKey } from '../../../constants/day.constants';
+import { WORKDAYS_HARI_KEYS, getDayLabel, getDayShortLabel, type HariKey } from '../../../constants/day.constants';
 import { useStaffWeeklySchedule } from '../../../hooks/attendance/useStaffWeeklySchedule';
 
 interface StaffWeeklyScheduleWidgetProps {
@@ -10,7 +10,7 @@ interface StaffWeeklyScheduleWidgetProps {
   className?: string;
 }
 
-const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const ALL_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps> = ({
   guruId,
@@ -23,17 +23,25 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
     isLoading,
   } = useStaffWeeklySchedule(guruId);
 
-  // Compute maximum slot index used by this teacher to keep grid compact
+  // Selected cell item for mobile detail popup/sheet
+  const [selectedItem, setSelectedItem] = useState<{
+    item: any;
+    day: string;
+    slot: number;
+    colSpan: number;
+  } | null>(null);
+
+  // Compute maximum slot index used by this teacher to fit perfectly on mobile
   const maxSlot = useMemo(() => {
-    let max = 8;
+    let max = 7;
     rawSchedules.forEach((s) => {
       if (s.slot_index && s.slot_index > max) max = s.slot_index;
     });
-    return Math.min(max, 12);
+    return Math.min(Math.max(max, 7), 12);
   }, [rawSchedules]);
 
   const activeSlots = useMemo(() => {
-    return SLOTS.filter((s) => s <= maxSlot);
+    return ALL_SLOTS.filter((s) => s <= maxSlot);
   }, [maxSlot]);
 
   // Fast Slot Lookup Map
@@ -92,128 +100,230 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
     return cells;
   };
 
+  // Color generator based on class name string for high-contrast visual differentiation
+  const getClassColor = (name: string = '') => {
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const themes = [
+      'bg-blue-600 dark:bg-blue-500 text-white',
+      'bg-indigo-600 dark:bg-indigo-500 text-white',
+      'bg-emerald-600 dark:bg-emerald-500 text-white',
+      'bg-amber-600 dark:bg-amber-500 text-white',
+      'bg-purple-600 dark:bg-purple-500 text-white',
+      'bg-teal-600 dark:bg-teal-500 text-white',
+      'bg-rose-600 dark:bg-rose-500 text-white',
+    ];
+    return themes[hash % themes.length];
+  };
+
   return (
-    <div className={cn("p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4", className)}>
+    <div className={cn("p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4", className)}>
       
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Calendar size={18} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Calendar size={16} />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                Jadwal Mengajar Guru (1 Minggu)
-              </h2>
-              {guruNama && (
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Guru: <span className="font-bold text-slate-700 dark:text-slate-200">{guruNama}</span>
-                </p>
-              )}
-            </div>
+            <h2 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              Matriks Jadwal Mengajar Guru
+            </h2>
           </div>
+          {guruNama && (
+            <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 pl-9">
+              Pengajar: <span className="font-bold text-slate-700 dark:text-slate-200">{guruNama}</span>
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1.5 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200/60 dark:border-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-black">
-            Total: {totalWeeklyJp} JP / Minggu
+        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
+          <div className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200/60 dark:border-blue-800/50 text-blue-700 dark:text-blue-300 text-[11px] sm:text-xs font-black">
+            Beban: {totalWeeklyJp} JP / Minggu
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold">
-            <Sparkles size={13} className="text-blue-500" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs font-bold">
+            <Sparkles size={12} className="text-blue-500" />
             <span>Senin — Sabtu</span>
           </div>
         </div>
       </div>
 
-      {/* ── TEACHER SPECIFIC MATRIX GRID ───────────────────────────────────── */}
-      <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
-        <div className="min-w-[840px]">
-          
-          {/* Header Row (Slots) */}
-          <div 
-            className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/60 text-center text-xs font-black text-slate-600 dark:text-slate-300 sticky top-0 z-10"
-            style={{ gridTemplateColumns: `100px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
-          >
-            <div className="p-3 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[11px] uppercase tracking-wider text-slate-500">
-              HARI
+      {/* ── RESPONSIVE 1-PAGE COMPACT MATRIX GRID ───────────────────────────── */}
+      <div className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 overflow-hidden">
+        
+        {/* Header Row (Slots 1 to N) */}
+        <div 
+          className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-800/70 text-center text-xs font-black text-slate-600 dark:text-slate-300"
+          style={{ gridTemplateColumns: `42px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+        >
+          <div className="p-1.5 sm:p-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[10px] uppercase font-black text-slate-400">
+            HARI
+          </div>
+          {activeSlots.map((slot) => (
+            <div key={slot} className="p-1.5 sm:p-2 border-r last:border-r-0 border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-slate-200">
+                <span className="hidden sm:inline">JAM </span>{slot}
+              </span>
             </div>
-            {activeSlots.map((slot) => (
-              <div key={slot} className="p-2.5 border-r last:border-r-0 border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center">
-                <span className="text-[11px] font-black text-slate-800 dark:text-slate-200">JAM {slot}</span>
-              </div>
-            ))}
-          </div>
+          ))}
+        </div>
 
-          {/* Body Rows (Days) */}
-          <div>
-            {isLoading ? (
-              <div className="p-10 text-center text-xs font-bold text-slate-400 animate-pulse">
-                Memuat data jadwal mengajar...
-              </div>
-            ) : (
-              WORKDAYS_HARI_KEYS.map((day) => {
-                const mergedCells = getMergedSlotsForDay(day);
+        {/* Body Rows (Senin s/d Sabtu) */}
+        <div>
+          {isLoading ? (
+            <div className="p-8 text-center text-xs font-bold text-slate-400 animate-pulse">
+              Memuat data jadwal mengajar...
+            </div>
+          ) : (
+            WORKDAYS_HARI_KEYS.map((day) => {
+              const mergedCells = getMergedSlotsForDay(day);
 
-                return (
-                  <div
-                    key={day}
-                    className="grid border-b last:border-b-0 border-slate-200/80 dark:border-slate-800/60 group"
-                    style={{ gridTemplateColumns: `100px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
-                  >
-                    {/* Day Name */}
-                    <div className="p-3 bg-slate-100/50 dark:bg-slate-800/30 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-300">
-                      {getDayLabel(day)}
-                    </div>
-
-                    {/* Slot Cells */}
-                    {mergedCells.map(({ slot, colSpan, item }) => {
-                      return (
-                        <div
-                          key={`${day}-${slot}`}
-                          className="p-1.5 border-r last:border-r-0 border-slate-200/60 dark:border-slate-800/40 min-h-[72px] flex"
-                          style={{ gridColumn: `span ${colSpan}` }}
-                        >
-                          {item ? (
-                            <div className="w-full h-full rounded-xl p-2.5 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between gap-1 shadow-xs hover:border-blue-400 transition-all group/cell">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-600 text-white shadow-xs tracking-tight truncate max-w-[90px]">
-                                  {item.Kelas?.nama_kelas || item.kelas_nama || 'Kelas'}
-                                </span>
-                                {colSpan > 1 && (
-                                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                                    {colSpan} JP
-                                  </span>
-                                )}
-                              </div>
-
-                              <div>
-                                <h4 className="text-[11px] font-extrabold text-slate-900 dark:text-white leading-tight line-clamp-2">
-                                  {item.Mapel?.nama_mapel || item.mapel_nama || item.jenis_kegiatan || 'Mata Pelajaran'}
-                                </h4>
-                                {item.jam_mulai && item.jam_selesai && (
-                                  <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex items-center gap-1">
-                                    <Clock size={10} className="text-blue-500" />
-                                    <span>{item.jam_mulai} - {item.jam_selesai}</span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-full h-full rounded-xl border border-dashed border-slate-200/50 dark:border-slate-800/40 flex items-center justify-center text-slate-300 dark:text-slate-700 text-xs select-none">
-                              -
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+              return (
+                <div
+                  key={day}
+                  className="grid border-b last:border-b-0 border-slate-200/80 dark:border-slate-800/60"
+                  style={{ gridTemplateColumns: `42px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+                >
+                  {/* Day Column (Compact 3-letter label for mobile) */}
+                  <div className="p-1 sm:p-2 bg-slate-100/60 dark:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-[10px] sm:text-xs text-slate-700 dark:text-slate-300">
+                    <span className="sm:hidden">{getDayShortLabel(day)}</span>
+                    <span className="hidden sm:inline">{getDayLabel(day)}</span>
                   </div>
-                );
-              })
-            )}
-          </div>
+
+                  {/* Slot Cells */}
+                  {mergedCells.map(({ slot, colSpan, item }) => {
+                    const kelasNama = item?.Kelas?.nama_kelas || item?.kelas_nama || 'Kelas';
+                    const mapelNama = item?.Mapel?.nama_mapel || item?.mapel_nama || item?.jenis_kegiatan || 'Mapel';
+
+                    return (
+                      <div
+                        key={`${day}-${slot}`}
+                        className="p-0.5 sm:p-1.5 border-r last:border-r-0 border-slate-200/60 dark:border-slate-800/40 min-h-[46px] sm:min-h-[70px] flex"
+                        style={{ gridColumn: `span ${colSpan}` }}
+                      >
+                        {item ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItem({ item, day, slot, colSpan })}
+                            className="w-full h-full rounded-lg sm:rounded-xl p-1 sm:p-2 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between items-start gap-0.5 shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition-all text-left cursor-pointer group"
+                          >
+                            <div className="w-full flex items-center justify-between gap-0.5">
+                              <span className={cn(
+                                "px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-black truncate max-w-full leading-none",
+                                getClassColor(kelasNama)
+                              )}>
+                                {kelasNama}
+                              </span>
+                              {colSpan > 1 && (
+                                <span className="text-[7px] sm:text-[9px] font-black px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 leading-none">
+                                  {colSpan} JP
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="w-full">
+                              <p className="text-[8px] sm:text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                                {mapelNama}
+                              </p>
+                              {item.jam_mulai && item.jam_selesai && (
+                                <p className="hidden sm:flex text-[9px] font-bold text-slate-500 dark:text-slate-400 font-mono mt-0.5 items-center gap-1">
+                                  <Clock size={9} className="text-blue-500" />
+                                  <span>{item.jam_mulai} - {item.jam_selesai}</span>
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="w-full h-full rounded-lg border border-dashed border-slate-200/40 dark:border-slate-800/30 flex items-center justify-center text-slate-300 dark:text-slate-700 text-[10px] select-none">
+                            ·
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
+
+      {/* ── MODAL POPUP DETAIL (WHEN TEACHER TAPS ANY SLOT CELL ON MOBILE) ──── */}
+      {selectedItem && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setSelectedItem(null)}
+        >
+          <div 
+            className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "px-2.5 py-1 rounded-xl text-xs font-black",
+                  getClassColor(selectedItem.item.Kelas?.nama_kelas || selectedItem.item.kelas_nama)
+                )}>
+                  {selectedItem.item.Kelas?.nama_kelas || selectedItem.item.kelas_nama || 'Kelas'}
+                </span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  Hari {getDayLabel(selectedItem.day)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedItem(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mata Pelajaran</p>
+                <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                  {selectedItem.item.Mapel?.nama_mapel || selectedItem.item.mapel_nama || selectedItem.item.jenis_kegiatan || 'Mata Pelajaran'}
+                </h3>
+                {selectedItem.item.Mapel?.kode_mapel && (
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Kode: {selectedItem.item.Mapel.kode_mapel}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Alokasi Waktu</p>
+                  <p className="text-xs font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                    {selectedItem.colSpan} Jam Pelajaran (JP)
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                    Slot Jam ke-{selectedItem.slot} {selectedItem.colSpan > 1 ? `s/d ${selectedItem.slot + selectedItem.colSpan - 1}` : ''}
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jam Mengajar</p>
+                  <p className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5 font-mono">
+                    {selectedItem.item.jam_mulai || '-'} - {selectedItem.item.jam_selesai || '-'}
+                  </p>
+                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    Sifat: {selectedItem.item.jenis_kegiatan || 'TEORI'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedItem(null)}
+              className="w-full py-2.5 rounded-2xl text-xs font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              Tutup Rincian
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
