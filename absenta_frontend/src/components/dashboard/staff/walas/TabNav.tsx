@@ -56,7 +56,7 @@ export const TabNav: React.FC<TabNavProps> = ({
   ];
 
   return (
-    <nav className="flex items-center border-b border-slate-100 dark:border-slate-800 gap-4 sm:gap-7 overflow-x-auto no-scrollbar touch-pan-x flex-nowrap min-w-0 w-full pb-0.5">
+    <nav className="hidden md:flex items-center border-b border-slate-100 dark:border-slate-800 gap-4 sm:gap-7 overflow-x-auto no-scrollbar touch-pan-x flex-nowrap min-w-0 w-full pb-0.5">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
