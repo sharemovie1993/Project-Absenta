@@ -5,6 +5,7 @@
 
 import React, { useState, lazy, Suspense } from 'react';
 import { Loader } from '../../../ui/Loader';
+import Modal from '../../../ui/Modal';
 
 const DEFAULT_CLASS_INFO: ClassInfo = {
   className: 'Kelas Wali',
@@ -511,30 +512,35 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
       />
 
       {/* SiswaForm Modal for Homeroom Teacher Editing */}
-      {editingStudentId && (
+      <Modal
+        isOpen={Boolean(editingStudentId)}
+        onClose={() => setEditingStudentId(null)}
+        title="Biodata & Profil Siswa Binaan"
+        size="4xl"
+      >
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs">
-            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex items-center gap-3">
-              <Loader />
-              <span className="text-xs font-bold text-slate-500">Memuat Formulir Biodata Siswa...</span>
-            </div>
+          <div className="p-12 flex justify-center items-center gap-3">
+            <Loader />
+            <span className="text-xs font-bold text-slate-500">Memuat Formulir Biodata Siswa...</span>
           </div>
         }>
-          <SiswaForm
-            siswaId={editingStudentId}
-            mode="edit"
-            onSuccess={() => {
-              setEditingStudentId(null);
-              queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
-              showToast(
-                'Data Siswa Diperbarui',
-                'Biodata siswa binaan berhasil disimpan dan dimutakhirkan di sistem.'
-              );
-            }}
-            onCancel={() => setEditingStudentId(null)}
-          />
+          {editingStudentId && (
+            <SiswaForm
+              siswaId={editingStudentId}
+              mode="edit"
+              onSuccess={() => {
+                setEditingStudentId(null);
+                queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+                showToast(
+                  'Data Siswa Diperbarui',
+                  'Biodata siswa binaan berhasil disimpan dan dimutakhirkan di sistem.'
+                );
+              }}
+              onCancel={() => setEditingStudentId(null)}
+            />
+          )}
         </Suspense>
-      )}
+      </Modal>
 
       <AttachmentViewerModal
         request={viewAttachmentReq}
