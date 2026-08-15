@@ -86,10 +86,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const currentTab = searchParams.get('tab');
   const currentSubtab = searchParams.get('subtab');
 
-  // Close floating flyout on route or param change
+  // Close floating flyout ONLY when navigating to a different page route (pathname change)
   useEffect(() => {
     setOpenFlyoutId(null);
-  }, [location.pathname, location.search]);
+  }, [location.pathname]);
 
   // Don't render for Parent App as it has its own parent layout
   if (location.pathname.startsWith('/parent-app')) {
