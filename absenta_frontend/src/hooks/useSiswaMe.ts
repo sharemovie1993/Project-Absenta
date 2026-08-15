@@ -10,6 +10,8 @@ export const SISWA_ME_QUERY_KEY = ['siswa-profile-me'] as const;
  */
 export function useSiswaMe() {
   const { user } = useAuthStore();
+  const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const isSiswaUser = roleName === 'SISWA' || !!user?.siswa_id || !!(user as any)?.siswa_profile;
 
   const query = useQuery({
     queryKey: [...SISWA_ME_QUERY_KEY, user?.siswa_id, (user as any)?.siswa_profile?.id, user?.id],
@@ -18,8 +20,8 @@ export function useSiswaMe() {
       try {
         const meRes = await getSiswaMe();
         if (meRes) return meRes;
-      } catch (err) {
-        console.warn('getSiswaMe endpoint fallback:', err);
+      } catch {
+        // Silent fallback to ID lookup
       }
 
       // 2. Direct ID getById
@@ -28,15 +30,15 @@ export function useSiswaMe() {
         try {
           const res = await getSiswaById(targetId);
           if (res) return res;
-        } catch (err) {
-          console.warn('getSiswaById fallback:', err);
+        } catch {
+          // Silent fallback
         }
       }
 
       // 3. Fallback embedded profile on user
       return (user as any)?.siswa_profile || (user as any)?.siswa || null;
     },
-    enabled: !!user,
+    enabled: !!user && isSiswaUser,
   });
 
   return {
