@@ -14,6 +14,8 @@ import {
   getSmartKodePos,
   DropdownOption
 } from '../../../../api/dropdown.api';
+import { useQuery } from '@tanstack/react-query';
+import { jenisKegiatanMasterApi } from '../../../../api/academic/jenisKegiatanMaster.api';
 import { 
   useProvinsiOptions, 
   useKabupatenOptions, 
@@ -58,6 +60,18 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
     const { options: adminKabupatenOptions, isLoading: isLoadingKabupaten } = useKabupatenOptions(selectedProvinsi);
     const { options: adminKecamatanOptions, isLoading: isLoadingKecamatan } = useKecamatanOptions(selectedKabupaten);
     const { options: adminKelurahanOptions, isLoading: isLoadingKelurahan } = useKelurahanOptions(selectedKecamatan, selectedKabupaten);
+
+    // Master Ekstrakurikuler dari database (Modul Anggota & Ekskul)
+    const eskulQuery = useQuery({
+      queryKey: ['jenis-kegiatan-eskul-options'],
+      queryFn: async () => {
+        const res = await jenisKegiatanMasterApi.getAll({ limit: 100 });
+        const eskulOnly = (res.data ?? []).filter(e => e.tipe !== 'KBM' && e.aktif);
+        return eskulOnly.map(e => ({ value: e.nama, label: e.nama }));
+      },
+      staleTime: 5 * 60 * 1000,
+    });
+    const eskulOptions = eskulQuery.data || [];
 
     const getEffectiveOptions = (options: DropdownOption[], currentValue?: string): DropdownOption[] => {
         if (!currentValue) return options;
@@ -581,31 +595,67 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="ekskul_1" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Ekstrakulikuler 1 / Utama
+                            Ekstrakurikuler 1 / Utama
                         </Label>
                     </div>
-                    <Input
-                        id="ekskul_1"
-                        {...register('ekskul_1')}
-                        placeholder="Contoh: Pramuka..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
+                    {eskulOptions.length > 0 ? (
+                        <Controller
+                            name="ekskul_1"
+                            control={control}
+                            render={({ field }) => (
+                                <SearchableSelect
+                                    id="ekskul_1"
+                                    value={field.value || ''}
+                                    onValueChange={field.onChange}
+                                    options={getEffectiveOptions(eskulOptions, field.value)}
+                                    placeholder="Pilih Ekstrakurikuler Utama"
+                                    disabled={isViewMode}
+                                    triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                                />
+                            )}
+                        />
+                    ) : (
+                        <Input
+                            id="ekskul_1"
+                            {...register('ekskul_1')}
+                            placeholder="Contoh: Pramuka, PMR..."
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    )}
                 </div>
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
                         <Label htmlFor="ekskul_2" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                            Ekstrakulikuler 2 (Opsional)
+                            Ekstrakurikuler 2 (Opsional)
                         </Label>
                     </div>
-                    <Input
-                        id="ekskul_2"
-                        {...register('ekskul_2')}
-                        placeholder="Contoh: Paskibra..."
-                        disabled={isViewMode}
-                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
-                    />
+                    {eskulOptions.length > 0 ? (
+                        <Controller
+                            name="ekskul_2"
+                            control={control}
+                            render={({ field }) => (
+                                <SearchableSelect
+                                    id="ekskul_2"
+                                    value={field.value || ''}
+                                    onValueChange={field.onChange}
+                                    options={getEffectiveOptions(eskulOptions, field.value)}
+                                    placeholder="Pilih Ekstrakurikuler 2 (Opsional)"
+                                    disabled={isViewMode}
+                                    triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                                />
+                            )}
+                        />
+                    ) : (
+                        <Input
+                            id="ekskul_2"
+                            {...register('ekskul_2')}
+                            placeholder="Contoh: Futsal, Basket, Paskibra..."
+                            disabled={isViewMode}
+                            className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                        />
+                    )}
                 </div>
 
                 <div className="space-y-2 group">

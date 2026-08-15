@@ -25,7 +25,8 @@ import {
 } from 'lucide-react';
 import { uploadSiswaDocument } from '@/api/memberDocs.api';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { jenisKegiatanMasterApi } from '@/api/academic/jenisKegiatanMaster.api';
 import { updateSiswa, updateSiswaMe, siswaQueryKeys } from '@/api/academic/siswa.api';
 import { useSiswaMe, useUpdateSiswaMe, SISWA_ME_QUERY_KEY } from '@/hooks/useSiswaMe';
 import { 
@@ -353,6 +354,18 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
   const { options: kabupatenOptions, isLoading: loadingKabupaten } = useKabupatenOptions(formData.provinsi);
   const { options: kecamatanOptions, isLoading: loadingKecamatan } = useKecamatanOptions(formData.kabupaten);
   const { options: kelurahanOptions, isLoading: loadingKelurahan } = useKelurahanOptions(formData.kecamatan, formData.kabupaten);
+
+  // TanStack Query Hook untuk data Master Ekstrakurikuler (Modul Anggota & Ekskul)
+  const eskulQuery = useQuery({
+    queryKey: ['jenis-kegiatan-eskul-options'],
+    queryFn: async () => {
+      const res = await jenisKegiatanMasterApi.getAll({ limit: 100 });
+      const eskulOnly = (res.data ?? []).filter(e => e.tipe !== 'KBM' && e.aktif);
+      return eskulOnly.map(e => ({ value: e.nama, label: e.nama }));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const eskulOptions = eskulQuery.data || [];
 
   useEffect(() => {
     if (formData.kecamatan) {
@@ -919,24 +932,56 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Ekstrakurikuler 1 (Utama)</label>
-                    <input
-                      type="text"
-                      value={formData.ekskul_1}
-                      onChange={e => setFormData({ ...formData, ekskul_1: e.target.value })}
-                      placeholder="Contoh: Pramuka, PMR..."
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                    />
+                    {eskulOptions.length > 0 ? (
+                      <select
+                        value={formData.ekskul_1}
+                        onChange={e => setFormData({ ...formData, ekskul_1: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pilih Ekstrakurikuler Utama --</option>
+                        {formData.ekskul_1 && !eskulOptions.some(o => o.value === formData.ekskul_1) && (
+                          <option value={formData.ekskul_1}>{formData.ekskul_1}</option>
+                        )}
+                        {eskulOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.ekskul_1}
+                        onChange={e => setFormData({ ...formData, ekskul_1: e.target.value })}
+                        placeholder="Contoh: Pramuka, PMR..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Ekstrakurikuler 2 (Pilihan)</label>
-                    <input
-                      type="text"
-                      value={formData.ekskul_2}
-                      onChange={e => setFormData({ ...formData, ekskul_2: e.target.value })}
-                      placeholder="Contoh: Futsal, Basket, Paskibra..."
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                    />
+                    {eskulOptions.length > 0 ? (
+                      <select
+                        value={formData.ekskul_2}
+                        onChange={e => setFormData({ ...formData, ekskul_2: e.target.value })}
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      >
+                        <option value="">-- Pilih Ekstrakurikuler Pilihan (Opsional) --</option>
+                        {formData.ekskul_2 && !eskulOptions.some(o => o.value === formData.ekskul_2) && (
+                          <option value={formData.ekskul_2}>{formData.ekskul_2}</option>
+                        )}
+                        {eskulOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.ekskul_2}
+                        onChange={e => setFormData({ ...formData, ekskul_2: e.target.value })}
+                        placeholder="Contoh: Futsal, Basket, Paskibra..."
+                        className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      />
+                    )}
                   </div>
                 </div>
               </div>
