@@ -1,6 +1,7 @@
 import React from 'react';
 import { Student } from './types';
 import { X, Phone, MessageCircle, Shield, Award, Calendar, AlertCircle, Star, User, BookOpen, Edit3 } from 'lucide-react';
+import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -33,9 +34,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <img
-              src={student.avatar}
+              src={resolveProfilePhotoUrl(student.avatar)}
               alt={student.name}
-              className="w-20 h-20 rounded-full object-cover ring-4 ring-white/20 shadow-md"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+              }}
+              className="w-20 h-20 rounded-full object-cover ring-4 ring-white/20 shadow-md bg-slate-800"
             />
             <div className="text-center sm:text-left">
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">

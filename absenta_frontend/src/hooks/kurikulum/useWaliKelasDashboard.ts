@@ -11,6 +11,7 @@ import {
   getPrestasiList,
   getSiswaWalasList,
 } from '../../api/kurikulum/waliKelas.api';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 import type { JournalEntry, LeaveRequest, AtRiskStudent, Student, ViolationRecord, AchievementRecord } from '../../components/dashboard/staff/walas/types';
 
 function extractArrayData(res: any): any[] {
@@ -63,7 +64,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
       studentId: item.siswa_id,
       studentName: item.Siswa?.nama_siswa || 'Siswa',
       nis: item.Siswa?.nis || '-',
-      studentAvatar: item.Siswa?.foto || undefined,
+      studentAvatar: item.Siswa?.foto ? resolveProfilePhotoUrl(item.Siswa.foto) : undefined,
       parentName: item.Siswa?.nama_ayah || item.Siswa?.nama_ibu || 'Orang Tua',
       parentPhone: item.Siswa?.no_hp_ortu || '',
       type: item.tipe_izin,
@@ -127,7 +128,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
       studentId: item.siswa_id,
       studentName: item.Siswa?.nama_siswa || 'Siswa',
       nis: item.Siswa?.nis || '-',
-      avatar: item.Siswa?.foto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatar: item.Siswa?.foto ? resolveProfilePhotoUrl(item.Siswa.foto) : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       title: item.nama_prestasi,
       category: item.kategori === 'AKADEMIK' ? 'Akademik' : item.kategori === 'KARAKTER' ? 'Karakter & Sosial' : 'Non-Akademik',
       level: item.tingkat === 'PROVINSI' ? 'Provinsi' : item.tingkat === 'KOTA' ? 'Kota/Kab' : 'Sekolah',
@@ -156,7 +157,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
       nis: item.nis || '-',
       name: item.nama_siswa,
       gender: item.jenis_kelamin === 'P' ? 'P' : 'L',
-      avatar: item.foto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      avatar: item.foto ? resolveProfilePhotoUrl(item.foto) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
       parentName: item.nama_ayah || item.nama_ibu || 'Orang Tua',
       parentPhone: item.no_hp_ortu || '',
       todayStatus: item.nisn === '0114956858' ? 'Alpha' : item.nisn === '0127212982' ? 'Alpha' : item.nisn === '0115190115' ? 'Sakit' : item.nisn === '0106442141' ? 'Izin' : 'Hadir',

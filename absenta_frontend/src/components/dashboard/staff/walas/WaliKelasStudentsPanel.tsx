@@ -11,7 +11,7 @@ import {
   Download
 } from 'lucide-react';
 import { Student } from './types';
-import { cn } from '../../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../../lib/utils';
 
 interface WaliKelasStudentsPanelProps {
   students: Student[];
@@ -178,9 +178,13 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                     <td className="py-3 px-2 sm:px-4">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <img
-                          src={student.avatar}
+                          src={resolveProfilePhotoUrl(student.avatar)}
                           alt={student.name}
-                          className="w-8 h-8 rounded-full object-cover ring-1 sm:ring-2 ring-slate-100 dark:ring-slate-800 shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+                          }}
+                          className="w-8 h-8 rounded-full object-cover ring-1 sm:ring-2 ring-slate-100 dark:ring-slate-800 shrink-0 bg-slate-100 dark:bg-slate-800"
                         />
                         <div className="min-w-0 max-w-[125px] xs:max-w-[160px] sm:max-w-none">
                           <button

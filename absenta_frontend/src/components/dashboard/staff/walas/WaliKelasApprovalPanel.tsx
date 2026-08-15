@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LeaveRequest, ApprovalStatus } from './types';
+import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 import {
   CheckCircle2, XCircle, Clock, Eye, MessageCircle, FileText,
   Calendar, User, CheckCheck, Paperclip, ChevronDown, ChevronUp
@@ -191,10 +192,14 @@ export const WaliKelasApprovalPanel: React.FC<WaliKelasApprovalPanelProps> = ({
                   {/* Left: Avatar + Student Name + Wali Info */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <img
-                      src={req.studentAvatar}
+                      src={resolveProfilePhotoUrl(req.studentAvatar)}
                       alt={req.studentName}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+                      }}
                       onClick={() => onSelectStudent(req.studentId)}
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800 shrink-0 cursor-pointer hover:opacity-80 transition-opacity bg-slate-100 dark:bg-slate-800"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
