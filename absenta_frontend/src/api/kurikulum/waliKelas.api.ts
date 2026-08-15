@@ -133,9 +133,10 @@ export const getPrestasiList = async (kelas_id?: string, limit = 100) => {
 };
 
 // ── Siswa & Presensi Matrix Rombel ──
-export const getSiswaWalasList = async (kelas_id?: string, limit = 100) => {
+export const getSiswaWalasList = async (kelas_id?: string, limit = 100, status = 'AKTIF') => {
   const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
+  if (status) params.set('status', status);
   return requestWithFallback<any>('get', `/academic/siswa?${params.toString()}`);
 };
 

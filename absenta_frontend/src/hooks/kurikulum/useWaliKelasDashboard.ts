@@ -146,7 +146,12 @@ export function useWaliKelasDashboard(kelasId?: string) {
 
   const rawStudents = extractArrayData(studentQuery.data);
   const students: Student[] = useMemo(() => {
-    return rawStudents.map((item: any, idx: number) => ({
+    return rawStudents
+      .filter((item: any) => {
+        const s = String(item.status || 'AKTIF').toUpperCase();
+        return s === 'AKTIF' || s === 'ACTIVE';
+      })
+      .map((item: any, idx: number) => ({
       id: item.id,
       nis: item.nis || '-',
       name: item.nama_siswa,
