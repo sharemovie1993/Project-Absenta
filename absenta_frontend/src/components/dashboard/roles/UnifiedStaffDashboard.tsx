@@ -486,7 +486,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isGerbang)   parts.push('Petugas Gerbang');
     if (isTUKepegawaian) parts.push('TU Kepegawaian');
     if (parts.length > 0) {
-      return `Guru / ${parts.join(' & ')}`;
+      return parts.join(' & ');
     }
     if (jabatan) return jabatan;
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
