@@ -470,6 +470,86 @@ export async function updateSiswaCommand(
     await siswaDb.orangTuaSiswa.deleteMany({
       where: { siswa_id: siswaId },
     });
+  } else {
+    // Auto-sync individual parent fields to OrangTua model if orang_tua array is not explicitly provided
+    const parentEntries = [
+      {
+        nama: dataToUpdate.nama_ayah || existingSiswa.nama_ayah,
+        no_hp: dataToUpdate.no_hp_ayah || existingSiswa.no_hp_ayah,
+        pekerjaan: dataToUpdate.pekerjaan_ayah || existingSiswa.pekerjaan_ayah,
+        pendidikan: dataToUpdate.pendidikan_ayah || existingSiswa.pendidikan_ayah,
+        penghasilan: dataToUpdate.penghasilan_ayah || existingSiswa.penghasilan_ayah,
+        nik: dataToUpdate.nik_ayah || existingSiswa.nik_ayah,
+        hubungan: 'AYAH',
+      },
+      {
+        nama: dataToUpdate.nama_ibu || existingSiswa.nama_ibu,
+        no_hp: dataToUpdate.no_hp_ibu || existingSiswa.no_hp_ibu,
+        pekerjaan: dataToUpdate.pekerjaan_ibu || existingSiswa.pekerjaan_ibu,
+        pendidikan: dataToUpdate.pendidikan_ibu || existingSiswa.pendidikan_ibu,
+        penghasilan: dataToUpdate.penghasilan_ibu || existingSiswa.penghasilan_ibu,
+        nik: dataToUpdate.nik_ibu || existingSiswa.nik_ibu,
+        hubungan: 'IBU',
+      },
+      {
+        nama: dataToUpdate.nama_wali || existingSiswa.nama_wali,
+        no_hp: dataToUpdate.no_hp_wali || existingSiswa.no_hp_wali,
+        pekerjaan: dataToUpdate.pekerjaan_wali || existingSiswa.pekerjaan_wali,
+        hubungan: dataToUpdate.hubungan_wali || existingSiswa.hubungan_wali || 'WALI',
+      },
+    ].filter(p => Boolean(p.nama && p.nama.trim().length > 0));
+
+    for (const p of parentEntries) {
+      if (p.no_hp) {
+        p.no_hp = normalizePhone(p.no_hp);
+      }
+
+      // Check if this student already has this parent relation
+      const existingLink: any = await siswaDb.orangTuaSiswa.findFirst({
+        where: {
+          siswa_id: siswaId,
+          OrangTua: {
+            hubungan: p.hubungan,
+          },
+        },
+        include: { OrangTua: true },
+      });
+
+      if (existingLink && existingLink.OrangTua) {
+        await siswaDb.orangTua.update({
+          where: { id: existingLink.OrangTua.id },
+          data: {
+            nama: p.nama,
+            no_hp: p.no_hp || existingLink.OrangTua.no_hp,
+            pekerjaan: p.pekerjaan || existingLink.OrangTua.pekerjaan,
+            pendidikan: p.pendidikan || existingLink.OrangTua.pendidikan,
+            penghasilan: p.penghasilan || existingLink.OrangTua.penghasilan,
+            nik: p.nik || existingLink.OrangTua.nik,
+            hubungan: p.hubungan,
+          },
+        });
+      } else {
+        // Create new OrangTua and link
+        const newParent = await siswaDb.orangTua.create({
+          data: {
+            tenant_id: existingSiswa.tenant_id,
+            nama: String(p.nama),
+            no_hp: p.no_hp || null,
+            pekerjaan: p.pekerjaan || null,
+            pendidikan: p.pendidikan || null,
+            penghasilan: p.penghasilan || null,
+            nik: p.nik || null,
+            hubungan: p.hubungan,
+            OrangTuaSiswa: {
+              create: {
+                siswa_id: siswaId,
+              },
+            },
+          },
+        });
+        await parentAuthService.ensureToken(newParent.id);
+      }
+    }
   }
 
   // Real-time synchronization to AnggotaKegiatanEskul table

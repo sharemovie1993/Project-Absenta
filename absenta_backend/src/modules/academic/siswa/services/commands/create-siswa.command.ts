@@ -428,6 +428,79 @@ export async function createSiswaCommand(
 
       await parentAuthService.ensureToken(parentId);
     }
+  } else {
+    // Auto-sync individual parent fields to OrangTua model if orang_tua array is not provided
+    const parentEntries = [
+      {
+        nama: input.nama_ayah,
+        no_hp: input.no_hp_ayah,
+        pekerjaan: input.pekerjaan_ayah,
+        pendidikan: input.pendidikan_ayah,
+        penghasilan: input.penghasilan_ayah,
+        nik: input.nik_ayah,
+        hubungan: 'AYAH',
+      },
+      {
+        nama: input.nama_ibu,
+        no_hp: input.no_hp_ibu,
+        pekerjaan: input.pekerjaan_ibu,
+        pendidikan: input.pendidikan_ibu,
+        penghasilan: input.penghasilan_ibu,
+        nik: input.nik_ibu,
+        hubungan: 'IBU',
+      },
+      {
+        nama: input.nama_wali,
+        no_hp: input.no_hp_wali,
+        pekerjaan: input.pekerjaan_wali,
+        hubungan: input.hubungan_wali || 'WALI',
+      },
+    ].filter(p => Boolean(p.nama && p.nama.trim().length > 0));
+
+    for (const p of parentEntries) {
+      if (p.no_hp) {
+        p.no_hp = normalizePhone(p.no_hp);
+      }
+
+      let parentId: string | null = null;
+      if (p.no_hp) {
+        const existingParent = await siswaDb.orangTua.findFirst({
+          where: {
+            tenant_id: tenantId,
+            no_hp: p.no_hp,
+          },
+        });
+        if (existingParent) {
+          parentId = (existingParent as any).id;
+        }
+      }
+
+      if (!parentId) {
+        const newParent = await siswaDb.orangTua.create({
+          data: {
+            tenant_id: tenantId,
+            nama: String(p.nama),
+            no_hp: p.no_hp || null,
+            pekerjaan: p.pekerjaan || null,
+            pendidikan: p.pendidikan || null,
+            penghasilan: p.penghasilan || null,
+            nik: p.nik || null,
+            hubungan: p.hubungan,
+          },
+        });
+        parentId = (newParent as any).id;
+      }
+
+      if (parentId) {
+        await siswaDb.orangTuaSiswa.create({
+          data: {
+            orang_tua_id: parentId,
+            siswa_id: (siswa as any).id,
+          },
+        });
+        await parentAuthService.ensureToken(parentId);
+      }
+    }
   }
 
   const createdSiswaWithRelations: any = await siswaDb.siswa.findFirst({
