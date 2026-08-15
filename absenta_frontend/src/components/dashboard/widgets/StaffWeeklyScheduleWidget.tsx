@@ -159,9 +159,9 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
         {/* Header Row (Slots 1 to N) */}
         <div 
           className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-800/70 text-center text-xs font-black text-slate-600 dark:text-slate-300"
-          style={{ gridTemplateColumns: `38px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `28px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
         >
-          <div className="p-1 sm:p-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[9px] sm:text-[10px] uppercase font-black text-slate-400">
+          <div className="p-1 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center text-[8px] sm:text-[9px] uppercase font-black text-slate-400">
             HARI
           </div>
           {activeSlots.map((slot) => (
@@ -187,12 +187,13 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                 <div
                   key={day}
                   className="grid border-b last:border-b-0 border-slate-200/80 dark:border-slate-800/60"
-                  style={{ gridTemplateColumns: `38px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
+                  style={{ gridTemplateColumns: `28px repeat(${activeSlots.length}, minmax(0, 1fr))` }}
                 >
-                  {/* Day Column (Compact 3-letter label for mobile) */}
-                  <div className="p-1 sm:p-2 bg-slate-100/60 dark:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center font-black text-[10px] sm:text-xs text-slate-700 dark:text-slate-300">
-                    <span className="sm:hidden">{getDayShortLabel(day)}</span>
-                    <span className="hidden sm:inline">{getDayLabel(day)}</span>
+                  {/* Day Column (Rotated text from bottom to top) */}
+                  <div className="p-0.5 sm:p-1 bg-slate-100/70 dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center select-none overflow-hidden">
+                    <span className="transform -rotate-90 font-black text-[8px] sm:text-[9px] text-slate-700 dark:text-slate-300 tracking-wider whitespace-nowrap uppercase leading-none">
+                      {getDayShortLabel(day)}
+                    </span>
                   </div>
 
                   {/* Slot Cells */}
