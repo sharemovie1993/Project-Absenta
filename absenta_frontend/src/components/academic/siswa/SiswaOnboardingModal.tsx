@@ -584,9 +584,9 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
             </div>
           </div>
 
-          {/* Completeness Bar (Only visible when activeSection === 'all') */}
+          {/* Completeness Bar & Interactive Step Switcher (Only visible when activeSection === 'all') */}
           {activeSection === 'all' && (
-            <div className="mt-4 space-y-1.5">
+            <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-emerald-500" />
@@ -601,6 +601,49 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                   transition={{ duration: 0.4 }}
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
                 />
+              </div>
+
+              {/* Interactive Step Switcher Pills */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className={cn(
+                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    step === 1
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  )}
+                >
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">1</span>
+                  <span className="truncate">Data Pribadi</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className={cn(
+                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    step === 2
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  )}
+                >
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">2</span>
+                  <span className="truncate">Alamat & Domisili</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className={cn(
+                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    step === 3
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  )}
+                >
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">3</span>
+                  <span className="truncate">Orang Tua & Ekskul</span>
+                </button>
               </div>
             </div>
           )}
@@ -1245,25 +1288,52 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         </div>
 
         {/* FOOTER ACTIONS */}
-        <div className="p-4 sm:p-6 bg-slate-50/80 dark:bg-slate-950/80 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5"
-          >
-            <span>Batal</span>
-          </Button>
+        <div className="p-4 sm:p-6 bg-slate-50/80 dark:bg-slate-950/80 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5"
+            >
+              <span>Batal</span>
+            </Button>
 
-          <Button
-            type="button"
-            onClick={handleSubmitFinal}
-            disabled={updateMutationMe.isPending}
-            className="h-10 px-5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
-          >
-            <Save size={14} />
-            <span>{updateMutationMe.isPending ? 'Simpan Data...' : 'Simpan Perubahan'}</span>
-          </Button>
+            {activeSection === 'all' && step > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrev}
+                className="h-10 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5"
+              >
+                <ArrowLeft size={14} />
+                <span>Sebelumnya</span>
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeSection === 'all' && step < 3 && (
+              <Button
+                type="button"
+                onClick={handleNext}
+                className="h-10 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1.5"
+              >
+                <span>Selanjutnya</span>
+                <ArrowRight size={14} />
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleSubmitFinal}
+              disabled={updateMutationMe.isPending}
+              className="h-10 px-5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+            >
+              <Save size={14} />
+              <span>{updateMutationMe.isPending ? 'Simpan Data...' : 'Simpan Perubahan'}</span>
+            </Button>
+          </div>
         </div>
       </motion.div>
       <WebcamModal

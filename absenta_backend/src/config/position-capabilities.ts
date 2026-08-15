@@ -297,6 +297,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.students.view.history',
+    'academic.students.update',
 
     // Input Izin/Sakit/Dispen dari Ortu & Monitoring Presensi
     'attendance.getNotPresentStudents',   // Cek siswa belum masuk gerbang
