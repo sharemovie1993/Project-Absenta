@@ -294,7 +294,11 @@ export class JadwalKBMController {
     // 2. Resolve Hari
     const validHari = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
     let targetHari: any = undefined;
-    if (hari && validHari.includes(String(hari).toUpperCase())) {
+    const isAllWeek = String(hari).toUpperCase() === 'ALL' || request.query?.all === 'true' || request.query?.weekly === 'true';
+
+    if (isAllWeek) {
+      targetHari = { in: validHari };
+    } else if (hari && validHari.includes(String(hari).toUpperCase())) {
       targetHari = String(hari).toUpperCase();
     } else {
       const d = tanggal ? new Date(`${tanggal}T00:00:00.000+07:00`) : new Date();
@@ -376,16 +380,18 @@ export class JadwalKBMController {
       );
 
       // Filter in JS for targetHari case-insensitively
-      const matchedByDay = allClassSchedules.filter((s: any) => 
-        String(s.hari || '').toUpperCase() === String(targetHari || '').toUpperCase()
-      );
+      const matchedByDay = isAllWeek
+        ? allClassSchedules
+        : allClassSchedules.filter((s: any) => 
+            String(s.hari || '').toUpperCase() === String(targetHari || '').toUpperCase()
+          );
 
       if (matchedByDay.length > 0) {
-        console.log(`🎯 [DEBUG listMySchedule] Matched ${matchedByDay.length} schedules in JS memory filter for day ${targetHari}`);
+        console.log(`🎯 [DEBUG listMySchedule] Matched ${matchedByDay.length} schedules in JS memory filter (isAllWeek: ${isAllWeek})`);
         jadwal = matchedByDay;
       }
     } else {
-      console.log(`[DEBUG listMySchedule] Found ${jadwal.length} schedules for ${targetHari}`);
+      console.log(`[DEBUG listMySchedule] Found ${jadwal.length} schedules (isAllWeek: ${isAllWeek})`);
     }
 
     // 4. Fetch active sessions for deduplication

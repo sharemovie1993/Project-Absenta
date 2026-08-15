@@ -43,7 +43,7 @@ export function useStaffWeeklySchedule() {
   // Fetch Teacher's full weekly schedule from SSOT endpoint
   const { data: scheduleRes, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['teacher-weekly-kbm-me'],
-    queryFn: () => getMyJadwalKBM(),
+    queryFn: () => getMyJadwalKBM({ hari: 'ALL' }),
     staleTime: 5 * 60 * 1000,
   });
 
