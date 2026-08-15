@@ -445,9 +445,10 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
   const getPreparedPayload = () => {
     return {
       ...formData,
-      tinggi_badan: formData.tinggi_badan === '' || formData.tinggi_badan === null ? undefined : Number(formData.tinggi_badan),
-      berat_badan: formData.berat_badan === '' || formData.berat_badan === null ? undefined : Number(formData.berat_badan),
-      tanggal_lahir: formData.tanggal_lahir || undefined,
+      tinggi_badan: formData.tinggi_badan === '' || formData.tinggi_badan === null ? null : Number(formData.tinggi_badan),
+      berat_badan: formData.berat_badan === '' || formData.berat_badan === null ? null : Number(formData.berat_badan),
+      anak_ke: formData.anak_ke === '' || formData.anak_ke === null ? null : Number(formData.anak_ke),
+      tanggal_lahir: formData.tanggal_lahir || null,
     };
   };
 

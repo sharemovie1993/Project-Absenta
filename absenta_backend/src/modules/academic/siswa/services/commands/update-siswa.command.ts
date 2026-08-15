@@ -55,7 +55,7 @@ export async function updateSiswaCommand(
   const dataToUpdate: any = {};
   
   Object.keys(restOfInput).forEach(key => {
-    if (validFields.includes(key)) {
+    if (validFields.includes(key) && (restOfInput as any)[key] !== undefined) {
       dataToUpdate[key] = (restOfInput as any)[key];
     }
   });
