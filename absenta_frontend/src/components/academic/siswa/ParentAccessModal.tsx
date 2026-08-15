@@ -59,7 +59,7 @@ export const ParentAccessModal: React.FC<ParentAccessModalProps> = ({ data, onCl
               <Key size={20} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white leading-tight">Token & Link Magic Login Orang Tua</h2>
+              <h2 className="text-base font-bold text-white leading-tight">Link Akses Aplikasi Orang Tua</h2>
               <p className="text-xs text-slate-400 mt-0.5 font-medium">
                 {data.siswaName} • {data.parentName}
               </p>
@@ -97,11 +97,11 @@ export const ParentAccessModal: React.FC<ParentAccessModalProps> = ({ data, onCl
         </div>
 
         {/* Body — Copy Fields */}
-        <div className="px-6 pb-2 space-y-3">
+        <div className="px-6 pb-2 space-y-4">
           {/* Link Magic */}
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <ExternalLink size={12} className="text-indigo-400" /> Link Magic Login (Tanpa Password)
+              <ExternalLink size={12} className="text-indigo-400" /> Link Login Orang Tua (Tanpa Password)
             </label>
             <div className="flex items-center gap-2">
               <div
@@ -127,29 +127,6 @@ export const ParentAccessModal: React.FC<ParentAccessModalProps> = ({ data, onCl
               >
                 <ExternalLink size={15} />
               </a>
-            </div>
-          </div>
-
-          {/* Token Magic */}
-          <div>
-            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <Key size={12} className="text-indigo-400" /> Token Magic
-            </label>
-            <div className="flex items-center gap-2">
-              <div
-                className="flex-1 min-w-0 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 truncate bg-slate-800/80 border border-slate-700/60 select-all cursor-text"
-                title={data.token}
-              >
-                {data.token || '—'}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyText(data.token, 'Token')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 transition-all cursor-pointer"
-                title="Salin Token"
-              >
-                {copiedField === 'Token' ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} />}
-              </button>
             </div>
           </div>
 
