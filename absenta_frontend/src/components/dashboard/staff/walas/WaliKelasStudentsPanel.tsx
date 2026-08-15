@@ -5,7 +5,6 @@ import {
   Edit3, 
   MessageCircle, 
   Eye,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -36,18 +35,17 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'ALL' | 'L' | 'P'>('ALL');
-  const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PERFECT' | 'ATTENTION'>('ALL');
 
   // Pagination states
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  // Reset pagination to page 1 when search or filters change
+  // Reset pagination to page 1 when search or gender filter changes
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, genderFilter, attendanceFilter, pageSize]);
+  }, [searchTerm, genderFilter, pageSize]);
 
-  // Filtered student list
+  // Filtered student list (Search + Gender only)
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
       // Search by Name or NIS
@@ -58,17 +56,9 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
       // Gender filter
       const matchGender = genderFilter === 'ALL' || s.gender === genderFilter;
 
-      // Attendance filter
-      let matchAttendance = true;
-      if (attendanceFilter === 'PERFECT') {
-        matchAttendance = s.attendanceRate >= 95;
-      } else if (attendanceFilter === 'ATTENTION') {
-        matchAttendance = s.attendanceRate < 85 || s.alphaCount > 0 || (s.sakitCount + s.izinCount) >= 3;
-      }
-
-      return matchSearch && matchGender && matchAttendance;
+      return matchSearch && matchGender;
     });
-  }, [students, searchTerm, genderFilter, attendanceFilter]);
+  }, [students, searchTerm, genderFilter]);
 
   // Gender counts
   const maleCount = useMemo(() => students.filter((s) => s.gender === 'L').length, [students]);
@@ -105,8 +95,8 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
 
   return (
     <div className="space-y-4 animate-fadeIn">
-      {/* ── FILTER & SEARCH BAR ─────────────────────────────────────────────── */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      {/* ── FILTER & SEARCH BAR (HANYA PENCARIAN & GENDER ALL / L / P) ── */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -119,76 +109,44 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
           />
         </div>
 
-        {/* Filters Group */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Gender Filter Buttons */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-            <button
-              type="button"
-              onClick={() => setGenderFilter('ALL')}
-              className={cn(
-                "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer",
-                genderFilter === 'ALL'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              )}
-            >
-              Semua
-            </button>
-            <button
-              type="button"
-              onClick={() => setGenderFilter('L')}
-              className={cn(
-                "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer",
-                genderFilter === 'L'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              )}
-            >
-              Laki-laki
-            </button>
-            <button
-              type="button"
-              onClick={() => setGenderFilter('P')}
-              className={cn(
-                "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer",
-                genderFilter === 'P'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              )}
-            >
-              Perempuan
-            </button>
-          </div>
-
-          {/* Attendance Segment Filter */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-            <button
-              type="button"
-              onClick={() => setAttendanceFilter('ALL')}
-              className={cn(
-                "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer",
-                attendanceFilter === 'ALL'
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              )}
-            >
-              Semua Status
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendanceFilter('ATTENTION')}
-              className={cn(
-                "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1",
-                attendanceFilter === 'ATTENTION'
-                  ? "bg-rose-500 text-white shadow-2xs"
-                  : "text-rose-600 dark:text-rose-400 hover:text-rose-700"
-              )}
-            >
-              <AlertCircle size={12} />
-              <span>Perlu Perhatian</span>
-            </button>
-          </div>
+        {/* Gender Filter Buttons: Semua, Laki-laki, Perempuan */}
+        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setGenderFilter('ALL')}
+            className={cn(
+              "px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+              genderFilter === 'ALL'
+                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
+          >
+            Semua
+          </button>
+          <button
+            type="button"
+            onClick={() => setGenderFilter('L')}
+            className={cn(
+              "px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+              genderFilter === 'L'
+                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
+          >
+            Laki-laki
+          </button>
+          <button
+            type="button"
+            onClick={() => setGenderFilter('P')}
+            className={cn(
+              "px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+              genderFilter === 'P'
+                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            )}
+          >
+            Perempuan
+          </button>
         </div>
       </div>
 
