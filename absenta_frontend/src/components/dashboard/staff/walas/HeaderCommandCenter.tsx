@@ -1,13 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ClassInfo } from './types';
-import { Search, Download, Users, School, Flag } from 'lucide-react';
+import { Download, Users, School } from 'lucide-react';
 
 interface HeaderCommandCenterProps {
   classInfo: ClassInfo;
-  onClassChange: (className: string) => void;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
+  onClassChange?: (className: string) => void;
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
   onOpenExportModal: () => void;
   studentCount: { male: number; female: number; total: number };
   isApiConnected?: boolean;
@@ -15,15 +14,10 @@ interface HeaderCommandCenterProps {
 
 export const HeaderCommandCenter: React.FC<HeaderCommandCenterProps> = ({
   classInfo,
-  onClassChange,
-  searchTerm,
-  onSearchChange,
   onOpenExportModal,
   studentCount,
   isApiConnected = false
 }) => {
-  const navigate = useNavigate();
-
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm mb-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5">
       {/* Left: Compact Class & Student Info Pill */}
@@ -63,41 +57,12 @@ export const HeaderCommandCenter: React.FC<HeaderCommandCenterProps> = ({
         </div>
       </div>
 
-      {/* Right: Search, Activity Sessions & Export Button */}
-      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-        <div className="relative min-w-[180px] sm:min-w-[220px]">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cari nama siswa, NIS, atau ortu..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-xs rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/80 transition-all"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => onSearchChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* 🚩 Sesi Kegiatan Sekolah Button for Wali Kelas */}
+      {/* Right: Export Button */}
+      <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
-          onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
-          className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md shadow-amber-500/20 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-          title="Buka atau Kelola Presensi Sesi Kegiatan Sekolah (Apel/Upacara/Ketarunaan)"
-        >
-          <Flag className="w-3.5 h-3.5" />
-          <span>Sesi Kegiatan</span>
-        </button>
-
-        <button
           onClick={onOpenExportModal}
-          className="inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+          className="inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
