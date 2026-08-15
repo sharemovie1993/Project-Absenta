@@ -215,19 +215,14 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                             onClick={() => setSelectedItem({ item, day, slot, colSpan })}
                             className="w-full h-full rounded-lg sm:rounded-xl p-1 sm:p-1.5 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-blue-950/40 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/60 flex flex-col justify-between items-center text-center shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer group overflow-hidden"
                           >
-                            {/* ── BARIS 1: NAMA KELAS & BADGE JP ─────────── */}
-                            <div className="w-full flex items-center justify-between gap-0.5">
+                            {/* ── BARIS 1: NAMA KELAS (FULL WIDTH MAKSIMAL) ── */}
+                            <div className="w-full flex items-center justify-center">
                               <span className={cn(
-                                "px-1 py-0.5 rounded text-[7.5px] sm:text-[9.5px] font-black truncate max-w-full leading-none",
+                                "w-full px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-black truncate text-center leading-none shadow-2xs",
                                 getClassColor(kelasNama)
                               )}>
                                 {kelasNama}
                               </span>
-                              {colSpan > 1 && (
-                                <span className="text-[7px] sm:text-[8.5px] font-black px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 shrink-0 leading-none">
-                                  {colSpan} JP
-                                </span>
-                              )}
                             </div>
 
                             {/* ── BARIS 2 (TENGAH): LABEL WAKTU JAM MENGAJAR ── */}
