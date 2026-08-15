@@ -35,7 +35,6 @@ import {
 } from './types';
 
 import { HeaderCommandCenter } from './HeaderCommandCenter';
-import { HeroStatsRadar } from './HeroStatsRadar';
 import { TabNav } from './TabNav';
 
 // Code-Splitting via React.lazy() for Sub-Panels (Standar Multi-Tenant Google Platform)
@@ -401,17 +400,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
           isApiConnected={isApiConnected}
         />
 
-        {/* 2. Compact Metric Strip */}
-        <HeroStatsRadar
-          metrics={healthMetric}
-          pendingCount={pendingApprovalCount}
-          atRiskCount={atRiskStudents.length}
-          starStudents={starStudents}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-
-        {/* 3. Sub-Module Navigation Tabs */}
+        {/* 2. Sub-Module Navigation Tabs */}
         <TabNav
           activeTab={activeTab}
           onTabChange={setActiveTab}
