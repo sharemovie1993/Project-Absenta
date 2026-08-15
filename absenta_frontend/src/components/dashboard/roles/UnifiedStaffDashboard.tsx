@@ -722,25 +722,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
         {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
-            {/* Teacher Name Greeting */}
+            {/* 1. NAMA */}
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
               {user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd'}
             </h1>
 
-            {/* Subtitle & NIP Underneath */}
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <span className="text-xs sm:text-sm font-bold text-indigo-100">
-                {jabatanLabel}
-              </span>
-              {nipText && nipText !== '-' && (
-                <>
-                  <span className="text-white/40 text-xs">•</span>
-                  <span className="text-[11px] sm:text-xs font-mono font-bold text-indigo-200 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/15">
-                    NIP: {nipText}
-                  </span>
-                </>
-              )}
-            </div>
+            {/* 2. NIP */}
+            {nipText && nipText !== '-' && (
+              <div className="pt-0.5">
+                <span className="inline-block text-[11px] sm:text-xs font-mono font-bold text-indigo-100 bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-lg border border-white/20">
+                  NIP: {nipText}
+                </span>
+              </div>
+            )}
+
+            {/* 3. JABATAN */}
+            <p className="text-xs sm:text-sm font-semibold text-white/90 pt-0.5">
+              {jabatanLabel}
+            </p>
           </div>
 
           {/* Right Action: Sesi Kegiatan Sekolah Button */}
