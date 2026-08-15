@@ -5,7 +5,6 @@
 
 import React, { useState, lazy, Suspense } from 'react';
 import { Loader } from '../../../ui/Loader';
-import Modal from '../../../ui/Modal';
 
 const DEFAULT_CLASS_INFO: ClassInfo = {
   className: 'Kelas Wali',
@@ -46,8 +45,8 @@ const WaliKelasHealthPanel = lazy(() => import('./WaliKelasHealthPanel').then(m 
 const WaliKelasDisciplinePanel = lazy(() => import('./WaliKelasDisciplinePanel').then(m => ({ default: m.WaliKelasDisciplinePanel })));
 const WaliKelasAchievementPanel = lazy(() => import('./WaliKelasAchievementPanel').then(m => ({ default: m.WaliKelasAchievementPanel })));
 const WaliKelasRekapPanel = lazy(() => import('./WaliKelasRekapPanel').then(m => ({ default: m.WaliKelasRekapPanel })));
-const SiswaForm = lazy(() => import('../../../academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
 
+import { SiswaOnboardingModal } from '../../../academic/siswa/SiswaOnboardingModal';
 import { StudentDetailModal } from './StudentDetailModal';
 import { AttachmentViewerModal } from './AttachmentViewerModal';
 import { BadgeAwardModal } from './BadgeAwardModal';
@@ -57,7 +56,8 @@ import { ReportExportModal } from './ReportExportModal';
 import { WhatsAppModal } from './WhatsAppModal';
 import { NotificationToast, ToastMessage } from './NotificationToast';
 
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getSiswaById } from '../../../../api/academic/siswa.api';
 import { useWaliKelasDashboard } from '../../../../hooks/kurikulum/useWaliKelasDashboard';
 
 interface WaliKelasDashboardContainerProps {
@@ -116,6 +116,19 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
   const [isAddIncidentOpen, setIsAddIncidentOpen] = useState(false);
   const [isAddJournalOpen, setIsAddJournalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Fetch full student details when editing
+  const { data: fullSiswaData } = useQuery({
+    queryKey: ['siswa-detail', editingStudentId],
+    queryFn: () => getSiswaById(editingStudentId!),
+    enabled: Boolean(editingStudentId),
+    staleTime: 60 * 1000,
+  });
+
+  const studentToEdit = useMemo(() => {
+    if (!editingStudentId) return null;
+    return fullSiswaData || students.find((s) => s.id === editingStudentId) || null;
+  }, [editingStudentId, fullSiswaData, students]);
 
   // WhatsApp Modal state
   const [waModalData, setWaModalData] = useState<{
@@ -511,36 +524,24 @@ export function WaliKelasDashboardContainer({ waliKelasNama }: WaliKelasDashboar
         onEditStudent={(id) => setEditingStudentId(id)}
       />
 
-      {/* SiswaForm Modal for Homeroom Teacher Editing */}
-      <Modal
-        isOpen={Boolean(editingStudentId)}
-        onClose={() => setEditingStudentId(null)}
-        title="Biodata & Profil Siswa Binaan"
-        size="4xl"
-      >
-        <Suspense fallback={
-          <div className="p-12 flex justify-center items-center gap-3">
-            <Loader />
-            <span className="text-xs font-bold text-slate-500">Memuat Formulir Biodata Siswa...</span>
-          </div>
-        }>
-          {editingStudentId && (
-            <SiswaForm
-              siswaId={editingStudentId}
-              mode="edit"
-              onSuccess={() => {
-                setEditingStudentId(null);
-                queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
-                showToast(
-                  'Data Siswa Diperbarui',
-                  'Biodata siswa binaan berhasil disimpan dan dimutakhirkan di sistem.'
-                );
-              }}
-              onCancel={() => setEditingStudentId(null)}
-            />
-          )}
-        </Suspense>
-      </Modal>
+      {/* Modern SiswaOnboardingModal for Homeroom Teacher Editing */}
+      {editingStudentId && (
+        <SiswaOnboardingModal
+          isOpen={Boolean(editingStudentId)}
+          onClose={() => setEditingStudentId(null)}
+          siswa={studentToEdit}
+          activeSection="all"
+          onSuccess={() => {
+            setEditingStudentId(null);
+            queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+            queryClient.invalidateQueries({ queryKey: ['siswa-detail', editingStudentId] });
+            showToast(
+              'Data Siswa Diperbarui',
+              'Biodata siswa binaan berhasil disimpan dan dimutakhirkan di sistem.'
+            );
+          }}
+        />
+      )}
 
       <AttachmentViewerModal
         request={viewAttachmentReq}

@@ -485,8 +485,15 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       }
 
       const payload = getPreparedPayload();
-      await updateMutationMe.mutateAsync(payload as any);
-      toast.success('Profil berhasil diperbarui!');
+      
+      // If siswaId is explicitly provided (e.g. edited by Wali Kelas or Admin)
+      if (siswa?.id) {
+        await updateSiswa(siswa.id, payload as any);
+      } else {
+        await updateMutationMe.mutateAsync(payload as any);
+      }
+      
+      toast.success('Biodata siswa berhasil diperbarui!');
       onSuccess?.();
       onClose();
     } catch (err: any) {
