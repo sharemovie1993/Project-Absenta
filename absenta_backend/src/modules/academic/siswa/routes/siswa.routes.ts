@@ -95,7 +95,11 @@ export default async function siswaRoutes(fastify: any) {
   // POST /siswa/:id/send-access - Send Parent App access
   fastify.post('/:id/send-access', {
     preHandler: [
-        requireCapability("academic.students.send.access.token"),
+        requireCapability([
+          'academic.students.send.access.token',
+          'academic.homeroom.manage',
+          'academic.manage.wali.kelas'
+        ]),
         organizationalScopeMiddleware,
         determineDataScope()
     ]

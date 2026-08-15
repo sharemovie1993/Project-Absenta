@@ -298,6 +298,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.detail',
     'academic.students.view.history',
     'academic.students.update',
+    'academic.students.send.access.token', // Pengiriman token & link aktivasi Parent App untuk siswa binaan
 
     // Input Izin/Sakit/Dispen dari Ortu & Monitoring Presensi
     'attendance.getNotPresentStudents',   // Cek siswa belum masuk gerbang
