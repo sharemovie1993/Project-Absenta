@@ -245,8 +245,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         )}
       </div>
 
-      {/* ── MATRIKS JADWAL GURU 1 MINGGU ──────────────────────────────────── */}
-      <StaffWeeklyScheduleWidget />
+      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU YG LOGIN) ──────────── */}
+      <StaffWeeklyScheduleWidget
+        guruId={guruId}
+        guruNama={guruNama}
+      />
     </motion.div>
   );
 };
