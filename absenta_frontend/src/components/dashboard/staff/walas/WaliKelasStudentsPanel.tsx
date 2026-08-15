@@ -8,10 +8,14 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Download
+  Download,
+  Key
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Student } from './types';
 import { cn, resolveProfilePhotoUrl } from '../../../../lib/utils';
+import { sendParentAccess } from '../../../../api/academic/siswa.api';
+import { ParentAccessModal, ParentAccessData } from '../../../academic/siswa/ParentAccessModal';
 
 interface WaliKelasStudentsPanelProps {
   students: Student[];
@@ -38,6 +42,40 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
   // Pagination states
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+
+  // Parent Access Token & Magic Link Modal State
+  const [parentAccessModalData, setParentAccessModalData] = useState<ParentAccessData | null>(null);
+
+  const handleSendParentAccess = async (student: Student) => {
+    try {
+      toast('Memproses token & link akses orang tua...', { icon: '🔑' });
+      const res = await sendParentAccess(student.id);
+      if (res.success && res.data) {
+        setParentAccessModalData({
+          isOpen: true,
+          siswaName: student.name,
+          parentName: res.data.nama || student.parentName || 'Orang Tua',
+          parentPhone: res.data.phone || student.parentPhone || '-',
+          token: res.data.token || '',
+          loginLink: res.data.loginLink || '',
+          rawMessage: res.data.rawMessage || '',
+          waSent: !!res.waSent,
+          waError: res.waError || '',
+        });
+        if (res.waSent) {
+          toast.success(`Akses berhasil terkirim via WhatsApp ke ${res.data.nama}!`);
+        } else {
+          toast('Token & Link Magic Ortu berhasil dibuat. (Bisa disalin manual)', { icon: '🔑' });
+        }
+      } else {
+        toast.error(res.message || 'Gagal membuat token akses orang tua');
+      }
+    } catch (error: any) {
+      console.error('Error sending parent access:', error);
+      const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan';
+      toast.error(msg);
+    }
+  };
 
   // Reset pagination to page 1 when search or gender filter changes
   useEffect(() => {
@@ -202,9 +240,9 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                       </div>
                     </td>
 
-                    {/* 3. Actions: Edit Profile (KOLOM KE-3 - Langsung Terlihat di HP) */}
+                    {/* 3. Actions: Edit Profile & Kirim Akses Ortu (KOLOM KE-3 - Langsung Terlihat di HP) */}
                     <td className="py-3 px-2 sm:px-3 text-center">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => onEditStudent(student.id)}
@@ -213,6 +251,15 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                         >
                           <Edit3 size={12} className="sm:w-3.5 sm:h-3.5" />
                           <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendParentAccess(student)}
+                          className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1 shadow-xs shadow-indigo-600/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                          title="Kirim Link & Token Login Aplikasi Orang Tua"
+                        >
+                          <Key size={12} className="sm:w-3.5 sm:h-3.5" />
+                          <span>Akses Ortu</span>
                         </button>
                       </div>
                     </td>
@@ -235,18 +282,28 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
                         <span className="font-bold text-slate-800 dark:text-slate-200 block truncate text-xs">
                           {student.parentName || '-'}
                         </span>
-                        {student.parentPhone ? (
+                        <div className="flex items-center gap-2">
+                          {student.parentPhone ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenWhatsApp(student.parentName, student.parentPhone, student.name, 'Koordinasi Perkembangan Siswa')}
+                              className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <MessageCircle size={11} />
+                              <span>{student.parentPhone}</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] sm:text-[11px] text-slate-400 italic">No HP belum ada</span>
+                          )}
                           <button
                             type="button"
-                            onClick={() => onOpenWhatsApp(student.parentName, student.parentPhone, student.name, 'Koordinasi Perkembangan Siswa')}
-                            className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            onClick={() => handleSendParentAccess(student)}
+                            className="p-1 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer"
+                            title="Kirim Token & Link Magic Login Orang Tua"
                           >
-                            <MessageCircle size={11} />
-                            <span>{student.parentPhone}</span>
+                            <Key size={12} />
                           </button>
-                        ) : (
-                          <span className="text-[10px] sm:text-[11px] text-slate-400 italic">No HP belum ada</span>
-                        )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -380,6 +437,12 @@ export const WaliKelasStudentsPanel: React.FC<WaliKelasStudentsPanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* ── PARENT ACCESS TOKEN & MAGIC LINK MODAL ── */}
+      <ParentAccessModal
+        data={parentAccessModalData}
+        onClose={() => setParentAccessModalData(null)}
+      />
     </div>
   );
 };
