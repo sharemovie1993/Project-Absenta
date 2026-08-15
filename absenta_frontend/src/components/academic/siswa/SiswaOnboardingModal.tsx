@@ -489,6 +489,10 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
       // If siswaId is explicitly provided (e.g. edited by Wali Kelas or Admin)
       if (siswa?.id) {
         await updateSiswa(siswa.id, payload as any);
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: SISWA_ME_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+        queryClient.invalidateQueries({ queryKey: ['siswa-detail', siswa.id] });
       } else {
         await updateMutationMe.mutateAsync(payload as any);
       }
