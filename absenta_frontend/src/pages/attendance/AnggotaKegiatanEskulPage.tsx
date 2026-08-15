@@ -136,6 +136,10 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
     onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
     },
     onError: () => {
       toast.error('Gagal menghapus anggota');
@@ -160,6 +164,10 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
       toast.success(`${variables.siswaIds.length} anggota eskul berhasil ditambahkan`);
       setIsAddModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['eskul-members-pembinas-global'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-detail'] });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menambahkan anggota');

@@ -89,11 +89,33 @@ export async function getSiswaByIdQuery(
 
   if (!siswa) return null;
 
-  const formattedSiswa = {
+  const formattedSiswa: any = {
     ...(siswa as any),
     OrangTua: ((siswa as any).OrangTuaSiswa || []).map((ots: any) => ots.OrangTua),
     OrangTuaSiswa: undefined,
   };
+
+  // Bidirectional Hydration: Ensure ekskul memberships are hydrated from AnggotaKegiatanEskul
+  if (!formattedSiswa.ekskul_1 && !formattedSiswa.ekskul_2) {
+    try {
+      const memberships = await siswaDb.anggotaKegiatanEskul.findMany({
+        where: {
+          tenant_id: tenantId,
+          SiswaAkademik: { siswa_id: siswaId }
+        },
+        include: { JenisKegiatanMaster: true },
+        orderBy: { created_at: 'asc' }
+      });
+      if (memberships.length > 0) {
+        formattedSiswa.ekskul_1 = memberships[0]?.JenisKegiatanMaster?.nama || null;
+        if (memberships.length > 1) {
+          formattedSiswa.ekskul_2 = memberships[1]?.JenisKegiatanMaster?.nama || null;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
 
   return formattedSiswa as SiswaResponse;
 }

@@ -130,6 +130,28 @@ export const siswaController = {
         });
       }
 
+      // Bidirectional Hydration: Ensure ekskul memberships are hydrated from AnggotaKegiatanEskul
+      if (!siswa.ekskul_1 && !siswa.ekskul_2) {
+        try {
+          const memberships = await prisma.anggotaKegiatanEskul.findMany({
+            where: {
+              tenant_id: tenantId,
+              SiswaAkademik: { siswa_id: siswa.id }
+            },
+            include: { JenisKegiatanMaster: true },
+            orderBy: { created_at: 'asc' }
+          });
+          if (memberships.length > 0) {
+            (siswa as any).ekskul_1 = memberships[0]?.JenisKegiatanMaster?.nama || null;
+            if (memberships.length > 1) {
+              (siswa as any).ekskul_2 = memberships[1]?.JenisKegiatanMaster?.nama || null;
+            }
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
       return reply.status(200).send({
         success: true,
         message: 'Profil siswa me retrieved successfully',

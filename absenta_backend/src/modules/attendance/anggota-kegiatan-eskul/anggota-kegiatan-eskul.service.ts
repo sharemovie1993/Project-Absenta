@@ -166,13 +166,17 @@ export const anggotaKegiatanEskulService = {
   },
 
   /**
-   * Tambah anggota ke eskul (bulk)
+   * Tambah anggota ke eskul (bulk) dengan sinkronisasi dua arah ke biodata siswa
    */
   async addMembers(tenantId: string, jenisKegiatanId: string, siswaAkademikIds: string[]) {
+    const master = await prisma.jenisKegiatanMaster.findFirst({
+      where: { id: jenisKegiatanId, tenant_id: tenantId }
+    });
+
     // Gunakan upsert untuk menghindari duplikat
     const results = await Promise.allSettled(
-      siswaAkademikIds.map(siswaAkademikId =>
-        prisma.anggotaKegiatanEskul.upsert({
+      siswaAkademikIds.map(async siswaAkademikId => {
+        const res = await prisma.anggotaKegiatanEskul.upsert({
           where: {
             tenant_id_jenis_kegiatan_id_siswa_akademik_id: {
               tenant_id: tenantId,
@@ -186,8 +190,42 @@ export const anggotaKegiatanEskulService = {
             siswa_akademik_id: siswaAkademikId,
           },
           update: {} // no-op
-        })
-      )
+        });
+
+        // Sinkronkan ke biodata Siswa.ekskul_1 / Siswa.ekskul_2
+        if (master) {
+          try {
+            const sa = await prisma.siswaAkademik.findUnique({
+              where: { id: siswaAkademikId },
+              include: { siswa: true }
+            });
+            if (sa && sa.siswa) {
+              const currentSiswa = sa.siswa;
+              const eskulName = master.nama;
+              if (!currentSiswa.ekskul_1) {
+                await prisma.siswa.update({
+                  where: { id: currentSiswa.id },
+                  data: { ekskul_1: eskulName }
+                });
+              } else if (!currentSiswa.ekskul_2 && currentSiswa.ekskul_1 !== eskulName) {
+                await prisma.siswa.update({
+                  where: { id: currentSiswa.id },
+                  data: { ekskul_2: eskulName }
+                });
+              } else if (currentSiswa.ekskul_1 !== eskulName && currentSiswa.ekskul_2 !== eskulName) {
+                await prisma.siswa.update({
+                  where: { id: currentSiswa.id },
+                  data: { ekskul_1: eskulName }
+                });
+              }
+            }
+          } catch (syncErr: any) {
+            console.warn('[Sync-Add-Member] Failed updating student biodata:', syncErr.message || syncErr);
+          }
+        }
+
+        return res;
+      })
     );
 
     const added = results.filter(r => r.status === 'fulfilled').length;
@@ -195,14 +233,46 @@ export const anggotaKegiatanEskulService = {
   },
 
   /**
-   * Hapus anggota dari eskul berdasarkan ID record
+   * Hapus anggota dari eskul berdasarkan ID record dan sinkronkan ke biodata siswa
    */
   async removeMember(tenantId: string, anggotaId: string) {
     const existing = await prisma.anggotaKegiatanEskul.findFirst({
-      where: { id: anggotaId, tenant_id: tenantId }
+      where: { id: anggotaId, tenant_id: tenantId },
+      include: {
+        JenisKegiatanMaster: true,
+        SiswaAkademik: {
+          include: { siswa: true }
+        }
+      }
     });
     if (!existing) throw new Error('Data anggota tidak ditemukan.');
+
     await prisma.anggotaKegiatanEskul.delete({ where: { id: anggotaId } });
+
+    // Sinkronkan ke biodata Siswa: bersihkan eskul yang dihapus
+    if (existing.SiswaAkademik?.siswa && existing.JenisKegiatanMaster) {
+      try {
+        const currentSiswa = existing.SiswaAkademik.siswa;
+        const eskulName = existing.JenisKegiatanMaster.nama;
+        const updateData: any = {};
+        if (currentSiswa.ekskul_1 === eskulName) {
+          updateData.ekskul_1 = currentSiswa.ekskul_2 || null;
+          updateData.ekskul_2 = null;
+        } else if (currentSiswa.ekskul_2 === eskulName) {
+          updateData.ekskul_2 = null;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.siswa.update({
+            where: { id: currentSiswa.id },
+            data: updateData
+          });
+        }
+      } catch (syncErr: any) {
+        console.warn('[Sync-Remove-Member] Failed updating student biodata:', syncErr.message || syncErr);
+      }
+    }
+
     return { success: true };
   },
 
