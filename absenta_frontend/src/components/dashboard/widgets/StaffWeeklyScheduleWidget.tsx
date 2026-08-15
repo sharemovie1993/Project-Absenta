@@ -122,7 +122,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
   };
 
   return (
-    <div className={cn("p-3.5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4", className)}>
+    <div className={cn("p-2 sm:p-6 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4", className)}>
       
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
@@ -226,27 +226,38 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                               </span>
                             </div>
 
-                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU JAM MENGAJAR (OPTIMAL FIT) ── */}
-                            <div className="w-full flex items-center justify-center my-auto py-0.5 px-0.5">
+                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU DENGAN CSS SCALE (ANTI-CLAMP) ── */}
+                            <div className="w-full flex items-center justify-center my-auto py-0.5 overflow-visible">
                               {colSpan === 1 ? (
-                                <div className="flex flex-col items-center justify-center leading-none py-0.5 px-0.5 rounded bg-blue-100/60 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-800/40 w-full">
-                                  <span className="text-[5.5px] sm:text-[7.5px] font-black text-blue-700 dark:text-blue-300 font-mono tracking-tighter leading-none">
+                                <div 
+                                  className="flex flex-col items-center justify-center leading-none py-0.5 px-0.5 rounded bg-blue-100/60 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-800/40 origin-center"
+                                  style={{ transform: 'scale(0.76)', transformOrigin: 'center' }}
+                                >
+                                  <span className="text-[9px] font-black text-blue-700 dark:text-blue-300 font-mono tracking-tighter leading-none">
                                     {item.jam_mulai}
                                   </span>
-                                  <span className="text-[5.5px] sm:text-[7.5px] font-bold text-blue-600/80 dark:text-blue-400/80 font-mono tracking-tighter leading-none mt-0.5">
+                                  <span className="text-[8.5px] font-bold text-blue-600/80 dark:text-blue-400/80 font-mono tracking-tighter leading-none mt-0.5">
                                     {item.jam_selesai_merged || item.jam_selesai}
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-[5.5px] xs:text-[6px] sm:text-[8px] font-black text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/70 px-0.5 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40 font-mono text-center tracking-tight truncate leading-none max-w-full">
+                                <div 
+                                  className="px-1 py-0.5 rounded bg-blue-100/70 dark:bg-blue-950/70 border border-blue-200/60 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 font-mono font-black tracking-tight whitespace-nowrap text-center origin-center max-w-full"
+                                  style={{
+                                    fontSize: '9.5px',
+                                    transform: colSpan === 2 ? 'scale(0.78)' : 'scale(0.90)',
+                                    transformOrigin: 'center',
+                                    lineHeight: '1',
+                                  }}
+                                >
                                   {jamText || '07:00-08:30'}
-                                </span>
+                                </div>
                               )}
                             </div>
 
                             {/* ── BARIS 3: NAMA MATA PELAJARAN ───────────── */}
                             <div className="w-full">
-                              <p className="text-[6px] sm:text-[9px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                              <p className="text-[7.5px] sm:text-[9.5px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
                                 {mapelNama}
                               </p>
                             </div>
