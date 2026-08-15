@@ -185,12 +185,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         targetPath: '/dashboard?tab=binaan',
         isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'binaan') || pathname.startsWith('/kurikulum/wali-kelas'),
         children: [
-          { id: 'approval', label: 'Validasi Izin', icon: MailCheck, targetPath: '/dashboard?tab=binaan&subtab=approval' },
+          { id: 'approval', label: 'Izin Siswa', icon: MailCheck, targetPath: '/dashboard?tab=binaan&subtab=approval' },
           { id: 'students', label: 'Data Siswa', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=students' },
-          { id: 'health', label: 'Health & Presensi', icon: HeartPulse, targetPath: '/dashboard?tab=binaan&subtab=health' },
-          { id: 'discipline', label: 'Pelanggaran & BK', icon: Scale, targetPath: '/dashboard?tab=binaan&subtab=discipline' },
-          { id: 'halloffame', label: 'Hall of Fame', icon: Trophy, targetPath: '/dashboard?tab=binaan&subtab=halloffame' },
-          { id: 'rekap', label: 'Jurnal Walas', icon: ScrollText, targetPath: '/dashboard?tab=binaan&subtab=rekap' },
+          { id: 'health', label: 'Presensi Kelas', icon: HeartPulse, targetPath: '/dashboard?tab=binaan&subtab=health' },
+          { id: 'discipline', label: 'Pelanggaran Siswa', icon: Scale, targetPath: '/dashboard?tab=binaan&subtab=discipline' },
+          { id: 'halloffame', label: 'Prestasi Siswa', icon: Trophy, targetPath: '/dashboard?tab=binaan&subtab=halloffame' },
+          { id: 'rekap', label: 'Jurnal Kelas', icon: ScrollText, targetPath: '/dashboard?tab=binaan&subtab=rekap' },
         ]
       });
     }

@@ -17,7 +17,7 @@ export const TabNav: React.FC<TabNavProps> = ({
   const tabs = [
     {
       id: 'approval',
-      label: 'Validasi Izin',
+      label: 'Izin Siswa',
       icon: MailCheck,
       badge: pendingApprovalCount > 0 ? pendingApprovalCount : null,
       badgeColor: 'bg-orange-500 text-white'
@@ -30,26 +30,26 @@ export const TabNav: React.FC<TabNavProps> = ({
     },
     {
       id: 'health',
-      label: 'Health & Presensi',
+      label: 'Presensi Kelas',
       icon: HeartPulse,
       badge: atRiskCount > 0 ? `${atRiskCount} EWS` : null,
       badgeColor: 'bg-red-500 text-white'
     },
     {
       id: 'discipline',
-      label: 'Pelanggaran & BK',
+      label: 'Pelanggaran Siswa',
       icon: Scale,
       badge: null
     },
     {
       id: 'halloffame',
-      label: 'Hall of Fame',
+      label: 'Prestasi Siswa',
       icon: Trophy,
       badge: null
     },
     {
       id: 'rekap',
-      label: 'Jurnal Walas',
+      label: 'Jurnal Kelas',
       icon: ScrollText,
       badge: null
     }
