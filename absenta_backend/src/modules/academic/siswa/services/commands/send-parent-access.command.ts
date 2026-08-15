@@ -35,15 +35,61 @@ export async function sendParentAccessCommand(
     throw new Error('Siswa not found');
   }
 
-  const parents = (siswa.OrangTuaSiswa || []).map((ots: any) => ots.OrangTua);
-  if (parents.length === 0) {
-    throw new Error('Siswa belum memiliki data Orang Tua');
-  }
+  const parents = (siswa.OrangTuaSiswa || []).map((ots: any) => ots.OrangTua).filter(Boolean);
+  let targetParent = parents.find((p: any) => p.no_hp) || parents[0];
 
-  const targetParent = parents.find((p: any) => p.no_hp) || parents[0];
+  // 1. FALLBACK CERDAS: Jika relasi OrangTua belum ada / no_hp kosong, ambil langsung dari field tabel Siswa
+  if (!targetParent || !targetParent.no_hp) {
+    const candidatePhone = (
+      siswa.no_hp_ortu || 
+      siswa.no_hp_ayah || 
+      siswa.no_hp_ibu || 
+      siswa.no_hp_wali ||
+      siswa.no_hp
+    )?.trim();
 
-  if (!targetParent.no_hp) {
-    throw new Error(`Orang Tua (${targetParent.nama}) tidak memiliki nomor HP`);
+    const candidateName = (
+      (siswa.no_hp_ayah && siswa.nama_ayah) ||
+      (siswa.no_hp_ibu && siswa.nama_ibu) ||
+      (siswa.no_hp_wali && siswa.nama_wali) ||
+      siswa.nama_ayah ||
+      siswa.nama_ibu ||
+      siswa.nama_wali ||
+      `Orang Tua ${siswa.nama_siswa}`
+    )?.trim();
+
+    const hubungan = siswa.nama_ayah ? 'AYAH' : siswa.nama_ibu ? 'IBU' : 'WALI';
+
+    if (!candidatePhone) {
+      throw new Error(`Siswa (${siswa.nama_siswa}) belum memiliki nomor HP Orang Tua di database / tabel siswa`);
+    }
+
+    if (targetParent) {
+      // Update nomor HP pada record OrangTua yang sudah ada
+      targetParent = await siswaDb.orangTua.update({
+        where: { id: targetParent.id },
+        data: {
+          no_hp: candidatePhone,
+          nama: targetParent.nama || candidateName,
+          hubungan: targetParent.hubungan || hubungan,
+        },
+      });
+    } else {
+      // Auto-create record OrangTua dan link ke OrangTuaSiswa
+      targetParent = await siswaDb.orangTua.create({
+        data: {
+          tenant_id: siswa.tenant_id,
+          nama: candidateName,
+          no_hp: candidatePhone,
+          hubungan: hubungan,
+          OrangTuaSiswa: {
+            create: {
+              siswa_id: siswa.id,
+            },
+          },
+        },
+      });
+    }
   }
 
   const tokenRecord = await parentAuthService.ensureToken(targetParent.id);
