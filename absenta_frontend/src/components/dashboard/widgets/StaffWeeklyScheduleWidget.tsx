@@ -225,16 +225,27 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                               </span>
                             </div>
 
-                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU JAM MENGAJAR ── */}
+                            {/* ── BARIS 2 (TENGAH): LABEL WAKTU JAM MENGAJAR (OPTIMAL FIT) ── */}
                             <div className="w-full flex items-center justify-center my-auto py-0.5">
-                              <span className="text-[7.5px] sm:text-[9.5px] font-black text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/70 px-1 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40 font-mono text-center tracking-tighter truncate leading-none max-w-full">
-                                {jamText || '07:00-08:30'}
-                              </span>
+                              {colSpan === 1 ? (
+                                <div className="flex flex-col items-center justify-center leading-none py-0.5 px-0.5 rounded bg-blue-100/60 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-800/40">
+                                  <span className="text-[6.5px] sm:text-[8px] font-black text-blue-700 dark:text-blue-300 font-mono tracking-tighter leading-none">
+                                    {item.jam_mulai}
+                                  </span>
+                                  <span className="text-[6px] sm:text-[7.5px] font-bold text-blue-600/80 dark:text-blue-400/80 font-mono tracking-tighter leading-none mt-0.5">
+                                    {item.jam_selesai_merged || item.jam_selesai}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[6.5px] sm:text-[8.5px] font-black text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-950/70 px-1 py-0.5 rounded border border-blue-200/60 dark:border-blue-800/40 font-mono text-center tracking-tighter truncate leading-none max-w-full">
+                                  {jamText || '07:00-08:30'}
+                                </span>
+                              )}
                             </div>
 
                             {/* ── BARIS 3: NAMA MATA PELAJARAN ───────────── */}
                             <div className="w-full">
-                              <p className="text-[7.5px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                              <p className="text-[6.5px] sm:text-[9.5px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
                                 {mapelNama}
                               </p>
                             </div>
