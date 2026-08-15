@@ -3,7 +3,8 @@
  * Command Center Utama Wali Kelas untuk Pengawasan 360° Rombel
  */
 
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Loader } from '../../../ui/Loader';
 
 const DEFAULT_CLASS_INFO: ClassInfo = {
@@ -103,9 +104,26 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
 
 
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subtabParam = searchParams.get('subtab');
 
   // Active Tab & Search Filter
-  const [activeTab, setActiveTab] = useState<string>('approval');
+  const [activeTab, setActiveTab] = useState<string>(subtabParam || 'approval');
+
+  useEffect(() => {
+    if (subtabParam && ['approval', 'students', 'health', 'discipline', 'halloffame', 'rekap'].includes(subtabParam)) {
+      setActiveTab(subtabParam);
+    }
+  }, [subtabParam]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', 'binaan');
+    newParams.set('subtab', newTab);
+    setSearchParams(newParams, { replace: true });
+  };
+
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Modals & Overlay States
@@ -406,7 +424,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
         {/* 2. Sub-Module Navigation Tabs */}
         <TabNav
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           pendingApprovalCount={pendingApprovalCount}
           atRiskCount={atRiskStudents.length}
         />
