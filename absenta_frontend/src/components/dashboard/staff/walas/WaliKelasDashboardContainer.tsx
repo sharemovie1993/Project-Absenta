@@ -488,27 +488,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
             )}
           </Suspense>
         </main>
-
-        {/* Clean Minimalism Footer */}
-        <footer className="mt-8 px-6 py-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3 shadow-xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            Data Updated: 11 Ags 2026, 08:45 AM • SMKN 1 Tech Center
-          </p>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsAddJournalOpen(true)}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 cursor-pointer"
-            >
-              + Catat Jurnal Baru
-            </button>
-            <button
-              onClick={() => setIsExportModalOpen(true)}
-              className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline flex items-center gap-1.5 cursor-pointer"
-            >
-              Export Laporan
-            </button>
-          </div>
-        </footer>
       </div>
 
       {/* Interactive Overlays & Modals */}
