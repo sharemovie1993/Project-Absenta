@@ -3,7 +3,7 @@
  * Command Center Utama Wali Kelas untuk Pengawasan 360° Rombel
  */
 
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { Loader } from '../../../ui/Loader';
 
 const DEFAULT_CLASS_INFO: ClassInfo = {
