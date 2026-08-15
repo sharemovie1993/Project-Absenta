@@ -25,7 +25,6 @@ export { useRuanganOptions } from '../../hooks/useRuanganOptions';
 export { useRoleOptions } from '../../hooks/useRoleOptions';
 export { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
 export { useStrukturKurikulumOptions } from '../../hooks/useStrukturKurikulumOptions';
-export { useJadwalKbmOptions } from '../../hooks/useJadwalKbmOptions';
 export { useSupervisiRecommendations } from '../../hooks/useSupervisiRecommendations';
 export { usePiketGuruOptions, useJadwalPiketGuruOptions } from '../../hooks/usePiketGuruOptions';
 export { usePiketIzinKeluarOptions, usePiketIzinOptions, usePiketOptions } from '../../hooks/usePiketIzinKeluarOptions';
