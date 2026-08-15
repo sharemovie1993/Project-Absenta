@@ -1329,6 +1329,27 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/attendance/anggota-eskul" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AnggotaKegiatanEskulPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/anggota-eskul" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AnggotaKegiatanEskulPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/anggota-kegiatan-eskul" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AnggotaKegiatanEskulPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                     {/* Removed deprecated attendance pages: kegiatan, manual */}
                     <Route element={<PetugasRoute />}>
                     </Route>

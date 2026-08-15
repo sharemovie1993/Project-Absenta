@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getJadwalKegiatan,
@@ -74,6 +75,7 @@ const parseArrayField = (field: any): string[] => {
 
 export default React.memo(function JadwalKegiatanPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { confirm } = useConfirm();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -291,15 +293,25 @@ export default React.memo(function JadwalKegiatanPage() {
       instruction={instruction}
       hardeningModuleKey="attendance_jadwal_kegiatan"
       actions={
-        <Button
-          id="btn-tambah-jadwal"
-          variant="primary"
-          onClick={handleOpenCreate}
-          className="flex items-center gap-1.5 shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Tambah Jadwal
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/attendance/anggota-kegiatan-eskul')}
+            className="flex items-center gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+          >
+            <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Anggota & Pembina Eskul
+          </Button>
+          <Button
+            id="btn-tambah-jadwal"
+            variant="primary"
+            onClick={handleOpenCreate}
+            className="flex items-center gap-1.5 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Jadwal
+          </Button>
+        </div>
       }
     >
       {/* Point #9: PremiumFeatureGate */}
