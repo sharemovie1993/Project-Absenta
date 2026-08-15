@@ -350,9 +350,9 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
 
   // TanStack Query Hooks untuk data wilayah
   const { options: provinsiOptions } = useProvinsiOptions();
-  const { options: kabupatenOptions } = useKabupatenOptions(formData.provinsi);
-  const { options: kecamatanOptions } = useKecamatanOptions(formData.kabupaten);
-  const { options: kelurahanOptions } = useKelurahanOptions(formData.kecamatan, formData.kabupaten);
+  const { options: kabupatenOptions, isLoading: loadingKabupaten } = useKabupatenOptions(formData.provinsi);
+  const { options: kecamatanOptions, isLoading: loadingKecamatan } = useKecamatanOptions(formData.kabupaten);
+  const { options: kelurahanOptions, isLoading: loadingKelurahan } = useKelurahanOptions(formData.kecamatan, formData.kabupaten);
 
   useEffect(() => {
     if (formData.kecamatan) {
@@ -989,36 +989,94 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                   </select>
                 </div>
 
-                {/* 3. KECAMATAN (Tersaring Otomatis Berdasarkan Kabupaten) */}
+                {/* 3. KECAMATAN (Tersaring Otomatis Berdasarkan Kabupaten / Fallback Text Input) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">3. Kecamatan</label>
-                  <select
-                    value={formData.kecamatan}
-                    onChange={e => setFormData({ ...formData, kecamatan: e.target.value, kelurahan: '', kode_pos: '' })}
-                    disabled={!formData.kabupaten}
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
-                  >
-                    <option value="">{formData.kabupaten ? (kecamatanOptions.length > 0 ? '-- Pilih Kecamatan --' : 'Memuat Kecamatan...') : '-- Pilih Kota/Kabupaten Terlebih Dahulu --'}</option>
-                    {kecamatanOptions.map(opt => (
-                      <option key={opt.value} value={opt.label}>{opt.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      3. Kecamatan
+                    </label>
+                    {formData.kabupaten && !loadingKecamatan && kecamatanOptions.length === 0 && (
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                        Ketik nama kecamatan
+                      </span>
+                    )}
+                  </div>
+
+                  {formData.kabupaten && !loadingKecamatan && kecamatanOptions.length === 0 ? (
+                    <input
+                      type="text"
+                      value={formData.kecamatan}
+                      onChange={e => setFormData({ ...formData, kecamatan: e.target.value, kelurahan: '', kode_pos: '' })}
+                      placeholder="Ketik nama Kecamatan..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  ) : (
+                    <select
+                      value={formData.kecamatan}
+                      onChange={e => setFormData({ ...formData, kecamatan: e.target.value, kelurahan: '', kode_pos: '' })}
+                      disabled={!formData.kabupaten || loadingKecamatan}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                    >
+                      <option value="">
+                        {!formData.kabupaten
+                          ? '-- Pilih Kota/Kabupaten Terlebih Dahulu --'
+                          : loadingKecamatan
+                          ? 'Memuat Kecamatan...'
+                          : '-- Pilih Kecamatan --'}
+                      </option>
+                      {formData.kecamatan && !kecamatanOptions.some(o => o.value === formData.kecamatan || o.label === formData.kecamatan) && (
+                        <option value={formData.kecamatan}>{formData.kecamatan}</option>
+                      )}
+                      {kecamatanOptions.map(opt => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
-                {/* 4. KELURAHAN / DESA (Tersaring Otomatis Berdasarkan Kecamatan) */}
+                {/* 4. KELURAHAN / DESA (Tersaring Otomatis Berdasarkan Database / Fallback Text Input) */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">4. Kelurahan / Desa</label>
-                  <select
-                    value={formData.kelurahan}
-                    onChange={e => setFormData({ ...formData, kelurahan: e.target.value })}
-                    disabled={!formData.kecamatan}
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
-                  >
-                    <option value="">{formData.kecamatan ? (kelurahanOptions.length > 0 ? '-- Pilih Kelurahan/Desa --' : 'Memuat Desa...') : '-- Pilih Kecamatan Terlebih Dahulu --'}</option>
-                    {kelurahanOptions.map(opt => (
-                      <option key={opt.value} value={opt.label}>{opt.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      4. Kelurahan / Desa
+                    </label>
+                    {formData.kecamatan && !loadingKelurahan && kelurahanOptions.length === 0 && (
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                        Ketik nama desa
+                      </span>
+                    )}
+                  </div>
+
+                  {formData.kecamatan && !loadingKelurahan && kelurahanOptions.length === 0 ? (
+                    <input
+                      type="text"
+                      value={formData.kelurahan}
+                      onChange={e => setFormData({ ...formData, kelurahan: e.target.value })}
+                      placeholder="Ketik nama Kelurahan / Desa..."
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  ) : (
+                    <select
+                      value={formData.kelurahan}
+                      onChange={e => setFormData({ ...formData, kelurahan: e.target.value })}
+                      disabled={!formData.kecamatan || loadingKelurahan}
+                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                    >
+                      <option value="">
+                        {!formData.kecamatan
+                          ? '-- Pilih Kecamatan Terlebih Dahulu --'
+                          : loadingKelurahan
+                          ? 'Memuat Desa...'
+                          : '-- Pilih Kelurahan/Desa --'}
+                      </option>
+                      {formData.kelurahan && !kelurahanOptions.some(o => o.value === formData.kelurahan || o.label === formData.kelurahan) && (
+                        <option value={formData.kelurahan}>{formData.kelurahan}</option>
+                      )}
+                      {kelurahanOptions.map(opt => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
