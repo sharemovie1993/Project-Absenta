@@ -292,21 +292,7 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     return siswa?.Kelas?.nama_kelas || siswa?.nama_kelas || siswa?.kelas || '';
   }, [siswa]);
 
-  const renderFieldStatusBadge = (value: any) => {
-    if (!isApiConnected) {
-      return (
-        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-mono select-none ml-1.5">
-          Belum Terhubung ke API
-        </span>
-      );
-    }
-    if (value === undefined || value === null || value === '' || value === 0) {
-      return (
-        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono select-none ml-1.5">
-          Belum Diisi
-        </span>
-      );
-    }
+  const renderFieldStatusBadge = (_value: any) => {
     return null;
   };
 
@@ -578,114 +564,68 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden my-auto text-slate-800 dark:text-slate-100"
       >
-        {/* FOCUSED HEADER */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-slate-900 border-b border-slate-200/80 dark:border-slate-800 relative">
+        {/* CLEAN MINIMALIST HEADER */}
+        <div className="px-5 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="min-w-0 pr-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white truncate">
+              {studentName ? `Edit Biodata: ${studentName}` : sectionMeta.title}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {studentKelas ? `Kelas ${studentKelas}` : ''} {studentNisn ? `• NISN: ${studentNisn}` : ''}
+            </p>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
             <X size={18} />
           </button>
+        </div>
 
-          <div className="flex items-start gap-3.5 pr-8">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 mt-0.5 shadow-sm">
-              <SectionIcon size={24} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  {sectionMeta.badge}
-                </span>
-                {studentKelas && (
-                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-mono">
-                    Kelas {studentKelas}
-                  </span>
+        {/* CLEAN STEP TABS (Only visible when editing full profile) */}
+        {activeSection === 'all' && (
+          <div className="px-5 pt-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className={cn(
+                  "pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5",
+                  step === 1
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 )}
-                {studentNisn && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">
-                    NISN: {studentNisn}
-                  </span>
+              >
+                <span>1. Data Pribadi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className={cn(
+                  "pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5",
+                  step === 2
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 )}
-              </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight leading-snug">
-                {sectionMeta.title}
-              </h2>
-              {studentName && (
-                <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-xs w-fit">
-                  <User size={13} className="text-emerald-500 shrink-0" />
-                  <span className="text-slate-400 font-normal">Siswa:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-wide">
-                    {studentName}
-                  </span>
-                </div>
-              )}
+              >
+                <span>2. Alamat & Domisili</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className={cn(
+                  "pb-2.5 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5",
+                  step === 3
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                <span>3. Orang Tua & Wali</span>
+              </button>
             </div>
           </div>
-
-          {/* Completeness Bar & Interactive Step Switcher (Only visible when activeSection === 'all') */}
-          {activeSection === 'all' && (
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-emerald-500" />
-                  Kelengkapan Profil Siswa
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{liveCompleteness.percent}%</span>
-              </div>
-              <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-800">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${liveCompleteness.percent}%` }}
-                  transition={{ duration: 0.4 }}
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
-                />
-              </div>
-
-              {/* Interactive Step Switcher Pills */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className={cn(
-                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
-                    step === 1
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                  )}
-                >
-                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">1</span>
-                  <span className="truncate">Data Pribadi</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className={cn(
-                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
-                    step === 2
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                  )}
-                >
-                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">2</span>
-                  <span className="truncate">Alamat & Domisili</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className={cn(
-                    "py-1.5 px-2 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5",
-                    step === 3
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                  )}
-                >
-                  <span className="w-4 h-4 rounded-full bg-emerald-500/30 text-white flex items-center justify-center text-[9px] font-black">3</span>
-                  <span className="truncate">Orang Tua & Ekskul</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* BODY CONTENT AREA */}
         <div className="p-5 sm:p-6 space-y-5 max-h-[60vh] overflow-y-auto">
@@ -699,46 +639,39 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
               transition={{ duration: 0.2 }}
               className="space-y-4 text-xs"
             >
-              {/* Photo Upload Box */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+              {/* Compact Photo Upload */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3.5">
                 <div className="relative shrink-0">
                   {photoPreview || (siswa as any)?.foto || (siswa as any)?.foto_url ? (
                     <img
                       src={photoPreview || resolveProfilePhotoUrl((siswa as any)?.foto || (siswa as any)?.foto_url)}
                       alt="Foto Profil Siswa"
-                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-md"
+                      className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs"
                     />
                   ) : (
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500/40 flex items-center justify-center font-black text-2xl shadow-md">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-bold text-lg shadow-xs">
                       {siswa?.nama ? siswa.nama.charAt(0) : 'S'}
                     </div>
                   )}
-                  <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center text-white shadow-md">
-                    <Camera size={12} />
-                  </span>
                 </div>
 
-                <div className="space-y-2 flex-1 text-center sm:text-left">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-800 dark:text-slate-100">Upload Foto Profil / Pas Foto</h4>
-                    <p className="text-[10px] text-slate-400 font-bold">Format: JPG / PNG (Maks. 5 MB). Digunakan pada Kartu Pelajar Digital & Raport.</p>
-                  </div>
-
-                  <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
-                    {/* Option 1: Live Web Camera Viewfinder Capture */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Profil / Pas Foto</h4>
+                  <p className="text-[11px] text-slate-400">JPG/PNG maks. 5 MB untuk raport & kartu pelajar</p>
+                  
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setShowWebcamModal(true)}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                      className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
                     >
-                      <Camera size={14} />
-                      <span>Ambil Foto (Kamera Live)</span>
+                      <Camera size={13} />
+                      <span>Kamera</span>
                     </button>
 
-                    {/* Option 2: Choose from Device / Gallery */}
-                    <label className="px-3.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all">
-                      <Upload size={14} />
-                      <span>Pilih dari Galeri</span>
+                    <label className="px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95">
+                      <Upload size={13} />
+                      <span>Pilih File</span>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
@@ -754,19 +687,12 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                     </label>
 
                     {selectedPhotoFile && (
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                        ✓ Foto Siap Disimpan
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        ✓ Siap Disimpan
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-start gap-2.5 font-medium">
-                <AlertCircle size={16} className="shrink-0 mt-0.5 text-emerald-500" />
-                <p>
-                  Perbarui NIK (16 digit), data kelahiran, dan hobi/cita-cita Anda. Data ini penting untuk verifikasi DAPODIK sekolah.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
