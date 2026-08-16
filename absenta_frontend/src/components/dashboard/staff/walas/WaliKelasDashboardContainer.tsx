@@ -362,11 +362,12 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     title: string;
     content: string;
     tags: string[];
+    date?: string;
   }) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const journalDateStr = data.date || new Date().toISOString().split('T')[0];
     try {
       await createJournal({
-        tanggal: todayStr,
+        tanggal: journalDateStr,
         kategori: data.category,
         judul: data.title,
         isi: data.content,
@@ -378,8 +379,8 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
 
     const newEntry: JournalEntry = {
       id: `j-${Date.now()}`,
-      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      time: '12:00 WIB',
+      date: new Date(journalDateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
       ...data,
       author: classInfo.homeroomTeacher
     };
