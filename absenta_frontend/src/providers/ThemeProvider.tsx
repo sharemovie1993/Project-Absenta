@@ -56,13 +56,18 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       root.removeAttribute('data-theme-mode');
       root.removeAttribute('data-mode');
 
-      root.classList.remove('dark');
-      body.classList.remove('dark');
-      appRoot?.classList.remove('dark');
+      if (isDark) {
+        root.classList.add('dark');
+        body.classList.add('dark');
+        appRoot?.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+        body.classList.remove('dark');
+        appRoot?.classList.remove('dark');
+      }
 
       root.setAttribute('data-theme', isDark ? 'dark' : 'light');
       root.style.colorScheme = isDark ? 'dark' : 'light';
-
       body.style.colorScheme = isDark ? 'dark' : 'light';
 
       if (isDark) {

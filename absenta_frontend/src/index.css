@@ -2,6 +2,26 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+/* Anti-interferensi OS / Browser Auto-Dark */
+:root {
+  color-scheme: light;
+  forced-color-adjust: none;
+}
+
+html[data-theme="light"],
+html:not([data-theme="dark"]),
+html[data-theme="light"] body {
+  color-scheme: light !important;
+  forced-color-adjust: none !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  color-scheme: dark !important;
+  forced-color-adjust: none;
+}
+
 html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div, table, th, td {
   font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }

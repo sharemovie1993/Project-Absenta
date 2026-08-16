@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light dark" />
     <meta name="theme-color" content="#2563eb" />
     <meta property="og:title" content="Absenta — Sistem Presensi Sekolah Cerdas" />
     <meta property="og:description" content="Manajemen kehadiran sekolah yang modern, ringan, dan akurat." />
@@ -17,16 +18,19 @@
     <script>
       (function() {
         try {
-          var stored = localStorage.getItem('absenta_theme_preference') || localStorage.getItem('theme');
+          var stored = localStorage.getItem('absenta_theme_preference');
           if (stored === 'dark-default') {
             document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
             document.documentElement.style.colorScheme = 'dark';
           } else {
             document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.classList.remove('dark');
             document.documentElement.style.colorScheme = 'light';
           }
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.classList.remove('dark');
           document.documentElement.style.colorScheme = 'light';
         }
       })();
