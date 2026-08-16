@@ -62,6 +62,6 @@ export async function toggleAutoRenew(subscriptionId: string, autoRenew: boolean
   });
 }
 
-export async function getPaymentChannels(): Promise<{ success: boolean; message: string; data?: any[] }> {
-  return requestWithFallback<{ success: boolean; message: string; data?: any[] }>('get', '/billing/payment-channels');
+export async function getPaymentChannels(productId: string = 'cakola'): Promise<{ success: boolean; message: string; data?: any[] }> {
+  return requestWithFallback<{ success: boolean; message: string; data?: any[] }>('get', `/billing/payment-channels?productId=${encodeURIComponent(productId)}`);
 }

@@ -368,11 +368,12 @@ export async function registerRoutes(fastify: any, prisma: any) {
       // Proxy route to fetch active Tripay payment channels from the Server Lisensi centrally
       fastify.get('/billing/payment-channels', {
         preHandler: [requireCapability('billing.my.subscription.view')]
-      }, async (_request: any, reply: any) => {
+      }, async (request: any, reply: any) => {
         const axios = require('axios');
         const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const productId = request.query?.productId || request.query?.product_id || 'cakola';
         try {
-          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/payment-channels`, { timeout: 5000 });
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/payment-channels?productId=${encodeURIComponent(productId)}`, { timeout: 5000 });
           if (response.data?.success) {
             return reply.send({
               success: true,

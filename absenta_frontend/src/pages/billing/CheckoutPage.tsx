@@ -115,9 +115,10 @@ function CheckoutContent() {
         }
         setPlan(foundPlan);
 
-        // Fetch payment channels
+        // Fetch payment channels with explicit product ID
         try {
-          const channelsRes = await getPaymentChannels();
+          const resolvedProdId = (foundPlan as any)?.productId || (foundPlan as any)?.product_id || (foundPlan?.service_code === 'HARDWARE' ? 'hardware' : 'cakola');
+          const channelsRes = await getPaymentChannels(resolvedProdId);
           if (channelsRes?.success && Array.isArray(channelsRes?.data)) {
             setPaymentChannels(channelsRes.data);
             const defaultChan = channelsRes.data.find((c: any) => c.code === 'QRIS2') || channelsRes.data[0];
