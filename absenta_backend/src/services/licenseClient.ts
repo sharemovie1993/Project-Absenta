@@ -3,8 +3,8 @@ import fetch from 'node-fetch';
 const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
 
 /** Ambil daftar metode pembayaran dari server lisensi */
-export async function fetchPaymentChannels(): Promise<any[]> {
-  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/payment-channels`, {
+export async function fetchPaymentChannels(productId: string = 'easy-tunnel'): Promise<any[]> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/payment-channels?productId=${encodeURIComponent(productId)}`, {
     signal: AbortSignal.timeout(8000)
   });
   const data = await res.json() as any;
