@@ -88,7 +88,8 @@ function startWaWatchdog() {
         const wsState = entry.sock?.ws?.socket?.readyState ?? entry.sock?.ws?.readyState;
         const isWsActive = entry.sock && (entry.sock.ws?.isOpen === true || wsState === 0 || wsState === 1);
 
-        if (!isWsActive && entry.status !== 'connecting') {
+        // Jangan hidupkan kembali jika socket sedang connecting atau sengaja di-disconnected (misal karena Error 440 / Logout)
+        if (!isWsActive && entry.status !== 'connecting' && entry.status !== 'disconnected') {
           console.warn(`[WA-Watchdog:${tenantId}] Socket terdeteksi tidak aktif/zombie (wsState: ${wsState}, status: ${entry.status}). Memulihkan koneksi otomatis...`);
           try {
             entry.sock?.ev?.removeAllListeners('connection.update');
@@ -111,19 +112,19 @@ function startWaWatchdog() {
 // ─── Connect (per-tenant) ────────────────────────────────────────────────────
 
 function isMasterInstance(): boolean {
-  const serviceRole = String(process.env.SERVICE_ROLE || process.env.WORKER_ROLE || '').trim().toLowerCase();
-
-  // Explicit Dedicated WA Worker process handles WA socket
-  if (serviceRole === 'wa-worker' || serviceRole === 'wa_worker' || serviceRole === 'worker') return true;
-
-  // Explicit HTTP API instances DO NOT handle WA socket directly (delegates via Redis RPC)
-  if (serviceRole === 'api') return false;
-
-  // Fallback for PM2 Cluster mode if SERVICE_ROLE is unconfigured
+  // 1. In PM2 Cluster Mode (regardless of service role), ONLY instance 0 is allowed to maintain active Baileys WhatsApp sockets.
   const instanceId = process.env.NODE_APP_INSTANCE;
   if (instanceId !== undefined && instanceId !== '' && instanceId !== '0') {
     return false;
   }
+
+  const serviceRole = String(process.env.SERVICE_ROLE || process.env.WORKER_ROLE || '').trim().toLowerCase();
+
+  // 2. Explicit HTTP API instances DO NOT handle WA socket directly (delegates via Redis RPC)
+  if (serviceRole === 'api') return false;
+
+  // 3. Explicit Dedicated WA Worker process handles WA socket
+  if (serviceRole === 'wa-worker' || serviceRole === 'wa_worker' || serviceRole === 'worker') return true;
 
   return true;
 }
@@ -254,7 +255,8 @@ async function connectTenant(tenantId: string): Promise<void> {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode ?? lastDisconnect?.error?.statusCode;
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+      const isReplaced = statusCode === DisconnectReason.connectionReplaced || statusCode === 440;
 
       console.log(`[WA-Pool:${tenantId}] Koneksi terputus (kode: ${statusCode}).`);
       
@@ -269,6 +271,14 @@ async function connectTenant(tenantId: string): Promise<void> {
       }
 
       entry.emitter.emit('disconnected', statusCode);
+
+      // Handle Error 440 (Session replaced by another process/instance): STOP reconnecting immediately
+      if (isReplaced) {
+        console.warn(`[WA-Pool:${tenantId}] ⚠️ Sesi digantikan oleh koneksi/proses lain (Error 440: connectionReplaced). Menghentikan auto-reconnect agar tidak berebut koneksi dan CPU tidak 100%.`);
+        entry.status = 'disconnected';
+        await syncStatusToDB(tenantId, 'disconnected', null);
+        return;
+      }
 
       if (!isLoggedOut) {
         const { hasCreds: stillHasCreds } = await getTenantDbCredsInfo(tenantId);

@@ -10,20 +10,43 @@ export class SesiCloseNotifyService {
     return SesiCloseNotifyService.instance;
   }
 
-  async upsertProgresMateri(tenantId: string, _org: any, sesiId: string, _payload: any) {
+  async upsertProgresMateri(tenantId: string, _org: any, sesiId: string, payload: any) {
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesiId, tenant_id: tenantId }
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
 
-    const updated = await prisma.sesiAbsensi.update({
+    const judul = payload.judul_materi || payload.materiPokok || 'Materi KBM';
+    const deskripsi = payload.deskripsi || payload.capaianPembelajaran || null;
+    const pencapaian = payload.pencapaian_persen !== undefined ? Number(payload.pencapaian_persen) : 0;
+    const kendala = payload.kendala || payload.catatanKelas || null;
+
+    const progres = await prisma.progresMateri.upsert({
+      where: { sesi_id: sesiId },
+      create: {
+        tenant_id: tenantId,
+        sesi_id: sesiId,
+        judul_materi: judul,
+        deskripsi: deskripsi,
+        pencapaian_persen: pencapaian,
+        kendala: kendala,
+      },
+      update: {
+        judul_materi: judul,
+        deskripsi: deskripsi,
+        pencapaian_persen: pencapaian,
+        kendala: kendala,
+      }
+    });
+
+    await prisma.sesiAbsensi.update({
       where: { id: sesiId },
       data: {
         updated_at: new Date()
       }
     });
 
-    return updated;
+    return progres;
   }
 
   async handleSessionClose(tenantId: string, sesiId: string, _sesi: any) {

@@ -417,7 +417,8 @@ export class SesiLifecycleService {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
-        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } }
+        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
+        ProgresMateri: { select: { id: true, judul_materi: true, deskripsi: true, pencapaian_persen: true, kendala: true, updated_at: true } }
       },
       orderBy: { waktu_mulai: 'desc' }
     });
@@ -442,6 +443,8 @@ export class SesiLifecycleService {
         ...item,
         status: item.status || 'MENDATANG',
         summary,
+        progres: item.ProgresMateri || null,
+        ProgresMateri: item.ProgresMateri || null,
         kelas_nama: item.Kelas?.nama_kelas || null,
         mapel_nama: item.Mapel?.nama_mapel || item.Mapel?.kode_mapel || null,
         guru_nama: item.Guru?.nama_guru || null,

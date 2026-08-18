@@ -369,47 +369,6 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         <JadwalInvalPanel />
       ) : (
         <>
-          {/* 1. TOP STRIP: GURU GATE CHECK-IN TRACKING - COLOR BLOCK TINT */}
-          <div className={cn(
-            "p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all",
-            trackingData?.status === 'HADIR'
-              ? "bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-white dark:to-slate-900 border-emerald-500/30 dark:border-emerald-500/40"
-              : "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-white dark:to-slate-900 border-amber-500/30 dark:border-amber-500/40"
-          )}>
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs shadow-sm",
-                trackingData?.status === 'HADIR' 
-                  ? "bg-emerald-500 text-white shadow-emerald-500/30" 
-                  : "bg-amber-500 text-slate-950 shadow-amber-500/30 animate-pulse"
-              )}>
-                <LogIn size={18} />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                  Presensi Gerbang Sekolah Hari Ini
-                </span>
-                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                  {guruNama || trackingData?.nama_guru || 'Pengajar'}
-                </h4>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-              {trackingData?.status === 'HADIR' ? (
-                <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
-                  <CheckCircle2 size={13} className="text-emerald-500" />
-                  <span>Tap Gerbang {trackingData?.kegiatan?.[0]?.waktu || 'Tercatat'}</span>
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shadow-xs">
-                  <Clock size={13} className="text-amber-600 dark:text-amber-400" />
-                  <span>Belum Tap Gerbang Hari Ini</span>
-                </span>
-              )}
-            </div>
-          </div>
-
       {/* 2. MAIN ACCORDION SECTION: DAFTAR JADWAL KBM HARI INI */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1 flex-wrap gap-2">
@@ -424,37 +383,16 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               </span>
             </h3>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleTestAlertSound}
-              type="button"
-              title="Uji coba suara alarm & aktifkan notifikasi"
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs"
-            >
-              <Volume2 size={13} className="text-emerald-400" />
-              <span>Tes Alarm</span>
-            </button>
-            {onRefreshTimeline && (
-              <button
-                onClick={onRefreshTimeline}
-                disabled={isLoadingTimeline}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-700"
-              >
-                <RefreshCw size={11} className={isLoadingTimeline ? "animate-spin" : ""} />
-                <span>Refresh</span>
-              </button>
-            )}
-          </div>
         </div>
 
         {timelineItems.length === 0 ? (
-          <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-              <BookOpen size={22} />
+          <div className="py-6 px-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 text-center space-y-2">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+              <BookOpen size={18} />
             </div>
-            <div className="space-y-1">
-              <h4 className="text-sm font-extrabold text-white">Tidak Ada Jadwal Mengajar Hari Ini</h4>
-              <p className="text-xs text-slate-400">Anda tidak memiliki jam KBM terdaftar untuk hari ini.</p>
+            <div className="space-y-0.5">
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">Tidak Ada Jadwal Mengajar Hari Ini</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Anda tidak memiliki jam KBM terdaftar untuk hari ini.</p>
             </div>
           </div>
         ) : (
@@ -557,21 +495,21 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         )}
       </div>
 
-      {/* ── SKAT / SECTION DIVIDER ── */}
-      <div className="relative py-2 sm:py-3">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-slate-50 dark:bg-slate-900/90 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 rounded-full border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1.5">
-            <FileText size={12} className="text-blue-500" />
-            <span>Arsip &amp; Riwayat Jurnal Mengajar</span>
-          </span>
-        </div>
-      </div>
-
       {/* ── REKAP JURNAL MENGAJAR PANEL (DI BAWAH JADWAL) ── */}
-      <RekapJurnalPanel />
+      <div className="space-y-3 pt-3 border-t border-slate-200/80 dark:border-slate-800/80">
+        <div className="flex items-center justify-between px-1 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <FileText size={14} />
+            </div>
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span>Arsip &amp; Riwayat Jurnal Mengajar</span>
+            </h3>
+          </div>
+        </div>
+
+        <RekapJurnalPanel />
+      </div>
     </>
   )}
 
