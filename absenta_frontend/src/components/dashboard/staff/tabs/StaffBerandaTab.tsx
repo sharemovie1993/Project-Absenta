@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '../../../ui';
 import { kesiswaanApi } from '../../../../api/kesiswaan.api';
 import { piketApi } from '../../../../api/piket.api';
+import { kurikulumApi } from '../../../../api/kurikulum.api';
+import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
@@ -29,6 +31,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   timelineItems = [],
   onNavigateTab,
 }) => {
+  const [showIzinModal, setShowIzinModal] = React.useState(false);
+
   // Query Rekap Kehadiran Siswa Rombel Walas (jika Wali Kelas)
   const { data: classPresenceRes, isLoading: loadingPresence } = useQuery({
     queryKey: ['attendance-today-me-class-beranda', waliKelasId],
@@ -48,6 +52,42 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
 
   const permitsList = (permitsRes?.data as any[]) || [];
   const pendingPermitsCount = permitsList.filter((p: any) => p.status === 'PENDING' || p.status === 'MENUNGGU_VALIDASI').length;
+
+  // Query Beban Mengajar Guru (KBM JP & Ekuivalensi Tugas Tambahan)
+  const { data: bebanGuruRes, isLoading: loadingBeban } = useQuery({
+    queryKey: ['kurikulum-beban-guru-all'],
+    queryFn: () => kurikulumApi.getBebanMengajar().catch(() => ({ success: true, data: [] })),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const teacherBeban = useMemo(() => {
+    const list = Array.isArray(bebanGuruRes?.data)
+      ? bebanGuruRes.data
+      : Array.isArray(bebanGuruRes)
+      ? bebanGuruRes
+      : [];
+    if (!list.length) return null;
+    return list.find((b: any) =>
+      (guruId && b.id === guruId) ||
+      (guruNama && b.nama_guru?.toLowerCase().trim() === guruNama.toLowerCase().trim())
+    );
+  }, [bebanGuruRes, guruId, guruNama]);
+
+  // Query Rekap Kehadiran Guru Bulan Berjalan (Hadir, Terlambat, Dinas Luar, Izin)
+  const { data: rekapGuruRes, isLoading: loadingRekap } = useQuery({
+    queryKey: ['attendance-rekap-guru-me-bulanan'],
+    queryFn: () => getRekapBulananGuruMe().catch(() => ({ success: true, data: null })),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const rekapStats = rekapGuruRes?.data?.statistik || {
+    HADIR: 0,
+    TERLAMBAT: 0,
+    IZIN: 0,
+    SAKIT: 0,
+    ALPA: 0,
+    DISPEN: 0,
+  };
 
   // 1. Kalkulasi Jam Mengajar Hari Ini
   const totalJp = timelineItems.length;
@@ -102,9 +142,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       alpa,
     };
   }, [isWaliKelas, presenceList]);
-
-  // Ajukan Izin Modal State
-  const [showIzinModal, setShowIzinModal] = React.useState(false);
 
   return (
     <motion.div
@@ -243,9 +280,17 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
 
       {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET - PRIORITAS MONITORING */}
       <BebanMengajarWidget
-        currentJp={28}
-        targetJp={24}
+        currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+        kbmJp={teacherBeban?.current_jp ?? 0}
+        ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
+        targetJp={teacherBeban?.max_jp ?? 24}
         teacherName={guruNama}
+        positions={teacherBeban?.positions || []}
+        hadirBulanIni={rekapStats.HADIR || 0}
+        terlambatBulanIni={rekapStats.TERLAMBAT || 0}
+        dinasLuarBulanIni={rekapStats.DISPEN || 0}
+        izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
+        isLoading={loadingBeban || loadingRekap}
         onOpenAjukanIzin={() => setShowIzinModal(true)}
       />
 

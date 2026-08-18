@@ -30,6 +30,38 @@ export const getRekapKelasBulanan = async (kelasId: string, bulan?: string) => {
   return requestWithFallback<RekapKelasBulananResponse>('get', `/attendance/rekap/kelas/${kelasId}/bulanan`, { params });
 };
 
+export interface RekapBulananGuruMeResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    nama_guru: string;
+    bulan: string;
+    statistik: {
+      HADIR: number;
+      TERLAMBAT: number;
+      IZIN: number;
+      SAKIT: number;
+      ALPA: number;
+      DISPEN?: number;
+    };
+    total_poin?: number;
+    persentase_kehadiran?: number;
+    detail?: Array<{
+      tanggal: string;
+      status: string;
+      count?: number;
+    }>;
+  };
+}
+
+export const getRekapBulananGuruMe = async (bulan?: string) => {
+  const currentMonth = bulan || new Date().toISOString().slice(0, 7);
+  return requestWithFallback<RekapBulananGuruMeResponse>('get', '/attendance/rekap/guru/me/bulanan', {
+    params: { bulan: currentMonth },
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+};
+
 export interface RekapHarianGuruResponse {
   nama_guru: string;
   mapel: string;
