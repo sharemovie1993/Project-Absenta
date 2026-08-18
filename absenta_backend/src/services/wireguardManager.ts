@@ -127,6 +127,10 @@ export class WireguardManager {
     if (/\[Peer\]/i.test(hardenedConfig) && !/PersistentKeepalive/i.test(hardenedConfig)) {
       hardenedConfig = hardenedConfig.replace(/(\[Peer\][\s\S]*?)(?=\n\[|\s*$)/gi, '$1\nPersistentKeepalive = 25\n');
     }
+    // Mencegah error "RTNETLINK answers: File exists" saat multi-tunnel aktif di Linux
+    if (!this.isWindows() && !/Table\s*=/i.test(hardenedConfig)) {
+      hardenedConfig = hardenedConfig.replace(/\[Interface\]/i, '[Interface]\nTable = off\nPostUp = ip -4 route replace 10.0.0.1/32 dev %i 2>/dev/null || true');
+    }
 
     fs.writeFileSync(confPath, hardenedConfig, { encoding: 'utf8', mode: 0o600 });
     if (!this.isWindows()) {
