@@ -158,27 +158,29 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     if (onSelectSession) {
       onSelectSession(item);
+    } else if (mode === 'GURU' && isReadyToOpen && !isLive && !isFinished && !isOverdue && onOpenPhotoModal) {
+      onOpenPhotoModal(item);
     } else if (onToggleExpand) {
       onToggleExpand();
     }
   };
 
-  // High-contrast border accent & container styling
-  const cardAccentBorder = isLive
-    ? "border-l-4 border-l-emerald-500 hover:border-emerald-400"
+  // Distinct Color Blocking & Container styling per status
+  const cardColorBlockStyle = isLive
+    ? "border-l-4 border-l-emerald-500 border-emerald-500/40 dark:border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white dark:to-slate-900 shadow-md shadow-emerald-500/10"
     : isReadyToOpen
-    ? "border-l-4 border-l-amber-500 hover:border-amber-400"
+    ? "border-l-4 border-l-amber-500 border-amber-500/50 dark:border-amber-500/40 bg-gradient-to-br from-amber-500/12 via-amber-500/5 to-white dark:to-slate-900 shadow-md shadow-amber-500/10"
     : isOverdue
-    ? "border-l-4 border-l-rose-500 hover:border-rose-400"
+    ? "border-l-4 border-l-rose-400 border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 opacity-90"
     : isFinished
-    ? "border-l-4 border-l-slate-400 hover:border-slate-500"
-    : "border-l-4 border-l-blue-500 hover:border-blue-400";
+    ? "border-l-4 border-l-slate-400 border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/70"
+    : "border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
 
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-all overflow-hidden select-none group/card",
-        cardAccentBorder,
+        "rounded-2xl border shadow-xs hover:shadow-md transition-all overflow-hidden select-none group/card",
+        cardColorBlockStyle,
         className
       )}
     >
@@ -186,42 +188,42 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       <div 
         onClick={handleClick}
         className={cn(
-          "p-4 sm:p-5 flex flex-col gap-2.5 transition-colors cursor-pointer",
-          onToggleExpand || onSelectSession ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/50" : ""
+          "p-3 sm:p-4 flex flex-col gap-1.5 sm:gap-2.5 transition-colors cursor-pointer",
+          onToggleExpand || onSelectSession ? "hover:bg-black/5 dark:hover:bg-white/5" : ""
         )}
       >
         {/* ── ZONA 1: STATUS & TIME BAR ── */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
             {/* Session Status Badge - High Contrast */}
             {isLive ? (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs shadow-emerald-500/30 flex items-center gap-1 shrink-0 animate-pulse">
+              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs shadow-emerald-500/30 flex items-center gap-1 shrink-0 animate-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
                 LIVE
               </span>
             ) : isReadyToOpen ? (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0">
+              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                 SIAP DIMULAI
               </span>
             ) : isOverdue ? (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-1 shrink-0">
+              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                 TERLEWAT
               </span>
             ) : isFinished ? (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 shrink-0">
+              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 shrink-0">
                 SELESAI
               </span>
             ) : (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
+              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
                 MENDATANG
               </span>
             )}
 
             {/* Teacher Status Badge - High Contrast */}
             <span className={cn(
-              "px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border flex items-center gap-1 shrink-0",
+              "px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border flex items-center gap-1 shrink-0",
               teacherMeta.key === 'HADIR' ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700" :
               teacherMeta.key === 'TERLAMBAT' ? "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700" :
               teacherMeta.key === 'IZIN' ? "bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700" :
@@ -236,17 +238,17 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
             {/* Slot Jam ke-X Badge */}
             {jamLabel && (
-              <span className="px-2 py-0.5 rounded-md text-xs font-black bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider font-mono flex items-center gap-1 shrink-0">
-                <Layers size={11} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="px-1.5 py-0.5 rounded-md text-[10px] sm:text-xs font-black bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider font-mono flex items-center gap-1 shrink-0">
+                <Layers size={10} className="text-indigo-600 dark:text-indigo-400" />
                 <span>{jamLabel}</span>
               </span>
             )}
 
             {/* Clock Time Range */}
             {jamMulai && (
-              <span className="text-xs font-mono font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1 shrink-0">
-                <Clock size={12} className="text-slate-500 dark:text-slate-400" />
-                <span>{jamMulai}{jamSelesai ? ` - ${jamSelesai} WIB` : ' WIB'}</span>
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1 shrink-0">
+                <Clock size={11} className="text-slate-400" />
+                <span>{jamMulai}{jamSelesai ? ` - ${jamSelesai}` : ''} WIB</span>
               </span>
             )}
 
@@ -260,7 +262,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           </div>
 
           {/* Right Header: Presensi Count or Test Alert */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
             {mode === 'GURU' && onTestAlert && (
               <button
                 type="button"
@@ -269,42 +271,42 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   onTestAlert(item);
                 }}
                 title="Uji coba alarm & notifikasi untuk sesi KBM ini"
-                className="px-2.5 py-1 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-slate-700 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                className="w-7 h-7 sm:w-auto sm:px-2.5 sm:py-1 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
               >
                 <Volume2 size={12} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="hidden md:inline">Uji Alarm Sesi</span>
+                <span className="hidden md:inline">Uji Alarm</span>
               </button>
             )}
 
             {/* Expand / Collapse Icon */}
             {onToggleExpand && (
-              <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover/card:text-slate-900 dark:group-hover/card:text-white group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700 transition-colors">
-                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover/card:text-slate-900 dark:group-hover/card:text-white group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700 transition-colors shrink-0">
+                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </div>
             )}
           </div>
         </div>
 
         {/* ── ZONA 2: CORE SUBJECT, CLASS, & TEACHER (NAMA GURU DI ATAS) ── */}
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+        <div className="space-y-0.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             {!hideKelas && kelasNama && kelasNama !== '-' && (
-              <span className="px-2.5 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
+              <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
                 {kelasNama}
               </span>
             )}
-            <h4 className="font-black text-slate-900 dark:text-white text-sm sm:text-base leading-snug tracking-tight truncate">
+            <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight tracking-tight truncate">
               {mapelNama}
             </h4>
           </div>
 
           {/* Nama Guru diletakkan di ATAS (untuk Siswa, Petugas, & Monitoring) */}
           {mode !== 'GURU' && (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 pt-0.5">
-              <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center text-[9px] font-black shrink-0">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 pt-0.5 min-w-0">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center text-[8px] sm:text-[9px] font-black shrink-0">
                 {guruNama.charAt(0) || 'G'}
               </div>
-              <span className="text-slate-400 dark:text-slate-500 font-medium">Guru:</span>
+              <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0">Guru:</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{guruNama}</span>
             </div>
           )}

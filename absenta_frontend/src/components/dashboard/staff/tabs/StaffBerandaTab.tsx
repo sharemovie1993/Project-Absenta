@@ -7,6 +7,8 @@ import { kesiswaanApi } from '../../../../api/kesiswaan.api';
 import { piketApi } from '../../../../api/piket.api';
 import { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
+import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
+import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
 
 interface StaffBerandaTabProps {
   guruId?: string;
@@ -101,6 +103,9 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
     };
   }, [isWaliKelas, presenceList]);
 
+  // Ajukan Izin Modal State
+  const [showIzinModal, setShowIzinModal] = React.useState(false);
+
   return (
     <motion.div
       key="tab-ringkasan-real"
@@ -155,7 +160,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         </div>
       </div>
 
-      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) */}
+      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - PRIORITAS 1 UTAMA */}
       <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {activeKbm ? (
           <>
@@ -230,10 +235,25 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         )}
       </div>
 
-      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU YG LOGIN) ──────────── */}
+      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU YG LOGIN) - PRIORITAS 2 UTAMA ──────────── */}
       <StaffWeeklyScheduleWidget
         guruId={guruId}
         guruNama={guruNama}
+      />
+
+      {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET - PRIORITAS MONITORING */}
+      <BebanMengajarWidget
+        currentJp={28}
+        targetJp={24}
+        teacherName={guruNama}
+        onOpenAjukanIzin={() => setShowIzinModal(true)}
+      />
+
+      {/* MODAL PENGAJUAN IZIN / DINAS */}
+      <PengajuanIzinGuruModal
+        isOpen={showIzinModal}
+        onClose={() => setShowIzinModal(false)}
+        teacherName={guruNama}
       />
     </motion.div>
   );

@@ -23,6 +23,9 @@ import { Button } from '../../../ui';
 import { cn } from '../../../../lib/utils';
 import { getTeacherStatusMeta, getSessionStatusMeta } from '../../../../utils/kbm-normalizer';
 import { UniversalKbmCard } from '../../../dashboard/shared/kbm/UniversalKbmCard';
+import { RekapJurnalPanel } from '../kbm/RekapJurnalPanel';
+import { PerangkatAjarPanel } from '../kbm/PerangkatAjarPanel';
+import { JadwalInvalPanel } from '../kbm/JadwalInvalPanel';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
   playSessionAlarmSound, 
@@ -303,6 +306,9 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     }
   };
 
+  // Internal Sub-tab State (Hanya 3 Sub-tab: Agenda & Jurnal, Perangkat Ajar, Inval)
+  const [activeKbmSubTab, setActiveKbmSubTab] = useState<'agenda' | 'perangkat-ajar' | 'inval'>('agenda');
+
   return (
     <motion.div
       key="tab-kbm-absen-rebuilt"
@@ -312,68 +318,129 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-5 sm:space-y-6"
     >
-      {/* 1. TOP STRIP: GURU GATE CHECK-IN TRACKING */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className={cn(
-            "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 font-extrabold text-xs shadow-inner",
-            trackingData?.status === 'HADIR' 
-              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" 
-              : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-          )}>
-            <LogIn size={20} />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-              Tap Masuk Gerbang Guru Hari Ini
-            </span>
-            <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-              {guruNama || trackingData?.nama_guru || 'Pengajar'}
-            </h4>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-          {trackingData?.status === 'HADIR' ? (
-            <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-              <CheckCircle2 size={13} />
-              <span>Tap Gerbang {trackingData?.kegiatan?.[0]?.waktu || 'Tercatat'}</span>
-            </span>
-          ) : (
-            <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
-              <Clock size={13} />
-              <span>Belum Tap Gerbang Hari Ini</span>
-            </span>
+      {/* 1. SUB-TAB INTERNAL PILL BAR - COLOR BLOCKED */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-200/80 dark:bg-slate-800/90 w-fit overflow-x-auto max-w-full shadow-inner">
+        <button
+          type="button"
+          onClick={() => setActiveKbmSubTab('agenda')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            activeKbmSubTab === 'agenda'
+              ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           )}
-        </div>
+        >
+          <BookOpen size={14} />
+          <span>Agenda &amp; Jurnal KBM</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveKbmSubTab('perangkat-ajar')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            activeKbmSubTab === 'perangkat-ajar'
+              ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+          )}
+        >
+          <Layers size={14} />
+          <span>Perangkat Ajar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveKbmSubTab('inval')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            activeKbmSubTab === 'inval'
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/30"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+          )}
+        >
+          <Users size={14} />
+          <span>Jadwal Inval</span>
+        </button>
       </div>
+
+      {activeKbmSubTab === 'perangkat-ajar' ? (
+        <PerangkatAjarPanel />
+      ) : activeKbmSubTab === 'inval' ? (
+        <JadwalInvalPanel />
+      ) : (
+        <>
+          {/* 1. TOP STRIP: GURU GATE CHECK-IN TRACKING - COLOR BLOCK TINT */}
+          <div className={cn(
+            "p-3.5 sm:p-4 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all",
+            trackingData?.status === 'HADIR'
+              ? "bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-white dark:to-slate-900 border-emerald-500/30 dark:border-emerald-500/40"
+              : "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-white dark:to-slate-900 border-amber-500/30 dark:border-amber-500/40"
+          )}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs shadow-sm",
+                trackingData?.status === 'HADIR' 
+                  ? "bg-emerald-500 text-white shadow-emerald-500/30" 
+                  : "bg-amber-500 text-slate-950 shadow-amber-500/30 animate-pulse"
+              )}>
+                <LogIn size={18} />
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Presensi Gerbang Sekolah Hari Ini
+                </span>
+                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                  {guruNama || trackingData?.nama_guru || 'Pengajar'}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+              {trackingData?.status === 'HADIR' ? (
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
+                  <CheckCircle2 size={13} className="text-emerald-500" />
+                  <span>Tap Gerbang {trackingData?.kegiatan?.[0]?.waktu || 'Tercatat'}</span>
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shadow-xs">
+                  <Clock size={13} className="text-amber-600 dark:text-amber-400" />
+                  <span>Belum Tap Gerbang Hari Ini</span>
+                </span>
+              )}
+            </div>
+          </div>
 
       {/* 2. MAIN ACCORDION SECTION: DAFTAR JADWAL KBM HARI INI */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1 flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <BookOpen className="text-blue-500" size={18} />
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              Jadwal &amp; Sesi KBM Mengajar ({timelineItems.length} Sesi)
+            <div className="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <BookOpen size={14} />
+            </div>
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <span>Jadwal &amp; Sesi KBM Mengajar</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                {timelineItems.length} Sesi
+              </span>
             </h3>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleTestAlertSound}
               type="button"
               title="Uji coba suara alarm & aktifkan notifikasi"
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs"
             >
               <Volume2 size={13} className="text-emerald-400" />
-              <span>Tes Alarm &amp; Notif</span>
+              <span>Tes Alarm</span>
             </button>
             {onRefreshTimeline && (
               <button
                 onClick={onRefreshTimeline}
                 disabled={isLoadingTimeline}
-                className="text-xs font-extrabold text-slate-500 hover:text-blue-500 flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer transition-colors border border-slate-200 dark:border-slate-700"
               >
-                <RefreshCw size={12} className={isLoadingTimeline ? "animate-spin" : ""} />
+                <RefreshCw size={11} className={isLoadingTimeline ? "animate-spin" : ""} />
                 <span>Refresh</span>
               </button>
             )}
@@ -402,13 +469,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               const isOverdue = item.is_overdue ?? item.status?.isOverdue ?? false;
               const isStartedByTeacher = Boolean(sesi?.foto_kegiatan || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA'));
 
+              const canExpand = Boolean(isStartedByTeacher || isFinished || isOverdue);
+
               return (
                 <UniversalKbmCard
                   key={item.id}
                   mode="GURU"
                   item={item}
-                  isExpanded={isExpanded}
-                  onToggleExpand={() => setExpandedScheduleId(isExpanded ? null : item.id)}
+                  isExpanded={canExpand && isExpanded}
+                  onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
                   onOpenPhotoModal={handleOpenPhotoModal}
                   onViewPhoto={(it) => {
                     const pUrl = it.session?.foto_kegiatan || it.foto_kegiatan || it.session?.foto_bukti_url || (it as any).AbsenGuru?.[0]?.foto_masuk;
@@ -425,110 +494,45 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                   onOpenJournalModal={() => handleOpenJournalModal({ id: sesi?.id || item.id })}
                   onCloseSession={(sId) => closeSessionMutation.mutate(sId)}
                   onTestAlert={handleTestAlertForSession}
-                  expandedContent={(
-                    <div className="space-y-5">
+                  expandedContent={canExpand ? (
+                    <div className="space-y-4">
                       {/* CASE 0: JADWAL KBM TELAH TERLEWAT (OVERDUE LOCK) */}
                       {isOverdue && !isFinished && (
-                        <div className="p-6 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-4">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
-                            <AlertCircle size={24} />
+                        <div className="p-4 sm:p-5 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
+                            <AlertCircle size={20} />
                           </div>
                           <div className="space-y-1 max-w-sm mx-auto">
-                            <h5 className="text-sm font-extrabold text-white">
-                              Sesi KBM Telah Terlewat & Terkunci
+                            <h5 className="text-xs sm:text-sm font-extrabold text-white">
+                              Sesi KBM Telah Terlewat &amp; Terkunci
                             </h5>
-                            <p className="text-xs text-slate-400">
-                              Sesi ini terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan batas waktu KBM telah berakhir. Aksi presensi dikunci secara otomatis. Silakan hubungi Meja Piket atau Tim Kurikulum jika memerlukan koreksi kehadiran.
+                            <p className="text-[11px] text-slate-400">
+                              Sesi terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan batas waktu telah berakhir. Hubungi Piket/Kurikulum jika memerlukan koreksi kehadiran.
                             </p>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold font-mono">
-                            <Clock size={13} className="text-rose-400" />
-                            Batas Waktu Telah Berakhir ({item.jam_selesai} WIB)
                           </div>
                         </div>
                       )}
 
-                      {/* CASE 1: GURU BELUM MULAI KBM (WAJIB FOTO) */}
-                      {!isOverdue && !isStartedByTeacher && !isFinished && (() => {
-                        const now = new Date();
-                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                        let isTimeEligible = true;
-                        let openTimeStr = '';
-
-                        if (item.jam_mulai && item.jam_mulai.includes(':')) {
-                          const [sH, sM] = item.jam_mulai.split(':').map(Number);
-                          const startMinutes = (sH || 0) * 60 + (sM || 0);
-                          const openMinutes = startMinutes - 15;
-                          const oH = Math.floor(openMinutes / 60);
-                          const oM = openMinutes % 60;
-                          openTimeStr = `${String(oH >= 0 ? oH : oH + 24).padStart(2, '0')}:${String(oM >= 0 ? oM : oM + 60).padStart(2, '0')}`;
-                          if (currentMinutes < openMinutes) {
-                            isTimeEligible = false;
-                          }
-                        }
-
-                        return (
-                          <div className={cn(
-                            "p-6 rounded-2xl border border-dashed text-center space-y-4",
-                            isTimeEligible ? "bg-slate-900/90 border-slate-800" : "bg-blue-950/20 border-blue-800/40"
-                          )}>
-                            <div className={cn(
-                              "w-12 h-12 rounded-2xl flex items-center justify-center mx-auto",
-                              isTimeEligible ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
-                            )}>
-                              <Camera size={24} />
-                            </div>
-                            <div className="space-y-1 max-w-sm mx-auto">
-                              <h5 className="text-sm font-extrabold text-white">
-                                {isTimeEligible ? "Sesi KBM Siap Dimulai" : "Sesi KBM Belum Masuk Jam Pelajaran"}
-                              </h5>
-                              <p className="text-xs text-slate-400">
-                                {isTimeEligible
-                                  ? "Silakan mulai sesi KBM dengan mengambil foto bukti kegiatan pembelajaran di kelas. Kehadiran Anda akan langsung otomatis tercatat."
-                                  : `Sesi ini terjadwal pukul ${item.jam_mulai} WIB. Presensi & pembukaan sesi baru dapat dilakukan mulai pukul ${openTimeStr} WIB (15 menit sebelum jam mulai).`}
-                              </p>
-                            </div>
-
-                            <Button
-                              type="button"
-                              onClick={() => handleOpenPhotoModal(item)}
-                              disabled={!isTimeEligible}
-                              className={cn(
-                                "h-11 px-6 rounded-2xl text-xs font-black border-none flex items-center justify-center gap-2 mx-auto transition-all",
-                                isTimeEligible
-                                  ? "bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
-                                  : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-60"
-                              )}
-                            >
-                              <Camera size={16} />
-                              <span>
-                                {isTimeEligible ? "Mulai KBM & Ambil Foto Bukti" : `Belum Dibuka (Buka Pukul ${openTimeStr} WIB)`}
-                              </span>
-                            </Button>
-                          </div>
-                        );
-                      })()}
-
-                      {/* CASE 2: SESI TELAH DIMULAI GURU ATAU SELESAI */}
+                      {/* CASE 2: SESI TELAH DIMULAI GURU ATAU SELESAI (DAFTAR PRESENSI SISWA) */}
                       {(isStartedByTeacher || isFinished || (isOverdue && hasSession)) && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {/* Header Detail Sesi */}
-                          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                             <div className="space-y-0.5">
                               <span className="text-[10px] font-mono font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                                 ID Sesi: {sesi?.id}
                               </span>
                               <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                Presensi Terpadu Siswa ({studentRecords.length || sesi?._summary?.total || 0} Siswa)
+                                Presensi Siswa ({studentRecords.length || sesi?._summary?.total || 0} Siswa)
                               </h5>
                             </div>
                           </div>
 
-                          {/* Daftar Presensi Siswa Component (Read-only if overdue or finished) */}
+                          {/* Daftar Presensi Siswa Component */}
                           {loadingPresensi ? (
-                            <div className="py-12 text-center space-y-2">
-                              <RefreshCw className="animate-spin text-emerald-400 mx-auto" size={24} />
-                              <p className="text-xs font-semibold text-slate-400">Memuat Daftar Presensi Siswa...</p>
+                            <div className="py-8 text-center space-y-2">
+                              <RefreshCw className="animate-spin text-emerald-400 mx-auto" size={20} />
+                              <p className="text-xs font-semibold text-slate-400">Memuat Presensi Siswa...</p>
                             </div>
                           ) : (
                             <SesiAttendanceList
@@ -545,13 +549,31 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                         </div>
                       )}
                     </div>
-                  )}
+                  ) : undefined}
                 />
               );
             })}
           </div>
         )}
       </div>
+
+      {/* ── SKAT / SECTION DIVIDER ── */}
+      <div className="relative py-2 sm:py-3">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-slate-50 dark:bg-slate-900/90 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 rounded-full border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-1.5">
+            <FileText size={12} className="text-blue-500" />
+            <span>Arsip &amp; Riwayat Jurnal Mengajar</span>
+          </span>
+        </div>
+      </div>
+
+      {/* ── REKAP JURNAL MENGAJAR PANEL (DI BAWAH JADWAL) ── */}
+      <RekapJurnalPanel />
+    </>
+  )}
 
       {/* MODAL 1: BUKA SESI FOTO MODAL */}
       {targetJadwal && (

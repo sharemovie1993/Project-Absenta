@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Upload, X, RefreshCw, AlertCircle, Sparkles, ShieldCheck } from 'lucide-react';
+import { Camera, X, RefreshCw, AlertCircle, Sparkles, ShieldCheck, SwitchCamera, Check } from 'lucide-react';
 import { Button } from '../../../ui';
+import { cn } from '../../../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { useWebRtcCamera } from '../../../../hooks/useWebRtcCamera';
+import { useCameraOrientation } from '../../../../hooks/useCameraOrientation';
 
 interface BukaSesiFotoModalProps {
   isOpen: boolean;
@@ -24,21 +26,21 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   guruNama,
   isLoading = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'camera' | 'upload'>('camera');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { angle, isLandscape, uiRotationStyle } = useCameraOrientation();
 
   const {
     videoRef,
     canvasRef,
     isCameraActive,
     cameraError,
+    currentFacingMode,
     startCamera,
     stopCamera,
+    switchCamera,
     capturePhoto,
-    applyStampToCanvas,
   } = useWebRtcCamera({
     facingMode: 'environment',
     idealWidth: 1280,
@@ -63,7 +65,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isOpen && activeTab === 'camera' && !capturedImage) {
+    if (isOpen && !capturedImage) {
       startCamera();
     } else {
       stopCamera();
@@ -71,16 +73,20 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
     return () => {
       stopCamera();
     };
-  }, [isOpen, activeTab, capturedImage, startCamera, stopCamera]);
+  }, [isOpen, capturedImage, startCamera, stopCamera]);
 
-  // Capture Live Camera Photo + Draw Stamp
+  // Capture Live Camera Photo with Gyro Orientation + Draw Stamp
   const handleCapturePhoto = () => {
-    const photo = capturePhoto({
-      kelasNama,
-      mapelNama,
-      guruNama,
-      badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
-    });
+    const photo = capturePhoto(
+      {
+        kelasNama,
+        mapelNama,
+        guruNama,
+        badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
+      },
+      0.88,
+      angle
+    );
 
     if (photo) {
       setCapturedImage(photo);
@@ -89,58 +95,14 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
     }
   };
 
-  // Upload File + Draw Stamp
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('File harus berupa gambar!');
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 8MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = canvasRef.current || document.createElement('canvas');
-          canvas.width = img.width || 1280;
-          canvas.height = img.height || 720;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            applyStampToCanvas(ctx, canvas.width, canvas.height, {
-              kelasNama,
-              mapelNama,
-              guruNama,
-              badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
-            });
-            const stampedUrl = canvas.toDataURL('image/jpeg', 0.88);
-            setCapturedImage(stampedUrl);
-          }
-        };
-        img.src = reader.result;
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleRetake = () => {
     setCapturedImage(null);
-    if (activeTab === 'camera') {
-      startCamera();
-    }
+    startCamera();
   };
 
   const handleConfirmSubmit = () => {
     if (!capturedImage) {
-      toast.error('Wajib melampirkan foto bukti KBM!');
+      toast.error('Wajib mengambil foto bukti KBM live di kelas!');
       return;
     }
     onConfirm(capturedImage);
@@ -156,218 +118,209 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl text-white overflow-hidden flex flex-col"
-        >
-          {/* Header */}
-          <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <Camera size={16} />
-                </div>
-                <h3 className="text-base font-extrabold text-white">Foto Bukti Pembukaan KBM</h3>
-              </div>
-              <p className="text-xs text-slate-400 font-medium">
-                {kelasNama || 'Kelas'} • {mapelNama || 'Mata Pelajaran'}
-              </p>
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-between overflow-hidden select-none">
+        {/* ── TOP / LEFT CONTROLS BAR (TOP IN PORTRAIT, LEFT SIDEBAR IN LANDSCAPE) ── */}
+        <div className="absolute top-0 inset-x-0 p-3 sm:p-5 landscape:top-0 landscape:bottom-0 landscape:left-0 landscape:right-auto landscape:w-18 landscape:flex-col landscape:p-3 landscape:justify-between flex items-center justify-between z-30 pointer-events-auto bg-gradient-to-b landscape:bg-gradient-to-r from-black/85 via-black/40 to-transparent">
+          {/* Close Button */}
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isLoading}
+            title="Tutup / Batalkan"
+            style={uiRotationStyle}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all active:scale-90 cursor-pointer shadow-lg"
+          >
+            <X size={18} />
+          </button>
+
+          {/* Center Class & Mapel Capsule */}
+          <div 
+            style={uiRotationStyle}
+            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white shadow-xl flex items-center gap-2 max-w-[200px] sm:max-w-md landscape:max-w-none"
+          >
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div className="min-w-0 text-center">
+              <p className="text-[11px] sm:text-xs font-black truncate">{kelasNama || 'Kelas'}</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-300 truncate">{mapelNama || 'Mata Pelajaran'}</p>
             </div>
-
-            <button
-              onClick={handleClose}
-              disabled={isLoading}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-            >
-              <X size={16} />
-            </button>
           </div>
 
-          {/* Body Content */}
-          <div className="p-5 space-y-4">
-            {!capturedImage ? (
-              <>
-                {/* Tab Switcher */}
-                <div className="p-1 rounded-xl bg-slate-950 border border-slate-800 grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('camera')}
-                    className={`py-2 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      activeTab === 'camera' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Camera size={14} />
-                    <span>Kamera Langsung</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('upload')}
-                    className={`py-2 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      activeTab === 'upload' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Upload size={14} />
-                    <span>Unggah Foto</span>
-                  </button>
-                </div>
+          {/* Switch Camera Button (Front/Back) */}
+          <button
+            type="button"
+            onClick={() => switchCamera()}
+            disabled={isLoading || Boolean(capturedImage)}
+            title={currentFacingMode === 'user' ? "Beralih ke Kamera Belakang (Kelas)" : "Beralih ke Kamera Depan (Selfie Bersama Kelas)"}
+            style={uiRotationStyle}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all active:scale-90 cursor-pointer shadow-lg disabled:opacity-40"
+          >
+            <SwitchCamera size={18} className={currentFacingMode === 'user' ? "text-emerald-400" : "text-white"} />
+          </button>
+        </div>
 
-                {/* View Container */}
-                {activeTab === 'camera' ? (
-                  <div className="relative rounded-2xl bg-black overflow-hidden aspect-video border border-slate-800 flex items-center justify-center">
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover"
-                    />
-                    <canvas ref={canvasRef} className="hidden" />
-
-                    {!isCameraActive && !cameraError && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/90 z-20">
-                        <RefreshCw className="animate-spin text-emerald-400" size={28} />
-                        <span className="text-xs font-semibold text-slate-400">Menghubungkan Kamera...</span>
-                      </div>
-                    )}
-
-                    {cameraError && (
-                      <div className="p-4 text-center space-y-3 bg-slate-950/95 inset-0 absolute flex flex-col items-center justify-center z-30">
-                        <AlertCircle className="text-rose-400 mx-auto" size={32} />
-                        <p className="text-xs font-semibold text-rose-300 max-w-xs">{cameraError}</p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            setActiveTab('upload');
-                          }}
-                          className="mt-1 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-md"
-                        >
-                          Gunakan Unggah File Sebagai Ganti
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* LIVE CAMERA OVERLAY: TRANSPARENT STAMP PREVIEW */}
-                    {isCameraActive && !cameraError && (
-                      <>
-                        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent border-t border-emerald-500/50 backdrop-blur-[2px] pointer-events-none flex flex-col justify-end text-left z-10 space-y-0.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1 drop-shadow-sm">
-                              <ShieldCheck size={12} />
-                              <span>✓ ABSENTA VERIFIED KBM STAMP</span>
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-300 font-mono drop-shadow-sm">
-                              {currentTime}
-                            </span>
-                          </div>
-                          <p className="text-xs font-black text-white truncate drop-shadow">
-                            {kelasNama || 'Kelas'} — {mapelNama || 'Mata Pelajaran'}
-                          </p>
-                          <p className="text-[11px] font-medium text-slate-200 truncate drop-shadow-sm">
-                            Pengajar: {guruNama || 'Guru'}
-                          </p>
-                        </div>
-
-                        {/* Capture Button floating above transparent live stamp overlay */}
-                        <div className="absolute bottom-16 inset-x-0 flex justify-center z-20">
-                          <button
-                            type="button"
-                            onClick={handleCapturePhoto}
-                            className="h-11 px-6 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/40 active:scale-95 transition-all cursor-pointer border border-emerald-300/40"
-                          >
-                            <Camera size={17} />
-                            <span>Tangkap Foto</span>
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-8 rounded-2xl bg-slate-950 border-2 border-dashed border-slate-800 hover:border-emerald-500/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer space-y-2 group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Upload size={22} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-extrabold text-white">Klik untuk memilih file foto</p>
-                      <p className="text-[11px] text-slate-400">Stamp Detail Sesi akan terpasang secara otomatis</p>
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </div>
+        {/* ── FULL SCREEN VIEWFINDER / PREVIEW ── */}
+        <div className="relative flex-1 w-full h-full bg-black overflow-hidden flex items-center justify-center">
+          {!capturedImage ? (
+            <>
+              {/* Full-bleed Video Stream (Mirrored on front selfie camera) */}
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                className={cn(
+                  "w-full h-full object-cover transition-transform duration-300",
+                  currentFacingMode === 'user' && "-scale-x-100"
                 )}
-              </>
-            ) : (
-              /* Preview Captured Photo with Stamp */
-              <div className="space-y-3">
-                <div className="relative rounded-2xl overflow-hidden aspect-video border border-emerald-500/50 shadow-md">
-                  <img
-                    src={capturedImage}
-                    alt="Bukti Foto KBM dengan Stamp"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md">
-                    <ShieldCheck size={13} />
-                    <span>Foto &amp; Stamp Terpasang</span>
+              />
+              <canvas ref={canvasRef} className="hidden" />
+
+              {/* Connecting State */}
+              {!isCameraActive && !cameraError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/95 z-20">
+                  <RefreshCw className="animate-spin text-emerald-400" size={36} />
+                  <span className="text-xs sm:text-sm font-bold text-slate-300 tracking-wide">Menghubungkan Kamera...</span>
+                </div>
+              )}
+
+              {/* Camera Error / Permission Blocked State */}
+              {cameraError && (
+                <div className="p-6 text-center space-y-4 bg-black/95 inset-0 absolute flex flex-col items-center justify-center z-30">
+                  <div className="w-16 h-16 rounded-3xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/30">
+                    <AlertCircle size={32} />
+                  </div>
+                  <div className="space-y-1.5 max-w-sm">
+                    <h5 className="text-sm sm:text-base font-black text-white">Akses Kamera Diperlukan</h5>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Presensi KBM wajib diambil secara live dari kamera kelas. Harap izinkan akses kamera pada peramban web browser Anda.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => startCamera()}
+                    className="h-11 px-6 text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-lg shadow-emerald-500/30 flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <RefreshCw size={15} />
+                    <span>Coba Akses Kamera Lagi</span>
+                  </Button>
+                </div>
+              )}
+
+              {/* Focus Reticle Guide */}
+              {isCameraActive && !cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-60 h-60 sm:w-80 sm:h-80 landscape:w-80 landscape:h-40 border-2 border-white/20 rounded-3xl relative transition-all duration-300">
+                    <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+                    <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleRetake}
-                  disabled={isLoading}
-                  className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <RefreshCw size={14} />
-                  <span>Foto Ulang / Ganti File</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              disabled={isLoading}
-              className="h-10 px-4 rounded-xl text-xs text-slate-400 border-slate-800 hover:text-white"
-            >
-              Batal
-            </Button>
-
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleConfirmSubmit}
-              disabled={!capturedImage || isLoading}
-              className="h-10 px-5 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-md shadow-emerald-500/20 flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin" />
-                  <span>Membuka Sesi...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>Buka Sesi KBM Sekarang</span>
-                </>
               )}
-            </Button>
-          </div>
-        </motion.div>
+
+              {/* LIVE CAMERA OVERLAY: TRANSPARENT STAMP PREVIEW (NEATLY POSITIONED AT BOTTOM EDGE IN LANDSCAPE) */}
+              {isCameraActive && !cameraError && (
+                <div className="absolute bottom-28 sm:bottom-32 landscape:bottom-2 landscape:left-20 landscape:right-24 p-3.5 sm:p-4 landscape:py-1.5 landscape:px-3.5 bg-gradient-to-t landscape:bg-black/60 landscape:rounded-xl landscape:border landscape:border-emerald-500/30 from-black/90 via-black/50 to-transparent border-t landscape:border-t-0 border-emerald-500/40 backdrop-blur-[2px] pointer-events-none flex flex-col justify-end text-left z-20">
+                  <div style={uiRotationStyle} className="space-y-0.5 origin-bottom-left transition-transform duration-300">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-[10px] sm:text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 drop-shadow-sm">
+                        <ShieldCheck size={13} />
+                        <span>✓ ABSENTA VERIFIED KBM STAMP</span>
+                      </span>
+                      <span className="text-[10px] sm:text-xs font-semibold text-slate-300 font-mono drop-shadow-sm">
+                        {currentTime}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm font-black text-white truncate drop-shadow">
+                      {kelasNama || 'Kelas'} — {mapelNama || 'Mata Pelajaran'}
+                    </p>
+                    <p className="text-[10px] sm:text-[11px] font-medium text-slate-200 truncate drop-shadow-sm">
+                      Pengajar: {guruNama || 'Guru'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* PREVIEW CAPTURED PHOTO WITH STAMP (FULL SCREEN) */
+            <div className="relative w-full h-full flex items-center justify-center bg-black">
+              <img
+                src={capturedImage}
+                alt="Bukti Foto KBM dengan Stamp"
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute top-16 sm:top-20 left-4 px-3.5 py-1.5 rounded-full bg-emerald-500 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xl">
+                <Check size={14} className="stroke-[3]" />
+                <span>Foto &amp; Stamp Terverifikasi</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── SHUTTER / ACTION BAR (BOTTOM IN PORTRAIT, RIGHT SIDEBAR IN LANDSCAPE) ── */}
+        <div className="absolute bottom-0 inset-x-0 p-4 sm:pb-8 landscape:bottom-0 landscape:top-0 landscape:right-0 landscape:left-auto landscape:w-22 landscape:flex-col landscape:p-3 flex items-center justify-around landscape:justify-center landscape:gap-4 z-30 pointer-events-auto bg-gradient-to-t landscape:bg-gradient-to-l from-black via-black/80 to-transparent">
+          {!capturedImage ? (
+            <div className="w-full max-w-sm landscape:w-auto landscape:max-w-none flex items-center justify-around landscape:flex-col landscape:gap-4">
+              {/* Left Placeholder (portrait only) */}
+              <div className="w-10 h-10 sm:w-12 sm:h-12 landscape:hidden" />
+
+              {/* Native Circular Shutter Button (Right thumb trigger in landscape!) */}
+              <button
+                type="button"
+                onClick={handleCapturePhoto}
+                disabled={!isCameraActive || Boolean(cameraError)}
+                title="Ambil Foto Bukti (Klik Shutter)"
+                className="w-18 h-18 sm:w-20 sm:h-20 landscape:w-14 landscape:h-14 rounded-full border-4 border-white/90 p-1 flex items-center justify-center hover:scale-105 active:scale-90 transition-all cursor-pointer shadow-2xl disabled:opacity-40 disabled:scale-100"
+              >
+                <div className="w-full h-full rounded-full bg-white hover:bg-emerald-300 active:bg-emerald-400 transition-colors shadow-inner" />
+              </button>
+
+              {/* Right: Switch Camera (portrait only, in landscape it is on left sidebar) */}
+              <button
+                type="button"
+                onClick={() => switchCamera()}
+                disabled={!isCameraActive || Boolean(cameraError)}
+                title="Ganti Kamera Depan/Belakang"
+                style={uiRotationStyle}
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-lg disabled:opacity-30 landscape:hidden"
+              >
+                <SwitchCamera size={18} />
+              </button>
+            </div>
+          ) : (
+            /* Review Actions Bar */
+            <div className="w-full max-w-md landscape:w-auto landscape:max-w-none flex items-center justify-center landscape:flex-col gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRetake}
+                disabled={isLoading}
+                className="h-11 sm:h-12 landscape:h-10 landscape:px-3 flex-1 rounded-2xl text-xs font-extrabold bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                <RefreshCw size={14} />
+                <span>Foto Ulang</span>
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isLoading}
+                className="h-11 sm:h-12 landscape:h-10 landscape:px-3 flex-[1.4] rounded-2xl text-xs sm:text-sm font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-xl shadow-emerald-500/40 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw size={15} className="animate-spin" />
+                    <span>Membuka Sesi...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={15} />
+                    <span>Buka Sesi KBM</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </AnimatePresence>
   );

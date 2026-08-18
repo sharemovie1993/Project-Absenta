@@ -1,5 +1,5 @@
 import React from 'react';
-import { MailCheck, HeartPulse, Scale, Trophy, ScrollText, Users } from 'lucide-react';
+import { MailCheck, HeartPulse, Scale, Trophy, ScrollText, Users, Printer, UserCheck } from 'lucide-react';
 
 interface TabNavProps {
   activeTab: string;
@@ -34,6 +34,18 @@ export const TabNav: React.FC<TabNavProps> = ({
       icon: HeartPulse,
       badge: atRiskCount > 0 ? `${atRiskCount} EWS` : null,
       badgeColor: 'bg-red-500 text-white'
+    },
+    {
+      id: 'rekap-cetak',
+      label: 'Cetak Rekap Bulanan',
+      icon: Printer,
+      badge: null
+    },
+    {
+      id: 'pembinaan',
+      label: 'Catatan Pembinaan',
+      icon: UserCheck,
+      badge: null
     },
     {
       id: 'discipline',
