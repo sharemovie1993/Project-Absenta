@@ -6,6 +6,32 @@ import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { LogService } from './utils/LogService';
 import { toLocalDate } from './utils/attendance/time';
 
+// Global Production & Development Auto-Recovery for Stale Chunk Deployments
+window.addEventListener('vite:preloadError', (event) => {
+  console.warn('[Absenta] 🔄 Stale chunk detected after new deployment. Auto-reloading page...', event);
+  const lastReload = sessionStorage.getItem('absenta_last_chunk_reload');
+  const now = Date.now();
+  if (!lastReload || now - Number(lastReload) > 10000) {
+    sessionStorage.setItem('absenta_last_chunk_reload', String(now));
+    window.location.reload();
+  }
+});
+
+// Catch unhandled dynamic import / MIME type mismatch errors and auto-recover
+window.addEventListener('error', (event) => {
+  const msg = event.error?.message || event.message || '';
+  const isChunkError = /Failed to fetch dynamically imported module|ChunkLoadError|Loading chunk|Expected a JavaScript-or-Wasm module script/i.test(msg);
+  if (isChunkError) {
+    console.warn('[Absenta] 🔄 Chunk import MIME/Network mismatch detected. Auto-recovering...', msg);
+    const lastReload = sessionStorage.getItem('absenta_last_chunk_reload');
+    const now = Date.now();
+    if (!lastReload || now - Number(lastReload) > 10000) {
+      sessionStorage.setItem('absenta_last_chunk_reload', String(now));
+      window.location.reload();
+    }
+  }
+});
+
 // Consolidated Development Diagnostics: Global runtime error listeners for blank page diagnostics
 if (import.meta.env.DEV) {
   const w = window as any;
