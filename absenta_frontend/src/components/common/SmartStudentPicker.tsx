@@ -162,6 +162,10 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
         list = results.map((item: any) => ({
           ...item.original_data,
           _type: item.type,
+          nisn: item.nisn || item.original_data?.nisn,
+          nis: item.nis || item.original_data?.nis,
+          nip: item.nip || item.original_data?.nip,
+          nik: item.nik || item.original_data?.nik,
           nama_siswa: item.type === 'siswa' ? item.name : undefined,
           nama_guru: item.type === 'guru' ? item.name : undefined,
         }));
@@ -172,7 +176,7 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
         const res = await guruApi.getAll({
           search: term,
           limit: 10,
-          search_fields: ['nip', 'nama_guru', 'id']
+          search_fields: ['nip', 'nik', 'nama_guru', 'id']
         } as any);
         list = res.data || [];
       } else {
@@ -216,7 +220,12 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (onEnter) onEnter(inputValue);
+      if (results.length > 0) {
+        e.preventDefault();
+        handleSelect(results[0]);
+      } else if (onEnter) {
+        onEnter(inputValue);
+      }
     }
   };
 
@@ -389,7 +398,9 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium">
-                      {((item as any)._type === 'guru' || mode === 'guru') ? (item.nip ? `NIP: ${item.nip}` : 'GURU') : `NIS: ${item.nis || 'N/A'}`}
+                      {((item as any)._type === 'guru' || mode === 'guru') 
+                        ? (item.nip ? `NIP: ${item.nip}` : (item as any).nik ? `NIK: ${(item as any).nik}` : 'GURU') 
+                        : (item.nisn ? `NISN: ${item.nisn}` : item.nis ? `NIS: ${item.nis}` : 'Siswa')}
                       {item.no_rfid && ` • RFID: ${item.no_rfid}`}
                     </p>
                   </div>
