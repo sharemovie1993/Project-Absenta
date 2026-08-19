@@ -50,6 +50,32 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
     };
   }, [hidToken, onHidTokenChange, onSubmit]);
 
+  // Always ensure input is focused on mount, window focus, or outside click
+  useEffect(() => {
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus({ preventScroll: true });
+      }
+    };
+
+    focusInput();
+
+    const onWindowFocus = () => focusInput();
+    const onDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && !['BUTTON', 'A', 'SELECT', 'TEXTAREA'].includes(target.tagName) && !target.closest('button') && !target.closest('a')) {
+        focusInput();
+      }
+    };
+
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('click', onDocumentClick);
+    return () => {
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('click', onDocumentClick);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
@@ -89,18 +115,13 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
                 }
               }
             }}
-            className={`w-full pl-11 md:pl-12 pr-28 py-3.5 md:py-4 text-base md:text-lg font-mono rounded-xl border-2 focus:ring-4 transition-all outline-none ${
+            className={`w-full pl-11 md:pl-12 pr-4 py-3.5 md:py-4 text-base md:text-lg font-mono rounded-xl border-2 focus:ring-4 transition-all outline-none ${
               isBypassMode
                 ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 bg-amber-50/30'
                 : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900'
             }`}
             placeholder="⚡ Tempelkan Kartu RFID atau Arahkan QR Code ke Scanner..."
           />
-          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
-            <span className="text-[11px] font-bold text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 bg-white dark:bg-slate-800 shadow-2xs">
-              Auto-Capture
-            </span>
-          </div>
         </div>
       </div>
       <p className="text-[11px] text-slate-400 font-medium">
