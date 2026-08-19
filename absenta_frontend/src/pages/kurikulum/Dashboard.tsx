@@ -68,26 +68,26 @@ export default function KurikulumDashboard() {
     return () => clearInterval(interval);
   }, [isTvMode]);
 
-  /* ── queries ── */
+  /* ── queries with optimized caching (Zero Network Contention) ── */
   const { data: semR, isLoading: lSem } = useQuery({
     queryKey: ['semester', 'active'], queryFn: semesterApi.getActive,
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
   });
   const { data: yearsR } = useQuery({
     queryKey: ['academic-years-dash'], queryFn: () => tahunPelajaranApi.getAll(),
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
   });
   const { data: guruR, isLoading: lGuru } = useQuery({
     queryKey: ['guru', 'all-dash'], queryFn: () => guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
   });
   const { data: kelasR, isLoading: lKelas } = useQuery({
     queryKey: ['kelas', 'all-dash'], queryFn: () => kelasApi.getAll({ limit: 500, is_active: true } as any),
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
   });
   const { data: mapelR, isLoading: lMapel } = useQuery({
     queryKey: ['mapel', 'all-dash'], queryFn: () => mapelApi.getAll({ limit: 500 }),
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const breadcrumbs = useMemo(() => [
@@ -117,18 +117,18 @@ export default function KurikulumDashboard() {
     queryKey: ['kurikulum', 'struktur-dash', resolvedTahunPelajaranId],
     queryFn: () => kurikulumApi.getStruktur({ tahun_pelajaran_id: resolvedTahunPelajaranId, limit: 500 }),
     enabled: !!resolvedTahunPelajaranId,
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: supR, isLoading: lSup } = useQuery({
     queryKey: ['kurikulum', 'supervisi-dash'], queryFn: () => kurikulumApi.getSupervisi({ limit: 200 }),
     enabled: hasSupervisiAccess,
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: jwR } = useQuery({
     queryKey: ['attendance', 'jadwal-kbm-dash', semester?.id],
     queryFn: () => getJadwalKBM({ semester_id: semester?.id }),
     enabled: !!semester?.id,
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: perangkatR, isLoading: lPerangkat } = useQuery({
     queryKey: ['kurikulum', 'perangkat-dash', semester?.tahun_pelajaran_id, semester?.id],
@@ -137,7 +137,7 @@ export default function KurikulumDashboard() {
       semester_id: semester?.id
     }),
     enabled: !!semester?.tahun_pelajaran_id && !!semester?.id,
-    refetchInterval: REFETCH, staleTime: 30_000,
+    staleTime: 5 * 60 * 1000,
   });
 
   React.useEffect(() => { if (strR) setLastRefresh(new Date()); }, [strR]);

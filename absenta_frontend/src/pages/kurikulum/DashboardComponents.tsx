@@ -418,7 +418,7 @@ export interface JadwalEntry {
 }
 
 export function detectConflicts(jadwalList: JadwalEntry[]): ConflictResult[] {
-  if (jadwalList.length === 0) return [];
+  if (!jadwalList || jadwalList.length === 0) return [];
 
   const foundConflicts: ConflictResult[] = [];
 
@@ -436,22 +436,39 @@ export function detectConflicts(jadwalList: JadwalEntry[]): ConflictResult[] {
     return aStart < bEnd && bStart < aEnd;
   };
 
-  for (let i = 0; i < jadwalList.length; i++) {
-    const a = jadwalList[i];
-    if (!a.guru_id || !a.hari || !a.jam_mulai || !a.jam_selesai) continue;
+  // Group by (hari + guru_id)
+  const teacherBuckets: Record<string, JadwalEntry[]> = {};
+  // Group by (hari + kelas_id)
+  const classBuckets: Record<string, JadwalEntry[]> = {};
 
-    for (let j = i + 1; j < jadwalList.length; j++) {
-      const b = jadwalList[j];
-      if (!b.guru_id || !b.hari || !b.jam_mulai || !b.jam_selesai) continue;
+  for (const j of jadwalList) {
+    if (!j.hari || !j.jam_mulai || !j.jam_selesai) continue;
+    if (j.guru_id) {
+      const key = `${j.hari}_${j.guru_id}`;
+      if (!teacherBuckets[key]) teacherBuckets[key] = [];
+      teacherBuckets[key].push(j);
+    }
+    if (j.kelas_id) {
+      const key = `${j.hari}_${j.kelas_id}`;
+      if (!classBuckets[key]) classBuckets[key] = [];
+      classBuckets[key].push(j);
+    }
+  }
 
-      if (a.hari === b.hari && a.guru_id === b.guru_id && a.id !== b.id) {
-        if (isOverlap(a.jam_mulai, a.jam_selesai, b.jam_mulai, b.jam_selesai)) {
+  // Fast check teacher overlaps
+  for (const list of Object.values(teacherBuckets)) {
+    if (list.length < 2) continue;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        if (a.id !== b.id && isOverlap(a.jam_mulai!, a.jam_selesai!, b.jam_mulai!, b.jam_selesai!)) {
           const teacherName = a.Guru?.User?.full_name || 'Guru';
           const classA = a.Kelas?.nama_kelas || 'Kelas A';
           const classB = b.Kelas?.nama_kelas || 'Kelas B';
           foundConflicts.push({
             type: 'GURU',
-            hari: a.hari,
+            hari: a.hari!,
             waktu: `${a.jam_mulai}-${a.jam_selesai} vs ${b.jam_mulai}-${b.jam_selesai}`,
             target: teacherName,
             message: `${teacherName} bentrok mengajar di kelas ${classA} dan ${classB} pada hari ${a.hari} jam ${a.jam_mulai} - ${a.jam_selesai}.`
@@ -461,22 +478,20 @@ export function detectConflicts(jadwalList: JadwalEntry[]): ConflictResult[] {
     }
   }
 
-  for (let i = 0; i < jadwalList.length; i++) {
-    const a = jadwalList[i];
-    if (!a.kelas_id || !a.hari || !a.jam_mulai || !a.jam_selesai) continue;
-
-    for (let j = i + 1; j < jadwalList.length; j++) {
-      const b = jadwalList[j];
-      if (!b.kelas_id || !b.hari || !b.jam_mulai || !b.jam_selesai) continue;
-
-      if (a.hari === b.hari && a.kelas_id === b.kelas_id && a.id !== b.id) {
-        if (isOverlap(a.jam_mulai, a.jam_selesai, b.jam_mulai, b.jam_selesai)) {
+  // Fast check class overlaps
+  for (const list of Object.values(classBuckets)) {
+    if (list.length < 2) continue;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        if (a.id !== b.id && isOverlap(a.jam_mulai!, a.jam_selesai!, b.jam_mulai!, b.jam_selesai!)) {
           const className = a.Kelas?.nama_kelas || 'Kelas';
           const mapelA = a.Mapel?.nama_mapel || 'Mapel A';
           const mapelB = b.Mapel?.nama_mapel || 'Mapel B';
           foundConflicts.push({
             type: 'KELAS',
-            hari: a.hari,
+            hari: a.hari!,
             waktu: `${a.jam_mulai}-${a.jam_selesai} vs ${b.jam_mulai}-${b.jam_selesai}`,
             target: className,
             message: `Kelas ${className} bentrok antara pelajaran ${mapelA} dan ${mapelB} pada hari ${a.hari} jam ${a.jam_mulai} - ${a.jam_selesai}.`
