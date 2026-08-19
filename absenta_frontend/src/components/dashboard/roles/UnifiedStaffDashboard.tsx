@@ -81,6 +81,36 @@ const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
 const AdminOverviewDashboard = React.lazy(() => import('@/pages/dashboard/DashboardOverview'));
 // Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
 const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
+// Pending Siswa Module — dirender di tab Input Manual untuk Petugas Gerbang & Piket
+const PendingSiswaModule = React.lazy(() => import('@/pages/attendance/ops/components/PendingSiswaModule').then(m => ({ default: m.PendingSiswaModule })));
+
+import { useKelasOptions } from '../../../hooks/useKelasOptions';
+import { useGerbangAttendanceData } from '../../../hooks/attendance/useGerbangAttendanceData';
+
+const StaffManualPresensiTab: React.FC<{ tenantId?: string }> = React.memo(({ tenantId }) => {
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const { options: kelasOptions = [] } = useKelasOptions();
+  const { notPresent = [], notPresentLoading, miniStats = { masuk: 0, keluar: 0 }, refreshData } = useGerbangAttendanceData({
+    tenantId,
+    selectedKelasId,
+  });
+
+  return (
+    <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+      <PendingSiswaModule
+        notPresent={notPresent}
+        notPresentLoading={notPresentLoading}
+        miniStats={miniStats}
+        selectedKelasId={selectedKelasId}
+        setSelectedKelasId={setSelectedKelasId}
+        kelasOptions={kelasOptions}
+        isPetugasSiswa={true}
+        socketConnected={true}
+        refreshData={refreshData}
+      />
+    </Suspense>
+  );
+});
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -545,12 +575,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
-    // 1. Beranda Guru / Staf
+    // 1. Beranda Guru / Scan Gerbang
     list.push({ 
       id: 'ringkasan', 
-      label: isPureGerbangStaff ? 'Beranda Petugas' : 'Beranda Guru', 
-      icon: UserCheck 
+      label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
+      icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
     });
+
+    // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
+    if (hasGerbangDuty || isGerbang || isPureGerbangStaff) {
+      list.push({
+        id: 'manual_presensi',
+        label: 'Input Manual',
+        icon: ClipboardCheck,
+        badge: 'SISWA'
+      });
+    }
 
     // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif)
     if (!isPureGerbangStaff && (!isTuStaff || isKurikulum || isAdminRole)) {
@@ -597,18 +637,18 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
     }
 
-    // 11. Piket & Gerbang (untuk Petugas Gerbang: Pos Keamanan Gerbang, Guru Piket: Piket Harian)
+    // 11. Piket & Gerbang (untuk Petugas Gerbang: Pos Keamanan, Guru Piket: Piket Harian)
     if (hasGerbangDuty || isGerbang || isKurikulum || isKesiswaan || isAdminRole || isKepsek) {
       list.push({ 
         id: 'kelola', 
-        label: isPureGerbangStaff ? 'Pos Keamanan Gerbang' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
+        label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
         icon: isPureGerbangStaff ? ShieldCheck : ClipboardList,
         badge: isPureGerbangStaff ? 'IZIN' : hasGerbangDuty ? 'SCAN' : undefined 
       });
     }
 
     // 12. Profil Guru / Staf
-    list.push({ id: 'profil', label: isPureGerbangStaff ? 'Profil Petugas' : 'Profil Guru', icon: User });
+    list.push({ id: 'profil', label: isPureGerbangStaff ? 'Profil' : 'Profil Guru', icon: User });
 
     return list;
   }, [
@@ -962,6 +1002,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
             <AcademicDashboard />
           </Suspense>
+        )}
+
+        {/* 🔍 TAB MANUAL PRESENSI: INPUT SISWA LUPA KARTU PER KELAS */}
+        {activeTab === 'manual_presensi' && (
+          <StaffManualPresensiTab tenantId={tenantId} />
         )}
 
         {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}

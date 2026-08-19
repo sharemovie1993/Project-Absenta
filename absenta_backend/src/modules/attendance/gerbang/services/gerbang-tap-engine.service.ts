@@ -47,41 +47,100 @@ export class GerbangTapEngineService {
         } as any, processingInfo);
       }
 
-      // 1. Cari Siswa
-      let siswa: any = await gerbangDb.siswa.findFirst({
-        where: {
-          tenant_id: tenantId,
-          OR: [
-            { id: rawId },
-            { nisn: rawId },
-            { nis: rawId },
-            { no_rfid: rawId },
-            ...(input.rfid ? [{ no_rfid: String(input.rfid).trim() }] : []),
-            ...(cleanId && cleanId !== rawId ? [{ nisn: cleanId }, { nis: cleanId }, { no_rfid: cleanId }] : [])
-          ]
-        },
-        include: { Kelas: { select: { nama_kelas: true } } },
-      } as any);
+      // ── Smart Pattern Dispatcher (Lean & Direct Index Seek) ────────────────
+      const isDigitsOnly = /^\d+$/.test(rawId);
+      const len = rawId.length;
 
-      let isGuru = false;
+      let siswa: any = null;
       let guru: any = null;
+      let isGuru = false;
 
-      // 2. Jika bukan Siswa, cari Guru / Pegawai Tendik
-      if (!siswa) {
+      // Kasus 1: Pola NIP 18 Digit (Guru PNS / PPPK)
+      if (isDigitsOnly && len === 18) {
         guru = await gerbangDb.guru.findFirst({
+          where: { tenant_id: tenantId, nip: rawId }
+        });
+        if (guru) isGuru = true;
+      }
+      // Kasus 2: Pola NIK 16 Digit (Guru / Tendik / Honorer)
+      else if (isDigitsOnly && len === 16) {
+        guru = await gerbangDb.guru.findFirst({
+          where: { tenant_id: tenantId, nik: rawId }
+        });
+        if (guru) isGuru = true;
+      }
+      // Kasus 3: Pola UUID 36 Karakter (Pencarian Manual Nama / Smart Picker ID)
+      else if (rawId.includes('-') && len >= 32) {
+        siswa = await gerbangDb.siswa.findFirst({
+          where: { tenant_id: tenantId, id: rawId },
+          include: { Kelas: { select: { nama_kelas: true } } }
+        });
+        if (!siswa) {
+          guru = await gerbangDb.guru.findFirst({
+            where: { tenant_id: tenantId, id: rawId }
+          });
+          if (guru) isGuru = true;
+        }
+      }
+      // Kasus 4: Pola NISN 10 Digit / Kartu RFID Standar
+      else if (isDigitsOnly && len === 10) {
+        siswa = await gerbangDb.siswa.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nisn: rawId },
+              { no_rfid: rawId },
+              ...(cleanId && cleanId !== rawId ? [{ nisn: cleanId }, { no_rfid: cleanId }] : [])
+            ]
+          },
+          include: { Kelas: { select: { nama_kelas: true } } }
+        });
+
+        if (!siswa) {
+          guru = await gerbangDb.guru.findFirst({
+            where: {
+              tenant_id: tenantId,
+              OR: [
+                { no_rfid: rawId },
+                ...(cleanId && cleanId !== rawId ? [{ no_rfid: cleanId }] : [])
+              ]
+            }
+          });
+          if (guru) isGuru = true;
+        }
+      }
+      // Kasus 5: Fallback Umum (RFID Hex / NIS Lokal / ID Lainnya)
+      else {
+        siswa = await gerbangDb.siswa.findFirst({
           where: {
             tenant_id: tenantId,
             OR: [
               { id: rawId },
-              { nip: rawId },
               { no_rfid: rawId },
+              { nisn: rawId },
+              { nis: rawId },
               ...(input.rfid ? [{ no_rfid: String(input.rfid).trim() }] : []),
-              ...(cleanId && cleanId !== rawId ? [{ nip: cleanId }, { no_rfid: cleanId }] : [])
+              ...(cleanId && cleanId !== rawId ? [{ no_rfid: cleanId }, { nisn: cleanId }, { nis: cleanId }] : [])
             ]
-          }
+          },
+          include: { Kelas: { select: { nama_kelas: true } } }
         });
-        if (guru) {
-          isGuru = true;
+
+        if (!siswa) {
+          guru = await gerbangDb.guru.findFirst({
+            where: {
+              tenant_id: tenantId,
+              OR: [
+                { id: rawId },
+                { no_rfid: rawId },
+                { nip: rawId },
+                { nik: rawId },
+                ...(input.rfid ? [{ no_rfid: String(input.rfid).trim() }] : []),
+                ...(cleanId && cleanId !== rawId ? [{ no_rfid: cleanId }, { nip: cleanId }] : [])
+              ]
+            }
+          });
+          if (guru) isGuru = true;
         }
       }
 

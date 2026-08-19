@@ -1,10 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
   submitTap,
-  verifyFaceTap,
-  enrollFaceTemplate,
   bypassLate,
   type TapPayload,
 } from '../../../../api/attendanceGerbang.api';
@@ -15,14 +13,11 @@ import { useDebounce } from '../../../../hooks/useDebounce';
 import { AttendanceErrorBoundary } from '../../../../components/attendance/AttendanceErrorBoundary';
 import PremiumFeatureGate from '../../../../components/auth/PremiumFeatureGate';
 import { useAudioFeedback } from '../../../../hooks/useAudioFeedback';
-import { useScanner } from '../../../../hooks/useScanner';
 import { useGateLogic } from '../../../../hooks/useGateLogic';
 import { PageLoader, Card } from '../../../../components/ui';
 
 import { GerbangStatusHero } from '../../../../components/attendance/gerbang/GerbangStatusHero';
 import { GerbangKeyRfidInput } from '../../../../components/attendance/gerbang/GerbangKeyRfidInput';
-import { GerbangQrInput } from '../../../../components/attendance/gerbang/GerbangQrInput';
-import { GerbangFaceInput } from '../../../../components/attendance/gerbang/GerbangFaceInput';
 
 import { type Student } from '../../../../components/common/SmartStudentPicker';
 
@@ -67,14 +62,13 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const inputDirection = direction || internalDirection;
   
   const [isBypassMode, setIsBypassMode] = useState(false);
-  const [inputTab, setInputTab] = useState<'HID' | 'QR' | 'FACE'>('HID');
 
-  // 2. HID / RFID Logic
+  // HID / RFID / 2D Barcode Scanner Input State
   const [hidToken, setHidToken] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const debouncedHidToken = useDebounce(hidToken, 300);
 
-  // Search candidates Query
+  // Search candidates Query (for inline manual fallback)
   const candidatesQuery = useQuery({
     queryKey: ['student-candidates-search', debouncedHidToken],
     queryFn: async () => {
@@ -102,17 +96,13 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
     setShowDropdown(searchCandidates.length > 0);
   }, [searchCandidates]);
 
-  // 3. Scanner / QR Logic
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
-  const [cameraDeviceId, setCameraDeviceId] = useState<string | null>(null);
   const isProcessingRef = useRef<boolean>(false);
   const lastSubmittedTokenRef = useRef<string>('');
   const lastSubmittedTimeRef = useRef<number>(0);
   
   const [tapHistory, setTapHistory] = useState<{ id: string; type: 'success' | 'error'; message: string; time: string }[]>([]);
 
-  // Helper to focus input field on direction change
+  // Helper to focus input field
   const focusScanInput = useCallback(() => {
     setTimeout(() => {
       const inputEl = document.getElementById('hid-input-field') as HTMLInputElement | null;
@@ -125,7 +115,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   // Auto-focus input on direction change
   useEffect(() => {
     focusScanInput();
-  }, [inputDirection, inputTab, focusScanInput]);
+  }, [inputDirection, focusScanInput]);
 
   const addTapFeedback = useCallback((type: 'success' | 'error', message: string, time: string) => {
     const newItem = {
@@ -138,16 +128,16 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   }, []);
 
   const handleScanToken = useCallback(async (tokenRaw: string, directStudentData: Student | null = null) => {
-    const t = tokenRaw.trim();
-    if (t.length < 2) return;
+    const t = String(tokenRaw || '').trim();
+    if (!t) return;
+
     const now = Date.now();
-    if (t === lastSubmittedTokenRef.current && now - lastSubmittedTimeRef.current < 5000) {
-      console.warn('[GATE_TAP_DEBUG] Anti-looping guard blocked duplicate scan for token:', t);
+    // Prevent double submission within 1.5s for same token
+    if (lastSubmittedTokenRef.current === t && (now - lastSubmittedTimeRef.current) < 1500) {
       return;
     }
-    console.log('[GATE_TAP_DEBUG] handleScanToken received token:', t);
+
     if (isProcessingRef.current) {
-      console.warn('[GATE_TAP_DEBUG] Ignored scan because previous scan is still processing:', t);
       return;
     }
     isProcessingRef.current = true;
@@ -160,41 +150,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
       if (directStudentData) {
         targetId = directStudentData.id;
-        targetName = directStudentData.nama_siswa || directStudentData.nama_guru || '';
-      } else {
-        // 1. Try finding Siswa strictly by NISN, NIS, RFID, or ID
-        try {
-          const resSiswa = await siswaApi.getAll({
-            search: t,
-            limit: 1,
-            search_fields: ['nisn', 'nis', 'no_rfid', 'id'],
-            elevated_context: 'true',
-            context: 'elevated'
-          } as any);
-          const foundSiswa = (resSiswa.data as Student[])?.[0];
-          if (foundSiswa?.id) {
-            targetId = foundSiswa.id;
-            targetName = foundSiswa.nama_siswa || '';
-          }
-        } catch (e) {}
-
-        // 2. If Siswa not found, try finding Guru strictly by NIP or NIK or ID
-        if (!targetName) {
-          try {
-            const resGuru = await guruApi.getAll({
-              search: t,
-              limit: 1,
-              search_fields: ['nip', 'nik', 'no_rfid', 'id'],
-              elevated_context: 'true',
-              context: 'elevated'
-            } as any);
-            const foundGuru = (resGuru.data as any[])?.[0];
-            if (foundGuru?.id) {
-              targetId = foundGuru.id;
-              targetName = foundGuru.nama_guru || '';
-            }
-          } catch (e) {}
-        }
+        targetName = directStudentData.nama_siswa || (directStudentData as any).nama_guru || '';
       }
 
       const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -213,6 +169,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           await playBeep('success');
           await refreshStats();
           onTapSuccess?.();
+          onTapSuccessMetadata?.({ name: nama });
         } else {
           const errMsg = (res as any).message || 'Gagal memproses bypass';
           toast.error(errMsg, { position: 'bottom-center' });
@@ -221,20 +178,24 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         return;
       }
 
-      // Submit tap directly to backend (backend resolves by NISN, NIS, RFID, NIP, or ID)
+      // Direct single-step submission to backend (Backend resolves NIP, NIK, NISN, RFID, or UUID instantly)
       const tapRes = await submitTap({ siswa_id: targetId, arah: inputDirection, device_id: '', rfid: t });
       if (tapRes.success) {
         const sInfo = (tapRes as any).data?.siswa_info;
         const gInfo = (tapRes as any).data?.guru_info;
         
         let successMsg = '';
+        let personName = '';
         if (sInfo?.nama) {
+          personName = sInfo.nama;
           const kelasLabel = sInfo.nama_kelas ? ` - ${sInfo.nama_kelas}` : '';
           successMsg = `PRESENSI BERHASIL: ${sInfo.nama}${kelasLabel}`;
         } else if (gInfo?.nama) {
+          personName = gInfo.nama;
           successMsg = `PRESENSI BERHASIL: ${gInfo.nama} (${gInfo.jenis_ptk || 'Pegawai'})`;
         } else {
-          successMsg = (tapRes as any).message || `PRESENSI BERHASIL: ${targetName || 'Siswa'}`;
+          personName = targetName || 'Siswa/Guru';
+          successMsg = (tapRes as any).message || `PRESENSI BERHASIL: ${personName}`;
         }
 
         toast.success(successMsg, { position: 'bottom-center' });
@@ -242,6 +203,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         await playBeep('success');
         await refreshStats();
         onTapSuccess?.();
+        onTapSuccessMetadata?.({ name: personName });
       } else {
         const errMsg = (tapRes as any).message || 'Gagal mencatat tap';
         toast.error(errMsg, { position: 'bottom-center' });
@@ -256,7 +218,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
       isProcessingRef.current = false;
       focusScanInput();
     }
-  }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, playBeep, addTapFeedback, focusScanInput]);
+  }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, onTapSuccessMetadata, playBeep, addTapFeedback, focusScanInput]);
 
   // Auto-submit RFID / barcode scanner input when 8+ digits are typed
   useEffect(() => {
@@ -271,40 +233,10 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
     }
   }, [debouncedHidToken, handleScanToken]);
 
-  const { scannerStatus, startScanner, stopScanner, cycleCamera } = useScanner({ cameraFacing, cameraDeviceId, onScan: handleScanToken, videoRef });
-
-  // 4. Face Logic (Briefly encapsulated for now, ideally moved to hook later)
-  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
-  const [isIdentifying, setIsIdentifying] = useState(false);
-  const [isFlashing, setIsFlashing] = useState(false);
-  const [isAutoScanActive, setIsAutoScanActive] = useState(false);
-  const [lastVerification, setLastVerification] = useState<any>(null);
-  const [lastIdentifiedStudent, setLastIdentifiedStudent] = useState<any>(null);
-  const [currentDetections, setCurrentDetections] = useState<any>(null);
-  const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
-  const [faceSiswaId, setFaceSiswaId] = useState('');
-  const [selectedFaceSiswaId, setSelectedFaceSiswaId] = useState('');
-
   // Fetch Config
   const fetchTenantConfig = useCallback(async () => {
     await tenantConfigQuery.refetch();
   }, [tenantConfigQuery]);
-
-  // Tab Effects
-  useEffect(() => {
-    console.log('[GATE_INPUT_DEBUG] Tab effect fired, inputTab =', inputTab);
-    if (inputTab === 'QR') {
-      console.log('[GATE_INPUT_DEBUG] Triggering startScanner() for QR mode');
-      startScanner();
-    } else {
-      console.log('[GATE_INPUT_DEBUG] Triggering stopScanner() for non-QR mode');
-      stopScanner();
-    }
-    return () => {
-      console.log('[GATE_INPUT_DEBUG] Cleanup triggering stopScanner()');
-      stopScanner();
-    };
-  }, [inputTab, startScanner, stopScanner]);
 
   const content = (
     <div className="space-y-6">
@@ -325,19 +257,21 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         </div>
       )}
 
-      <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden ${isBypassMode ? 'ring-4 ring-amber-400/20 border-amber-400' : ''}`}>
-        <div className="flex border-b border-slate-100 dark:border-slate-800">
-          {['HID', 'QR', 'FACE'].map(t => (
-            <button key={t} onClick={() => setInputTab(t as any)} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest transition-all ${inputTab === t ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-50'}`}>{t}</button>
-          ))}
-        </div>
-        <div className="p-4 sm:p-6">
-          <Suspense fallback={<PageLoader />}>
-            {inputTab === 'HID' && <GerbangKeyRfidInput hidToken={hidToken} onHidTokenChange={setHidToken} autoSubmitGateHID={handleScanToken} isBypassMode={isBypassMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown} searchCandidates={searchCandidates} onSelectStudent={(t, s) => handleScanToken(t, s)} onSubmit={handleScanToken} />}
-            {inputTab === 'QR' && <GerbangQrInput scannerStatus={scannerStatus} onSwitchCamera={cycleCamera} />}
-            {inputTab === 'FACE' && <GerbangFaceInput videoRef={videoRef} currentDetections={currentDetections} displaySize={displaySize} isIdentifying={isIdentifying} isFlashing={isFlashing} isAutoScanActive={isAutoScanActive} setIsAutoScanActive={setIsAutoScanActive} lastVerification={lastVerification} lastIdentifiedStudent={lastIdentifiedStudent} inputDirection={inputDirection} cameraFacing={cameraFacing} onSwitchCamera={() => setCameraFacing(f => f === 'user' ? 'environment' : 'user')} faceSiswaId={faceSiswaId} setFaceSiswaId={setFaceSiswaId} selectedFaceSiswaId={selectedFaceSiswaId} setSelectedFaceSiswaId={setSelectedFaceSiswaId} onSelectStudent={(s) => { setSelectedFaceSiswaId(s.id); setFaceSiswaId(s.nama_siswa || ''); }} handleFaceVerifyTap={() => {}} tapSubmitting={false} handleFaceEnroll={() => {}} enrollSubmitting={false} />}
-          </Suspense>
-        </div>
+      {/* Universal Fast-Lane Hardware Scanner Card (Single Clean Terminal) */}
+      <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden p-4 sm:p-6 ${isBypassMode ? 'ring-4 ring-amber-400/20 border-amber-400' : ''}`}>
+        <Suspense fallback={<PageLoader />}>
+          <GerbangKeyRfidInput 
+            hidToken={hidToken} 
+            onHidTokenChange={setHidToken} 
+            autoSubmitGateHID={handleScanToken} 
+            isBypassMode={isBypassMode} 
+            showDropdown={showDropdown} 
+            setShowDropdown={setShowDropdown} 
+            searchCandidates={searchCandidates} 
+            onSelectStudent={(t, s) => handleScanToken(t, s)} 
+            onSubmit={handleScanToken} 
+          />
+        </Suspense>
       </div>
 
       {/* Live Result History Stream (Slide Down Animation - Latest Scan on TOP) */}
