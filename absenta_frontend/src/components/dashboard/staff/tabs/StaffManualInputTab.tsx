@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { Search, UserCheck, ShieldAlert, Check, X } from 'lucide-react';
@@ -47,14 +47,14 @@ export const StaffManualInputTab: React.FC = React.memo(() => {
         siswaApi.getAll({
           search: term,
           limit: 10,
-          search_fields: ['nama_siswa', 'nisn', 'nis', 'id'],
+          search_fields: ['nama_siswa', 'nisn', 'nis', 'no_rfid', 'id'],
           elevated_context: 'true',
           context: 'elevated'
         } as any).catch(() => ({ data: [] })),
         guruApi.getAll({
           search: term,
           limit: 5,
-          search_fields: ['nama_guru', 'nip', 'nik', 'id'],
+          search_fields: ['nama_guru', 'nip', 'nik', 'no_rfid', 'id'],
           elevated_context: 'true',
           context: 'elevated'
         } as any).catch(() => ({ data: [] }))
@@ -208,7 +208,13 @@ export const StaffManualInputTab: React.FC = React.memo(() => {
                 autoFocus
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Ketik Nama Siswa, Guru, NISN, atau NIP..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && candidates.length > 0) {
+                    e.preventDefault();
+                    handleSelectEntity(candidates[0]);
+                  }
+                }}
+                placeholder="Ketik Nama Siswa, Guru, NISN, NIP, atau No RFID..."
                 className="w-full pl-12 pr-10 py-3.5 text-base md:text-lg font-medium rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none"
               />
               {searchTerm && (
