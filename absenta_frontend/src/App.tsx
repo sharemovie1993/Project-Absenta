@@ -159,6 +159,7 @@ const CoopTicketDetail = lazy(() => import('./pages/cooperative/TicketDetail'));
 const KurikulumDashboard = lazy(() => import('./pages/kurikulum/Dashboard'));
 const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashboard'));
 const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
+const EvaluasiKinerjaGuruMockupPage = lazy(() => import('./pages/kurikulum/EvaluasiKinerjaGuruMockupPage'));
 const PerangkatAjarPage = lazy(() => import('./pages/kurikulum/PerangkatAjarPage'));
 const InputNilaiPage = lazy(() => import('./pages/rapor/InputNilaiPage'));
 const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
@@ -1568,6 +1569,17 @@ function App() {
                           </div>
                         }>
                           <InputNilaiPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/evaluasi-kinerja" element={
+                      <ProtectedRoute>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <EvaluasiKinerjaGuruMockupPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />

@@ -81,6 +81,7 @@ const DEFAULT_KURIKULUM_PRIMARY: FlatMenuItem[] = [
   { id: 'spv', title: 'Supervisi Guru', path: '/kurikulum/supervisi', icon: 'ShieldCheck' },
   { id: 'kld', title: 'Kalender Akad.', path: '/kurikulum/kalender', icon: 'CalendarDays' },
   { id: 'ctk', title: 'Cetak Berkas', path: '/kurikulum/cetak', icon: 'Printer' },
+  { id: 'evg', title: 'Evaluasi Guru', path: '/kurikulum/evaluasi-kinerja', icon: 'Award' },
   { id: 'mon', title: 'Monitor KBM', path: '/attendance/monitoring', icon: 'Activity' },
 ];
 
