@@ -41,6 +41,7 @@ import {
   Briefcase,
   UserCheck,
   ClipboardList,
+  ClipboardCheck,
   ShoppingCart,
   X,
   QrCode,
@@ -86,8 +87,10 @@ const PendingSiswaModule = React.lazy(() => import('@/pages/attendance/ops/compo
 
 import { useKelasOptions } from '../../../hooks/useKelasOptions';
 import { useGerbangAttendanceData } from '../../../hooks/attendance/useGerbangAttendanceData';
+import { useTenant } from '../../../hooks/useTenant';
 
-const StaffManualPresensiTab: React.FC<{ tenantId?: string }> = React.memo(({ tenantId }) => {
+const StaffManualPresensiTab: React.FC = React.memo(() => {
+  const { tenantId } = useTenant();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
   const { options: kelasOptions = [] } = useKelasOptions();
   const { notPresent = [], notPresentLoading, miniStats = { masuk: 0, keluar: 0 }, refreshData } = useGerbangAttendanceData({
@@ -1006,7 +1009,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
         {/* 🔍 TAB MANUAL PRESENSI: INPUT SISWA LUPA KARTU PER KELAS */}
         {activeTab === 'manual_presensi' && (
-          <StaffManualPresensiTab tenantId={tenantId} />
+          <StaffManualPresensiTab />
         )}
 
         {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}
