@@ -166,6 +166,31 @@ export interface RoleWorkspaceConfig {
 
 export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   {
+    id: 'ADMIN_WORKSPACE',
+    label: 'Administrasi',
+    badge: 'Admin',
+    icon: ShieldCheck,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    solidBg: 'bg-indigo-600',
+    desc: 'Pusat Kendali Data Master & Operasional Sekolah',
+    requiredRoleName: 'ADMIN',
+    defaultPath: '/academic',
+    targetGroupKeywords: ['AKADEMIK', 'DATA MASTER', 'MASTER', 'SISTEM'],
+    crossModulePaths: [
+      '/kurikulum/dashboard',
+      '/kesiswaan/monitoring',
+      '/sarpras/dashboard',
+      '/hubin/dashboard',
+      '/bpbk/dashboard',
+      '/rapor/dashboard',
+      '/attendance/rekap',
+      '/management/platform-compliance',
+      '/users',
+      '/settings'
+    ]
+  },
+  {
     id: 'STUDENT_WORKSPACE',
     label: 'Siswa',
     badge: 'Siswa',

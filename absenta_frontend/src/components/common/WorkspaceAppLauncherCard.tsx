@@ -95,6 +95,31 @@ const DEFAULT_KURIKULUM_CROSS: FlatMenuItem[] = [
   { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'Smartphone' },
 ];
 
+const DEFAULT_ADMIN_PRIMARY: FlatMenuItem[] = [
+  { id: 'sis', title: 'Data Siswa', path: '/academic/siswa', icon: 'GraduationCap' },
+  { id: 'gru', title: 'Data Guru', path: '/academic/guru', icon: 'Users' },
+  { id: 'kls', title: 'Rombel Kelas', path: '/academic/kelas', icon: 'LayoutGrid' },
+  { id: 'mpl', title: 'Mata Pelajaran', path: '/academic/mapel', icon: 'BookOpen' },
+  { id: 'thp', title: 'Tahun Ajaran', path: '/academic/tahun-pelajaran', icon: 'Calendar' },
+  { id: 'smt', title: 'Semester', path: '/academic/semester', icon: 'CalendarDays' },
+  { id: 'jrs', title: 'Jurusan', path: '/academic/jurusan', icon: 'Briefcase' },
+  { id: 'ops', title: 'Operasional Absen', path: '/attendance/ops', icon: 'Activity' },
+  { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'Smartphone' },
+  { id: 'usr', title: 'Kelola User', path: '/users', icon: 'UserCog' },
+  { id: 'stg', title: 'Pengaturan', path: '/settings', icon: 'Settings' },
+];
+
+const DEFAULT_ADMIN_CROSS: FlatMenuItem[] = [
+  { id: 'krd', title: 'Kurikulum', path: '/kurikulum/dashboard', icon: 'ShieldCheck' },
+  { id: 'ksd', title: 'Kesiswaan', path: '/kesiswaan/monitoring', icon: 'Users' },
+  { id: 'srp', title: 'Sarpras', path: '/sarpras/dashboard', icon: 'Building2' },
+  { id: 'hbn', title: 'Hubin', path: '/hubin/dashboard', icon: 'Briefcase' },
+  { id: 'bkd', title: 'BP/BK', path: '/bpbk/dashboard', icon: 'HeartHandshake' },
+  { id: 'rpr', title: 'Rapor', path: '/rapor/dashboard', icon: 'Award' },
+  { id: 'kop', title: 'Koperasi', path: '/cooperative/dashboard', icon: 'Wallet' },
+  { id: 'rkp', title: 'Rekap Presensi', path: '/attendance/rekap', icon: 'ClipboardList' },
+];
+
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
   workspaceId: targetWorkspaceIdProp,
   customTitle,
@@ -132,12 +157,29 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   // SEGMENT 1 (Blok 3): Primary Workspace Items
   const primaryItems = useMemo<FlatMenuItem[]>(() => {
     if (!flatItems || flatItems.length === 0) {
+      if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_PRIMARY;
       return activeWsId === 'KURIKULUM_WORKSPACE' ? DEFAULT_KURIKULUM_PRIMARY : [];
     }
 
     let matchedItems: FlatMenuItem[] = [];
 
-    if (activeWsId === 'KURIKULUM_WORKSPACE') {
+    if (activeWsId === 'ADMIN_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (
+          p.startsWith('/academic') ||
+          p.startsWith('/attendance/ops') ||
+          p.startsWith('/management') ||
+          p.startsWith('/users') ||
+          p.startsWith('/settings') ||
+          cat.includes('AKADEMIK') ||
+          cat.includes('DATA MASTER') ||
+          cat.includes('SISTEM')
+        ) && p !== '/dashboard' && p !== '#';
+      });
+      if (matchedItems.length === 0) matchedItems = DEFAULT_ADMIN_PRIMARY;
+    } else if (activeWsId === 'KURIKULUM_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
@@ -164,14 +206,16 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   // SEGMENT 2 (Blok 4): Cross Module Items
   const crossItems = useMemo<FlatMenuItem[]>(() => {
     if (!flatItems || flatItems.length === 0) {
+      if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_CROSS;
       return activeWsId === 'KURIKULUM_WORKSPACE' ? DEFAULT_KURIKULUM_CROSS : [];
     }
 
     const primaryPathSet = new Set(primaryItems.map(i => (i.path || '').toLowerCase()).filter(Boolean));
     const allCross = getAllUserCrossModuleItems(flatItems, user, primaryPathSet);
     
-    if (allCross.length === 0 && activeWsId === 'KURIKULUM_WORKSPACE') {
-      return DEFAULT_KURIKULUM_CROSS;
+    if (allCross.length === 0) {
+      if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_CROSS;
+      if (activeWsId === 'KURIKULUM_WORKSPACE') return DEFAULT_KURIKULUM_CROSS;
     }
     
     return allCross.slice(0, 10);

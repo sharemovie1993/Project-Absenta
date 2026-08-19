@@ -25,6 +25,7 @@ import {
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 
@@ -156,6 +157,7 @@ const AcademicDashboard: React.FC = React.memo(() => {
       description="Kelola seluruh infrastruktur data master, kepegawaian PTK, dan data induk siswa dalam satu dashboard terintegrasi."
       isLoading={isLoading}
       hardeningModuleKey="academic_dashboard"
+      topSlot={<WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" />}
       toolbar={
         <Link
           to="/academic/siswa"

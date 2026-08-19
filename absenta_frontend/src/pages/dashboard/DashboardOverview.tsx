@@ -23,6 +23,7 @@ import { AnalyticsCard } from "../../components/ui/AnalyticsCard";
 import { Button, Modal, ModalFooter } from "../../components/ui";
 import { useInstruction } from "../../contexts/InstructionContext";
 import { MyJobdeskWidget } from "../../components/dashboard/MyJobdeskWidget";
+import { WorkspaceAppLauncherCard } from "../../components/common/WorkspaceAppLauncherCard";
 
 import { Loader } from "../../components/ui/Loader";
 
@@ -152,33 +153,8 @@ export default function DashboardOverview() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {quickActions.map((action, idx) => {
-          const colorsMap: Record<string, string> = {
-            blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100',
-            indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100',
-            rose: 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100',
-            slate: 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100',
-          };
-          const colorClass = colorsMap[action.color || 'blue'];
-          
-          return (
-            <button
-              key={idx}
-              onClick={action.onClick}
-              className={cn(
-                "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all duration-300 group shadow-sm",
-                colorClass
-              )}
-            >
-              <div className="p-2 rounded-xl bg-white/80 shadow-sm group-hover:scale-110 transition-transform">
-                <action.icon size={20} />
-              </div>
-              <span className="text-xs font-black uppercase tracking-widest">{action.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Workspace App Launcher Portal (Admin & Data Master Suite) */}
+      <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" className="mb-8" />
 
       <>
         {/* Marketplace Upsell disabled per user request */}
