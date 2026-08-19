@@ -597,13 +597,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
     }
 
-    // 11. Piket & Gerbang (untuk Petugas Gerbang, Guru Piket, Waka, Admin)
+    // 11. Piket & Gerbang (untuk Petugas Gerbang: Pos Keamanan Gerbang, Guru Piket: Piket Harian)
     if (hasGerbangDuty || isGerbang || isKurikulum || isKesiswaan || isAdminRole || isKepsek) {
       list.push({ 
         id: 'kelola', 
-        label: hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
-        icon: ClipboardList,
-        badge: hasGerbangDuty ? 'SCAN' : undefined 
+        label: isPureGerbangStaff ? 'Pos Keamanan Gerbang' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
+        icon: isPureGerbangStaff ? ShieldCheck : ClipboardList,
+        badge: isPureGerbangStaff ? 'IZIN' : hasGerbangDuty ? 'SCAN' : undefined 
       });
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -28,7 +28,9 @@ import { TabSwitcher, type TabOption } from '../../../ui/TabSwitcher';
 import { PiketOperations } from '../../../piket/PiketOperations';
 import { PiketTeacherMonitoring } from '../../../piket/PiketTeacherMonitoring';
 import { PiketTeacherLeavePanel } from '../../../piket/PiketTeacherLeavePanel';
+import { PiketSecurity } from '../../../piket/PiketSecurity';
 import { guruIzinApi } from '../../../../api/guruIzin.api';
+import { piketApi, piketQueryKeys, type IzinKeluarSiswa } from '../../../../api/piket.api';
 import { PiketPrintSlip } from '../../../piket/PiketPrintSlip';
 import { useAuthStore } from '../../../../store/authStore';
 import { useGuruMe } from '../../../../hooks/useGuruMe';
@@ -37,7 +39,8 @@ import { usePiketGuruOptions } from '../../../../hooks/usePiketGuruOptions';
 import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
 import { getSesiAbsensiList } from '../../../../api/attendanceGerbang.api';
 import { toLocalDate } from '../../../../utils/attendance/time';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 interface StaffPiketOperasionalTabProps {
   dailyPermits: any[];
@@ -129,10 +132,81 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
 
   // Final Guard Access Evaluation
   const isAuthorized = isAssignedPiketToday || isStrukturPiket || isManagement;
-  const canAccessPiket = isAuthorized || isBypassed;
-  const isLoading = loadingPiketJadwal || loadingStruktur;
+  const hasGerbangDuty = isGerbang ||
+    (user as any)?.role === 'GERBANG' ||
+    (user as any)?.role === 'PETUGAS_GERBANG' ||
+    (user as any)?.role?.name === 'GERBANG' ||
+    (user as any)?.role?.name === 'PETUGAS_GERBANG';
 
-  const [activePiketSubTab, setActivePiketSubTab] = useState<'IZIN_SISWA' | 'GURU_KBM'>('IZIN_SISWA');
+  const [activePiketSubTab, setActivePiketSubTab] = useState<string>(
+    hasGerbangDuty ? 'POS_KEAMANAN' : 'IZIN_SISWA'
+  );
+
+  const queryClient = useQueryClient();
+  const [verificationResult, setVerificationResult] = useState<{
+    status: 'IDLE' | 'VALID' | 'INVALID';
+    permit?: IzinKeluarSiswa;
+    message?: string;
+  }>({ status: 'IDLE' });
+
+  const handleMarkReturned = useCallback(async (id: string, namaSiswa: string): Promise<boolean> => {
+    try {
+      const res = await piketApi.markReturned(id);
+      if (res.success) {
+        toast.success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
+        queryClient.invalidateQueries({ queryKey: piketQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
+        queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
+        refetchPermits();
+        return true;
+      }
+      return false;
+    } catch (err: unknown) {
+      console.error(err);
+      const e = err as { message?: string };
+      toast.error(e.message || 'Gagal memproses kepulangan siswa');
+      return false;
+    }
+  }, [queryClient, refetchPermits]);
+
+  const handleSecuritySelect = useCallback((permit: IzinKeluarSiswa) => {
+    if (permit.status === 'KEMBALI') {
+      setVerificationResult({
+        status: 'INVALID',
+        message: `IZIN SUDAH EXPIRED: Siswa ${permit.SiswaAkademik?.siswa?.nama_siswa} sudah kembali sebelumnya!`
+      });
+      toast.error('Verifikasi Gagal: Izin kedaluwarsa');
+    } else {
+      setVerificationResult({
+        status: 'VALID',
+        permit,
+        message: `IZIN VALID: ${permit.SiswaAkademik?.siswa?.nama_siswa} diperbolehkan keluar`
+      });
+      toast.success('Verifikasi Berhasil: Izin Valid');
+    }
+  }, []);
+
+  const handleSecurityEnter = useCallback((code?: string) => {
+    if (!code) return;
+    const t = code.trim().toLowerCase();
+
+    const match = (dailyPermits || []).find(
+      (p: any) => p.id.toLowerCase() === t ||
+        String(p.SiswaAkademik?.siswa?.nis || '').toLowerCase() === t ||
+        String(p.SiswaAkademik?.siswa?.no_rfid || '').toLowerCase() === t ||
+        String((p.SiswaAkademik?.siswa as Record<string, unknown>)?.id || '').toLowerCase() === t
+    );
+
+    if (match) {
+      handleSecuritySelect(match);
+    } else {
+      setVerificationResult({
+        status: 'INVALID',
+        message: `TIDAK ADA IZIN AKTIF HARI INI untuk NIS / Kartu / QR: "${code}"`
+      });
+      toast.error('Verifikasi Gagal: Tidak ada izin aktif');
+    }
+  }, [dailyPermits, handleSecuritySelect]);
 
   const today = toLocalDate();
   const { data: sesiDataToday } = useQuery({
@@ -179,14 +253,36 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
     });
   }, [pendingLeaveRes]);
 
-  const piketSubTabs: TabOption[] = useMemo(() => [
-    {
+  const piketSubTabs: TabOption[] = useMemo(() => {
+    const tabs: TabOption[] = [];
+
+    // Jika Petugas Gerbang: Pos Keamanan Gerbang berada di urutan pertama
+    if (hasGerbangDuty) {
+      tabs.push({
+        id: 'POS_KEAMANAN',
+        label: 'Pos Keamanan Gerbang',
+        icon: ShieldCheck,
+        colorClass: 'text-rose-600 dark:text-rose-400'
+      });
+    }
+
+    tabs.push({
       id: 'IZIN_SISWA',
       label: 'Izin Siswa',
       icon: Scan,
       colorClass: 'text-indigo-600 dark:text-indigo-400'
-    },
-    {
+    });
+
+    if (!hasGerbangDuty) {
+      tabs.push({
+        id: 'POS_KEAMANAN',
+        label: 'Pos Keamanan',
+        icon: ShieldCheck,
+        colorClass: 'text-rose-600 dark:text-rose-400'
+      });
+    }
+
+    tabs.push({
       id: 'GURU_KBM',
       label: (
         <span className="relative flex items-center gap-1.5">
@@ -200,8 +296,9 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
       ),
       icon: UserX,
       colorClass: 'text-amber-600 dark:text-amber-400'
-    },
-    {
+    });
+
+    tabs.push({
       id: 'IZIN_GURU',
       label: (
         <span className="relative flex items-center gap-1.5">
@@ -215,8 +312,10 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
       ),
       icon: Briefcase,
       colorClass: 'text-purple-600 dark:text-purple-400'
-    }
-  ], [pendingTeacherCount, pendingLeaveCount]);
+    });
+
+    return tabs;
+  }, [hasGerbangDuty, pendingTeacherCount, pendingLeaveCount]);
 
   return (
     <motion.div
@@ -464,7 +563,16 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
               />
             </div>
 
-            {activePiketSubTab === 'IZIN_SISWA' ? (
+            {activePiketSubTab === 'POS_KEAMANAN' ? (
+              <PiketSecurity
+                dailyPermits={dailyPermits}
+                verificationResult={verificationResult}
+                setVerificationResult={setVerificationResult}
+                handleSecuritySelect={handleSecuritySelect}
+                handleSecurityEnter={handleSecurityEnter}
+                handleMarkReturned={handleMarkReturned}
+              />
+            ) : activePiketSubTab === 'IZIN_SISWA' ? (
               <PiketOperations
                 dailyPermits={dailyPermits}
                 refetchPermits={refetchPermits}

@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Scan, Zap, ShieldCheck } from 'lucide-react';
+import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Scan, Zap, ShieldCheck, Loader } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button } from '../../../ui';
@@ -13,8 +13,12 @@ import { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
 import { PengajuanIzinGuruModal } from '../profil/PengajuanIzinGuruModal';
-import { PiketSecurity } from '../../../piket/PiketSecurity';
-import { usePiketIzinKeluarOptions } from '../../../../hooks/usePiketIzinKeluarOptions';
+import { useGerbangAttendanceData } from '../../../../hooks/attendance/useGerbangAttendanceData';
+import { useTenant } from '../../../../hooks/useTenant';
+import { toLocalDate } from '../../../../utils/attendance/time';
+
+// Lazy load GateInputModule
+const GateInputModule = lazy(() => import('../../../../pages/attendance/ops/components/GateInputModule').then(m => ({ default: m.GateInputModule })));
 
 interface StaffBerandaTabProps {
   guruId?: string;
@@ -42,82 +46,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   onNavigateTab,
 }) => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
   const [showIzinModal, setShowIzinModal] = React.useState(false);
 
   // Status apakah guru merupakan pendidik pengajar aktif
   const isActualTeachingStaff = isPendidik && !isPureGerbang && !hasGerbangDuty;
 
-  // State Verifikasi Pos Satpam / Gerbang
-  const [verificationResult, setVerificationResult] = useState<{
-    status: 'IDLE' | 'VALID' | 'INVALID';
-    permit?: IzinKeluarSiswa;
-    message?: string;
-  }>({ status: 'IDLE' });
-
-  // Fetch daily permits using custom hook with 3-second real-time background polling for security role
-  const { rawList: dailyPermitsList, refetch: refetchPermits } = usePiketIzinKeluarOptions({
-    refetchInterval: !isActualTeachingStaff ? 3000 : undefined
+  const today = toLocalDate();
+  const { miniStats, refreshStats, fetchNotPresent } = useGerbangAttendanceData({
+    tenantId,
+    tanggal: today,
+    enabled: !isActualTeachingStaff
   });
-
-  const handleMarkReturned = useCallback(async (id: string, namaSiswa: string): Promise<boolean> => {
-    try {
-      const res = await piketApi.markReturned(id);
-      if (res.success) {
-        toast.success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
-        queryClient.invalidateQueries({ queryKey: piketQueryKeys.all });
-        queryClient.invalidateQueries({ queryKey: ['piket-harian-list'] });
-        queryClient.invalidateQueries({ queryKey: ['piket-harian'] });
-        refetchPermits();
-        return true;
-      }
-      return false;
-    } catch (err: unknown) {
-      console.error(err);
-      const e = err as { message?: string };
-      toast.error(e.message || 'Gagal memproses kepulangan siswa');
-      return false;
-    }
-  }, [queryClient, refetchPermits]);
-
-  const handleSecuritySelect = useCallback((permit: IzinKeluarSiswa) => {
-    if (permit.status === 'KEMBALI') {
-      setVerificationResult({
-        status: 'INVALID',
-        message: `IZIN SUDAH EXPIRED: Siswa ${permit.SiswaAkademik?.siswa?.nama_siswa} sudah kembali sebelumnya!`
-      });
-      toast.error('Verifikasi Gagal: Izin kedaluwarsa');
-    } else {
-      setVerificationResult({
-        status: 'VALID',
-        permit,
-        message: `IZIN VALID: ${permit.SiswaAkademik?.siswa?.nama_siswa} diperbolehkan keluar`
-      });
-      toast.success('Verifikasi Berhasil: Izin Valid');
-    }
-  }, []);
-
-  const handleSecurityEnter = useCallback((code?: string) => {
-    if (!code) return;
-    const t = code.trim().toLowerCase();
-
-    const match = dailyPermitsList.find(
-      p => p.id.toLowerCase() === t ||
-        String(p.SiswaAkademik?.siswa?.nis || '').toLowerCase() === t ||
-        String(p.SiswaAkademik?.siswa?.no_rfid || '').toLowerCase() === t ||
-        String((p.SiswaAkademik?.siswa as Record<string, unknown>)?.id || '').toLowerCase() === t
-    );
-
-    if (match) {
-      handleSecuritySelect(match);
-    } else {
-      setVerificationResult({
-        status: 'INVALID',
-        message: `TIDAK ADA IZIN AKTIF HARI INI untuk NIS / Kartu / QR: "${code}"`
-      });
-      toast.error('Verifikasi Gagal: Tidak ada izin aktif');
-    }
-  }, [dailyPermitsList, handleSecuritySelect]);
 
   // Query Rekap Kehadiran Siswa Rombel Walas (jika Wali Kelas)
   const { data: classPresenceRes, isLoading: loadingPresence } = useQuery({
@@ -238,32 +178,10 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
-      {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-5">
-        {!isActualTeachingStaff ? (
-          /* Stat 1 for Petugas Gerbang / Tendik: Operasional Scanner Gerbang */
-          <div 
-            onClick={() => navigate('/attendance/ops?tab=gerbang')}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-rose-500/40 transition-all group"
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Scan size={20} className="sm:w-5.5 sm:h-5.5" />
-            </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
-                Operasional Gerbang
-              </span>
-              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                Modul Scan
-              </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-rose-600 dark:text-rose-400 truncate flex items-center gap-1">
-                <Zap size={11} className="fill-rose-500" />
-                <span>Tap / Scan Siap Aktif</span>
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* Stat 1 for Teachers: Sesi Mengajar Hari Ini */
+      {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) - KHUSUS GURU PENGAJAR */}
+      {isActualTeachingStaff && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
+          {/* Stat 1 for Teachers: Sesi Mengajar Hari Ini */}
           <div 
             onClick={() => onNavigateTab('jadwal')}
             className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-blue-500/40 transition-all group"
@@ -283,29 +201,29 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
               </p>
             </div>
           </div>
-        )}
 
-        {/* Stat 2: Ajuan Izin Menunggu */}
-        <div 
-          onClick={() => onNavigateTab(isWaliKelas ? 'binaan' : 'kelola')}
-          className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-amber-500/40 transition-all group"
-        >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <ClipboardList size={20} className="sm:w-5.5 sm:h-5.5" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
-              Ajuan Izin
-            </span>
-            <div className="text-base sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">
-              {pendingPermitsCount} Pengajuan
+          {/* Stat 2: Ajuan Izin Menunggu */}
+          <div 
+            onClick={() => onNavigateTab(isWaliKelas ? 'binaan' : 'kelola')}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-amber-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ClipboardList size={20} className="sm:w-5.5 sm:h-5.5" />
             </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-              {pendingPermitsCount > 0 ? 'Menunggu Validasi' : 'Tidak Ada Antrean'}
-            </p>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
+                Ajuan Izin
+              </span>
+              <div className="text-base sm:text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">
+                {pendingPermitsCount} Pengajuan
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                {pendingPermitsCount > 0 ? 'Menunggu Validasi' : 'Tidak Ada Antrean'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK */}
       {isActualTeachingStaff && (
@@ -410,35 +328,23 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         />
       )}
 
-      {/* 🛡️ TERMINAL POS KEAMANAN GERBANG: SCAN & VALIDASI IZIN SISWA (LANGSUNG DI BERANDA PETUGAS) */}
+      {/* ⚡ TERMINAL SCANNER PRESENSI GERBANG MASUK/PULANG (LANGSUNG DI BERANDA PETUGAS) */}
       {!isActualTeachingStaff && (
         <div className="space-y-4">
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                    Pos Keamanan Gerbang: Verifikasi Izin Keluar & Masuk
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Pindai barcode/QR slip siswa atau tap kartu untuk memvalidasi izin melintasi gerbang
-                  </p>
-                </div>
-              </div>
+          <Suspense fallback={
+            <div className="p-12 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center gap-3">
+              <Loader className="animate-spin text-rose-600" size={36} />
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Menyiapkan Scanner Presensi Gerbang...</p>
             </div>
-
-            <PiketSecurity
-              dailyPermits={dailyPermitsList}
-              verificationResult={verificationResult}
-              setVerificationResult={setVerificationResult}
-              handleSecuritySelect={handleSecuritySelect}
-              handleSecurityEnter={handleSecurityEnter}
-              handleMarkReturned={handleMarkReturned}
+          }>
+            <GateInputModule
+              miniStats={miniStats}
+              refreshStats={async () => {
+                await refreshStats();
+                await fetchNotPresent();
+              }}
             />
-          </div>
+          </Suspense>
         </div>
       )}
 
