@@ -273,6 +273,7 @@ async function main() {
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Audit Realisasi JP Mengajar', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
+        { label: 'Evaluasi Kinerja Guru', icon: 'Award', path: '/kurikulum/evaluasi-kinerja', required_capability: 'academic.teaching.view, academic.manage.academic, curriculum.supervision.manage' },
         { label: 'Generator KOSP', icon: 'Sparkles', path: '/kurikulum/kosp-builder', required_capability: 'academic.manage.academic, academic.structures.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.manage.academic' },
       ]
@@ -430,6 +431,7 @@ async function main() {
         { label: 'Paket & Langganan', icon: 'Crown', path: '/service-center', required_capability: 'billing.subscriptions.view.active' },
         { label: 'User Management', icon: 'UserCog', path: '/users', required_capability: 'core.users.create' },
         { label: 'Settings', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
+        { label: 'Kepatuhan & Adopsi Platform', icon: 'Smartphone', path: '/management/platform-compliance', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
         { label: 'WhatsApp Settings', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'whatsapp.manage.config', required_features: ['WHATSAPP'] },
         { label: 'Tiket Bantuan', icon: 'HelpCircle', path: '/support', required_capability: 'support.tickets.view' },
       ]
