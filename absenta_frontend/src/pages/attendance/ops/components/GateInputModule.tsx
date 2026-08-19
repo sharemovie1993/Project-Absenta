@@ -190,19 +190,6 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
     }
   }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, onTapSuccessMetadata, playBeep, addTapFeedback, focusScanInput]);
 
-  // Auto-submit RFID / barcode scanner input when 8+ digits are typed
-  useEffect(() => {
-    const term = debouncedHidToken.trim();
-    if (!term) {
-      lastSubmittedTokenRef.current = '';
-      return;
-    }
-    if (/^\d{8,}$/.test(term) && lastSubmittedTokenRef.current !== term) {
-      lastSubmittedTokenRef.current = term;
-      handleScanToken(term);
-    }
-  }, [debouncedHidToken, handleScanToken]);
-
   // Fetch Config
   const fetchTenantConfig = useCallback(async () => {
     await tenantConfigQuery.refetch();
