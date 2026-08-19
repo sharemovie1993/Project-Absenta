@@ -59,17 +59,17 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
                   {inputDirection === 'GERBANG_DATANG' ? (
                     <>
                       <span>
-                        Masuk: <strong>{tenantConfig.jamMasuk}</strong>
+                        Masuk: <strong>{(tenantConfig as any).jamMasuk || (tenantConfig as any).jam_masuk_default || '07:00'}</strong>
                       </span>
                       <span className="text-gray-300">•</span>
                       <span>
-                        Tol: <strong>{tenantConfig.toleransi}m</strong>
+                        Tol: <strong>{(tenantConfig as any).toleransi ?? (tenantConfig as any).toleransi_keterlambatan_menit ?? 15}m</strong>
                       </span>
                     </>
                   ) : (
                     <>
                       <span>
-                        Pulang: <strong>{tenantConfig.jamPulang}</strong>
+                        Pulang: <strong>{(tenantConfig as any).jamPulang || (tenantConfig as any).jam_pulang_default || '15:00'}</strong>
                       </span>
                     </>
                   )}

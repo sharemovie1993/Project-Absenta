@@ -49,7 +49,13 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
     queryFn: async () => {
       if (!tenantId) return null;
       const res = await getTenantById(tenantId);
-      return res.data || null;
+      const t = res.data as any;
+      if (!t) return null;
+      return {
+        jamMasuk: t.jam_masuk_default || t.jamMasuk || '07:00',
+        jamPulang: t.jam_pulang_default || t.jamPulang || '15:00',
+        toleransi: t.toleransi_keterlambatan_menit ?? t.toleransi ?? 15,
+      };
     },
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
