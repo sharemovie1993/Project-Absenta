@@ -5,7 +5,7 @@ import { AttendanceRuleEngine } from '@/domain/attendance/AttendanceRuleEngine';
 import { DataScope } from '../../../../types/fastify';
 import { CacheService } from '../../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../../constants/cache-keys';
-import { formatTenantTime, getTenantTimezone } from '../../../../utils/timezone.utils';
+import { formatTenantTime, getTenantTimezone, getTenantOffsetString } from '../../../../utils/timezone.utils';
 
 const cacheService = CacheService.getInstance();
 
@@ -321,10 +321,14 @@ export class RekapImplService {
     const year = parseInt(yearStr);
     const month = parseInt(monthStr);
     
-    const startOfMonth = new Date(`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-01T00:00:00.000+07:00`);
+    // Get Tenant Timezone
+    const timeZone = await getTenantTimezone(tenantId);
+    const offsetStr = getTenantOffsetString(timeZone);
+
+    const startOfMonth = new Date(`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-01T00:00:00.000${offsetStr}`);
     const lastDay = new Date(year, month, 0);
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4,'0')}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
-    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999+07:00`);
+    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
     // Get Students
     const students = await prisma.siswa.findMany({
@@ -342,12 +346,6 @@ export class RekapImplService {
       where: { id: tenantId },
       select: { absensi_mode: true }
     });
-
-    // Get Tenant Timezone
-    const tzConfig = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: 'TIMEZONE' }
-    });
-    const timeZone = tzConfig?.value || 'Asia/Jakarta';
 
     const formatDateKey = (date: Date) => {
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -635,10 +633,13 @@ export class RekapImplService {
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
 
-    const startOfMonth = new Date(`${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01T00:00:00.000+07:00`);
+    const timeZone = await getTenantTimezone(tenantId);
+    const offsetStr = getTenantOffsetString(timeZone);
+
+    const startOfMonth = new Date(`${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01T00:00:00.000${offsetStr}`);
     const lastDay = new Date(year, month, 0);
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4, '0')}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999+07:00`);
+    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
     // 1. Fetch Students in Class
     const students = await prisma.siswa.findMany({
@@ -869,10 +870,13 @@ export class RekapImplService {
       throw new Error('Invalid month format. Use YYYY-MM');
     }
     
-    const startOfMonth = new Date(`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-01T00:00:00.000+07:00`);
+    const timeZone = await getTenantTimezone(tenantId);
+    const offsetStr = getTenantOffsetString(timeZone);
+
+    const startOfMonth = new Date(`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-01T00:00:00.000${offsetStr}`);
     const lastDay = new Date(year, month, 0);
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4,'0')}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
-    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999+07:00`);
+    const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
     // Get tenant mode
     const tenant = await prisma.tenant.findUnique({
@@ -883,12 +887,6 @@ export class RekapImplService {
     if (!tenant) {
       throw new Error('Tenant not found');
     }
-
-    // Get Tenant Timezone
-    const tzConfig = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: 'TIMEZONE' }
-    });
-    const timeZone = tzConfig?.value || 'Asia/Jakarta';
 
     const formatDateKey = (date: Date) => {
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -1162,8 +1160,10 @@ export class RekapImplService {
 
   // 4. Rekap Harian Guru (Jurnal)
   async getRekapHarianGuru(tanggal: string, tenantId: string, guruId?: string): Promise<RekapHarianGuruResponse[]> {
-    const startOfDay = new Date(`${tanggal}T00:00:00.000+07:00`);
-    const endOfDay = new Date(`${tanggal}T23:59:59.999+07:00`);
+    const timeZone = await getTenantTimezone(tenantId);
+    const offsetStr = getTenantOffsetString(timeZone);
+    const startOfDay = new Date(`${tanggal}T00:00:00.000${offsetStr}`);
+    const endOfDay = new Date(`${tanggal}T23:59:59.999${offsetStr}`);
 
     const whereClause: any = {
       tenant_id: tenantId,
@@ -2186,10 +2186,15 @@ export class RekapImplService {
           if (statuses.some(s => s === 'HADIR' || s === 'TEPAT_WAKTU' || s === 'MENGAJAR' || s === 'HADIR_/_MENGAJAR' || (s.includes('HADIR') && !s.includes('BELUM')))) {
             const hasTerlambat = validKbmLogs.some(k => k.is_terlambat);
             primaryStatus = hasTerlambat ? 'TERLAMBAT' : 'HADIR';
-          } else if (statuses.some(s => s.includes('IZIN'))) primaryStatus = 'IZIN';
-          else if (statuses.some(s => s.includes('SAKIT'))) primaryStatus = 'SAKIT';
-          else if (statuses.some(s => s.includes('DISPEN'))) primaryStatus = 'DISPEN';
-          else primaryStatus = 'ALPA';
+          } else if (statuses.some(s => s.includes('DISPEN') || s.includes('PENUGASAN') || s.includes('DINAS'))) {
+            primaryStatus = 'DISPEN';
+          } else if (statuses.some(s => s.includes('IZIN'))) {
+            primaryStatus = 'IZIN';
+          } else if (statuses.some(s => s.includes('SAKIT'))) {
+            primaryStatus = 'SAKIT';
+          } else {
+            primaryStatus = 'ALPA';
+          }
 
           validKbmLogs.forEach(k => { poin += k.poin_kehadiran || 0; });
         } else {

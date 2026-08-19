@@ -48,9 +48,89 @@ export class SesiTapEngineService {
   async tapSiswa(tenantId: string, _org: any, sesi_id: string, data: any, _userId: string) {
     const { siswa_id, siswa_akademik_id, status = 'HADIR', catatan, waktu_tap, nisn, rfid } = data;
 
-    const sesi = await prisma.sesiAbsensi.findFirst({
+    let sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesi_id, tenant_id: tenantId }
     });
+
+    if (!sesi && typeof sesi_id === 'string' && (sesi_id.startsWith('sched_') || sesi_id.startsWith('sched-') || !sesi_id.includes('-'))) {
+      const cleanJadwalId = String(sesi_id).replace(/^(sched-hist-|sched_|sched-)/, '');
+      const jadwal = await prisma.jadwalKBM.findFirst({
+        where: { id: cleanJadwalId, tenant_id: tenantId },
+        include: { Kelas: true, Mapel: true, Guru: true }
+      });
+
+      if (jadwal) {
+        const tz = await getTenantTimezone(tenantId);
+        const tzOffset = getTenantOffsetString(tz);
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+        const startOfDay = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+        const endOfDay = new Date(`${todayDateStr}T23:59:59.999${tzOffset}`);
+        const today = new Date(`${todayDateStr}T00:00:00.000${tzOffset}`);
+
+        const existingForJadwal = await prisma.sesiAbsensi.findFirst({
+          where: {
+            tenant_id: tenantId,
+            jadwal_kbm_id: jadwal.id,
+            tanggal: { gte: startOfDay, lte: endOfDay }
+          }
+        });
+
+        if (existingForJadwal) {
+          sesi = existingForJadwal;
+        } else {
+          // Check if teacher has an active approved leave
+          const activeLeave: any = jadwal.guru_id ? await prisma.permohonanIzinGuru.findFirst({
+            where: {
+              tenant_id: tenantId,
+              guru_id: jadwal.guru_id,
+              tanggal_mulai: { lte: today },
+              tanggal_selesai: { gte: today },
+              status: { in: ['DISETUJUI', 'PENDING'] }
+            },
+            include: { GuruInval: true }
+          }) : null;
+
+          const initialGuruStatus = activeLeave 
+            ? (activeLeave.status === 'DISETUJUI' ? (activeLeave.GuruInval ? 'PENUGASAN' : (activeLeave.tipe_izin === 'DINAS_LUAR' ? 'DINAS_LUAR' : (activeLeave.tipe_izin === 'SAKIT' ? 'SAKIT' : 'IZIN'))) : 'PENDING_IZIN')
+            : 'MENDATANG';
+
+          sesi = await prisma.sesiAbsensi.create({
+            data: {
+              tenant_id: tenantId,
+              jadwal_kbm_id: jadwal.id,
+              kelas_id: jadwal.kelas_id,
+              mapel_id: jadwal.mapel_id,
+              guru_id: activeLeave?.guru_inval_id || jadwal.guru_id || 'default-guru',
+              tahun_pelajaran_id: jadwal.tahun_pelajaran_id || 'default-tp',
+              semester_id: jadwal.semester_id || 'default-sem',
+              jenis_kegiatan: 'KBM',
+              sumber_sesi: 'TEMPLATE',
+              tanggal: today,
+              waktu_mulai: jadwal.jam_mulai ? new Date(`${todayDateStr}T${jadwal.jam_mulai}:00.000${tzOffset}`) : today,
+              waktu_selesai: jadwal.jam_selesai ? new Date(`${todayDateStr}T${jadwal.jam_selesai}:00.000${tzOffset}`) : null,
+              status: 'BERLANGSUNG',
+              created_by_user_id: _userId || null
+            }
+          });
+
+          // Create AbsenGuru record for leave if applicable
+          if (activeLeave && jadwal.guru_id) {
+            await prisma.absenGuru.create({
+              data: {
+                tenant_id: tenantId,
+                sesi_id: sesi.id,
+                guru_id: jadwal.guru_id,
+                status: initialGuruStatus === 'DINAS_LUAR' || initialGuruStatus === 'PENUGASAN' ? 'PENUGASAN' : (initialGuruStatus === 'SAKIT' ? 'SAKIT' : (initialGuruStatus === 'IZIN' ? 'IZIN' : 'PENUGASAN')),
+                catatan: `Izin Disetujui: ${activeLeave.alasan}`,
+                tahun_pelajaran_id: sesi.tahun_pelajaran_id || jadwal.tahun_pelajaran_id || 'default-tp',
+                semester_id: sesi.semester_id || jadwal.semester_id || 'default-sem'
+              }
+            });
+          }
+        }
+      }
+    }
+
     if (!sesi) throw new Error('Sesi tidak ditemukan');
     if (sesi.status === 'SELESAI') {
       throw new Error('Sesi KBM telah selesai. Presensi sudah ditutup.');
@@ -266,6 +346,7 @@ export class SesiTapEngineService {
               tahun_pelajaran_id: jadwal.tahun_pelajaran_id || 'default-tp',
               semester_id: jadwal.semester_id || 'default-sem',
               jenis_kegiatan: 'KBM',
+              sumber_sesi: 'TEMPLATE',
               tanggal: today,
               waktu_mulai: jadwal.jam_mulai ? new Date(`${todayDateStr}T${jadwal.jam_mulai}:00.000${tzOffset}`) : today,
               waktu_selesai: jadwal.jam_selesai ? new Date(`${todayDateStr}T${jadwal.jam_selesai}:00.000${tzOffset}`) : null,

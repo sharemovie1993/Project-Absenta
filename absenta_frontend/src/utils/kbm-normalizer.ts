@@ -85,6 +85,30 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       badgePropsVariant: 'warning'
     };
   }
+  if (s === 'PENDING_IZIN' || s === 'MENUNGGU_VERIFIKASI') {
+    return {
+      key: 'PENDING_IZIN',
+      label: 'MENUNGGU VERIFIKASI IZIN',
+      shortLabel: 'IZIN PENDING',
+      titleCaseLabel: 'Izin Pending',
+      colorVariant: 'warning',
+      badgeClass: 'bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-500/40 animate-pulse',
+      dotClass: 'bg-amber-500',
+      badgePropsVariant: 'warning'
+    };
+  }
+  if (s === 'DINAS_LUAR') {
+    return {
+      key: 'DINAS_LUAR',
+      label: 'DINAS LUAR',
+      shortLabel: 'DINAS LUAR',
+      titleCaseLabel: 'Dinas Luar',
+      colorVariant: 'purple',
+      badgeClass: 'bg-purple-500/20 text-purple-900 dark:text-purple-300 border border-purple-500/40',
+      dotClass: 'bg-purple-500',
+      badgePropsVariant: 'secondary'
+    };
+  }
   if (s === 'PENUGASAN' || s === 'DISPEN') {
     return {
       key: 'PENUGASAN',

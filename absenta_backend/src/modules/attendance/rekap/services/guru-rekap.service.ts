@@ -186,34 +186,84 @@ export class GuruRekapService {
       const startOfMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
       const endOfMonth = new Date(Date.UTC(year, month - 1, daysInMonth, 23, 59, 59, 999));
 
-      const absenGuruList = await prisma.absenGuru.findMany({
-        where: {
-          guru_id: guru.id,
-          tenant_id: tenantId,
-          created_at: { gte: startOfMonth, lte: endOfMonth }
-        },
-        select: {
-          id: true,
-          status: true,
-          waktu_tap: true,
-          SesiAbsensi: {
-            select: {
-              id: true,
-              jenis_kegiatan: true,
-              Mapel: { select: { nama_mapel: true } },
-              Kelas: { select: { nama_kelas: true } }
+      const [absenGuruList, gateLogs, approvedLeaves] = await Promise.all([
+        prisma.absenGuru.findMany({
+          where: {
+            guru_id: guru.id,
+            tenant_id: tenantId,
+            OR: [
+              { created_at: { gte: startOfMonth, lte: endOfMonth } },
+              { SesiAbsensi: { tanggal: { gte: startOfMonth, lte: endOfMonth } } }
+            ]
+          },
+          select: {
+            id: true,
+            status: true,
+            waktu_tap: true,
+            created_at: true,
+            SesiAbsensi: {
+              select: {
+                id: true,
+                tanggal: true,
+                waktu_mulai: true,
+                jenis_kegiatan: true,
+                Mapel: { select: { nama_mapel: true } },
+                Kelas: { select: { nama_kelas: true } }
+              }
             }
+          },
+          orderBy: { created_at: 'asc' }
+        }),
+        prisma.absenGerbangGuru.findMany({
+          where: {
+            guru_id: guru.id,
+            tenant_id: tenantId,
+            waktu_tap: { gte: startOfMonth, lte: endOfMonth }
+          },
+          orderBy: { waktu_tap: 'asc' }
+        }),
+        prisma.permohonanIzinGuru.findMany({
+          where: {
+            guru_id: guru.id,
+            tenant_id: tenantId,
+            status: 'DISETUJUI',
+            OR: [
+              { tanggal_mulai: { lte: endOfMonth }, tanggal_selesai: { gte: startOfMonth } }
+            ]
           }
-        },
-        orderBy: { waktu_tap: 'asc' }
-      });
+        })
+      ]);
 
-      const statistik: Record<string, number> = { HADIR: 0, TERLAMBAT: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
-      const detailMap = new Map<string, any[]>();
+      const statistik_kbm = {
+        TOTAL_SESI: absenGuruList.length,
+        HADIR: 0,
+        TERLAMBAT: 0,
+        DINAS_LUAR: 0,
+        IZIN: 0,
+        SAKIT: 0,
+        ALPA: 0
+      };
+
+      const dailyKbmMap = new Map<string, any[]>();
 
       absenGuruList.forEach(absen => {
-        const dateStr = absen.waktu_tap ? absen.waktu_tap.toISOString().split('T')[0] : 'Lainnya';
-        if (statistik[absen.status] !== undefined) statistik[absen.status]++;
+        const rawDate = absen.waktu_tap || absen.SesiAbsensi?.waktu_mulai || absen.SesiAbsensi?.tanggal || absen.created_at;
+        const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : 'Lainnya';
+        const s = String(absen.status || '').toUpperCase();
+
+        if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
+          statistik_kbm.HADIR++;
+        } else if (s === 'TERLAMBAT') {
+          statistik_kbm.TERLAMBAT++;
+        } else if (s === 'SAKIT') {
+          statistik_kbm.SAKIT++;
+        } else if (s === 'IZIN') {
+          statistik_kbm.IZIN++;
+        } else if (s === 'PENUGASAN' || s === 'DINAS_LUAR' || s === 'DISPEN') {
+          statistik_kbm.DINAS_LUAR++;
+        } else if (s === 'ALPA') {
+          statistik_kbm.ALPA++;
+        }
 
         const item = {
           id: absen.id,
@@ -224,23 +274,89 @@ export class GuruRekapService {
           kelas: absen.SesiAbsensi?.Kelas?.nama_kelas || '-'
         };
 
-        if (!detailMap.has(dateStr)) detailMap.set(dateStr, []);
-        detailMap.get(dateStr)!.push(item);
+        if (!dailyKbmMap.has(dateStr)) dailyKbmMap.set(dateStr, []);
+        dailyKbmMap.get(dateStr)!.push(item);
       });
 
-      const detailFormatted = Array.from(detailMap.entries()).map(([tanggal, items]) => ({
+      // Compute True 1-Per-Day Statistics for Hari Kerja
+      const uniqueDays = new Set<string>();
+      gateLogs.forEach(g => {
+        if (g.waktu_tap) uniqueDays.add(new Date(g.waktu_tap).toISOString().split('T')[0]);
+      });
+      dailyKbmMap.forEach((_, dateKey) => {
+        if (dateKey !== 'Lainnya') uniqueDays.add(dateKey);
+      });
+
+      const statistik_harian: Record<string, number> = {
+        HADIR: 0,
+        TERLAMBAT: 0,
+        DINAS_LUAR: 0,
+        IZIN: 0,
+        SAKIT: 0,
+        ALPA: 0
+      };
+
+      uniqueDays.forEach(dateStr => {
+        // 1. Check if gate log has check-in
+        const dayGateLogs = gateLogs.filter(g => g.waktu_tap && new Date(g.waktu_tap).toISOString().startsWith(dateStr));
+        const checkIn = dayGateLogs.find(g => g.arah === 'GERBANG_DATANG');
+
+        // 2. Check if approved leave applies to this date
+        const dayDate = new Date(`${dateStr}T00:00:00.000Z`);
+        const leave = approvedLeaves.find(l => l.tanggal_mulai <= dayDate && l.tanggal_selesai >= dayDate);
+
+        // 3. Check KBM statuses on this date
+        const kbmOnDate = dailyKbmMap.get(dateStr) || [];
+        const kbmStatuses = kbmOnDate.map(k => String(k.status || '').toUpperCase());
+
+        if (checkIn) {
+          if (checkIn.is_terlambat) statistik_harian.TERLAMBAT++;
+          else statistik_harian.HADIR++;
+        } else if (kbmStatuses.some(s => s === 'HADIR' || s === 'TEPAT_WAKTU')) {
+          statistik_harian.HADIR++;
+        } else if (kbmStatuses.some(s => s === 'TERLAMBAT')) {
+          statistik_harian.TERLAMBAT++;
+        } else if (leave) {
+          if (leave.tipe_izin === 'DINAS_LUAR') statistik_harian.DINAS_LUAR++;
+          else if (leave.tipe_izin === 'SAKIT') statistik_harian.SAKIT++;
+          else statistik_harian.IZIN++;
+        } else if (kbmStatuses.some(s => s === 'PENUGASAN' || s === 'DINAS_LUAR' || s === 'DISPEN')) {
+          statistik_harian.DINAS_LUAR++;
+        } else if (kbmStatuses.some(s => s === 'IZIN')) {
+          statistik_harian.IZIN++;
+        } else if (kbmStatuses.some(s => s === 'SAKIT')) {
+          statistik_harian.SAKIT++;
+        } else if (kbmStatuses.some(s => s === 'ALPA')) {
+          statistik_harian.ALPA++;
+        }
+      });
+
+      const detailFormatted = Array.from(dailyKbmMap.entries()).map(([tanggal, items]) => ({
         tanggal,
         items
       }));
+
+      const statistikLegacy: Record<string, number> = {
+        HADIR: statistik_harian.HADIR,
+        TERLAMBAT: statistik_harian.TERLAMBAT,
+        DINAS_LUAR: statistik_harian.DINAS_LUAR,
+        DISPEN: statistik_harian.DINAS_LUAR,
+        PENUGASAN: statistik_harian.DINAS_LUAR,
+        IZIN: statistik_harian.IZIN,
+        SAKIT: statistik_harian.SAKIT,
+        ALPA: statistik_harian.ALPA
+      };
 
       return {
         guru: { id: guru.id, nama: guru.nama_guru },
         bulan,
         total_sesi: absenGuruList.length,
-        statistik,
+        statistik: statistikLegacy,
+        statistik_harian,
+        statistik_kbm,
         detail: detailFormatted
       };
-    }, 300);
+    }, 60);
   }
 }
 

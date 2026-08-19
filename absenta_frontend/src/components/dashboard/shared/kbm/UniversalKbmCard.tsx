@@ -85,7 +85,38 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   expandedContent,
 }) => {
   // 1. Resolve Session Status & Teacher Status via SSOT
-  const isLive = Boolean(item.isLive ?? item.status?.isLive ?? false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
+  
+  const classSpecificTask = React.useMemo(() => {
+    const tpk = item.tugas_per_kelas || item.session?.tugas_per_kelas || item.permohonan_izin?.tugas_per_kelas;
+    if (!tpk || typeof tpk !== 'object') return null;
+
+    const kId = item.kelas_id || item.Kelas?.id || item.session?.kelas_id || '';
+    const kNama = item.kelas_nama || item.Kelas?.nama_kelas || item.session?.kelas_nama || item.kelas || '';
+
+    if (kId && tpk[kId]) return String(tpk[kId]);
+    if (kNama && tpk[kNama]) return String(tpk[kNama]);
+
+    const normalized = kNama.trim().toUpperCase();
+    for (const [k, v] of Object.entries(tpk)) {
+      if (k.trim().toUpperCase() === normalized) {
+        return String(v);
+      }
+    }
+    return null;
+  }, [item]);
+
+  const generalTask = item.instruksi_tugas 
+    || item.session?.instruksi_tugas 
+    || item.permohonan_izin?.instruksi_tugas 
+    || item.tugas 
+    || null;
+
+  const taskText = classSpecificTask || generalTask || '';
+  const taskFileUrl = item.file_tugas_url || item.session?.file_tugas_url || item.permohonan_izin?.file_tugas_url || item.attachment_url || '';
+  const hasTask = Boolean(taskText && taskText.trim().length > 0);
+
+  const isLive = Boolean(item.isLive ?? item.status?.isLive ?? item.is_live ?? (item.status === 'BERLANGSUNG' || item.session?.status === 'BERLANGSUNG'));
   const isReadyToOpen = Boolean(item.isReadyToOpen ?? item.status?.isReadyToOpen ?? false);
   const isFinished = Boolean(item.isFinished ?? item.status?.isFinished ?? (item.status === 'SELESAI' || item.session?.status === 'SELESAI'));
   const isOverdue = Boolean(
@@ -302,12 +333,26 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
           {/* Nama Guru diletakkan di ATAS (untuk Siswa, Petugas, & Monitoring) */}
           {mode !== 'GURU' && (
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 pt-0.5 min-w-0">
-              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center text-[8px] sm:text-[9px] font-black shrink-0">
-                {guruNama.charAt(0) || 'G'}
+            <div className="flex items-center justify-between gap-2 pt-0.5 min-w-0">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 min-w-0 truncate">
+                <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0">Guru:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{guruNama}</span>
               </div>
-              <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0">Guru:</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{guruNama}</span>
+
+              {hasTask && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTaskModalOpen(true);
+                  }}
+                  title="Lihat petunjuk/tugas yang dititipkan guru"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
+                >
+                  <BookOpen size={11} className="text-blue-600 dark:text-blue-400" />
+                  <span>📝 Tugas Guru</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -601,6 +646,86 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── MODAL INSTRUKSI TUGAS GURU ── */}
+      {isTaskModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsTaskModalOpen(false);
+          }}
+        >
+          <div
+            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-5 space-y-3.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                  <BookOpen size={16} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">Instruksi Tugas dari Guru</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">{guruNama} • {mapelNama}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTaskModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Badges Info */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {classSpecificTask ? (
+                <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-200 dark:border-purple-800">
+                  📌 Tugas Khusus Kelas {kelasNama}
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] border border-blue-200 dark:border-blue-800">
+                  🌐 Tugas Bersama / Global
+                </span>
+              )}
+
+              {item.guru_inval_nama && (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
+                  👥 Guru Inval: {item.guru_inval_nama}
+                </span>
+              )}
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-xs text-blue-950 dark:text-blue-200 leading-relaxed font-medium whitespace-pre-wrap">
+              {taskText}
+            </div>
+
+            {taskFileUrl && (
+              <a
+                href={taskFileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold text-xs border border-slate-200 dark:border-slate-700 hover:underline w-full justify-center"
+              >
+                <FileText size={14} />
+                <span>Unduh Lembar Kerja / Modul Tugas</span>
+              </a>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsTaskModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -17,12 +17,15 @@ import {
   Info,
   Building2,
   Scan,
-  UserX
+  UserX,
+  AlertTriangle
 } from 'lucide-react';
 import { Button, Badge } from '../../../ui';
 import { TabSwitcher, type TabOption } from '../../../ui/TabSwitcher';
 import { PiketOperations } from '../../../piket/PiketOperations';
 import { PiketTeacherMonitoring } from '../../../piket/PiketTeacherMonitoring';
+import { PiketTeacherLeavePanel } from '../../../piket/PiketTeacherLeavePanel';
+import { guruIzinApi } from '../../../../api/guruIzin.api';
 import { PiketPrintSlip } from '../../../piket/PiketPrintSlip';
 import { useAuthStore } from '../../../../store/authStore';
 import { useGuruMe } from '../../../../hooks/useGuruMe';
@@ -148,6 +151,30 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
     return Array.isArray(rawSessions) ? rawSessions.length : 0;
   }, [sesiDataToday]);
 
+  // Fetch pending teacher leave count
+  const { data: pendingLeaveRes } = useQuery({
+    queryKey: ['guru-izin-pending-count-staff'],
+    queryFn: () => guruIzinApi.getAll({ status: 'PENDING', limit: 100 }).catch(() => null),
+    refetchInterval: 30000
+  });
+
+  const pendingLeaveCount = useMemo(() => {
+    const raw = (pendingLeaveRes as any)?.data;
+    return Array.isArray(raw) ? raw.length : 0;
+  }, [pendingLeaveRes]);
+
+  const urgentPendingLeaves = useMemo(() => {
+    const raw = (pendingLeaveRes as any)?.data;
+    if (!Array.isArray(raw)) return [];
+    const todayStr = toLocalDate();
+    return raw.filter((item: any) => {
+      if (item.status !== 'PENDING') return false;
+      const start = item.tanggal_mulai?.slice(0, 10);
+      const end = item.tanggal_selesai?.slice(0, 10);
+      return start <= todayStr && end >= todayStr;
+    });
+  }, [pendingLeaveRes]);
+
   const piketSubTabs: TabOption[] = useMemo(() => [
     {
       id: 'IZIN_SISWA',
@@ -169,8 +196,23 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
       ),
       icon: UserX,
       colorClass: 'text-amber-600 dark:text-amber-400'
+    },
+    {
+      id: 'IZIN_GURU',
+      label: (
+        <span className="relative flex items-center gap-1.5">
+          Izin/Dinas Guru
+          {pendingLeaveCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white animate-pulse">
+              {pendingLeaveCount}
+            </span>
+          )}
+        </span>
+      ),
+      icon: Briefcase,
+      colorClass: 'text-purple-600 dark:text-purple-400'
     }
-  ], [pendingTeacherCount]);
+  ], [pendingTeacherCount, pendingLeaveCount]);
 
   return (
     <motion.div
@@ -361,6 +403,43 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
               )}
             </div>
 
+            {/* 🚨 BANNER PERINGATAN DARURAT: IZIN HARI INI BELUM DIVERIFIKASI */}
+            {urgentPendingLeaves.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 text-white shadow-lg shadow-rose-500/20 border border-rose-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 animate-bounce">
+                    <AlertTriangle size={20} className="text-white" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-white text-rose-700 text-[10px] font-black uppercase tracking-wider">
+                        URGENT HARI INI
+                      </span>
+                      <span className="text-xs font-bold text-rose-100">
+                        {urgentPendingLeaves.length} Pengajuan Izin Guru Belum Disetujui
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium text-white">
+                      Guru <strong>{urgentPendingLeaves.map((l: any) => l.Guru?.nama_guru).filter(Boolean).join(', ')}</strong> berhalangan hari ini. Segera verifikasi agar kelas menerima instruksi tugas / guru inval!
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePiketSubTab('IZIN_GURU')}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 font-extrabold text-xs shrink-0 cursor-pointer shadow-md transition-all active:scale-95 flex items-center gap-1.5 self-start sm:self-auto"
+                >
+                  <span>⚡ Verifikasi Sekarang</span>
+                  <ChevronRight size={14} />
+                </button>
+              </motion.div>
+            )}
+
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <TabSwitcher
                 options={piketSubTabs}
@@ -375,8 +454,10 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
                 refetchPermits={refetchPermits}
                 onPrintPermit={(permit) => setPrintedPermit(permit)}
               />
-            ) : (
+            ) : activePiketSubTab === 'GURU_KBM' ? (
               <PiketTeacherMonitoring />
+            ) : (
+              <PiketTeacherLeavePanel />
             )}
           </div>
 

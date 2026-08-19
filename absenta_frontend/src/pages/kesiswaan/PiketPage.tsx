@@ -43,6 +43,8 @@ import { PiketMonitoring } from '../../components/piket/PiketMonitoring';
 import { PiketHistory } from '../../components/piket/PiketHistory';
 import { PiketRecap } from '../../components/piket/PiketRecap';
 import { PiketTeacherMonitoring } from '../../components/piket/PiketTeacherMonitoring';
+import { PiketTeacherLeavePanel } from '../../components/piket/PiketTeacherLeavePanel';
+import { guruIzinApi } from '../../api/guruIzin.api';
 import { PiketPrintSlip } from '../../components/piket/PiketPrintSlip';
 import { PiketPrintRecap } from '../../components/piket/PiketPrintRecap';
 
@@ -293,6 +295,18 @@ export default function PiketPage() {
     return Array.isArray(rawSessions) ? rawSessions.length : 0;
   }, [sesiDataToday]);
 
+  // Fetch pending teacher leave count for badge indicator
+  const { data: pendingLeaveRes } = useQuery({
+    queryKey: ['guru-izin-pending-count'],
+    queryFn: () => guruIzinApi.getAll({ status: 'PENDING', limit: 100 }).catch(() => null),
+    refetchInterval: 30000
+  });
+
+  const pendingLeaveCount = useMemo(() => {
+    const raw = (pendingLeaveRes as any)?.data;
+    return Array.isArray(raw) ? raw.length : 0;
+  }, [pendingLeaveRes]);
+
   const tabOptions = useMemo(() => [
     { id: 'scan', label: 'Operasional Piket', icon: Scan, colorClass: 'text-indigo-600 dark:text-indigo-400' },
     {
@@ -311,6 +325,21 @@ export default function PiketPage() {
       colorClass: 'text-amber-600 dark:text-amber-400'
     },
     {
+      id: 'guru_izin',
+      label: (
+        <span className="relative flex items-center">
+          Izin/Dinas Guru
+          {pendingLeaveCount > 0 && (
+            <Badge variant="outline" className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white animate-pulse border-none">
+              {pendingLeaveCount}
+            </Badge>
+          )}
+        </span>
+      ),
+      icon: Briefcase,
+      colorClass: 'text-purple-600 dark:text-purple-400'
+    },
+    {
       id: 'monitoring',
       label: (
         <span className="relative flex items-center">
@@ -327,7 +356,7 @@ export default function PiketPage() {
     },
     { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-600 dark:text-blue-400' },
     { id: 'rekap', label: 'Rekap Harian', icon: FileText, colorClass: 'text-violet-600 dark:text-violet-400' }
-  ], [activeOutStudents, pendingTeacherCount]);
+  ], [activeOutStudents, pendingTeacherCount, pendingLeaveCount]);
 
   const filteredHistory = useMemo(() => {
     if (!historySearch.trim()) return dailyPermits;
@@ -503,6 +532,11 @@ export default function PiketPage() {
                   {/* TAB: PANTAU GURU KBM (SIAP MULAI TAPI BELUM TAP) */}
                   <TabsContent value="guru_kbm" className="mt-4 space-y-6">
                     <PiketTeacherMonitoring />
+                  </TabsContent>
+
+                  {/* TAB: IZIN & DINAS GURU */}
+                  <TabsContent value="guru_izin" className="mt-4 space-y-6">
+                    <PiketTeacherLeavePanel />
                   </TabsContent>
 
                   {/* TAB 2: ACTIVE MONITORING */}

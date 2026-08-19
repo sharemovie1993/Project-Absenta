@@ -43,6 +43,26 @@ export interface RekapBulananGuruMeResponse {
       SAKIT: number;
       ALPA: number;
       DISPEN?: number;
+      DINAS_LUAR?: number;
+      PENUGASAN?: number;
+      CUTI?: number;
+    };
+    statistik_harian?: {
+      HADIR: number;
+      TERLAMBAT: number;
+      DINAS_LUAR: number;
+      IZIN: number;
+      SAKIT?: number;
+      ALPA: number;
+    };
+    statistik_kbm?: {
+      TOTAL_SESI?: number;
+      HADIR: number;
+      TERLAMBAT: number;
+      DINAS_LUAR: number;
+      IZIN: number;
+      SAKIT?: number;
+      ALPA: number;
     };
     total_poin?: number;
     persentase_kehadiran?: number;

@@ -2,6 +2,16 @@ import React from 'react';
 import { Award, Clock, Calendar, CheckCircle2, TrendingUp, Sparkles } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 
+export interface RekapStatistikDetail {
+  HADIR: number;
+  TERLAMBAT: number;
+  DINAS_LUAR: number;
+  IZIN: number;
+  SAKIT?: number;
+  ALPA: number;
+  TOTAL_SESI?: number;
+}
+
 interface BebanMengajarWidgetProps {
   currentJp?: number;
   kbmJp?: number;
@@ -9,10 +19,13 @@ interface BebanMengajarWidgetProps {
   targetJp?: number;
   teacherName?: string;
   positions?: Array<{ name: string; ekuivalen_jp: number }>;
+  harianStats?: RekapStatistikDetail;
+  kbmStats?: RekapStatistikDetail;
   hadirBulanIni?: number;
   terlambatBulanIni?: number;
   dinasLuarBulanIni?: number;
   izinBulanIni?: number;
+  alpaBulanIni?: number;
   isLoading?: boolean;
   onOpenAjukanIzin?: () => void;
 }
@@ -24,16 +37,35 @@ export const BebanMengajarWidget: React.FC<BebanMengajarWidgetProps> = ({
   targetJp = 24,
   teacherName = 'Guru',
   positions = [],
+  harianStats,
+  kbmStats,
   hadirBulanIni = 0,
   terlambatBulanIni = 0,
   dinasLuarBulanIni = 0,
   izinBulanIni = 0,
+  alpaBulanIni = 0,
   isLoading = false,
   onOpenAjukanIzin,
 }) => {
   const displayTarget = targetJp > 0 ? targetJp : 24;
   const percentage = Math.min(100, Math.round((currentJp / displayTarget) * 100));
   const isFulfilled = currentJp >= displayTarget;
+
+  const effectiveHarian: RekapStatistikDetail = harianStats || {
+    HADIR: hadirBulanIni,
+    TERLAMBAT: terlambatBulanIni,
+    DINAS_LUAR: dinasLuarBulanIni,
+    IZIN: izinBulanIni,
+    ALPA: alpaBulanIni,
+  };
+
+  const effectiveKbm: RekapStatistikDetail = kbmStats || {
+    HADIR: hadirBulanIni,
+    TERLAMBAT: terlambatBulanIni,
+    DINAS_LUAR: dinasLuarBulanIni,
+    IZIN: izinBulanIni,
+    ALPA: alpaBulanIni,
+  };
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
@@ -124,26 +156,73 @@ export const BebanMengajarWidget: React.FC<BebanMengajarWidgetProps> = ({
           )}
         </div>
 
-        {/* Right: Kehadiran Guru Bulan Ini (5 Cols) */}
-        <div className="lg:col-span-5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex items-center justify-around text-center">
+        {/* Right: Rekap Presensi Bulan Ini (2 Blok: Hari Kerja & Tatap Muka KBM) */}
+        <div className="lg:col-span-5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-2.5">
+          {/* Row 1: Hari Kerja (Presensi Gerbang/Harian) */}
           <div>
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Hadir</span>
-            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{hadirBulanIni}</span>
+            <div className="flex items-center justify-between pb-1 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+              <span className="flex items-center gap-1">
+                <span>🏢</span>
+                <span>Hari Kerja (Presensi Harian)</span>
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1 p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 text-center">
+              <div>
+                <span className="text-[9px] font-bold text-slate-400 block">Hadir</span>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{effectiveHarian.HADIR}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Telat</span>
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400">{effectiveHarian.TERLAMBAT}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Dinas</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400">{effectiveHarian.DINAS_LUAR}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Izin</span>
+                <span className="text-xs font-black text-purple-600 dark:text-purple-400">{effectiveHarian.IZIN + (effectiveHarian.SAKIT || 0)}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Alpa</span>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400">{effectiveHarian.ALPA}</span>
+              </div>
+            </div>
           </div>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+
+          {/* Row 2: Tatap Muka KBM (Sesi Mengajar) */}
           <div>
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Terlambat</span>
-            <span className="text-sm font-black text-amber-600 dark:text-amber-400">{terlambatBulanIni}</span>
-          </div>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Dinas Luar</span>
-            <span className="text-sm font-black text-blue-600 dark:text-blue-400">{dinasLuarBulanIni}</span>
-          </div>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Cuti/Izin</span>
-            <span className="text-sm font-black text-purple-600 dark:text-purple-400">{izinBulanIni}</span>
+            <div className="flex items-center justify-between pb-1 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+              <span className="flex items-center gap-1">
+                <span>📖</span>
+                <span>Tatap Muka KBM (Sesi Kelas)</span>
+              </span>
+              {effectiveKbm.TOTAL_SESI !== undefined && (
+                <span className="text-[9px] font-mono text-slate-400">Total: {effectiveKbm.TOTAL_SESI} Sesi</span>
+              )}
+            </div>
+            <div className="grid grid-cols-5 gap-1 p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 text-center">
+              <div>
+                <span className="text-[9px] font-bold text-slate-400 block">Mengajar</span>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{effectiveKbm.HADIR}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Telat</span>
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400">{effectiveKbm.TERLAMBAT}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Dinas/Inval</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400">{effectiveKbm.DINAS_LUAR}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Izin</span>
+                <span className="text-xs font-black text-purple-600 dark:text-purple-400">{effectiveKbm.IZIN + (effectiveKbm.SAKIT || 0)}</span>
+              </div>
+              <div className="border-l border-slate-100 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-400 block">Kosong</span>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400">{effectiveKbm.ALPA}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

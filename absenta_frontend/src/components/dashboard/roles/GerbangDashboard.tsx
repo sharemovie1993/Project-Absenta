@@ -28,7 +28,8 @@ import {
   Edit3,
   Key,
   MapPin,
-  Award
+  Award,
+  Zap
 } from 'lucide-react';
 import { getGerbangDashboardStats } from '../../../api/dashboard.api';
 import { Button } from '../../ui/Button';

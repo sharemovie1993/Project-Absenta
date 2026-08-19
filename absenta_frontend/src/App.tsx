@@ -500,6 +500,7 @@ function App() {
                         <RoleSwitch
                           superadmin={<DashboardOverview />}
                           admin={<UnifiedStaffDashboardPage />}
+                          guru={<UnifiedStaffDashboardPage />}
                           fallback={<DashboardOverview />}
                         />
                       </ProtectedRoute>

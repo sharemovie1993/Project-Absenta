@@ -545,9 +545,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { whatsappRoutes } = await import('../modules/whatsapp/routes/whatsapp.routes');
       await fastify.register(whatsappRoutes, { prefix: '/whatsapp' });
 
-      // Piket Guru Module
+      // Piket Guru Module (Accessible via both /kesiswaan/piket and /piket)
       const { piketModule } = await import('../modules/kesiswaan/piket');
       await fastify.register(piketModule, { prefix: '/kesiswaan/piket' });
+      await fastify.register(piketModule, { prefix: '/piket' });
 
 
 

@@ -5,6 +5,7 @@ import { DataScope } from '../../../types/fastify';
 import { cacheService } from '../../../utils/cache.service';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
+import { getTenantTimezone, getTenantDayRangeUTC } from '../../../utils/timezone.utils';
 
 export class PelanggaranService {
   static async create(tenantId: string, data: {
@@ -208,10 +209,15 @@ export class PelanggaranService {
       where.status = query.status;
     }
 
-    if (query.startDate && query.endDate) {
+    if (query.startDate || query.endDate) {
+      const tz = await getTenantTimezone(tenantId);
+      const startStr = query.startDate || query.endDate!;
+      const endStr = query.endDate || query.startDate!;
+      const startRange = getTenantDayRangeUTC(startStr, tz);
+      const endRange = getTenantDayRangeUTC(endStr, tz);
       where.tanggal = {
-        gte: new Date(query.startDate),
-        lte: new Date(query.endDate),
+        gte: startRange.startUTC,
+        lte: endRange.endUTC,
       };
     }
 

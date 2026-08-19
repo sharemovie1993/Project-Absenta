@@ -155,6 +155,7 @@ model Tenant {
   KospConfig               KospConfig[]
   JurnalWaliKelas          JurnalWaliKelas[]
   PermohonanIzinSiswa      PermohonanIzinSiswa[]
+  PermohonanIzinGuru       PermohonanIzinGuru[]
 }
 
 enum BackupStatus {
@@ -480,6 +481,8 @@ model User {
   GuruDocument         GuruDocument[]
   permohonanIzinDiajukan PermohonanIzinSiswa[] @relation("PermohonanIzinDiajukan")
   permohonanIzinDiproses PermohonanIzinSiswa[] @relation("PermohonanIzinDiproses")
+  permohonanIzinGuruDiajukan PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiajukan")
+  permohonanIzinGuruDiproses PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiproses")
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -865,6 +868,8 @@ model Guru {
   GuruTimeOff           GuruTimeOff[]
   JadwalPiketGuru       JadwalPiketGuru[]
   JadwalKontrakKbm      JadwalKontrakKbm[]
+  PermohonanIzinGuru    PermohonanIzinGuru[]
+  PermohonanInvalGuru   PermohonanIzinGuru[]       @relation("GuruInvalPermohonan")
 
   Member Member?
   JurnalWaliKelas     JurnalWaliKelas[]
@@ -4597,6 +4602,50 @@ model PermohonanIzinSiswa {
   @@index([siswa_id])
   @@index([tenant_id, status])
   @@index([tenant_id, tanggal_mulai])
+  @@index([diajukan_oleh])
+}
+
+// ── Permohonan Izin / Dinas Guru ──────────────────────────────────────────────
+// Permohonan izin/dinas yang diajukan oleh guru atau diinput piket, disetujui oleh Kepsek/Kurikulum/Guru Piket.
+model PermohonanIzinGuru {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  guru_id            String
+  tipe_izin          String    @db.VarChar(30) // SAKIT, IZIN_PRIBADI, DINAS_LUAR, CUTI, LAINNYA
+  tipe_durasi        String    @default("SEHARIAN") @db.VarChar(20) // SEHARIAN, MULTI_HARI, SEBAGIAN_SESI
+  tanggal_mulai      DateTime  @db.Date
+  tanggal_selesai    DateTime  @db.Date
+  jam_mulai          String?   @db.VarChar(10) // "07:15" jika izin sebagian sesi
+  jam_selesai        String?   @db.VarChar(10) // "11:40"
+  alasan             String    @db.Text
+  attachment_url     String?   // Surat tugas / dokter
+  attachment_type    String?   @db.VarChar(50) // surat_tugas, surat_dokter, keterangan
+  
+  // ── FITUR PENUGASAN KELAS KOSONG ──
+  instruksi_tugas    String?   @db.Text // Instruksi tugas/materi yang ditinggalkan guru
+  file_tugas_url     String?   // File lembar kerja / PDF modul tugas
+  tugas_per_kelas    Json?     // Array rincian tugas spesifik per kelas: [{ kelas_id, mapel_id, instruksi, file_url }]
+
+  status             String    @default("PENDING") @db.VarChar(20) // PENDING, DISETUJUI, DITOLAK, DIBATALKAN
+  guru_inval_id      String?   // ID Guru pengganti (Inval) yang ditugaskan piket/kurikulum
+  diajukan_oleh      String    // user_id pengaju
+  diproses_oleh      String?   // user_id pemroses (Kepsek / Kurikulum / Guru Piket)
+  diproses_at        DateTime?
+  catatan_penolakan  String?   @db.Text
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  Tenant             Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru               Guru      @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  GuruInval          Guru?     @relation("GuruInvalPermohonan", fields: [guru_inval_id], references: [id])
+  Pengaju            User      @relation("PermohonanIzinGuruDiajukan", fields: [diajukan_oleh], references: [id])
+  Pemroses           User?     @relation("PermohonanIzinGuruDiproses", fields: [diproses_oleh], references: [id])
+
+  @@index([tenant_id])
+  @@index([guru_id])
+  @@index([guru_inval_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, tanggal_mulai, tanggal_selesai])
   @@index([diajukan_oleh])
 }
 

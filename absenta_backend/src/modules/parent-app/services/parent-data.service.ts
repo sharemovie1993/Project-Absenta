@@ -3,6 +3,8 @@ import { parentAuthService } from './parent-auth.service';
 import { JenisTap, AbsensiMode } from '@/constants/enums';
 import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
+import { getTenantDayRangeUTC } from '@/utils/timezone.utils';
+import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
 
 export class ParentDataService {
   
@@ -29,7 +31,7 @@ export class ParentDataService {
       const tzConfig = await prisma.config.findFirst({
         where: { tenant_id: studentInfo?.tenant_id, key: 'TIMEZONE' }
       });
-      const timeZone = tzConfig?.value || 'Asia/Jakarta';
+      const timeZone = tzConfig?.value || PLATFORM_TIMEZONE;
 
       // A. Get Today's Status (Hero Data)
       const todayStatus = await this.getTodayStatus(child.id, timeZone);
@@ -62,24 +64,11 @@ export class ParentDataService {
    * Get Today's Attendance Status (HERO DATA)
    * Returns comprehensive object for UI Hero Section
    */
-  private async getTodayStatus(siswaId: string, timeZone: string = 'Asia/Jakarta') {
-    // Calculate Offset
-    const TZ_OFFSET: Record<string, number> = {
-      'Asia/Jakarta': 7,
-      'Asia/Makassar': 8,
-      'Asia/Jayapura': 9
-    };
-    const offset = TZ_OFFSET[timeZone] ?? 7;
-
+  private async getTodayStatus(siswaId: string, timeZone: string = PLATFORM_TIMEZONE) {
     const now = new Date();
-    // Get "Today" string in Tenant Timezone: "YYYY-MM-DD"
-    // We can shift 'now' by offset hours to get the local date
-    const tenantNow = new Date(now.getTime() + (offset * 60 * 60 * 1000));
-    const dayStr = tenantNow.toISOString().split('T')[0];
-
-    // Construct Range in UTC
-    const startOfDay = new Date(new Date(`${dayStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-    const endOfDay = new Date(new Date(`${dayStr}T23:59:59.999Z`).getTime() - (offset * 60 * 60 * 1000));
+    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const dayStr = formatter.format(now);
+    const { startUTC: startOfDay, endUTC: endOfDay } = getTenantDayRangeUTC(dayStr, timeZone);
 
     // 1. Get Student Tenant (needed for context if we want to expand)
     const siswa = await prisma.siswa.findUnique({

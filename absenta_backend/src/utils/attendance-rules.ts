@@ -1,5 +1,6 @@
 import { differenceInMinutes } from 'date-fns';
-import { TZ_OFFSET } from './timezone.utils';
+import { getTenantOffsetString } from './timezone.utils';
+import { PLATFORM_TIMEZONE } from '../infra/jobEngine';
 
 export interface AttendanceRuleConfig {
   jamMasuk: string;          // "07:00" or "13:00"
@@ -28,10 +29,8 @@ export function calculateAttendanceStatus(
   }
 
   // Resolusi timezone tenant
-  const tz = String(config.timezone || 'Asia/Jakarta').trim();
-  const offsetHours = TZ_OFFSET[tz] ?? 7;
-  const offsetSign = offsetHours >= 0 ? '+' : '-';
-  const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
+  const tz = String(config.timezone || PLATFORM_TIMEZONE).trim();
+  const offsetStr = getTenantOffsetString(tz);
 
   // Parse jam masuk target (07:00) pada tanggal lokal tenant
   const jamMasukStr = config.jamMasuk && typeof config.jamMasuk === 'string' && config.jamMasuk.trim() ? config.jamMasuk.trim() : '07:00';

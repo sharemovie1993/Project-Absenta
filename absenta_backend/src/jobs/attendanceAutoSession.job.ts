@@ -1,15 +1,15 @@
-import { defineCronJob } from '../infra/jobEngine';
+import { defineCronJob, PLATFORM_TIMEZONE } from '../infra/jobEngine';
 import { appLogger } from '../utils/app-logger';
 import { prisma } from '../utils/prisma';
 import { Hari } from '@prisma/client';
-import { TZ_OFFSET, getTenantTimezone } from '../utils/timezone.utils';
+import { getTenantTimezone, TZ_OFFSET } from '../utils/timezone.utils';
 
 /**
  * Helper: dapatkan waktu lokal tenant berdasarkan timezone config.
  * Diekspor untuk dipakai sesi-absensi.controller.ts
  */
 export function getTenantLocalTime(timezone: string | null | undefined, now: Date): { dateStr: string; timeZone: string } {
-  const tz = timezone || 'Asia/Jakarta';
+  const tz = timezone || PLATFORM_TIMEZONE;
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
   const dateStr = formatter.format(now);
   return { dateStr, timeZone: tz };
@@ -199,12 +199,39 @@ export async function generateSessionsForTenantDirect(
             });
 
             if (schedule.guru_id) {
+              // Cek apakah guru memiliki izin yang sudah disetujui (Approved) untuk hari ini
+              const approvedIzin = await prisma.permohonanIzinGuru.findFirst({
+                where: {
+                  tenant_id: tenantId,
+                  guru_id: schedule.guru_id,
+                  status: 'DISETUJUI',
+                  tanggal_mulai: { lte: tanggalTgl },
+                  tanggal_selesai: { gte: tanggalTgl }
+                }
+              });
+
+              let initialStatus = 'Belum Hadir';
+              let catatanIzin: string | null = null;
+
+              if (approvedIzin) {
+                if (approvedIzin.tipe_durasi === 'SEBAGIAN_SESI' && approvedIzin.jam_mulai && approvedIzin.jam_selesai) {
+                  if (schedule.jam_mulai < approvedIzin.jam_selesai && schedule.jam_selesai > approvedIzin.jam_mulai) {
+                    initialStatus = approvedIzin.tipe_izin === 'SAKIT' ? 'SAKIT' : (approvedIzin.tipe_izin === 'DINAS_LUAR' ? 'PENUGASAN' : 'IZIN');
+                    catatanIzin = `Izin Disetujui: ${approvedIzin.alasan}`;
+                  }
+                } else {
+                  initialStatus = approvedIzin.tipe_izin === 'SAKIT' ? 'SAKIT' : (approvedIzin.tipe_izin === 'DINAS_LUAR' ? 'PENUGASAN' : 'IZIN');
+                  catatanIzin = `Izin Disetujui: ${approvedIzin.alasan}`;
+                }
+              }
+
               await prisma.absenGuru.create({
                 data: {
                   tenant_id: tenantId,
                   sesi_id: created.id,
                   guru_id: schedule.guru_id,
-                  status: 'Belum Hadir',
+                  status: initialStatus,
+                  catatan: catatanIzin,
                   tahun_pelajaran_id: schedule.tahun_pelajaran_id,
                   semester_id: schedule.semester_id
                 }

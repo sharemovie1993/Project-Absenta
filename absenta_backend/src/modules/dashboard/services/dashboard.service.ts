@@ -5,29 +5,38 @@ import { authorizationService } from '@/modules/auth/services/authorization.serv
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { DataScope } from '@/types/fastify';
 import { applyDataScope } from '@/utils/applyDataScope';
-import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
+import { getTenantTimezone, getTenantOffsetString, getTenantDayRangeUTC } from '@/utils/timezone.utils';
 import { SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
 
 export class DashboardService {
   
   /**
+   * Helper: Resolusi rentang waktu satu hari penuh (00:00:00 - 23:59:59) dalam UTC berdasarkan timezone tenant.
+   */
+  private async resolveDayRange(tenantId: string | null, tanggal?: string): Promise<{ startOfDay: Date; endOfDay: Date; dateStr: string; timeZone: string }> {
+    const tz = await getTenantTimezone(tenantId);
+    let dateStr = tanggal;
+    if (!dateStr) {
+      const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+      dateStr = formatter.format(new Date());
+    }
+    const { startUTC, endUTC } = getTenantDayRangeUTC(dateStr, tz);
+    return { startOfDay: startUTC, endOfDay: endUTC, dateStr, timeZone: tz };
+  }
+
+  /**
    * 1️⃣ Dashboard Overview - Ringkasan global per tenant untuk hari ini
    */
   async getOverview(tenantId: string | null, tanggal?: string, scope?: DataScope) {
-    const targetDate = tanggal ? new Date(tanggal) : new Date();
+    const { startOfDay, endOfDay, dateStr } = await this.resolveDayRange(tenantId, tanggal);
     // Cache key should include scope fingerprints if scope is restricted
     const scopeKey = scope?.kelasIds ? `scope-${scope.kelasIds.join(',')}` : 'global';
-    const cacheKey = CACHE_KEYS.DASHBOARD.OVERVIEW(tenantId, `${targetDate.toISOString().split('T')[0]}-${scopeKey}`);
+    const cacheKey = CACHE_KEYS.DASHBOARD.OVERVIEW(tenantId, `${dateStr}-${scopeKey}`);
     
     // 📊 Cache overview dengan TTL pendek karena data real-time
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
     // Build where clause based on tenantId
     const siswaWhereClause: any = {
       status: 'AKTIF'
@@ -107,7 +116,7 @@ export class DashboardService {
     const persentaseGuru = totalGuru > 0 ? Math.round((guruHadir / totalGuru) * 100) : 0;
 
     return {
-      tanggal: targetDate.toISOString().split('T')[0],
+      tanggal: dateStr,
       total_siswa: totalSiswa,
       total_guru: totalGuru,
       siswa_hadir: siswaHadir,
@@ -510,11 +519,7 @@ export class DashboardService {
    * 2️⃣ Statistik Harian per Kelas
    */
   async getStatistikKelasHarian(tenantId: string | null, tanggal: string, scope?: DataScope) {
-    const targetDate = new Date(tanggal);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay, endOfDay } = await this.resolveDayRange(tenantId, tanggal);
 
     // Build where clause based on tenantId and scope
     let whereClause: any = {};
@@ -711,11 +716,7 @@ export class DashboardService {
    * 4️⃣ Statistik Guru Harian
    */
   async getStatistikGuruHarian(tenantId: string | null, tanggal: string) {
-    const targetDate = new Date(tanggal);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay, endOfDay } = await this.resolveDayRange(tenantId, tanggal);
 
     // Build where clause based on tenantId
     const whereClause: any = {};
@@ -1261,10 +1262,7 @@ export class DashboardService {
    * 🆕 Get Gerbang (Gate) Stats
    */
   async getGerbangStats(tenantId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
 
     const [totalTaps, masukCount, keluarCount] = await Promise.all([
       prisma.absenGerbangSiswa.count({
@@ -1317,10 +1315,7 @@ export class DashboardService {
    * 🆕 Get Petugas (Officer) Stats
    */
   async getPetugasStats(tenantId: string, userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -1386,10 +1381,7 @@ export class DashboardService {
 
     // Hitung guru di jurusan yang sama (berdasarkan mengajar di kelas jurusan yang sama)
     // Proxy: hitung guru yang punya sesi hari ini di tenant ini
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
 
     const [totalTeachers, supervisionCount] = await Promise.all([
       prisma.guru.count({ where: { ...(tenantId ? { tenant_id: tenantId } : {}) } }),
@@ -1451,10 +1443,7 @@ export class DashboardService {
    * - practiceSchedules: jadwal praktik hari ini
    */
   async getKabengStats(tenantId: string, userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
 
     const where = tenantId ? { tenant_id: tenantId } : {};
 

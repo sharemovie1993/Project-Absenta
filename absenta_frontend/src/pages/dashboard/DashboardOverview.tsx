@@ -552,12 +552,12 @@ export default function DashboardOverview() {
 
       if (savedView && availableViews.some(v => v.id === savedView)) {
         setActiveView(savedView);
+      } else if ((roleName === 'GURU' || hasGuruProfile || !isAdmin) && availableViews.some(v => v.id === 'unified_staff')) {
+        setActiveView('unified_staff');
       } else if (isGerbangUser && availableViews.some(v => v.id === 'gerbang')) {
         setActiveView('gerbang');
       } else if (hasPetugas && !isAdmin && availableViews.some(v => v.id === 'petugas')) {
         setActiveView('petugas');
-      } else if (roleName === 'GURU' || (hasGuruProfile && !isAdmin)) {
-        setActiveView('unified_staff');
       } else {
         // Fallback to the first available view
         setActiveView(availableViews[0].id);

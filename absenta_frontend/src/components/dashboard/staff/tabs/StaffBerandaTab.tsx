@@ -286,10 +286,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         targetJp={teacherBeban?.max_jp ?? 24}
         teacherName={guruNama}
         positions={teacherBeban?.positions || []}
+        harianStats={rekapGuruRes?.data?.statistik_harian}
+        kbmStats={rekapGuruRes?.data?.statistik_kbm}
         hadirBulanIni={rekapStats.HADIR || 0}
         terlambatBulanIni={rekapStats.TERLAMBAT || 0}
-        dinasLuarBulanIni={rekapStats.DISPEN || 0}
-        izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
+        dinasLuarBulanIni={rekapStats.DINAS_LUAR || rekapStats.PENUGASAN || rekapStats.DISPEN || 0}
+        izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0) + (rekapStats.CUTI || 0)}
+        alpaBulanIni={rekapStats.ALPA || 0}
         isLoading={loadingBeban || loadingRekap}
         onOpenAjukanIzin={() => setShowIzinModal(true)}
       />

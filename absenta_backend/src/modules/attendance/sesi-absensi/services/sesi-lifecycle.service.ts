@@ -2,6 +2,7 @@ import { prisma } from '../../../../utils/prisma';
 import { storageService } from '../../../../infra/storage/storage.service';
 import { emitDomainEvent } from '../../../../infra/event-bus';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
+import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -67,7 +68,7 @@ function validateSessionTimeWindow(
   startTarget: Date | null,
   endTarget: Date | null,
   hasFoto: boolean,
-  timezone: string = 'Asia/Jakarta'
+  timezone: string = PLATFORM_TIMEZONE
 ): void {
   if (!hasFoto) return;
   const now = new Date();
@@ -318,16 +319,20 @@ export class SesiLifecycleService {
       }
     }
 
+    const resolvedSumberSesi = payload.sumber_sesi || (validJadwalKbmId || payload.jadwal_kegiatan_id ? 'TEMPLATE' : 'MANUAL');
+
     const sesi = await (prisma.sesiAbsensi as any).create({
       data: {
         tenant_id: tenantId,
         jadwal_kbm_id: validJadwalKbmId,
+        jadwal_kegiatan_id: payload.jadwal_kegiatan_id || null,
         kelas_id,
         mapel_id: mapel_id || null,
         guru_id: guru_id || null,
         tahun_pelajaran_id: targetTpId || 'default-tp',
         semester_id: targetSemId || 'default-sem',
         jenis_kegiatan,
+        sumber_sesi: resolvedSumberSesi,
         tanggal: sessionDate,
         waktu_mulai: parsedStart,
         waktu_selesai: waktu_selesai ? new Date(waktu_selesai) : null,
@@ -491,15 +496,28 @@ export class SesiLifecycleService {
       scheduleWhere.guru_id = guruIdFilter;
     }
 
-    const rawSchedulesFetched = await (prisma as any).jadwalKBM.findMany({
-      where: scheduleWhere,
-      include: {
-        Kelas: { select: { id: true, nama_kelas: true } },
-        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
-      },
-      orderBy: [{ kelas_id: 'asc' }, { slot_index: 'asc' }, { jam_mulai: 'asc' }]
-    });
+    const [rawSchedulesFetched, activeLeavesToday] = await Promise.all([
+      (prisma as any).jadwalKBM.findMany({
+        where: scheduleWhere,
+        include: {
+          Kelas: { select: { id: true, nama_kelas: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+          Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
+        },
+        orderBy: [{ kelas_id: 'asc' }, { slot_index: 'asc' }, { jam_mulai: 'asc' }]
+      }),
+      (prisma as any).permohonanIzinGuru.findMany({
+        where: {
+          tenant_id: tenantId,
+          tanggal_mulai: { lte: targetDateObj },
+          tanggal_selesai: { gte: targetDateObj },
+          status: { in: ['DISETUJUI', 'PENDING'] }
+        },
+        include: {
+          GuruInval: { select: { id: true, nama_guru: true, nip: true } }
+        }
+      })
+    ]);
 
     // 🔑 Apply day_patterns shift config enrichment — same as JadwalKBMService.enrichJadwalWithDayTimes
     // This ensures jam_mulai/jam_selesai are resolved identically across Siswa, Guru, Ops, and Monitoring modules.
@@ -597,14 +615,32 @@ export class SesiLifecycleService {
 
       if (physicalMatch) {
         matchedPhysicalIds.add(physicalMatch.id);
+        const jpCount = (mRange.jam_ke_start !== undefined && mRange.jam_ke_end !== undefined)
+          ? (mRange.jam_ke_end - mRange.jam_ke_start + 1)
+          : (mRange.schedule_ids?.length || 1);
+        const jLabel = (mRange.jam_ke_start !== undefined && mRange.jam_ke_end !== undefined)
+          ? (mRange.jam_ke_start === mRange.jam_ke_end ? `Jam Ke-${mRange.jam_ke_start}` : `Jam Ke-${mRange.jam_ke_start} - ${mRange.jam_ke_end}`)
+          : undefined;
+
         return {
           ...physicalMatch,
           waktu_mulai: mRange.jam_mulai ? `${dateStr}T${mRange.jam_mulai}:00.000${tzOffset}` : physicalMatch.waktu_mulai,
           waktu_selesai: mRange.jam_selesai ? `${dateStr}T${mRange.jam_selesai}:00.000${tzOffset}` : physicalMatch.waktu_selesai,
           jam_mulai: mRange.jam_mulai,
           jam_selesai: mRange.jam_selesai,
+          total_jp: jpCount,
+          jam_ke_start: mRange.jam_ke_start,
+          jam_ke_end: mRange.jam_ke_end,
+          jam_label: jLabel,
         };
       }
+
+      const jpCount = (mRange.jam_ke_start !== undefined && mRange.jam_ke_end !== undefined)
+        ? (mRange.jam_ke_end - mRange.jam_ke_start + 1)
+        : (mRange.schedule_ids?.length || 1);
+      const jLabel = (mRange.jam_ke_start !== undefined && mRange.jam_ke_end !== undefined)
+        ? (mRange.jam_ke_start === mRange.jam_ke_end ? `Jam Ke-${mRange.jam_ke_start}` : `Jam Ke-${mRange.jam_ke_start} - ${mRange.jam_ke_end}`)
+        : undefined;
 
       // No physical session exists -> Virtual session (MENDATANG)
       return {
@@ -620,6 +656,10 @@ export class SesiLifecycleService {
         waktu_selesai: `${dateStr}T${mRange.jam_selesai}:00.000${tzOffset}`,
         jam_mulai: mRange.jam_mulai,
         jam_selesai: mRange.jam_selesai,
+        total_jp: jpCount,
+        jam_ke_start: mRange.jam_ke_start,
+        jam_ke_end: mRange.jam_ke_end,
+        jam_label: jLabel,
         status: 'MENDATANG',
         foto_kegiatan: null,
         created_at: new Date(),
@@ -773,9 +813,52 @@ export class SesiLifecycleService {
       // 4. isUpcoming (BELUM MASUK JAM JADWAL):
       const isUpcoming = !isFinished && !isLive && !isOverdue && !isReadyToOpen;
 
-      // 5. Teacher status derived from AbsenGuru record
+      // 5. Teacher status derived from AbsenGuru record & PermohonanIzinGuru
       let teacherStatus: string;
-      if (absenGuru && !isPlaceholderAbsenGuru) {
+
+      // Check if this teacher has an active/pending leave for today
+      const matchingLeave = (activeLeavesToday as any[])?.find((l: any) => {
+        if (l.guru_id !== item.guru_id) return false;
+        if (l.tipe_durasi === 'SEBAGIAN_SESI' && l.jam_mulai && l.jam_selesai) {
+          const itemStart = item.jam_mulai || (item.waktu_mulai ? String(item.waktu_mulai).slice(11, 16) : '');
+          const itemEnd = item.jam_selesai || (item.waktu_selesai ? String(item.waktu_selesai).slice(11, 16) : '');
+          if (itemStart && itemEnd) {
+            return l.jam_mulai < itemEnd && l.jam_selesai > itemStart;
+          }
+        }
+        return true;
+      });
+
+      if (matchingLeave) {
+        item.instruksi_tugas = matchingLeave.instruksi_tugas || item.instruksi_tugas;
+        item.file_tugas_url = matchingLeave.file_tugas_url || item.file_tugas_url;
+        item.tugas_per_kelas = matchingLeave.tugas_per_kelas || item.tugas_per_kelas;
+        item.permohonan_izin = {
+          id: matchingLeave.id,
+          tipe_izin: matchingLeave.tipe_izin,
+          status: matchingLeave.status,
+          alasan: matchingLeave.alasan,
+          instruksi_tugas: matchingLeave.instruksi_tugas,
+          tugas_per_kelas: matchingLeave.tugas_per_kelas,
+          file_tugas_url: matchingLeave.file_tugas_url,
+          guru_inval: matchingLeave.GuruInval ? {
+            id: matchingLeave.GuruInval.id,
+            nama_guru: matchingLeave.GuruInval.nama_guru,
+            nip: matchingLeave.GuruInval.nip
+          } : null
+        };
+        if (matchingLeave.GuruInval) {
+          item.guru_inval_nama = matchingLeave.GuruInval.nama_guru;
+        }
+
+        if (matchingLeave.status === 'DISETUJUI') {
+          teacherStatus = matchingLeave.GuruInval ? 'INVAL' : (matchingLeave.tipe_izin === 'DINAS_LUAR' ? 'DINAS_LUAR' : (matchingLeave.tipe_izin === 'SAKIT' ? 'SAKIT' : 'IZIN'));
+        } else if (matchingLeave.status === 'PENDING') {
+          teacherStatus = 'PENDING_IZIN';
+        } else {
+          teacherStatus = 'BELUM_TAP';
+        }
+      } else if (absenGuru && !isPlaceholderAbsenGuru) {
         if (absenGuru.is_terlambat) teacherStatus = 'TERLAMBAT';
         else if (absenGuru.status === 'IZIN') teacherStatus = 'IZIN';
         else if (absenGuru.status === 'SAKIT') teacherStatus = 'SAKIT';
@@ -792,7 +875,7 @@ export class SesiLifecycleService {
 
       const effectiveGuruStatus = (teacherStatus === 'TEPAT_WAKTU' || teacherStatus === 'HADIR')
         ? 'HADIR'
-        : (teacherStatus === 'TERLAMBAT' || teacherStatus === 'IZIN' || teacherStatus === 'SAKIT' || teacherStatus === 'PENUGASAN' || teacherStatus === 'ALPA')
+        : (teacherStatus === 'TERLAMBAT' || teacherStatus === 'IZIN' || teacherStatus === 'SAKIT' || teacherStatus === 'PENUGASAN' || teacherStatus === 'INVAL' || teacherStatus === 'DINAS_LUAR' || teacherStatus === 'PENDING_IZIN' || teacherStatus === 'ALPA')
         ? teacherStatus
         : (isFinished || isOverdue ? 'ALPA' : (item.guru_status && !item.guru_status.toUpperCase().includes('BELUM') ? item.guru_status : 'BELUM_TAP'));
 
