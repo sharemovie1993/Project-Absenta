@@ -176,6 +176,18 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     return () => setInstructionData(null);
   }, [instruction, setInstructionData]);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isNotDashboard = location.pathname !== '/' && location.pathname !== '/dashboard';
+
+  const handleGoBack = useCallback(() => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -198,18 +210,6 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       </div>
     );
   }
-
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isNotDashboard = location.pathname !== '/' && location.pathname !== '/dashboard';
-
-  const handleGoBack = useCallback(() => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/dashboard');
-    }
-  }, [navigate]);
 
   return (
     <div className={cn(
