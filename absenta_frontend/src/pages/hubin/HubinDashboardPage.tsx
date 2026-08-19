@@ -211,8 +211,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
             </div>
           )}
 
-          {/* Bagian I: Ringkasan Statistik & KPI Kemitraan */}
-          <Divider title="Bagian I: Ringkasan Statistik & KPI Kemitraan" />
+          {/* Ringkasan Statistik & KPI Kemitraan */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {statCards?.map((card) => (
               <div key={card.label} className="w-full cursor-pointer" onClick={() => {
@@ -241,9 +240,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
             ))}
           </div>
 
-          {/* Bagian II: Serapan Tracer Study & Top Program Keahlian */}
-          <Divider title="Bagian II: Serapan Tracer Study & Top Program Keahlian" />
-          
+          {/* Serapan Tracer Study & Top Program Keahlian */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnalyticsCard
               title="Coverage Tracer Study"
@@ -277,8 +274,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* Bagian III: Aktivitas Penempatan Siswa PKL & Partner Teratas */}
-          <Divider title="Bagian III: Aktivitas Penempatan Siswa PKL & Partner Teratas" />
+          {/* Aktivitas Penempatan Siswa PKL & Partner Teratas */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <RecentPklTable stats={stats} onNavigateTab={handleNavigateTab} />
@@ -288,8 +284,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* Bagian IV: Log Aktivitas Hubin Terbaru (Audit Trail) */}
-          <Divider title="Bagian IV: Log Aktivitas Hubin Terbaru (Audit Trail)" />
+          {/* Log Aktivitas Hubin Terbaru (Audit Trail) */}
           <ActivityLogTimeline activities={activities} activitiesLoading={activitiesLoading} />
           {/* <SectionCard> <Card> </SectionCard> </Card> */}
         </div>

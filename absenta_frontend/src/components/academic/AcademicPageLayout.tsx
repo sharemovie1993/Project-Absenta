@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsCard, MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
@@ -38,6 +39,7 @@ interface AcademicPageLayoutProps {
   title?: string;
   description?: string;
   breadcrumbs?: BreadcrumbItem[];
+  topSlot?: React.ReactNode;
   stats?: AcademicStat[];
   isLoadingStats?: boolean;
   instruction?: InstructionData;
@@ -53,6 +55,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   title,
   description,
   breadcrumbs,
+  topSlot,
   stats = [],
   isLoadingStats = false,
   instruction,
@@ -196,104 +199,59 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     );
   }
 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isNotDashboard = location.pathname !== '/' && location.pathname !== '/dashboard';
+
+  const handleGoBack = useCallback(() => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   return (
     <div className={cn(
-      "space-y-3 sm:space-y-4 max-w-full relative transition-all duration-300 min-w-0 overflow-x-hidden",
+      "space-y-4 max-w-full relative transition-all duration-300 min-w-0 overflow-x-hidden",
       isTvMode ? "p-6 min-h-screen" : "px-0 sm:px-4 pt-1.5 sm:pt-2 pb-4 sm:pb-6"
     )}>
-
-      {/* TV Mode Header Bar */}
-      {isTvMode && (title || toolbar) && (
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-          <div>
-            {title && (
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                {title}
-              </h1>
-            )}
-            {description && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {description}
-              </p>
-            )}
-          </div>
-          {toolbar && (
-            <div className="flex items-center gap-3">
-              {toolbar}
-            </div>
-          )}
+      {/* Top Slot (Positioned at Top, e.g. App Launcher if provided) */}
+      {!isTvMode && topSlot && (
+        <div className="px-3 sm:px-0">
+          {topSlot}
         </div>
       )}
 
-      {/* Responsive Breadcrumbs */}
-      {!isTvMode && (breadcrumbs === undefined || breadcrumbs.length > 0) && (
-        <div className="px-3 sm:px-0 flex items-center justify-between gap-2 flex-wrap">
-          <Breadcrumb items={breadcrumbs} />
-        </div>
-      )}
-
-      {/* Page Header */}
-      {!isTvMode && (title || description || toolbar) && (
-        <div className="px-3 sm:px-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-          <div>
-            {title && (
-              <h1 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-400 tracking-tight">
-                {title}
-              </h1>
+      {/* Top Navigation & Hardening Bar */}
+      {!isTvMode && (
+        <div className="px-3 sm:px-0 flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
+          <div className="flex items-center gap-3">
+            {isNotDashboard && (
+              <button
+                type="button"
+                onClick={handleGoBack}
+                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none"
+                title="Kembali ke halaman sebelumnya"
+              >
+                <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                <span className="tracking-tight">Kembali</span>
+              </button>
             )}
-            {description && (
-              <p className="text-xs sm:text-[13px] text-slate-700 dark:text-slate-400 mt-0.5 font-medium leading-relaxed">
-                {description}
-              </p>
-            )}
-          </div>
-          {toolbar && (
-            <div className="w-full md:w-auto">
-              {toolbar}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Renders dynamic interactive certification badge at Layout-level */}
-      {!isTvMode && hardeningConfig && resolvedKey && (
-        <div className="px-3 sm:px-0 animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
-          <HardeningInspector 
-            pageName={hardeningConfig.displayName}
-            standards={hardeningConfig.standards}
-            moduleKey={resolvedKey}
-          />
-        </div>
-      )}
-
-      {/* Premium Stats Grid */}
-      {(stats.length > 0 || isLoadingStats) && (
-        <div className="px-2 sm:px-0 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-h-[60px] sm:min-h-[80px]">
-          {isLoadingStats ? (
-            // Render 2 skeletons on mobile/tablet, 4 on desktop to match layout
-            [...Array(4)].map((_, i) => (
-              <div key={i} className={cn(
-                "h-[60px] sm:h-[80px] bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-lg sm:rounded-xl animate-pulse",
-                i >= 2 && "hidden sm:block",
-                i >= 4 && "hidden lg:block"
-              )} />
-            ))
-          ) : (
-            (stats || []).map((stat, idx) => (
-              <MemoizedAnalyticsCard
-                key={idx}
-                title={stat.title}
-                value={stat.value}
-                isLoading={isLoadingStats}
-                icon={stat.icon}
-                gradient={stat.gradient}
-                subtitle={stat.subtitle}
-                onClick={stat.onClick}
-                subCards={stat.subCards}
-                variant={stat.variant || 'premium'}
-                mobileCompact={true}
+            {hardeningConfig && resolvedKey && (
+              <HardeningInspector 
+                pageName={hardeningConfig.displayName}
+                standards={hardeningConfig.standards}
+                moduleKey={resolvedKey}
               />
-            ))
+            )}
+          </div>
+
+          {toolbar && (
+            <div className="w-full sm:w-auto ml-auto">
+              {toolbar}
+            </div>
           )}
         </div>
       )}

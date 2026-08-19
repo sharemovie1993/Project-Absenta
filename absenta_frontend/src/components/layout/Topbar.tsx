@@ -60,6 +60,15 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
     toast.success('Berhasil keluar dari akun!');
   };
 
+  const handleGoBack = () => {
+    // Navigasi cerdas ke halaman sebelumnya jika ada riwayat sesi, fallback ke /dashboard
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   const formattedToday = React.useMemo(() => {
     return new Date().toLocaleDateString('id-ID', {
       weekday: 'long',
@@ -202,17 +211,6 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   })()}
                 </div>
             </Link>
-
-            {isNotDashboard && (
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-bold transition-all flex-shrink-0 border border-slate-200/80 dark:border-slate-800"
-                title="Kembali ke Launcher Apps"
-              >
-                <ArrowLeft size={16} className="stroke-[2.5]" />
-                <span className="hidden sm:inline">Kembali</span>
-              </Link>
-            )}
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}

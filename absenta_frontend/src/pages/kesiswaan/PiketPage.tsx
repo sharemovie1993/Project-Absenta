@@ -35,7 +35,7 @@ import { calculatePiketAnalytics, getPiketPersonaConfig, type PiketPersonaMode }
 import { tenantApi } from '../../api/tenants.api';
 import { fetchActiveSystemConfig } from '../../services/systemConfig';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
 // Import modular components
 import { PiketOperations } from '../../components/piket/PiketOperations';
@@ -421,12 +421,9 @@ export default function PiketPage() {
   }), []);
 
   return (
-    <OperationalPageLayout
-      title="MEJA PIKET"
-      shortTitle="MEJA PIKET"
-      subtitle="Kesiswaan & Kedisiplinan"
-      backPath="/dashboard"
-      backLabel="Kembali ke Dashboard"
+    <AcademicPageLayout
+      title="Meja Piket"
+      description="Kesiswaan & Kedisiplinan"
       stats={[]}
       hardeningModuleKey="kesiswaan_piket"
       instruction={piketInstruction}
@@ -729,7 +726,6 @@ export default function PiketPage() {
           </>
         )}
       </div>
-
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 }

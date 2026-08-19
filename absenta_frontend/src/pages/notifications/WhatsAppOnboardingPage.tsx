@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import {
   MessageSquare,
   RefreshCw,
@@ -189,7 +189,10 @@ export function WhatsAppOnboardingPage() {
   };
 
   return (
-    <OperationalPageLayout>
+    <AcademicPageLayout
+      title="WhatsApp Onboarding & Sapa Pengguna"
+      description="Monitoring status pengiriman pesan selamat datang & panduan login via WA"
+    >
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         {/* HEADER BAR */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
@@ -402,6 +405,6 @@ export function WhatsAppOnboardingPage() {
         totalBelum={summary.totalBelum}
         roleFilterLabel={roleFilter}
       />
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 }

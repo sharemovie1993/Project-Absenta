@@ -726,8 +726,8 @@ export default function JadwalPiketGuruPage() {
                 </div>
               </div>
               <Link
-                to="/kesiswaan/piket"
-                className="px-4 py-2 text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5"
+                to="/dashboard?tab=kelola&subtab=GURU_KBM"
+                className="px-4 py-2 text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Buka Meja Piket</span>
                 <span>→</span>

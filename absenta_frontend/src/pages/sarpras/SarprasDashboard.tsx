@@ -225,8 +225,7 @@ const SarprasDashboard: React.FC = React.memo(() => {
         }
       >
         <div className="space-y-8">
-          {/* Bagian I: Ringkasan Aset & Kondisi Terkini */}
-          <Divider title="Bagian I: Ringkasan Aset & Kondisi Terkini" />
+          {/* Ringkasan Aset & Kondisi Terkini */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {statCards?.map((card, i) => (
               <motion.div
@@ -256,15 +255,13 @@ const SarprasDashboard: React.FC = React.memo(() => {
             ))}
           </div>
 
-          {/* Bagian II: Transaksi Peminjaman Terbaru & Aset Belum Kembali */}
-          <Divider title="Bagian II: Transaksi Peminjaman Terbaru & Aset Belum Kembali" />
+          {/* Transaksi Peminjaman Terbaru & Aset Belum Kembali */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <RecentTransactionsList loans={loans} />
             <UnreturnedLoansList loans={loans} />
           </div>
 
-          {/* Bagian III: Peringatan Aset Rusak & Pemeliharaan */}
-          <Divider title="Bagian III: Peringatan Aset Rusak & Pemeliharaan" />
+          {/* Peringatan Aset Rusak & Pemeliharaan */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <MaintenanceAlertsList repairs={repairs} />
@@ -282,8 +279,7 @@ const SarprasDashboard: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* Bagian IV: Aksi Cepat Operasional Toolman */}
-          <Divider title="Bagian IV: Aksi Cepat Operasional Toolman" />
+          {/* Aksi Cepat Operasional Toolman */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Actions */}
             <div className="lg:col-span-2">

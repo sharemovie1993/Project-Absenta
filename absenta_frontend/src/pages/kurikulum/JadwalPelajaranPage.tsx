@@ -31,7 +31,7 @@ import { useUnifiedScheduleData } from '../../hooks/attendance/useUnifiedSchedul
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
-import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { getJadwalKBM, deleteJadwalKBM, clearJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
@@ -671,12 +671,9 @@ export default function JadwalPelajaranPage() {
   // 🛡️ Premium Lock Check
   if (isLocked) {
     return (
-      <OperationalPageLayout
+      <AcademicPageLayout
         title="Jadwal KBM & Visual Builder"
-        shortTitle="Jadwal KBM"
-        subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
-        backPath="/kurikulum/dashboard"
-        backLabel="Kembali ke Dashboard Kurikulum"
+        description="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
         hardeningModuleKey={hardeningModuleKey}
       >
         <PremiumFeatureGate 
@@ -687,18 +684,15 @@ export default function JadwalPelajaranPage() {
         >
           <div />
         </PremiumFeatureGate>
-      </OperationalPageLayout>
+      </AcademicPageLayout>
     );
   }
 
   if (!isAllowed) {
     return (
-      <OperationalPageLayout
+      <AcademicPageLayout
         title="Jadwal KBM & Visual Builder"
-        shortTitle="Jadwal KBM"
-        subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
-        backPath="/kurikulum/dashboard"
-        backLabel="Kembali ke Dashboard Kurikulum"
+        description="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
         hardeningModuleKey={hardeningModuleKey}
       >
         <SectionCard>
@@ -712,19 +706,16 @@ export default function JadwalPelajaranPage() {
             </p>
           </div>
         </SectionCard>
-      </OperationalPageLayout>
+      </AcademicPageLayout>
     );
   }
 
   return (
-    <OperationalPageLayout
+    <AcademicPageLayout
       title="Jadwal KBM & Visual Builder"
-      shortTitle="Jadwal KBM"
-      subtitle="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
-      backPath="/kurikulum/dashboard"
-      backLabel="Kembali ke Dashboard Kurikulum"
+      description="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
       instruction={{
-        title: 'Panduan Penyusunan Jadwal (Jalur B - Full Screen Workspace)',
+        title: 'Panduan Penyusunan Jadwal (Full Screen Workspace)',
         description: 'Jadwal pelajaran bertindak sebagai blueprint KBM harian yang menggerakkan generator absensi otomatis.',
         items: [
           { text: 'Visual Grid menampilkan pratinjau jadwal mingguan per kelas atau per guru secara ringkas.' },
@@ -763,6 +754,6 @@ export default function JadwalPelajaranPage() {
           queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
         }}
       />
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 }

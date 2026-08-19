@@ -1,10 +1,18 @@
 import { z } from 'zod';
 import { AbsenStatus } from '@/constants/enums';
 
-function parseSafeDate(input: any): Date {
+export function parseSafeDate(input: any, tzOffset: string = '+07:00'): Date {
   if (!input) return new Date();
   if (input instanceof Date) return isNaN(input.getTime()) ? new Date() : input;
   const str = String(input).trim();
+
+  // 1. If already full ISO with explicit offset or UTC Z
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 2. Format: DD/MM/YYYY HH:mm:ss or DD/MM/YYYY HH:mm
   if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
     const parts = str.split(' ');
     const dateParts = parts[0].split('/');
@@ -12,10 +20,30 @@ function parseSafeDate(input: any): Date {
     const month = dateParts[1].padStart(2, '0');
     const year = dateParts[2];
     const timePart = parts[1] || '00:00:00';
-    const isoStr = `${year}-${month}-${day}T${timePart}`;
+    const isoStr = `${year}-${month}-${day}T${timePart.length === 5 ? `${timePart}:00` : timePart}${tzOffset}`;
     const d = new Date(isoStr);
     if (!isNaN(d.getTime())) return d;
   }
+
+  // 3. Format: YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ss (without timezone offset)
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(str)) {
+    const clean = str.replace(' ', 'T');
+    const timeWithSec = clean.length === 16 ? `${clean}:00` : clean;
+    const isoStr = `${timeWithSec}${tzOffset}`;
+    const d = new Date(isoStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 4. Format: HH:mm or HH:mm:ss (just time)
+  if (/^\d{2}:\d{2}/.test(str)) {
+    const now = new Date();
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+    const timeWithSec = str.length === 5 ? `${str}:00` : str;
+    const isoStr = `${todayStr}T${timeWithSec}${tzOffset}`;
+    const d = new Date(isoStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+
   const d = new Date(str);
   return isNaN(d.getTime()) ? new Date() : d;
 }

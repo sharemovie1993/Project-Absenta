@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -141,9 +141,31 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
     (user as any)?.role?.name === 'GERBANG' ||
     (user as any)?.role?.name === 'PETUGAS_GERBANG';
 
-  const [activePiketSubTab, setActivePiketSubTab] = useState<string>(
-    hasGerbangDuty ? 'POS_KEAMANAN' : 'IZIN_SISWA'
-  );
+  const [searchParams] = useSearchParams();
+  const subTabParam = searchParams.get('subtab') || searchParams.get('subTab') || searchParams.get('piket_tab');
+
+  const resolvedInitialSubTab = useMemo(() => {
+    if (subTabParam) {
+      const up = subTabParam.toUpperCase();
+      if (up === 'GURU_KBM' || up === 'PANTAU_GURU' || up === 'GURU') return 'GURU_KBM';
+      if (up === 'IZIN_GURU' || up === 'DINAS_GURU') return 'IZIN_GURU';
+      if (up === 'POS_KEAMANAN' || up === 'GERBANG') return 'POS_KEAMANAN';
+      if (up === 'IZIN_SISWA' || up === 'SISWA') return 'IZIN_SISWA';
+    }
+    return hasGerbangDuty ? 'POS_KEAMANAN' : 'IZIN_SISWA';
+  }, [subTabParam, hasGerbangDuty]);
+
+  const [activePiketSubTab, setActivePiketSubTab] = useState<string>(resolvedInitialSubTab);
+
+  useEffect(() => {
+    if (subTabParam) {
+      const up = subTabParam.toUpperCase();
+      if (up === 'GURU_KBM' || up === 'PANTAU_GURU' || up === 'GURU') setActivePiketSubTab('GURU_KBM');
+      else if (up === 'IZIN_GURU' || up === 'DINAS_GURU') setActivePiketSubTab('IZIN_GURU');
+      else if (up === 'POS_KEAMANAN' || up === 'GERBANG') setActivePiketSubTab('POS_KEAMANAN');
+      else if (up === 'IZIN_SISWA' || up === 'SISWA') setActivePiketSubTab('IZIN_SISWA');
+    }
+  }, [subTabParam]);
 
   const queryClient = useQueryClient();
   const [verificationResult, setVerificationResult] = useState<{

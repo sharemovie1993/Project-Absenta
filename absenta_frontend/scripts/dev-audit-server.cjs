@@ -376,20 +376,8 @@ const server = http.createServer((req, res) => {
 
     // ─── Analisis Kode Secara Real-time (Aligned with audit-pages.cjs) ───
     const usesAcademicLayout = /<AcademicPageLayout\b/.test(rawContent);
-    const usesOperationalLayout = /<OperationalPageLayout\b/.test(rawContent);
-    
-    let isSidebarFreeInApp = true;
-    if (usesOperationalLayout && !isComponentFile) {
-      const appTsxPath = path.resolve(projectRootDir, 'src/App.tsx');
-      if (fs.existsSync(appTsxPath)) {
-        const appContent = fs.readFileSync(appTsxPath, 'utf8');
-        const fullPageRoutesSection = appContent.split('FULL-PAGE ROUTES')[1] || '';
-        const compName = path.basename(resolvedPath, path.extname(resolvedPath));
-        isSidebarFreeInApp = fullPageRoutesSection.includes(compName);
-      }
-    }
-
-    const usesLayout = isComponentFile || usesAcademicLayout || (usesOperationalLayout && isSidebarFreeInApp) || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
+    const usesPageLayout = /<PageLayout\b/.test(rawContent);
+    const usesLayout = isComponentFile || usesAcademicLayout || usesPageLayout || rawContent.includes('InfraErrorBoundary');
 
     // ─── Pilar 2: Keamanan Data & Defensive Programming ───
     const contentForMapCheck = content
@@ -492,9 +480,10 @@ const server = http.createServer((req, res) => {
     // ─── Pilar 18: Standarisasi Toolbar Kontekstual Tabel ───
     const missingTableToolbar = !isComponentFile && (hasTableComponent || hasListComponent) && !hasTableToolbar;
 
-    // ─── Pilar 19: Standarisasi Navigasi Breadcrumb ───
-    const hasBreadcrumbs = content.includes('breadcrumbs={') || content.includes('breadcrumbs:');
-    const missingBreadcrumbs = !isComponentFile && usesAcademicLayout && !hasBreadcrumbs;
+    // ─── Pilar 19: Standarisasi Navigasi Portal & Tombol Kembali Capsule ───
+    // Hardened: Navigasi breadcrumbs statis telah dipensiunkan demi App Launcher Hub + Glass Capsule Back Button
+    const missingBreadcrumbs = false;
+    const missingNavigationStandard = false;
 
     // ─── Pilar 20: Shared UI Components ───
     const usesUiComponents = content.includes('components/ui') || content.includes('ui/Card') || content.includes('ui/Button');
@@ -558,7 +547,7 @@ const server = http.createServer((req, res) => {
 
     // ─── Pilar 29: Kesiapan Whitelabel & Dynamic Branding (White-label Readiness Guard) ───
     const hasHardcodedStaticAppBranding = /(?:>|\b)(?:Absenta\.id|Absenta.ID)(?:<|\b)/i.test(content) && !content.includes('tenantName') && !content.includes('systemConfig');
-    const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('OperationalPageLayout') || content.includes('AcademicPageLayout');
+    const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('AcademicPageLayout') || content.includes('PageLayout');
     const missingWhitelabelBranding = hasHardcodedStaticAppBranding && !usesDynamicBranding;
 
     // ─── Pilar 30: Adaptabilitas Responsif Multi-Perangkat ───
@@ -652,9 +641,6 @@ const server = http.createServer((req, res) => {
     if (missingTableToolbar) {
       issues.push('❌ Aksi operasional tabel terdeteksi di luar slot resmi (Gunakan toolbarLeft/Right pada komponen Table)');
     }
-    if (missingBreadcrumbs) {
-      issues.push("⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).");
-    }
     if (missingSharedUI) {
       issues.push('❌ Halaman ini menggunakan elemen HTML mentah atau belum mengimpor standard UI (Wajib import dari folder ui)');
     }
@@ -674,7 +660,7 @@ const server = http.createServer((req, res) => {
       issues.push('❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.');
     }
     if (missingWhitelabelBranding) {
-      issues.push("⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || \"Portal Sekolah\"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <OperationalPageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.");
+      issues.push("⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || \"Portal Sekolah\"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <PageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.");
     }
     if (missingResponsiveAdaptation) {
       issues.push("❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant=\"compact-premium\"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).");
@@ -697,8 +683,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       usesLayout,
-      usesOperationalLayout,
       usesAcademicLayout,
+      usesPageLayout,
       safeMapping: !hasUnsafeMap,
       usesMemo: !missingMemoization,
       noAnyType: !hasAnyType,

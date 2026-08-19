@@ -14,6 +14,7 @@ import {
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Card } from '@/components/ui/Card';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -534,41 +535,16 @@ export default function KurikulumDashboard() {
   ──────────────────────────────────────────────────────────────────────── */
   return (
     <AcademicPageLayout
-      title="Dashboard Kurikulum"
-      description={headerDesc}
-      breadcrumbs={breadcrumbs}
+      breadcrumbs={[]}
       instruction={instruction}
-      toolbar={
-        <div className="flex items-center gap-2">
-          <TvModeToggle />
-          <Link
-            to="/kurikulum/struktur"
-            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer select-none"
-          >
-            <span>Buka Ruang Kerja</span>
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-      }
+      hardeningModuleKey="kurikulum_dashboard"
+      topSlot={<WorkspaceAppLauncherCard workspaceId="KURIKULUM_WORKSPACE" />}
     >
-      <div className="space-y-8">
-
-        {/* Timestamp */}
-        <div className="flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-          <RefreshCw size={9} className="animate-spin" style={{ animationDuration: '3s' }} />
-          Diperbarui pukul {fmt(lastRefresh)} · auto-refresh tiap 60 detik
-        </div>
-
+      <div className="space-y-6 pt-1">
         {/* ==========================================
             SECTION 1: RINGKASAN AKADEMIK & KBM
             ========================================== */}
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
-              Bagian I: Ringkasan Akademik & KBM
-            </span>
-            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
-          </div>
 
           {/* HERO STAT CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
@@ -642,42 +618,13 @@ export default function KurikulumDashboard() {
           </div>
 
           {/* KBM MONITORING */}
-          <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="px-6 pt-5 pb-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
-                    Monitoring KBM — Live Hari Ini
-                  </h3>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5 ml-4">Status kehadiran guru & kegiatan belajar mengajar secara real-time</p>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-900/30">
-                <Zap size={10} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">Live</span>
-              </div>
-            </div>
-            <div className="p-5">
-              <MonitoringKbmWidget />
-            </div>
-          </Card>
+          <MonitoringKbmWidget />
         </div>
-
-        {/* Divider 1 */}
-        <hr className="border-dashed border-slate-200 dark:border-slate-800 my-8" />
 
         {/* ==========================================
             SECTION 2: ADMINISTRASI & PERANGKAT AJAR
             ========================================== */}
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
-              Bagian II: Administrasi & Kelengkapan Ajar
-            </span>
-            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
               <div className="flex items-start justify-between mb-5">
@@ -718,20 +665,10 @@ export default function KurikulumDashboard() {
           </div>
         </div>
 
-        {/* Divider 2 */}
-        <hr className="border-dashed border-slate-200 dark:border-slate-800 my-8" />
-
         {/* ==========================================
             SECTION 3: SUPERVISI & RESOLUSI KONFLIK
             ========================================== */}
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
-              Bagian III: Supervisi & Resolusi Konflik
-            </span>
-            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Progress Supervisi */}
             <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">

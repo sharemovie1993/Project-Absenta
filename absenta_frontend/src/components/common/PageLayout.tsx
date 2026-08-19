@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
@@ -52,9 +54,17 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 }) => {
   const { setInstructionData } = useInstruction();
   const { isAdmin } = useCapabilities();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isNotDashboard = location.pathname !== '/' && location.pathname !== '/dashboard';
 
-
-  // Admin always has access to pages by default
+  const handleGoBack = useCallback(() => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
   const canView = useMemo(() => {
     if (isAdmin) return true;
     return canViewProp;
@@ -160,71 +170,40 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   }
 
   return (
-    <div className="px-4 pt-4 pb-8 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-full overflow-x-hidden relative">
+    <div className="px-0 sm:px-4 pt-1.5 sm:pt-2 pb-8 space-y-4 max-w-full overflow-x-hidden relative animate-in fade-in duration-300">
+      {/* Top Navigation & Hardening Bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
+        <div className="flex items-center gap-3">
+          {isNotDashboard && (
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none"
+              title="Kembali ke halaman sebelumnya"
+            >
+              <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+              <span className="tracking-tight">Kembali</span>
+            </button>
+          )}
 
-      {/* Responsive Breadcrumbs */}
-      {breadcrumbs && (
-        <div className="flex items-center">
-          <Breadcrumb items={breadcrumbs} />
-        </div>
-      )}
-
-      {/* Page Header */}
-      {(title || description) && (
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            {title && (
-              <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-400">
-                {title}
-              </h1>
-            )}
-            {description && (
-              <p className="text-slate-500 dark:text-slate-400 mt-1">
-                {description}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Renders dynamic interactive certification badge at Layout-level */}
-      {hardeningConfig && resolvedKey && (
-        <div className="animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
-          <HardeningInspector 
-            pageName={hardeningConfig.displayName}
-            standards={hardeningConfig.standards}
-            moduleKey={resolvedKey}
-          />
-        </div>
-      )}
-
-      {/* Premium Stats Grid */}
-      {stats.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
-          {stats.map((stat, idx) => (
-            <AnalyticsCard
-              key={idx}
-              title={stat.title}
-              value={stat.value}
-              isLoading={isLoadingStats}
-              icon={stat.icon}
-              gradient={stat.gradient}
-              subtitle={stat.subtitle}
-              onClick={stat.onClick}
+          {hardeningConfig && resolvedKey && (
+            <HardeningInspector 
+              pageName={hardeningConfig.displayName}
+              standards={hardeningConfig.standards}
+              moduleKey={resolvedKey}
             />
-          ))}
+          )}
         </div>
-      )}
 
-      {/* Optional Toolbar Slot */}
-      {toolbar && (
-        <div className="mb-2">
-          {toolbar}
-        </div>
-      )}
+        {toolbar && (
+          <div className="w-full sm:w-auto ml-auto">
+            {toolbar}
+          </div>
+        )}
+      </div>
 
       {/* Unified Main Content Container */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+      <div className="w-full">
         {children}
       </div>
     </div>

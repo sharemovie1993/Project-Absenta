@@ -205,8 +205,8 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
                       </div>
                     </div>
                     <a
-                      href="/kesiswaan/piket"
-                      className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition shrink-0 ml-2"
+                      href="/dashboard?tab=kelola&subtab=GURU_KBM"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition shrink-0 ml-2 cursor-pointer"
                     >
                       Meja Piket <ChevronRight size={12} />
                     </a>

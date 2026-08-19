@@ -1,5 +1,5 @@
 import { prisma } from '../../../../utils/prisma';
-import { getTenantTimezone, getTenantDayRangeUTC } from '../../../../utils/timezone.utils';
+import { getTenantTimezone, getTenantDayRangeUTC, getTenantOffsetString } from '../../../../utils/timezone.utils';
 import { Hari } from '@prisma/client';
 import { getRedisConnection } from '../../../../queue/redis';
 
@@ -426,9 +426,11 @@ export class GuruIzinService {
             }
           }
 
-          const targetDay = new Date(`${dateStr}T00:00:00.000Z`);
-          const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-          const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+          const tz = await getTenantTimezone(tenantId);
+          const tzOffset = getTenantOffsetString(tz);
+          const targetDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+          const startOfDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+          const endOfDay = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
 
           let physical = await prisma.sesiAbsensi.findFirst({
             where: {
@@ -451,8 +453,8 @@ export class GuruIzinService {
                 jenis_kegiatan: 'KBM',
                 sumber_sesi: 'TEMPLATE',
                 tanggal: targetDay,
-                waktu_mulai: slot.jam_mulai ? new Date(`${dateStr}T${slot.jam_mulai}:00.000Z`) : targetDay,
-                waktu_selesai: slot.jam_selesai ? new Date(`${dateStr}T${slot.jam_selesai}:00.000Z`) : null,
+                waktu_mulai: slot.jam_mulai ? new Date(`${dateStr}T${slot.jam_mulai}:00.000${tzOffset}`) : targetDay,
+                waktu_selesai: slot.jam_selesai ? new Date(`${dateStr}T${slot.jam_selesai}:00.000${tzOffset}`) : null,
                 status: 'BERLANGSUNG',
                 created_by_user_id: pemrosesUserId
               }

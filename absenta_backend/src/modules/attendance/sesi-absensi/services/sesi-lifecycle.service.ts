@@ -3,6 +3,7 @@ import { storageService } from '../../../../infra/storage/storage.service';
 import { emitDomainEvent } from '../../../../infra/event-bus';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
 import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
+import { parseSafeDate } from './sesi-absensi.schema';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -259,9 +260,10 @@ export class SesiLifecycleService {
         throw new Error('Jadwal sesi KBM telah terlewat dan ditutup. Anda tidak dapat lagi membuka sesi yang sudah terlewat.');
       }
 
+      const tzOffset = getTenantOffsetString(tz);
       const now = new Date();
-      const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? new Date(waktu_mulai) : now);
-      const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? new Date(waktu_selesai) : null);
+      const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? parseSafeDate(waktu_mulai, tzOffset) : now);
+      const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null);
       
       // 🛡️ Centralized Time-Window & Cutoff Guard (Timezone-Aware)
       validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz);
@@ -271,7 +273,7 @@ export class SesiLifecycleService {
           where: { id: existingSesi.id },
           data: {
             ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl, status: 'BERLANGSUNG' } : {}),
-            ...(waktu_mulai ? { waktu_mulai: new Date(waktu_mulai) } : {}),
+            ...(waktu_mulai ? { waktu_mulai: parseSafeDate(waktu_mulai, tzOffset) } : {}),
             updated_at: new Date()
           }
         });
@@ -292,8 +294,9 @@ export class SesiLifecycleService {
       return existingSesi;
     }
 
-    const parsedStart = waktu_mulai ? new Date(waktu_mulai) : new Date();
-    const parsedEnd = waktu_selesai ? new Date(waktu_selesai) : null;
+    const tzOffset = getTenantOffsetString(tz);
+    const parsedStart = waktu_mulai ? parseSafeDate(waktu_mulai, tzOffset) : new Date();
+    const parsedEnd = waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null;
     const now = new Date();
 
     // 🛡️ Centralized Time-Window & Cutoff Guard saat membuat sesi baru (Timezone-Aware)
@@ -335,7 +338,7 @@ export class SesiLifecycleService {
         sumber_sesi: resolvedSumberSesi,
         tanggal: sessionDate,
         waktu_mulai: parsedStart,
-        waktu_selesai: waktu_selesai ? new Date(waktu_selesai) : null,
+        waktu_selesai: parsedEnd,
         status: initialStatus,
         foto_kegiatan: finalFotoUrl,
         created_by_user_id: userId

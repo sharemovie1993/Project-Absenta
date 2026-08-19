@@ -59,16 +59,16 @@ oAnyType | Dilarang menggunakan : any atau s any |
 | 12 | Sistem Panduan Pengguna | userGuidance | Layout wajib memiliki properti instruction |
 | 13 | Standarisasi Pagination Tabel | 	ablePagination | <Table> wajib memiliki pagination, onPageChange, onLimitChange |
 | 14 | Standarisasi Toolbar Aksi Halaman | standardToolbar | Aksi utama wajib di 	oolbarLeft/	oolbarRight pada Table |
-| 15 | Sistem Feedback & Dialog Terstandar | standardFeedback | Dilarang lert()/confirm() browser, wajib useToast/useConfirm |
+| 15 | Sistem Feedback & Dialog Terstandar | standardFeedback | Dilarang  lert()/confirm() browser, wajib useToast/useConfirm |
 | 16 | Konsistensi Kontainer UI | standardContainer | Layout wajib dibungkus SectionCard atau Card |
-| 17 | Komponen Seleksi Canggih | dvancedSelect | Elemen <select> wajib diganti <SearchableSelect> |
+| 17 | Komponen Seleksi Canggih |  dvancedSelect | Elemen <select> wajib diganti <SearchableSelect> |
 | 18 | Standarisasi Toolbar Kontekstual Tabel | 	ableToolbar | Aksi operasional tabel wajib di slot 	oolbarLeft/Right |
-| 19 | Standarisasi Navigasi Breadcrumb | readcrumbNavigation | Layout wajib memiliki properti readcrumbs |
+| 19 | Standarisasi Navigasi Portal & Tombol Kembali Capsule | `breadcrumbNavigation` / `navigationStandard` | Layout wajib menyediakan navigasi portal terpusat dan tombol kembali Glass Capsule |
 | 20 | Shared UI Components | usesUiComponents | Wajib mengimpor komponen dari components/ui |
 | 21 | Proteksi Fitur Berbayar | premiumFeatureGate | Modul berbayar wajib menggunakan <PremiumFeatureGate> |
 | 21B | Pencegahan God File | godFileGuard | Halaman < 800 baris, subkomponen < 500 baris (Terintegrasi AST Import Tracer untuk melacak ukuran seluruh sub-komponen anak secara akumulatif) |
 | 22 | Desentralisasi Konfigurasi (Anti-Hardcoded) | hardcodedConfig | Dilarang data mock/dummy lokal atau URL API hardcode |
-| 23 | Standarisasi Kartu Analitik/Statistik | nalyticsCardGuard | Wajib menggunakan <AnalyticsCard> atau MemoizedAnalyticsCard |
+| 23 | Standarisasi Kartu Analitik/Statistik |  nalyticsCardGuard | Wajib menggunakan <AnalyticsCard> atau MemoizedAnalyticsCard |
 | 24 | Standarisasi Impor & Ekspor Data | importExportGuard | Ekspor/impor wajib: loading guard, try-catch, generateImportTemplate |
 | 25 | Sistem Ekspor PDF Terstandar | standardPdfPrint | Dilarang pakai jsPDF langsung, wajib via utils/print/ |
 | 26 | Validasi Skema Zod untuk Form | zodValidationGuard | Form wajib dilindungi z.object(...) / zodResolver / .safeParse() |

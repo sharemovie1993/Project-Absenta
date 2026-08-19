@@ -1,9 +1,11 @@
 import React from 'react';
 import { Card } from '../../../ui/Card';
+import { AnalyticsCard } from '../../../ui/AnalyticsCard';
 import { cn } from '../../../../lib/utils';
 import {
   LayoutGrid, Activity, BookOpen, CheckCircle2,
-  Users, Clock, AlertCircle
+  Users, Clock, AlertCircle, Sparkles, ShieldAlert,
+  Send, UserCheck, HeartPulse
 } from 'lucide-react';
 
 export interface KbmStats {
@@ -11,8 +13,14 @@ export interface KbmStats {
   live: number;
   withJournal: number;
   finished: number;
+  overdue: number;
+  upcoming: number;
   teacherOnTime: number;
   teacherLate: number;
+  teacherDinasLuar: number;
+  teacherInval: number;
+  teacherIzinSakit: number;
+  teacherPending: number;
   teacherNotArrived: number;
   teacherAlpa: number;
 }
@@ -26,63 +34,6 @@ interface KbmStatCardsProps {
   healthScore: number;
 }
 
-const colorMaps: Record<string, { bgActive: string; bgInactive: string; textActive: string; textInactive: string; iconActive: string; iconInactive: string; progress: string }> = {
-  slate: {
-    bgActive: 'bg-slate-600 border-slate-600 shadow-md text-white shadow-slate-600/10',
-    bgInactive: 'bg-slate-50/50 dark:bg-slate-900/20 border-slate-100 dark:border-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300',
-    textActive: 'text-white',
-    textInactive: 'text-slate-600 dark:text-slate-400',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-slate-400 dark:text-slate-500',
-    progress: 'bg-slate-500',
-  },
-  emerald: {
-    bgActive: 'bg-emerald-600 border-emerald-600 shadow-md text-white shadow-emerald-600/10',
-    bgInactive: 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/20 hover:border-emerald-300 dark:hover:border-emerald-800 text-emerald-700 dark:text-emerald-400',
-    textActive: 'text-white',
-    textInactive: 'text-emerald-600 dark:text-emerald-500',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-emerald-400 dark:text-emerald-500',
-    progress: 'bg-emerald-500',
-  },
-  indigo: {
-    bgActive: 'bg-indigo-600 border-indigo-600 shadow-md text-white shadow-indigo-600/10',
-    bgInactive: 'bg-indigo-50/30 dark:bg-indigo-950/10 border-indigo-100/50 dark:border-indigo-900/20 hover:border-indigo-300 dark:hover:border-indigo-800 text-indigo-700 dark:text-indigo-400',
-    textActive: 'text-white',
-    textInactive: 'text-indigo-600 dark:text-indigo-500',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-indigo-400 dark:text-indigo-500',
-    progress: 'bg-indigo-500',
-  },
-  amber: {
-    bgActive: 'bg-amber-500 border-amber-500 shadow-md text-white shadow-amber-500/10',
-    bgInactive: 'bg-amber-50/30 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/20 hover:border-amber-300 dark:hover:border-amber-800 text-amber-700 dark:text-amber-400',
-    textActive: 'text-white',
-    textInactive: 'text-amber-600 dark:text-amber-500',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-amber-400 dark:text-amber-500',
-    progress: 'bg-amber-500',
-  },
-  blue: {
-    bgActive: 'bg-blue-600 border-blue-600 shadow-md text-white shadow-blue-600/10',
-    bgInactive: 'bg-blue-50/30 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/20 hover:border-blue-300 dark:hover:border-blue-800 text-blue-700 dark:text-blue-400',
-    textActive: 'text-white',
-    textInactive: 'text-blue-600 dark:text-blue-500',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-blue-400 dark:text-blue-500',
-    progress: 'bg-blue-500',
-  },
-  rose: {
-    bgActive: 'bg-rose-600 border-rose-600 shadow-md text-white shadow-rose-600/10',
-    bgInactive: 'bg-rose-50/30 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-900/20 hover:border-rose-300 dark:hover:border-rose-800 text-rose-700 dark:text-rose-400',
-    textActive: 'text-white',
-    textInactive: 'text-rose-600 dark:text-rose-500',
-    iconActive: 'text-white/80',
-    iconInactive: 'text-rose-400 dark:text-rose-500',
-    progress: 'bg-rose-500',
-  }
-};
-
 export const KbmStatCards = React.memo<KbmStatCardsProps>(({
   stats,
   statusFilter,
@@ -91,123 +42,153 @@ export const KbmStatCards = React.memo<KbmStatCardsProps>(({
   setTeacherStatusFilter,
   healthScore
 }) => {
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      {/* Section 1: Aktivitas Pembelajaran */}
-      <Card noPadding className="p-3 border border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <LayoutGrid size={16} className="text-indigo-500" />
-            <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Aktivitas Pembelajaran (KBM)</h3>
-          </div>
-          
-          {/* Health Score Component (Compact Version inside Card Header) */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-xl border border-slate-100 dark:border-slate-800/60">
-            <div className={cn(
-              "w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm",
-              healthScore > 80 ? "bg-emerald-500 text-white" : 
-              healthScore > 50 ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
-            )}>
-              {healthScore}
-            </div>
-            <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Health Score</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { id: 'ALL', label: 'Total Sesi', val: stats.total, sub: 'Jadwal', icon: LayoutGrid, color: 'slate' },
-            { id: 'LIVE', label: 'Berlangsung', val: stats.live, sub: 'Live', icon: Activity, color: 'emerald', pulse: true },
-            { id: 'JURNAL', label: 'Jurnal Terisi', val: stats.withJournal, sub: `${Math.round((stats.withJournal / (stats.total || 1)) * 100)}%`, icon: BookOpen, color: 'indigo' },
-            { id: 'FINISHED', label: 'Selesai', val: stats.finished, sub: 'Sesi', icon: CheckCircle2, color: 'slate' },
-          ].map((item) => {
-            const active = statusFilter === item.id || (item.id === 'ALL' && statusFilter === 'ALL');
-            const styling = colorMaps[item.color] || colorMaps.slate;
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => setStatusFilter(item.id as any)}
-                className={cn(
-                  "p-2.5 rounded-xl border transition-all duration-300 text-left hover:-translate-y-0.5",
-                  active ? styling.bgActive : styling.bgInactive
-                )}
-              >
-                <p className={cn(
-                  "text-[8px] font-black uppercase tracking-widest mb-1",
-                  active ? "text-white/80" : styling.textInactive
-                )}>{item.label}</p>
-                <div className="flex items-end justify-between">
-                  <h4 className={cn(
-                    "text-xl font-black leading-none tracking-tight",
-                    active ? "text-white" : "text-slate-800 dark:text-white"
-                  )}>{item.val}</h4>
-                  <item.icon size={15} className={cn(
-                    active ? styling.iconActive : styling.iconInactive,
-                    item.pulse && "animate-pulse"
-                  )} />
-                </div>
-                <p className={cn(
-                  "text-[8px] font-bold mt-1 uppercase",
-                  active ? "text-white/70" : "text-slate-400 dark:text-slate-500"
-                )}>{item.sub}</p>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
+  const total = stats.total || 1;
+  const finishedPct = Math.round((stats.finished / total) * 100);
+  const journalPct = Math.round((stats.withJournal / total) * 100);
+  const normalRate = Math.round(((stats.teacherOnTime + stats.teacherDinasLuar + stats.teacherInval + stats.teacherIzinSakit) / total) * 100);
 
-      {/* Section 2: Kehadiran Guru (Clickable Filters) */}
-      <Card noPadding className="p-3 border border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
-        <div className="flex items-center gap-2 mb-3">
-          <Users size={16} className="text-indigo-500" />
-          <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Kehadiran Guru (Klik untuk Filter)</h3>
+  return (
+    <div className="space-y-6 w-full">
+      {/* ── BARIS 1: 📊 4 KARTU METRIK UTAMA KBM (ANALYTICSCARD VARIANT PREMIUM) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          {
+            id: 'ALL',
+            title: 'TOTAL SESI',
+            value: stats.total,
+            subtitle: 'Jadwal Aktif Hari Ini',
+            icon: <LayoutGrid size={16} />,
+            gradient: 'from-slate-800 to-slate-950',
+          },
+          {
+            id: 'LIVE',
+            title: 'SESI LIVE',
+            value: stats.live,
+            subtitle: 'Sesi Aktif di Kelas',
+            icon: <Activity size={16} className={stats.live > 0 ? "animate-pulse" : ""} />,
+            gradient: 'from-blue-600 to-indigo-700',
+          },
+          {
+            id: 'JURNAL',
+            title: 'JURNAL TERISI',
+            value: stats.withJournal,
+            subtitle: `${journalPct}% dari Total Sesi`,
+            icon: <BookOpen size={16} />,
+            gradient: 'from-indigo-600 to-purple-700',
+          },
+          {
+            id: 'FINISHED',
+            title: 'SESI SELESAI',
+            value: stats.finished,
+            subtitle: `${finishedPct}% Tuntas Terlaksana`,
+            icon: <CheckCircle2 size={16} />,
+            gradient: 'from-emerald-600 to-teal-700',
+          },
+        ].map((item) => {
+          const active = statusFilter === item.id;
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "rounded-xl transition-all duration-200",
+                active && "ring-4 ring-indigo-400 ring-offset-2 dark:ring-offset-slate-950 shadow-md"
+              )}
+            >
+              <AnalyticsCard
+                title={item.title}
+                value={item.value}
+                subtitle={item.subtitle}
+                icon={item.icon}
+                gradient={item.gradient}
+                variant="premium"
+                onClick={() => setStatusFilter(statusFilter === item.id ? 'ALL' : item.id as any)}
+                className="cursor-pointer"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── BARIS 2: 👨‍🏫 6 RADAR KEHADIRAN GURU & INVAL PIKET (CLEAN & ZERO-NOISE) ── */}
+      <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-3.5">
+        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-xs font-bold shadow-2xs">
+              👨‍🏫
+            </div>
+            <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Radar Guru &amp; Inval
+            </h3>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Health Score Pill */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+              <HeartPulse size={12} className={cn(
+                healthScore > 80 ? "text-emerald-500 animate-pulse" :
+                healthScore > 50 ? "text-amber-500" : "text-rose-500 animate-bounce"
+              )} />
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-200">
+                Health: <strong className={cn(
+                  healthScore > 80 ? "text-emerald-600 dark:text-emerald-400" :
+                  healthScore > 50 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
+                )}>{healthScore}%</strong>
+              </span>
+            </div>
+
+            {teacherStatusFilter !== 'ALL' && (
+              <button
+                onClick={() => setTeacherStatusFilter('ALL')}
+                className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+        {/* 6 Clean Single-Word Interactive Chips (Zero Clipping) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
           {[
-            { id: 'TEPAT_WAKTU', label: 'Tepat Waktu', val: stats.teacherOnTime, color: 'emerald', icon: CheckCircle2 },
-            { id: 'TERLAMBAT', label: 'Terlambat', val: stats.teacherLate, color: 'amber', icon: Clock },
-            { id: 'BELUM_TAP', label: 'Belum Tap', val: stats.teacherNotArrived, color: 'blue', icon: Activity },
-            { id: 'ALPA', label: 'Alpa', val: stats.teacherAlpa, color: 'rose', icon: AlertCircle },
-          ].map((t) => {
-            const active = teacherStatusFilter === t.id;
-            const styling = colorMaps[t.color] || colorMaps.slate;
-            
+            { id: 'TEPAT_WAKTU', label: 'Tepat', val: stats.teacherOnTime, icon: CheckCircle2, bg: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800', activeBg: 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/30' },
+            { id: 'TERLAMBAT', label: 'Telat', val: stats.teacherLate, icon: Clock, bg: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800', activeBg: 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30' },
+            { id: 'DINAS_LUAR', label: 'Dinas', val: stats.teacherDinasLuar, icon: Send, bg: 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800', activeBg: 'bg-purple-600 text-white border-purple-600 shadow-purple-600/30' },
+            { id: 'INVAL', label: 'Inval', val: stats.teacherInval, icon: UserCheck, bg: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:border-fuchsia-800', activeBg: 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-fuchsia-600/30' },
+            { id: 'IZIN', label: 'Izin', val: stats.teacherIzinSakit, icon: Users, bg: 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800', activeBg: 'bg-blue-600 text-white border-blue-600 shadow-blue-600/30' },
+            { id: 'ALPA', label: 'Alpa', val: stats.teacherAlpa, icon: ShieldAlert, bg: 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800', activeBg: 'bg-rose-600 text-white border-rose-600 shadow-rose-600/30' },
+          ].map((chip) => {
+            const active = teacherStatusFilter === chip.id;
             return (
               <button
-                key={t.id}
-                onClick={() => setTeacherStatusFilter(teacherStatusFilter === t.id ? 'ALL' : t.id)}
+                key={chip.id}
+                onClick={() => setTeacherStatusFilter(teacherStatusFilter === chip.id ? 'ALL' : chip.id)}
                 className={cn(
-                  "p-2.5 rounded-xl border transition-all duration-300 text-left hover:-translate-y-0.5",
-                  active ? styling.bgActive : styling.bgInactive
+                  "flex items-center justify-between p-2.5 sm:p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer select-none hover:scale-[1.02] shadow-2xs",
+                  active ? chip.activeBg : chip.bg
                 )}
               >
-                <p className={cn(
-                  "text-[8px] font-black uppercase tracking-widest mb-1",
-                  active ? "text-white/80" : styling.textInactive
-                )}>{t.label}</p>
-                <div className="flex items-end justify-between">
-                  <h4 className={cn(
-                    "text-xl font-black leading-none tracking-tight",
-                    active ? "text-white" : "text-slate-850 dark:text-white"
-                  )}>{t.val}</h4>
-                  <t.icon size={15} className={cn(
-                    active ? styling.iconActive : styling.iconInactive
-                  )} />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <chip.icon size={15} className="shrink-0" />
+                  <span className="text-xs font-black tracking-tight whitespace-nowrap">{chip.label}</span>
                 </div>
-                <div className="mt-2 w-full h-1 rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div 
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      active ? "bg-white" : styling.progress
-                    )}
-                    style={{ width: `${(t.val / (stats.total || 1)) * 100}%` }}
-                  />
-                </div>
+                <span className="text-xs font-black ml-1.5 px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 shrink-0">
+                  {chip.val}
+                </span>
               </button>
             );
           })}
         </div>
-      </Card>
+
+        {/* Visual Progress Bar Breakdown */}
+        <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex shadow-inner">
+          <div style={{ width: `${(stats.teacherOnTime / total) * 100}%` }} className="h-full bg-emerald-500 transition-all duration-500" title={`Tepat: ${stats.teacherOnTime}`} />
+          <div style={{ width: `${(stats.teacherLate / total) * 100}%` }} className="h-full bg-amber-500 transition-all duration-500" title={`Telat: ${stats.teacherLate}`} />
+          <div style={{ width: `${(stats.teacherDinasLuar / total) * 100}%` }} className="h-full bg-purple-500 transition-all duration-500" title={`Dinas: ${stats.teacherDinasLuar}`} />
+          <div style={{ width: `${(stats.teacherInval / total) * 100}%` }} className="h-full bg-fuchsia-500 transition-all duration-500" title={`Inval: ${stats.teacherInval}`} />
+          <div style={{ width: `${(stats.teacherIzinSakit / total) * 100}%` }} className="h-full bg-blue-500 transition-all duration-500" title={`Izin: ${stats.teacherIzinSakit}`} />
+          <div style={{ width: `${(stats.teacherAlpa / total) * 100}%` }} className="h-full bg-rose-500 transition-all duration-500" title={`Alpa: ${stats.teacherAlpa}`} />
+        </div>
+      </div>
     </div>
   );
 });

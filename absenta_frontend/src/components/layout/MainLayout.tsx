@@ -71,8 +71,9 @@ function MainLayoutContent() {
 
   const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/';
-  const isPortalMode = dashboardMode === 'portal' || isSiswa;
-  const isHideSidebarForPortal = isPortalMode || isSiswa || isDashboardPage;
+  const isPortalMode = true;
+  // Nonaktifkan sidebar kiri secara penuh untuk beralih 100% ke mode Web Portal & App Launcher Hub
+  const isHideSidebarForPortal = true;
 
   const configQuery = useQuery({
     queryKey: ['system-config','active'],

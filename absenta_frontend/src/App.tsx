@@ -1463,114 +1463,118 @@ function App() {
                         <MenuAuditPage />
                       </ProtectedRoute>
                     } />
+
+                    {/* ── UNIFIED FULL-SCREEN PORTAL MODULES (AcademicPageLayout + Topbar) ── */}
+                    {/* Kurikulum Jadwal Builder */}
+                    <Route path="/kurikulum/jadwal" element={
+                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <JadwalPelajaranPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    {/* WhatsApp Chat Log */}
+                    <Route path="/notifications/wa-chat-logs" element={
+                      <ProtectedRoute requiredCapability="whatsapp.manage.config">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
+                            <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <WhatsAppChatLogPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/notifications/wa-onboarding" element={
+                      <ProtectedRoute requiredCapability="whatsapp.manage.config">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
+                            <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <WhatsAppOnboardingPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/attendance/sesi" element={<Navigate to="/attendance/ops?tab=sesi" replace />} />
+                    <Route path="/attendance/ops" element={
+                      <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.gate.tap.exit', 'attendance.sessions.create']}>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <AttendanceErrorBoundary>
+                            <AttendanceOpsPage />
+                          </AttendanceErrorBoundary>
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/piket" element={<Navigate to="/dashboard?tab=kelola&subtab=GURU_KBM" replace />} />
+                    <Route path="/meja-piket" element={<Navigate to="/dashboard?tab=kelola&subtab=GURU_KBM" replace />} />
+                    <Route path="/kesiswaan/piket" element={
+                      <ProtectedRoute>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <PiketPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/pos-keamanan" element={
+                      <ProtectedRoute requiredCapability={['attendance.gate.tap.entry', 'attendance.scan', 'attendance.piket.view', 'attendance.schedules.view.list']}>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <PiketSecurityStandalonePage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/monitoring" element={
+                      <ProtectedRoute requiredCapability="dashboard.view.kesiswaan">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <MonitoringKesiswaanPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/billing/rab-calculator" element={
+                      <ProtectedRoute>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <RABCalculatorPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/nilai" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <InputNilaiPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                   </Route>
                 </Route>
 
-                {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout - JALUR B) ── */}
-                {/* Kurikulum Jadwal Builder — Jalur B: OperationalPageLayout, 100% layar penuh */}
-                <Route path="/kurikulum/jadwal" element={
-                  <ProtectedRoute requiredCapability="academic.schedules.view.list">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <JadwalPelajaranPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                {/* WhatsApp Chat Log — Jalur B: OperationalPageLayout, 100% layar */}
-                <Route path="/notifications/wa-chat-logs" element={
-                  <ProtectedRoute requiredCapability="whatsapp.manage.config">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
-                        <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <WhatsAppChatLogPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/notifications/wa-onboarding" element={
-                  <ProtectedRoute requiredCapability="whatsapp.manage.config">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
-                        <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <WhatsAppOnboardingPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/attendance/sesi" element={<Navigate to="/attendance/ops?tab=sesi" replace />} />
-                <Route path="/attendance/ops" element={
-                  <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.gate.tap.exit', 'attendance.sessions.create']}>
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <AttendanceErrorBoundary>
-                        <AttendanceOpsPage />
-                      </AttendanceErrorBoundary>
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/kesiswaan/piket" element={
-                  <ProtectedRoute>
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <PiketPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/kesiswaan/pos-keamanan" element={
-                  <ProtectedRoute requiredCapability={['attendance.gate.tap.entry', 'attendance.scan', 'attendance.piket.view', 'attendance.schedules.view.list']}>
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <PiketSecurityStandalonePage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/kesiswaan/monitoring" element={
-                  <ProtectedRoute requiredCapability="dashboard.view.kesiswaan">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <MonitoringKesiswaanPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/billing/rab-calculator" element={
-                  <ProtectedRoute>
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <RABCalculatorPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/rapor/nilai" element={
-                  <ProtectedRoute requiredCapability="academic.teaching.view">
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-                      </div>
-                    }>
-                      <InputNilaiPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
+                {/* Public & Verification standalone routes */}
                 <Route path="/rab-calculator" element={<Navigate to="/billing/rab-calculator" replace />} />
                 <Route path="/verify-siplah" element={<SIPLaHAuditVerifyPage />} />
                 <Route path="/verify-siplah/:hash" element={<SIPLaHAuditVerifyPage />} />

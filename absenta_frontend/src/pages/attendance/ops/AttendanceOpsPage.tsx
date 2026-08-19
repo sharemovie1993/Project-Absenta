@@ -8,7 +8,7 @@ import { useGerbangModeAndRole } from '../../../hooks/attendance/useGerbangModeA
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
-import { OperationalPageLayout } from '../../../components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { Button } from '../../../components/ui/Button';
 
 import ModeSimpleView from './components/ModeSimpleView';
@@ -79,12 +79,9 @@ export default React.memo(function AttendanceOpsPage() {
   );
 
   return (
-    <OperationalPageLayout
-      title="OPERASIONAL PRESENSI"
-      shortTitle="OPERASIONAL"
-      subtitle="Pencatatan Kehadiran Realtime & POS Scanner"
-      backPath="/dashboard"
-      backLabel="Kembali ke Dashboard"
+    <AcademicPageLayout
+      title="Operasional Presensi"
+      description="Pencatatan Kehadiran Realtime & POS Scanner"
       instruction={{
         title: "Panduan Operasional Presensi",
         description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung di gerbang.",
@@ -119,6 +116,6 @@ export default React.memo(function AttendanceOpsPage() {
           />
         </Suspense>
       </PremiumFeatureGate>
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 });

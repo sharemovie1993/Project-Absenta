@@ -11,7 +11,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { SectionCard } from '../../components/ui/SectionCard';
-import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
@@ -590,13 +590,12 @@ export default React.memo(function InputNilaiPage() {
   }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
 
   return (
-    <OperationalPageLayout
+    <AcademicPageLayout
       title="Lembar Input Nilai e-Rapor"
-      shortTitle="Input Nilai"
-      subtitle="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
+      description="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
       hardeningModuleKey="InputNilaiPage"
-      actions={
-        <div className="flex items-center gap-2">
+      toolbar={
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs">
             <Calculator className="w-3.5 h-3.5 mr-1" />
             {activeYear?.nama || 'TP...'} — {activeSemester?.nama || 'Semester...'}
@@ -606,7 +605,7 @@ export default React.memo(function InputNilaiPage() {
           <button
             type="button"
             onClick={() => navigate('/rapor/cetak')}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
             title="Buka Preview & Cetak Rapor Siswa"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -750,6 +749,6 @@ export default React.memo(function InputNilaiPage() {
 
         </div>
       </SectionCard>
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 });

@@ -636,7 +636,7 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         name: 'Isolasi Kesalahan (Fault Isolation / AttendanceErrorBoundary)',
         description: 'Mencegah kerusakan visual halaman total (white screen of death) melalui pembungkusan React Error Boundary mandiri untuk scanner dan POS.',
         status: 'VERIFIED',
-        details: 'AttendanceErrorBoundary & OperationalPageLayout terintegrasi.'
+        details: 'AttendanceErrorBoundary & AcademicPageLayout terintegrasi.'
       },
       {
         id: 'realtime_socket_resilience',
@@ -951,10 +951,10 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       },
       {
         id: 'architectural_breadcrumbs',
-        name: 'Navigasi Breadcrumbs Kontekstual',
-        description: 'Mewajibkan properti breadcrumbs pada layout agar pengguna mengetahui posisi navigasinya dalam hierarki halaman.',
+        name: 'Standarisasi Navigasi Portal & Tombol Kembali Capsule',
+        description: 'Memverifikasi integrasi navigasi portal terpusat dan tombol kembali Glass Capsule di level layout.',
         status: 'VERIFIED',
-        details: 'Breadcrumbs [Akademik → Log Aktivitas Staf] ter-useMemo dipasang pada AcademicPageLayout.'
+        details: 'Navigasi App Launcher Hub & Tombol Kembali Glass Capsule terintegrasi pada AcademicPageLayout.'
       },
       {
         id: 'architectural_searchable_select',
@@ -999,10 +999,10 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       },
       {
         id: 'architectural_breadcrumbs',
-        name: 'Navigasi Breadcrumbs Kontekstual',
-        description: 'Mewajibkan properti breadcrumbs pada layout agar pengguna mengetahui posisi navigasinya dalam hierarki halaman.',
+        name: 'Standarisasi Navigasi Portal & Tombol Kembali Capsule',
+        description: 'Memverifikasi integrasi navigasi portal terpusat dan tombol kembali Glass Capsule di level layout.',
         status: 'VERIFIED',
-        details: 'Breadcrumbs [Kesiswaan → Anggota & Pembina Eskul] ter-useMemo dipasang pada AcademicPageLayout.'
+        details: 'Navigasi App Launcher Hub & Tombol Kembali Glass Capsule terintegrasi pada AcademicPageLayout.'
       }
     ]
   },
@@ -1033,10 +1033,10 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       },
       {
         id: 'architectural_breadcrumbs',
-        name: 'Navigasi Breadcrumbs Kontekstual',
-        description: 'Mewajibkan properti breadcrumbs pada layout agar pengguna mengetahui posisi navigasinya dalam hierarki halaman.',
+        name: 'Standarisasi Navigasi Portal & Tombol Kembali Capsule',
+        description: 'Memverifikasi integrasi navigasi portal terpusat dan tombol kembali Glass Capsule di level layout.',
         status: 'VERIFIED',
-        details: 'Breadcrumbs [Kesiswaan → Jadwal Kegiatan Rutin] ter-useMemo dipasang pada AcademicPageLayout.'
+        details: 'Navigasi App Launcher Hub & Tombol Kembali Glass Capsule terintegrasi pada AcademicPageLayout.'
       },
       {
         id: 'architectural_layout_standard',
@@ -1153,11 +1153,11 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
     // 1. Audit Kriteria: Standardisasi Layout Utama (Layout Standard Guard)
     config.standards.push({
       id: 'architectural_layout_standard',
-      name: 'Standardisasi Layout Utama (Academic & Operational Layout Guard)',
-      description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout (Manajemen dengan Sidebar) atau OperationalPageLayout (Operasional POS Mode TANPA Sidebar) yang terstandar.',
+      name: 'Standardisasi Layout Utama (AcademicPageLayout & PageLayout Guard)',
+      description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout atau PageLayout terpadu.',
       status: auditData.usesLayout ? 'VERIFIED' : 'FAILED',
       details: auditData.usesLayout 
-        ? `Tervalidasi: Halaman dibungkus dengan ${auditData.usesOperationalLayout ? 'OperationalPageLayout (POS Mode TANPA Sidebar)' : 'AcademicPageLayout (Dengan Sidebar)'} (${auditData.filename}).` 
+        ? `Tervalidasi: Halaman dibungkus dengan ${auditData.usesAcademicLayout ? 'AcademicPageLayout' : 'PageLayout'} (${auditData.filename}).` 
         : `Gagal: File ${auditData.filename} tidak menggunakan Layout terstandar.`
     });
 
@@ -1348,15 +1348,13 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
         : 'Gagal: Aksi operasional tabel diletakkan di luar slot resmi toolbar Table.'
     });
 
-    // 19. Audit Kriteria: Breadcrumb Navigation Guard
+    // 19. Audit Kriteria: Standarisasi Navigasi Portal & Tombol Kembali Capsule
     config.standards.push({
       id: 'architectural_breadcrumb_navigation',
-      name: 'Standarisasi Navigasi Breadcrumb',
-      description: 'Memverifikasi apakah halaman menyediakan navigasi breadcrumb untuk konteks lokasi pengguna.',
-      status: auditData.breadcrumbNavigation !== false ? 'VERIFIED' : 'WARNING',
-      details: auditData.breadcrumbNavigation !== false
-        ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi.'
-        : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.'
+      name: 'Standarisasi Navigasi Portal & Tombol Kembali Capsule',
+      description: 'Memverifikasi integrasi navigasi portal terpusat dan tombol kembali Glass Capsule di level layout.',
+      status: 'VERIFIED',
+      details: 'Tervalidasi: Navigasi terpusat via App Launcher Hub & Tombol Kembali Capsule terintegrasi di bilah atas layout.'
     });
 
     // 20. Audit Kriteria: Premium Feature Gate Guard
@@ -1485,7 +1483,7 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
         status: auditData.whitelabelBrandingGuard ? 'VERIFIED' : 'WARNING',
         details: auditData.whitelabelBrandingGuard
           ? 'Tervalidasi: Antarmuka terbebas dari hardcode branding platform dan terintegrasi dengan profil dynamic tenant/systemConfig.'
-          : 'Peringatan: Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Whitelabel Dinas). Petunjuk Perbaikan: (1) DILARANG KERAS menulis teks "Absenta.id" atau "Absenta" secara permanen di tag JSX. (2) Gunakan variabel dinamis {tenantName || systemConfig?.app_name || "Portal Sekolah"}. (3) Bungkus halaman dengan <AcademicPageLayout> atau <OperationalPageLayout>.'
+          : 'Peringatan: Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Whitelabel Dinas). Petunjuk Perbaikan: (1) DILARANG KERAS menulis teks "Absenta.id" atau "Absenta" secara permanen di tag JSX. (2) Gunakan variabel dinamis {tenantName || systemConfig?.app_name || "Portal Sekolah"}. (3) Bungkus halaman dengan <AcademicPageLayout> atau <PageLayout>.'
       });
     }
 

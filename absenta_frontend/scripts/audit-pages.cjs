@@ -128,20 +128,8 @@ walkDir(targetDir, (filepath) => {
   // ─── Pilar 1: Standardisasi Layout Utama ───
   // Komponen tidak membutuhkan Layout utama secara mandiri
   const usesAcademicLayout = /<AcademicPageLayout\b/.test(rawContent);
-  const usesOperationalLayout = /<OperationalPageLayout\b/.test(rawContent);
-  
-  let isSidebarFreeInApp = true;
-  if (usesOperationalLayout && !isComponentFile) {
-    const appTsxPath = path.resolve(__dirname, '../src/App.tsx');
-    if (fs.existsSync(appTsxPath)) {
-      const appContent = fs.readFileSync(appTsxPath, 'utf8');
-      const fullPageRoutesSection = appContent.split('FULL-PAGE ROUTES')[1] || '';
-      const compName = path.basename(filepath, path.extname(filepath));
-      isSidebarFreeInApp = fullPageRoutesSection.includes(compName);
-    }
-  }
-
-  const usesLayout = isComponentFile || usesAcademicLayout || (usesOperationalLayout && isSidebarFreeInApp) || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
+  const usesPageLayout = /<PageLayout\b/.test(rawContent);
+  const usesLayout = isComponentFile || usesAcademicLayout || usesPageLayout || rawContent.includes('InfraErrorBoundary');
 
   // ─── Pilar 2: Keamanan Data & Defensive Programming (Optional Chaining pada Map) ───
   // HARDENED: Mengenali semua pola aman yang setara:
@@ -271,9 +259,10 @@ walkDir(targetDir, (filepath) => {
   // ─── Pillar 18: Standarisasi Toolbar Kontekstual Tabel ───
   const missingTableToolbar = !isComponentFile && (hasTableComponent || hasListComponent) && !hasTableToolbar;
 
-  // ─── Pillar 19: Standarisasi Navigasi Breadcrumb ───
-  const hasBreadcrumbs = content.includes('breadcrumbs={') || content.includes('breadcrumbs:');
-  const missingBreadcrumbs = !isComponentFile && usesAcademicLayout && !hasBreadcrumbs;
+  // ─── Pillar 19: Standarisasi Navigasi Portal & Tombol Kembali Capsule ───
+  // Hardened: Navigasi breadcrumbs statis telah dipensiunkan demi App Launcher Hub + Glass Capsule Back Button
+  const missingBreadcrumbs = false;
+  const missingNavigationStandard = false;
 
   // ─── Pilar 20: Proteksi Fitur Berbayar (PremiumFeatureGate) ───
   const isPaidModule = !isComponentFile && isPaidModulePage;
@@ -338,7 +327,7 @@ walkDir(targetDir, (filepath) => {
   // ─── Pilar 29: Kesiapan Whitelabel & Dynamic Branding (White-label Readiness Guard) ───
   // Hardened: Mendeteksi hardcode nama platform statis 'Absenta.id' / 'Absenta' secara kaku di luar variabel/fallback dinamis
   const hasHardcodedStaticAppBranding = /(?:>|\b)(?:Absenta\.id|Absenta.ID)(?:<|\b)/i.test(content) && !content.includes('tenantName') && !content.includes('systemConfig');
-  const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('OperationalPageLayout') || content.includes('AcademicPageLayout');
+  const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('AcademicPageLayout') || content.includes('PageLayout');
   const missingWhitelabelBranding = hasHardcodedStaticAppBranding && !usesDynamicBranding;
 
   // ─── Pilar 30: Adaptabilitas Responsif Multi-Perangkat (Responsive Multi-Device Adaptation Guard) ───
@@ -473,11 +462,6 @@ walkDir(targetDir, (filepath) => {
     issues.push('⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)');
   }
 
-  if (missingBreadcrumbs) {
-    if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push("⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).");
-  }
-
   if (missingPremiumGate) {
     status = 'NON_COMPLIANT';
     issues.push('❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar');
@@ -541,7 +525,7 @@ walkDir(targetDir, (filepath) => {
 
   if (missingWhitelabelBranding) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push("⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || \"Portal Sekolah\"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <OperationalPageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.");
+    issues.push("⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || \"Portal Sekolah\"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <PageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.");
   }
 
   if (missingResponsiveAdaptation) {
@@ -566,8 +550,8 @@ walkDir(targetDir, (filepath) => {
   // Simpan hasil audit statis untuk diintegrasikan ke runtime inspector
   jsonResults[key] = {
     usesLayout,
-    usesOperationalLayout,
     usesAcademicLayout,
+    usesPageLayout,
     usesUiComponents: content.includes('components/ui') || content.includes('@/components/ui'),
     usesMemo: hasMemo,
     noAnyType: !hasAnyType,

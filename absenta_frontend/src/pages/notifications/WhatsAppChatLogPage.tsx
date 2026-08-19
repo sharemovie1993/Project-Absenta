@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import {
   Search,
   User,
@@ -433,16 +433,13 @@ const WhatsAppChatLogPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <OperationalPageLayout
+    <AcademicPageLayout
       title="Riwayat & Grup WhatsApp"
-      shortTitle="WA Log & Groups"
-      subtitle="Monitor percakapan chatbot & daftar grup WA tertaut"
-      backPath="/settings/whatsapp"
-      backLabel="Kembali ke WhatsApp Settings"
-      headerActions={
+      description="Monitor percakapan chatbot & daftar grup WA tertaut"
+      toolbar={
         <button
           onClick={() => navigate('/notifications/wa-onboarding')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-950/40 transition border border-emerald-500/40"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-950/40 transition border border-emerald-500/40 cursor-pointer"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-300" />
           <span>Monitoring & Sapa WA</span>
@@ -868,7 +865,7 @@ const WhatsAppChatLogPage: React.FC = () => {
         classes={kelasRawList || []}
         gurus={guruRawList || []}
       />
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 };
 

@@ -1,102 +1,64 @@
 # 🏛️ PANDUAN ARSITEKTUR LAYOUT & HIRARKI PLATFORM ABSENTA.ID
 
-Dokumen ini merupakan panduan resmi platform Absenta.id yang mendokumentasikan hirarki dan arsitektur tata letak (*layout*) dari lapisan paling luar (*Root Router*) hingga ke lapisan paling dalam (*Content Component*). Gunakan dokumen ini sebagai acuan standar bagi seluruh pengembang (manusia dan AI) dalam memilih dan mengimplementasikan layout halaman.
+Dokumen ini merupakan panduan resmi platform Absenta.id yang mendokumentasikan hirarki dan arsitektur tata letak (*layout*) dari lapisan paling luar (*Root Router*) hingga ke lapisan paling dalam (*Content Component*). Gunakan dokumen ini sebagai acuan standar bagi seluruh pengembang (manusia dan AI) dalam mengimplementasikan layout halaman.
 
 ---
 
-## 📊 ARSITEKTUR 3 JALUR UTAMA LAYOUT
+## 📊 ARSITEKTUR TUNGGAL: UNIFIED FULL-SCREEN PORTAL & APP LAUNCHER
 
-Seluruh halaman di dalam platform Absenta.id diklasifikasikan ke dalam **3 Jalur Utama Layout**:
+Platform Absenta.id telah beralih 100% ke arsitektur modern **Unified Full-Screen Portal Mode**. Sidebar vertikal statis telah dipensiunkan demi pengalaman layar penuh 100% berbasis **App Launcher Hub** di setiap dashboard modul.
 
 ```mermaid
 graph TD
     Root[1. APP ROOT PROVIDERS: App.tsx] --> Routing{Evaluasi Rute Halaman}
     
-    %% JALUR 1
-    Routing -->|Jalur A: Administrasi & Manajemen Data| MainLayoutWrapper[2. MainLayout.tsx]
-    MainLayoutWrapper --> SidebarComp[3. Sidebar.tsx: Navigation Drawer]
-    MainLayoutWrapper --> AcademicLayout[4. AcademicPageLayout.tsx]
-    AcademicLayout --> AcademicContent[5. SectionCard / Card / Table Data]
+    %% JALUR 1: APLIKASI UTAMA
+    Routing -->|Jalur Utama: Seluruh Modul Manajemen & Operasional| MainLayoutWrapper[2. MainLayout.tsx]
+    MainLayoutWrapper --> TopbarComp[3. Topbar.tsx: School Brand, Notifications, Profile]
+    MainLayoutWrapper --> AcademicLayout[4. AcademicPageLayout.tsx / PageLayout.tsx]
+    AcademicLayout --> NavAuditStrip[5. Utility Strip: Capsule Back Button + Hardening Dev Audit Badge]
+    AcademicLayout --> AcademicContent[6. SectionCard / Card / Table / Workspace Data]
     
-    %% JALUR 2
-    Routing -->|Jalur B: POS Operasional Lapangan| FullPageWrapper[2. FULL-PAGE ROUTES: Outside MainLayout]
-    FullPageWrapper --> OperationalLayout[3. OperationalPageLayout.tsx]
-    OperationalLayout --> OpTopbar[4. Topbar Operasional: Clock, Theme, Kiosk Toggle]
-    OperationalLayout --> OpContent[5. POS Workspace: RFID, QR Scanner, TV Display]
-
-    %% JALUR 3
-    Routing -->|Jalur C: Login & Halaman Publik| AuthWrapper[2. AuthLayout.tsx / PublicLayout]
-    AuthWrapper --> AuthContent[3. Form Login / Pricing / Landing Page]
+    %% JALUR 2: AUTENTIKASI & PUBLIK
+    Routing -->|Jalur Publik & Auth| AuthWrapper[2. AuthLayout.tsx / PublicLayout]
+    AuthWrapper --> AuthContent[3. Form Login / Verification / Public Pages]
 ```
 
 ---
 
-## 🟢 JALUR A: LAYOUT MANAJEMEN & ADMINISTRASI (DENGAN SIDEBAR)
+## 🟢 JALUR UTAMA: UNIFIED FULL-SCREEN PORTAL LAYOUT
 
 ### 1. Karakteristik & Kasus Penggunaan
-* **Tujuan**: Untuk 90% halaman berorientasi pada **Pengaturan, Pengelolaan Data (CRUD), Plotting Rombel/Guru, Pelaporan, dan Analitik**.
-* **Ciri Khas**: Pengguna bekerja secara *multi-tasking* dan membutuhkan menu navigasi samping (`Sidebar.tsx`) untuk berpindah antar modul dengan cepat.
-* **Komponen Utama**: `<AcademicPageLayout>` dibungkus oleh `<MainLayout>`.
+* **Tujuan**: Digunakan oleh **100% halaman modul aplikasi** (Manajemen Data, Presensi Operasional, Meja Piket Guru, Jadwal Builder, Monitoring Kesiswaan, Input Nilai Rapor, WhatsApp Gateway, Analitik, & Pengaturan).
+* **Ciri Khas**:
+  * **100% Layar Penuh (Zero Noise & Zero Sidebar):** Navigasi antar modul dilakukan melalui App Launcher Hub terpusat di dashboard dan Topbar.
+  * **Unified Nav & Audit Strip:** Setiap halaman memiliki bilah utilitas di bagian paling atas yang memuat tombol kembali Apple-style Glass Capsule `[ ‹ Kembali ]` berdampingan dengan interactive badge **Hardening Dev Audit**.
+  * **Isolated Error Boundary:** Dilindungi oleh `InfraErrorBoundary` layout-level untuk menjamin zero-blank-screen resilience.
+* **Komponen Utama**: `<AcademicPageLayout>` atau `<PageLayout>` di dalam `<MainLayout>`.
 
 ### 2. Hirarki Lapisan Lapisan
-1. `App.tsx` *(Root Provider & React Router)*
-2. `MainLayout.tsx` *(Pembungkus Utama yang memuat Sidebar & Navbar)*
-3. `Sidebar.tsx` *(Menu Navigasi Samping Kiri)*
-4. `AcademicPageLayout.tsx` *(Header Breadcrumbs, Filter Bar, & AnalyticsCard Grid)*
-5. `SectionCard` / `Card` / `Table` *(Konten Utama Tabel & Form Data)*
+1. `App.tsx` *(Root Provider & React Router terproteksi)*
+2. `MainLayout.tsx` *(Pembungkus Utama yang memuat Topbar, Floating Messenger, & Global Contexts)*
+3. `Topbar.tsx` *(Header Atas: Identitas Sekolah, Jam, Notifikasi, Mode Switch, Profile)*
+4. `AcademicPageLayout.tsx` *(Bilah Utilitas: Tombol Kembali + Hardening Inspector + Toolbar + Error Boundary)*
+5. `SectionCard` / `Card` / `Table` *(Area Kerja & Konten Utama Halaman)*
 
-### 3. Wireframe Visual Jalur A
+### 3. Wireframe Visual
 ```
 +-------------------------------------------------------------------------+
 | 1. APP ROOT PROVIDERS (App.tsx)                                         |
 | +---------------------------------------------------------------------+ |
 | | 2. MAIN LAYOUT (MainLayout.tsx)                                     | |
-| | +--------------+ +------------------------------------------------+ | |
-| | |              | | TOPBAR MANAGEMENT (Header Navigasi Atas)       | | |
-| | |              | +------------------------------------------------+ | |
-| | |              | | 4. ACADEMIC PAGE LAYOUT (AcademicPageLayout)   | | |
-| | | 3. SIDEBAR   | | +--------------------------------------------+ | | |
-| | |    NAVIGATION| | | Breadcrumbs & Header Judul Halaman         | | | |
-| | |   (Sidebar)  | | +--------------------------------------------+ | | |
-| | |              | | | Grid Ringkasan Kartu Statistik (Analytics) | | | |
-| | |              | | +--------------------------------------------+ | | |
-| | |              | | | 5. KONTEN UTAMA (SectionCard / Table Data) | | | |
-| | |              | | +--------------------------------------------+ | | |
-| | +--------------+ +------------------------------------------------+ | |
-| +---------------------------------------------------------------------+ |
-+-------------------------------------------------------------------------+
-```
-
----
-
-## 🔵 JALUR B: LAYOUT POS OPERASIONAL REAL-TIME (TANPA SIDEBAR / 100% LAYAR PENUH)
-
-### 1. Karakteristik & Kasus Penggunaan
-* **Tujuan**: Khusus halaman **Pos Eksekusi Lapangan Intensif & Kiosk Display** (Meja Piket RFID/QR, Kiosk TV Monitoring Disiplin, POS Kasir Koperasi, Pos Satpam Gerbang).
-* **Ciri Khas**: **0% Sidebar (Zero Distraction)**. Memberikan 100% ruang layar penuh agar petugas fokus pada alat scanner/RFID/layar sentuh tanpa terganggu menu navigasi samping.
-* **Komponen Utama**: `<OperationalPageLayout>` didaftarkan di bagian **`FULL-PAGE ROUTES`** (di luar `MainLayout`) di `src/App.tsx`.
-
-### 2. Hirarki Lapisan Lapisan
-1. `App.tsx` *(Rute didaftarkan di bagian FULL-PAGE ROUTES di luar MainLayout)*
-2. `OperationalPageLayout.tsx` *(Layout Operasional Layar Penuh)*
-3. `Operational Topbar` *(Header Khusus: Kembali, Judul Ringkas, Jam Digital WIB, Theme Toggle, Kiosk Mode)*
-4. `Mobile-Mini Stats Bar` *(Ringkasan statistik ringkas 52px)*
-5. `POS Workspace` *(Area kerja scanner RFID, kamera QR, & input transaksi)*
-
-### 3. Wireframe Visual Jalur B
-```
-+-------------------------------------------------------------------------+
-| 1. APP ROOT PROVIDERS (App.tsx)                                         |
-| +---------------------------------------------------------------------+ |
-| | 2. FULL-PAGE ROUTES / NO MAINLAYOUT (Di Luar MainLayout di App.tsx) | |
 | | +-----------------------------------------------------------------+ | |
-| | | 3. OPERATIONAL PAGE LAYOUT (OperationalPageLayout.tsx)          | | |
+| | | 3. TOPBAR MANAGEMENT (Header Identitas Sekolah, Notif, Profil)  | | |
+| | +-----------------------------------------------------------------+ | |
+| | | 4. ACADEMIC PAGE LAYOUT (AcademicPageLayout.tsx)                | | |
 | | | +-------------------------------------------------------------+ | | |
-| | | | 4. TOPBAR OPERASIONAL (Judul, Jam WIB, Theme, Kiosk Toggle) | | | |
+| | | | [ ‹ Kembali ]  [ 🟠 DEV AUDIT BADGE ]    [ 🔍 Filter/Toolbar] | | | |
 | | | +-------------------------------------------------------------+ | | |
-| | | | Grid Ringkasan Statistik (Collapsible Mobile-Mini 52px)     | | | |
+| | | | TopSlot: Workspace App Launcher (Opsional)                  | | | |
 | | | +-------------------------------------------------------------+ | | |
-| | | | 5. AREA WORKSPACE POS (Scan RFID, QR Kamera, Input Data)    | | | |
+| | | | 5. KONTEN UTAMA (SectionCard / Card / Table Data / Workspace)| | | |
 | | | +-------------------------------------------------------------+ | | |
 | | +-----------------------------------------------------------------+ | |
 | +---------------------------------------------------------------------+ |
@@ -105,37 +67,31 @@ graph TD
 
 ---
 
-## 🟡 JALUR C: LAYOUT OTENTIKASI & PUBLIK
+## 🟡 JALUR AUTENTIKASI & PUBLIK
 
 ### 1. Karakteristik & Kasus Penggunaan
-* **Tujuan**: Halaman Login, Lupa Password, Reset Password, Landing Page, Pricing, Terms of Service, DPA.
-* **Komponen Utama**: `<AuthLayout>` / Public Layout Container.
+* **Tujuan**: Halaman Login, Lupa Password, Reset Password, SIPLaH Audit Verification, Landing Page.
+* **Komponen Utama**: `<AuthLayout>` / Public Container.
 
 ---
 
----
 ## ⚙️ ATURAN PENDAFTARAN RUTE DI `src/App.tsx` (HARDENING PILAR 1)
 
-Setiap pengembang wajib mematuhi aturan pendaftaran rute berikut:
-
-1. **Jika Halaman Menggunakan `<AcademicPageLayout>`**:
-   * Wajib didaftarkan di dalam rute terproteksi yang dibungkus `<MainLayout>`:
-     ```tsx
-     <Route path="/" element={<MainLayout />}>
-       <Route path="/academic/siswa" element={<SiswaPage />} />
-     </Route>
-     ```
-
-2. **Jika Halaman Menggunakan `<OperationalPageLayout>`**:
-   * **WAJIB HUKUMNYA** didaftarkan di bagian `/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout) ── */` di luar `<MainLayout>`:
-     ```tsx
-     {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout) ── */}
+1. **Seluruh Halaman Modul Wajib Berada di Bawah `<MainLayout>`**:
+   ```tsx
+   <Route element={<RequireAuth><MainLayout /></RequireAuth>}>
+     <Route path="/academic/siswa" element={<SiswaPage />} />
+     <Route path="/attendance/ops" element={<AttendanceOpsPage />} />
      <Route path="/kesiswaan/piket" element={<PiketPage />} />
-     <Route path="/kesiswaan/monitoring" element={<MonitoringKesiswaanPage />} />
-     ```
+     <Route path="/kurikulum/jadwal" element={<JadwalPelajaranPage />} />
+     <Route path="/rapor/nilai" element={<InputNilaiPage />} />
+     <Route path="/notifications/wa-chat-logs" element={<WhatsAppChatLogPage />} />
+   </Route>
+   ```
 
-3. **Enforcement Mesin Audit (Pilar 1 - Layout Standard Guard)**:
-   * Mesin audit (`scripts/audit-pages.cjs` & `scripts/dev-audit-server.cjs`) secara otomatis memverifikasi bahwa apabila suatu komponen menggunakan `<OperationalPageLayout>`, rutenya di `App.tsx` **harus berada di bawah FULL-PAGE ROUTES**. Jika tidak, audit Pilar 1 akan menandai `FAILED`.
+2. **Dilarang Menggunakan Layout Khusus Terfragmentasi**:
+   * Komponen `OperationalPageLayout.tsx` telah resmi dihapus dan digantikan seutuhnya oleh `AcademicPageLayout.tsx`.
+   * Seluruh mesin audit statis (`audit-pages.cjs`) dan audit realtime (`dev-audit-server.cjs`) memvalidasi kepatuhan halaman terhadap standar tunggal `AcademicPageLayout` dan `PageLayout`.
 
 ---
 
@@ -144,7 +100,7 @@ Setiap pengembang wajib mematuhi aturan pendaftaran rute berikut:
 Dashboard staf (`/dashboard`) mendukung dua mode tampilan yang dapat di-toggle kapan saja:
 
 ### Mode Portal Apps 📱 (`mode = 'app-launcher'`)
-- Tampilan grid ikon squircle bergaya Android/iOS.
+- Tampilan grid ikon squircle bergaya Modern Web OS.
 - Menampilkan `StaffPortalAppLauncher.tsx` — komponen 3-Blok Menu unik terdeduplikasi:
   1. **⚡ Blok 1 — Aksi Cepat**: Pintasan kontekstual dari `quickActions` (dinamis by role).
   2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Operasional harian pengajaran & rombel.
@@ -153,19 +109,6 @@ Dashboard staf (`/dashboard`) mendukung dua mode tampilan yang dapat di-toggle k
 ### Mode Desktop 🖥️ (`mode = 'desktop'`)
 - Tampilan multi-kolom dengan widget, card statistik, dan informasi operasional.
 - Menampilkan dashboard widget klasik.
-
-### Mekanisme Sinkronisasi Global
-```
-LocalStorage: absenta_dashboard_mode ('app-launcher' | 'desktop')
-     ↕ dibaca/ditulis via
-Custom Event: 'absenta-dashboard-mode-change'
-     ↕ didengarkan oleh
-├── Topbar.tsx          → tombol toggle (single source, proxy handler)
-├── UnifiedStaffDashboard.tsx → re-render konten
-└── MainLayout.tsx      → kondisional styling wrapper
-```
-
-**Aturan**: Satu tombol switch hanya boleh ada di `Topbar.tsx`. Tombol lain mana pun yang berfungsi switch mode **wajib** memancarkan Custom Event yang sama, tidak boleh memiliki handler state sendiri.
 
 ---
 
@@ -181,22 +124,6 @@ Custom Event: 'absenta-dashboard-mode-change'
 | `filterNavByWorkspace(allItems, user, workspaceId)` | Filter menu flat berdasarkan workspace aktif |
 | `normalizeFlatMenu(backendGroupedMenu)` | Konversi grouped-menu API → FlatMenuItem[] |
 
-### Alur Penggunaan
-```
-API /api/menu/sidebar (useSmartMenu)
-    ↓ normalizeFlatMenu()
-FlatMenuItem[]
-    ↓ filterNavByWorkspace(items, user, activeWorkspaceId)
-{ primaryItems, crossModuleItems, allAllowedItems }
-    ↓ dikonsumsi oleh
-├── StaffPortalAppLauncher.tsx (Blok 3) ← sudah diimport ✅
-└── Sidebar.tsx (getFilteredNavigation) ← kandidat refactor berikutnya
-```
-
-### Aturan
-- **JANGAN** menduplikasi logika workspace filtering di file lain.
-- **SELALU** tambahkan workspace baru di `ROLE_WORKSPACES` (`navigation.config.ts`) dan `filterNavByWorkspace()` di helper ini secara bersamaan.
-
 ---
 *Dokumen ini diperbarui secara otomatis dan dijadikan acuan standar arsitektur platform Absenta.id.*
-*Terakhir diperbarui: 2026-08-01 — Penambahan Dashboard Dual Mode & Centralized Navigation Filter.*
+*Terakhir diperbarui: 2026-08-19 — Penyatuan Standar Tunggal AcademicPageLayout & Pemusnahan OperationalPageLayout.*

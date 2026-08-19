@@ -425,8 +425,6 @@ const AttendanceDashboardPage: React.FC = React.memo(() => {
           ) : (
             /* ───── ADMIN/TEACHER DASHBOARD VIEW ───── */
             <div className="space-y-6">
-              {/* Bagian I: Ringkasan & Kehadiran per Kelas */}
-              <Divider title="Bagian I: Ringkasan & Kehadiran per Kelas" />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Recharts Bar Chart Kehadiran per Kelas */}
                 <SectionCard
@@ -468,20 +466,17 @@ const AttendanceDashboardPage: React.FC = React.memo(() => {
                 <SektorKehadiranList statsBySector={statsBySector} sectorName={sectorName} />
               </div>
 
-              {/* Bagian II: Feed Aktivitas Sesi KBM */}
-              <Divider title="Bagian II: Feed Aktivitas Sesi KBM" />
+              {/* Feed Aktivitas Sesi KBM */}
               <div className="grid grid-cols-1 gap-8">
                 <KbmFeedPanel feed={feed} />
               </div>
 
-              {/* Bagian III: Status Koneksi Terminal Perangkat */}
-              <Divider title="Bagian III: Status Koneksi Terminal Perangkat" />
+              {/* Status Koneksi Terminal Perangkat */}
               <div className="grid grid-cols-1 gap-8">
                 <TerminalDevicesPanel terminalDevices={terminalDevices} />
               </div>
 
-              {/* Bagian IV: Aksi Cepat Admin */}
-              <Divider title="Bagian IV: Aksi Cepat Admin" />
+              {/* Aksi Cepat Admin */}
               <div className="grid grid-cols-1 gap-8">
                 {/* Quick Actions Panel */}
                 <SectionCard

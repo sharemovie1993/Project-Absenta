@@ -17,7 +17,8 @@ import { kesiswaanApi, type Pelanggaran } from '../../api/kesiswaan.api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTvStore } from '../../store/tvStore';
 import { TvModeToggle } from '../../components/ui/TvModeToggle';
@@ -348,15 +349,12 @@ const MonitoringKesiswaanPage: React.FC = () => {
   }
 
   return (
-    <OperationalPageLayout
-      title="MONITORING DISIPLIN KESISWAAN"
-      shortTitle="MONITORING DISIPLIN"
-      subtitle="Live Display & Analitik Real-Time"
-      backPath="/dashboard"
-      backLabel="Kembali ke Dashboard"
+    <AcademicPageLayout
+      title="Monitoring Disiplin Kesiswaan"
+      description="Live Display & Analitik Real-Time"
       stats={academicStats}
-      actions={
-        <div className="flex gap-2 items-center">
+      toolbar={
+        <div className="flex gap-2 items-center flex-wrap">
           <TvModeToggle />
           <Link
             to="/kesiswaan/pelanggaran"
@@ -382,6 +380,7 @@ const MonitoringKesiswaanPage: React.FC = () => {
         </div>
       }
       instruction={monitoringInstruction}
+      topSlot={<WorkspaceAppLauncherCard workspaceId="KESISWAAN_WORKSPACE" />}
       hardeningModuleKey="kesiswaan_monitoring"
     >
       <div className="space-y-6 pb-12 relative">
@@ -451,7 +450,7 @@ const MonitoringKesiswaanPage: React.FC = () => {
           />
         </Suspense>
       </div>
-    </OperationalPageLayout>
+    </AcademicPageLayout>
   );
 };
 

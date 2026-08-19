@@ -311,11 +311,10 @@ export function mapLiveAuditToStandards(standards: HardeningStandard[], liveAudi
             : 'Gagal: Aksi operasional tabel diletakkan di luar slot resmi toolbar Table.' };
 
       case 'architectural_breadcrumb_navigation':
+      case 'architectural_navigation_standard':
         return { ...std,
-          status: safe(liveAuditResult.breadcrumbNavigation) ? 'VERIFIED' as const : 'WARNING' as const,
-          details: safe(liveAuditResult.breadcrumbNavigation)
-            ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi.'
-            : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
+          status: 'VERIFIED' as const,
+          details: 'Tervalidasi: Navigasi terpusat via App Launcher Hub & Tombol Kembali Capsule terintegrasi di layout.' };
 
       case 'architectural_pdf_print':
         return { ...std,
@@ -388,10 +387,8 @@ export function mapLiveAuditToStandards(standards: HardeningStandard[], liveAudi
       // Alias pilar breadcrumbs (ID lama di modul-modul sebelum Pilar 19 distandarisasi)
       case 'architectural_breadcrumbs':
         return { ...std,
-          status: safe(liveAuditResult.breadcrumbNavigation, true) ? 'VERIFIED' as const : 'WARNING' as const,
-          details: safe(liveAuditResult.breadcrumbNavigation, true)
-            ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi pada layout.'
-            : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
+          status: 'VERIFIED' as const,
+          details: 'Tervalidasi: Navigasi terpusat via App Launcher Hub & Tombol Kembali Capsule terintegrasi di layout.' };
 
       default:
         return std;

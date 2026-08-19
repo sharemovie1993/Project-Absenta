@@ -50,11 +50,7 @@ const MonitoringKbmPage: React.FC = React.memo(() => {
         featureName="Monitoring KBM (Realtime Dashboard)"
         description="Dapatkan pandangan menyeluruh terhadap seluruh aktivitas belajar mengajar yang sedang berlangsung di sekolah Anda."
       >
-        <Card className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8">
-          <div className="space-y-6">
-            <MonitoringKbmWidget />
-          </div>
-        </Card>
+        <MonitoringKbmWidget isExecutive={false} />
       </PremiumFeatureGate>
     </PageLayout>
   );
