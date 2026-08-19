@@ -799,27 +799,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           </div>
 
           {/* Right Action: Sesuai Role Pengguna */}
-          {hasGerbangDuty ? (
-            /* Petugas Gerbang / Piket Gerbang: BUKA MODUL SCAN GERBANG */
-            <button
-              type="button"
-              onClick={() => navigate('/attendance/ops?tab=gerbang')}
-              className="group relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-black text-xs flex items-center gap-2.5 shrink-0 self-start sm:self-auto shadow-lg shadow-rose-950/40 border border-rose-300/40 transition-all duration-200 active:scale-95 cursor-pointer"
-            >
-              <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
-                <Zap className="w-4 h-4 text-white fill-white" />
-              </div>
-              <div className="text-left">
-                <span className="text-[9px] font-black text-rose-100 uppercase tracking-wider block">
-                  TERMINAL GERBANG
-                </span>
-                <span className="text-xs font-black text-white tracking-tight group-hover:underline flex items-center gap-1">
-                  <span>Buka Modul Scan Gerbang</span>
-                  <ArrowRight size={13} />
-                </span>
-              </div>
-            </button>
-          ) : (isWaliKelas || isPetugasKelas) ? (
+          {(isWaliKelas || isPetugasKelas) && (
             /* Khusus Wali Kelas & Petugas Kelas: PRESENSI KEGIATAN */
             <button
               type="button"
@@ -838,7 +818,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 </span>
               </div>
             </button>
-          ) : null}
+          )}
         </div>
 
         {/* Tab Navigation Row Inset (Embedded Dark Navigation Bar) — hidden on mobile, replaced by bottom nav */}
