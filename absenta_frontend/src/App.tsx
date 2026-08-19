@@ -124,6 +124,7 @@ const ComponentsDemo = lazy(() => import('./pages/ComponentsDemo'));
 const MenuManagementPage = lazy(() => import('./pages/management/MenuManagementPage'));
 const RoleManagementPage = lazy(() => import('./pages/management/RoleManagementPage'));
 const MenuAuditPage = lazy(() => import('./pages/management/MenuAuditPage'));
+const PlatformComplianceFollowUpPage = lazy(() => import('./pages/management/PlatformComplianceFollowUpPage'));
 const TripayHealthPage = lazy(() => import('./pages/billing/TripayHealthPage'));
 const TripaySimulatorPage = lazy(() => import('./pages/billing/TripaySimulatorPage'));
 // Removed GerbangRecordsPage import
@@ -1583,6 +1584,18 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/management/platform-compliance" element={
+                      <ProtectedRoute>
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <PlatformComplianceFollowUpPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/kepatuhan-platform" element={<Navigate to="/management/platform-compliance" replace />} />
                   </Route>
                 </Route>
 

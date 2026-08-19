@@ -92,6 +92,7 @@ const DEFAULT_KURIKULUM_CROSS: FlatMenuItem[] = [
   { id: 'grb', title: 'Presensi Gerbang', path: '/attendance/gerbang', icon: 'Zap' },
   { id: 'rkp', title: 'Rekap Presensi', path: '/attendance/rekap', icon: 'ClipboardList' },
   { id: 'ttb', title: 'Tata Tertib', path: '/kesiswaan/pelanggaran', icon: 'ShieldAlert' },
+  { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'Smartphone' },
 ];
 
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
