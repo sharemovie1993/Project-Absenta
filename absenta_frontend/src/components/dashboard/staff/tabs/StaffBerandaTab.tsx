@@ -158,43 +158,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
-      {/* ── TERMINAL SCANNER GERBANG HERO BANNER (UNTUK PETUGAS GERBANG / PIKET) ── */}
-      {(hasGerbangDuty || isPureGerbang) && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white shadow-xl shadow-rose-950/20 border border-rose-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
-              <Scan size={26} className="text-white" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-white/20 text-white tracking-wider">
-                  TERMINAL OPERASIONAL GERBANG
-                </span>
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
-                </span>
-              </div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
-                Terminal Scanner Presensi Gerbang
-              </h3>
-              <p className="text-xs text-rose-100 font-medium">
-                Akses modul scanning RFID, Barcode/QR kartu siswa, dan kamera tap gerbang masuk/pulang realtime.
-              </p>
-            </div>
-          </div>
-
-          <Button
-            onClick={() => navigate('/attendance/ops?tab=gerbang')}
-            className="w-full sm:w-auto h-11 px-6 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 font-black text-xs border-none shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shrink-0"
-          >
-            <Zap size={16} className="fill-rose-600" />
-            <span>BUKA MODUL SCAN GERBANG</span>
-            <ArrowRight size={16} />
-          </Button>
-        </div>
-      )}
-
       {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) */}
       <div className="grid grid-cols-2 gap-3 sm:gap-5">
         {isPureGerbang ? (
