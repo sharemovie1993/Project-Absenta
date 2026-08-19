@@ -86,56 +86,38 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="hid-input-field" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-            <span>{isBypassMode ? 'Terminal Scan Bypass (Force HADIR)' : 'Terminal Scan Hardware (RFID / QR 2D)'}</span>
-          </Label>
-          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300 dark:border-emerald-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-ping" />
-            Scanner Siap
-          </span>
-        </div>
-
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none text-slate-400">
-            {isBypassMode ? (
-              <ShieldAlert size={22} className="text-amber-500" />
-            ) : (
-              <div className="i-lucide-scan-line w-5 h-5 text-blue-600" />
-            )}
-          </div>
-          <input
-            ref={inputRef}
-            id="hid-input-field"
-            type="text"
-            autoFocus
-            value={hidToken}
-            onChange={(e) => onHidTokenChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (hidToken.trim()) {
-                  const val = hidToken.trim();
-                  onHidTokenChange('');
-                  onSubmit(val);
-                }
-              }
-            }}
-            className={`w-full pl-11 md:pl-12 pr-4 py-3.5 md:py-4 text-base md:text-lg font-mono rounded-xl border-2 focus:ring-4 transition-all outline-none ${
-              isBypassMode
-                ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 bg-amber-50/30'
-                : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900'
-            }`}
-            placeholder="⚡ Tempelkan Kartu RFID atau Arahkan QR Code ke Scanner..."
-          />
-        </div>
+    <div className="relative group">
+      <div className="absolute inset-y-0 left-0 pl-3.5 md:pl-4 flex items-center pointer-events-none text-slate-400">
+        {isBypassMode ? (
+          <ShieldAlert size={20} className="text-amber-500" />
+        ) : (
+          <div className="i-lucide-scan-line w-5 h-5 text-blue-600" />
+        )}
       </div>
-      <p className="text-[11px] text-slate-400 font-medium">
-        Jalur Cepat Hardware: Siswa (NISN) & Guru (NIP/NIK/RFID). Untuk siswa yang tidak membawa kartu, gunakan tab <b>Input Manual</b>.
-      </p>
+      <input
+        ref={inputRef}
+        id="hid-input-field"
+        type="text"
+        autoFocus
+        value={hidToken}
+        onChange={(e) => onHidTokenChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (hidToken.trim()) {
+              const val = hidToken.trim();
+              onHidTokenChange('');
+              onSubmit(val);
+            }
+          }
+        }}
+        className={`w-full pl-11 md:pl-12 pr-4 py-3.5 md:py-4 text-base md:text-lg font-mono rounded-xl border-2 focus:ring-4 transition-all outline-none ${
+          isBypassMode
+            ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 bg-amber-50/30'
+            : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900'
+        }`}
+        placeholder="Scan Kartu RFID / QR..."
+      />
     </div>
   );
 };
