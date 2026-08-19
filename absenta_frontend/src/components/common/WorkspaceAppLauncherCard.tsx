@@ -120,6 +120,23 @@ const DEFAULT_ADMIN_CROSS: FlatMenuItem[] = [
   { id: 'rkp', title: 'Rekap Presensi', path: '/attendance/rekap', icon: 'ClipboardList' },
 ];
 
+const DEFAULT_SARPRAS_PRIMARY: FlatMenuItem[] = [
+  { id: 'inv', title: 'Inventory Aset', path: '/sarpras/inventory', icon: 'Archive' },
+  { id: 'loa', title: 'Peminjaman Aset', path: '/sarpras/loans', icon: 'ArrowUpCircle' },
+  { id: 'mnt', title: 'Pemeliharaan', path: '/sarpras/maintenance', icon: 'Tool' },
+  { id: 'cat', title: 'Katalog Aset', path: '/sarpras/catalog', icon: 'Package' },
+  { id: 'ctk', title: 'Cetak Berkas', path: '/sarpras/cetak-berkas', icon: 'ClipboardList' },
+];
+
+const DEFAULT_SARPRAS_CROSS: FlatMenuItem[] = [
+  { id: 'kls', title: 'Ruang Kelas', path: '/academic/kelas', icon: 'LayoutGrid' },
+  { id: 'gru', title: 'Data Guru', path: '/academic/guru', icon: 'Users' },
+  { id: 'sis', title: 'Data Siswa', path: '/academic/siswa', icon: 'GraduationCap' },
+  { id: 'jdw', title: 'Jadwal Lab', path: '/kurikulum/jadwal', icon: 'Calendar' },
+  { id: 'pkt', title: 'Meja Piket', path: '/dashboard?tab=kelola&subtab=GURU_KBM', icon: 'Building2' },
+  { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'Smartphone' },
+];
+
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
   workspaceId: targetWorkspaceIdProp,
   customTitle,
@@ -158,6 +175,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   const primaryItems = useMemo<FlatMenuItem[]>(() => {
     if (!flatItems || flatItems.length === 0) {
       if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_PRIMARY;
+      if (activeWsId === 'SARPRAS_WORKSPACE') return DEFAULT_SARPRAS_PRIMARY;
       return activeWsId === 'KURIKULUM_WORKSPACE' ? DEFAULT_KURIKULUM_PRIMARY : [];
     }
 
@@ -179,6 +197,13 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
         ) && p !== '/dashboard' && p !== '#';
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_ADMIN_PRIMARY;
+    } else if (activeWsId === 'SARPRAS_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/sarpras') || cat.includes('SARPRAS') || cat.includes('ASET')) && p !== '/sarpras/dashboard' && p !== '#';
+      });
+      if (matchedItems.length === 0) matchedItems = DEFAULT_SARPRAS_PRIMARY;
     } else if (activeWsId === 'KURIKULUM_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
@@ -207,6 +232,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   const crossItems = useMemo<FlatMenuItem[]>(() => {
     if (!flatItems || flatItems.length === 0) {
       if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_CROSS;
+      if (activeWsId === 'SARPRAS_WORKSPACE') return DEFAULT_SARPRAS_CROSS;
       return activeWsId === 'KURIKULUM_WORKSPACE' ? DEFAULT_KURIKULUM_CROSS : [];
     }
 
@@ -215,6 +241,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
     
     if (allCross.length === 0) {
       if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_CROSS;
+      if (activeWsId === 'SARPRAS_WORKSPACE') return DEFAULT_SARPRAS_CROSS;
       if (activeWsId === 'KURIKULUM_WORKSPACE') return DEFAULT_KURIKULUM_CROSS;
     }
     

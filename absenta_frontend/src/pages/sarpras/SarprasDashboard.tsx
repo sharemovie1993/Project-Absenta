@@ -26,6 +26,7 @@ import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { useTvStore } from '@/store/tvStore';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { sarprasApi } from '@/api/sarpras.api';
@@ -205,6 +206,7 @@ const SarprasDashboard: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="sarpras_dashboard"
+        topSlot={<WorkspaceAppLauncherCard workspaceId="SARPRAS_WORKSPACE" />}
         toolbar={
           <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-2 shadow-sm items-center">
              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
