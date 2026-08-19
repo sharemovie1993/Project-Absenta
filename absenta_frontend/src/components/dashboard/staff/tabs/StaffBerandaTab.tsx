@@ -349,54 +349,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         </div>
       )}
 
-      {/* REKAP KEHADIRAN PRIBADI PETUGAS / TENDIK (KHUSUS NON-PENDIDIK & PETUGAS GERBANG) */}
-      {!isActualTeachingStaff && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  Rekap Kehadiran Presensi Petugas Bulan Ini
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Pencatatan kehadiran dinas dan ketepatan waktu bertugas
-                </p>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              onClick={() => setShowIzinModal(true)}
-              className="h-8.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border-none transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <span>Ajukan Izin / Dinas</span>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Hadir</span>
-              <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">{rekapStats.HADIR || 0}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Terlambat</span>
-              <span className="text-xl font-black text-amber-700 dark:text-amber-300">{rekapStats.TERLAMBAT || 0}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
-              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">Dinas Luar</span>
-              <span className="text-xl font-black text-blue-700 dark:text-blue-300">{rekapStats.DISPEN || 0}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-center">
-              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">Izin / Sakit</span>
-              <span className="text-xl font-black text-purple-700 dark:text-purple-300">{(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MODAL PENGAJUAN IZIN / DINAS */}
       <PengajuanIzinGuruModal
         isOpen={showIzinModal}
