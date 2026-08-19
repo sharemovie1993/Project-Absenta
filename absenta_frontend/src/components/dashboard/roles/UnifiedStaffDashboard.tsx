@@ -70,6 +70,7 @@ import { StaffKbmAbsenTab } from '../staff/tabs/StaffKbmAbsenTab';
 import { StaffWaliKelasTab } from '../staff/tabs/StaffWaliKelasTab';
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
+import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 
 // Lazy Module Dashboards for In-Tab Rendering (Bebas Sidebar, 100% Full Width)
 const KurikulumDashboard = React.lazy(() => import('@/pages/kurikulum/Dashboard'));
@@ -82,38 +83,6 @@ const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
 const AdminOverviewDashboard = React.lazy(() => import('@/pages/dashboard/DashboardOverview'));
 // Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
 const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
-// Pending Siswa Module — dirender di tab Input Manual untuk Petugas Gerbang & Piket
-const PendingSiswaModule = React.lazy(() => import('@/pages/attendance/ops/components/PendingSiswaModule').then(m => ({ default: m.PendingSiswaModule })));
-
-import { useKelasOptions } from '../../../hooks/useKelasOptions';
-import { useGerbangAttendanceData } from '../../../hooks/attendance/useGerbangAttendanceData';
-import { useTenant } from '../../../hooks/useTenant';
-
-const StaffManualPresensiTab: React.FC = React.memo(() => {
-  const { tenantId } = useTenant();
-  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const { options: kelasOptions = [] } = useKelasOptions();
-  const { notPresent = [], notPresentLoading, miniStats = { masuk: 0, keluar: 0 }, refreshData } = useGerbangAttendanceData({
-    tenantId,
-    selectedKelasId,
-  });
-
-  return (
-    <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-      <PendingSiswaModule
-        notPresent={notPresent}
-        notPresentLoading={notPresentLoading}
-        miniStats={miniStats}
-        selectedKelasId={selectedKelasId}
-        setSelectedKelasId={setSelectedKelasId}
-        kelasOptions={kelasOptions}
-        isPetugasSiswa={true}
-        socketConnected={true}
-        refreshData={refreshData}
-      />
-    </Suspense>
-  );
-});
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -1007,9 +976,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
           </Suspense>
         )}
 
-        {/* 🔍 TAB MANUAL PRESENSI: INPUT SISWA LUPA KARTU PER KELAS */}
+        {/* 🔍 TAB INPUT MANUAL: FORM PENCARIAN SISWA/GURU LUPA KARTU */}
         {activeTab === 'manual_presensi' && (
-          <StaffManualPresensiTab />
+          <StaffManualInputTab />
         )}
 
         {/* 📋 TAB 9: PIKET HARIAN & OPERASIONAL */}
