@@ -73,6 +73,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   const { data: permitsRes } = useQuery({
     queryKey: ['dashboard-daily-permits-beranda'],
     queryFn: () => piketApi.getDailyPermits().catch(() => ({ success: true, data: [] })),
+    enabled: isActualTeachingStaff,
     staleTime: 60000,
   });
 
