@@ -21,6 +21,7 @@ interface StaffBerandaTabProps {
   isWaliKelas?: boolean;
   hasGerbangDuty?: boolean;
   isPureGerbang?: boolean;
+  isPendidik?: boolean;
   timelineItems?: TimelineItem[];
   onNavigateTab: (tabId: string) => void;
 }
@@ -33,11 +34,15 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   isWaliKelas = false,
   hasGerbangDuty = false,
   isPureGerbang = false,
+  isPendidik = true,
   timelineItems = [],
   onNavigateTab,
 }) => {
   const navigate = useNavigate();
   const [showIzinModal, setShowIzinModal] = React.useState(false);
+
+  // Status apakah guru merupakan pendidik pengajar aktif
+  const isActualTeachingStaff = isPendidik && !isPureGerbang && !hasGerbangDuty;
 
   // Query Rekap Kehadiran Siswa Rombel Walas (jika Wali Kelas)
   const { data: classPresenceRes, isLoading: loadingPresence } = useQuery({
@@ -63,6 +68,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   const { data: bebanGuruRes, isLoading: loadingBeban } = useQuery({
     queryKey: ['kurikulum-beban-guru-all'],
     queryFn: () => kurikulumApi.getBebanMengajar().catch(() => ({ success: true, data: [] })),
+    enabled: isActualTeachingStaff,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -114,7 +120,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
 
   // Active / Next KBM Session — use server-provided is_overdue flag
   const activeKbm = useMemo(() => {
-    // Only show as active if: genuinely LIVE session OR session berlangsung and NOT overdue
     return timelineItems.find(i => i.isLive && !i.is_overdue);
   }, [timelineItems]);
 
@@ -160,8 +165,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
     >
       {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) */}
       <div className="grid grid-cols-2 gap-3 sm:gap-5">
-        {isPureGerbang ? (
-          /* Stat 1 for Pure Gerbang: Operasional Scanner Gerbang */
+        {!isActualTeachingStaff ? (
+          /* Stat 1 for Petugas Gerbang / Tendik: Operasional Scanner Gerbang */
           <div 
             onClick={() => navigate('/attendance/ops?tab=gerbang')}
             className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-rose-500/40 transition-all group"
@@ -227,8 +232,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         </div>
       </div>
 
-      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - ONLY FOR TEACHING ROLES */}
-      {!isPureGerbang && (
+      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK */}
+      {isActualTeachingStaff && (
         <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {activeKbm ? (
             <>
@@ -304,16 +309,16 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         </div>
       )}
 
-      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU PENGAJAR) ──────────── */}
-      {!isPureGerbang && (
+      {/* ── MATRIKS JADWAL GURU 1 MINGGU (STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK) ──────────── */}
+      {isActualTeachingStaff && (
         <StaffWeeklyScheduleWidget
           guruId={guruId}
           guruNama={guruNama}
         />
       )}
 
-      {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET (KHUSUS GURU PENGAJAR) */}
-      {!isPureGerbang && (
+      {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET (STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK) */}
+      {isActualTeachingStaff && (
         <BebanMengajarWidget
           currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
           kbmJp={teacherBeban?.current_jp ?? 0}
@@ -328,6 +333,54 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
           isLoading={loadingBeban || loadingRekap}
           onOpenAjukanIzin={() => setShowIzinModal(true)}
         />
+      )}
+
+      {/* REKAP KEHADIRAN PRIBADI PETUGAS / TENDIK (KHUSUS NON-PENDIDIK & PETUGAS GERBANG) */}
+      {!isActualTeachingStaff && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Rekap Kehadiran Presensi Petugas Bulan Ini
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Pencatatan kehadiran dinas dan ketepatan waktu bertugas
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setShowIzinModal(true)}
+              className="h-8.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border-none transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <span>Ajukan Izin / Dinas</span>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Hadir</span>
+              <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">{rekapStats.HADIR || 0}</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Terlambat</span>
+              <span className="text-xl font-black text-amber-700 dark:text-amber-300">{rekapStats.TERLAMBAT || 0}</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center">
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">Dinas Luar</span>
+              <span className="text-xl font-black text-blue-700 dark:text-blue-300">{rekapStats.DISPEN || 0}</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-center">
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">Izin / Sakit</span>
+              <span className="text-xl font-black text-purple-700 dark:text-purple-300">{(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}</span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MODAL PENGAJUAN IZIN / DINAS */}

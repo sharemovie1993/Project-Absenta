@@ -191,17 +191,36 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
 
+  // Jenis PTK Detection: PENDIDIK vs TENAGA KEPENDIDIKAN
+  const jenisPtk = (
+    guruProfile?.jenis_ptk ||
+    (user?.guru_profile as any)?.jenis_ptk ||
+    (user as any)?.jenis_ptk ||
+    ''
+  ).toUpperCase();
+
   // Petugas Gerbang Detection
   const hasGerbangDuty = isGerbang ||
     roleName === 'GERBANG' ||
     roleName === 'PETUGAS_GERBANG' ||
     jabatanList.some((j: string) => j.toUpperCase().includes('GERBANG')) ||
     jabatan.toUpperCase().includes('GERBANG') ||
+    jabatan.toUpperCase().includes('SATPAM') ||
+    jabatan.toUpperCase().includes('SECURITY') ||
     can('attendance.gate.scan') ||
     can('attendance.gate.tap.entry') ||
     can('dashboard.view.gerbang');
 
-  const isPureGerbangStaff = (roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || hasGerbangDuty) && !guruId && !isWaliKelas && !isKurikulum;
+  // True Pendidik (Guru Pengajar KBM)
+  const isPendidik = (
+    (jenisPtk === 'PENDIDIK' || (!jenisPtk && roleName === 'GURU')) &&
+    !hasGerbangDuty &&
+    roleName !== 'GERBANG' &&
+    roleName !== 'PETUGAS_GERBANG' &&
+    !isTuStaff
+  );
+
+  const isPureGerbangStaff = hasGerbangDuty || !isPendidik;
 
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
@@ -864,6 +883,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             isWaliKelas={isWaliKelas}
             hasGerbangDuty={hasGerbangDuty}
             isPureGerbang={isPureGerbangStaff}
+            isPendidik={isPendidik}
             timelineItems={timelineItems || []}
             onNavigateTab={handleTabChange}
           />
