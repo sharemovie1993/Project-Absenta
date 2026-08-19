@@ -65,36 +65,6 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
   // HID / RFID / 2D Barcode Scanner Input State
   const [hidToken, setHidToken] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const debouncedHidToken = useDebounce(hidToken, 300);
-
-  // Search candidates Query (for inline manual fallback)
-  const candidatesQuery = useQuery({
-    queryKey: ['student-candidates-search', debouncedHidToken],
-    queryFn: async () => {
-      const term = debouncedHidToken.trim();
-      const isRfidOrBarcode = /^\d{8,}$/.test(term);
-      if (term.length < 2 || isRfidOrBarcode) {
-        return [];
-      }
-      const res = await siswaApi.getAll({
-        search: term,
-        limit: 8,
-        search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
-        elevated_context: 'true',
-        context: 'elevated'
-      } as any);
-      return ((res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status)) as Student[];
-    },
-    enabled: debouncedHidToken.trim().length >= 2,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const searchCandidates = candidatesQuery.data || [];
-
-  useEffect(() => {
-    setShowDropdown(searchCandidates.length > 0);
-  }, [searchCandidates]);
 
   const isProcessingRef = useRef<boolean>(false);
   const lastSubmittedTokenRef = useRef<string>('');
@@ -263,12 +233,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           <GerbangKeyRfidInput 
             hidToken={hidToken} 
             onHidTokenChange={setHidToken} 
-            autoSubmitGateHID={handleScanToken} 
             isBypassMode={isBypassMode} 
-            showDropdown={showDropdown} 
-            setShowDropdown={setShowDropdown} 
-            searchCandidates={searchCandidates} 
-            onSelectStudent={(t, s) => handleScanToken(t, s)} 
             onSubmit={handleScanToken} 
           />
         </Suspense>
