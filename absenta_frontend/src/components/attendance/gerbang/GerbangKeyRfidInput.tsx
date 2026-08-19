@@ -53,12 +53,18 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
   // Always ensure input is focused on mount, window focus, or outside click
   useEffect(() => {
     const focusInput = () => {
-      if (inputRef.current && document.activeElement !== inputRef.current) {
-        inputRef.current.focus({ preventScroll: true });
+      const el = inputRef.current || (document.getElementById('hid-input-field') as HTMLInputElement | null);
+      if (el) {
+        el.focus({ preventScroll: true });
       }
     };
 
+    // Staged focus triggers to overcome Suspense & Framer Motion transitions
     focusInput();
+    requestAnimationFrame(focusInput);
+    const t1 = setTimeout(focusInput, 50);
+    const t2 = setTimeout(focusInput, 150);
+    const t3 = setTimeout(focusInput, 400);
 
     const onWindowFocus = () => focusInput();
     const onDocumentClick = (e: MouseEvent) => {
@@ -71,6 +77,9 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
     window.addEventListener('focus', onWindowFocus);
     document.addEventListener('click', onDocumentClick);
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       window.removeEventListener('focus', onWindowFocus);
       document.removeEventListener('click', onDocumentClick);
     };

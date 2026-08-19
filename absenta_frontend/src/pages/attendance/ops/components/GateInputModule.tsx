@@ -200,11 +200,45 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
       {!minimal && (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg self-start w-full md:w-auto">
-              <button onClick={() => setInternalDirection('GERBANG_DATANG')} className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-bold transition-all ${inputDirection === 'GERBANG_DATANG' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm' : 'text-gray-500'}`}>MASUK</button>
-              <button onClick={() => setInternalDirection('GERBANG_PULANG')} className={`flex-1 md:flex-none px-6 py-2 rounded-md text-sm font-bold transition-all ${inputDirection === 'GERBANG_PULANG' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm' : 'text-gray-500'}`}>PULANG</button>
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-full md:w-auto">
+              <button 
+                type="button"
+                onClick={() => setInternalDirection('GERBANG_DATANG')} 
+                className={`flex-1 md:flex-none px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  inputDirection === 'GERBANG_DATANG' 
+                    ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>MASUK</span>
+                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                  inputDirection === 'GERBANG_DATANG'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300'
+                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                }`}>
+                  {miniStats.masuk}
+                </span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => setInternalDirection('GERBANG_PULANG')} 
+                className={`flex-1 md:flex-none px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  inputDirection === 'GERBANG_PULANG' 
+                    ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>PULANG</span>
+                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                  inputDirection === 'GERBANG_PULANG'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
+                    : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                }`}>
+                  {miniStats.keluar}
+                </span>
+              </button>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-6">
               <div className="flex flex-col items-end"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hadir</span><span className="text-2xl font-black text-green-600">{miniStats.masuk}</span></div>
               <div className="w-px h-8 bg-gray-200" />
               <div className="flex flex-col items-start"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pulang</span><span className="text-2xl font-black text-red-600">{miniStats.keluar}</span></div>
