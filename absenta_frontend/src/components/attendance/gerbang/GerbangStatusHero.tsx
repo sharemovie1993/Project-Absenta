@@ -1,6 +1,9 @@
-import React from 'react';
-import { Clock, RefreshCw, ShieldAlert } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, RefreshCw, ShieldAlert, Settings } from 'lucide-react';
 import { Switch } from '../../ui';
+import { GateScheduleConfigModal } from './GateScheduleConfigModal';
+import { useCapabilities } from '../../../hooks/useCapabilities';
+import { useTenant } from '../../../hooks/useTenant';
 
 interface TenantConfig {
   jamMasuk: string;
@@ -34,6 +37,11 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
   onRefreshConfig,
   loadingConfig,
 }) => {
+  const { tenantId } = useTenant();
+  const { isAdmin, isKurikulum, isKepsek } = useCapabilities();
+  const canEditSchedule = isAdmin || isKurikulum || isKepsek;
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden relative">
       {/* Status Indicator Background Stripe */}
@@ -121,14 +129,26 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
               className={isBypassMode ? 'bg-amber-500' : ''}
             />
           </div>
-          <button
-            onClick={onRefreshConfig}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors"
-            title="Refresh Config"
-            type="button"
-          >
-            <RefreshCw size={18} className={loadingConfig ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-1">
+            {canEditSchedule && (
+              <button
+                onClick={() => setShowConfigModal(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                title="Pengaturan Jam Masuk & Pulang Gerbang"
+                type="button"
+              >
+                <Settings size={18} />
+              </button>
+            )}
+            <button
+              onClick={onRefreshConfig}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors"
+              title="Refresh Config"
+              type="button"
+            >
+              <RefreshCw size={18} className={loadingConfig ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -138,6 +158,19 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
           <ShieldAlert size={14} />
           MODE BYPASS AKTIF: Semua scan akan dicatat sebagai HADIR (Tepat Waktu) secara manual.
         </div>
+      )}
+
+      {/* Quick Gate Schedule Modal for Admin & Kurikulum */}
+      {canEditSchedule && (
+        <GateScheduleConfigModal
+          isOpen={showConfigModal}
+          onClose={() => setShowConfigModal(false)}
+          tenantId={tenantId}
+          initialJamMasuk={(tenantConfig as any)?.jamMasuk || (tenantConfig as any)?.jam_masuk_default || '07:00'}
+          initialJamPulang={(tenantConfig as any)?.jamPulang || (tenantConfig as any)?.jam_pulang_default || '15:00'}
+          initialToleransi={(tenantConfig as any)?.toleransi ?? (tenantConfig as any)?.toleransi_keterlambatan_menit ?? 15}
+          onSaved={onRefreshConfig}
+        />
       )}
     </div>
   );
