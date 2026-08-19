@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -14,11 +15,13 @@ import {
   Clock, 
   Briefcase, 
   ChevronRight, 
-  Info,
-  Building2,
-  Scan,
-  UserX,
-  AlertTriangle
+  Info, 
+  Building2, 
+  Scan, 
+  UserX, 
+  AlertTriangle,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 import { Button, Badge } from '../../../ui';
 import { TabSwitcher, type TabOption } from '../../../ui/TabSwitcher';
@@ -55,6 +58,7 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
   setPrintPaperSize,
   tenantInfo,
 }) => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { guruProfile } = useGuruMe();
   const { isAdmin, isKesiswaan, isKurikulum, isKepsek, isGerbang, isTU, can } = useCapabilities();
@@ -391,16 +395,28 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
                 </p>
               </div>
 
-              {isBypassed && (
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => setIsBypassed(false)}
-                  className="h-8 px-3 rounded-xl text-[11px] font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 shrink-0 cursor-pointer"
+                  onClick={() => navigate('/attendance/ops')}
+                  className="h-9 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-950/20 shrink-0"
                 >
-                  Kunci Akses
+                  <Zap size={14} className="fill-white" />
+                  <span>Buka Modul Scan Gerbang</span>
+                  <ArrowRight size={13} />
                 </Button>
-              )}
+
+                {isBypassed && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsBypassed(false)}
+                    className="h-8 px-3 rounded-xl text-[11px] font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 shrink-0 cursor-pointer"
+                  >
+                    Kunci Akses
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* 🚨 BANNER PERINGATAN DARURAT: IZIN HARI INI BELUM DIVERIFIKASI */}

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Scan, Zap, ShieldCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../../../ui';
 import { kesiswaanApi } from '../../../../api/kesiswaan.api';
@@ -18,6 +19,8 @@ interface StaffBerandaTabProps {
   waliKelasNama?: string;
   waliKelasId?: string;
   isWaliKelas?: boolean;
+  hasGerbangDuty?: boolean;
+  isPureGerbang?: boolean;
   timelineItems?: TimelineItem[];
   onNavigateTab: (tabId: string) => void;
 }
@@ -28,9 +31,12 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   waliKelasNama,
   waliKelasId,
   isWaliKelas = false,
+  hasGerbangDuty = false,
+  isPureGerbang = false,
   timelineItems = [],
   onNavigateTab,
 }) => {
+  const navigate = useNavigate();
   const [showIzinModal, setShowIzinModal] = React.useState(false);
 
   // Query Rekap Kehadiran Siswa Rombel Walas (jika Wali Kelas)
@@ -152,28 +158,89 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
+      {/* ── TERMINAL SCANNER GERBANG HERO BANNER (UNTUK PETUGAS GERBANG / PIKET) ── */}
+      {(hasGerbangDuty || isPureGerbang) && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white shadow-xl shadow-rose-950/20 border border-rose-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
+              <Scan size={26} className="text-white" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-white/20 text-white tracking-wider">
+                  TERMINAL OPERASIONAL GERBANG
+                </span>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                Terminal Scanner Presensi Gerbang
+              </h3>
+              <p className="text-xs text-rose-100 font-medium">
+                Akses modul scanning RFID, Barcode/QR kartu siswa, dan kamera tap gerbang masuk/pulang realtime.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => navigate('/attendance/ops')}
+            className="w-full sm:w-auto h-11 px-6 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 font-black text-xs border-none shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shrink-0"
+          >
+            <Zap size={16} className="fill-rose-600" />
+            <span>BUKA MODUL SCAN GERBANG</span>
+            <ArrowRight size={16} />
+          </Button>
+        </div>
+      )}
+
       {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) */}
       <div className="grid grid-cols-2 gap-3 sm:gap-5">
-        {/* Stat 1: Sesi Mengajar Hari Ini */}
-        <div 
-          onClick={() => onNavigateTab('jadwal')}
-          className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-blue-500/40 transition-all group"
-        >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <BookOpen size={20} className="sm:w-5.5 sm:h-5.5" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
-              Sesi Hari Ini
-            </span>
-            <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-              {totalJp} Sesi <span className="text-[10px] sm:text-xs font-bold text-slate-400">({totalMinutes} Mnt)</span>
+        {isPureGerbang ? (
+          /* Stat 1 for Pure Gerbang: Operasional Scanner Gerbang */
+          <div 
+            onClick={() => navigate('/attendance/ops')}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-rose-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Scan size={20} className="sm:w-5.5 sm:h-5.5" />
             </div>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-              {activeKbm ? `Live: ${activeKbm.kelas_nama}` : nextKbm ? `${nextKbm.jam_mulai} WIB` : 'Semua Selesai'}
-            </p>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
+                Operasional Gerbang
+              </span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                Modul Scan
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-rose-600 dark:text-rose-400 truncate flex items-center gap-1">
+                <Zap size={11} className="fill-rose-500" />
+                <span>Tap / Scan Siap Aktif</span>
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Stat 1 for Teachers: Sesi Mengajar Hari Ini */
+          <div 
+            onClick={() => onNavigateTab('jadwal')}
+            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-blue-500/40 transition-all group"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <BookOpen size={20} className="sm:w-5.5 sm:h-5.5" />
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">
+                Sesi Hari Ini
+              </span>
+              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                {totalJp} Sesi <span className="text-[10px] sm:text-xs font-bold text-slate-400">({totalMinutes} Mnt)</span>
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                {activeKbm ? `Live: ${activeKbm.kelas_nama}` : nextKbm ? `${nextKbm.jam_mulai} WIB` : 'Semua Selesai'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stat 2: Ajuan Izin Menunggu */}
         <div 
@@ -197,105 +264,108 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         </div>
       </div>
 
-      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - PRIORITAS 1 UTAMA */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {activeKbm ? (
-          <>
-            <div className="space-y-1.5 min-w-0">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950 uppercase tracking-wider animate-pulse flex items-center gap-1.5 w-fit">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-950"></span>
-                KBM Berlangsung Live
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
-                {activeKbm.kelas_nama} — {activeKbm.kegiatan}
-              </h3>
-              <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                <Clock size={13} className="text-slate-400" />
-                <span>{activeKbm.jamLabel ? `${activeKbm.jamLabel} • ` : ''}{activeKbm.jam_mulai} - {activeKbm.jam_selesai} WIB</span>
-              </p>
-            </div>
+      {/* DYNAMIC KBM SESSION CARD (REAL DATA BANNER) - ONLY FOR TEACHING ROLES */}
+      {!isPureGerbang && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {activeKbm ? (
+            <>
+              <div className="space-y-1.5 min-w-0">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950 uppercase tracking-wider animate-pulse flex items-center gap-1.5 w-fit">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-950"></span>
+                  KBM Berlangsung Live
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
+                  {activeKbm.kelas_nama} — {activeKbm.kegiatan}
+                </h3>
+                <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                  <Clock size={13} className="text-slate-400" />
+                  <span>{activeKbm.jamLabel ? `${activeKbm.jamLabel} • ` : ''}{activeKbm.jam_mulai} - {activeKbm.jam_selesai} WIB</span>
+                </p>
+              </div>
 
-            <Button
-              onClick={() => onNavigateTab('jadwal')}
-              className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white border-none shrink-0 cursor-pointer shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
-            >
-              <span>Buka Input Presensi KBM</span>
-              <ArrowRight size={15} />
-            </Button>
-          </>
-        ) : nextKbm ? (
-          <>
-            <div className="space-y-1.5 min-w-0">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/40 uppercase tracking-wider w-fit">
-                KBM Berikutnya Hari Ini
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
-                {nextKbm.kelas_nama} — {nextKbm.kegiatan}
-              </h3>
-              <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                <Clock size={13} />
-                <span>{nextKbm.jamLabel ? `${nextKbm.jamLabel} • ` : ''}Jadwal Pukul {nextKbm.jam_mulai} - {nextKbm.jam_selesai} WIB</span>
-              </p>
-            </div>
+              <Button
+                onClick={() => onNavigateTab('jadwal')}
+                className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white border-none shrink-0 cursor-pointer shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <span>Buka Input Presensi KBM</span>
+                <ArrowRight size={15} />
+              </Button>
+            </>
+          ) : nextKbm ? (
+            <>
+              <div className="space-y-1.5 min-w-0">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/40 uppercase tracking-wider w-fit">
+                  KBM Berikutnya Hari Ini
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
+                  {nextKbm.kelas_nama} — {nextKbm.kegiatan}
+                </h3>
+                <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                  <Clock size={13} />
+                  <span>{nextKbm.jamLabel ? `${nextKbm.jamLabel} • ` : ''}Jadwal Pukul {nextKbm.jam_mulai} - {nextKbm.jam_selesai} WIB</span>
+                </p>
+              </div>
 
-            <Button
-              onClick={() => onNavigateTab('jadwal')}
-              className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-slate-800 hover:bg-slate-700 text-white border-none shrink-0 cursor-pointer flex items-center justify-center gap-2 transition-all"
-            >
-              <span>Lihat Sesi KBM</span>
-              <ArrowRight size={15} />
-            </Button>
-          </>
-        ) : (
-          <>
-            <div className="space-y-1.5 min-w-0">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase tracking-wider w-fit flex items-center gap-1">
-                <CheckCircle2 size={12} />
-                <span>Semua Sesi KBM Selesai</span>
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
-                Seluruh Kegiatan KBM Hari Ini Telah Tuntas
-              </h3>
-              <p className="text-xs font-medium text-slate-400">
-                Terima kasih atas dedikasi dan pengabdian Anda mengajar hari ini.
-              </p>
-            </div>
+              <Button
+                onClick={() => onNavigateTab('jadwal')}
+                className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-slate-800 hover:bg-slate-700 text-white border-none shrink-0 cursor-pointer flex items-center justify-center gap-2 transition-all"
+              >
+                <span>Lihat Sesi KBM</span>
+                <ArrowRight size={15} />
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5 min-w-0">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase tracking-wider w-fit flex items-center gap-1">
+                  <CheckCircle2 size={12} />
+                  <span>Semua Sesi KBM Selesai</span>
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
+                  Seluruh Kegiatan KBM Hari Ini Telah Tuntas
+                </h3>
+                <p className="text-xs font-medium text-slate-400">
+                  Terima kasih atas dedikasi dan pengabdian Anda mengajar hari ini.
+                </p>
+              </div>
 
-            <Button
-              onClick={() => onNavigateTab('profil')}
-              className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-slate-800 hover:bg-slate-700 text-white border-none shrink-0 cursor-pointer flex items-center justify-center gap-2 transition-all"
-            >
-              <span>Buka Profil Guru</span>
-              <ArrowRight size={15} />
-            </Button>
-          </>
-        )}
-      </div>
+              <Button
+                onClick={() => onNavigateTab('profil')}
+                className="w-full sm:w-auto h-11 px-6 rounded-2xl text-xs font-black bg-slate-800 hover:bg-slate-700 text-white border-none shrink-0 cursor-pointer flex items-center justify-center gap-2 transition-all"
+              >
+                <span>Buka Profil Guru</span>
+                <ArrowRight size={15} />
+              </Button>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU YG LOGIN) - PRIORITAS 2 UTAMA ──────────── */}
-      <StaffWeeklyScheduleWidget
-        guruId={guruId}
-        guruNama={guruNama}
-      />
+      {/* ── MATRIKS JADWAL GURU 1 MINGGU (KHUSUS GURU PENGAJAR) ──────────── */}
+      {!isPureGerbang && (
+        <StaffWeeklyScheduleWidget
+          guruId={guruId}
+          guruNama={guruNama}
+        />
+      )}
 
-      {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET - PRIORITAS MONITORING */}
-      <BebanMengajarWidget
-        currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
-        kbmJp={teacherBeban?.current_jp ?? 0}
-        ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
-        targetJp={teacherBeban?.max_jp ?? 24}
-        teacherName={guruNama}
-        positions={teacherBeban?.positions || []}
-        harianStats={rekapGuruRes?.data?.statistik_harian}
-        kbmStats={rekapGuruRes?.data?.statistik_kbm}
-        hadirBulanIni={rekapStats.HADIR || 0}
-        terlambatBulanIni={rekapStats.TERLAMBAT || 0}
-        dinasLuarBulanIni={rekapStats.DINAS_LUAR || rekapStats.PENUGASAN || rekapStats.DISPEN || 0}
-        izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0) + (rekapStats.CUTI || 0)}
-        alpaBulanIni={rekapStats.ALPA || 0}
-        isLoading={loadingBeban || loadingRekap}
-        onOpenAjukanIzin={() => setShowIzinModal(true)}
-      />
+      {/* BEBAN JAM MENGAJAR & REKAP BULANAN GURU WIDGET (KHUSUS GURU PENGAJAR) */}
+      {!isPureGerbang && (
+        <BebanMengajarWidget
+          currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+          kbmJp={teacherBeban?.current_jp ?? 0}
+          ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
+          targetJp={teacherBeban?.max_jp ?? 24}
+          teacherName={guruNama}
+          positions={teacherBeban?.positions || []}
+          hadirBulanIni={rekapStats.HADIR || 0}
+          terlambatBulanIni={rekapStats.TERLAMBAT || 0}
+          dinasLuarBulanIni={rekapStats.DISPEN || 0}
+          izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
+          isLoading={loadingBeban || loadingRekap}
+          onOpenAjukanIzin={() => setShowIzinModal(true)}
+        />
+      )}
 
       {/* MODAL PENGAJUAN IZIN / DINAS */}
       <PengajuanIzinGuruModal
