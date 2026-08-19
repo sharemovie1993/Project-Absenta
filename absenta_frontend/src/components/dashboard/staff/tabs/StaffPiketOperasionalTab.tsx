@@ -132,6 +132,9 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
 
   // Final Guard Access Evaluation
   const isAuthorized = isAssignedPiketToday || isStrukturPiket || isManagement;
+  const canAccessPiket = isAuthorized || isBypassed;
+  const isLoading = loadingPiketJadwal || loadingStruktur;
+
   const hasGerbangDuty = isGerbang ||
     (user as any)?.role === 'GERBANG' ||
     (user as any)?.role === 'PETUGAS_GERBANG' ||
