@@ -127,13 +127,16 @@ export default React.memo(function ModeMultiSesiView({
   const isGerbangPos = isGateOfficer || can('attendance.gate.tap.entry');
   const isWaliKelasPos = isHomeroomTeacher || !!(user as any)?.guru_profile?.wali_kelas_di;
 
-  // 1. Scanner Gerbang (HANYA Admin, Operator, Satpam/Petugas Gerbang Murni — BUKAN Wali Kelas & BUKAN Petugas Kelas)
-  const canAccessInput = !isWaliKelasPos && !isPetugasSiswa && (
+  // 1. Scanner Gerbang (Admin, Operator, Satpam/Petugas Gerbang, Guru Piket, atau saat diarahkan via ?tab=gerbang)
+  const hasGateDutyOrPerm = 
     isAdmin ||
     isGerbangPos ||
     isOperator ||
-    can('attendance.gate.tap.entry')
-  );
+    can('attendance.gate.tap.entry') ||
+    can('attendance.gate.scan') ||
+    urlTabParam === 'gerbang';
+
+  const canAccessInput = !isPetugasSiswa && hasGateDutyOrPerm;
   
   // 2. Cek Manual (Wali Kelas, Petugas Kelas, Guru, Admin)
   const canAccessManual = isAdmin || isPetugasSiswa || isWaliKelasPos || isPetugasGuru || can('attendance.sessions.update.attendance');
@@ -181,20 +184,31 @@ export default React.memo(function ModeMultiSesiView({
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
   useEffect(() => {
-    if (urlTabParam && urlTabParam !== 'manual') {
-      setActiveTab(urlTabParam);
-    } else if (isWaliKelasPos || isPetugasSiswa) {
+    if (urlTabParam) {
+      if (urlTabParam === 'gerbang') {
+        setActiveTab('gerbang');
+      } else if (urlTabParam === 'manual') {
+        setActiveTab('sesi');
+      } else {
+        setActiveTab(urlTabParam);
+      }
+    } else if (isPetugasSiswa) {
+      setActiveTab('sesi');
+    } else if (isWaliKelasPos && !canAccessInput) {
       setActiveTab('sesi');
     } else if (!canAccessInput && activeTab === 'gerbang') {
       if (canAccessSesi) setActiveTab('sesi');
     }
-  }, [urlTabParam, isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessSesi, activeTab]);
+  }, [urlTabParam, isWaliKelasPos, isPetugasSiswa, canAccessInput, canAccessSesi]);
 
   const tabOptions = useMemo((): TabOption[] => {
     // 🔵 1. Jika secara eksplisit dipanggil dari menu "Absensi Kelas" Guru (?tab=sesi) atau redirect dari ?tab=manual
     if (urlTabParam === 'sesi' || urlTabParam === 'manual') {
       const opts: TabOption[] = [];
       opts.push({ id: 'sesi', label: 'Manajemen Sesi', icon: Activity });
+      if (canAccessInput) {
+        opts.push({ id: 'gerbang', label: 'Scanner Gerbang', icon: MapPin });
+      }
       return opts;
     }
 
@@ -205,9 +219,9 @@ export default React.memo(function ModeMultiSesiView({
       ];
     }
 
-    // 🟢 3. Peran Umum / Fallback (Gerbang, Satpam, Admin, Operator)
+    // 🟢 3. Peran Umum / Fallback (Gerbang, Satpam, Admin, Operator, Guru)
     const opts: TabOption[] = [];
-    if (canAccessInput) {
+    if (canAccessInput || urlTabParam === 'gerbang') {
       opts.push({ id: 'gerbang', label: 'Scanner Gerbang', icon: MapPin });
     }
     if (canAccessSesi) {

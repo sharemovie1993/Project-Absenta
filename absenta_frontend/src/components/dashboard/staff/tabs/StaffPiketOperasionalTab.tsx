@@ -398,7 +398,7 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
-                  onClick={() => navigate('/attendance/ops')}
+                  onClick={() => navigate('/attendance/ops?tab=gerbang')}
                   className="h-9 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-rose-950/20 shrink-0"
                 >
                   <Zap size={14} className="fill-white" />

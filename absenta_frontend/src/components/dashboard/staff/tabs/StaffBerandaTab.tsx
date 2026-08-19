@@ -185,7 +185,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
           </div>
 
           <Button
-            onClick={() => navigate('/attendance/ops')}
+            onClick={() => navigate('/attendance/ops?tab=gerbang')}
             className="w-full sm:w-auto h-11 px-6 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 font-black text-xs border-none shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shrink-0"
           >
             <Zap size={16} className="fill-rose-600" />
@@ -200,7 +200,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
         {isPureGerbang ? (
           /* Stat 1 for Pure Gerbang: Operasional Scanner Gerbang */
           <div 
-            onClick={() => navigate('/attendance/ops')}
+            onClick={() => navigate('/attendance/ops?tab=gerbang')}
             className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 cursor-pointer hover:border-rose-500/40 transition-all group"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
