@@ -1,4 +1,5 @@
 import { prisma } from '../../../../utils/prisma';
+import { appLogger } from '../../../../utils/app-logger';
 import { storageService } from '../../../../infra/storage/storage.service';
 import { emitDomainEvent } from '../../../../infra/event-bus';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
@@ -431,22 +432,33 @@ export class SesiLifecycleService {
       orderBy: { waktu_mulai: 'desc' }
     });
 
-    const physicalSessions = await Promise.all(rawData.map(async (item: any) => {
-      let summary: Record<string, number> = { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 };
+    // 🚀 ULTRA-OPTIMIZED BATCH QUERY: 1 single query instead of N individual database queries
+    const sessionIds = rawData.map((item: any) => item.id).filter(Boolean);
+    const summaryMap = new Map<string, Record<string, number>>();
+
+    if (sessionIds.length > 0) {
       try {
         const counts = await prisma.absenSiswa.groupBy({
-          by: ['status'],
-          where: { sesi_id: item.id, tenant_id: tenantId },
-          _count: true
+          by: ['sesi_id', 'status'],
+          where: { sesi_id: { in: sessionIds }, tenant_id: tenantId },
+          _count: { _all: true }
         });
-        let total = 0;
         counts.forEach((c: any) => {
-          summary[c.status] = c._count;
-          total += c._count;
+          if (!summaryMap.has(c.sesi_id)) {
+            summaryMap.set(c.sesi_id, { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 });
+          }
+          const sum = summaryMap.get(c.sesi_id)!;
+          const countVal = typeof c._count === 'object' ? (c._count._all || 0) : (c._count || 0);
+          sum[c.status] = countVal;
+          sum.total = (sum.total || 0) + countVal;
         });
-        summary.total = total;
-      } catch {}
+      } catch (err: any) {
+        appLogger.warn({ error: err?.message }, '[getSesiAbsensiList] Batch absenSiswa groupBy warning');
+      }
+    }
 
+    const physicalSessions = rawData.map((item: any) => {
+      const summary = summaryMap.get(item.id) || { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 };
       return {
         ...item,
         status: item.status || 'MENDATANG',
@@ -461,7 +473,7 @@ export class SesiLifecycleService {
         absenGuru: item.AbsenGuru?.[0] || null,
         AbsenGuru: item.AbsenGuru || [],
       };
-    }));
+    });
 
     // 2. If include_scheduled === 'true' or true (or when tanggal is specified), hydrate with JadwalKBM slots
     const shouldHydrate = include_scheduled === true || include_scheduled === 'true' || !!tanggal;

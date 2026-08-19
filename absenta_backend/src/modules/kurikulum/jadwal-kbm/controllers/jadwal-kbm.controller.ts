@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx-js-style';
 import { generateSessionsForTenantDirect, getTenantLocalTime } from '@/jobs/attendanceAutoSession.job';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
+import { appLogger } from '@/utils/app-logger';
 
 const validationService = new JadwalValidationService();
 
@@ -430,17 +431,36 @@ export class JadwalKBMController {
       }
     });
 
-    const summaryResults = await Promise.all(sessions.map(async (s: any) => {
+    // 🚀 ULTRA-OPTIMIZED BATCH QUERY: 1 single query instead of N individual database queries
+    const activeSessionIds = sessions.map((s: any) => s.id).filter(Boolean);
+    const summaryMap = new Map<string, any>();
+
+    if (activeSessionIds.length > 0) {
+      try {
         const counts = await (prisma as any).absenSiswa.groupBy({
-            by: ['status'],
-            where: { sesi_id: s.id, tenant_id: ctx.tenantId },
-            _count: true
+          by: ['sesi_id', 'status'],
+          where: { sesi_id: { in: activeSessionIds }, tenant_id: ctx.tenantId },
+          _count: { _all: true }
         });
-        const summary: any = { total: (s as any)._count?.AbsenSiswa || 0 };
-        counts.forEach((c: any) => { summary[c.status] = c._count; });
-        return { id: s.id, summary };
-    }));
-    const summaryMap = new Map(summaryResults.map((r: any) => [r.id, r.summary]));
+        counts.forEach((c: any) => {
+          if (!summaryMap.has(c.sesi_id)) {
+            summaryMap.set(c.sesi_id, { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 });
+          }
+          const sum = summaryMap.get(c.sesi_id)!;
+          const countVal = typeof c._count === 'object' ? (c._count._all || 0) : (c._count || 0);
+          sum[c.status] = countVal;
+          sum.total = (sum.total || 0) + countVal;
+        });
+      } catch (err: any) {
+        appLogger.warn({ error: err?.message }, '[getActiveTodayJadwal] Batch absenSiswa groupBy warning');
+      }
+    }
+
+    sessions.forEach((s: any) => {
+      if (!summaryMap.has(s.id)) {
+        summaryMap.set(s.id, { total: (s as any)._count?.AbsenSiswa || 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 });
+      }
+    });
 
     // 5. Merge logic
     const sessionMap = new Map();

@@ -201,8 +201,6 @@ const SarprasDashboard: React.FC = React.memo(() => {
       description="Pantau seluruh aset sekolah, status peminjaman, dan jadwal pemeliharaan barang dalam satu dashboard terintegrasi."
     >
       <AcademicPageLayout
-        title="Toolman Dashboard"
-        description={`Halo ${user?.full_name || 'User'}, selamat datang di pusat kendali aset Anda.`}
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="sarpras_dashboard"
