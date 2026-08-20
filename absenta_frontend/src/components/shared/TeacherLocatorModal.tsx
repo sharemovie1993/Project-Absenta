@@ -361,48 +361,42 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                                     </span>
                                   </div>
 
-                                  {/* Dual Badges POV Kurikulum: Status Sesi + Status Kehadiran Guru */}
-                                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                                    {/* 1. Status Sesi */}
+                                  {/* SINGLE SMART STATUS BADGE (SIMPLIFIED & CLEAN) */}
+                                  <div className="shrink-0">
                                     {s.is_live ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-600 text-white shadow-xs animate-pulse">
-                                        <span className="w-1 h-1 rounded-full bg-white shrink-0" />
-                                        LIVE
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-emerald-600 text-white shadow-xs animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                        SEDANG MENGAJAR
                                       </span>
                                     ) : s.is_ready ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                                        <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0" />
-                                        SIAP DIMULAI
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                        BELUM MASUK
                                       </span>
                                     ) : s.is_overdue ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-                                        <span className="w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                                         TERLEWAT
                                       </span>
+                                    ) : tMeta.key === 'IZIN' || tMeta.key === 'SAKIT' || tMeta.key === 'DINAS_LUAR' ? (
+                                      <span className={cn(
+                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border",
+                                        tMeta.key === 'IZIN' ? "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-200 border-blue-300 dark:border-blue-700" :
+                                        tMeta.key === 'SAKIT' ? "bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-200 border-orange-300 dark:border-orange-700" :
+                                        "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-200 border-purple-300 dark:border-purple-700"
+                                      )}>
+                                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", tMeta.dotClass)} />
+                                        {tMeta.shortLabel}
+                                      </span>
                                     ) : s.is_finished ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                                         SELESAI
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                                         MENDATANG
                                       </span>
                                     )}
-
-                                    {/* 2. Status Guru (Kurikulum POV) */}
-                                    <span className={cn(
-                                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase border",
-                                      tMeta.key === 'HADIR' ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700" :
-                                      tMeta.key === 'TERLAMBAT' ? "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700" :
-                                      tMeta.key === 'IZIN' ? "bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700" :
-                                      tMeta.key === 'SAKIT' ? "bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-300 dark:border-orange-700" :
-                                      tMeta.key === 'PENUGASAN' || tMeta.key === 'INVAL' ? "bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-700" :
-                                      tMeta.key === 'ALPA' ? "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700" :
-                                      "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-600"
-                                    )}>
-                                      <span className={cn("w-1 h-1 rounded-full shrink-0", tMeta.dotClass)} />
-                                      {tMeta.label}
-                                    </span>
                                   </div>
                                 </div>
                               );
