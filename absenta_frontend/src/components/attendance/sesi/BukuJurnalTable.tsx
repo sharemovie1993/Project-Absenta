@@ -12,6 +12,7 @@ import {
   Sparkles,
   FileText
 } from 'lucide-react';
+import { formatLocalTimeFromISO } from '../../../utils/attendance/time';
 import { cn } from '../../../lib/utils';
 
 export interface SesiAjarItem {
@@ -123,8 +124,8 @@ export const BukuJurnalTable: React.FC<BukuJurnalTableProps> = ({
                 }
               } catch (_) {}
 
-              const jamMulai = sesi.jam_mulai || (sesi.waktu_mulai ? String(sesi.waktu_mulai).substring(11, 16) : '--:--');
-              const jamSelesai = sesi.jam_selesai || (sesi.waktu_selesai ? String(sesi.waktu_selesai).substring(11, 16) : '--:--');
+              const jamMulai = sesi.jam_mulai || formatLocalTimeFromISO(sesi.waktu_mulai) || '--:--';
+              const jamSelesai = sesi.jam_selesai || formatLocalTimeFromISO(sesi.waktu_selesai) || '--:--';
               const slotLabel = sesi.jam_label || (sesi.slot_kbm ? `Slot ${sesi.slot_kbm}` : `${jamMulai} - ${jamSelesai}`);
 
               const sum = sesi.summary || {};
@@ -156,13 +157,19 @@ export const BukuJurnalTable: React.FC<BukuJurnalTableProps> = ({
 
                   {/* 3. WAKTU / JAM */}
                   <td className="py-3 px-3">
-                    <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                      <Clock size={11} className="text-slate-400 shrink-0" />
-                      <span>{slotLabel}</span>
+                    <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                      <Clock size={12} className="text-blue-500 shrink-0" />
+                      <span>{jamMulai} - {jamSelesai} WIB</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono pl-4">
-                      {jamMulai} - {jamSelesai} WIB
-                    </div>
+                    {sesi.slot_kbm ? (
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold pl-4 mt-0.5">
+                        Jam Ke-{sesi.slot_kbm}
+                      </div>
+                    ) : sesi.jam_label ? (
+                      <div className="text-[10px] text-slate-400 font-medium pl-4 mt-0.5">
+                        {sesi.jam_label}
+                      </div>
+                    ) : null}
                   </td>
 
                   {/* MANAGER ONLY: GURU */}

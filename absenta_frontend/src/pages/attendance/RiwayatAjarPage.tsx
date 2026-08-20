@@ -19,7 +19,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
-import { toLocalDate } from '../../utils/attendance/time';
+import { toLocalDate, formatLocalTimeFromISO } from '../../utils/attendance/time';
 
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -266,8 +266,8 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
 
       const rows = filteredSessions.map((s, idx) => {
         const d = s.tanggal ? format(new Date(s.tanggal), 'dd/MM/yyyy') : '-';
-        const jamMulai = s.jam_mulai || (s.waktu_mulai ? String(s.waktu_mulai).substring(11, 16) : '--:--');
-        const jamSelesai = s.jam_selesai || (s.waktu_selesai ? String(s.waktu_selesai).substring(11, 16) : '--:--');
+        const jamMulai = s.jam_mulai || formatLocalTimeFromISO(s.waktu_mulai) || '--:--';
+        const jamSelesai = s.jam_selesai || formatLocalTimeFromISO(s.waktu_selesai) || '--:--';
         const sum = s.summary || {};
         const hadirStr = `H:${sum.HADIR || 0} S:${sum.SAKIT || 0} I:${sum.IZIN || 0} A:${sum.ALPA || 0}`;
         const materiStr = s.ProgresMateri?.judul_materi ? `${s.ProgresMateri.judul_materi} (${s.ProgresMateri.pencapaian_persen || 0}%)` : 'Belum Diisi';
