@@ -7,7 +7,7 @@ import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../
 import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
-import { BookOpen, Lock, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse } from 'lucide-react';
+import { BookOpen, Lock, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -373,10 +373,10 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
             </div>
           </div>
 
-          {/* 3 Core Metric Cards (Berdiri Mandiri di Atas Grid, Lega & Bernapas) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          {/* 4 Core Executive Metric Cards (Grid 1 -> 2 -> 4 Kolom, Rapi & Proporsional) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Metric 1: Sesi Belajar Live */}
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
@@ -391,13 +391,49 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
                 </div>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                {stats.finished} sesi telah selesai dari {stats.total} total jadwal hari ini
+                {stats.finished} sesi selesai dari {stats.total} total jadwal hari ini
               </p>
             </Card>
 
-            {/* Metric 2: Kelas Kosong / Butuh Guru */}
+            {/* Metric 2: Guru Belum Masuk Kelas (Warning ⚠️) */}
             <Card className={cn(
-              "rounded-2xl border shadow-sm p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
+              "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
+              stats.teacherNotArrived > 0
+                ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60"
+                : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
+            )}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                    Belum Masuk
+                  </span>
+                  <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
+                    {stats.teacherNotArrived > 0 ? `${stats.teacherNotArrived} Kelas` : '0 Kelas'}
+                  </h4>
+                </div>
+                <div className={cn(
+                  "p-3 rounded-2xl",
+                  stats.teacherNotArrived > 0
+                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                    : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
+                )}>
+                  {stats.teacherNotArrived > 0 ? (
+                    <Clock size={20} className="animate-pulse" />
+                  ) : (
+                    <CheckCircle2 size={20} />
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                {stats.teacherNotArrived > 0
+                  ? 'Menunggu guru tap masuk / buka kelas'
+                  : 'Semua guru KBM aktif telah masuk kelas'}
+              </p>
+            </Card>
+
+            {/* Metric 3: Kelas Kosong / Butuh Guru Inval (Critical 🚨) */}
+            <Card className={cn(
+              "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
               stats.teacherAlpa > 0
                 ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/60"
                 : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
@@ -431,8 +467,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
               </p>
             </Card>
 
-            {/* Metric 3: Keterisian Jurnal Materi */}
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
+            {/* Metric 4: Keterisian Jurnal Materi */}
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
