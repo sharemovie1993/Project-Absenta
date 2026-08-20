@@ -388,7 +388,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       </div>
 
       {activeKbmSubTab === 'perangkat-ajar' ? (
-        <PerangkatAjarPanel />
+        <PerangkatAjarPanel guruId={guruId} />
       ) : activeKbmSubTab === 'inval' ? (
         <JadwalInvalPanel />
       ) : (
