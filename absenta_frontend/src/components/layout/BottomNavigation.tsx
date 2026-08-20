@@ -286,8 +286,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 11. Piket Harian (Semua Guru, Pos Keamanan, dan Admin)
-    if (isGerbang || isAdminRole || !!guruProfile) {
+    // 11. Piket Harian (Hanya jika memiliki tugas Piket/Gerbang, Kesiswaan, atau Admin)
+    if (isGerbang || isKesiswaan || isAdminRole) {
       list.push({
         id: 'kelola',
         label: 'Piket Operasional',

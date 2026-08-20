@@ -610,7 +610,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     // 11. Piket & Gerbang (untuk Petugas Gerbang: Pos Keamanan, Guru Piket: Piket Harian)
-    if (hasGerbangDuty || isGerbang || isKurikulum || isKesiswaan || isAdminRole || isKepsek) {
+    if (hasGerbangDuty || isGerbang || isKesiswaan || isAdminRole) {
       list.push({ 
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
