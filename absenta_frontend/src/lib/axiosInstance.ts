@@ -331,28 +331,9 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
+    // Handle 403 Forbidden - log warning and reject gracefully so React Query / UI handles it without killing the SPA
     if (error.response?.status === 403) {
-      const headersObj: Record<string, unknown> = (() => {
-        const h: any = originalRequest.headers;
-        if (!h) return {};
-        if (typeof h.toJSON === 'function') return h.toJSON();
-        return h;
-      })();
-
-      const skipRedirect = Object.entries(headersObj).some(([k, v]) => {
-        if (k.toLowerCase() !== 'x-skip-403-redirect') return false;
-        if (v === true) return true;
-        return String(v).toLowerCase() === 'true';
-      });
-
-      // If it's a GET request (loading page data), redirect to Forbidden page unless skipped
-      // Otherwise (actions), just reject so UI can show toast
-      if (method === 'GET' && !skipRedirect && !isSubscriptionInactive && !isPublic) {
-        const message = errorMessage || 'Access Denied';
-        const source = url || 'Unknown URL';
-        window.location.href = `/403?source=${encodeURIComponent(source)}&reason=${encodeURIComponent(message)}`;
-      }
+      LogService.warn('Access Forbidden (403)', { url, method, message: errorMessage });
     }
 
     // Handle 5xx Server Errors (Optional: could redirect to 500 page for critical GETs)

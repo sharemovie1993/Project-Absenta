@@ -10,8 +10,8 @@ export default async function strukturKurikulumRoutes(fastify: any) {
   fastify.put('/standards/:id', { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()]}, StrukturKurikulumController.updateStandardReference);
   fastify.delete('/standards/:id', { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()]}, StrukturKurikulumController.deleteStandardReference);
   fastify.get('/grouped', { preHandler: [requireCapability(['academic.structure.manage', 'academic.structures.view.list']), determineDataScope()]}, StrukturKurikulumController.getByTingkatGrouped);
-  fastify.get('/check-beban-guru', { preHandler: [requireCapability(['academic.structure.manage', 'academic.structures.view.list']), determineDataScope()]}, StrukturKurikulumController.checkBebanGuru);
-  fastify.get('/beban-guru', { preHandler: [requireCapability(['academic.structure.manage', 'academic.structures.view.list']), determineDataScope()]}, StrukturKurikulumController.getBebanGuruAll);
+  fastify.get('/check-beban-guru', { preHandler: [requireCapability(['academic.structure.manage', 'academic.structures.view.list', 'academic.teaching.view', 'dashboard.view.guru']), determineDataScope()]}, StrukturKurikulumController.checkBebanGuru);
+  fastify.get('/beban-guru', { preHandler: [requireCapability(['academic.structure.manage', 'academic.structures.view.list', 'academic.teaching.view', 'dashboard.view.guru']), determineDataScope()]}, StrukturKurikulumController.getBebanGuruAll);
   // Kurikulum structure clone & CRUD routes
   fastify.post('/', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.upsert);
   fastify.post('/clone', { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()]}, StrukturKurikulumController.clone);
