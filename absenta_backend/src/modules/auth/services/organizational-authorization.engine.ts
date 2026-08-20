@@ -143,6 +143,33 @@ export class OrganizationalAuthorizationEngine {
     });
 
     if (guru) {
+      // Base Teaching & Teacher Dashboard Capabilities (Jadwal Mengajar, Beban JP, Presensi KBM, Jurnal)
+      capSet.add('dashboard.view.guru');
+      capSet.add('academic.teaching.view');
+      capSet.add('academic.teaching.rekap');
+      capSet.add('academic.schedules.view.list');
+      capSet.add('academic.structures.view.list');
+      capSet.add('academic.structures.view.detail');
+      capSet.add('academic.structures.view.tree');
+      capSet.add('academic.subjects.view.list');
+      capSet.add('academic.teachers.view.list');
+      capSet.add('academic.teachers.view.detail');
+      capSet.add('academic.students.view.list');
+      capSet.add('academic.students.view.detail');
+      capSet.add('attendance.schedules.view.list');
+      capSet.add('attendance.sessions.view.list');
+      capSet.add('attendance.sessions.view.detail');
+      capSet.add('attendance.sessions.tap');
+      capSet.add('attendance.sessions.update.attendance');
+      capSet.add('attendance.sessions.update.journal');
+      capSet.add('attendance.recap.view.daily');
+      capSet.add('attendance.recap.view.monthly');
+      capSet.add('dashboard.view.teacher.attendance');
+      capSet.add('attendance.reports.view');
+      capSet.add('documents.upload');
+      capSet.add('documents.view.list');
+      capSet.add('documents.view.detail');
+
       const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
       const now = new Date();
       const hariIni = todayDays[now.getDay()];
