@@ -27,23 +27,25 @@ export class SesiReminderService {
     const tz = await getTenantTimezone(tenantId);
     const tzLabel = getTimezoneLabel(tz);
 
+    const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
+
     // 1. Ambil detail sesi dari SesiLifecycleService
     const lifecycleRes = await SesiLifecycleService.getInstance().list(
       tenantId,
       {},
-      { id: sesiId, limit: 1, summary: true, include_scheduled: true }
+      { id: sesiId, tanggal: dateStr, limit: 1000, summary: true, include_scheduled: true }
     );
 
-    const session = lifecycleRes.data?.[0];
+    const session = lifecycleRes.data?.find((it: any) => it.id === sesiId) || lifecycleRes.data?.[0];
     if (!session) {
-      throw new Error('Sesi KBM tidak ditemukan');
+      throw new Error('Sesi KBM tidak ditemukan untuk jadwal hari ini.');
     }
 
     // 2. Periksa Status Sesi (Hanya sesi yang belum buka/belum masuk yang bisa diingatkan)
-    if (session.isLive) {
+    if (session.isLive || session._summary?.isLive) {
       throw new Error('Guru sudah membuka sesi KBM di kelas ini.');
     }
-    if (session.isFinished) {
+    if (session.isFinished || session._summary?.isFinished || session.status === 'SELESAI') {
       throw new Error('Sesi KBM ini sudah selesai.');
     }
 

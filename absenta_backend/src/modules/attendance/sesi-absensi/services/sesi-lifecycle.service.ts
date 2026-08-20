@@ -397,6 +397,11 @@ export class SesiLifecycleService {
     }
 
     if (status) where.status = status;
+    const targetSessionId = (query as any).id || (query as any).sesi_id;
+    if (targetSessionId && typeof targetSessionId === 'string' && !targetSessionId.startsWith('sched_')) {
+      where.id = targetSessionId;
+    }
+
     if (tanggal) {
       const dayStr = tanggal;
       const startOfDay = new Date(`${dayStr}T00:00:00.000${tzOffset}`);
@@ -942,6 +947,10 @@ export class SesiLifecycleService {
       } else if (upperFilter === 'UPCOMING') {
         processedData = enrichedData.filter(item => item.isUpcoming);
       }
+    }
+
+    if (targetSessionId) {
+      processedData = processedData.filter(item => item.id === targetSessionId);
     }
 
     // ⚡ Batch Ambil Status WA Reminder dari Redis (Zero DB query overhead)
