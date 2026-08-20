@@ -337,23 +337,50 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                               <div
                                 key={s.id || idx}
                                 className={cn(
-                                  "p-2 rounded-xl text-xs flex items-center justify-between gap-2",
+                                  "p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 border transition-all",
                                   s.is_live
-                                    ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
-                                    : "bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300"
+                                    ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 text-emerald-950 dark:text-emerald-100 shadow-xs"
+                                    : s.is_overdue
+                                    ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60 text-slate-800 dark:text-slate-200"
+                                    : s.is_ready
+                                    ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 text-slate-800 dark:text-slate-200"
+                                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-800 text-slate-700 dark:text-slate-300"
                                 )}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="font-mono font-bold text-[11px] shrink-0">
+                                  <span className="font-mono font-black text-[11px] shrink-0 text-slate-600 dark:text-slate-400">
                                     {s.jam_mulai} – {s.jam_selesai}
                                   </span>
-                                  <span className="font-extrabold truncate">
+                                  <span className="font-extrabold truncate text-slate-900 dark:text-white">
                                     {s.kelas_nama} • {s.mapel_nama}
                                   </span>
                                 </div>
-                                <span className="text-[10px] font-black uppercase shrink-0">
-                                  {s.is_live ? 'Sedang Berlangsung' : s.is_finished ? 'Selesai' : s.is_ready ? 'Siap Dimulai' : 'Mendatang'}
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {s.is_live ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-600 text-white shadow-xs animate-pulse">
+                                      <span className="w-1 h-1 rounded-full bg-white shrink-0" />
+                                      LIVE
+                                    </span>
+                                  ) : s.is_ready ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                      <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0" />
+                                      SIAP DIMULAI
+                                    </span>
+                                  ) : s.is_overdue ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
+                                      <span className="w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                                      TERLEWAT
+                                    </span>
+                                  ) : s.is_finished ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                                      SELESAI
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                      MENDATANG
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             ))
                           )}

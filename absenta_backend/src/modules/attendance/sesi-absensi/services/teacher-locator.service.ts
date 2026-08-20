@@ -152,15 +152,18 @@ export class TeacherLocatorService {
         const guruSessions = sessionByGuru.get(teacher.id) || [];
         const activePermit = permitMap.get(teacher.id) || null;
 
-        // Sort timeline by start time
-        guruSessions.sort((a, b) => (a.jam_mulai || '').localeCompare(b.jam_mulai || ''));
-
-        // Format timeline
+        // Format timeline perfectly synced with SesiLifecycleService Single Source of Truth
         const todayTimeline = guruSessions.map((s) => {
-          const isLive = s.status === 'BERLANGSUNG' || Boolean(s.isLive);
+          const isLive = Boolean(s.isLive || s.status === 'BERLANGSUNG');
           const isReady = Boolean(s.isReadyToOpen);
-          const isOverdue = Boolean(s.isOverdue) || s.status === 'TERLEWAT';
-          const isFinished = s.status === 'SELESAI' || Boolean(s.isFinished);
+          const isOverdue = Boolean(s.isOverdue || s.is_overdue || s.status === 'TERLEWAT');
+          const isFinished = Boolean(s.isFinished || s.status === 'SELESAI');
+
+          let derivedStatus = 'MENDATANG';
+          if (isLive) derivedStatus = 'BERLANGSUNG';
+          else if (isFinished) derivedStatus = 'SELESAI';
+          else if (isOverdue) derivedStatus = 'TERLEWAT';
+          else if (isReady) derivedStatus = 'SIAP_DIMULAI';
 
           return {
             id: s.id,
@@ -170,7 +173,8 @@ export class TeacherLocatorService {
             mapel_nama: s.mapel_nama || s.Mapel?.nama_mapel || 'Mata Pelajaran',
             jam_mulai: s.jam_mulai || '07:00',
             jam_selesai: s.jam_selesai || '15:00',
-            status: s.status || 'MENDATANG',
+            status: derivedStatus,
+            guru_status: s.guru_status || 'BELUM_TAP',
             is_live: isLive,
             is_ready: isReady,
             is_overdue: isOverdue,
