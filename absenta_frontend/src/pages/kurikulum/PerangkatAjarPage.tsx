@@ -47,6 +47,7 @@ const PerangkatAjarLibraryModal = lazy(() => import('../../components/kurikulum/
 const PerangkatAjarAIModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarAIModal'));
 const PerangkatAjarWordEditorModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWordEditorModal'));
 const PerangkatAjarWizardModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWizardModal'));
+const BahanAjarReaderModal = lazy(() => import('../../components/kurikulum/bahan-ajar/BahanAjarReaderModal').then(m => ({ default: m.BahanAjarReaderModal })));
 
 const hardeningModuleKey = 'perangkat_ajar_page';
 
@@ -132,6 +133,15 @@ export default function PerangkatAjarPage() {
       status: item.status,
     });
     setIsWordEditorOpen(true);
+  }, []);
+
+  // Reader Mode State
+  const [isReaderModalOpen, setIsReaderModalOpen] = useState(false);
+  const [readerPerangkatId, setReaderPerangkatId] = useState('');
+
+  const handleOpenReader = useCallback((item: PerangkatAjar) => {
+    setReaderPerangkatId(item.id);
+    setIsReaderModalOpen(true);
   }, []);
 
   // View & Pagination States
@@ -676,13 +686,23 @@ export default function PerangkatAjarPage() {
 
         return (
           <div className="flex items-center justify-end gap-1.5">
+            <Button
+              type="button"
+              onClick={() => handleOpenReader(item)}
+              size="sm"
+              className="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-blue-500/20 cursor-pointer"
+              title="Buka Mode Baca Digital & Panduan KBM"
+            >
+              <BookOpen size={13} />
+              <span>Baca</span>
+            </Button>
 
             <Button
               type="button"
               onClick={() => handleOpenWordEditor(item)}
               variant="outline"
               size="sm"
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/20 px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm"
+              className="text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm"
               title="Sunting Dokumen via Word Editor"
             >
               <Edit3 size={13} />
@@ -720,7 +740,7 @@ export default function PerangkatAjarPage() {
         );
       }
     }
-  ], [page, limit, currentGuru, isKurikulumOrAdmin, handleDelete, handleOpenWordEditor]);
+  ], [page, limit, currentGuru, isKurikulumOrAdmin, handleDelete, handleOpenWordEditor, handleOpenReader]);
 
   return (
     <AcademicPageLayout
@@ -914,6 +934,7 @@ export default function PerangkatAjarPage() {
                     isKurikulumOrAdmin={isKurikulumOrAdmin}
                     currentGuruId={currentGuru?.id}
                     onOpenPdf={undefined}
+                    onOpenReader={handleOpenReader}
                     onReview={(id) => {
                       setSelectedPerangkatId(id);
                       setIsReviewModalOpen(true);
@@ -1045,6 +1066,14 @@ export default function PerangkatAjarPage() {
               onSaveSuccess={() => {
                 queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
               }}
+            />
+          )}
+
+          {isReaderModalOpen && (
+            <BahanAjarReaderModal
+              isOpen={isReaderModalOpen}
+              onClose={() => setIsReaderModalOpen(false)}
+              perangkatId={readerPerangkatId}
             />
           )}
 

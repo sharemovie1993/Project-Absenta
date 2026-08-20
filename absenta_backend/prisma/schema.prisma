@@ -4250,21 +4250,26 @@ model P5NilaiSiswa {
 }
 
 model PerangkatAjar {
-  id                 String    @id @default(uuid())
-  tenant_id          String
-  guru_id            String
-  mapel_id           String
-  tahun_pelajaran_id String
-  semester_id        String
-  judul              String
-  jenis              String
-  file_url           String
-  status             String    @default("PENDING")
-  catatan_reviewer   String?   @db.Text
-  reviewer_id        String?
-  reviewed_at        DateTime?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  guru_id              String
+  mapel_id             String
+  tahun_pelajaran_id   String
+  semester_id          String
+  judul                String
+  jenis                String
+  file_url             String
+  fase                 String?
+  tingkat              Int?
+  total_alokasi_jp     Int?      @default(0)
+  konten_struktur_json Json?
+  preset_ref_id        String?
+  status               String    @default("PENDING")
+  catatan_reviewer     String?   @db.Text
+  reviewer_id          String?
+  reviewed_at          DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Guru           Guru           @relation("GuruPerangkat", fields: [guru_id], references: [id], onDelete: Cascade)
@@ -4274,6 +4279,32 @@ model PerangkatAjar {
   Reviewer       User?          @relation("ReviewerPerangkat", fields: [reviewer_id], references: [id])
 
   @@index([tenant_id])
+  @@index([tenant_id, guru_id])
+}
+
+// ─── Bahan Ajar Preset (Platform-Level Global Library) ───────────────────────
+model BahanAjarPreset {
+  id               String   @id @default(uuid())
+  kode_mapel_ref   String   // e.g. "B.INDONESIA", "MATEMATIKA"
+  nama_mapel_ref   String   // e.g. "Bahasa Indonesia"
+  fase             String   // "E"
+  tingkat          Int?     // 10
+  judul_modul      String   // "Modul 1: Mengungkap Fakta Alam Secara Objektif"
+  deskripsi        String?  @db.Text
+  total_alokasi_jp Int      @default(18)
+  total_pertemuan  Int      @default(6)
+  pendekatan       String?  // e.g. "Deep Learning (Mindful, Meaningful, Joyful)"
+  sumber           String?  // e.g. "modulguruku.com / Kemendikbud 2024"
+  url_sumber       String?
+  tags             String[] // ["Fase E", "Kelas 10", "LHO", "Kurikulum Merdeka"]
+  konten_json      Json     // Rincian per pertemuan (Apersepsi, Pertanyaan Pemantik, Teks Bacaan, LKPD, dsb)
+  status           String   @default("PUBLISHED") // "DRAFT" | "PUBLISHED"
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([fase])
+  @@index([kode_mapel_ref])
+  @@index([status])
 }
 
 model AlurTujuanPembelajaran {

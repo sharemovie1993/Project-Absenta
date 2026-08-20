@@ -21,6 +21,7 @@ import { seedJurusanPresets } from './seed_jurusan_presets';
 import { seedCalendarPresets } from './seed_calendar_presets';
 import { seedTopikPresets } from './seed_topik_presets';
 import { seedAtpTemplates } from './seed_atp_templates';
+import { seedBahanAjarPresets } from './seed_bahan_ajar_modul1';
 
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 import { seedDefaultJenisKegiatanForTenant } from '../../modules/academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
@@ -950,6 +951,9 @@ async function main() {
 
   // 17️⃣ Seed Global ATP Templates (Kurikulum Merdeka)
   await seedAtpTemplates(prisma);
+
+  // 18️⃣ Seed Global Bahan Ajar Presets (Digital Teaching Reader)
+  await seedBahanAjarPresets(prisma);
 
   console.log('✨ Seed selesai!');
 

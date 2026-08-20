@@ -1190,6 +1190,33 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'Responsive 3-column grid dengan preview snippets.'
       }
     ]
+  },
+  kurikulum_bahan_ajar_reader: {
+    moduleName: 'kurikulum_bahan_ajar_reader',
+    displayName: 'Pembaca Bahan Ajar Digital & Mode Mengajar',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Membungkus modul pembaca bahan ajar dalam Modal terisolasi dengan state fallback error aman.',
+        status: 'VERIFIED',
+        details: 'BahanAjarReaderModal terisolasi dan mandiri.'
+      },
+      {
+        id: 'projector_presentation',
+        name: 'Mode Presentasi Proyektor Kelas (Projector / Fullscreen Mode)',
+        description: 'Menyediakan tampilan kontras tinggi dan tipografi proporsional untuk tayangan proyektor kelas.',
+        status: 'VERIFIED',
+        details: 'Dukungan font scaler dan dark-theme projector mode.'
+      },
+      {
+        id: 'kbm_journal_sync',
+        name: 'Sinkronisasi Otomatis 1-Klik Jurnal KBM',
+        description: 'Memicu pembukaan modal Jurnal KBM dengan auto-fill topik pertemuan dan capaian materi saat KBM selesai.',
+        status: 'VERIFIED',
+        details: 'Direct callback onOpenJurnal terintegrasi di action footer.'
+      }
+    ]
   }
 };
 

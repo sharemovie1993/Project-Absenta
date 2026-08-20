@@ -35,6 +35,7 @@ interface PerangkatAjarGridCardProps {
   isKurikulumOrAdmin: boolean;
   currentGuruId?: string;
   onOpenPdf?: ((item: PerangkatAjar) => void) | undefined;
+  onOpenReader?: ((item: PerangkatAjar) => void) | undefined;
   onReview: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: PerangkatAjar) => void;
@@ -45,6 +46,7 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
   jenisLabels,
   isKurikulumOrAdmin,
   currentGuruId,
+  onOpenReader,
   onReview,
   onDelete,
   onEdit
@@ -99,16 +101,26 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
       </div>
 
       <div className="flex flex-wrap items-center justify-end pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 gap-2">
+        {onOpenReader && (
+          <Button
+            type="button"
+            onClick={() => onOpenReader(item)}
+            className="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
+          >
+            <span>📖 BACA MODUL</span>
+          </Button>
+        )}
+
         {onEdit && (
           <Button
             type="button"
             onClick={() => onEdit(item)}
             variant="outline"
             size="sm"
-            className="text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/20 flex items-center gap-1 shadow-sm"
+            className="text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 flex items-center gap-1 shadow-sm"
           >
             <Edit3 size={13} />
-            <span>BUKA EDITOR</span>
+            <span>EDIT</span>
           </Button>
         )}
 

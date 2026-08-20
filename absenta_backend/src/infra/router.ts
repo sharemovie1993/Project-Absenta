@@ -520,6 +520,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { default: atpTemplateRoutes } = await import('../modules/kurikulum/atp-template/routes/atp-template.routes');
       await fastify.register(atpTemplateRoutes, { prefix: '/kurikulum/atp-templates' });
 
+      // Bahan Ajar Digital & Classroom Teaching Reader
+      const { default: bahanAjarRoutes } = await import('../modules/kurikulum/routes/bahan-ajar.routes');
+      await fastify.register(bahanAjarRoutes, { prefix: '/kurikulum/bahan-ajar' });
+
       // Modul Rapor & Penilaian (Decoupled dari Kurikulum)
       const { default: nilaiRoutes } = await import('../modules/rapor/routes/nilai.routes');
       await fastify.register(nilaiRoutes, { prefix: '/rapor/nilai' });
