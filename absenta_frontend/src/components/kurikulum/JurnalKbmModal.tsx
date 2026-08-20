@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Input, Textarea, Label } from '../ui';
 import { BookOpen, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { upsertProgresMateri } from '../../api/attendanceGerbang.api';
@@ -23,6 +24,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   onSuccess,
   readOnly = false
 }) => {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -60,6 +62,10 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
     try {
       await upsertProgresMateri(sesiId, formData);
       toast.success('Jurnal KBM berhasil disimpan');
+      queryClient.invalidateQueries({ queryKey: ['rekapJurnalSesiList'] });
+      queryClient.invalidateQueries({ queryKey: ['sesiAbsensiList'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['guruTeachingTimeline'] });
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {

@@ -55,17 +55,27 @@ export const RekapJurnalPanel: React.FC = () => {
 
   // ── Transform Backend Sessions into Jurnal Records ──
   const jurnalList: JurnalRecord[] = useMemo(() => {
-    const rawSessions: any[] = responseData?.data || [];
-    if (!Array.isArray(rawSessions)) return [];
+    const raw = responseData?.data?.data || responseData?.data || responseData || [];
+    const rawSessions: any[] = Array.isArray(raw)
+      ? raw
+      : Array.isArray((raw as any)?.data)
+      ? (raw as any).data
+      : Array.isArray((responseData as any)?.items)
+      ? (responseData as any).items
+      : [];
+    if (!Array.isArray(rawSessions) || rawSessions.length === 0) return [];
 
     return rawSessions
       .filter((s: any) => {
-        // Tampilkan sesi yang sudah berlangsung, selesai, atau memiliki progres jurnal
-        return s.status === 'SELESAI' || s.status === 'BERLANGSUNG' || Boolean(s.ProgresMateri || s.progres);
+        const pRaw = s.ProgresMateri || s.progres || s.progres_materi;
+        const hasJournal = Array.isArray(pRaw) ? pRaw.length > 0 : Boolean(pRaw && (pRaw.judul_materi || pRaw.deskripsi || pRaw.id));
+        const statusUpper = String(s.status || '').toUpperCase();
+        return statusUpper === 'SELESAI' || statusUpper === 'BERLANGSUNG' || statusUpper === 'AKTIF' || hasJournal;
       })
       .map((s: any) => {
-        const p = s.ProgresMateri || s.progres || {};
-        const summary = s.summary || {};
+        const pRaw = s.ProgresMateri || s.progres || s.progres_materi || {};
+        const p = Array.isArray(pRaw) ? (pRaw[0] || {}) : pRaw;
+        const summary = s.summary || s._summary?.attendance_counts || {};
         
         let tglStr = '-';
         if (s.tanggal) {
@@ -76,7 +86,7 @@ export const RekapJurnalPanel: React.FC = () => {
 
         const jamMulai = s.jam_mulai || (s.waktu_mulai ? String(s.waktu_mulai).substring(11, 16) : '--:--');
         const jamSelesai = s.jam_selesai || (s.waktu_selesai ? String(s.waktu_selesai).substring(11, 16) : '--:--');
-        const slotLabel = s.slot_kbm ? `Slot ${s.slot_kbm}` : `${jamMulai} - ${jamSelesai}`;
+        const slotLabel = s.jam_label || (s.slot_kbm ? `Slot ${s.slot_kbm}` : `${jamMulai} - ${jamSelesai}`);
 
         return {
           id: p.id || s.id,
@@ -87,7 +97,7 @@ export const RekapJurnalPanel: React.FC = () => {
           mapel: s.Mapel?.nama_mapel || s.mapel_nama || 'Mata Pelajaran',
           mapelId: s.mapel_id,
           jamKe: `${slotLabel} (${jamMulai} - ${jamSelesai})`,
-          materiPokok: p.judul_materi || 'Belum Diisi',
+          materiPokok: p.judul_materi || (String(s.status).toUpperCase() === 'BERLANGSUNG' ? 'Sedang Berlangsung' : 'Belum Diisi'),
           capaianPembelajaran: p.deskripsi || 'Belum ada uraian materi / CP tercatat.',
           pencapaianPersen: p.pencapaian_persen || 0,
           catatanKelas: p.kendala || 'Tidak ada catatan khusus.',
