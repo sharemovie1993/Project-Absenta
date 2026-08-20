@@ -67,7 +67,7 @@ export class AuthService {
     const token = jwt.sign(payload, secret);
 
     let baseUrl = getSmartParentAppUrl(user.Tenant, user.tenant_id);
-    if (!baseUrl || baseUrl.includes('localhost:5173')) {
+    if (!baseUrl) {
       baseUrl = getSmartFrontendBaseUrl();
     }
     baseUrl = baseUrl.replace(/\/+$/, '');
