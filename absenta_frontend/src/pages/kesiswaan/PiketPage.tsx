@@ -313,7 +313,7 @@ export default function PiketPage() {
       id: 'guru_kbm',
       label: (
         <span className="relative flex items-center">
-          Pantau Guru KBM
+          Guru Belum Masuk
           {pendingTeacherCount > 0 && (
             <Badge variant="outline" className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-slate-950 animate-pulse border-none">
               {pendingTeacherCount}

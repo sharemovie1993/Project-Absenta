@@ -524,7 +524,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
                 to="/dashboard?tab=kelola&subtab=GURU_KBM"
                 className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <span>Meja Piket (Pantau Guru)</span>
+                <span>Meja Piket (Guru Belum Masuk)</span>
                 <ArrowRight size={12} />
               </Link>
               <Link

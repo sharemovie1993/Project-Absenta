@@ -311,7 +311,7 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
       id: 'GURU_KBM',
       label: (
         <span className="relative flex items-center gap-1.5">
-          Pantau Guru KBM
+          Guru Belum Masuk
           {pendingTeacherCount > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-slate-950 animate-pulse">
               {pendingTeacherCount}
