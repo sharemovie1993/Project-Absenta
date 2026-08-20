@@ -118,7 +118,7 @@ export function useCapabilities() {
       // Level 1
       isPetugasKelas,
       isGerbang,
-      isPiketGuru: userPositions.includes('GERBANG') || can('attendance.piket.manage') || can('attendance.piket.view') || can('attendance.gate.scan'),
+      isPiketGuru: isGerbang || can('attendance.piket.view') || can('attendance.piket.manage'),
       isToolman,
       isSiswa,
 

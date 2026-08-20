@@ -489,7 +489,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Presensi & Kegiatan Akademik
     'attendance.sessions.view.list', 'attendance.sessions.view.detail', 'attendance.reports.view',
     'attendance.events.view.list', 'attendance.events.create', 'attendance.events.delete',
-    'attendance.piket.view', 'attendance.piket.manage',
 
     // Pencatatan Pinjam Proyektor / Terminal KBM
     'sarpras.loans.request',
