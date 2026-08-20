@@ -43,7 +43,9 @@ export const getWaliKelasStrukturList = async (
   if (filters?.guru_id) params.set("guru_id", filters.guru_id);
   if (filters?.kelas_id) params.set("kelas_id", filters.kelas_id);
   if (filters?.include_inactive) params.set("include_inactive", "true");
-  return requestWithFallback<PaginatedWaliKelasStrukturResponse>('get', `/kurikulum/wali-kelas/struktur?${params.toString()}`);
+  return requestWithFallback<PaginatedWaliKelasStrukturResponse>('get', `/kurikulum/wali-kelas/struktur?${params.toString()}`, {
+    headers: { 'x-skip-403-redirect': 'true' }
+  });
 };
 
 

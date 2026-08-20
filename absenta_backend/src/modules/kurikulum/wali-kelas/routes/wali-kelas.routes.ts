@@ -6,7 +6,7 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function waliKelasRoutes(fastify: any) {
   fastify.get('/struktur', {
     preHandler: [
-      requireCapability('academic.homeroom.manage'),
+      requireCapability(['academic.homeroom.manage', 'academic.structures.view.list', 'academic.classes.view.list', 'academic.teaching.view', 'academic.teachers.view.list', 'dashboard.view.guru']),
       organizationalScopeMiddleware,
       determineDataScope(),
   ],

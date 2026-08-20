@@ -14,7 +14,7 @@ export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
 
   const query = useQuery({
     queryKey: ['wali-kelas-options-list', onlyActive],
-    queryFn: () => getWaliKelasStrukturList(1, 1000, '', { include_inactive: !onlyActive }),
+    queryFn: () => getWaliKelasStrukturList(1, 1000, '', { include_inactive: !onlyActive }).catch(() => ({ data: [] as any })),
     staleTime: 5 * 60 * 1000,
   });
 
