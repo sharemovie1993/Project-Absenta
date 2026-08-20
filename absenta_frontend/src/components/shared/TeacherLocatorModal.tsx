@@ -9,21 +9,16 @@ import {
   MessageSquare, 
   CheckCircle2, 
   AlertCircle, 
-  ChevronRight, 
-  ChevronDown, 
-  Calendar,
   Sparkles,
-  Phone,
   User,
-  RefreshCw
+  RefreshCw,
+  Camera
 } from 'lucide-react';
 import { getTeacherLocatorApi } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '../../store/authStore';
 import { useSocket } from '../../hooks/useSocket';
 import { cn, resolveProfilePhotoUrl } from '../../lib/utils';
-import { getTeacherStatusMeta } from '../../utils/kbm-normalizer';
 import { PhotoPreviewModal } from '../dashboard/shared/kbm/PhotoPreviewModal';
-import { Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
 
@@ -37,7 +32,6 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
   const { isConnected, subscribe, unsubscribe } = useSocket();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [previewPhotoData, setPreviewPhotoData] = useState<{
     url: string;
     guruNama?: string;
@@ -207,7 +201,6 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
               </div>
             ) : (
               teacherList.map((teacher) => {
-                const isExpanded = expandedTeacherId === teacher.guru_id;
                 const pos = teacher.status_posisi;
 
                 return (
@@ -265,22 +258,23 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                         </div>
                       </div>
 
-                      {/* CURRENT ACTIVE LOCATION BANNER */}
-                      {teacher.current_session && (
-                        <div className="p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                          <div className="space-y-0.5 min-w-0">
+                      {/* CURRENT ACTIVE LOCATION BANNER OR STANDBY BANNER */}
+                      {teacher.current_session ? (
+                        <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="space-y-1 min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                               Lokasi Kelas Saat Ini:
                             </p>
-                            <p className="text-xs font-black text-slate-900 dark:text-white">
+                            <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                               📍 Kelas <strong className="text-indigo-600 dark:text-indigo-400">{teacher.current_session.kelas_nama}</strong> • {teacher.current_session.mapel_nama}
                             </p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                            <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-600 dark:text-slate-300">
                               <Clock size={12} className="text-indigo-500" />
                               <span>{teacher.current_session.jam_mulai} – {teacher.current_session.jam_selesai} WIB</span>
                             </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
                             {teacher.current_session.foto_kegiatan && (
                               <button
                                 type="button"
@@ -291,116 +285,41 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                                   mapelNama: teacher.current_session!.mapel_nama,
                                   timestamp: `${teacher.current_session!.jam_mulai} – ${teacher.current_session!.jam_selesai} WIB`
                                 })}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-[11px] font-black shadow-xs transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-xs font-black shadow-xs transition-all cursor-pointer"
                                 title="Lihat foto bukti KBM guru di kelas"
                               >
-                                <Camera size={11} className="text-emerald-500" />
+                                <Camera size={13} className="text-emerald-500" />
                                 <span>Foto KBM</span>
+                              </button>
+                            )}
+
+                            {!isStudent && teacher.no_hp && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenWa(teacher.no_hp, teacher.nama_guru)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
+                              >
+                                <MessageSquare size={13} />
+                                <span>Chat WA</span>
                               </button>
                             )}
                           </div>
                         </div>
-                      )}
+                      ) : (
+                        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            ☕ Tidak ada jam mengajar di kelas saat ini ({teacher.status_label || 'Standby'})
+                          </p>
 
-                      {/* ACTION BAR: TIMELINE TOGGLE & WHATSAPP BUTTON */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedTeacherId(isExpanded ? null : teacher.guru_id)}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
-                        >
-                          <Calendar size={13} />
-                          <span>Timeline Jadwal Hari Ini ({teacher.today_timeline.length})</span>
-                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
-
-                        {!isStudent && teacher.no_hp && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenWa(teacher.no_hp, teacher.nama_guru)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
-                          >
-                            <MessageSquare size={12} />
-                            <span>Chat WhatsApp</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* EXPANDABLE TODAY TIMELINE (POV KURIKULUM / KBM LIVE) */}
-                      {isExpanded && (
-                        <div className="pt-2 space-y-1.5 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-150">
-                          {teacher.today_timeline.length === 0 ? (
-                            <p className="text-xs text-slate-400 italic py-1">
-                              Tidak ada jadwal KBM terjadwal untuk hari ini.
-                            </p>
-                          ) : (
-                            teacher.today_timeline.map((s, idx) => {
-                              const rawTStatus = s.guru_status || (s.is_live ? 'HADIR' : s.is_overdue ? 'ALPA' : 'BELUM_TAP');
-                              const tMeta = getTeacherStatusMeta(rawTStatus);
-
-                              return (
-                                <div
-                                  key={s.id || idx}
-                                  className={cn(
-                                    "p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 border transition-all flex-wrap sm:flex-nowrap",
-                                    s.is_live
-                                      ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 text-emerald-950 dark:text-emerald-100 shadow-xs"
-                                      : s.is_overdue
-                                      ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60 text-slate-800 dark:text-slate-200"
-                                      : s.is_ready
-                                      ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 text-slate-800 dark:text-slate-200"
-                                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-800 text-slate-700 dark:text-slate-300"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono font-black text-[11px] shrink-0 text-slate-600 dark:text-slate-400">
-                                      {s.jam_mulai} – {s.jam_selesai}
-                                    </span>
-                                    <span className="font-extrabold truncate text-slate-900 dark:text-white">
-                                      {s.kelas_nama} • {s.mapel_nama}
-                                    </span>
-                                  </div>
-
-                                  {/* SINGLE SMART STATUS BADGE (SIMPLIFIED & CLEAN) */}
-                                  <div className="shrink-0">
-                                    {s.is_live ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-emerald-600 text-white shadow-xs animate-pulse">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                                        SEDANG MENGAJAR
-                                      </span>
-                                    ) : s.is_ready ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                                        BELUM MASUK
-                                      </span>
-                                    ) : s.is_overdue ? (
-                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                                        TERLEWAT
-                                      </span>
-                                    ) : tMeta.key === 'IZIN' || tMeta.key === 'SAKIT' || tMeta.key === 'DINAS_LUAR' ? (
-                                      <span className={cn(
-                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border",
-                                        tMeta.key === 'IZIN' ? "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-200 border-blue-300 dark:border-blue-700" :
-                                        tMeta.key === 'SAKIT' ? "bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-200 border-orange-300 dark:border-orange-700" :
-                                        "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-200 border-purple-300 dark:border-purple-700"
-                                      )}>
-                                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", tMeta.dotClass)} />
-                                        {tMeta.shortLabel}
-                                      </span>
-                                    ) : s.is_finished ? (
-                                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                                        SELESAI
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                        MENDATANG
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })
+                          {!isStudent && teacher.no_hp && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenWa(teacher.no_hp, teacher.nama_guru)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-200/80 hover:bg-emerald-600 hover:text-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              <MessageSquare size={12} />
+                              <span>Hubungi WA</span>
+                            </button>
                           )}
                         </div>
                       )}
