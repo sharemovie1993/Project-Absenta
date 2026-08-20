@@ -264,6 +264,7 @@ export class BahanAjarService {
     metadata?: {
       guru_id?: string;
       mapel_id?: string;
+      mapel_nama?: string;
       judul?: string;
       fase?: string;
       tingkat?: number;
