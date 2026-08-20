@@ -61,9 +61,16 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   const queryClient = useQueryClient();
   const [activeMeetingIdx, setActiveMeetingIdx] = useState<number>(0);
   const [pertemuanList, setPertemuanList] = useState<PertemuanItem[]>([]);
+  const [moduleJudul, setModuleJudul] = useState<string>(perangkatJudul || '');
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
+
+  useEffect(() => {
+    if (perangkatJudul) {
+      setModuleJudul(perangkatJudul);
+    }
+  }, [perangkatJudul]);
 
   // 1. Fetch Existing Structured Content for this Perangkat
   const { data: readerData, isLoading: isLoadingContent } = useQuery({
@@ -140,7 +147,7 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   // 3. Save Mutation
   const saveMutation = useMutation({
     mutationFn: (dataToSave: PertemuanItem[]) => saveReaderContent(perangkatId, dataToSave, {
-      judul: perangkatJudul,
+      judul: moduleJudul.trim() || perangkatJudul || `Modul Ajar: ${mapelNama || 'Mata Pelajaran'}`,
       mapel_id: mapelId,
       mapel_nama: mapelNama,
       guru_id: guruId,
@@ -433,6 +440,36 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 space-y-6 bg-white dark:bg-slate-950">
           {currentMeeting && (
             <div className="max-w-4xl mx-auto space-y-6">
+              {/* CARD 0: IDENTITAS BAB / LINGKUP MATERI UTAMA */}
+              <div className="p-5 rounded-3xl bg-indigo-50/60 dark:bg-indigo-950/30 border-2 border-indigo-200/80 dark:border-indigo-800/60 space-y-3.5 shadow-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-indigo-200/60 dark:border-indigo-800/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs">
+                      IDENTITAS BAB &amp; MODUL
+                    </span>
+                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                      Lingkup Materi Pokok Modul Ini
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                    *Tampil pada Peta Bab Dashboard KBM
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Judul Bab / Modul Ajar (Contoh: Bab 1: Teks Laporan Hasil Observasi / LHO):
+                  </label>
+                  <input
+                    type="text"
+                    value={moduleJudul}
+                    onChange={(e) => setModuleJudul(e.target.value)}
+                    placeholder="Contoh: Bab 1: Teks Laporan Hasil Observasi (LHO)"
+                    className="w-full px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 font-black text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs"
+                  />
+                </div>
+              </div>
+
               {/* CARD 1: IDENTITAS & TARGET PERTEMUAN */}
               <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
                 <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-3">

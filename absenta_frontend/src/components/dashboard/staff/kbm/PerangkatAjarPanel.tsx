@@ -546,9 +546,32 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
                       <Presentation size={13} className="text-amber-500" />
                       <span>Proyektor</span>
                     </Button>
-                  </div>
                 </div>
               ))}
+
+              {/* Add Next Bab Card */}
+              <div
+                onClick={() => handleOpenStudio({
+                  id: 'new',
+                  judul: `Bab ${subjectMyPerangkats.length + 1}: `,
+                  mapelNama: activeSubjectName,
+                  fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
+                  tingkat: selectedFaseFilter === 'F' ? 11 : 10
+                })}
+                className="p-6 rounded-3xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/30 dark:bg-indigo-950/20 hover:bg-indigo-50/70 dark:hover:bg-indigo-900/30 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-3 group min-h-[160px]"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus size={24} className="stroke-[2.5]" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-200">
+                    + Susun BAB {subjectMyPerangkats.length + 1} Baru di Studio
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Tambah bab / materi pokok pembelajaran selanjutnya
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
