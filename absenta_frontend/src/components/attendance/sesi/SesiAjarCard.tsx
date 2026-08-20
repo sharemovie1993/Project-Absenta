@@ -7,7 +7,8 @@ import {
   Users, 
   Clock, 
   ListTodo, 
-  ArrowUpRight 
+  ArrowUpRight,
+  BookOpen
 } from 'lucide-react';
 import { Badge, Button, SectionCard } from '../../ui';
 import { format } from 'date-fns';
@@ -37,6 +38,7 @@ interface SesiAjarCardProps {
     };
   };
   onOpenJournal: (sesiId: string, initialData: any) => void;
+  onOpenBahanAjar?: (sesi: any) => void;
   onViewDetail: (sesi: any) => void;
   isManager?: boolean;
   isReadOnly?: boolean;
@@ -138,7 +140,20 @@ export const SesiAjarCard: React.FC<SesiAjarCardProps> = React.memo(({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex items-center gap-2">
+          {onOpenBahanAjar && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 px-3.5 rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs"
+              onClick={() => onOpenBahanAjar(sesi)}
+              title="Buka Bahan Ajar Digital & Panduan KBM"
+            >
+              <BookOpen size={14} />
+              <span>Bahan Ajar</span>
+            </Button>
+          )}
+
           <Button
             className={`flex-1 h-11 rounded-xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-lg transition-all whitespace-nowrap ${
               isReadOnly

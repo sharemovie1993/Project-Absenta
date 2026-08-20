@@ -43,6 +43,7 @@ export interface UniversalKbmCardProps {
   // Role Action Callbacks
   onOpenPhotoModal?: (item: any) => void;
   onOpenJournalModal?: (item: any) => void;
+  onOpenBahanAjar?: (item: any) => void;
   onCloseSession?: (sesiId: string) => void;
   onOpenScanModal?: (sesiId: string) => void;
   onSelectSession?: (item: any) => void;
@@ -74,6 +75,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   onToggleExpand,
   onOpenPhotoModal,
   onOpenJournalModal,
+  onOpenBahanAjar,
   onCloseSession,
   onOpenScanModal,
   onSelectSession,
@@ -564,6 +566,24 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 >
                   <Camera size={13} className="text-emerald-500" />
                   <span>Foto Kelas</span>
+                </Button>
+              )}
+
+              {/* Buka Bahan Ajar Button */}
+              {onOpenBahanAjar && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenBahanAjar(item);
+                  }}
+                  title="Buka Bahan Ajar Digital & Panduan KBM"
+                  className="h-8 px-2.5 rounded-xl text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 cursor-pointer border border-indigo-200 dark:border-indigo-800"
+                >
+                  <BookOpen size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Bahan Ajar</span>
                 </Button>
               )}
 

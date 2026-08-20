@@ -30,6 +30,7 @@ const JurnalKbmModal = lazy(() => import('../../components/kurikulum/JurnalKbmMo
 const RiwayatAjarToolbar = lazy(() => import('../../components/attendance/sesi/RiwayatAjarToolbar').then(m => ({ default: m.RiwayatAjarToolbar })));
 const SesiAjarCard = lazy(() => import('../../components/attendance/sesi/SesiAjarCard').then(m => ({ default: m.SesiAjarCard })));
 const BukuJurnalTable = lazy(() => import('../../components/attendance/sesi/BukuJurnalTable').then(m => ({ default: m.BukuJurnalTable })));
+const BahanAjarReaderModal = lazy(() => import('../../components/kurikulum/bahan-ajar/BahanAjarReaderModal').then(m => ({ default: m.BahanAjarReaderModal })));
 
 // ── Pillar 4: Type Safety ───────────────────────────────────────────────────
 interface SesiAjar {
@@ -106,7 +107,15 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [journalSesiId, setJournalSesiId] = useState('');
   const [journalInitialData, setJournalInitialData] = useState<SesiAjar['ProgresMateri'] | null>(null);
+  const [readerModalOpen, setReaderModalOpen] = useState(false);
+  const [readerPerangkatId, setReaderPerangkatId] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+
+  const handleOpenBahanAjar = useCallback((sesi: any) => {
+    const targetId = sesi.Mapel?.id || sesi.mapel_id || 'preset-b-indo-fase-e-modul-1';
+    setReaderPerangkatId(targetId);
+    setReaderModalOpen(true);
+  }, []);
   
   // 1. Fetch Teacher & Class Options for Filters
   const { data: guruOptionsData } = useQuery({
@@ -383,6 +392,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
                           sesi={sesi}
                           isManager={isManager}
                           isReadOnly={isManager}
+                          onOpenBahanAjar={handleOpenBahanAjar}
                           onOpenJournal={(sesiId, initialData) => {
                             setJournalSesiId(sesiId);
                             setJournalInitialData(initialData);
@@ -446,6 +456,14 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
           initialData={journalInitialData}
           readOnly={isManager}
         />
+
+        {readerModalOpen && (
+          <BahanAjarReaderModal
+            isOpen={readerModalOpen}
+            onClose={() => setReaderModalOpen(false)}
+            perangkatId={readerPerangkatId}
+          />
+        )}
       </Suspense>
     </div>
   ), [
@@ -464,6 +482,9 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     journalModalOpen, 
     journalSesiId, 
     journalInitialData, 
+    readerModalOpen,
+    readerPerangkatId,
+    handleOpenBahanAjar,
     refetch,
     isExporting,
     isManager,
