@@ -289,28 +289,55 @@ export class BahanAjarService {
       }
     }
 
-    // Auto-resolve Active Tahun & Semester
-    const activeTahun = await prisma.tahunPelajaran.findFirst({
+    // Auto-resolve Active Tahun & Semester with robust fallback
+    let activeTahun = await prisma.tahunPelajaran.findFirst({
       where: { tenant_id: tenantId, is_active: true }
     });
-    const activeSem = await prisma.semester.findFirst({
+    if (!activeTahun) {
+      activeTahun = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId },
+        orderBy: { created_at: 'desc' }
+      });
+    }
+
+    let activeSem = await prisma.semester.findFirst({
       where: { tenant_id: tenantId, is_active: true }
     });
+    if (!activeSem) {
+      activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId },
+        orderBy: { created_at: 'desc' }
+      });
+    }
 
     let resolvedGuruId = metadata?.guru_id;
     if (!resolvedGuruId) {
       const anyGuru = await prisma.guru.findFirst({
         where: { tenant_id: tenantId }
       });
-      resolvedGuruId = anyGuru?.id || '';
+      resolvedGuruId = anyGuru?.id;
     }
 
     let resolvedMapelId = metadata?.mapel_id;
+    if (!resolvedMapelId && metadata?.mapel_nama) {
+      const matchedMapel = await prisma.mapel.findFirst({
+        where: {
+          tenant_id: tenantId,
+          nama_mapel: { contains: metadata.mapel_nama, mode: 'insensitive' }
+        }
+      });
+      if (matchedMapel) resolvedMapelId = matchedMapel.id;
+    }
+
     if (!resolvedMapelId) {
-      const anyMapel = await prisma.mataPelajaran.findFirst({
+      const anyMapel = await prisma.mapel.findFirst({
         where: { tenant_id: tenantId }
       });
-      resolvedMapelId = anyMapel?.id || '';
+      resolvedMapelId = anyMapel?.id;
+    }
+
+    if (!activeTahun?.id || !activeSem?.id || !resolvedGuruId || !resolvedMapelId) {
+      throw new Error(`Data master belum lengkap (Tahun: ${activeTahun?.id ? 'OK' : 'KOSONG'}, Semester: ${activeSem?.id ? 'OK' : 'KOSONG'}, Guru: ${resolvedGuruId ? 'OK' : 'KOSONG'}, Mapel: ${resolvedMapelId ? 'OK' : 'KOSONG'})`);
     }
 
     const created = await prisma.perangkatAjar.create({
@@ -318,8 +345,8 @@ export class BahanAjarService {
         tenant_id: tenantId,
         guru_id: resolvedGuruId,
         mapel_id: resolvedMapelId,
-        tahun_pelajaran_id: activeTahun?.id || '',
-        semester_id: activeSem?.id || '',
+        tahun_pelajaran_id: activeTahun.id,
+        semester_id: activeSem.id,
         judul: metadata?.judul || 'Modul Ajar Mandiri Guru',
         jenis: 'MODUL_AJAR',
         fase: metadata?.fase || 'E',
