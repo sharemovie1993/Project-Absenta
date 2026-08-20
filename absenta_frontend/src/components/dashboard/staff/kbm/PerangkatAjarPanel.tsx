@@ -546,6 +546,7 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
                       <Presentation size={13} className="text-amber-500" />
                       <span>Proyektor</span>
                     </Button>
+                  </div>
                 </div>
               ))}
 
