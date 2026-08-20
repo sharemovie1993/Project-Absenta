@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, User, Calendar, ImageIcon, AlertTriangle } from 'lucide-react';
 import { Button } from '../../../ui';
-import { resolveProfilePhotoUrl } from '../../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../../lib/utils';
 import { createPortal } from 'react-dom';
 
 export interface PhotoPreviewModalProps {
