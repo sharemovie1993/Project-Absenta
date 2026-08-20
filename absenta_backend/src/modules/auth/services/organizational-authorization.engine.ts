@@ -161,6 +161,12 @@ export class OrganizationalAuthorizationEngine {
       }
     }
 
+    // 4. Base Self-Service Capabilities (Notifications & Profile)
+    capSet.add('notify.view.my');
+    capSet.add('notify.view.preferences');
+    capSet.add('notify.update.preferences');
+    capSet.add('notify.view.stats');
+
     return Array.from(capSet).filter(Boolean);
   }
 

@@ -1260,11 +1260,7 @@ function App() {
                         <ReportsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/notifications" element={
-                      <ProtectedRoute requiredCapability="notify.view.stats">
-                        <NotificationsPage />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/notifications/trial-sequence" element={
                       <ProtectedRoute requiredCapability="notify.send.test_email">
                         <TrialEmailSequencePage />
@@ -1275,16 +1271,8 @@ function App() {
                         <WhatsAppHealthPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/notifications/preferences" element={
-                      <ProtectedRoute requiredCapability="notify.view.preferences">
-                        <NotificationsPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/notifications/my" element={
-                      <ProtectedRoute requiredCapability="notify.view.my">
-                        <NotificationsPage />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/notifications/preferences" element={<NotificationsPage />} />
+                    <Route path="/notifications/my" element={<NotificationsPage />} />
                     <Route path="/notifications/subscriptions" element={
                       <ProtectedRoute requiredCapability="notify.push.view.subscriptions">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
