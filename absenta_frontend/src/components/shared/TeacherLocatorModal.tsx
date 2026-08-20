@@ -20,7 +20,9 @@ import {
 import { getTeacherLocatorApi } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '../../store/authStore';
 import { useSocket } from '../../hooks/useSocket';
-import { cn } from '../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../lib/utils';
+import { PhotoPreviewModal } from '../dashboard/shared/kbm/PhotoPreviewModal';
+import { Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createPortal } from 'react-dom';
 
@@ -35,6 +37,13 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
+  const [previewPhotoData, setPreviewPhotoData] = useState<{
+    url: string;
+    guruNama?: string;
+    kelasNama?: string;
+    mapelNama?: string;
+    timestamp?: string;
+  } | null>(null);
   const { user } = useAuthStore();
   const rawRole = typeof user?.role === 'object' ? (user?.role as any)?.name : user?.role;
   const isStudent = String(rawRole || '').toUpperCase() === 'SISWA';
@@ -209,9 +218,20 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                       {/* TEACHER PROFILE & REAL-TIME STATUS BADGE */}
                       <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0 border border-indigo-500/20">
-                            👨‍🏫
-                          </div>
+                          {teacher.foto_url ? (
+                            <img
+                              src={resolveProfilePhotoUrl(teacher.foto_url)}
+                              alt={teacher.nama_guru}
+                              className="w-11 h-11 rounded-2xl object-cover border border-indigo-500/20 shadow-xs shrink-0 bg-slate-100 dark:bg-slate-800"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0 border border-indigo-500/20">
+                              {teacher.nama_guru?.charAt(0) || '👨‍🏫'}
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
                               {teacher.nama_guru}
@@ -255,9 +275,28 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
                               📍 Kelas <strong className="text-indigo-600 dark:text-indigo-400">{teacher.current_session.kelas_nama}</strong> • {teacher.current_session.mapel_nama}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                            <Clock size={12} className="text-indigo-500" />
-                            <span>{teacher.current_session.jam_mulai} – {teacher.current_session.jam_selesai} WIB</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                              <Clock size={12} className="text-indigo-500" />
+                              <span>{teacher.current_session.jam_mulai} – {teacher.current_session.jam_selesai} WIB</span>
+                            </div>
+                            {teacher.current_session.foto_kegiatan && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewPhotoData({
+                                  url: teacher.current_session!.foto_kegiatan!,
+                                  guruNama: teacher.nama_guru,
+                                  kelasNama: teacher.current_session!.kelas_nama,
+                                  mapelNama: teacher.current_session!.mapel_nama,
+                                  timestamp: `${teacher.current_session!.jam_mulai} – ${teacher.current_session!.jam_selesai} WIB`
+                                })}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-[11px] font-black shadow-xs transition-all cursor-pointer"
+                                title="Lihat foto bukti KBM guru di kelas"
+                              >
+                                <Camera size={11} className="text-emerald-500" />
+                                <span>Foto KBM</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -333,6 +372,17 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
             <span>Shortcut: <kbd className="px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">Ctrl + G</kbd></span>
           </div>
         </motion.div>
+
+        {/* 📷 KBM Photo Fullscreen Lightbox Modal */}
+        <PhotoPreviewModal
+          isOpen={Boolean(previewPhotoData)}
+          onClose={() => setPreviewPhotoData(null)}
+          photoUrl={previewPhotoData?.url || null}
+          guruNama={previewPhotoData?.guruNama}
+          kelasNama={previewPhotoData?.kelasNama}
+          mapelNama={previewPhotoData?.mapelNama}
+          timestamp={previewPhotoData?.timestamp}
+        />
       </div>
     </AnimatePresence>,
     document.body
