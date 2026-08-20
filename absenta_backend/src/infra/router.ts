@@ -512,6 +512,14 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { jadwalPiketRoutes } = await import('../modules/kurikulum/jadwal-piket/routes/jadwal-piket.routes');
       await fastify.register(jadwalPiketRoutes, { prefix: '/kurikulum/jadwal-piket' });
 
+      // Alur Tujuan Pembelajaran / ATP & TP (Kurikulum Merdeka)
+      const { default: atpRoutes } = await import('../modules/kurikulum/atp/routes/atp.routes');
+      await fastify.register(atpRoutes, { prefix: '/kurikulum/atp' });
+
+      // ATP Templates (Platform Global Presets)
+      const { default: atpTemplateRoutes } = await import('../modules/kurikulum/atp-template/routes/atp-template.routes');
+      await fastify.register(atpTemplateRoutes, { prefix: '/kurikulum/atp-templates' });
+
       // Modul Rapor & Penilaian (Decoupled dari Kurikulum)
       const { default: nilaiRoutes } = await import('../modules/rapor/routes/nilai.routes');
       await fastify.register(nilaiRoutes, { prefix: '/rapor/nilai' });

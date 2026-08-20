@@ -141,6 +141,8 @@ model Tenant {
   P5Projek                 P5Projek[]
   P5NilaiSiswa             P5NilaiSiswa[]
   PerangkatAjar            PerangkatAjar[]
+  AlurTujuanPembelajaran   AlurTujuanPembelajaran[]
+  TujuanPembelajaran       TujuanPembelajaran[]
   KalenderAkademik         KalenderAkademik[]
   ParentTeacherChatSession ParentTeacherChatSession[]
   TemplateSurat            TemplateSurat[]
@@ -872,98 +874,102 @@ model Guru {
   PermohonanInvalGuru   PermohonanIzinGuru[]       @relation("GuruInvalPermohonan")
 
   Member Member?
-  JurnalWaliKelas     JurnalWaliKelas[]
+  JurnalWaliKelas        JurnalWaliKelas[]
+  AlurTujuanPembelajaran AlurTujuanPembelajaran[]
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
 }
 
 model Mapel {
-  id                String              @id @default(uuid())
-  tenant_id         String
-  nama_mapel        String
-  kode_mapel        String?
-  tingkat           Int?
-  kelompok_mapel    String?             @default("UMUM")
-  asc_id            String?
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
-  GuruMapel         GuruMapel[]
-  KelasMapel        KelasMapel[]
-  Tenant            Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SesiAbsensi       SesiAbsensi[]
-  JadwalKBM         JadwalKBM[]
-  StrukturKurikulum StrukturKurikulum[]
-  Kkmp              Kkmp[]
-  NilaiSiswa        NilaiSiswa[]
-  PerangkatAjar     PerangkatAjar[]
-  JadwalKontrakKbm  JadwalKontrakKbm[]
+  id                     String                   @id @default(uuid())
+  tenant_id              String
+  nama_mapel             String
+  kode_mapel             String?
+  tingkat                Int?
+  kelompok_mapel         String?                  @default("UMUM")
+  asc_id                 String?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  GuruMapel              GuruMapel[]
+  KelasMapel             KelasMapel[]
+  Tenant                 Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SesiAbsensi            SesiAbsensi[]
+  JadwalKBM              JadwalKBM[]
+  StrukturKurikulum      StrukturKurikulum[]
+  Kkmp                   Kkmp[]
+  NilaiSiswa             NilaiSiswa[]
+  PerangkatAjar          PerangkatAjar[]
+  JadwalKontrakKbm       JadwalKontrakKbm[]
+  AlurTujuanPembelajaran AlurTujuanPembelajaran[]
 
   @@unique([tenant_id, kode_mapel])
   @@index([tenant_id])
 }
 
 model TahunPelajaran {
-  id                String              @id @default(uuid())
-  tenant_id         String
-  tahun             String
-  is_active         Boolean             @default(false)
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
-  Semester          Semester[]
-  Siswa             Siswa[]
-  Tenant            Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SesiAbsensi       SesiAbsensi[]
-  SesiGerbang       SesiGerbang[]
-  SiswaAkademik     SiswaAkademik[]
-  AbsenGuru         AbsenGuru[]
-  JadwalKBM         JadwalKBM[]
-  JadwalKegiatan    JadwalKegiatan[]
-  JadwalPiketGuru   JadwalPiketGuru[]
-  StrukturKurikulum StrukturKurikulum[]
-  NilaiSiswa        NilaiSiswa[]
-  RaporSiswa        RaporSiswa[]
-  P5Projek          P5Projek[]
-  KospConfig        KospConfig[]
-  PerangkatAjar     PerangkatAjar[]
-  KalenderAkademik  KalenderAkademik[]
-  GuruMapel         GuruMapel[]
-  PelanggaranSiswa  PelanggaranSiswa[]
-  SupervisiGuru     SupervisiGuru[]
-  GuruTimeOff       GuruTimeOff[]
-  JadwalKontrakKbm  JadwalKontrakKbm[]
+  id                     String                   @id @default(uuid())
+  tenant_id              String
+  tahun                  String
+  is_active              Boolean                  @default(false)
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  Semester               Semester[]
+  Siswa                  Siswa[]
+  Tenant                 Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SesiAbsensi            SesiAbsensi[]
+  SesiGerbang            SesiGerbang[]
+  SiswaAkademik          SiswaAkademik[]
+  AbsenGuru              AbsenGuru[]
+  JadwalKBM              JadwalKBM[]
+  JadwalKegiatan         JadwalKegiatan[]
+  JadwalPiketGuru        JadwalPiketGuru[]
+  StrukturKurikulum      StrukturKurikulum[]
+  NilaiSiswa             NilaiSiswa[]
+  RaporSiswa             RaporSiswa[]
+  P5Projek               P5Projek[]
+  KospConfig             KospConfig[]
+  PerangkatAjar          PerangkatAjar[]
+  KalenderAkademik       KalenderAkademik[]
+  GuruMapel              GuruMapel[]
+  PelanggaranSiswa       PelanggaranSiswa[]
+  SupervisiGuru          SupervisiGuru[]
+  GuruTimeOff            GuruTimeOff[]
+  JadwalKontrakKbm       JadwalKontrakKbm[]
+  AlurTujuanPembelajaran AlurTujuanPembelajaran[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
 }
 
 model Semester {
-  id                 String          @id @default(uuid())
-  tenant_id          String
-  nama_semester      String
-  tahun_pelajaran_id String
-  is_active          Boolean         @default(false)
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
-  TahunPelajaran     TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
-  Tenant             Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SesiAbsensi        SesiAbsensi[]
-  Siswa              Siswa[]
-  SiswaAkademik      SiswaAkademik[]
-  AbsenGuru          AbsenGuru[]
-  JadwalKBM          JadwalKBM[]
-  JadwalPiketGuru    JadwalPiketGuru[]
-  NilaiSiswa         NilaiSiswa[]
-  RaporSiswa         RaporSiswa[]
-  P5Projek           P5Projek[]
-  PerangkatAjar      PerangkatAjar[]
-  GuruMapel          GuruMapel[]
-  JadwalKegiatan     JadwalKegiatan[]
-  StrukturKurikulum  StrukturKurikulum[]
-  PelanggaranSiswa   PelanggaranSiswa[]
-  SupervisiGuru      SupervisiGuru[]
-  GuruTimeOff        GuruTimeOff[]
-  JadwalKontrakKbm   JadwalKontrakKbm[]
+  id                     String                   @id @default(uuid())
+  tenant_id              String
+  nama_semester          String
+  tahun_pelajaran_id     String
+  is_active              Boolean                  @default(false)
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  TahunPelajaran         TahunPelajaran           @relation(fields: [tahun_pelajaran_id], references: [id])
+  Tenant                 Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SesiAbsensi            SesiAbsensi[]
+  Siswa                  Siswa[]
+  SiswaAkademik          SiswaAkademik[]
+  AbsenGuru              AbsenGuru[]
+  JadwalKBM              JadwalKBM[]
+  JadwalPiketGuru        JadwalPiketGuru[]
+  NilaiSiswa             NilaiSiswa[]
+  RaporSiswa             RaporSiswa[]
+  P5Projek               P5Projek[]
+  PerangkatAjar          PerangkatAjar[]
+  GuruMapel              GuruMapel[]
+  JadwalKegiatan         JadwalKegiatan[]
+  StrukturKurikulum      StrukturKurikulum[]
+  PelanggaranSiswa       PelanggaranSiswa[]
+  SupervisiGuru          SupervisiGuru[]
+  GuruTimeOff            GuruTimeOff[]
+  JadwalKontrakKbm       JadwalKontrakKbm[]
+  AlurTujuanPembelajaran AlurTujuanPembelajaran[]
 
   @@index([tenant_id])
 }
@@ -4270,6 +4276,55 @@ model PerangkatAjar {
   @@index([tenant_id])
 }
 
+model AlurTujuanPembelajaran {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  guru_id            String
+  mapel_id           String
+  tahun_pelajaran_id String
+  semester_id        String
+  fase               String   // "A", "B", "C", "D", "E", "F"
+  tingkat            Int?     // 10, 11, 12
+  nama_atp           String   // e.g. "ATP Dasar-dasar Otomotif Fase E"
+  deskripsi          String?  @db.Text
+  total_alokasi_jp   Int      @default(0)
+  status             String   @default("PUBLISHED") // "DRAFT", "PUBLISHED"
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru           Guru           @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Mapel          Mapel          @relation(fields: [mapel_id], references: [id])
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester       @relation(fields: [semester_id], references: [id])
+
+  TujuanPembelajaran TujuanPembelajaran[]
+
+  @@unique([tenant_id, guru_id, mapel_id, tahun_pelajaran_id, semester_id, fase])
+  @@index([tenant_id])
+  @@index([tenant_id, guru_id, mapel_id])
+}
+
+model TujuanPembelajaran {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  atp_id             String
+  kode_tp            String   // e.g. "TP 1.1", "TP 1.2"
+  judul_materi       String   // e.g. "Pengenalan Komponen Motor Bakar"
+  deskripsi_tp       String   @db.Text // Capaian Pembelajaran & Indikator Kompetensi
+  alokasi_jp         Int      @default(2)
+  urutan             Int      @default(1)
+  is_completed       Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant                 Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  AlurTujuanPembelajaran AlurTujuanPembelajaran @relation(fields: [atp_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, atp_id])
+}
+
 model ParentTeacherChatSession {
   id           String   @id @default(uuid())
   tenant_id    String
@@ -4683,6 +4738,7 @@ model MeetingMessage {
   message     String   @db.Text
   created_at  DateTime @default(now())
 
+
   Tenant  Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Session MeetingSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
 
@@ -4690,4 +4746,49 @@ model MeetingMessage {
   @@index([room_id])
   @@index([tenant_id, room_id])
   @@map("meeting_messages")
+}
+
+// ─── ATP Template (Platform-Level Global Preset) ──────────────────────────────
+// Tidak terikat tenant — dikelola oleh SUPERADMIN sebagai preset siap pakai.
+// Guru di semua tenant dapat melihat dan mengimpor (clone) ke ATP personal mereka.
+model AtpTemplate {
+  id               String   @id @default(uuid())
+  kode_mapel_ref   String   // Kode referensi mapel bebas, e.g. "MATEMATIKA", "B.INDONESIA"
+  nama_mapel_ref   String   // Nama tampilan mata pelajaran untuk UI
+  fase             String   // "A" | "B" | "C" | "D" | "E" | "F"
+  tingkat          Int?     // 10 / 11 / 12 (opsional, untuk SMK/SMA)
+  nama_template    String   // Judul template, e.g. "ATP Matematika Fase E - Kemendikbud 2024"
+  deskripsi        String?  @db.Text
+  sumber           String?  // e.g. "Kemendikbudristek", "MGMP Jabar", "Absenta Official"
+  url_sumber       String?  // URL referensi eksternal (opsional)
+  tags             String[] // e.g. ["SMK", "Fase E", "Kurikulum Merdeka"]
+  total_alokasi_jp Int      @default(0)
+  status           String   @default("DRAFT") // "DRAFT" | "PUBLISHED"
+  created_by       String?  // User ID SUPERADMIN yang membuat (opsional)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  TpTemplate AtpTpTemplate[]
+
+  @@index([fase])
+  @@index([kode_mapel_ref])
+  @@index([status])
+  @@index([fase, kode_mapel_ref])
+}
+
+// ─── TP items di dalam ATP Template ──────────────────────────────────────────
+model AtpTpTemplate {
+  id              String   @id @default(uuid())
+  atp_template_id String
+  kode_tp         String   // e.g. "TP 1.1", "TP 1.2"
+  judul_materi    String   // Judul topik/materi
+  deskripsi_tp    String   @db.Text // Capaian Pembelajaran & indikator
+  alokasi_jp      Int      @default(2)
+  urutan          Int      @default(1)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  AtpTemplate AtpTemplate @relation(fields: [atp_template_id], references: [id], onDelete: Cascade)
+
+  @@index([atp_template_id])
 }

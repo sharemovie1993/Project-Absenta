@@ -162,6 +162,8 @@ const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashbo
 const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
 const EvaluasiKinerjaGuruMockupPage = lazy(() => import('./pages/kurikulum/EvaluasiKinerjaGuruMockupPage'));
 const PerangkatAjarPage = lazy(() => import('./pages/kurikulum/PerangkatAjarPage'));
+const AtpBuilderPage = lazy(() => import('./pages/kurikulum/AtpBuilderPage').then(m => ({ default: m.AtpBuilderPage })));
+const AtpTemplatePage = lazy(() => import('./pages/kurikulum/AtpTemplatePage').then(m => ({ default: m.AtpTemplatePage })));
 const InputNilaiPage = lazy(() => import('./pages/rapor/InputNilaiPage'));
 const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
 const P5Page = lazy(() => import('./pages/rapor/P5Page'));
@@ -831,6 +833,16 @@ function App() {
                     <Route path="/kurikulum/kosp-builder" element={
                       <ProtectedRoute requiredCapability="academic.structures.view.list">
                         <KospBuilderPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/atp" element={
+                      <ProtectedRoute requiredCapability="academic.structures.view.list">
+                        <AtpBuilderPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/atp-templates" element={
+                      <ProtectedRoute requiredCapability="academic.structures.view.list">
+                        <AtpTemplatePage />
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/jadwal-piket" element={

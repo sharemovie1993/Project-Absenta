@@ -1129,6 +1129,67 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'Tabel penugasan kelas-kelas kini menggunakan komponen shared Tabular.tsx dengan view switcher (Diagram vs Tabel).'
       }
     ]
+  },
+  kurikulum_atp_builder: {
+    moduleName: 'kurikulum_atp_builder',
+    displayName: 'Penyusun ATP & TP (Kurikulum Merdeka)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Membungkus halaman penyusun ATP dengan Error Boundary agar kegagalan parsing tidak mematikan antarmuka utama.',
+        status: 'VERIFIED',
+        details: 'Terintegrasi di dalam PageLayout dengan Error Boundary.'
+      },
+      {
+        id: 'cache_invalidation',
+        name: 'Optimasi Cache & Granular Invalidation (TanStack Query)',
+        description: 'Menerapkan staleTime terukur dan invalidasi kueri terpusat ke atpList, activeTpForSesi, dan agenda KBM.',
+        status: 'VERIFIED',
+        details: 'TanStack Query cache invalidation terintegrasi pada saveMutation.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Proteksi DOM Churn (useMemo + useCallback)',
+        description: 'Mencegah re-render tak perlu pada array TP dan handler urutan alur pembelajaran.',
+        status: 'VERIFIED',
+        details: 'useCallback dan useMemo terpasang pada manipulasi daftar TP.'
+      },
+      {
+        id: 'template_integration',
+        name: 'Integrasi Preset Global ATP (1-Klik Auto-fill)',
+        description: 'Menyediakan modal template picker instan dari bank data kurikulum nasional.',
+        status: 'VERIFIED',
+        details: 'AtpTemplatePickerModal terintegrasi dengan filter fase dan pratinjau CP.'
+      }
+    ]
+  },
+  kurikulum_atp_templates: {
+    moduleName: 'kurikulum_atp_templates',
+    displayName: 'Perpustakaan Template ATP (Platform Preset)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Katalog (Fault Isolation)',
+        description: 'Melindungi halaman katalog template dari gangguan API dan rendering.',
+        status: 'VERIFIED',
+        details: 'Terintegrasi di dalam PageLayout standar.'
+      },
+      {
+        id: 'cache_invalidation',
+        name: 'Optimasi Query Caching & Clone Mutation',
+        description: 'Menerapkan staleTime pada daftar template global dan invalidasi kueri saat template di-clone.',
+        status: 'VERIFIED',
+        details: 'Kueri caching 5 menit dan invalidasi multi-key pada proses impor.'
+      },
+      {
+        id: 'responsive_grid',
+        name: 'Adaptabilitas Responsif Katalog',
+        description: 'Grid layout adaptif untuk tampilan kartu template di perangkat mobile dan desktop.',
+        status: 'VERIFIED',
+        details: 'Responsive 3-column grid dengan preview snippets.'
+      }
+    ]
   }
 };
 

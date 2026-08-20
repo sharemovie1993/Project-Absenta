@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Input, Textarea, Label } from '../ui';
 import { BookOpen, AlertCircle, CheckCircle2, Info, Sparkles, Percent } from 'lucide-react';
 import { upsertProgresMateri } from '../../api/attendanceGerbang.api';
+import { getActiveTpForSesi, TujuanPembelajaranItem } from '../../api/atp.api';
 import { toast } from 'react-hot-toast';
 import { ConfirmModal } from '../ui/Modal';
 import { cn } from '../../lib/utils';
@@ -28,6 +29,9 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [tpList, setTpList] = useState<TujuanPembelajaranItem[]>([]);
+  const [atpInfo, setAtpInfo] = useState<any>(null);
+  const [isLoadingTp, setIsLoadingTp] = useState(false);
   const [formData, setFormData] = useState({
     judul_materi: '',
     deskripsi: '',
@@ -44,25 +48,35 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
         pencapaian_persen: typeof initialData?.pencapaian_persen === 'number' ? initialData.pencapaian_persen : 100,
         kendala: initialData?.kendala || ''
       });
-    }
-  }, [isOpen, initialData]);
 
-  const handlePreSubmit = (e: React.FormEvent) => {
+      // Fetch active TP list for this session
+      if (sesiId && !readOnly) {
+        setIsLoadingTp(true);
+        getActiveTpForSesi(sesiId)
+          .then((res) => {
+            setTpList(res.tujuan_pembelajaran || []);
+            setAtpInfo(res.atp || null);
+          })
+          .catch(() => {
+            setTpList([]);
+            setAtpInfo(null);
+          })
+          .finally(() => setIsLoadingTp(false));
+      }
+    }
+  }, [isOpen, initialData, sesiId, readOnly]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
     if (!formData.judul_materi.trim()) {
       toast.error('Judul materi wajib diisi');
       return;
     }
-    setShowConfirm(true);
-  };
-
-  const handleActualSubmit = async () => {
-    if (readOnly) return;
     setLoading(true);
     try {
       await upsertProgresMateri(sesiId, formData);
-      toast.success('Jurnal KBM berhasil disimpan');
+      toast.success('Jurnal KBM berhasil disimpan! ✨');
       queryClient.invalidateQueries({ queryKey: ['rekapJurnalSesiList'] });
       queryClient.invalidateQueries({ queryKey: ['sesiAbsensiList'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
@@ -74,7 +88,6 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
       toast.error(err.message || 'Gagal menyimpan Jurnal KBM');
     } finally {
       setLoading(false);
-      setShowConfirm(false);
     }
   };
 
@@ -92,8 +105,8 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         zIndex={80}
-        size="lg"
-        className="max-h-[92vh] flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden"
+        size="xl"
+        className="max-h-[92vh] max-w-2xl w-full flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden"
         title={
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-200/60 dark:border-blue-800/60">
@@ -110,7 +123,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
           </div>
         }
       >
-        <form onSubmit={handlePreSubmit} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           {/* Scrollable Form Body */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-4">
             {!readOnly && (
@@ -120,6 +133,90 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
                   Jurnal ini tersinkronisasi langsung ke <strong>Buku Agenda Guru</strong>, dashboard Kurikulum, dan laporan Kepala Sekolah.
                 </p>
               </div>
+            )}
+
+            {/* 1-KLIK INTEGRASI DARI ATP KURIKULUM MERDEKA */}
+            {!readOnly && (
+              <>
+                {/* Loading Skeleton */}
+                {isLoadingTp && (
+                  <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 animate-pulse flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-40 rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-9 w-full rounded-xl bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Dropdown — ada data TP */}
+                {!isLoadingTp && tpList.length > 0 && (
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50/80 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-2xl border border-blue-200/80 dark:border-blue-800/60 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-blue-800 dark:text-blue-300 font-extrabold text-xs">
+                        <Sparkles size={14} className="text-amber-500 animate-bounce" />
+                        <span>Rencana ATP / Tujuan Pembelajaran (Kurikulum Merdeka)</span>
+                      </div>
+                      {atpInfo?.fase && (
+                        <span className="px-2.5 py-0.5 rounded-lg bg-blue-200/80 dark:bg-blue-900 text-blue-900 dark:text-blue-200 text-[10px] font-black">
+                          Fase {atpInfo.fase}
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      className="w-full h-11 px-3 bg-white dark:bg-slate-900 border border-blue-300/80 dark:border-blue-700 rounded-xl font-bold text-xs text-slate-800 dark:text-slate-100 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 shadow-xs"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const selected = tpList.find((t) => (t.id && t.id === val) || t.kode_tp === val);
+                        if (selected) {
+                          setFormData({
+                            ...formData,
+                            judul_materi: selected.judul_materi,
+                            deskripsi: selected.deskripsi_tp || formData.deskripsi,
+                            pencapaian_persen: 100
+                          });
+                          toast.success(`⚡ 1-Klik: '${selected.kode_tp}' diterapkan!`, { icon: '✨' });
+                        }
+                      }}
+                    >
+                      <option value="">⚡ 1-Klik: Pilih Materi / TP dari Agenda Semester...</option>
+                      {tpList.map((tp, i) => (
+                        <option key={tp.id || i} value={tp.id || tp.kode_tp}>
+                          {tp.kode_tp}: {tp.judul_materi} ({tp.alokasi_jp} JP)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Empty State — belum ada ATP/TP */}
+                {!isLoadingTp && tpList.length === 0 && (
+                  <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-dashed border-amber-300 dark:border-amber-700/60 bg-amber-50/60 dark:bg-amber-950/20">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 shrink-0">
+                        <Sparkles size={13} className="text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-extrabold text-amber-900 dark:text-amber-200 truncate">
+                          Belum ada Rencana ATP / TP
+                        </p>
+                        <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 font-medium leading-tight">
+                          Susun sekarang agar judul &amp; CP terisi otomatis
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.open('/kurikulum/atp', '_blank')}
+                      className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-white font-black text-[11px] shadow-sm shadow-amber-500/30 transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <span>+ Buat ATP</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {/* 1. Judul Materi */}
@@ -134,7 +231,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
                 onChange={(e) => setFormData({...formData, judul_materi: e.target.value})}
                 required
                 disabled={readOnly}
-                className="rounded-xl h-10 border-slate-200 dark:border-slate-800 text-xs font-bold focus:ring-2 focus:ring-blue-500"
+                className="rounded-xl h-11 border-slate-200 dark:border-slate-800 text-xs font-bold focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -148,9 +245,9 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
                 placeholder={readOnly ? '-' : "Uraikan aktivitas KBM dan materi yang tersampaikan kepada siswa..."}
                 value={formData.deskripsi}
                 onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
-                rows={2}
+                rows={5}
                 disabled={readOnly}
-                className="rounded-xl border-slate-200 dark:border-slate-800 text-xs font-medium focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                className="rounded-2xl border-slate-200 dark:border-slate-800 text-xs font-medium focus:ring-2 focus:ring-blue-500 leading-relaxed min-h-[120px] resize-y p-3.5"
               />
             </div>
 
@@ -260,16 +357,6 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
           </div>
         </form>
       </Modal>
-
-      <ConfirmModal
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleActualSubmit}
-        title="Simpan Jurnal KBM?"
-        message="Pastikan ringkasan materi dan capaian pembelajaran sudah tepat. Data akan langsung terbit ke Buku Agenda Guru resmi."
-        confirmText="Ya, Terbitkan Jurnal"
-        cancelText="Periksa Lagi"
-      />
     </>
   );
 };
