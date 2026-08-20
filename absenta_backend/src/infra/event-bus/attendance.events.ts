@@ -59,6 +59,19 @@ export async function handleGerbangTapUpdate(io: any, ioApi: any, payload: any) 
   }
 }
 
+export async function handleSesiReminderUpdate(io: any, ioApi: any, payload: any) {
+  try {
+    const tenantId = payload?.tenant_id;
+    if (tenantId) {
+      io.to(`tenant:${tenantId}`).emit('sesi_reminder_updated', payload);
+      io.to(`tenant:${tenantId}`).emit('SESI_UPDATED', payload);
+      if (ioApi) {
+        ioApi.to(`tenant:${tenantId}`).emit('sesi_reminder_updated', payload);
+      }
+    }
+  } catch {}
+}
+
 /**
  * Handles the domain event for a gate tap.
  * This is used for backend reconciliation (e.g. matching late gate taps with classroom sessions).

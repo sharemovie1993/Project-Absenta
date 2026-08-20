@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../../api/attendanceGerbang.api';
+import { getSesiAbsensiList, getSesiAbsenSiswa, sendKbmReminderApi, updateAbsenGuru } from '../../../api/attendanceGerbang.api';
 import { normalizeFromSesiAbsensi, KbmItem, getKbmStatusKey } from '../../../utils/kbm-normalizer';
 import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
 import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
-import { BookOpen, Lock, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock } from 'lucide-react';
+import { Modal, ModalFooter } from '../../ui/Modal';
+import { BookOpen, Lock, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +16,7 @@ import { toast } from 'react-hot-toast';
 
 import { dropdownApi } from '../../../api/dropdown.api';
 import { kurikulumApi } from '../../../api/kurikulum.api';
+import { guruApi } from '../../../api/academic.api';
 import { cn } from '../../../lib/utils';
 
 // Import refactored subcomponents
@@ -34,7 +36,7 @@ export interface MonitoringKbmWidgetProps {
 export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExecutive = true }) => {
   const queryClient = useQueryClient();
   const { isConnected, subscribe, unsubscribe } = useSocket();
-  const { tenantMode } = useAuthStore();
+  const { tenantMode, user } = useAuthStore();
   const [targetDate, setTargetDate] = useState(toLocalDate());
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -44,6 +46,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
 
     const handleInvalidate = () => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
       queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
     };
@@ -51,6 +54,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
     subscribe('attendance_feed_update', handleInvalidate);
     subscribe('sesi_status_update', handleInvalidate);
     subscribe('absen_guru_update', handleInvalidate);
+    subscribe('sesi_reminder_updated', handleInvalidate);
     subscribe('session_attendance_update', handleInvalidate);
     subscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
     subscribe('SESI_CREATED', handleInvalidate);
@@ -60,6 +64,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
       unsubscribe('attendance_feed_update', handleInvalidate);
       unsubscribe('sesi_status_update', handleInvalidate);
       unsubscribe('absen_guru_update', handleInvalidate);
+      unsubscribe('sesi_reminder_updated', handleInvalidate);
       unsubscribe('session_attendance_update', handleInvalidate);
       unsubscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
       unsubscribe('SESI_CREATED', handleInvalidate);
@@ -90,6 +95,84 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
+
+  // Status Modal State (Inval / Izin / Sakit)
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedStatusSession, setSelectedStatusSession] = useState<any>(null);
+  const [selectedStatus, setSelectedStatus] = useState<'IZIN' | 'SAKIT' | 'PENUGASAN' | 'ALPA'>('IZIN');
+  const [selectedGuruInvalId, setSelectedGuruInvalId] = useState<string>('');
+  const [catatanText, setCatatanText] = useState<string>('');
+  const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
+
+  // Fetch Teacher Options for Guru Inval dropdown
+  const { data: guruOptionsRes } = useQuery({
+    queryKey: ['academic-guru-inval-options'],
+    queryFn: () => guruApi.getAll({ limit: 1000 } as any).catch(() => null),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const guruList = useMemo(() => {
+    const raw = (guruOptionsRes as any)?.data?.data || (guruOptionsRes as any)?.data || [];
+    return Array.isArray(raw) ? raw : [];
+  }, [guruOptionsRes]);
+
+  const handleSendWaReminder = useCallback(async (session: any, method: 'GATEWAY' | 'PERSONAL_LINK') => {
+    try {
+      const userRole = user?.role || 'KURIKULUM';
+      const res = await sendKbmReminderApi(session.id, {
+        method,
+        senderRole: userRole,
+        senderName: user?.nama || user?.name || undefined,
+      });
+
+      if (method === 'PERSONAL_LINK' && res.personal_wa_link) {
+        window.open(res.personal_wa_link, '_blank');
+        toast.success('Membuka WhatsApp Personal...');
+      } else {
+        toast.success('Pengingat WhatsApp berhasil dikirim ke guru via Gateway');
+      }
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal mengirim pengingat');
+    }
+  }, [user, queryClient]);
+
+  const handleOpenStatusModal = useCallback((session: any) => {
+    setSelectedStatusSession(session);
+    setSelectedStatus('IZIN');
+    setSelectedGuruInvalId('');
+    setCatatanText('');
+    setStatusModalOpen(true);
+  }, []);
+
+  const handleSubmitStatus = useCallback(async () => {
+    if (!selectedStatusSession) return;
+    const guruId = selectedStatusSession.guru_id || selectedStatusSession.Guru?.id;
+    if (!guruId) {
+      toast.error('Data Guru Pengajar tidak ditemukan pada sesi ini.');
+      return;
+    }
+
+    setIsSubmittingStatus(true);
+    try {
+      await updateAbsenGuru(selectedStatusSession.id, guruId, {
+        status: selectedStatus,
+        guru_inval_id: selectedGuruInvalId || undefined,
+        catatan: catatanText || undefined,
+      });
+      toast.success(`Status KBM ${selectedStatusSession.Kelas?.nama_kelas || ''} berhasil diperbarui.`);
+      setStatusModalOpen(false);
+      setSelectedStatusSession(null);
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal memperbarui status');
+    } finally {
+      setIsSubmittingStatus(false);
+    }
+  }, [selectedStatusSession, selectedStatus, selectedGuruInvalId, catatanText, queryClient]);
 
   // 1. Debounced Search Term to prevent lag on keypresses
   const [searchTerm, setSearchTerm] = useState('');
@@ -592,6 +675,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
                       isExpanded={expandedSesiId === sesi.id}
                       onToggleExpand={() => setExpandedSesiId(expandedSesiId === sesi.id ? null : sesi.id)}
                       formatTime={formatTime}
+                      onSendWaReminder={handleSendWaReminder}
+                      onChangeStatus={handleOpenStatusModal}
                     />
                   ))}
                 </div>
@@ -640,6 +725,125 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
         initialData={selectedSesi?.ProgresMateri}
         readOnly={true}
       />
+
+      {/* 🛡️ Modal Penugasan Inval & Status Kehadiran Guru KBM */}
+      {statusModalOpen && selectedStatusSession && (
+        <Modal
+          isOpen={statusModalOpen}
+          onClose={() => {
+            if (!isSubmittingStatus) {
+              setStatusModalOpen(false);
+              setSelectedStatusSession(null);
+            }
+          }}
+          title="Ubah Status / Penugasan Guru Inval"
+          size="md"
+        >
+          <div className="space-y-4 text-slate-800 dark:text-slate-200">
+            {/* Session Information Banner */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {selectedStatusSession.Kelas?.nama_kelas || selectedStatusSession.kelas_nama || 'Kelas'}
+                </span>
+                <span className="font-mono font-bold text-slate-500">
+                  {selectedStatusSession.jam_mulai || '--:--'} - {selectedStatusSession.jam_selesai || '--:--'} WIB
+                </span>
+              </div>
+              <p className="text-sm font-black text-slate-900 dark:text-white">
+                {selectedStatusSession.Mapel?.nama_mapel || selectedStatusSession.mapel_nama || 'Mata Pelajaran'}
+              </p>
+              <p className="text-xs text-slate-500">
+                Guru Pengampu: <strong className="text-slate-700 dark:text-slate-300">{selectedStatusSession.Guru?.nama_guru || selectedStatusSession.guru_nama || '-'}</strong>
+              </p>
+            </div>
+
+            {/* Status Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Status Keberadaan Guru
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'IZIN', label: 'Izin Resmi' },
+                  { id: 'SAKIT', label: 'Sakit' },
+                  { id: 'PENUGASAN', label: 'Dinas Luar' },
+                  { id: 'ALPA', label: 'Alpa / Mangkir' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setSelectedStatus(st.id as any)}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl border text-xs font-black transition-all cursor-pointer text-center",
+                      selectedStatus === st.id
+                        ? "bg-amber-500 border-amber-600 text-slate-950 shadow-sm"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                    )}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Guru Inval Selector (Optional / Suggested) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>Tugaskan Guru Inval (Pengganti)</span>
+                <span className="text-[10px] font-normal text-slate-400">Opsional</span>
+              </label>
+              <select
+                value={selectedGuruInvalId}
+                onChange={(e) => setSelectedGuruInvalId(e.target.value)}
+                className="w-full text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                <option value="">-- Tidak Ada Guru Inval (Kelas Kosong Terbimbing) --</option>
+                {guruList.map((g: any) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nama_guru || g.nama} {g.nip ? `(NIP: ${g.nip})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Catatan Tambahan */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Catatan Petugas / Keterangan
+              </label>
+              <textarea
+                value={catatanText}
+                onChange={(e) => setCatatanText(e.target.value)}
+                placeholder="Contoh: Izin mendampingi lomba, tugas mandiri telah diupload..."
+                rows={2}
+                className="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStatusModalOpen(false);
+                setSelectedStatusSession(null);
+              }}
+              disabled={isSubmittingStatus}
+              className="text-xs font-bold"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSubmitStatus}
+              disabled={isSubmittingStatus}
+              className="text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 border-none"
+            >
+              {isSubmittingStatus ? 'Menyimpan...' : 'Simpan Status & Inval'}
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getSesiAbsensiList, updateAbsenGuru } from '../../api/attendanceGerbang.api';
+import { getSesiAbsensiList, updateAbsenGuru, sendKbmReminderApi } from '../../api/attendanceGerbang.api';
 import { normalizeFromSesiAbsensi, type KbmItem } from '../../utils/kbm-normalizer';
 import { guruApi } from '../../api/academic.api';
 import { toLocalDate } from '../../utils/attendance/time';
@@ -13,7 +13,9 @@ import {
   UserX, 
   RefreshCw, 
   UserCheck, 
-  Search
+  Search,
+  CheckCircle2,
+  Send
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
@@ -46,6 +48,7 @@ export const PiketTeacherMonitoring: React.FC = () => {
     subscribe('absen_guru_update', handleInvalidate);
     subscribe('attendance_feed_update', handleInvalidate);
     subscribe('sesi_status_update', handleInvalidate);
+    subscribe('sesi_reminder_updated', handleInvalidate);
     subscribe('SESI_CREATED', handleInvalidate);
     subscribe('SESI_UPDATED', handleInvalidate);
     subscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
@@ -54,6 +57,7 @@ export const PiketTeacherMonitoring: React.FC = () => {
       unsubscribe('absen_guru_update', handleInvalidate);
       unsubscribe('attendance_feed_update', handleInvalidate);
       unsubscribe('sesi_status_update', handleInvalidate);
+      unsubscribe('sesi_reminder_updated', handleInvalidate);
       unsubscribe('SESI_CREATED', handleInvalidate);
       unsubscribe('SESI_UPDATED', handleInvalidate);
       unsubscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
@@ -107,27 +111,25 @@ export const PiketTeacherMonitoring: React.FC = () => {
     );
   }, [pendingTeachers, searchTerm]);
 
-  // 5. Send WA Message Action
-  const handleSendWa = (item: KbmItem) => {
-    const rawPhone = (item.Guru as any)?.no_hp || (item.Guru as any)?.telepon || (item.Guru as any)?.phone || (item as any)?.guru_no_hp;
-    const guruNama = item.guru_nama || 'Bapak/Ibu Guru';
-    const kelasNama = item.kelas_nama || 'Kelas';
-    const mapelNama = item.mapel_nama || 'Mata Pelajaran';
-    const jamMulai = item.jam_mulai || '--:--';
-    const jamSelesai = item.jam_selesai || '--:--';
-
-    const message = `Yth. Bapak/Ibu ${guruNama},\n\nJadwal KBM Anda di kelas ${kelasNama} (${mapelNama}) pukul ${jamMulai} - ${jamSelesai} WIB saat ini telah siap dimulai. Mohon untuk segera hadir di kelas, membuka sesi, dan mengambil foto bukti KBM di aplikasi Absenta guna menghindari akumulasi poin pelanggaran/keterlambatan mengajar.\n\nTerima kasih.\n— Meja Piket Absenta`;
-
-    if (!rawPhone) {
-      // Fallback: Copy message to clipboard
-      navigator.clipboard.writeText(message);
-      toast.success(`Nomor WA belum tercatat. Template pesan resmi telah disalin ke clipboard!`, { duration: 6000 });
-      return;
+  // 5. Send WA Message Action via Gateway or Personal
+  const handleSendWa = async (item: KbmItem, method: 'GATEWAY' | 'PERSONAL_LINK' = 'GATEWAY') => {
+    try {
+      const res = await sendKbmReminderApi(item.id, {
+        method,
+        senderRole: 'PIKET',
+        senderName: 'Meja Piket',
+      });
+      if (method === 'PERSONAL_LINK' && res.personal_wa_link) {
+        window.open(res.personal_wa_link, '_blank');
+        toast.success('Membuka WhatsApp Personal...');
+      } else {
+        toast.success('Pengingat WhatsApp berhasil dikirim ke guru via Gateway');
+      }
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal mengirim pengingat');
     }
-
-    const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '').replace(/^0/, '62');
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
   };
 
   // 6. Open Status Update Modal
@@ -148,81 +150,61 @@ export const PiketTeacherMonitoring: React.FC = () => {
       return;
     }
 
-    if (!catatanText.trim() && selectedStatus !== 'ALPA') {
-      toast.error('Harap masukkan keterangan/alasan catatan ketidakhadiran.');
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      
-      // Format catatan inval jika ada guru pengganti yang dipilih
-      let finalCatatan = catatanText.trim();
-      if (selectedGuruInvalId) {
-        const invalTeacher = guruList.find((g: any) => g.id === selectedGuruInvalId);
-        const invalTeacherName = invalTeacher?.nama_guru || invalTeacher?.nama_lengkap || 'Guru Inval';
-        finalCatatan = `[INVAL: ${selectedGuruInvalId} | ${invalTeacherName}] ${finalCatatan}`;
-      }
-
       await updateAbsenGuru(selectedSession.id, guruId, {
         status: selectedStatus,
-        catatan: finalCatatan,
+        guru_inval_id: selectedGuruInvalId || undefined,
+        catatan: catatanText || undefined,
       });
 
-      toast.success(`Status presensi guru berhasil diperbarui menjadi ${selectedStatus}`);
-      
+      toast.success(`Status KBM ${selectedSession.kelas_nama || ''} berhasil diperbarui.`);
+      setStatusModalOpen(false);
+      setSelectedSession(null);
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-today-me-class'] });
-      
-      refetchSessions();
-      setStatusModalOpen(false);
-      setSelectedSession(null);
     } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || 'Gagal mengubah status guru.');
+      toast.error(err.response?.data?.message || err.message || 'Gagal memperbarui status KBM.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* HEADER BANNER */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* HEADER BANNER MEJA PIKET */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/30 dark:border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 flex items-center gap-1.5 animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              Jam KBM Aktif
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950">
+              ● JAM KBM AKTIF
             </span>
-            <span className="text-xs text-slate-500 font-semibold">
-              <Clock size={12} className="inline mr-1 text-slate-400" />Hari Ini
+            <span className="text-xs font-bold text-slate-500">
+              🕒 Hari Ini
             </span>
           </div>
           <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
             Guru Belum Masuk Kelas
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
             Daftar guru yang jadwalnya sedang berlangsung namun belum melakukan presensi atau membuka sesi KBM.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetchSessions()}
-            className="rounded-2xl gap-1.5 text-xs font-extrabold border-slate-200 dark:border-slate-800"
+            className="rounded-xl border-amber-500/30 hover:bg-amber-500/10 text-xs font-bold gap-1.5"
           >
-            <RefreshCw size={13} className={sesiLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={cn(sesiLoading && "animate-spin")} />
             <span>Segarkan</span>
           </Button>
-          <div className="px-3.5 py-1.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-black">
+          <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-200 text-xs font-black border border-amber-500/30">
             {pendingTeachers.length} Guru Belum Hadir
-          </div>
+          </span>
         </div>
       </div>
 
@@ -262,13 +244,18 @@ export const PiketTeacherMonitoring: React.FC = () => {
             const isItemReady = item.isReadyToOpen || item.status?.isReadyToOpen;
             const isItemOverdue = item.isOverdue || item.status?.isOverdue || item.is_overdue;
 
+            const reminderMeta = item.reminder_meta || (item as any)._summary?.reminder_meta || null;
+            const diffMinutes = reminderMeta?.last_wa_sent_at 
+              ? Math.floor((Date.now() - new Date(reminderMeta.last_wa_sent_at).getTime()) / 60000) 
+              : null;
+            const isRemindedRecently = diffMinutes !== null && diffMinutes < 10;
+
             return (
               <div
                 key={item.id}
                 className="relative p-4 rounded-3xl bg-white dark:bg-slate-900 border border-amber-500/30 dark:border-amber-500/20 shadow-xs hover:shadow-md transition-all space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-2.5">
-                  {/* Top Bar: Kelas, Status Badge & Jam */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-extrabold text-[11px] font-mono border border-blue-500/20">
@@ -290,12 +277,10 @@ export const PiketTeacherMonitoring: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Mapel Name */}
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-snug line-clamp-1">
                     {item.mapel_nama || 'Mata Pelajaran'}
                   </h4>
 
-                  {/* Guru Info */}
                   <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
                     <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-xs shrink-0">
                       👨‍🏫
@@ -309,22 +294,34 @@ export const PiketTeacherMonitoring: React.FC = () => {
                       </p>
                     </div>
                   </div>
+
+                  {/* Anti-Spam / Cooldown Status Banner */}
+                  {isRemindedRecently && (
+                    <div className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                      <CheckCircle2 size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Diingatkan ({reminderMeta.last_wa_sent_by} • {diffMinutes}m lalu)</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* ACTION BUTTONS */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2">
-                  {/* Kirim WA Button */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => handleSendWa(item)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-black shadow-xs transition-all cursor-pointer"
-                    title="Kirim pesan peringatan WA ke guru"
+                    disabled={isRemindedRecently}
+                    onClick={() => handleSendWa(item, 'GATEWAY')}
+                    className={cn(
+                      "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-black shadow-xs transition-all",
+                      isRemindedRecently
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60 border border-slate-200 dark:border-slate-700"
+                        : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer"
+                    )}
+                    title={isRemindedRecently ? `Sudah diingatkan oleh ${reminderMeta.last_wa_sent_by}` : "Kirim pesan peringatan WA ke guru via Gateway"}
                   >
                     <MessageSquare size={13} />
-                    <span>Kirim WA</span>
+                    <span>{isRemindedRecently ? 'Terkirim ✓' : 'Kirim WA'}</span>
                   </button>
 
-                  {/* Tentukan Status / Inval Button */}
                   <button
                     type="button"
                     onClick={() => handleOpenStatusModal(item)}

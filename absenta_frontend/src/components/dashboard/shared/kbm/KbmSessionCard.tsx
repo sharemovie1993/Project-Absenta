@@ -11,12 +11,16 @@ interface KbmSessionCardProps {
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   formatTime?: (iso?: string) => string;
+  onSendWaReminder?: (item: any, method: 'GATEWAY' | 'PERSONAL_LINK') => void;
+  onChangeStatus?: (item: any) => void;
 }
 
 export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
   session: sesi,
   isExpanded,
   onToggleExpand,
+  onSendWaReminder,
+  onChangeStatus,
 }) => {
   const targetId = sesi.id;
   const [previewPhotoData, setPreviewPhotoData] = React.useState<{
@@ -46,6 +50,8 @@ export const KbmSessionCard = React.memo<KbmSessionCardProps>(({
         item={sesi}
         isExpanded={isExpanded}
         onToggleExpand={onToggleExpand}
+        onSendWaReminder={onSendWaReminder}
+        onChangeStatus={onChangeStatus}
         onViewPhoto={(it) => {
           const pUrl = it.foto_kegiatan || it.foto_masuk || it.session?.foto_kegiatan || it.session?.foto_masuk || it.AbsenGuru?.[0]?.foto_masuk;
           if (pUrl) {

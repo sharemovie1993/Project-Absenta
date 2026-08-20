@@ -629,4 +629,24 @@ export async function getLeaderboardGuru(limit: number = 50, jenisPtk: string = 
   });
 }
 
+export async function sendKbmReminderApi(
+  sesiId: string, 
+  payload: { 
+    method: 'GATEWAY' | 'PERSONAL_LINK'; 
+    senderRole?: string; 
+    senderName?: string; 
+  }
+): Promise<{
+  success: boolean;
+  sesi_id: string;
+  method: string;
+  reminder_meta: any;
+  personal_wa_link?: string;
+  message_text?: string;
+}> {
+  return requestWithFallback('post', `/attendance/sesi-absensi/${sesiId}/send-reminder`, {
+    data: payload
+  });
+}
+
 

@@ -2,6 +2,7 @@ import { sesiService } from '../services/sesi.service';
 import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { getTenantLocalTime, generateSessionsForTenant } from '@/jobs/attendanceAutoSession.job';
+import { sesiReminderService } from '../services/sesi-reminder.service';
 
 export const sesiAbsensiController = {
   async create(request: any, reply: any) {
@@ -398,6 +399,40 @@ export const sesiAbsensiController = {
       return { 
         success: false, 
         message: 'Gagal memproses pembuatan sesi otomatis: ' + (error.message || 'Internal Server Error')
+      };
+    }
+  },
+
+  async sendReminder(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id: sesiId } = request.params;
+      const body = request.body || {};
+
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id not found' };
+      }
+
+      const method = body.method === 'PERSONAL_LINK' ? 'PERSONAL_LINK' : 'GATEWAY';
+      const senderRole = body.senderRole || request.user?.role || 'PIKET';
+      const senderName = body.senderName || request.user?.nama || request.user?.name || undefined;
+
+      const result = await sesiReminderService.sendReminder(tenantId, sesiId, {
+        method,
+        senderRole,
+        senderName
+      });
+
+      reply.status(200);
+      return result;
+    } catch (error: any) {
+      console.error('[sendReminder] error:', error);
+      const isCooldown = error.message?.includes('Pengingat baru saja dikirim') || error.message?.includes('menit');
+      reply.status(isCooldown ? 429 : 400);
+      return {
+        success: false,
+        message: error.message || 'Gagal mengirim pengingat WhatsApp'
       };
     }
   },

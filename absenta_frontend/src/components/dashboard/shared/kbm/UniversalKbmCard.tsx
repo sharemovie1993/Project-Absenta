@@ -17,7 +17,11 @@ import {
   Trash, 
   Eye, 
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Send,
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -47,6 +51,8 @@ export interface UniversalKbmCardProps {
   onDelete?: () => void;
   
   onViewPhoto?: (item: any) => void;
+  onSendWaReminder?: (item: any, method: 'GATEWAY' | 'PERSONAL_LINK') => void;
+  onChangeStatus?: (item: any) => void;
   
   // Siswa Specific Props
   studentStatus?: string;
@@ -75,6 +81,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   onFinish,
   onDelete,
   onViewPhoto,
+  onSendWaReminder,
+  onChangeStatus,
   studentStatus,
   studentWaktuTap,
   studentMetode,
@@ -141,6 +149,15 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const teacherMeta: TeacherStatusMeta = getTeacherStatusMeta(rawTeacherStatus);
   const isTeacherPresent = teacherMeta.isHadir || isLive || rawTeacherStatus === 'HADIR' || rawTeacherStatus === 'TEPAT_WAKTU' || rawTeacherStatus === 'TERLAMBAT';
+
+  // 🛡️ Resolusi Status Pengingat WA & Cooldown Anti-Spam
+  const reminderMeta = item.reminder_meta || item._summary?.reminder_meta || item.session?.reminder_meta || null;
+  const reminderMinutesAgo = React.useMemo(() => {
+    if (!reminderMeta?.last_wa_sent_at) return null;
+    const diff = Math.floor((Date.now() - new Date(reminderMeta.last_wa_sent_at).getTime()) / 60000);
+    return Math.max(0, diff);
+  }, [reminderMeta]);
+  const isRemindedRecently = reminderMinutesAgo !== null && reminderMinutesAgo < 10;
 
   // 2. Resolve Text Fields with robust fallbacks
   const mapelNama = item.mapel_nama 
@@ -596,10 +613,11 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           </div>
         )}
 
-        {/* 4. POV MONITORING: Status Jurnal di Kiri & Rincian Hadir Siswa di Kanan */}
+        {/* 4. POV MONITORING: Status Jurnal, Quick Actions Guru Belum Masuk, & Hadir Siswa */}
         {mode === 'MONITORING' && (
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {/* Bukti KBM Button */}
               {fotoKegiatanUrl && onViewPhoto && (
                 <Button
                   type="button"
@@ -616,6 +634,68 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <span>Bukti KBM</span>
                 </Button>
               )}
+
+              {/* Quick Actions untuk Guru Belum Masuk Kelas */}
+              {isReadyToOpen && !isLive && !isFinished && !isOverdue && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {isRemindedRecently ? (
+                    <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-amber-600 dark:text-amber-400" />
+                      <span>Diingatkan ({reminderMeta.last_wa_sent_by} • {reminderMinutesAgo}m lalu)</span>
+                    </span>
+                  ) : (
+                    <>
+                      {onSendWaReminder && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSendWaReminder(item, 'GATEWAY');
+                          }}
+                          title="Kirim pengingat WhatsApp otomatis via WA Gateway Sekolah"
+                          className="h-7 px-2.5 rounded-lg text-[11px] font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 cursor-pointer border-none shadow-xs"
+                        >
+                          <MessageSquare size={11} />
+                          <span>Kirim WA</span>
+                        </Button>
+                      )}
+                      {onSendWaReminder && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSendWaReminder(item, 'PERSONAL_LINK');
+                          }}
+                          title="Buka WhatsApp Personal untuk chat langsung ke guru"
+                          className="h-7 px-2.5 rounded-lg text-[11px] font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 flex items-center gap-1 cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-xs"
+                        >
+                          <Send size={11} />
+                          <span>Chat WA</span>
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {onChangeStatus && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeStatus(item);
+                      }}
+                      title="Ubah status guru atau tugaskan Guru Inval / Pengganti"
+                      className="h-7 px-2.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 cursor-pointer border-none shadow-xs"
+                    >
+                      <User size={11} />
+                      <span>Ubah Status</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {hasJournal && (
                 <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                   <BookOpen size={11} /> Jurnal Terisi

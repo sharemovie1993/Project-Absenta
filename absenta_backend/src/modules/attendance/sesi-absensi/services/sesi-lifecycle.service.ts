@@ -5,6 +5,7 @@ import { emitDomainEvent } from '../../../../infra/event-bus';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
 import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
 import { parseSafeDate } from './sesi-absensi.schema';
+import { sesiReminderService } from './sesi-reminder.service';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -943,8 +944,24 @@ export class SesiLifecycleService {
       }
     }
 
-    const total = processedData.length;
-    const paginatedData = processedData.slice(skip, skip + take);
+    // ⚡ Batch Ambil Status WA Reminder dari Redis (Zero DB query overhead)
+    const processedSessionIds = processedData.map(it => it.id).filter(Boolean);
+    const reminderMetaMap = await sesiReminderService.getBatchReminderMeta(tenantId, processedSessionIds);
+
+    const withReminderData = processedData.map(item => {
+      const reminder = reminderMetaMap.get(item.id) || null;
+      return {
+        ...item,
+        reminder_meta: reminder,
+        _summary: {
+          ...item._summary,
+          reminder_meta: reminder
+        }
+      };
+    });
+
+    const total = withReminderData.length;
+    const paginatedData = withReminderData.slice(skip, skip + take);
 
     return {
       total,

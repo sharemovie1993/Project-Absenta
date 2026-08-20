@@ -158,4 +158,15 @@ export async function sesiAbsensiRoutes(fastify: any) {
     ],
     handler: sesiAbsensiController.generateFromTemplate,
   });
+
+  // 10. Send KBM Reminder to Teacher (Hybrid WA Gateway & Personal Link)
+  fastify.post('/:id/send-reminder', {
+    preHandler: [
+        requireMultiSesiMode,
+        requireCapability(['attendance.sessions.view.list', 'attendance.piket.manage', 'academic.monitoring.view'], { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ],
+    handler: sesiAbsensiController.sendReminder,
+  });
 }
