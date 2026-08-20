@@ -135,10 +135,17 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
 
   // 3. Save Mutation
   const saveMutation = useMutation({
-    mutationFn: (dataToSave: PertemuanItem[]) => saveReaderContent(perangkatId, dataToSave),
+    mutationFn: (dataToSave: PertemuanItem[]) => saveReaderContent(perangkatId, dataToSave, {
+      judul: perangkatJudul,
+      mapel_nama: mapelNama,
+      fase,
+      tingkat
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bahanAjarReader', perangkatId] });
-      queryClient.invalidateQueries({ queryKey: ['bahanAjarReaderStudio', perangkatId] });
+      queryClient.invalidateQueries({ queryKey: ['bahanAjarReader'] });
+      queryClient.invalidateQueries({ queryKey: ['bahanAjarReaderStudio'] });
+      queryClient.invalidateQueries({ queryKey: ['myPerangkatAjarKbm'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
       toast.success('💾 Seluruh Pertemuan Berhasil Disimpan ke Asisten Mengajar!', { icon: '✨' });
     },
     onError: (err: any) => {

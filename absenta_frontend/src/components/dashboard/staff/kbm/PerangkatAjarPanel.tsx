@@ -265,6 +265,23 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
             <p className="text-xs text-slate-300 leading-relaxed font-medium">
               Pastikan seluruh bab pembelajaran telah memiliki modul terdaftar agar panduan mengajar, materi slide proyektor, dan jurnal KBM otomatis aktif di ruang kelas.
             </p>
+
+            <div className="pt-1 flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => handleOpenStudio({
+                  id: 'new',
+                  judul: `Modul Ajar: ${activeSubjectName}`,
+                  mapelNama: activeSubjectName,
+                  fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
+                  tingkat: selectedFaseFilter === 'F' ? 11 : 10
+                })}
+                className="h-9 px-4 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs shadow-md shadow-indigo-950/40 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              >
+                <Sparkles size={14} className="text-amber-300 fill-amber-300" />
+                <span>+ Susun Modul Baru di Studio</span>
+              </Button>
+            </div>
           </div>
 
           {/* KPI Widget Cards */}
@@ -462,11 +479,17 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => navigate('/kurikulum/perangkat')}
-                  className="h-9 px-4 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                  onClick={() => handleOpenStudio({
+                    id: 'new',
+                    judul: `Modul Ajar: ${activeSubjectName}`,
+                    mapelNama: activeSubjectName,
+                    fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
+                    tingkat: selectedFaseFilter === 'F' ? 11 : 10
+                  })}
+                  className="h-10 px-5 rounded-2xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
-                  <Plus size={14} className="mr-1" />
-                  + Susun Modul Baru di Studio
+                  <Sparkles size={15} />
+                  <span>+ Buka Studio Modul Ajar</span>
                 </Button>
               </div>
             </div>
@@ -709,11 +732,17 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
             <Button
               type="button"
               size="sm"
-              onClick={() => navigate('/kurikulum/perangkat')}
-              className="text-xs font-bold bg-indigo-600 text-white"
+              onClick={() => handleOpenStudio({
+                id: 'new',
+                judul: `Modul Ajar: ${activeSubjectName}`,
+                mapelNama: activeSubjectName,
+                fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
+                tingkat: selectedFaseFilter === 'F' ? 11 : 10
+              })}
+              className="text-xs font-bold bg-indigo-600 text-white flex items-center gap-1 cursor-pointer"
             >
-              <Plus size={13} className="mr-1" />
-              Kelola Repositori Lengkap
+              <Sparkles size={13} />
+              <span>+ Susun Modul Baru di Studio</span>
             </Button>
           </div>
 

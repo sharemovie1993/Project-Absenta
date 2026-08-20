@@ -104,12 +104,21 @@ export const getReaderContent = async (
  */
 export const saveReaderContent = async (
   perangkatId: string,
-  kontenJson: PertemuanItem[]
+  kontenJson: PertemuanItem[],
+  metadata?: {
+    judul?: string;
+    mapel_nama?: string;
+    mapel_id?: string;
+    fase?: string;
+    tingkat?: number;
+    guru_id?: string;
+  }
 ): Promise<any> => {
   const response = await axiosInstance.post(`/kurikulum/bahan-ajar/reader/${perangkatId}`, {
-    konten_json: kontenJson
+    konten_json: kontenJson,
+    metadata
   });
-  return response.data;
+  return response.data?.data;
 };
 
 /**
