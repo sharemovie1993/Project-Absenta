@@ -1,0 +1,558 @@
+
+
+MODUL AJAR DEEP LEARNING
+
+MATA PELAJARAN : BAHASA INDONESIA
+
+BAB 1 :  MENGUNGKAP FAKTA ALAM SECARA OBJEKTIF
+
+
+
+
+
+
+
+A.	Identitas Modul
+
+Nama Sekolah	:	.....................................................................................
+
+Nama Penyusun	:	.....................................................................................
+
+Mata Pelajaran	:	Bahasa Indonesia
+
+Kelas / Fase /Semester	: 	X/ E / Ganjil
+
+Alokasi Waktu 	:	18 JP (6 kali pertemuan @3JP)
+
+Tahun Pelajaran	:	........................
+
+
+
+B. 	IDENTIFIKASI KESIAPAN PESERTA DIDIK
+
+Sebelum memulai pembelajaran, identifikasi kesiapan peserta didik dapat dilakukan sebagai berikut:
+
+Pengetahuan Awal: Peserta didik telah mempelajari teks deskripsi di SMP, sehingga memiliki pemahaman dasar tentang cara mendeskripsikan suatu objek. Guru akan melakukan asesmen awal untuk menggali pengalaman belajar dan pemahaman peserta didik mengenai teks deskriptif.
+
+Minat: Peserta didik menunjukkan minat dalam mengamati fenomena alam atau objek di lingkungan sekitar. Hal ini dapat dilihat dari respons mereka terhadap pertanyaan pemantik seperti "Fenomena alam apa yang paling menarik bagi Anda saat ini?". Guru memberikan kebebasan memilih objek observasi yang diminati untuk menumbuhkan rasa ingin tahu dan kegembiraan dalam belajar.
+
+Latar Belakang: Peserta didik berasal dari latar belakang umum dan tidak memiliki kesulitan khusus dalam mencerna dan memahami materi ajar.
+
+Kebutuhan Belajar:
+
+Auditori: Kebutuhan belajar auditori akan dipenuhi dengan menyediakan teks LHO dalam bentuk audio/video dan guru memodelkan cara membaca nyaring yang baik.
+
+Visual: Kebutuhan belajar visual akan dipenuhi dengan menyediakan teks LHO tertulis, menampilkan gambar/video relevan, serta penggunaan papan tulis/whiteboard, proyektor, dan layar.
+
+Kinestetik: Kebutuhan belajar kinestetik akan dipenuhi melalui kegiatan observasi langsung di lingkungan sekitar sekolah atau objek lain yang relevan dan aman.
+
+
+
+C. 	KARAKTERISTIK MATERI PELAJARAN
+
+Jenis Pengetahuan yang Akan Dicapai:
+
+Konseptual: Peserta didik akan memahami pengertian, fungsi, dan struktur laporan hasil observasi (LHO), serta perbedaan antara fakta dan opini. Mereka juga akan memahami teks eksplanasi sebagai sumber pendukung LHO dan unsur kebahasaan LHO.
+
+Prosedural: Peserta didik akan menguasai langkah-langkah menulis teks LHO secara sistematis dan objektif, serta proses pengalihwahanaan LHO ke dalam format kreatif. Mereka juga akan mempelajari teknik presentasi LHO multimodal yang efektif.
+
+Relevansi dengan Kehidupan Nyata Peserta Didik: Materi ini relevan karena peserta didik diajak mengamati lingkungan sekitar sebagai bentuk rasa syukur atas ciptaan Tuhan dan untuk belajar merawat alam. Mereka akan belajar menyajikan fakta berdasarkan hasil observasi, yang merupakan keterampilan penting dalam berbagai aspek kehidupan untuk menyampaikan informasi secara logis dan etis.
+
+Tingkat Kesulitan: Materi disajikan secara bertahap, dimulai dari pengenalan konsep dasar (fakta dan opini, struktur LHO) hingga ke tahapan penulisan dan presentasi yang lebih kompleks. Diferensiasi konten memungkinkan penyediaan teks LHO dan eksplanasi dengan tingkat kesulitan bervariasi.
+
+Struktur Materi: Materi tersusun secara sistematis dari pengenalan (Pengertian, Fungsi, Struktur LHO, Fakta & Opini), dilanjutkan dengan pengayaan informasi (Teks Eksplanasi & Unsur Kebahasaan), kemudian implementasi (Penulisan LHO & Pengalihwahanaan), dan diakhiri dengan penyajian (Presentasi LHO Multimodal).
+
+Integrasi Nilai dan Karakter:
+
+Keimanan dan Ketakwaan terhadap Tuhan Yang Maha Esa, dan Berakhlak Mulia: Dengan mengamati lingkungan sekitar dan membangun rasa syukur atas ciptaan Tuhan, serta mempelajari dan merawat alam.
+
+Bernalar Kritis: Membandingkan informasi, merumuskan gagasan utama, mengevaluasi teks, dan menilai akurasi data.
+
+Kreativitas: Mengalihwahanakan laporan hasil observasi ke dalam media yang menarik dan berkreasi seoptimal mungkin.
+
+Kolaborasi/Bergotong Royong: Bekerja dalam kelompok untuk mendiskusikan tugas, membagi peran, dan berkolaborasi.
+
+Kemandirian: Melakukan tugas secara individual sebelum berpasangan dan berdiskusi.
+
+Kepedulian: Menumbuhkan karakter kepedulian peserta didik terhadap alam sebagai implementasi akhlak kepada alam.
+
+
+
+D. 	DIMENSI LULUSAN PEMBELAJARAN
+
+Dimensi profil lulusan yang akan dicapai dalam pembelajaran ini adalah:
+
+Keimanan dan Ketakwaan terhadap Tuhan Yang Maha Esa, dan Berakhlak Mulia: Terutama akhlak kepada alam, yaitu dengan mengamati lingkungan sekitar dan membangun rasa syukur atas ciptaan Tuhan, serta mempelajari dan merawat alam yang telah Tuhan ciptakan.
+
+Bernalar Kritis: Peserta didik membandingkan informasi dari menyimak laporan hasil observasi, merumuskan gagasan utama, mengevaluasi teks laporan hasil observasi, dan menggunakan sumber lain untuk menilai akurasi data.
+
+Kreativitas: Peserta didik diajak mengalihwahanakan laporan hasil observasi ke dalam media yang menarik dan berkreasi seoptimal mungkin dalam format kreatif.
+
+Kolaborasi/Bergotong Royong: Peserta didik bekerja dalam kelompok untuk mendiskusikan tugas, membagi peran, dan berkolaborasi dengan siapa pun.
+
+Kemandirian: Peserta didik secara individual dapat melakukan tugas yang diberikan sebelum berpasangan dan berdiskusi.
+
+Kesehatan: Bagaimana pola makan sehat dan bergizi berkontribusi pada fokus dan daya tahan saat melakukan observasi lapangan yang membutuhkan konsentrasi tinggi. Serta, kualitas tidur yang baik membantu menjaga kejernihan pikiran dan ketajaman indra dalam mengidentifikasi fakta-fakta alam secara objektif. Aktivitas fisik secara teratur dapat meningkatkan kepekaan indra dan kemampuan observasi di luar ruangan.
+
+Komunikasi: Tercermin dalam kemampuan peserta didik untuk mempresentasikan laporan hasil observasi secara logis, runtut, kritis, dan kreatif, serta menyesuaikan intonasi dan metode presentasi dengan perhatian pendengarnya.
+
+
+
+
+
+DESAIN PEMBELAJARAN
+
+
+
+
+
+A.	Capaian Pembelajaran (CP) Nomor : 32 Tahun 2024
+
+Pada akhir fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi informasi dari berbagai tipe teks tentang topik yang beragam. Peserta didik mampu menyintesis gagasan dan pendapat dari berbagai sumber. Peserta didik mampu berpartisipasi aktif dalam diskusi dan debat. Peserta didik mampu menulis berbagai teks untuk menyampaikan pendapat dan mempresentasikan serta menanggapi informasi nonfiksi dan fiksi secara kritis dan etis.
+
+Capaian Pembelajaran setiap elemen mata pelajaran Bahasa Indonesia adalah sebagai berikut.
+
+Elemen
+
+Capaian Pembelajaran
+
+Menyimak
+
+Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks dalam bentuk monolog, dialog, dan gelar wicara.
+
+Membaca dan Memirsa
+
+Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari berbagai tipe teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat. Peserta didik mampu menginterpretasi informasi untuk mengungkapkan gagasan dan perasaan simpati, peduli, empati dan/atau pendapat pro/kontra dari teks visual dan audiovisual secara kreatif. Peserta didik mampu menggunakan sumber lain untuk menilai akurasi dan kualitas data serta membandingkan isi teks.
+
+Berbicara dan Mempresentasikan
+
+Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif. Peserta didik mampu mengkreasi ungkapan sesuai dengan norma kesopanan dalam berkomunikasi. Peserta didik mampu berkontribusi lebih aktif dalam diskusi dengan mempersiapkan materi diskusi, melaksanakan tugas dan fungsi dalam diskusi. Peserta didik mampu mengungkapkan kepedulian secara kreatif dalam bentuk teks fiksi dan nonfiksi multimodal.
+
+Menulis
+
+Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi. Peserta didik mampu menulis teks eksposisi hasil penelitian dan teks fungsional dunia kerja. Peserta didik mampu mengalihwahanakan satu teks ke teks lainnya. Peserta didik mampu menerbitkan hasil tulisan di media cetak, elektronik, dan/atau digital.
+
+
+
+b. 	LINTAS DISIPLIN ILMU YANG RELEVAN
+
+Ilmu Pengetahuan Alam (IPA): Melalui kegiatan observasi fenomena alam, identifikasi ciri-ciri fisik, perilaku flora dan fauna, serta pemahaman tentang siklus hidup dan populasi makhluk hidup. Penggunaan teks eksplanasi yang menjelaskan proses terjadinya fenomena alam juga berkaitan erat dengan IPA.
+
+Sosiologi/Ilmu Sosial: Observasi juga dapat dilakukan pada fenomena sosial di lingkungan sekitar, serta bagaimana mengumpulkan berbagai perspektif dan informasi tentang suatu fenomena alam saat berinteraksi dengan masyarakat.
+
+Seni/Desain Grafis/Multimedia: Dalam kegiatan pengalihwahanaan laporan hasil observasi ke dalam format kreatif seperti poster infografis, video dokumenter singkat, komik ilmiah, atau presentasi interaktif.
+
+
+
+c. 	TUJUAN PEMBELAJARAN
+
+Pertemuan 1: Pengertian, Fungsi, dan Struktur Laporan Hasil Observasi (3 JP)
+
+Menyimak:
+
+Membandingkan informasi berupa gagasan yang akurat dari menyimak laporan hasil observasi dalam bentuk monolog.
+
+Merumuskan gagasan utama berdasarkan teks monolog laporan hasil observasi yang disimak.
+
+Pertemuan 2: Teks Eksplanasi dan Unsur Kebahasaan Teks Laporan Hasil Observasi (3 JP)
+
+Membaca dan Memirsa:
+
+Mengevaluasi teks laporan hasil observasi yang dibaca untuk menemukan informasi, baik tersurat maupun tersirat, secara kritis.
+
+Menggunakan sumber lain berupa teks eksplanasi untuk menilai akurasi dan kualitas data dalam teks laporan hasil observasi serta membandingkan isi teks.
+
+Memahami informasi dalam teks melalui identifikasi kata-kata baru yang digunakan dalam konteks topik sains/sosial tertentu dalam teks laporan hasil observasi.
+
+Menulis:
+
+Menerapkan kaidah-kaidah kebahasaan dalam menyusun laporan hasil observasi.
+
+Pertemuan 3-5: Penulisan Teks Laporan Hasil Observasi dan Pengalihwahanaan (9 JP)
+
+Menulis:
+
+Menulis gagasan dalam bentuk laporan hasil observasi secara logis dan etis.
+
+Mengubah laporan hasil observasi ke dalam format kreatif yang dapat diterbitkan di media cetak maupun elektronik.
+
+Pertemuan 6: Presentasi Laporan Hasil Observasi Multimodal (3 JP)
+
+Berbicara dan Mempresentasikan:
+
+Mempresentasikan laporan hasil observasi multimodal.
+
+Menyesuaikan intonasi dan metode presentasi dengan perhatian atau minat pendengarnya saat menyajikan laporan hasil observasi.
+
+
+
+d. 	TOPIK PEMBELAJARAN KONTEKSTUAL
+
+Pengertian, Fungsi, dan Struktur Laporan Hasil Observasi: Memahami dasar-dasar LHO dan bagaimana membedakan fakta dan opini dalam pengamatan.
+
+Teks Eksplanasi sebagai Sumber Pendukung LHO dan Unsur Kebahasaan LHO: Memperdalam akurasi data LHO dengan bantuan teks eksplanasi dan menggunakan kaidah kebahasaan yang tepat.
+
+Penulisan Teks Laporan Hasil Observasi: Menerapkan langkah-langkah sistematis dalam menyusun LHO berdasarkan observasi langsung.
+
+Pengalihwahanaan Laporan Hasil Observasi ke Format Kreatif: Mengembangkan hasil LHO menjadi produk multimodal yang menarik dan informatif.
+
+Presentasi Laporan Hasil Observasi Multimodal: Menyajikan LHO secara efektif dan menarik kepada audiens.
+
+
+
+E.	Kerangka Pembelajaran
+
+PRAKTIK PEDAGOGIK
+
+Model Pembelajaran: Keterampilan proses (Process Skill)
+
+Pendekatan: Deep Learning (Mindful, Meaningful, Joyful Learning)
+
+Mindful Learning: Peserta didik belajar untuk fokus dan memperhatikan detail saat mengamati fenomena alam, membedakan fakta dan opini secara cermat, serta menyimak informasi dengan saksama. Hal ini membantu mereka dalam menyusun laporan observasi yang akurat dan objektif.
+
+Meaningful Learning: Pembelajaran menjadi bermakna karena peserta didik secara aktif terlibat dalam proses observasi langsung, mengaitkannya dengan pengetahuan sebelumnya, dan memahami relevansinya dalam kehidupan sehari-hari (misalnya, peduli terhadap alam). Mereka juga belajar bagaimana menyampaikan informasi secara logis dan etis.
+
+Joyful Learning: Pembelajaran dirancang menyenangkan melalui kegiatan kolaboratif, eksplorasi lingkungan, penggunaan media yang menarik (video, aplikasi interaktif), kesempatan untuk berkreasi, serta presentasi yang interaktif. Peserta didik diberi kebebasan memilih objek observasi yang diminati.
+
+Metode Pembelajaran: Eksplorasi, ceramah, tanya jawab, diskusi, percobaan, demonstrasi, dan penugasan.
+
+Strategi Pembelajaran Berdiferensiasi:
+
+Diferensiasi Konten: Menyediakan teks LHO dalam bentuk audio/video dan teks tertulis; menyediakan beragam teks LHO dan eksplanasi dengan tingkat kesulitan bervariasi; contoh-contoh LHO dan proyek kreatif bervariasi.
+
+Diferensiasi Proses: Mengatur anggota kelompok sesuai karakteristik atau kesepakatan; menggunakan strategi jigsaw atau think-pair-share untuk identifikasi struktur; penggunaan strategi SQ3R (Survey, Question, Read, Recite/Recall, Review) untuk membaca pemahaman; pembelajaran berbasis proyek; pendampingan individual atau kelompok; pemberian umpan balik berkelanjutan; memberikan panduan spesifik untuk intonasi dan gestur; memberikan kesempatan latihan.
+
+Diferensiasi Produk: Peserta didik dapat menyajikan hasil identifikasi dalam bentuk peta pikiran sederhana, daftar poin, atau presentasi singkat di kelompok; membuat peta konsep perbandingan teks, kamus mini istilah baru, atau ringkasan kaidah kebahasaan; kebebasan memilih media dan format penyajian hasil observasi yang kreatif; presentasi dalam berbagai format (lisan, visual, digital) sesuai minat dan gaya belajar.
+
+
+
+KEMITRAAN PEMBELAJARAN
+
+Lingkungan Sekolah: Pemanfaatan lingkungan sekitar sekolah (taman, kebun, lapangan, kantin) sebagai media observasi.
+
+Lingkungan Luar Sekolah/Masyarakat: Apabila observasi dilakukan di luar sekolah, guru akan memfasilitasi perizinan. Mengundang pihak lain (orang tua/guru mata pelajaran lain) untuk presentasi.
+
+Mitra Digital: KBBI daring dan tesaurus daring untuk mencari informasi dan memahami kata baru. Aplikasi/platform digital seperti Google Slides, Canva, Kahoot!, Quizizz untuk kuis interaktif, games, atau media presentasi.
+
+
+
+LINGKUNGAN BELAJAR
+
+Lingkungan pembelajaran yang mengintegrasikan antara ruang fisik, ruang virtual, dan budaya belajar:
+
+Ruang Fisik:
+
+Ruang kelas yang nyaman dan kondusif untuk diskusi kelompok dan presentasi.
+
+Papan tulis/whiteboard dan spidol untuk menuliskan poin-poin penting dan hasil diskusi.
+
+Media observasi seperti lingkungan sekitar sekolah (taman, kebun, lapangan) atau objek lain yang relevan dan aman.
+
+Kertas catatan kecil/sticky notes untuk umpan balik dan refleksi.
+
+Ruang Virtual:
+
+Akses internet untuk mencari informasi, mengakses KBBI dan tesaurus daring, serta membuat produk digital.
+
+Aplikasi/Platform Digital (opsional): Google Slides, Canva, Kahoot!, Quizizz untuk kuis interaktif, games, atau media presentasi.
+
+Media cetak, elektronik, dan/atau digital untuk penerbitan hasil tulisan.
+
+Budaya Belajar:
+
+Mendorong rasa syukur atas ciptaan Tuhan melalui pengamatan alam.
+
+Mengembangkan kemampuan bernalar kritis dalam membandingkan informasi dan mengevaluasi data.
+
+Meningkatkan kreativitas dalam mengalihwahanakan laporan hasil observasi.
+
+Membiasakan kolaborasi dan gotong royong dalam kerja kelompok.
+
+Menumbuhkan kemandirian dalam mengerjakan tugas.
+
+Membangun rasa kepedulian terhadap alam.
+
+Mendorong kebiasaan belajar dan menggali fakta-fakta objektif.
+
+
+
+PEMANFAATAN DIGITAL
+
+Perpustakaan Digital/Sumber Daring: Komputer/Laptop dan akses internet untuk mencari informasi, mengakses KBBI dan tesaurus daring, serta membuat produk digital. Jurnal ilmiah atau artikel populer, serta situs web kredibel terkait sains atau alam.
+
+Forum Diskusi Daring: (Opsional, dapat diintegrasikan melalui Google Classroom atau platform lain) untuk diskusi kelompok atau pengiriman umpan balik.
+
+Penilaian Daring: Kuis/Games singkat via aplikasi (Kahoot!/Quizizz) untuk mengidentifikasi pengetahuan awal atau asesmen formatif.
+
+Media Presentasi Digital: Google Slides, Canva untuk presentasi kreatif.
+
+Media Publikasi Digital: Penerbitan hasil tulisan di media elektronik dan/atau digital.
+
+
+
+
+
+Pengalaman Belajar
+
+
+
+
+
+A.	Langkah-langkah Pembelajaran
+
+Pertemuan 1 (3 JP: 135 MENIT)
+
+Topik: Pengertian, Fungsi, dan Struktur Laporan Hasil Observasi
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Guru membuka pelajaran dengan salam, doa, dan mengecek kehadiran.
+
+Apersepsi (Mindful Learning): Guru menampilkan gambar Observatorium Bosscha atau gambar lain yang relevan dengan observasi alam. Guru bertanya: "Apa yang kalian ketahui tentang tempat ini/gambar ini?" "Pernahkah kalian mengunjungi tempat menarik dan mengamati hal-hal di sana?".
+
+Pertanyaan Pemantik: Guru mengaitkan pengamatan peserta didik dengan konsep "fakta" dan "opini" dan mengajukan pertanyaan pemantik: "Pernahkah kalian mengamati sesuatu di lingkungan sekitar dengan sangat detail, seolah-olah kalian adalah seorang ilmuwan yang sedang meneliti?" "Apa yang kalian amati?" "Menurut kalian, apa perbedaan antara 'fakta' dan 'opini'? Bisakah kalian berikan contohnya dalam kehidupan sehari-hari atau saat mengamati alam?".
+
+Motivasi (Meaningful Learning): Guru menyampaikan bahwa mengamati lingkungan sekitar adalah bentuk rasa syukur kepada Tuhan Yang Maha Esa atas ciptaan-Nya, sekaligus cara untuk belajar dan merawat alam.
+
+Penyampaian Tujuan Pembelajaran: Guru menyampaikan tujuan pembelajaran hari ini (membandingkan informasi dan merumuskan gagasan utama laporan hasil observasi).
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Asesmen Diagnostik (Mindful Learning): Guru melakukan asesmen awal dengan menggali pengalaman belajar dan pemahaman peserta didik mengenai teks deskriptif (materi prasyarat). Contoh: "Apakah kalian pernah mempelajari teks deskripsi di SMP? Apa yang kalian ketahui tentang teks deskripsi?". Guru mencatat respons peserta didik untuk memetakan kemampuan awal.
+
+Eksplorasi Konsep (Mindful Learning): Peserta didik diajak menganalisis hal-hal yang mereka temukan di tempat menarik (dari apersepsi) dan mengidentifikasi apakah termasuk fakta atau opini. (LKPD 1: Identifikasi Fakta dan Opini dapat digunakan di sini).
+
+Diskusi Kelompok (Kolaborasi & Bernalar Kritis): Guru meminta peserta didik duduk berkelompok (diferensiasi proses: guru dapat mengatur anggota kelompok sesuai karakteristik atau kesepakatan). Setiap kelompok membagi peran dan menentukan gagasan/pernyataan pada tabel prediksi sebelum menyimak.
+
+Menyimak Teks LHO (Mindful Learning): Guru memodelkan cara membaca nyaring yang baik. Setiap anggota kelompok bergantian membacakan dan menyimak teks laporan hasil observasi (LHO). Guru juga dapat menampilkan video yang relevan dengan pembelajaran. (Diferensiasi konten: Menyediakan teks LHO dalam bentuk audio/video atau teks tertulis).
+
+Membandingkan Informasi (Bernalar Kritis): Guru memandu peserta didik membandingkan gagasan/pernyataan yang dipilih dengan informasi pada teks secara kritis, memastikan mereka menyampaikan alasan yang tepat.
+
+Menentukan Gagasan Utama dan Struktur (Bernalar Kritis): Peserta didik menyimak teks LHO secara kritis untuk menentukan gagasan utamanya. Selanjutnya, mereka mendiskusikan struktur teks LHO berdasarkan identifikasi gagasan utama (pernyataan umum, deskripsi bagian, manfaat/simpulan). Guru memberikan penguatan. (LKPD 2: Analisis Struktur Teks LHO dapat digunakan di sini).
+
+Pembelajaran Berdiferensiasi:
+
+Proses: Kelompok heterogen untuk diskusi; menggunakan strategi jigsaw atau think-pair-share untuk tugas identifikasi struktur.
+
+Produk: Peserta didik dapat menyajikan hasil identifikasi dalam bentuk peta pikiran sederhana, daftar poin, atau presentasi singkat di kelompok.
+
+
+
+KEGIATAN PENUTUP (15 MENIT)
+
+Refleksi (Mindful Learning): Peserta didik diajak melakukan refleksi terhadap pembelajaran yang telah dilakukan: "Apa yang kalian pelajari hari ini?" "Bagaimana perasaan kalian saat belajar tentang fakta dan opini?" "Apa yang paling berkesan?".
+
+Rangkuman: Guru bersama peserta didik merangkum materi yang telah dipelajari.
+
+Tindak Lanjut: Guru memberikan tugas rumah untuk mencari tahu apa itu teks eksplanasi sebagai persiapan pertemuan berikutnya.
+
+Penutup: Guru menutup pelajaran dengan salam dan doa.
+
+
+
+Pertemuan 2 (3 JP: 135 MENIT)
+
+Topik: Teks Eksplanasi dan Unsur Kebahasaan Teks Laporan Hasil Observasi
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Mengulas singkat materi sebelumnya (fakta, opini, struktur LHO).
+
+Pertanyaan Pemantik: "Bagaimana teks eksplanasi dapat membantu kita memahami fakta alam lebih dalam?" "Mengapa penting menggunakan bahasa yang tepat saat menyampaikan laporan observasi?".
+
+Penyampaian Tujuan Pembelajaran: Mengevaluasi teks LHO, menggunakan teks eksplanasi, memahami kata baru, dan menggunakan kaidah kebahasaan.
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Membaca Teks (Mindful Learning): Guru memandu peserta didik melakukan prediksi dan membuat pertanyaan pada kegiatan sebelum membaca teks LHO dan teks eksplanasi yang relevan (misalnya, teks "Kunang-Kunang yang Perlahan Menghilang"). (Diferensiasi proses: Penggunaan strategi SQ3R).
+
+Mengevaluasi Informasi (Bernalar Kritis): Peserta didik membaca teks dengan saksama untuk menjawab pertanyaan yang telah dibuat dan mengevaluasi apakah informasi sudah memadai atau perlu ditambahkan.
+
+Membandingkan Teks (Bernalar Kritis): Guru mendampingi peserta didik mengevaluasi dan membandingkan informasi yang terdapat pada teks LHO dan teks eksplanasi (diferensiasi produk: dapat menggunakan tabel atau diagram Venn).
+
+Menumbuhkan Kepedulian (Meaningful Learning): Diskusi tentang fenomena alam lain yang berkaitan dengan teks, menumbuhkan karakter kepedulian peserta didik terhadap alam sebagai implementasi akhlak kepada alam.
+
+Identifikasi Kata Baru (Mindful Learning): Guru mengenalkan penggunaan kamus (KBBI dan tesaurus daring) untuk memahami kata-kata baru dalam teks. (Diferensiasi produk: membuat kamus mini).
+
+Kaidah Kebahasaan (Mindful Learning & Meaningful Learning): Guru memandu peserta didik mempelajari kaidah-kaidah bahasa yang digunakan dalam menyusun laporan hasil observasi (dapat menggunakan metode jigsaw atau penugasan eksplorasi mandiri sebelumnya). Diskusi tentang penulisan kutipan tidak langsung dan sumber rujukan.
+
+Pembelajaran Berdiferensiasi:
+
+Konten: Menyediakan beragam teks LHO dan eksplanasi dengan tingkat kesulitan bervariasi.
+
+Proses: Penggunaan strategi SQ3R (Survey, Question, Read, Recite/Recall, Review) untuk membaca pemahaman.
+
+Produk: Membuat peta konsep perbandingan teks, kamus mini istilah baru, atau ringkasan kaidah kebahasaan.
+
+
+
+KEGIATAN PENUTUP (15 MENIT)
+
+Refleksi: Guru dan peserta didik merefleksikan pemahaman tentang akurasi data dan pentingnya kaidah kebahasaan.
+
+Rangkuman: Merangkum materi.
+
+Tindak Lanjut: Mempersiapkan ide objek observasi untuk pertemuan berikutnya.
+
+Penutup: Salam dan doa.
+
+
+
+Pertemuan 3-5 (9 JP: 405 MENIT)
+
+Topik: Penulisan Teks Laporan Hasil Observasi dan Pengalihwahanaan
+
+KEGIATAN PENDAHULUAN (20 MENIT TIAP PERTEMUAN)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Mengaitkan pembelajaran sebelumnya dengan kegiatan menulis dan berkreasi.
+
+Pertanyaan Pemantik: "Bagaimana kita bisa mengubah hasil pengamatan kita menjadi sebuah laporan yang menarik dan mudah dipahami orang lain?" "Media kreatif apa yang paling efektif untuk menyampaikan fakta alam?".
+
+Penyampaian Tujuan Pembelajaran: Menulis LHO logis dan etis, serta mengubahnya ke format kreatif.
+
+
+
+INTI (110 MENIT TIAP PERTEMUAN)
+
+Penentuan Objek Observasi (Mindful Learning): Guru membimbing peserta didik menentukan objek observasi yang menjadi ciri khas daerahnya atau yang diminati. Guru memfasilitasi perizinan jika observasi di luar sekolah. (LKPD 3: Rencana Observasi dan Penulisan Laporan dapat digunakan di sini).
+
+Perencanaan Penulisan (Bernalar Kritis): Peserta didik menyusun rencana proyek observasi dan penyusunan laporan, termasuk pertanyaan dasar, jadwal, dan pembagian tugas kelompok.
+
+Pelaksanaan Observasi dan Pengumpulan Data (Meaningful Learning): Peserta didik melakukan observasi langsung, mengumpulkan data faktual, dan mencatat hasil observasi. (Diferensiasi proses: guru memberikan panduan/rubrik yang jelas agar tugas terarah).
+
+Penyusunan Draf LHO (Bernalar Kritis): Peserta didik menyusun draf teks LHO berdasarkan data yang terkumpul, memperhatikan struktur dan unsur kebahasaan.
+
+Umpan Balik dan Revisi (Kolaborasi & Mindful Learning): Guru dan sesama peserta didik memberikan umpan balik pada setiap proses penulisan menggunakan daftar periksa. Peserta didik merevisi draf berdasarkan umpan balik.
+
+Pengalihwahanaan ke Format Kreatif (Kreativitas): Peserta didik mengubah laporan hasil observasi ke dalam format kreatif (misalnya: buku tempel, poster infografis, video dokumenter singkat, komik ilmiah, podcast, dll.) sesuai minat dan karakteristik mereka. Guru memfasilitasi kreasi seoptimal mungkin.
+
+Pembelajaran Berdiferensiasi:
+
+Konten: Contoh-contoh LHO dan proyek kreatif bervariasi.
+
+Proses: Pembelajaran berbasis proyek, pendampingan individual atau kelompok. Pemberian umpan balik berkelanjutan.
+
+Produk: Kebebasan memilih media dan format penyajian hasil observasi yang kreatif.
+
+
+
+PENUTUP (5 MENIT TIAP PERTEMUAN)
+
+Refleksi: Guru dan peserta didik merefleksikan progres kerja.
+
+Tindak Lanjut: Menyampaikan target dan persiapan untuk pertemuan berikutnya.
+
+Penutup: Salam.
+
+
+
+Pertemuan 6 (3 JP: 135 MENIT)
+
+Topik: Presentasi Laporan Hasil Observasi Multimodal
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Membangkitkan semangat untuk presentasi.
+
+Pertanyaan Pemantik: "Bagaimana kita bisa membuat presentasi yang tidak hanya informatif, tetapi juga menarik dan berkesan bagi audiens?".
+
+Penyampaian Tujuan Pembelajaran: Mempresentasikan LHO multimodal dan menyesuaikan intonasi/metode presentasi.
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Pemodelan Presentasi (Mindful Learning): Guru memodelkan cara mempresentasikan laporan hasil observasi dan menyesuaikan intonasi yang baik, atau menampilkan contoh video presentasi yang efektif.
+
+Organisasi Presentasi (Kolaborasi & Kemandirian): Peserta didik mengatur kegiatan presentasi (membagi petugas, mengatur urutan penyaji).
+
+Presentasi Karya (Joyful Learning & Kreativitas): Peserta didik mempresentasikan laporan hasil observasi multimodal mereka. Teknik penyajian disesuaikan dengan media yang dipilih (pameran karya, presentasi di kelas, pameran virtual jika media digital).
+
+Umpan Balik (Mindful Learning): Guru memandu peserta didik melakukan refleksi dan memberikan umpan balik (misalnya, melalui kertas catatan kecil di karya yang ditampilkan). Guru memberikan arahan jika ada peserta didik yang terpaku pada teks atau sekadar membaca, membimbing mereka membuat catatan kecil sebagai panduan.
+
+Pembelajaran Berdiferensiasi:
+
+Konten: Beragam media presentasi hasil observasi.
+
+Proses: Memberikan panduan spesifik untuk intonasi dan gestur. Memberikan kesempatan latihan.
+
+Produk: Presentasi dalam berbagai format (lisan, visual, digital) sesuai minat dan gaya belajar.
+
+
+
+PENUTUP (15 MENIT)
+
+Refleksi Akhir: Guru dan peserta didik melakukan refleksi menyeluruh tentang seluruh proses pembelajaran bab ini.
+
+Penghargaan: Guru memberikan apresiasi atas kerja keras dan kreativitas peserta didik.
+
+Tindak Lanjut: Menyampaikan garis besar materi bab selanjutnya.
+
+Penutup: Salam dan doa.
+
+
+
+G.	Asesmen PEMBELAJARAN
+
+Asesmen Diagnostik (Assessment as Learning):
+
+Tanya Jawab: "Apakah kalian pernah mempelajari teks deskripsi di SMP?", "Apa yang kalian ketahui tentang teks deskripsi?", "Apa perbedaan antara 'fakta' dan 'opini'?".
+
+Kuis/Games (opsional): Kuis singkat via aplikasi (Kahoot!/Quizizz) untuk mengidentifikasi pengetahuan awal tentang observasi atau fakta/opini.
+
+Asesmen Formatif (Assessment for Learning): Dilakukan selama proses pembelajaran di setiap pertemuan.
+
+Tanya Jawab: Seputar materi yang sedang dibahas di setiap pertemuan.
+
+Latihan Soal:
+
+"Identifikasi tiga penjelasan pokok (pernyataan umum, deskripsi bagian, simpulan/manfaat) dari teks laporan hasil observasi yang kalian dengarkan/baca!".
+
+"Bandingkan informasi dalam teks laporan hasil observasi 'Kunang-Kunang yang Perlahan Menghilang' dengan informasi dari teks eksplanasi tentang kunang-kunang. Apa kesamaan dan perbedaannya?".
+
+Simulasi/Praktik:
+
+"Lakukan observasi singkat terhadap objek di sekitar kelas/sekolah dan identifikasi 5 fakta menarik!".
+
+"Praktikkan cara membaca nyaring teks LHO dengan intonasi yang tepat!".
+
+Pengamatan Proses:
+
+Pengamatan guru terhadap partisipasi dan kolaborasi peserta didik dalam diskusi kelompok (menggunakan Rubrik Penilaian Diskusi Kelompok).
+
+Pengamatan guru terhadap kemampuan peserta didik dalam mengidentifikasi fakta dan opini.
+
+Pengamatan guru terhadap kemandirian peserta didik dalam mencari informasi baru (misalnya penggunaan KBBI).
+
+Produk (Proses):
+
+Tabel prediksi sebelum menyimak/membaca teks LHO.
+
+Draf kerangka laporan hasil observasi.
+
+Catatan hasil observasi awal.
+
+Asesmen Sumatif (Assessment of Learning): Dilakukan di akhir bab.
+
+Produk:
+
+Teks Laporan Hasil Observasi: "Buatlah satu teks laporan hasil observasi (minimal 3 paragraf: pernyataan umum, deskripsi bagian, manfaat/simpulan) tentang objek di lingkungan sekitarmu secara logis dan etis, dengan memperhatikan unsur kebahasaan yang telah dipelajari!".
+
+Produk Kreatif Pengalihwahanaan LHO: "Ubah teks laporan hasil observasi yang telah kamu buat ke dalam format kreatif (misalnya poster infografis, video dokumenter singkat, komik ilmiah, podcast, buku tempel) yang dapat diterbitkan di media cetak maupun elektronik!".
+
+Praktik:
+
+Presentasi Laporan Hasil Observasi Multimodal: "Presentasikan laporan hasil observasi multimodal yang telah kamu buat di depan kelas/kelompok lain. Sesuaikan intonasi dan metode presentasimu dengan minat pendengar!" (menggunakan Rubrik Penilaian Presentasi Laporan Hasil Observasi Multimodal).
+
+
+

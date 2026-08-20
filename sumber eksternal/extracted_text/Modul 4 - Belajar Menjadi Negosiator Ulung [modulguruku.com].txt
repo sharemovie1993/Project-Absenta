@@ -1,0 +1,464 @@
+
+
+MODUL AJAR DEEP LEARNING
+
+MATA PELAJARAN : BAHASA INDONESIA
+
+BAB 4 : Belajar Menjadi Negosiator Ulung
+
+
+
+
+
+
+
+A.	Identitas Modul
+
+Nama Sekolah	:	.....................................................................................
+
+Nama Penyusun	:	.....................................................................................
+
+Mata Pelajaran	:	Bahasa Indonesia
+
+Kelas / Fase /Semester	: 	X/ E / Ganjil
+
+Alokasi Waktu 	:	8 Jam Pelajaran (4 Pertemuan @ 2 JP)
+
+Tahun Pelajaran	:	........................
+
+
+
+
+
+B.	Identifikasi Kesiapan Peserta Didik
+
+Pengetahuan Awal: Peserta didik umumnya memiliki pemahaman dasar tentang komunikasi sehari-hari dan interaksi sosial. Beberapa mungkin sudah pernah mendengar atau bahkan mencoba bernegosiasi dalam konteks sederhana (misalnya, menawar harga, meminta izin). Namun, pemahaman tentang struktur, ciri-ciri, dan strategi negosiasi yang lebih formal mungkin masih terbatas.
+
+Minat: Peserta didik cenderung tertarik pada topik-topik yang relevan dengan kehidupan mereka, seperti jual beli, penyelesaian konflik, atau mencapai kesepakatan. Pendekatan yang aktif dan melibatkan simulasi atau studi kasus nyata akan meningkatkan minat belajar.
+
+Latar Belakang: Peserta didik berasal dari berbagai latar belakang sosial dan ekonomi, yang mungkin mempengaruhi pengalaman mereka dalam bernegosiasi. Penting untuk menciptakan lingkungan yang inklusif dan memberikan contoh-contoh yang beragam agar semua merasa terhubung.
+
+Kebutuhan Belajar:
+
+Visual: Membutuhkan media visual seperti infografis, video simulasi negosiasi, atau tayangan slide yang menarik.
+
+Auditori: Membutuhkan diskusi kelompok, mendengarkan contoh percakapan negosiasi, atau presentasi lisan.
+
+Kinestetik: Membutuhkan praktik langsung, simulasi peran, atau membuat proyek terkait negosiasi.
+
+Beberapa peserta didik mungkin memerlukan bimbingan lebih dalam memahami konsep-konsep abstrak, sementara yang lain mungkin siap untuk tantangan yang lebih kompleks.
+
+
+
+
+
+C.	Karakteristik Materi Pelajaran
+
+Jenis Pengetahuan yang Akan Dicapai: Pengetahuan konseptual (definisi, ciri, struktur teks negosiasi), pengetahuan prosedural (langkah-langkah bernegosiasi, menyusun teks negosiasi), dan pengetahuan metakognitif (strategi efektif dalam negosiasi, refleksi terhadap proses negosiasi).
+
+Relevansi dengan Kehidupan Nyata Peserta Didik: Materi ini sangat relevan dengan kehidupan sehari-hari peserta didik, baik dalam lingkup pribadi (bernegosiasi dengan orang tua, teman), sosial (penyelesaian konflik kecil), maupun akademis (negosiasi dalam proyek kelompok). Keterampilan negosiasi juga penting untuk masa depan mereka di dunia kerja atau masyarakat.
+
+Struktur Materi: Materi disusun secara bertahap, dimulai dari pengenalan konsep dasar, analisis teks, identifikasi unsur kebahasaan, hingga praktik langsung simulasi negosiasi dan penyusunan teks negosiasi.
+
+Integrasi Nilai dan Karakter:
+
+Kemandirian: Melatih peserta didik untuk merencanakan dan melaksanakan negosiasi secara mandiri.
+
+Kreativitas: Mendorong peserta didik untuk menemukan solusi inovatif dalam negosiasi.
+
+Bernalar Kritis: Mengembangkan kemampuan peserta didik untuk menganalisis situasi negosiasi dan mengambil keputusan yang tepat.
+
+Kolaborasi: Melatih kemampuan bekerja sama dalam kelompok untuk mencapai kesepakatan.
+
+Berintegritas: Mengajarkan pentingnya kejujuran dan etika dalam bernegosiasi.
+
+Tanggung Jawab: Melatih peserta didik untuk bertanggung jawab atas keputusan dan kesepakatan yang dibuat.
+
+
+
+D	Dimensi Profil Lulusan
+
+Berdasarkan tujuan pembelajaran, dimensi profil lulusan yang akan dicapai adalah:
+
+Penalaran Kritis: Peserta didik mampu menganalisis situasi negosiasi, mengidentifikasi masalah, dan merumuskan solusi yang logis.
+
+Kreativitas: Peserta didik mampu mengembangkan ide-ide baru dan solusi inovatif dalam menghadapi tantangan negosiasi.
+
+Kolaborasi: Peserta didik mampu bekerja sama secara efektif dengan pihak lain untuk mencapai kesepakatan yang saling menguntungkan.
+
+Kemandirian: Peserta didik mampu mengambil inisiatif dan bertanggung jawab dalam proses negosiasi.
+
+Komunikasi: Peserta didik mampu menyampaikan gagasan, argumen, dan kesepakatan dengan jelas dan efektif secara lisan maupun tertulis.
+
+
+
+
+
+DESAIN PEMBELAJARAN
+
+
+
+A.	Capaian Pembelajaran (CP) Nomor : 32 Tahun 2024
+
+Pada akhir fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi informasi dari berbagai tipe teks tentang topik yang beragam. Peserta didik mampu menyintesis gagasan dan pendapat dari berbagai sumber. Peserta didik mampu berpartisipasi aktif dalam diskusi dan debat. Peserta didik mampu menulis berbagai teks untuk menyampaikan pendapat dan mempresentasikan serta menanggapi informasi nonfiksi dan fiksi secara kritis dan etis.
+
+Capaian Pembelajaran setiap elemen mata pelajaran Bahasa Indonesia adalah sebagai berikut.
+
+Elemen
+
+Capaian Pembelajaran
+
+Menyimak
+
+Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks dalam bentuk monolog, dialog, dan gelar wicara.
+
+Membaca dan Memirsa
+
+Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari berbagai tipe teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat. Peserta didik mampu menginterpretasi informasi untuk mengungkapkan gagasan dan perasaan simpati, peduli, empati dan/atau pendapat pro/kontra dari teks visual dan audiovisual secara kreatif. Peserta didik mampu menggunakan sumber lain untuk menilai akurasi dan kualitas data serta membandingkan isi teks.
+
+Berbicara dan Mempresentasikan
+
+Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif. Peserta didik mampu mengkreasi ungkapan sesuai dengan norma kesopanan dalam berkomunikasi. Peserta didik mampu berkontribusi lebih aktif dalam diskusi dengan mempersiapkan materi diskusi, melaksanakan tugas dan fungsi dalam diskusi. Peserta didik mampu mengungkapkan kepedulian secara kreatif dalam bentuk teks fiksi dan nonfiksi multimodal.
+
+Menulis
+
+Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi. Peserta didik mampu menulis teks eksposisi hasil penelitian dan teks fungsional dunia kerja. Peserta didik mampu mengalihwahanakan satu teks ke teks lainnya. Peserta didik mampu menerbitkan hasil tulisan di media cetak, elektronik, dan/atau digital.
+
+
+
+B. 	Lintas Disiplin Ilmu
+
+Ilmu Komunikasi: Memahami prinsip-prinsip komunikasi efektif, mendengarkan aktif, dan menyampaikan pesan secara persuasif.
+
+Ekonomi/Bisnis: Memahami konsep penawaran dan permintaan, nilai, dan strategi dalam transaksi ekonomi.
+
+Sosiologi/Antropologi: Memahami dinamika interaksi sosial, budaya, dan konflik dalam masyarakat.
+
+Psikologi: Memahami motivasi, emosi, dan perilaku manusia dalam situasi negosiasi.
+
+Pendidikan Kewarganegaraan: Memahami pentingnya musyawarah, mufakat, dan penyelesaian konflik secara damai.
+
+
+
+C. 	Tujuan Pembelajaran
+
+Pertemuan 1: Mengenali Esensi Negosiasi
+
+Setelah kegiatan pembelajaran, peserta didik diharapkan mampu:
+
+Mengidentifikasi definisi dan ciri-ciri teks negosiasi berdasarkan contoh teks yang diberikan dengan tepat.
+
+Menyimpulkan informasi penting (konflik, penawaran, kesepakatan) dari teks negosiasi yang dibaca atau didengar secara mandiri.
+
+Menganalisis perbedaan antara negosiasi dengan kegiatan komunikasi lainnya melalui studi kasus sederhana.
+
+Pertemuan 2: Memahami Struktur dan Kebahasaan Teks Negosiasi
+
+Setelah kegiatan pembelajaran, peserta didik diharapkan mampu:
+
+Menganalisis struktur teks negosiasi (orientasi, pengajuan, penawaran, persetujuan/kesepakatan, penutup) pada contoh teks yang diberikan dengan akurat.
+
+Mengidentifikasi unsur kebahasaan (tuturan persuasif, kalimat deklaratif/interogatif, pasangan tuturan, kalimat perbandingan/analogi) dalam teks negosiasi secara cermat.
+
+Menjelaskan fungsi dan dampak penggunaan unsur kebahasaan tertentu dalam mencapai tujuan negosiasi.
+
+Pertemuan 3: Merancang Strategi Negosiasi Efektif
+
+Setelah kegiatan pembelajaran, peserta didik diharapkan mampu:
+
+Mengidentifikasi berbagai strategi dan taktik negosiasi yang efektif dari berbagai sumber (buku, artikel, video) dengan kritis.
+
+Merumuskan strategi negosiasi yang relevan untuk skenario konflik sehari-hari yang disimulasikan.
+
+Mengaplikasikan prinsip-prinsip etika dalam bernegosiasi untuk mencapai kesepakatan yang adil dan saling menguntungkan.
+
+Pertemuan 4: Simulasi dan Produksi Teks Negosiasi
+
+Setelah kegiatan pembelajaran, peserta didik diharapkan mampu:
+
+Melakukan simulasi negosiasi dengan skenario yang telah ditentukan, menunjukkan kemampuan komunikasi dan kolaborasi yang efektif.
+
+Menyusun teks negosiasi berdasarkan hasil simulasi atau skenario baru dengan memperhatikan struktur dan unsur kebahasaan yang benar.
+
+Merefleksikan proses dan hasil negosiasi yang telah dilakukan, mengidentifikasi kekuatan dan area pengembangan diri sebagai negosiator.
+
+
+
+D.	Topik Pembelajaran kontekstual
+
+Negosiasi Harga Barang di Pasar Tradisional atau Toko Online.
+
+Negosiasi Izin Kegiatan/Acara dengan Orang Tua atau Pihak Sekolah.
+
+Penyelesaian Konflik dalam Kelompok Belajar atau Pertemanan.
+
+Negosiasi dalam Pengambilan Keputusan Keluarga (misalnya, destinasi liburan).
+
+Negosiasi Hak dan Kewajiban dalam Tim Proyek.
+
+
+
+E.	Kerangka Pembelajaran
+
+1. Praktik Pedagogik:
+
+Model Pembelajaran: Problem-Based Learning (PBL) dan Project-Based Learning (PjBL) untuk mendorong penalaran kritis, kreativitas, dan kolaborasi.
+
+Strategi Pembelajaran:
+
+Mindful Learning: Aktivitas refleksi, jurnal belajar, diskusi terbuka.
+
+Meaningful Learning: Studi kasus relevan, simulasi peran, menghubungkan teori dengan praktik nyata.
+
+Joyful Learning: Permainan peran, kompetisi simulasi negosiasi, penggunaan media interaktif.
+
+Metode Pembelajaran: Diskusi kelompok, tanya jawab, curah pendapat (brainstorming), studi kasus, simulasi peran, presentasi, menulis kreatif, analisis teks, proyek.
+
+
+
+2. Kemitraan Pembelajaran:
+
+Lingkungan Sekolah: Guru mata pelajaran lain (PKn, Ekonomi, Sosiologi) untuk integrasi lintas disiplin, guru Bimbingan Konseling (BK) untuk pengembangan soft skills, dan perpustakaan sekolah sebagai sumber belajar.
+
+Lingkungan Luar Sekolah: Narasumber (praktisi negosiasi, pelaku UMKM), orang tua/wali untuk berbagi pengalaman negosiasi di rumah, atau komunitas lokal yang terkait.
+
+Masyarakat: Mengamati atau mewawancarai pedagang di pasar, staf layanan pelanggan, atau pihak-pihak yang sering bernegosiasi dalam pekerjaan mereka.
+
+
+
+3. Lingkungan Belajar:
+
+Ruang Fisik: Fleksibel, dapat diatur untuk diskusi kelompok kecil, simulasi, atau presentasi. Kelas dengan kursi yang mudah dipindahkan, ruang diskusi, atau area terbuka di sekolah.
+
+Ruang Virtual: Platform Google Classroom untuk berbagi materi, tugas, dan pengumpulan pekerjaan. Padlet/Jamboard untuk curah pendapat interaktif. Zoom/Google Meet untuk sesi diskusi daring atau mendatangkan narasumber.
+
+Budaya Belajar: Lingkungan yang mendukung partisipasi aktif, mendorong pertanyaan, menghargai setiap pendapat, menciptakan suasana positif, dan menjunjung tinggi kolaborasi serta toleransi. Kesalahan dianggap sebagai peluang belajar.
+
+
+
+4. Pemanfaatan Digital:
+
+Perpustakaan Digital: Mengakses e-book tentang negosiasi, artikel daring, atau jurnal ilmiah melalui perpusnas.go.id atau sumber terpercaya lainnya.
+
+Forum Diskusi Daring: Google Classroom, atau platform diskusi lain untuk melanjutkan pembahasan, tanya jawab, atau berbagi temuan di luar jam pelajaran.
+
+Penilaian Daring: Kuis interaktif melalui Kahoot atau Quizizz untuk menguji pemahaman konsep. Penilaian proyek atau tugas tertulis dapat dikumpulkan melalui Google Classroom.
+
+Alat Interaktif: Mentimeter untuk polling atau word cloud untuk mengidentifikasi pengetahuan awal atau merefleksikan perasaan. YouTube untuk menonton video simulasi negosiasi atau contoh nyata.
+
+
+
+F.	Langkah-langkah Pembelajaran BERDIFERENSIASI
+
+Pertemuan 1: Mengenali Esensi Negosiasi
+
+Kegiatan Pendahuluan (15 menit)
+
+Mindful Learning: Guru memulai dengan mengajak peserta didik menarik napas dalam-dalam, meminta mereka untuk sejenak merenungkan pengalaman mereka tentang "meminta sesuatu" atau "mencoba meyakinkan orang lain". Guru dapat memutar musik instrumental ringan untuk menciptakan suasana tenang.
+
+Joyful Learning: Guru menampilkan gambar atau video singkat yang memicu tawa tentang situasi "perdebatan" ringan dalam kehidupan sehari-hari (misalnya, rebutan remote TV, tawar-menawar yang lucu). Guru mengajukan pertanyaan pemicu: "Apa yang kalian lihat dari gambar/video ini? Apa yang terjadi jika ada dua pihak yang ingin hal berbeda?"
+
+Meaningful Learning: Guru mengaitkan fenomena tersebut dengan konsep negosiasi, menjelaskan relevansinya dalam kehidupan. Guru menyampaikan tujuan pembelajaran hari ini dan menjelaskan alur kegiatan.
+
+
+
+Kegiatan Inti (60 menit)
+
+Memahami (20 menit):
+
+Guru membagikan berbagai contoh teks negosiasi (teks singkat, dialog, transkrip percakapan, bisa juga dalam bentuk infografis atau komik pendek) yang telah disiapkan. Contoh disesuaikan dengan tingkat kesulitan dan minat peserta didik (diferensiasi konten).
+
+Peserta didik diminta membaca/menyimak teks secara individu, menggarisbawahi atau mencatat kata kunci yang menurut mereka menggambarkan "perundingan" atau "kesepakatan".
+
+Diskusi kelas: Guru memfasilitasi diskusi tentang definisi negosiasi dan ciri-cirinya. Guru memberikan scaffolding (bimbingan bertahap) bagi peserta didik yang kesulitan merumuskan definisi.
+
+Mengaplikasi (25 menit):
+
+Peserta didik dibagi menjadi kelompok kecil. Setiap kelompok diberikan 2-3 contoh kasus sederhana (bisa berupa teks, gambar, atau deskripsi lisan) dan diminta untuk mengidentifikasi apakah kasus tersebut termasuk negosiasi atau bukan, serta memberikan alasannya.
+
+Setiap kelompok mempresentasikan hasil diskusinya. Guru memberikan umpan balik dan penguatan.
+
+Merefleksi (15 menit):
+
+Guru meminta peserta didik untuk menuliskan di buku catatan atau sticky note: "Apa yang paling berkesan dari belajar negosiasi hari ini?" dan "Bagaimana saya akan menggunakan pemahaman ini dalam kehidupan sehari-hari?"
+
+Beberapa peserta didik diminta untuk membacakan refleksinya.
+
+
+
+Kegiatan Penutup (15 menit)
+
+Umpan Balik Konstruktif: Guru memberikan apresiasi atas partisipasi peserta didik. Guru menekankan kembali poin-poin penting yang telah dipelajari. Guru dapat menggunakan Mentimeter untuk membuat word cloud dari kata-kata kunci yang dipelajari.
+
+Menyimpulkan Pembelajaran: Peserta didik secara kolaboratif merumuskan kesimpulan pembelajaran hari ini (definisi dan ciri negosiasi).
+
+Perencanaan Pembelajaran Selanjutnya: Guru memberikan pengantar untuk pertemuan berikutnya (struktur dan kebahasaan teks negosiasi) dan memberikan tugas eksplorasi sederhana (misalnya, mencari contoh negosiasi di televisi/film).
+
+
+
+Pertemuan 2: Memahami Struktur dan Kebahasaan Teks Negosiasi
+
+Kegiatan Pendahuluan (15 menit)
+
+Mindful Learning: Guru meminta peserta didik mengingat kembali contoh negosiasi yang mereka temukan dari tugas sebelumnya. Guru mengajukan pertanyaan: "Apakah kalian melihat pola tertentu dalam percakapan negosiasi itu?"
+
+Joyful Learning: Guru dapat memutar cuplikan film/drama pendek yang menampilkan adegan negosiasi, lalu meminta peserta didik menebak "bagian mana yang pembukaan, penawaran, penutupan?"
+
+Meaningful Learning: Guru mengaitkan pola tersebut dengan struktur teks negosiasi, menjelaskan pentingnya struktur untuk negosiasi yang efektif. Guru menyampaikan tujuan pembelajaran hari ini.
+
+
+
+
+
+Kegiatan Inti (60 menit)
+
+Memahami (20 menit):
+
+Guru menampilkan satu contoh teks negosiasi yang utuh (dari buku ajar atau sumber lain). Guru menjelaskan secara rinci setiap bagian struktur teks negosiasi (orientasi, pengajuan, penawaran, persetujuan/kesepakatan, penutup) dengan menyoroti kalimat-kalimat kuncinya.
+
+Peserta didik diberikan lembar kerja dengan beberapa teks negosiasi yang berbeda (diferensiasi konten berdasarkan kompleksitas teks). Mereka diminta untuk mengidentifikasi dan menandai bagian-bagian strukturnya.
+
+Mengaplikasi (25 menit):
+
+Peserta didik dalam kelompok kecil, membahas unsur kebahasaan. Guru memfasilitasi diskusi tentang tuturan persuasif, kalimat deklaratif/interogatif, pasangan tuturan, kalimat perbandingan/analogi. Guru menyediakan contoh kalimat dan meminta kelompok mengidentifikasi fungsinya.
+
+Setiap kelompok diminta untuk memilih satu teks negosiasi, kemudian menganalisis unsur kebahasaannya dan menjelaskan bagaimana unsur tersebut membantu mencapai tujuan negosiasi.
+
+Merefleksi (15 menit):
+
+Guru mengajak peserta didik merefleksikan: "Apa tantangan terbesar saya dalam mengidentifikasi struktur dan kebahasaan teks negosiasi?" dan "Bagaimana pemahaman ini membantu saya untuk menjadi negosiator yang lebih baik?"
+
+Refleksi dapat dituliskan dalam bentuk exit ticket atau dibagikan secara lisan.
+
+
+
+Kegiatan Penutup (15 menit)
+
+Umpan Balik Konstruktif: Guru memberikan penguatan pada pemahaman struktur dan kebahasaan, serta mengklarifikasi miskonsepsi yang mungkin terjadi.
+
+Menyimpulkan Pembelajaran: Guru dan peserta didik bersama-sama menyimpulkan pentingnya struktur dan kebahasaan dalam teks negosiasi.
+
+Perencanaan Pembelajaran Selanjutnya: Guru memberitahu bahwa pertemuan selanjutnya akan fokus pada strategi negosiasi dan memberikan tugas untuk mencari informasi tentang berbagai strategi negosiasi dari berbagai sumber.
+
+
+
+Pertemuan 3: Merancang Strategi Negosiasi Efektif
+
+Kegiatan Pendahuluan (15 menit)
+
+Mindful Learning: Guru memulai dengan pertanyaan: "Menurut kalian, apakah semua negosiasi berakhir dengan kesepakatan?" "Mengapa ada negosiasi yang berhasil dan ada yang tidak?" Guru meminta peserta didik untuk merenungkan faktor-faktor penentu keberhasilan negosiasi.
+
+Joyful Learning: Guru dapat menampilkan video singkat tentang negosiasi yang sukses dan yang gagal (bisa juga adegan film lucu atau kartun). Peserta didik diminta mengidentifikasi perbedaan kunci antara keduanya.
+
+Meaningful Learning: Guru mengaitkan perbedaan tersebut dengan pentingnya strategi dan etika dalam negosiasi. Guru menyampaikan tujuan pembelajaran.
+
+
+
+Kegiatan Inti (60 menit)
+
+Memahami (20 menit):
+
+Guru memfasilitasi presentasi singkat dari hasil eksplorasi peserta didik mengenai strategi dan taktik negosiasi (diferensiasi proses: beberapa kelompok mempresentasikan, yang lain menanggapi). Guru melengkapi informasi yang kurang.
+
+Guru menjelaskan berbagai strategi negosiasi (misalnya, win-win, win-lose, lose-lose, BATNA - Best Alternative to a Negotiated Agreement) dan etika dalam bernegosiasi (kejujuran, saling menghormati, mencari solusi terbaik).
+
+Mengaplikasi (25 menit):
+
+Peserta didik dibagi menjadi kelompok-kelompok kecil. Setiap kelompok diberikan satu skenario kasus negosiasi yang berbeda (diferensiasi konten: skenario yang berbeda tingkat kerumitan, misalnya negosiasi barang, negosiasi tugas kelompok, negosiasi konflik).
+
+Setiap kelompok diminta untuk merumuskan strategi negosiasi yang akan mereka gunakan, mempertimbangkan tujuan, pihak yang terlibat, dan etika negosiasi. Mereka juga harus menyiapkan argumen dan alternatif solusi.
+
+Merefleksi (15 menit):
+
+Setiap kelompok mempresentasikan rencana strateginya. Kelompok lain memberikan masukan.
+
+Guru meminta peserta didik untuk menuliskan di jurnal belajar: "Bagian mana dari etika negosiasi yang paling menantang untuk diterapkan?" dan "Bagaimana saya bisa mengembangkan kemampuan berpikir strategis dalam negosiasi?"
+
+
+
+Kegiatan Penutup (15 menit)
+
+Umpan Balik Konstruktif: Guru memberikan umpan balik terhadap strategi yang dirancang peserta didik, menyoroti kekuatan dan area yang perlu ditingkatkan.
+
+Menyimpulkan Pembelajaran: Peserta didik secara kolaboratif menyimpulkan pentingnya strategi dan etika untuk mencapai negosiasi yang efektif dan berkeadilan.
+
+Perencanaan Pembelajaran Selanjutnya: Guru memberitahukan bahwa pertemuan selanjutnya adalah simulasi negosiasi dan produksi teks negosiasi. Guru memberikan instruksi untuk mempersiapkan diri.
+
+
+
+Pertemuan 4: Simulasi dan Produksi Teks Negosiasi
+
+Kegiatan Pendahuluan (15 menit)
+
+Mindful Learning: Guru mengajak peserta didik membayangkan diri mereka sebagai negosiator ulung. Guru bertanya: "Apa yang membuat seorang negosiator itu ulung?" Guru meminta mereka untuk fokus pada keterampilan komunikasi dan mendengarkan.
+
+Joyful Learning: Guru dapat memutarkan lagu yang bersemangat atau melakukan ice breaking ringan yang melibatkan komunikasi dua arah untuk membangun semangat sebelum simulasi.
+
+Meaningful Learning: Guru menegaskan kembali bahwa hari ini adalah kesempatan untuk mengaplikasikan semua yang telah dipelajari dalam skenario nyata. Guru menyampaikan tujuan pembelajaran.
+
+
+
+Kegiatan Inti (60 menit)
+
+Memahami (20 menit):
+
+Guru menjelaskan kembali aturan simulasi negosiasi. Peserta didik dibagi menjadi kelompok-kelompok pasangan atau trio untuk melakukan simulasi (diferensiasi proses: beberapa kelompok diberikan peran yang lebih menantang, yang lain peran yang lebih sederhana). Setiap kelompok mendapatkan skenario yang berbeda.
+
+Mengaplikasi (25 menit):
+
+Setiap kelompok melakukan simulasi negosiasi berdasarkan skenario yang telah ditentukan. Guru berkeliling mengamati dan memberikan bimbingan jika diperlukan. Peserta didik yang tidak sedang simulasi dapat menjadi observer dan mengisi lembar observasi.
+
+Setelah simulasi, setiap kelompok diminta untuk menyusun teks negosiasi berdasarkan percakapan yang terjadi selama simulasi atau membuat teks negosiasi baru dari skenario yang diberikan.
+
+Merefleksi (15 menit):
+
+Setiap kelompok mempresentasikan hasil simulasinya dan/atau teks negosiasi yang telah disusun.
+
+Guru memfasilitasi diskusi refleksi: "Apa yang saya pelajari dari simulasi ini?", "Bagian mana yang paling menantang dan bagaimana saya mengatasinya?", "Apa yang akan saya lakukan berbeda jika saya mengulang negosiasi ini?". Peserta didik juga dapat melakukan peer assessment terhadap kemampuan negosiasi teman.
+
+
+
+Kegiatan Penutup (15 menit)
+
+Umpan Balik Konstruktif: Guru memberikan umpan balik menyeluruh terhadap performa simulasi dan teks negosiasi peserta didik, menyoroti aspek positif dan area pengembangan.
+
+Menyimpulkan Pembelajaran: Guru dan peserta didik bersama-sama menyimpulkan pelajaran penting yang didapat dari seluruh bab "Belajar Menjadi Negosiator Ulung".
+
+Perencanaan Pembelajaran Selanjutnya: Guru memberikan apresiasi atas kerja keras peserta didik dan memberikan motivasi untuk terus mengembangkan kemampuan negosiasi dalam kehidupan sehari-hari.
+
+
+
+G.	Asesmen PEMBELAJARAN
+
+Asesmen akan dilakukan secara komprehensif untuk mengukur pencapaian kompetensi peserta didik.
+
+Assessment as Learning (As):
+
+Self-Assessment: Peserta didik mengisi jurnal refleksi setelah setiap pertemuan tentang pemahaman, kesulitan, dan strategi belajar mereka.
+
+Peer Assessment: Peserta didik saling menilai kemampuan negosiasi teman saat simulasi menggunakan rubrik yang telah disediakan.
+
+Diskusi Kelas: Observasi partisipasi aktif peserta didik dalam diskusi, kemampuan bertanya, dan memberikan argumen.
+
+Assessment for Learning (AfL):
+
+Kuis Singkat/Tanya Jawab Lisan: Menguji pemahaman konsep dasar (definisi, ciri, struktur) di awal atau tengah pembelajaran. (Misalnya, menggunakan Kahoot atau Quizizz).
+
+Lembar Kerja: Mengidentifikasi struktur dan unsur kebahasaan teks negosiasi (formatif).
+
+Umpan Balik Guru: Memberikan umpan balik konstruktif secara langsung selama proses pembelajaran (misalnya, saat diskusi kelompok, saat merancang strategi, atau saat simulasi).
+
+Pengamatan (Observasi): Guru mengamati partisipasi, kolaborasi, dan kemampuan komunikasi peserta didik selama kegiatan kelompok dan simulasi.
+
+Assessment of Learning (AoL):
+
+Tes Tertulis: Soal esai untuk menganalisis teks negosiasi (struktur, kebahasaan) dan merumuskan strategi negosiasi untuk studi kasus tertentu.
+
+Penilaian Kinerja/Proyek:
+
+Simulasi Negosiasi: Dinilai berdasarkan rubrik yang mencakup aspek komunikasi, kemampuan persuasif, penyelesaian masalah, dan etika negosiasi. (Skor individu dan kelompok).
+
+Produk (Teks Negosiasi): Penilaian terhadap teks negosiasi yang dibuat oleh peserta didik berdasarkan kriteria kelengkapan struktur, penggunaan kebahasaan yang tepat, koherensi, dan keefektifan dalam menyampaikan pesan.
+
+Portofolio: Kumpulan tugas individu (jurnal refleksi, lembar kerja analisis teks, rencana strategi negosiasi) untuk menunjukkan perkembangan belajar peserta didik sepanjang bab.
+

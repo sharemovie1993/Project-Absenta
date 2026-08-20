@@ -1,0 +1,346 @@
+
+
+MODUL AJAR DEEP LEARNING
+
+MATA PELAJARAN : BAHASA INDONESIA
+
+BAB 6 :  Berkarya dan Berekspresi Melalui Puisi
+
+
+
+
+
+
+
+A.	Identitas Modul
+
+Nama Sekolah	:	.....................................................................................
+
+Nama Penyusun	:	.....................................................................................
+
+Mata Pelajaran	:	Bahasa Indonesia
+
+Kelas / Fase /Semester	: 	X/ E / Ganjil
+
+Alokasi Waktu 	:	8 JP (4 Pertemuan)
+
+Tahun Pelajaran	:	........................
+
+
+
+
+
+B.	Identifikasi Kesiapan Peserta Didik
+
+Sebelum memulai pembelajaran, identifikasi kesiapan peserta didik dapat dilakukan melalui observasi awal dan beberapa pertanyaan pemantik:
+
+Pengetahuan Awal: Sebagian besar peserta didik mungkin memiliki pemahaman dasar tentang puisi dari jenjang pendidikan sebelumnya, seperti definisi sederhana atau beberapa nama penyair. Namun, ada kemungkinan variasi tingkat pemahaman, di mana beberapa sudah mengenal lebih dalam unsur-unsur puisi, sementara yang lain masih awam.
+
+Minat: Minat peserta didik terhadap puisi bervariasi. Beberapa mungkin menyukai puisi dan bahkan pernah mencoba menulisnya, sementara yang lain mungkin merasa puisi sulit atau kurang menarik. Penting untuk mengetahui minat ini agar dapat menghadirkan pembelajaran yang relevan dan memotivasi.
+
+Latar Belakang: Peserta didik datang dengan latar belakang sosial dan budaya yang beragam. Ini dapat memengaruhi persepsi mereka terhadap puisi dan cara mereka berekspresi. Beberapa mungkin terbiasa dengan bentuk-bentuk puisi tradisional, sementara yang lain lebih akrab dengan puisi kontemporer atau bahkan lirik lagu.
+
+Kebutuhan Belajar: Ada peserta didik yang belajar secara visual, auditori, atau kinestetik. Ada pula yang membutuhkan dukungan lebih dalam memahami konsep abstrak, sementara yang lain mampu memahami dengan cepat dan siap untuk tantangan yang lebih tinggi.
+
+
+
+C.	Karakteristik Materi Pelajaran
+
+Jenis Pengetahuan: Materi ini mencakup pengetahuan konseptual (pengertian, ciri-ciri, unsur-unsur puisi), prosedural (cara menafsirkan, menganalisis, dan menulis puisi), serta metakognitif (merefleksikan proses kreatif dan pemahaman diri melalui puisi).
+
+Relevansi dengan Kehidupan Nyata: Puisi relevan dengan kehidupan nyata peserta didik karena:
+
+Sebagai sarana berekspresi diri dan emosi.
+
+Mengembangkan kepekaan estetika dan empati.
+
+Meningkatkan kemampuan berbahasa dan diksi.
+
+Memahami budaya dan pemikiran melalui karya sastra.
+
+Meningkatkan apresiasi terhadap seni dan kreativitas.
+
+Tingkat Kesulitan: Materi ini memiliki tingkat kesulitan sedang hingga tinggi. Memahami diksi, majas, dan makna tersirat dalam puisi memerlukan penalaran kritis dan kepekaan rasa. Menulis puisi juga membutuhkan kreativitas dan kemampuan mengolah kata.
+
+Struktur Materi:
+
+Pengenalan tokoh penyair dan perbandingan puisi dengan cerpen.
+
+Identifikasi diksi dan maknanya dalam puisi.
+
+Menafsirkan pendapat tentang isi puisi.
+
+Menulis puisi dengan memperhatikan unsur-unsur pembangunnya.
+
+Mempresentasikan puisi hasil karya.
+
+Integrasi Nilai dan Karakter:
+
+Kreativitas: Mendorong peserta didik untuk menciptakan karya orisinal.
+
+Keberanian: Mendorong peserta didik untuk berekspresi dan berbagi karyanya.
+
+Apresiasi: Menumbuhkan penghargaan terhadap karya sastra dan keindahan bahasa.
+
+Tanggung Jawab: Mengerjakan tugas dengan sungguh-sungguh.
+
+Kerja Sama: Berkolaborasi dalam diskusi dan memberikan umpan balik.
+
+Berpikir Kritis: Menganalisis dan menafsirkan makna puisi.
+
+
+
+D	Dimensi Profil Lulusan
+
+Berdasarkan tujuan pembelajaran dan karakteristik materi, dimensi profil lulusan yang akan dicapai meliputi:
+
+Penalaran Kritis: Menganalisis unsur-unsur puisi, menafsirkan makna tersirat, dan membandingkan berbagai karya.
+
+Kreativitas: Menulis puisi orisinal, mengembangkan gagasan dan imajinasi.
+
+Kolaborasi: Berdiskusi, memberikan umpan balik, dan bekerja sama dalam kelompok.
+
+Kemandirian: Mengembangkan ide-ide sendiri, bertanggung jawab atas proses belajar, dan merefleksikan hasil belajar.
+
+Komunikasi: Mempresentasikan puisi, mengungkapkan gagasan dan perasaan secara lisan maupun tertulis.
+
+
+
+
+
+DESAIN PEMBELAJARAN
+
+
+
+A.	Capaian Pembelajaran (CP) Nomor : 32 Tahun 2024
+
+Pada akhir fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi informasi dari berbagai tipe teks tentang topik yang beragam. Peserta didik mampu menyintesis gagasan dan pendapat dari berbagai sumber. Peserta didik mampu berpartisipasi aktif dalam diskusi dan debat. Peserta didik mampu menulis berbagai teks untuk menyampaikan pendapat dan mempresentasikan serta menanggapi informasi nonfiksi dan fiksi secara kritis dan etis.
+
+Capaian Pembelajaran setiap elemen mata pelajaran Bahasa Indonesia adalah sebagai berikut.
+
+Elemen
+
+Capaian Pembelajaran
+
+Menyimak
+
+Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks dalam bentuk monolog, dialog, dan gelar wicara.
+
+Membaca dan Memirsa
+
+Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari berbagai tipe teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat. Peserta didik mampu menginterpretasi informasi untuk mengungkapkan gagasan dan perasaan simpati, peduli, empati dan/atau pendapat pro/kontra dari teks visual dan audiovisual secara kreatif. Peserta didik mampu menggunakan sumber lain untuk menilai akurasi dan kualitas data serta membandingkan isi teks.
+
+Berbicara dan Mempresentasikan
+
+Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif. Peserta didik mampu mengkreasi ungkapan sesuai dengan norma kesopanan dalam berkomunikasi. Peserta didik mampu berkontribusi lebih aktif dalam diskusi dengan mempersiapkan materi diskusi, melaksanakan tugas dan fungsi dalam diskusi. Peserta didik mampu mengungkapkan kepedulian secara kreatif dalam bentuk teks fiksi dan nonfiksi multimodal.
+
+Menulis
+
+Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi. Peserta didik mampu menulis teks eksposisi hasil penelitian dan teks fungsional dunia kerja. Peserta didik mampu mengalihwahanakan satu teks ke teks lainnya. Peserta didik mampu menerbitkan hasil tulisan di media cetak, elektronik, dan/atau digital.
+
+
+
+B. 	Lintas Disiplin Ilmu
+
+Seni Budaya: Puisi sebagai salah satu bentuk seni sastra; apresiasi seni.
+
+Pendidikan Agama: Nilai-nilai moral dan spiritual yang terkandung dalam puisi; berekspresi secara bijak.
+
+Sejarah: Perkembangan puisi di Indonesia dan dunia; mengenal tokoh penyair dari berbagai era.
+
+Psikologi: Memahami emosi dan perasaan yang diekspresikan dalam puisi; mengembangkan empati.
+
+
+
+C. 	Tujuan Pembelajaran
+
+Pertemuan 1 (2 JP): Memahami Hakikat Puisi
+
+Subjek belajar: Peserta didik
+
+Pengetahuan/Keterampilan/Sikap: Mengidentifikasi tokoh-tokoh penyair ternama Indonesia dan karyanya, serta membandingkan ciri-ciri puisi dengan cerpen.
+
+Kondisi/Konteks: Melalui pengamatan gambar dan pembacaan teks, serta diskusi kelompok.
+
+Tingkat Pencapaian: Peserta didik mampu mengidentifikasi minimal 3 tokoh penyair dan menjelaskan minimal 3 perbedaan esensial antara puisi dan cerpen dengan tepat.
+
+Pertemuan 2 (2 JP): Menjelajahi Diksi dan Makna Puisi
+
+Subjek belajar: Peserta didik
+
+Pengetahuan/Keterampilan/Sikap: Menganalisis diksi (pilihan kata) yang digunakan dalam puisi dan menafsirkan makna tersiratnya.
+
+Kondisi/Konteks: Melalui pembacaan dan diskusi puisi yang disajikan, serta kerja individu.
+
+Tingkat Pencapaian: Peserta didik mampu mengidentifikasi minimal 5 diksi penting dalam puisi dan memberikan penafsiran yang relevan terhadap makna puisi secara keseluruhan dengan didukung argumen yang logis.
+
+Pertemuan 3 (2 JP): Menulis Puisi Ekspresif
+
+Subjek belajar: Peserta didik
+
+Pengetahuan/Keterampilan/Sikap: Merancang dan menulis puisi sederhana dengan memperhatikan unsur-unsur pembangun puisi (diksi, majas, rima, irama).
+
+Kondisi/Konteks: Dengan bimbingan guru dan menggunakan berbagai media inspirasi (gambar, musik, pengalaman pribadi).
+
+Tingkat Pencapaian: Peserta didik mampu menghasilkan satu puisi orisinal minimal 3 bait yang mengandung diksi dan setidaknya 1 majas yang relevan dengan tema yang dipilih.
+
+Pertemuan 4 (2 JP): Mengapresiasi dan Merefleksikan Puisi
+
+Subjek belajar: Peserta didik
+
+Pengetahuan/Keterampilan/Sikap: Mempresentasikan puisi hasil karya sendiri dan memberikan umpan balik konstruktif terhadap karya teman.
+
+Kondisi/Konteks: Dalam sesi presentasi kelompok atau individu di depan kelas, serta sesi refleksi diri dan kelompok.
+
+Tingkat Pencapaian: Peserta didik mampu mempresentasikan puisinya dengan ekspresi yang tepat dan memberikan minimal 2 umpan balik positif serta 1 umpan balik perbaikan kepada teman secara santun.
+
+
+
+D.	Topik Pembelajaran kontekstual
+
+"Puisi sebagai Cermin Perasaanku: Mengungkapkan Emosi melalui Kata-kata Indah"
+
+"Jejak Makna di Balik Diksi: Menemukan Pesan Tersembunyi dalam Bait Puisi"
+
+"Dari Imajinasi Menjadi Karya: Menciptakan Puisi sebagai Ekspresi Diri"
+
+"Puisi di Sekitarku: Mengapresiasi Keindahan Bahasa dalam Kehidupan Sehari-hari"
+
+
+
+E.	Kerangka Pembelajaran
+
+1. Praktik Pedagogik (Model, Strategi, Metode):
+
+Model Pembelajaran: Discovery Learning, Project-Based Learning (untuk penulisan puisi).
+
+Pendekatan: Deep Learning (Mindful Learning, Meaningful Learning, Joyful Learning).
+
+Strategi:
+
+Mindful Learning: Aktivitas refleksi awal dan akhir, teknik pernapasan sederhana sebelum fokus, jurnal belajar.
+
+Meaningful Learning: Mengaitkan materi puisi dengan pengalaman pribadi peserta didik, contoh-contoh puisi yang relevan dengan isu-isu remaja atau lingkungan, diskusi mendalam tentang makna.
+
+Joyful Learning: Permainan tebak kata, musikalisasi puisi, workshop menulis kreatif, presentasi yang interaktif.
+
+Metode: Diskusi kelompok, tanya jawab, curah pendapat, demonstrasi (pembacaan puisi), lokakarya (menulis puisi), presentasi.
+
+2. Kemitraan Pembelajaran:
+
+Lingkungan Sekolah: Perpustakaan sekolah (referensi buku puisi), guru mata pelajaran lain (misalnya guru Seni Budaya untuk kolaborasi musikalisasi puisi), klub sastra/ekstrakurikuler puisi.
+
+Lingkungan Luar Sekolah: Penyair lokal (mengundang sebagai narasumber atau inspirator), komunitas sastra, kunjungan ke acara pementasan puisi.
+
+Masyarakat: Mengumpulkan puisi atau lirik lagu daerah yang relevan dari masyarakat sekitar.
+
+3. Lingkungan Belajar:
+
+Ruang Fisik: Kelas yang nyaman dan fleksibel (pengaturan tempat duduk yang memungkinkan diskusi kelompok), perpustakaan sekolah, taman sekolah (untuk inspirasi menulis).
+
+Ruang Virtual: Google Classroom (pengumuman, pengumpulan tugas, materi tambahan), platform video conference (jika pembelajaran jarak jauh atau mengundang narasumber), YouTube (video pembacaan puisi, analisis puisi).
+
+Budaya Belajar: Budaya saling menghargai pendapat, berani berekspresi, antusias dalam berdiskusi, kritis namun konstruktif, serta kolaboratif.
+
+4. Pemanfaatan Digital:
+
+Perpustakaan Digital: Mengakses e-book puisi, jurnal sastra daring.
+
+Forum Diskusi Daring: Google Classroom (fitur komentar), grup chat kelas untuk berbagi ide atau pertanyaan.
+
+Penilaian Daring: Google Forms (untuk kuis singkat tentang konsep), Rubrik penilaian yang diunggah di Google Classroom.
+
+Aplikasi Interaktif: Kahoot! atau Mentimeter (untuk kuis atau polling singkat tentang pemahaman awal atau refleksi), Padlet (untuk berbagi ide puisi atau umpan balik anonim).
+
+Google Classroom: Sebagai pusat pengelolaan pembelajaran (materi, tugas, pengumuman, pengumpulan).
+
+
+
+F.	Langkah-langkah Pembelajaran BERDIFERENSIASI
+
+Kegiatan Pendahuluan (15 menit)
+
+Pembelajaran Berkesadaran (Mindful Learning): Guru mengajak peserta didik melakukan latihan pernapasan singkat (tarik napas dalam-dalam, hembuskan perlahan) untuk menenangkan pikiran dan meningkatkan fokus.
+
+Pembelajaran Bermakna (Meaningful Learning): Guru menyapa peserta didik, memeriksa kehadiran, dan kemudian memulai dengan pertanyaan pemantik yang relevan dengan pengalaman mereka, misalnya: "Pernahkah kalian merasa sangat sedih atau gembira, dan ingin mengungkapkan perasaan itu dengan cara yang indah?" atau "Apa lagu yang liriknya paling menyentuh hati kalian? Mengapa?"
+
+Pembelajaran Menggembirakan (Joyful Learning): Guru menampilkan gambar kolase penyair terkenal Indonesia atau memutar cuplikan musikalisasi puisi yang menarik untuk membangkitkan rasa ingin tahu dan antusiasme.
+
+Guru menyampaikan tujuan pembelajaran yang akan dicapai dan manfaatnya dalam kehidupan sehari-hari.
+
+
+
+Kegiatan Inti (60-70 menit)
+
+Pembelajaran Memahami (Understanding):
+
+Guru menyajikan berbagai jenis puisi (misalnya, puisi lirik, balada, dst.) atau contoh puisi yang memiliki diksi menarik (sesuai pertemuan).
+
+Peserta didik secara individu atau kelompok menganalisis puisi, mengidentifikasi unsur-unsur pembangunnya, atau mencari makna diksi.
+
+Diskusi kelas dipandu oleh guru untuk mengelaborasi pemahaman, mengklarifikasi konsep, dan membangun koneksi antargagasan.
+
+Diferensiasi Konten: Guru menyediakan beragam sumber belajar (teks, video, audio) dan tingkat kesulitan puisi yang bervariasi sesuai dengan tingkat pemahaman peserta didik.
+
+Pembelajaran Mengaplikasi (Applying):
+
+Peserta didik berlatih menganalisis puisi baru, menafsirkan maknanya, atau membuat kerangka puisi berdasarkan tema yang diberikan.
+
+Guru memberikan contoh konkret bagaimana teori diterapkan dalam praktik menulis puisi.
+
+Diferensiasi Proses: Guru memberikan pilihan cara bagi peserta didik untuk memproses informasi (misalnya, membuat peta konsep, menulis ringkasan, atau berdiskusi dengan teman). Guru juga memberikan scaffolding yang berbeda sesuai kebutuhan: beberapa peserta didik mungkin memerlukan panduan langkah demi langkah, sementara yang lain hanya butuh arahan umum.
+
+Pembelajaran Merefleksi (Reflecting):
+
+Peserta didik merefleksikan pemahaman mereka melalui jurnal singkat atau diskusi kelompok tentang "Apa hal baru yang saya pelajari hari ini?" atau "Bagian mana dari puisi ini yang paling memengaruhi saya?"
+
+Guru memberikan umpan balik formatif secara langsung kepada peserta didik terkait proses analisis atau penulisan puisi mereka.
+
+Diferensiasi Produk: Peserta didik memiliki pilihan untuk menunjukkan pemahaman mereka dalam berbagai bentuk (misalnya, menulis puisi, membuat presentasi, atau musikalisasi puisi).
+
+
+
+Kegiatan Penutup (10-15 menit)
+
+Umpan Balik Konstruktif: Guru memberikan umpan balik menyeluruh terhadap kegiatan pembelajaran yang telah dilakukan, mengapresiasi usaha peserta didik, dan menyoroti area yang perlu ditingkatkan.
+
+Menyimpulkan Pembelajaran: Bersama peserta didik, guru membuat rangkuman poin-poin penting dari materi yang telah dipelajari. Guru dapat menggunakan aplikasi Mentimeter untuk membuat word cloud dari kata kunci yang mereka pelajari.
+
+Perencanaan Pembelajaran Selanjutnya: Peserta didik diajak untuk terlibat dalam perencanaan pembelajaran selanjutnya, misalnya dengan bertanya: "Topik apa lagi yang ingin kalian eksplorasi terkait puisi?" atau "Bagaimana cara terbaik untuk kita melanjutkan pembelajaran tentang puisi?" Guru memberikan tugas mandiri berupa mencari contoh puisi inspiratif untuk persiapan pertemuan selanjutnya. Guru juga dapat menggunakan Google Classroom untuk mengunggah materi pengayaan.
+
+
+
+G.	Asesmen PEMBELAJARAN
+
+Assessment as Learning (Sebagai Pembelajaran):
+
+Jurnal Belajar: Peserta didik menulis refleksi harian tentang pemahaman, kesulitan, dan perasaan mereka selama proses pembelajaran puisi.
+
+Diskusi Kelompok: Guru mengamati partisipasi dan interaksi peserta didik selama diskusi untuk menilai pemahaman dan kemampuan kolaborasi.
+
+Peer Assessment (Penilaian Sejawat): Peserta didik saling memberikan umpan balik konstruktif terhadap puisi karya teman. Guru menyediakan rubrik sederhana untuk panduan.
+
+Self Assessment (Penilaian Diri): Peserta didik menilai sendiri kemajuan mereka dalam memahami dan menulis puisi menggunakan daftar periksa atau pertanyaan reflektif.
+
+
+
+Assessment for Learning (Untuk Pembelajaran):
+
+Kuis Singkat (Formative Quiz): Menggunakan Kahoot! atau Google Forms di awal atau tengah pembelajaran untuk mengecek pemahaman awal atau pemahaman konsep tertentu.
+
+Observasi Guru: Guru mencatat partisipasi aktif, pertanyaan yang diajukan, dan cara peserta didik mengatasi tantangan.
+
+Umpan Balik Lisan/Tertulis: Guru memberikan umpan balik langsung selama kegiatan inti, baik secara lisan maupun catatan singkat pada hasil kerja peserta didik.
+
+Checklist Pengamatan Menulis Puisi: Guru menggunakan daftar periksa untuk mengamati proses penulisan puisi peserta didik, termasuk penggunaan diksi dan majas.
+
+
+
+Assessment of Learning (Akhir Pembelajaran):
+
+Penilaian Kinerja (Presentasi Puisi): Peserta didik mempresentasikan puisi karya sendiri di depan kelas. Penilaian berdasarkan rubrik yang mencakup kriteria seperti ekspresi, kejelasan, kesesuaian dengan tema, dan penggunaan unsur puisi.
+
+Penilaian Produk (Karya Puisi): Puisi hasil karya peserta didik dinilai berdasarkan rubrik yang mencakup kreativitas, orisinalitas, penggunaan diksi, majas, rima, dan kesesuaian dengan tujuan penulisan.
+
+Tes Tertulis (Esai Analisis Puisi): Peserta didik diminta menganalisis sebuah puisi yang belum pernah dibahas sebelumnya, mengidentifikasi unsur-unsur, dan menafsirkan maknanya.
+

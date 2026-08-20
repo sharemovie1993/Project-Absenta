@@ -1,0 +1,516 @@
+
+
+MODUL AJAR DEEP LEARNING
+
+MATA PELAJARAN : BAHASA INDONESIA
+
+BAB 3 :  Menyusuri Nilai dalam Cerita Lintas Zaman
+
+
+
+
+
+
+
+A.	Identitas Modul
+
+Nama Sekolah	:	.....................................................................................
+
+Nama Penyusun	:	.....................................................................................
+
+Mata Pelajaran	:	Bahasa Indonesia
+
+Kelas / Fase /Semester	: 	X/ E / Ganjil
+
+Alokasi Waktu 	:	18 JP (6 kali pertemuan @3JP)
+
+Tahun Pelajaran	:	........................
+
+
+
+
+
+B.	Identifikasi Kesiapan Peserta Didik
+
+Sebelum memulai pembelajaran, identifikasi kesiapan peserta didik dapat dilakukan sebagai berikut:
+
+Pengetahuan Awal: Peserta didik telah memiliki pengalaman membaca berbagai jenis cerita (dongeng, fabel, cerpen) di jenjang sebelumnya. Mereka mungkin sudah akrab dengan konsep "pesan moral" atau "nilai-nilai" dalam cerita, namun belum tentu memahami karakteristik hikayat sebagai cerita klasik. Guru akan melakukan asesmen awal untuk menggali pemahaman mereka tentang cerita dan nilai.
+
+Minat: Peserta didik menunjukkan minat terhadap cerita-cerita fantasi, petualangan, atau kisah-kisah tradisional. Beberapa mungkin tertarik pada sejarah atau budaya lama. Guru dapat memantik minat dengan cuplikan cerita klasik atau perbandingan dengan cerita modern.
+
+Latar Belakang: Peserta didik berasal dari latar belakang umum dan tidak memiliki kesulitan khusus dalam mencerna dan memahami materi ajar. Mereka mungkin memiliki latar belakang budaya yang bervariasi, yang dapat memperkaya diskusi tentang nilai-nilai lokal.
+
+Kebutuhan Belajar:
+
+Auditori: Kebutuhan belajar auditori akan dipenuhi dengan menyajikan hikayat dalam bentuk audio drama, pembacaan hikayat dengan intonasi yang menarik, atau diskusi kelompok.
+
+Visual: Kebutuhan belajar visual akan dipenuhi dengan menampilkan teks hikayat, ilustrasi, peta konsep struktur hikayat, atau video adaptasi cerita klasik.
+
+Kinestetik: Kebutuhan belajar kinestetik akan dipenuhi melalui kegiatan bermain peran (drama singkat), menulis ulang hikayat dengan gaya modern, atau membuat peta perjalanan tokoh.
+
+
+
+C.	Karakteristik Materi Pelajaran
+
+Jenis Pengetahuan yang Akan Dicapai:
+
+Konseptual: Peserta didik akan memahami pengertian, ciri-ciri, fungsi, dan struktur hikayat. Mereka juga akan memahami berbagai nilai (agama, sosial, budaya, moral, edukasi) yang terkandung dalam hikayat dan relevansinya.
+
+Prosedural: Peserta didik akan menguasai langkah-langkah menganalisis unsur intrinsik dan ekstrinsik hikayat, mengidentifikasi nilai-nilai, serta mengalihwahanakan hikayat ke dalam bentuk cerita pendek atau drama radio modern.
+
+Relevansi dengan Kehidupan Nyata Peserta Didik: Materi ini relevan karena hikayat, meskipun berasal dari masa lampau, mengandung nilai-nilai universal yang masih relevan dalam kehidupan sehari-hari peserta didik. Mereka akan belajar bagaimana nilai-nilai tersebut dapat membimbing perilaku, membentuk karakter, dan membantu mereka memahami akar budaya bangsanya. Keterampilan menganalisis cerita dan menemukan nilai juga berguna dalam memahami berbagai teks lainnya.
+
+Tingkat Kesulitan: Materi disajikan secara bertahap, dimulai dari pengenalan konsep dasar hikayat, analisis unsur intrinsik dan ekstrinsik, identifikasi nilai, hingga tahapan penulisan kreatif (mengalihwahanakan) yang lebih kompleks. Diferensiasi konten memungkinkan penyediaan contoh hikayat dengan tingkat kesulitan bahasa dan alur yang bervariasi.
+
+Struktur Materi: Materi tersusun secara sistematis dari pengenalan (Pengertian, Ciri-ciri, Fungsi Hikayat), dilanjutkan dengan analisis (Unsur Intrinsik & Ekstrinsik, Nilai-nilai dalam Hikayat), kemudian implementasi (Menulis Cerpen/Naskah Drama Radio Berdasarkan Hikayat), dan diakhiri dengan penyajian/publikasi karya.
+
+Integrasi Nilai dan Karakter:
+
+Keimanan dan Ketakwaan terhadap Tuhan Yang Maha Esa, dan Berakhlak Mulia: Dengan mengidentifikasi dan meneladani nilai-nilai kebaikan, keteguhan iman, kejujuran, dan keadilan yang terkandung dalam hikayat.
+
+Bernalar Kritis: Menganalisis unsur-unsur cerita, membandingkan nilai antar hikayat, mengevaluasi relevansi nilai dengan kehidupan modern, dan mengambil pelajaran dari konflik dalam cerita.
+
+Kreativitas: Mengalihwahanakan hikayat ke dalam bentuk cerita modern atau drama radio dengan ide-ide orisinal dan pengembangan karakter.
+
+Kolaborasi/Bergotong Royong: Bekerja dalam kelompok untuk menganalisis hikayat, mendiskusikan nilai, dan berkolaborasi dalam penulisan atau produksi karya.
+
+Kemandirian: Melakukan analisis teks secara individual dan menyusun draf cerita secara mandiri.
+
+Komunikasi: Mengembangkan kemampuan menginterpretasikan dan mempresentasikan nilai-nilai dalam hikayat, serta berkomunikasi secara efektif dalam diskusi kelompok.
+
+Kewargaan: Memahami nilai-nilai luhur budaya bangsa yang terkandung dalam hikayat sebagai bagian dari identitas nasional.
+
+
+
+D	Dimensi Profil Lulusan
+
+Dimensi profil lulusan yang akan dicapai dalam pembelajaran ini adalah:
+
+Keimanan dan Ketakwaan terhadap Tuhan Yang Maha Esa, dan Berakhlak Mulia: Melalui identifikasi nilai-nilai moral dan agama dalam hikayat serta meneladani perilaku baik tokoh.
+
+Kewargaan: Memahami dan mengapresiasi kekayaan budaya bangsa melalui hikayat sebagai warisan sastra, serta menumbuhkan rasa bangga sebagai warga negara Indonesia.
+
+Bernalar Kritis: Peserta didik mampu menganalisis unsur intrinsik dan ekstrinsik hikayat, mengidentifikasi nilai-nilai yang terkandung di dalamnya, membandingkan nilai antarhikayat, dan mengevaluasi relevansi nilai tersebut dengan konteks kekinian.
+
+Kreativitas: Peserta didik mampu mengalihwahanakan hikayat ke dalam bentuk cerita pendek atau naskah drama radio modern dengan sentuhan orisinalitas dan pengembangan karakter yang menarik.
+
+Kolaborasi/Bergotong Royong: Peserta didik bekerja sama dalam kelompok untuk menganalisis hikayat, mendiskusikan nilai-nilai, serta berkolaborasi dalam proses penulisan dan produksi karya alih wahana.
+
+Kemandirian: Peserta didik mampu secara individual membaca, memahami, dan menganalisis hikayat, serta menyusun draf cerita alih wahana sesuai dengan ide-ide mereka.
+
+Komunikasi: Peserta didik mampu menginterpretasikan nilai-nilai dalam hikayat dan mempresentasikannya secara jelas, logis, dan persuasif, serta berkomunikasi secara efektif dalam diskusi kelompok.
+
+
+
+
+
+DESAIN PEMBELAJARAN
+
+
+
+A.	Capaian Pembelajaran (CP) Nomor : 32 Tahun 2024
+
+Pada akhir fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi informasi dari berbagai tipe teks tentang topik yang beragam. Peserta didik mampu menyintesis gagasan dan pendapat dari berbagai sumber. Peserta didik mampu berpartisipasi aktif dalam diskusi dan debat. Peserta didik mampu menulis berbagai teks untuk menyampaikan pendapat dan mempresentasikan serta menanggapi informasi nonfiksi dan fiksi secara kritis dan etis.
+
+Capaian Pembelajaran setiap elemen mata pelajaran Bahasa Indonesia adalah sebagai berikut.
+
+Elemen
+
+Capaian Pembelajaran
+
+Menyimak
+
+Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks dalam bentuk monolog, dialog, dan gelar wicara.
+
+Membaca dan Memirsa
+
+Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari berbagai tipe teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat. Peserta didik mampu menginterpretasi informasi untuk mengungkapkan gagasan dan perasaan simpati, peduli, empati dan/atau pendapat pro/kontra dari teks visual dan audiovisual secara kreatif. Peserta didik mampu menggunakan sumber lain untuk menilai akurasi dan kualitas data serta membandingkan isi teks.
+
+Berbicara dan Mempresentasikan
+
+Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif. Peserta didik mampu mengkreasi ungkapan sesuai dengan norma kesopanan dalam berkomunikasi. Peserta didik mampu berkontribusi lebih aktif dalam diskusi dengan mempersiapkan materi diskusi, melaksanakan tugas dan fungsi dalam diskusi. Peserta didik mampu mengungkapkan kepedulian secara kreatif dalam bentuk teks fiksi dan nonfiksi multimodal.
+
+Menulis
+
+Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi. Peserta didik mampu menulis teks eksposisi hasil penelitian dan teks fungsional dunia kerja. Peserta didik mampu mengalihwahanakan satu teks ke teks lainnya. Peserta didik mampu menerbitkan hasil tulisan di media cetak, elektronik, dan/atau digital.
+
+
+
+B. 	Lintas Disiplin Ilmu
+
+Sejarah: Memahami konteks zaman, budaya, dan sosial di mana hikayat diciptakan, serta pengaruhnya terhadap isi cerita.
+
+Sosiologi/Antropologi: Menganalisis nilai-nilai sosial dan budaya yang tercermin dalam hikayat, serta bagaimana nilai-nilai tersebut membentuk masyarakat pada masanya.
+
+Pendidikan Agama: Mengidentifikasi nilai-nilai agama dan moral yang terkandung dalam hikayat sebagai bagian dari pendidikan karakter.
+
+Seni (Drama, Seni Pertunjukan, Penulisan Kreatif): Dalam kegiatan alih wahana hikayat menjadi naskah drama radio atau cerita pendek, yang melibatkan unsur-unsur penulisan kreatif dan seni pertunjukan.
+
+
+
+C. 	Tujuan Pembelajaran
+
+Pertemuan 1: Mengenali Hikayat dan Karakteristiknya (3 JP)
+
+Membaca dan Memirsa:
+
+Mengidentifikasi ciri-ciri dan karakteristik hikayat dari berbagai contoh yang disajikan.
+
+Menemukan informasi penting dari teks hikayat yang dibaca atau disimak.
+
+Pertemuan 2: Unsur Intrinsik, Ekstrinsik, dan Nilai dalam Hikayat (3 JP)
+
+Membaca dan Memirsa:
+
+Menganalisis unsur intrinsik (tokoh, alur, latar, tema, amanat) dalam hikayat.
+
+Menganalisis unsur ekstrinsik (nilai-nilai: agama, moral, sosial, budaya, edukasi) yang terkandung dalam hikayat.
+
+Berbicara dan Mempresentasikan:
+
+Menginterpretasikan nilai-nilai yang terkandung dalam hikayat dan menghubungkannya dengan kehidupan sehari-hari.
+
+Pertemuan 3-5: Mengalihwahanakan Hikayat (9 JP)
+
+Menulis:
+
+Merancang alih wahana hikayat ke dalam bentuk cerita pendek atau naskah drama radio dengan sentuhan modern.
+
+Menulis cerita pendek atau naskah drama radio berdasarkan hikayat yang telah dianalisis, dengan mempertahankan nilai-nilai esensialnya.
+
+Mengembangkan karakter dan alur cerita agar relevan dengan konteks kekinian.
+
+Pertemuan 6: Mempresentasikan/Mempublikasikan Hasil Alih Wahana (3 JP)
+
+Berbicara dan Mempresentasikan:
+
+Mempresentasikan atau membacakan hasil alih wahana hikayat (cerpen/naskah drama radio) di depan kelas.
+
+Menyajikan nilai-nilai yang dipertahankan atau diinterpretasikan dalam karya alih wahana.
+
+
+
+D.	Topik Pembelajaran kontekstual
+
+Pengertian, Ciri-ciri, dan Fungsi Hikayat: Memahami hikayat sebagai salah satu bentuk sastra klasik Indonesia.
+
+Unsur Intrinsik dan Ekstrinsik Hikayat: Menganalisis struktur dan konteks hikayat untuk mendapatkan pemahaman mendalam.
+
+Nilai-nilai dalam Hikayat: Mengidentifikasi dan menginterpretasikan nilai-nilai (agama, moral, sosial, budaya, edukasi) yang relevan lintas zaman.
+
+Perbandingan Hikayat dan Cerita Modern: Memahami perbedaan gaya, struktur, dan nilai antara cerita klasik dan kontemporer.
+
+Alih Wahana Hikayat: Mengaplikasikan pemahaman hikayat ke dalam bentuk cerita modern (cerpen atau naskah drama radio) dengan tetap mempertahankan esensi nilai.
+
+Penyajian/Publikasi Karya: Mempresentasikan atau mempublikasikan hasil alih wahana hikayat.
+
+
+
+E.	Kerangka Pembelajaran
+
+PRAKTIK PEDAGOGIK
+
+Model Pembelajaran: Pembelajaran Berbasis Teks (Text-Based Approach) dan Pembelajaran Berbasis Proyek (Project-Based Learning).
+
+Pendekatan: Deep Learning (Mindful Learning, Meaningful Learning, Joyful Learning)
+
+Mindful Learning: Peserta didik belajar untuk fokus dan saksama dalam membaca serta menganalisis detail teks hikayat (bahasa, alur, karakter). Mereka juga diajak untuk merenungkan makna dan nilai-nilai yang terkandung di dalamnya secara mendalam, bukan hanya permukaan cerita.
+
+Meaningful Learning: Pembelajaran menjadi bermakna karena peserta didik menghubungkan nilai-nilai universal dalam hikayat dengan pengalaman dan tantangan hidup mereka saat ini. Mereka melihat relevansi cerita klasik dengan pembentukan karakter dan pemahaman budaya, sehingga pembelajaran tidak hanya bersifat teoritis tetapi juga aplikatif.
+
+Joyful Learning: Pembelajaran dirancang menyenangkan melalui kegiatan membaca cerita yang menarik, diskusi interaktif, proyek kreatif (menulis ulang atau mendramatisasi hikayat), serta kesempatan untuk berbagi dan mengapresiasi karya teman. Guru dapat menggunakan media audio visual yang menarik untuk memicu minat.
+
+Metode Pembelajaran: Diskusi kelompok, tanya jawab, analisis teks, membaca nyaring, bermain peran (opsional), penulisan kreatif, dan presentasi.
+
+Strategi Pembelajaran Berdiferensiasi:
+
+Diferensiasi Konten: Menyediakan beragam contoh teks hikayat (dengan tingkat kesulitan bahasa dan alur yang bervariasi); menyediakan rangkuman atau sinopsis hikayat untuk peserta didik dengan kebutuhan khusus; menyediakan video adaptasi hikayat atau ilustrasi visual.
+
+Diferensiasi Proses: Mengatur kelompok berdasarkan minat atau gaya belajar; menyediakan panduan analisis yang berbeda levelnya (misalnya, lembar kerja terstruktur atau pertanyaan terbuka); memberikan pilihan cara menganalisis nilai (misalnya, membuat peta konsep, tabel perbandingan, atau esai singkat).
+
+Diferensiasi Produk: Memberikan kebebasan memilih bentuk alih wahana (cerita pendek, naskah drama radio, komik adaptasi, atau presentasi visual); memungkinkan peserta didik menyajikan analisis nilai dalam berbagai format (lisan, tulisan, visual).
+
+
+
+KEMITRAAN PEMBELAJARAN
+
+Lingkungan Sekolah: Pemanfaatan perpustakaan sekolah untuk mencari koleksi hikayat atau cerita klasik lainnya.
+
+Lingkungan Luar Sekolah/Masyarakat: Mengundang pegiat sastra atau budayawan lokal (jika memungkinkan) untuk berbagi pengalaman tentang hikayat atau cerita rakyat.
+
+Mitra Digital: Perpustakaan digital nasional/daerah untuk akses hikayat digital. KBBI daring dan tesaurus daring untuk memahami kosakata arkais. Platform audio/video untuk mendengarkan atau menonton adaptasi hikayat.
+
+
+
+LINGKUNGAN BELAJAR
+
+Ruang Fisik: Ruang kelas yang kondusif untuk membaca, diskusi, dan presentasi. Area yang nyaman di perpustakaan atau taman sekolah untuk kegiatan membaca individu.
+
+Ruang Virtual: Akses internet untuk mencari sumber hikayat digital, referensi unsur intrinsik/ekstrinsik, dan penggunaan aplikasi digital untuk penulisan atau produksi karya.
+
+Budaya Belajar: Mendorong budaya literasi, apresiasi terhadap warisan budaya bangsa, saling berbagi interpretasi, serta membangun rasa hormat terhadap nilai-nilai luhur.
+
+
+
+PEMANFAATAN DIGITAL
+
+Perpustakaan Digital/Sumber Daring: Komputer/Laptop dan akses internet untuk mencari hikayat dari berbagai sumber digital, jurnal sastra, atau artikel tentang nilai-nilai budaya.
+
+Forum Diskusi Daring: (Opsional, dapat diintegrasikan melalui Google Classroom atau platform lain) untuk berbagi hasil analisis, mendapatkan umpan balik, atau mengunggah draf karya.
+
+Penilaian Daring: Kuis interaktif melalui platform seperti Kahoot! atau Quizizz untuk menguji pemahaman tentang ciri-ciri hikayat atau nilai-nilai di dalamnya.
+
+Alat Penulisan/Produksi Digital: Google Docs untuk kolaborasi menulis, aplikasi pengolah kata untuk penulisan cerpen/naskah drama, aplikasi edit audio (misalnya Audacity, Anchor) untuk produksi drama radio.
+
+
+
+F.	Langkah-langkah Pembelajaran BERDIFERENSIASI
+
+Pertemuan 1 (3 JP: 135 MENIT)
+
+Topik: Mengenali Hikayat dan Karakteristiknya
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Guru membuka pelajaran dengan salam, doa, dan mengecek kehadiran.
+
+Apersepsi (Joyful Learning): Guru menampilkan cuplikan film animasi yang diadaptasi dari cerita rakyat/dongeng atau menampilkan gambar ilustrasi klasik. Guru bertanya: "Cerita apa yang paling berkesan bagi kalian saat kecil?" "Menurut kalian, apakah cerita-cerita lama ini masih relevan di zaman sekarang?"
+
+Pertanyaan Pemantik: Guru mengaitkan cerita rakyat dengan konsep hikayat: "Pernahkah kalian mendengar istilah 'hikayat'?" "Apa yang terlintas di pikiran kalian saat mendengar kata tersebut?"
+
+Motivasi (Meaningful Learning): Guru menyampaikan bahwa hikayat adalah warisan sastra nenek moyang kita yang kaya akan nilai-nilai luhur, dan dengan mempelajarinya kita dapat memahami akar budaya bangsa.
+
+Penyampaian Tujuan Pembelajaran: Guru menyampaikan tujuan pembelajaran hari ini (mengidentifikasi ciri-ciri dan menemukan informasi penting dari hikayat).
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Asesmen Diagnostik (Assessment as Learning): Guru melakukan asesmen awal dengan menggali pemahaman peserta didik tentang cerita dan nilai. Contoh: "Apa yang membuat sebuah cerita menjadi 'menarik' menurutmu? Apakah ada pesan moral yang kamu ingat dari cerita yang pernah kamu baca?". Guru mencatat respons untuk memetakan pemahaman awal.
+
+Eksplorasi Teks (Mindful Learning): Guru membagikan teks hikayat atau menampilkan potongan hikayat di layar (misalnya, cuplikan "Hikayat Indera Bangsawan" atau "Hikayat Hang Tuah" dari buku siswa, hlm. 68-71). Peserta didik membaca atau menyimak (jika ada versi audio) dengan saksama. (Diferensiasi konten: Menyediakan hikayat dengan tingkat kesulitan bahasa bervariasi).
+
+Diskusi Kelompok (Kolaborasi & Bernalar Kritis): Guru membagi peserta didik ke dalam kelompok. Setiap kelompok mendiskusikan karakteristik atau ciri-ciri yang mereka temukan dalam hikayat tersebut (misalnya, penggunaan kata arkais, sifat istana sentris, kemustahilan, kesaktian tokoh, anonim).
+
+Menemukan Informasi Penting (Bernalar Kritis): Peserta didik menemukan informasi penting dari hikayat yang dibaca atau disimak. Guru membimbing diskusi untuk memastikan pemahaman.
+
+Presentasi dan Penguatan Konsep: Perwakilan kelompok mempresentasikan hasil identifikasi ciri-ciri dan informasi penting. Guru memberikan penguatan tentang ciri-ciri hikayat dan perbedaannya dengan jenis cerita lain.
+
+Pembelajaran Berdiferensiasi:
+
+Konten: Menyediakan rangkuman atau sinopsis hikayat bagi peserta didik dengan tingkat pemahaman bahasa yang berbeda.
+
+Produk: Peserta didik dapat menyajikan ciri-ciri hikayat dalam bentuk daftar poin, peta konsep, atau presentasi visual.
+
+
+
+KEGIATAN PENUTUP (15 MENIT)
+
+Refleksi (Mindful Learning): Peserta didik diajak merefleksikan pembelajaran: "Apa hal baru yang kalian pelajari tentang hikayat hari ini?" "Apakah kalian menemukan sesuatu yang menarik dari cerita-cerita klasik ini?"
+
+Rangkuman: Guru bersama peserta didik merangkum materi tentang ciri-ciri hikayat.
+
+Tindak Lanjut: Guru memberikan tugas rumah untuk mencari tahu apa saja unsur intrinsik dan ekstrinsik dalam sebuah cerita sebagai persiapan pertemuan berikutnya.
+
+Penutup: Guru menutup pelajaran dengan salam dan doa.
+
+
+
+Pertemuan 2 (3 JP: 135 MENIT)
+
+Topik: Unsur Intrinsik, Ekstrinsik, dan Nilai dalam Hikayat
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Mengulas singkat materi sebelumnya (ciri-ciri hikayat).
+
+Pertanyaan Pemantik: "Selain cerita yang menarik, apa lagi yang bisa kita pelajari dari sebuah hikayat?" "Apakah nilai-nilai yang ada di cerita lama masih relevan dengan kehidupan kita sekarang?"
+
+Penyampaian Tujuan Pembelajaran: Menganalisis unsur intrinsik dan ekstrinsik, serta menginterpretasikan nilai-nilai dalam hikayat.
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Membaca Hikayat Mendalam (Mindful Learning): Peserta didik membaca satu hikayat pilihan secara lebih mendalam (misalnya, "Hikayat si Miskin" atau "Hikayat Bayan Budiman" dari buku siswa, hlm. 76-80).
+
+Analisis Unsur Intrinsik (Bernalar Kritis): Dalam kelompok, peserta didik menganalisis unsur intrinsik hikayat (tokoh dan penokohan, alur, latar, tema, amanat). Guru menyediakan lembar kerja terstruktur untuk panduan analisis.
+
+Identifikasi Unsur Ekstrinsik dan Nilai (Bernalar Kritis & Meaningful Learning): Peserta didik mengidentifikasi unsur ekstrinsik (seperti latar belakang pengarang, konteks sosial budaya) dan berbagai nilai yang terkandung dalam hikayat (nilai agama, moral, sosial, budaya, edukasi).
+
+Interpretasi Nilai (Bernalar Kritis & Kewargaan): Guru memandu diskusi untuk menginterpretasikan nilai-nilai yang ditemukan dan menghubungkannya dengan konteks kehidupan sehari-hari peserta didik, serta relevansinya dengan budaya dan karakter bangsa.
+
+Diskusi dan Presentasi Hasil (Kolaborasi & Komunikasi): Setiap kelompok mempresentasikan hasil analisis unsur intrinsik, ekstrinsik, dan interpretasi nilai. Kelompok lain memberikan tanggapan.
+
+Penguatan Konsep: Guru memberikan penguatan tentang unsur intrinsik, ekstrinsik, dan berbagai jenis nilai dalam hikayat, serta contoh penerapannya.
+
+Pembelajaran Berdiferensiasi:
+
+Proses: Menyediakan lembar kerja dengan tingkat detail yang berbeda untuk analisis unsur dan nilai.
+
+Produk: Membuat peta konsep nilai-nilai, tabel perbandingan unsur hikayat, atau esai singkat interpretasi nilai.
+
+
+
+
+
+KEGIATAN PENUTUP (15 MENIT)
+
+Refleksi: Guru dan peserta didik merefleksikan pemahaman tentang nilai-nilai dalam hikayat. "Nilai apa yang paling berkesan bagimu dari hikayat yang kita pelajari hari ini? Mengapa?"
+
+Rangkuman: Merangkum materi.
+
+Tindak Lanjut: Mempersiapkan ide-ide untuk mengalihwahanakan hikayat yang telah dipelajari ke dalam bentuk cerita modern.
+
+Penutup: Salam dan doa.
+
+
+
+Pertemuan 3-5 (9 JP: 405 MENIT)
+
+Topik: Mengalihwahanakan Hikayat
+
+KEGIATAN PENDAHULUAN (20 MENIT TIAP PERTEMUAN)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Mengingatkan kembali nilai-nilai yang ditemukan dalam hikayat dan potensi pengembangannya.
+
+Pertanyaan Pemantik: "Bagaimana caranya membuat cerita lama terasa baru dan relevan untuk pembaca zaman sekarang?" "Bagaimana kita bisa mempertahankan esensi nilai hikayat dalam cerita modern?"
+
+Penyampaian Tujuan Pembelajaran: Merancang dan menulis alih wahana hikayat ke cerpen/naskah drama radio.
+
+
+
+KEGIATAN INTI (110 MENIT TIAP PERTEMUAN)
+
+Pemilihan Hikayat dan Identifikasi Esensi (Mindful Learning & Bernalar Kritis): Peserta didik memilih satu hikayat yang telah dianalisis (atau hikayat lain yang disepakati) untuk dialihwahanakan. Mereka mengidentifikasi esensi cerita, nilai-nilai utama, dan elemen yang ingin dipertahankan.
+
+Perancangan Alih Wahana (Kreativitas): Peserta didik secara individual atau kelompok merancang kerangka cerita pendek atau naskah drama radio. Mereka memikirkan perubahan latar, karakter, atau gaya bahasa agar lebih modern, namun tetap mempertahankan nilai esensialnya. (LKPD 2: Perancangan Alih Wahana dapat digunakan).
+
+Penulisan Draf (Kemandirian & Kreativitas): Peserta didik mulai menulis draf cerita pendek atau naskah drama radio. Guru berkeliling memberikan pendampingan dan umpan balik konstruktif mengenai struktur cerita, pengembangan karakter, dan penggunaan bahasa. (Diferensiasi proses: Guru dapat menyediakan contoh draf yang berbeda, panduan penulisan naskah drama radio, atau contoh adaptasi cerita).
+
+Umpan Balik dan Revisi (Kolaborasi & Bernalar Kritis): Peserta didik saling bertukar draf dengan teman sebaya atau kelompok lain untuk mendapatkan umpan balik. Mereka merevisi draf berdasarkan masukan untuk meningkatkan kualitas cerita.
+
+Pengembangan (Kreativitas): Peserta didik mengembangkan draf menjadi karya final, termasuk menambahkan detail, dialog, atau deskripsi yang menarik. Jika memilih drama radio, mereka juga dapat mempertimbangkan unsur audio (musik, efek suara).
+
+Pembelajaran Berdiferensiasi:
+
+Proses: Menyediakan panduan penulisan yang berbeda levelnya; pendampingan individu atau kelompok saat menulis.
+
+Produk: Peserta didik dapat menghasilkan cerpen, naskah drama radio, outline komik adaptasi, atau storyboard video.
+
+
+
+KEGIATAN PENUTUP (5 MENIT TIAP PERTEMUAN)
+
+Refleksi: Guru dan peserta didik merefleksikan progres penulisan alih wahana.
+
+Tindak Lanjut: Menyampaikan target dan persiapan untuk pertemuan berikutnya (penyelesaian draf final atau persiapan presentasi/publikasi).
+
+Penutup: Salam.
+
+
+
+Pertemuan 6 (3 JP: 135 MENIT)
+
+Topik: Mempresentasikan/Mempublikasikan Hasil Alih Wahana
+
+KEGIATAN PENDAHULUAN (15 MENIT)
+
+Pembukaan: Salam, doa, cek kehadiran.
+
+Apersepsi: Membangkitkan semangat untuk menyajikan karya.
+
+Pertanyaan Pemantik: "Bagaimana cara terbaik untuk berbagi cerita yang sudah kalian tulis dengan orang lain?" "Bagaimana kita bisa menunjukkan bahwa cerita klasik masih bisa hidup dan relevan?"
+
+Penyampaian Tujuan Pembelajaran: Mempresentasikan/mempublikasikan hasil alih wahana hikayat.
+
+
+
+KEGIATAN INTI (105 MENIT)
+
+Persiapan Presentasi/Publikasi (Kemandirian & Komunikasi): Peserta didik melakukan persiapan akhir untuk presentasi atau publikasi karya alih wahana mereka. Jika drama radio, mereka dapat berlatih membacakan naskah. Jika cerpen, mereka dapat mempersiapkan cara membacakan cuplikan menarik.
+
+Penyajian Karya (Joyful Learning & Kreativitas): Peserta didik mempresentasikan atau menyajikan hasil alih wahana hikayat mereka. Ini bisa berupa:
+
+Pembacaan cerpen.
+
+Pementasan drama radio singkat (dengan atau tanpa properti).
+
+Pameran komik adaptasi.
+
+Menampilkan video pendek.
+
+Sesi Tanya Jawab/Umpan Balik (Bernalar Kritis & Komunikasi): Setelah penyajian, guru memfasilitasi sesi tanya jawab atau umpan balik dari teman-teman dan guru. Peserta didik dapat memberikan pertanyaan mengenai interpretasi nilai, pengembangan karakter, atau tantangan dalam proses alih wahana.
+
+Diskusi Apresiasi (Meaningful Learning & Kewargaan): Guru memimpin diskusi tentang pentingnya melestarikan dan mengadaptasi cerita klasik agar tetap relevan bagi generasi muda, sebagai bentuk apresiasi terhadap warisan budaya bangsa.
+
+Pembelajaran Berdiferensiasi:
+
+Proses: Memberikan kesempatan latihan dan umpan balik individual.
+
+Produk: Presentasi dalam berbagai format (lisan, audio, visual) sesuai minat dan gaya belajar peserta didik.
+
+
+
+KEGIATAN PENUTUP (15 MENIT)
+
+Refleksi Akhir (Mindful Learning): Guru dan peserta didik melakukan refleksi menyeluruh tentang seluruh proses pembelajaran bab ini, mulai dari memahami hikayat hingga mampu mengalihwahakan dan menyajikannya.
+
+Penghargaan: Guru memberikan apresiasi atas kerja keras, kreativitas, dan partisipasi peserta didik dalam melestarikan sastra klasik.
+
+Tindak Lanjut: Menyampaikan garis besar materi bab selanjutnya.
+
+Penutup: Salam dan doa.
+
+
+
+G.	Asesmen PEMBELAJARAN
+
+Asesmen Diagnostik (Assessment as Learning):
+
+Tanya Jawab: "Cerita apa yang paling berkesan bagimu saat kecil?" "Apakah ada pesan moral yang kamu ingat dari cerita yang pernah kamu baca?" untuk menggali pengetahuan awal tentang cerita dan nilai.
+
+Pre-test Singkat: Kuis singkat tentang ciri-ciri umum dongeng atau cerita rakyat.
+
+Asesmen Formatif (Assessment for Learning): Dilakukan selama proses pembelajaran di setiap pertemuan.
+
+Tanya Jawab: Seputar materi yang sedang dibahas, seperti "Apa saja ciri-ciri hikayat yang kalian temukan?", "Sebutkan unsur intrinsik yang dominan dalam hikayat ini!", "Nilai apa yang paling menonjol dalam cerita ini?".
+
+Diskusi Kelompok: Penilaian partisipasi dan kontribusi peserta didik dalam diskusi mengidentifikasi ciri, unsur, dan nilai hikayat.
+
+Latihan Soal/LKPD:
+
+"Identifikasi lima ciri hikayat dari contoh yang disajikan!".
+
+"Analisis tokoh utama dan alur cerita dalam hikayat 'Si Miskin'!".
+
+"Sebutkan tiga nilai moral yang bisa kamu petik dari hikayat ini dan berikan contoh penerapannya dalam kehidupan sehari-hari!".
+
+Observasi: Pengamatan guru terhadap kemampuan peserta didik dalam menganalisis teks, menyampaikan pendapat, dan bekerja sama dalam kelompok.
+
+Produk (Proses):
+
+Daftar ciri-ciri hikayat yang ditemukan.
+
+Peta konsep unsur intrinsik/ekstrinsik.
+
+Draf kerangka alih wahana.
+
+Draf awal cerpen/naskah drama radio.
+
+Asesmen Sumatif (Assessment of Learning): Dilakukan di akhir bab.
+
+Produk (Proyek):
+
+Cerita Pendek/Naskah Drama Radio Alih Wahana: "Tulis ulang satu hikayat pilihanmu ke dalam bentuk cerita pendek (minimal 1.000 kata) atau naskah drama radio (durasi ±10-15 menit) dengan sentuhan modern, namun tetap mempertahankan nilai-nilai esensialnya!" (menggunakan Rubrik Penilaian Cerpen/Naskah Drama Radio Alih Wahana).
+
+Refleksi Penulisan: "Tuliskan refleksi singkat tentang proses alih wahana yang kamu lakukan, termasuk tantangan dan pelajaran yang kamu dapatkan!"
+
+Praktik (Kinerja):
+
+Presentasi/Penyajian Karya Alih Wahana: "Sajikan hasil alih wahana hikayatmu (membacakan cerpen, simulasi drama radio, atau menampilkan visualisasi) di depan kelas. Jelaskan nilai-nilai yang kamu coba sampaikan dalam adaptasi modernmu!" (menggunakan Rubrik Penilaian Presentasi/Penyajian Karya Alih Wahana).
+
