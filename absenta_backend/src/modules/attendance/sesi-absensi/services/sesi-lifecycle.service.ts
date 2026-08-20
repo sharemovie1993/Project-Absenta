@@ -240,7 +240,7 @@ export class SesiLifecycleService {
     const endOfDay = new Date(sessionDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    const existingSesi = await prisma.sesiAbsensi.findFirst({
+    const matchingSesis = await prisma.sesiAbsensi.findMany({
       where: {
         tenant_id: tenantId,
         tanggal: { gte: startOfDay, lte: endOfDay },
@@ -249,8 +249,11 @@ export class SesiLifecycleService {
           ...(kelas_id && mapel_id ? [{ kelas_id, mapel_id, jenis_kegiatan: 'KBM' }] : [])
         ]
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { waktu_mulai: 'asc' }
     });
+
+    const existingSesi = matchingSesis[0] || null;
+    const latestMatchedSesi = matchingSesis.length > 1 ? matchingSesis[matchingSesis.length - 1] : existingSesi;
 
     const tz = await getTenantTimezone(tenantId);
 
@@ -265,7 +268,7 @@ export class SesiLifecycleService {
       const tzOffset = getTenantOffsetString(tz);
       const now = new Date();
       const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? parseSafeDate(waktu_mulai, tzOffset) : now);
-      const endTarget = existingSesi.waktu_selesai || (waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null);
+      const endTarget = latestMatchedSesi?.waktu_selesai || existingSesi.waktu_selesai || (waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null);
       
       // 🛡️ Centralized Time-Window & Cutoff Guard (Timezone-Aware)
       validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz);
@@ -276,6 +279,7 @@ export class SesiLifecycleService {
           data: {
             ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl, status: 'BERLANGSUNG' } : {}),
             ...(waktu_mulai ? { waktu_mulai: parseSafeDate(waktu_mulai, tzOffset) } : {}),
+            ...(endTarget ? { waktu_selesai: endTarget } : {}),
             updated_at: new Date()
           }
         });

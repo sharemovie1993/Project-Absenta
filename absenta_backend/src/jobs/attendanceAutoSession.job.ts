@@ -33,6 +33,55 @@ export async function generateSessionsForTenant(
 }
 
 /**
+ * Load shift_jam_pelajaran config for a tenant.
+ */
+async function loadShiftConfig(tenantId: string): Promise<any | null> {
+  const config = await prisma.config.findFirst({
+    where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' },
+  });
+  if (!config?.value) return null;
+  try { return JSON.parse(config.value as string); } catch { return null; }
+}
+
+/**
+ * Resolve jam_mulai & jam_selesai per-hari from shift config.
+ */
+function resolveSlotTime(
+  shiftConfig: any,
+  kelasId: string,
+  hari: string,
+  slotIndex: number,
+): { start: string; end: string } | null {
+  if (!shiftConfig?.shifts) return null;
+  const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+  const shift = shiftConfig.shifts.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts[0];
+  if (!shift) return null;
+
+  const upperHari = (hari || '').toUpperCase();
+  const daySlots =
+    (shift.day_patterns?.[upperHari]?.slots?.length > 0)
+      ? shift.day_patterns[upperHari].slots
+      : (shift.slots || []);
+  const found = daySlots.find((sl: any) => (sl.slot !== undefined ? sl.slot === slotIndex : sl.slot_index === slotIndex));
+  return found ? { start: found.start, end: found.end } : null;
+}
+
+function enrichJadwalWithDayTimes(rawSchedules: any[], shiftConfig: any, defaultHari: string): any[] {
+  if (!shiftConfig) return rawSchedules;
+  return rawSchedules.map((item) => {
+    if (item.slot_index === undefined || item.slot_index === null) return item;
+    const effectiveHari = item.hari || defaultHari || '';
+    const resolved = resolveSlotTime(shiftConfig, item.kelas_id, effectiveHari, item.slot_index);
+    if (!resolved) return item;
+    return {
+      ...item,
+      jam_mulai: resolved.start,
+      jam_selesai: resolved.end,
+    };
+  });
+}
+
+/**
  * Logika Inti: Menghasilkan Sesi Absensi dari Jadwal KBM (JadwalKBM) riil ke Database.
  * Dipanggil secara asynchronous oleh worker untuk satu tenant.
  */
@@ -123,39 +172,34 @@ export async function generateSessionsForTenantDirect(
       });
 
       if (schedules.length > 0) {
-        // Group and merge consecutive slots for the same class + guru + mapel + jenis_kegiatan
-        const grouped: Record<string, typeof schedules> = {};
-        for (const s of schedules) {
+        // 🔑 Enrich with day_patterns shift config before merging
+        const shiftConfig = await loadShiftConfig(tenantId);
+        const enrichedSchedules = enrichJadwalWithDayTimes(schedules, shiftConfig, hariEnum);
+
+        // Group and merge into 1 continuous session per class + guru + mapel + jenis_kegiatan for the day
+        const grouped: Record<string, typeof enrichedSchedules> = {};
+        for (const s of enrichedSchedules) {
           if (!s.mapel_id && !s.guru_id) continue;
           const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(s);
         }
 
-        const mergedSchedules: typeof schedules = [];
+        const mergedSchedules: typeof enrichedSchedules = [];
 
         for (const key in grouped) {
           const slots = grouped[key];
           slots.sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
 
-          let current = { ...slots[0] };
+          // 🌟 Single Continuous Session: Earliest start time (07:15) to latest finish time (15:00)
+          const primarySlot = slots[0];
+          const latestSlot = slots[slots.length - 1];
 
-          for (let i = 1; i < slots.length; i++) {
-            const next = slots[i];
-            const [currH, currM] = current.jam_selesai.split(':').map(Number);
-            const [nextH, nextM] = next.jam_mulai.split(':').map(Number);
-            const currMins = (currH || 0) * 60 + (currM || 0);
-            const nextMins = (nextH || 0) * 60 + (nextM || 0);
-            const gap = nextMins - currMins;
-
-            if (gap <= 35) {
-              current.jam_selesai = next.jam_selesai;
-            } else {
-              mergedSchedules.push(current);
-              current = { ...next };
-            }
-          }
-          mergedSchedules.push(current);
+          mergedSchedules.push({
+            ...primarySlot,
+            jam_mulai: primarySlot.jam_mulai,
+            jam_selesai: latestSlot.jam_selesai
+          });
         }
 
         for (const schedule of mergedSchedules) {
