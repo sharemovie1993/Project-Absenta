@@ -29,6 +29,7 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
   const [searchTerm, setSearchTerm] = useState('');
   const [activeMainTab, setActiveMainTab] = useState<'READINESS_MAP' | 'GLOBAL_PRESETS' | 'ALL_DOCS'>('READINESS_MAP');
   const [selectedMapelFilter, setSelectedMapelFilter] = useState<string>('ALL');
+  const [selectedFaseFilter, setSelectedFaseFilter] = useState<string>('E');
 
   // Reader & Studio Modals State
   const [readerPerangkatId, setReaderPerangkatId] = useState<string>('');
@@ -47,6 +48,15 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     tingkat?: number;
   } | null>(null);
   const [isStudioOpen, setIsStudioOpen] = useState<boolean>(false);
+
+  // Helper to extract module/chapter number from title
+  const extractModulNumber = (title: string): number => {
+    const m = title.match(/modul\s*(\d+)|bab\s*(\d+)/i);
+    if (m) {
+      return parseInt(m[1] || m[2], 10);
+    }
+    return 999;
+  };
 
   // 1. Fetch Real Teacher's Perangkat Ajar
   const { data: myPerangkatRes, isLoading: isLoadingMyPerangkat } = useQuery({
@@ -126,13 +136,22 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     ? (distinctSubjects[0]?.name || 'Bahasa Indonesia')
     : selectedMapelFilter;
 
-  // Chapter Readiness Calculation for Active Subject
+  // Chapter Readiness Calculation for Active Subject (Sorted in natural ascending order)
   const subjectPresets = useMemo(() => {
-    return globalPresets.filter(p =>
-      p.nama_mapel_ref.toLowerCase() === activeSubjectName.toLowerCase() ||
-      p.tags?.some(t => t.toLowerCase() === activeSubjectName.toLowerCase())
-    );
-  }, [globalPresets, activeSubjectName]);
+    const filtered = globalPresets.filter(p => {
+      const matchSubject = p.nama_mapel_ref.toLowerCase() === activeSubjectName.toLowerCase() ||
+        p.tags?.some(t => t.toLowerCase() === activeSubjectName.toLowerCase());
+      
+      const matchFase = selectedFaseFilter === 'ALL' || p.fase === selectedFaseFilter;
+      return matchSubject && matchFase;
+    });
+
+    // Natural ascending sort (Modul 1 -> Modul 2 -> Modul 3 ...)
+    return filtered.sort((a, b) => {
+      if (a.fase !== b.fase) return a.fase.localeCompare(b.fase);
+      return extractModulNumber(a.judul_modul) - extractModulNumber(b.judul_modul);
+    });
+  }, [globalPresets, activeSubjectName, selectedFaseFilter]);
 
   const subjectMyPerangkats = useMemo(() => {
     return myPerangkatList.filter((p: any) =>
@@ -142,18 +161,19 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
 
   // Matched Chapters (List of all required chapters for this subject)
   const chaptersReadiness = useMemo(() => {
-    return subjectPresets.map((preset, idx) => {
+    return subjectPresets.map((preset) => {
+      const num = extractModulNumber(preset.judul_modul);
+
       // Find if teacher has a custom/adopted module matching this preset or chapter
       const myItem = subjectMyPerangkats.find((mp: any) =>
         mp.preset_ref_id === preset.id ||
         mp.judul?.toLowerCase().includes(preset.judul_modul.toLowerCase()) ||
         preset.judul_modul.toLowerCase().includes((mp.judul || '').toLowerCase()) ||
-        mp.judul?.toLowerCase().includes(`modul ${idx + 1}`) ||
-        mp.judul?.toLowerCase().includes(`bab ${idx + 1}`)
+        extractModulNumber(mp.judul || '') === num
       );
 
       return {
-        babNumber: idx + 1,
+        babNumber: num < 999 ? num : 1,
         preset,
         myItem: myItem || null,
         isReady: Boolean(myItem)
@@ -266,26 +286,67 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
 
       {/* ── 2. PILIHAN MATA PELAJARAN & SUB-TABS NAVIGASI ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 flex-wrap">
-        {/* Mapel Switcher Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1 shrink-0">
-            Pilih Mapel:
-          </span>
-          {distinctSubjects.map(sub => (
+        {/* Mapel & Fase Switcher Chips */}
+        <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 flex-wrap">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">
+              Pilih Mapel:
+            </span>
+            {distinctSubjects.map(sub => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setSelectedMapelFilter(sub.name)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+                  activeSubjectName.toLowerCase() === sub.name.toLowerCase()
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                )}
+              >
+                <span>{sub.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
             <button
-              key={sub.id}
               type="button"
-              onClick={() => setSelectedMapelFilter(sub.name)}
+              onClick={() => setSelectedFaseFilter('E')}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
-                activeSubjectName.toLowerCase() === sub.name.toLowerCase()
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
+                selectedFaseFilter === 'E'
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
               )}
             >
-              <span>{sub.name}</span>
+              Fase E (Kelas 10)
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setSelectedFaseFilter('F')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
+                selectedFaseFilter === 'F'
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              )}
+            >
+              Fase F (Kelas 11-12)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedFaseFilter('ALL')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
+                selectedFaseFilter === 'ALL'
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              )}
+            >
+              Semua
+            </button>
+          </div>
         </div>
 
         {/* View Modes */}
