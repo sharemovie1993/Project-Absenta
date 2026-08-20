@@ -5,7 +5,7 @@ import { normalizeFromSesiAbsensi, type KbmItem } from '../../utils/kbm-normaliz
 import { guruApi } from '../../api/academic.api';
 import { toLocalDate } from '../../utils/attendance/time';
 import { useSocket } from '../../hooks/useSocket';
-import { Button } from '../ui';
+import { Button, Badge } from '../ui';
 import { Modal, ModalFooter } from '../ui/Modal';
 import { 
   Clock, 
@@ -15,7 +15,11 @@ import {
   UserCheck, 
   Search,
   CheckCircle2,
-  Send
+  Send,
+  LayoutGrid,
+  List,
+  Table as TableIcon,
+  Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
@@ -26,6 +30,7 @@ export const PiketTeacherMonitoring: React.FC = () => {
   const today = toLocalDate();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'DECK' | 'LIST' | 'TABLE'>('DECK');
   const [selectedSession, setSelectedSession] = useState<KbmItem | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'IZIN' | 'SAKIT' | 'PENUGASAN' | 'ALPA'>('IZIN');
@@ -208,19 +213,67 @@ export const PiketTeacherMonitoring: React.FC = () => {
         </div>
       </div>
 
-      {/* SEARCH BAR */}
-      <div className="relative max-w-md">
-        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Cari nama guru, kelas, atau mapel..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40 text-slate-900 dark:text-white"
-        />
+      {/* TOOLBAR: SEARCH & VIEW MODE SWITCHER */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nama guru, kelas, atau mapel..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40 text-slate-900 dark:text-white shadow-xs"
+          />
+        </div>
+
+        {/* View Mode Toggle Buttons (Deck, List, Table) */}
+        <div className="flex items-center self-end sm:self-auto bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('DECK')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer",
+              viewMode === 'DECK'
+                ? "bg-amber-500 text-slate-950 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+            title="Tampilan Kartu Deck Grid"
+          >
+            <LayoutGrid size={13} />
+            <span>Deck</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('LIST')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer",
+              viewMode === 'LIST'
+                ? "bg-amber-500 text-slate-950 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+            title="Tampilan List Ramping"
+          >
+            <List size={13} />
+            <span>List</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('TABLE')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer",
+              viewMode === 'TABLE'
+                ? "bg-amber-500 text-slate-950 shadow-xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+            title="Tampilan Tabel Data"
+          >
+            <TableIcon size={13} />
+            <span>Tabel</span>
+          </button>
+        </div>
       </div>
 
-      {/* SESSIONS LIST GRID */}
+      {/* SESSIONS CONTENT: LOADING / EMPTY / DECK / LIST / TABLE */}
       {sesiLoading && pendingTeachers.length === 0 ? (
         <div className="py-12 text-center space-y-2">
           <RefreshCw size={24} className="animate-spin text-amber-500 mx-auto" />
@@ -236,7 +289,189 @@ export const PiketTeacherMonitoring: React.FC = () => {
             Seluruh guru pada jam pelajaran saat ini telah hadir dan membuka sesi KBM.
           </p>
         </div>
+      ) : viewMode === 'TABLE' ? (
+        /* 📊 TABLE VIEW */
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                  <th className="px-4 py-3.5">Waktu KBM</th>
+                  <th className="px-4 py-3.5">Kelas</th>
+                  <th className="px-4 py-3.5">Mata Pelajaran</th>
+                  <th className="px-4 py-3.5">Guru Pengajar</th>
+                  <th className="px-4 py-3.5">Status Pengingat</th>
+                  <th className="px-4 py-3.5 text-right">Aksi Meja Piket</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                {filteredList.map((item) => {
+                  const rawPhone = (item.Guru as any)?.no_hp || (item as any)?.guru_no_hp || (item.Guru as any)?.telepon || (item.Guru as any)?.phone;
+                  const hasPhone = Boolean(rawPhone);
+                  const reminderMeta = item.reminder_meta || (item as any)._summary?.reminder_meta || null;
+                  const diffMinutes = reminderMeta?.last_wa_sent_at 
+                    ? Math.floor((Date.now() - new Date(reminderMeta.last_wa_sent_at).getTime()) / 60000) 
+                    : null;
+                  const isRemindedRecently = diffMinutes !== null && diffMinutes < 10;
+
+                  return (
+                    <tr key={item.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition-colors">
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-col">
+                          <span className="font-mono font-bold text-slate-900 dark:text-white">
+                            {item.jam_mulai} – {item.jam_selesai}
+                          </span>
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 animate-pulse">
+                            ● SIAP DIMULAI
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-extrabold text-[11px] font-mono border border-blue-500/20">
+                          {item.kelas_nama || 'Kelas'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {item.mapel_nama || 'Mata Pelajaran'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-xs shrink-0">
+                            👨‍🏫
+                          </div>
+                          <div>
+                            <p className="font-black text-slate-900 dark:text-white truncate max-w-[180px]">
+                              {item.guru_nama || 'Guru Pengajar'}
+                            </p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {hasPhone ? '📱 WA Tersedia' : '⚠️ No. HP Belum Ada'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {isRemindedRecently ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                            <CheckCircle2 size={11} className="text-amber-600" />
+                            {reminderMeta.last_wa_sent_by} ({diffMinutes}m lalu)
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 font-medium">Belum diingatkan</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={isRemindedRecently}
+                            onClick={() => handleSendWa(item, 'GATEWAY')}
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-black transition-all",
+                              isRemindedRecently
+                                ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60 border border-slate-200 dark:border-slate-700"
+                                : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer shadow-xs"
+                            )}
+                            title={isRemindedRecently ? `Sudah diingatkan oleh ${reminderMeta.last_wa_sent_by}` : "Kirim pesan peringatan WA via Gateway"}
+                          >
+                            <MessageSquare size={12} />
+                            <span>{isRemindedRecently ? 'Terkirim ✓' : 'Kirim WA'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStatusModal(item)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 text-[11px] font-black shadow-xs transition-all cursor-pointer"
+                            title="Tentukan status izin/sakit/penugasan dan guru inval"
+                          >
+                            <UserX size={12} />
+                            <span>Ubah Status</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : viewMode === 'LIST' ? (
+        /* 📋 COMPACT LIST VIEW */
+        <div className="space-y-2">
+          {filteredList.map((item) => {
+            const rawPhone = (item.Guru as any)?.no_hp || (item as any)?.guru_no_hp || (item.Guru as any)?.telepon || (item.Guru as any)?.phone;
+            const hasPhone = Boolean(rawPhone);
+            const reminderMeta = item.reminder_meta || (item as any)._summary?.reminder_meta || null;
+            const diffMinutes = reminderMeta?.last_wa_sent_at 
+              ? Math.floor((Date.now() - new Date(reminderMeta.last_wa_sent_at).getTime()) / 60000) 
+              : null;
+            const isRemindedRecently = diffMinutes !== null && diffMinutes < 10;
+
+            return (
+              <div
+                key={item.id}
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/25 dark:border-amber-500/20 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 font-extrabold text-xs font-mono border border-blue-500/20 shrink-0">
+                      {item.kelas_nama || 'Kelas'}
+                    </span>
+                    <span className="text-slate-500 font-mono text-xs font-bold shrink-0">
+                      {item.jam_mulai} – {item.jam_selesai}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
+                      {item.mapel_nama || 'Mata Pelajaran'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      👨‍🏫 <strong className="text-slate-800 dark:text-slate-200">{item.guru_nama}</strong>
+                      {hasPhone ? ' • 📱 WA' : ' • ⚠️ Belum ada No HP'}
+                    </p>
+                  </div>
+
+                  {isRemindedRecently && (
+                    <span className="px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-300 shrink-0">
+                      Diingatkan ({reminderMeta.last_wa_sent_by} • {diffMinutes}m lalu)
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                  <button
+                    type="button"
+                    disabled={isRemindedRecently}
+                    onClick={() => handleSendWa(item, 'GATEWAY')}
+                    className={cn(
+                      "flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-xs transition-all",
+                      isRemindedRecently
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60 border border-slate-200 dark:border-slate-700"
+                        : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer"
+                    )}
+                  >
+                    <MessageSquare size={12} />
+                    <span>{isRemindedRecently ? 'Terkirim ✓' : 'Kirim WA'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenStatusModal(item)}
+                    className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 text-xs font-black shadow-xs transition-all cursor-pointer"
+                  >
+                    <UserX size={12} />
+                    <span>Ubah Status</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        /* 🎴 DECK / GRID VIEW (DEFAULT) */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filteredList.map((item) => {
             const rawPhone = (item.Guru as any)?.no_hp || (item as any)?.guru_no_hp || (item.Guru as any)?.telepon || (item.Guru as any)?.phone;
