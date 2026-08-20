@@ -476,4 +476,9 @@ export const kurikulumApi = {
     const response = await api.get('/kurikulum/guru-mapel', { params });
     return response.data;
   },
+
+  getGuruMapel: async (guruId: string) => {
+    const response = await api.get('/kurikulum/guru-mapel', { params: { guru_id: guruId } });
+    return response.data;
+  },
 };

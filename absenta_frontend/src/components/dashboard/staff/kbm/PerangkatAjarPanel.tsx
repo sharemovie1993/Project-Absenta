@@ -441,12 +441,90 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
               Daftar Bab Pembelajaran: {activeSubjectName}
             </span>
             <span className="text-xs font-bold text-slate-400">
-              Klik Pasang Template atau Susun untuk melengkapi
+              {chaptersReadiness.length > 0 ? 'Klik Pasang Template atau Susun untuk melengkapi' : 'Mulai susun modul mandiri'}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {chaptersReadiness.map(({ babNumber, preset, myItem, isReady }) => (
+          {chaptersReadiness.length === 0 && subjectMyPerangkats.length === 0 ? (
+            <div className="p-8 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900/50 space-y-4 max-w-lg mx-auto my-4 animate-in fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-sm">
+                <BookOpen size={28} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">
+                  Belum Ada Modul Ajar untuk {activeSubjectName}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Mata pelajaran ini belum memiliki modul ajar tersimpan. Anda dapat mulai menyicil penyusunan modul per-pertemuan di Studio untuk asisten mengajar pribadi Anda.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => navigate('/kurikulum/perangkat')}
+                  className="h-9 px-4 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                >
+                  <Plus size={14} className="mr-1" />
+                  + Susun Modul Baru di Studio
+                </Button>
+              </div>
+            </div>
+          ) : chaptersReadiness.length === 0 && subjectMyPerangkats.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {subjectMyPerangkats.map((myItem: any, idx: number) => (
+                <div
+                  key={myItem.id}
+                  className="p-5 rounded-3xl border bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-[11px] font-mono">
+                        BAB {idx + 1}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] flex items-center gap-1">
+                        <CheckCircle2 size={12} />
+                        <span>SIAP MENGAJAR</span>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                        {myItem.judul}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {myItem.Mapel?.nama_mapel} • {myItem.TahunPelajaran?.tahun || ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleOpenStudio(myItem)}
+                      className="h-8 px-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles size={12} />
+                      <span>Edit di Studio</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenReader(myItem.id, { mapelNama: myItem.Mapel?.nama_mapel })}
+                      className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Presentation size={13} className="text-amber-500" />
+                      <span>Proyektor</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {chaptersReadiness.map(({ babNumber, preset, myItem, isReady }) => (
               <div
                 key={preset.id}
                 className={cn(
@@ -561,6 +639,7 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 

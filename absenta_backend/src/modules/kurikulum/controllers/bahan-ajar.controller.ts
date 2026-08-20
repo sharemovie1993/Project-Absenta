@@ -63,7 +63,7 @@ export class BahanAjarController {
       const tenantId = request.tenantId || request.user?.tenantId;
       const { id } = request.params;
       const body = request.body || {};
-      const data = await BahanAjarService.saveStructuredKonten(tenantId, id, body.konten_json);
+      const data = await BahanAjarService.saveStructuredKonten(tenantId, id, body.konten_json, body.metadata || body);
       return { success: true, message: 'Konten bahan ajar berhasil disimpan', data };
     } catch (error: any) {
       reply.status(error.statusCode || 500);

@@ -154,6 +154,23 @@ export default function PerangkatAjarPage() {
     setIsStudioModalOpen(true);
   }, []);
 
+  const handleCreateNewStudio = useCallback(() => {
+    setStudioPerangkat({
+      id: 'new',
+      judul: 'Modul Ajar Mandiri Guru',
+      jenis: 'MODUL_AJAR',
+      fase: 'E',
+      tingkat: 10,
+      mapel_id: teacherMapelIds[0] || (mapelOptions[0]?.value as string) || '',
+      guru_id: currentGuru?.id || '',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      Mapel: { id: teacherMapelIds[0] || '', nama_mapel: mapelOptions[0]?.label || 'Mata Pelajaran' } as any
+    } as any);
+    setIsStudioModalOpen(true);
+  }, [teacherMapelIds, mapelOptions, currentGuru]);
+
   // View & Pagination States
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
@@ -802,6 +819,16 @@ export default function PerangkatAjarPage() {
               >
                 <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-300 fill-amber-300" />
                 KATALOG PLATFORM (SIAP KLAIM)
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleCreateNewStudio}
+                size="toolbar"
+                className="rounded-xl shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-blue-500/20 font-bold"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                ✏️ SUSUN MODUL (STUDIO)
               </Button>
 
               <Button

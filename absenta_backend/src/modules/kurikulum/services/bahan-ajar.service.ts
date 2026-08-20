@@ -257,24 +257,82 @@ export class BahanAjarService {
   /**
    * Menyimpan / memperbarui konten terstruktur modul ajar guru
    */
-  static async saveStructuredKonten(tenantId: string, perangkatId: string, kontenJson: any) {
-    const existing = await prisma.perangkatAjar.findFirst({
-      where: { id: perangkatId, tenant_id: tenantId }
-    });
+  static async saveStructuredKonten(
+    tenantId: string,
+    perangkatId: string,
+    kontenJson: any,
+    metadata?: {
+      guru_id?: string;
+      mapel_id?: string;
+      judul?: string;
+      fase?: string;
+      tingkat?: number;
+      total_alokasi_jp?: number;
+    }
+  ) {
+    if (perangkatId && perangkatId !== 'new') {
+      const existing = await prisma.perangkatAjar.findFirst({
+        where: { id: perangkatId, tenant_id: tenantId }
+      });
 
-    if (!existing) {
-      throw new Error('Perangkat ajar tidak ditemukan');
+      if (existing) {
+        const updated = await prisma.perangkatAjar.update({
+          where: { id: perangkatId },
+          data: {
+            konten_struktur_json: kontenJson,
+            ...(metadata?.judul ? { judul: metadata.judul } : {})
+          }
+        });
+
+        await cacheInvalidationService.invalidateAcademicCache(tenantId);
+        return updated;
+      }
     }
 
-    const updated = await prisma.perangkatAjar.update({
-      where: { id: perangkatId },
+    // Auto-resolve Active Tahun & Semester
+    const activeTahun = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    const activeSem = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+
+    let resolvedGuruId = metadata?.guru_id;
+    if (!resolvedGuruId) {
+      const anyGuru = await prisma.guru.findFirst({
+        where: { tenant_id: tenantId }
+      });
+      resolvedGuruId = anyGuru?.id || '';
+    }
+
+    let resolvedMapelId = metadata?.mapel_id;
+    if (!resolvedMapelId) {
+      const anyMapel = await prisma.mataPelajaran.findFirst({
+        where: { tenant_id: tenantId }
+      });
+      resolvedMapelId = anyMapel?.id || '';
+    }
+
+    const created = await prisma.perangkatAjar.create({
       data: {
-        konten_struktur_json: kontenJson
+        tenant_id: tenantId,
+        guru_id: resolvedGuruId,
+        mapel_id: resolvedMapelId,
+        tahun_pelajaran_id: activeTahun?.id || '',
+        semester_id: activeSem?.id || '',
+        judul: metadata?.judul || 'Modul Ajar Mandiri Guru',
+        jenis: 'MODUL_AJAR',
+        fase: metadata?.fase || 'E',
+        tingkat: metadata?.tingkat || 10,
+        total_alokasi_jp: metadata?.total_alokasi_jp || 18,
+        konten_struktur_json: kontenJson,
+        file_url: 'INTERNAL_DIGITAL_READER',
+        status: 'APPROVED'
       }
     });
 
     await cacheInvalidationService.invalidateAcademicCache(tenantId);
-    return updated;
+    return created;
   }
 
   /**
