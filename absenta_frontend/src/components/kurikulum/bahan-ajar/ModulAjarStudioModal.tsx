@@ -325,8 +325,8 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     >
       <div className="flex flex-1 overflow-hidden">
         {/* ── SIDEBAR KIRI: DAFTAR PERTEMUAN ── */}
-        <div className="w-64 sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
-          <div className="space-y-2">
+        <div className="w-64 sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+          <div className="space-y-2.5 pb-6">
             <div className="flex items-center justify-between px-1 pb-1">
               <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 dark:text-slate-500">
                 Daftar Pertemuan ({pertemuanList.length})
@@ -400,19 +400,19 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                 </div>
               );
             })}
-          </div>
 
-          {/* Bottom Add Meeting Button */}
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddMeeting}
-              className="w-full h-10 rounded-2xl font-black text-xs border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>+ Tambah Pertemuan Baru</span>
-            </Button>
+            {/* Dynamic Add Meeting Button - Always right below the last meeting card */}
+            <div className="pt-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddMeeting}
+                className="w-full h-11 rounded-2xl font-black text-xs border-dashed border-2 border-indigo-300 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-300 bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
+              >
+                <Plus size={15} className="stroke-[2.5]" />
+                <span>+ Tambah Pertemuan Baru</span>
+              </Button>
+            </div>
           </div>
         </div>
 
