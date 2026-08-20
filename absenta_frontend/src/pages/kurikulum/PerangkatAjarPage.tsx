@@ -13,7 +13,8 @@ import {
   LayoutGrid,
   List,
   Zap,
-  Edit3
+  Edit3,
+  Sparkles
 } from 'lucide-react';
 
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -153,23 +154,6 @@ export default function PerangkatAjarPage() {
     setStudioPerangkat(item);
     setIsStudioModalOpen(true);
   }, []);
-
-  const handleCreateNewStudio = useCallback(() => {
-    setStudioPerangkat({
-      id: 'new',
-      judul: 'Modul Ajar Mandiri Guru',
-      jenis: 'MODUL_AJAR',
-      fase: 'E',
-      tingkat: 10,
-      mapel_id: teacherMapelIds[0] || (mapelOptions[0]?.value as string) || '',
-      guru_id: currentGuru?.id || '',
-      status: 'DRAFT',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      Mapel: { id: teacherMapelIds[0] || '', nama_mapel: mapelOptions[0]?.label || 'Mata Pelajaran' } as any
-    } as any);
-    setIsStudioModalOpen(true);
-  }, [teacherMapelIds, mapelOptions, currentGuru]);
 
   // View & Pagination States
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -525,6 +509,23 @@ export default function PerangkatAjarPage() {
     });
     setIsUploadModalOpen(true);
   }, [currentGuru, teacherMapelIds, mapelOptions]);
+
+  const handleCreateNewStudio = useCallback(() => {
+    setStudioPerangkat({
+      id: 'new',
+      judul: 'Modul Ajar Mandiri Guru',
+      jenis: 'MODUL_AJAR',
+      fase: 'E',
+      tingkat: 10,
+      mapel_id: teacherMapelIds[0] || (mapelOptions[0]?.value as string) || '',
+      guru_id: currentGuru?.id || '',
+      status: 'DRAFT',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      Mapel: { id: teacherMapelIds[0] || '', nama_mapel: mapelOptions[0]?.label || 'Mata Pelajaran' } as any
+    } as any);
+    setIsStudioModalOpen(true);
+  }, [teacherMapelIds, mapelOptions, currentGuru]);
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
