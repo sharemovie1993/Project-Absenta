@@ -169,4 +169,15 @@ export async function sesiAbsensiRoutes(fastify: any) {
     ],
     handler: sesiAbsensiController.sendReminder,
   });
+
+  // 11. Teacher Locator (Global Real-Time Teacher Location)
+  fastify.get('/teacher-locator', {
+    preHandler: [
+        requireMultiSesiMode,
+        requireCapability(['attendance.sessions.view.list', 'academic.monitoring.view'], { exemptRoles: [RoleName.SISWA, RoleName.GURU, RoleName.ADMIN] }),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ],
+    handler: sesiAbsensiController.locateTeachers,
+  });
 }

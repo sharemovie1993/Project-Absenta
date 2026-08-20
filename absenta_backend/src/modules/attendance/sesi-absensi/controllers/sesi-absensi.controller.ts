@@ -3,6 +3,7 @@ import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchem
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { getTenantLocalTime, generateSessionsForTenant } from '@/jobs/attendanceAutoSession.job';
 import { sesiReminderService } from '../services/sesi-reminder.service';
+import { TeacherLocatorService } from '../services/teacher-locator.service';
 
 export const sesiAbsensiController = {
   async create(request: any, reply: any) {
@@ -433,6 +434,34 @@ export const sesiAbsensiController = {
       return {
         success: false,
         message: error.message || 'Gagal mengirim pengingat WhatsApp'
+      };
+    }
+  },
+
+  async locateTeachers(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userRole = request.user?.role || 'SISWA';
+      const { q, tanggal } = request.query || {};
+
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id not found' };
+      }
+
+      const data = await TeacherLocatorService.getInstance().locateTeachers(tenantId, userRole, {
+        query: q,
+        tanggal
+      });
+
+      reply.status(200);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('[locateTeachers] error:', error);
+      reply.status(500);
+      return {
+        success: false,
+        message: error.message || 'Gagal mencari posisi guru'
       };
     }
   },

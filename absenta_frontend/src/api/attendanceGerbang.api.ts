@@ -649,4 +649,56 @@ export async function sendKbmReminderApi(
   });
 }
 
+export async function getTeacherLocatorApi(params?: {
+  q?: string;
+  tanggal?: string;
+}): Promise<{
+  success: boolean;
+  data: Array<{
+    guru_id: string;
+    nama_guru: string;
+    nip: string | null;
+    foto_url: string | null;
+    no_hp: string | null;
+    status_posisi: 'SEDANG_MENGAJAR' | 'BELUM_BUKA_KELAS' | 'STANDBY' | 'IZIN_SAKIT';
+    status_label: string;
+    current_session: {
+      id?: string;
+      kelas_id?: string;
+      kelas_nama?: string;
+      mapel_id?: string;
+      mapel_nama?: string;
+      jam_mulai?: string;
+      jam_selesai?: string;
+      status?: string;
+      is_live?: boolean;
+      foto_kegiatan?: string | null;
+    } | null;
+    today_timeline: Array<{
+      id: string;
+      kelas_id: string;
+      kelas_nama: string;
+      mapel_id: string;
+      mapel_nama: string;
+      jam_mulai: string;
+      jam_selesai: string;
+      status: string;
+      is_live: boolean;
+      is_ready: boolean;
+      is_overdue: boolean;
+      is_finished: boolean;
+    }>;
+    izin_today?: {
+      jenis: string;
+      catatan?: string | null;
+    } | null;
+  }>;
+}> {
+  return requestWithFallback('get', `/attendance/sesi-absensi/teacher-locator`, {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+
 

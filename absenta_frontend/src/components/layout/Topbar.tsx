@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft, LogOut, MessageSquare } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Sparkles, LayoutGrid, Smartphone, ArrowLeft, LogOut, MessageSquare, Search } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { TeacherLocatorModal } from '../shared/TeacherLocatorModal';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
@@ -27,12 +28,25 @@ interface TopbarProps {
 export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) => {
   const { recent, loading, error, unreadCount, markAsReadLocal, markAllAsReadLocal, reload, isUnread } = useNotifications({ pollIntervalMs: 60000 });
   const [open, setOpen] = useState<boolean>(false);
+  const [locatorModalOpen, setLocatorModalOpen] = useState<boolean>(false);
   const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
   const [sesiDetail, setSesiDetail] = useState<any | null>(null);
   const [sesiLoading, setSesiLoading] = useState<boolean>(false);
   const [logoError, setLogoError] = useState<boolean>(false);
   const configQuery = useQuery({ queryKey: ['system-config','active'], queryFn: fetchActiveSystemConfig });
   const systemConfig = configQuery.data || null;
+
+  // ⌨️ Global Shortcut for Teacher Locator (Ctrl + G or Cmd + G)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G')) {
+        e.preventDefault();
+        setLocatorModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const rawLogoUrl = (systemConfig as any)?.logo_url;
   const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
@@ -214,7 +228,19 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
-        <div className="flex items-center px-4 gap-2 sm:gap-4 ml-auto">
+        <div className="flex items-center px-4 gap-2 sm:gap-3 ml-auto">
+
+          {/* 🔍 Cari Posisi Guru (Teacher Locator) */}
+          <button
+            type="button"
+            onClick={() => setLocatorModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            title="Cari Posisi Guru (Shortcut: Ctrl + G)"
+          >
+            <Search className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="hidden md:inline">Cari Guru</span>
+            <kbd className="hidden lg:inline-block px-1 py-0.2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[9px] font-mono text-slate-400">Ctrl+G</kbd>
+          </button>
 
           {/* 💬 Pusat Komunikasi Sekolah */}
           <Link
@@ -489,6 +515,12 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             </div>
           </div>
         </Modal>
+
+        {/* 🔍 Global Teacher Locator Modal */}
+        <TeacherLocatorModal
+          isOpen={locatorModalOpen}
+          onClose={() => setLocatorModalOpen(false)}
+        />
       </div>
     </header>
   );
