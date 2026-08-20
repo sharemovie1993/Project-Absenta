@@ -94,7 +94,6 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
     if (isOpen) {
       setSearchTerm('');
       setDebouncedSearch('');
-      setExpandedTeacherId(null);
     }
   }, [isOpen]);
 
