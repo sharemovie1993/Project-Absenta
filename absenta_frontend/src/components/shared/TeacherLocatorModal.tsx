@@ -21,6 +21,8 @@ import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
+import { createPortal } from 'react-dom';
+
 interface TeacherLocatorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,9 +80,9 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 px-4 pb-6 overflow-y-auto bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-[99999] flex items-start justify-center pt-12 sm:pt-20 px-4 pb-6 overflow-y-auto bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
         {/* Backdrop Click */}
         <div className="fixed inset-0" onClick={onClose} />
 
@@ -292,6 +294,7 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
