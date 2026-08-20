@@ -498,14 +498,12 @@ function App() {
                     <Route index element={<Navigate to={'/dashboard'} replace />} />
                     <Route path="/onboarding" element={<OnboardingDashboard />} />
                     <Route path="/dashboard" element={
-                      <ProtectedRoute requiredCapability="dashboard.view.overview">
-                        <RoleSwitch
-                          superadmin={<DashboardOverview />}
-                          admin={<UnifiedStaffDashboardPage />}
-                          guru={<UnifiedStaffDashboardPage />}
-                          fallback={<DashboardOverview />}
-                        />
-                      </ProtectedRoute>
+                      <RoleSwitch
+                        superadmin={<DashboardOverview />}
+                        admin={<UnifiedStaffDashboardPage />}
+                        guru={<UnifiedStaffDashboardPage />}
+                        fallback={<DashboardOverview />}
+                      />
                     } />
                     <Route path="/suspended" element={<SuspendedPage />} />
                     <Route path="/cancelled" element={<CancelledPage />} />
