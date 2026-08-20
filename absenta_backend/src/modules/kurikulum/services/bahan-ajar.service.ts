@@ -276,12 +276,16 @@ export class BahanAjarService {
       });
 
       if (existing) {
+        const updatePayload: any = {
+          konten_struktur_json: kontenJson,
+          ...(metadata?.judul ? { judul: metadata.judul } : {})
+        };
+        if (metadata?.mapel_id) {
+          updatePayload.mapel_id = metadata.mapel_id;
+        }
         const updated = await prisma.perangkatAjar.update({
           where: { id: perangkatId },
-          data: {
-            konten_struktur_json: kontenJson,
-            ...(metadata?.judul ? { judul: metadata.judul } : {})
-          }
+          data: updatePayload
         });
 
         await cacheInvalidationService.invalidateAcademicCache(tenantId);

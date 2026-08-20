@@ -40,7 +40,9 @@ interface ModulAjarStudioModalProps {
   onClose: () => void;
   perangkatId: string;
   perangkatJudul?: string;
+  mapelId?: string;
   mapelNama?: string;
+  guruId?: string;
   tingkat?: number;
   fase?: string;
 }
@@ -50,7 +52,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   onClose,
   perangkatId,
   perangkatJudul,
+  mapelId,
   mapelNama,
+  guruId,
   tingkat,
   fase
 }) => {
@@ -137,7 +141,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   const saveMutation = useMutation({
     mutationFn: (dataToSave: PertemuanItem[]) => saveReaderContent(perangkatId, dataToSave, {
       judul: perangkatJudul,
+      mapel_id: mapelId,
       mapel_nama: mapelNama,
+      guru_id: guruId,
       fase,
       tingkat
     }),

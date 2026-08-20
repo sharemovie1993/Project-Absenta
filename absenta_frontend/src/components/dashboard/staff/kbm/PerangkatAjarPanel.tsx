@@ -230,12 +230,17 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
   };
 
   const handleOpenStudio = (item: any) => {
+    const effectiveMapelName = item.mapelNama || item.Mapel?.nama_mapel || item.nama_mapel_ref || activeSubjectName;
+    const matchedMapelObj = distinctSubjects.find(s => s.name.toLowerCase() === effectiveMapelName.toLowerCase());
+    const resolvedMapelId = item.mapel_id || item.Mapel?.id || item.mapelId || matchedMapelObj?.id;
+
     setStudioPerangkat({
       id: item.id,
-      judul: item.judul || item.judul_modul,
-      mapelNama: item.Mapel?.nama_mapel || item.nama_mapel_ref,
-      fase: item.fase,
-      tingkat: item.tingkat
+      judul: item.judul || item.judul_modul || `Modul Ajar: ${effectiveMapelName}`,
+      mapelId: resolvedMapelId,
+      mapelNama: effectiveMapelName,
+      fase: item.fase || (selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter),
+      tingkat: item.tingkat || (selectedFaseFilter === 'F' ? 11 : 10)
     });
     setIsStudioOpen(true);
   };
@@ -824,7 +829,9 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
           }}
           perangkatId={studioPerangkat.id}
           perangkatJudul={studioPerangkat.judul}
+          mapelId={studioPerangkat.mapelId}
           mapelNama={studioPerangkat.mapelNama}
+          guruId={guruId}
           fase={studioPerangkat.fase}
           tingkat={studioPerangkat.tingkat}
         />
