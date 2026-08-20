@@ -48,6 +48,7 @@ const PerangkatAjarAIModal = lazy(() => import('../../components/kurikulum/peran
 const PerangkatAjarWordEditorModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWordEditorModal'));
 const PerangkatAjarWizardModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWizardModal'));
 const BahanAjarReaderModal = lazy(() => import('../../components/kurikulum/bahan-ajar/BahanAjarReaderModal').then(m => ({ default: m.BahanAjarReaderModal })));
+const ModulAjarStudioModal = lazy(() => import('../../components/kurikulum/bahan-ajar/ModulAjarStudioModal').then(m => ({ default: m.ModulAjarStudioModal })));
 
 const hardeningModuleKey = 'perangkat_ajar_page';
 
@@ -142,6 +143,15 @@ export default function PerangkatAjarPage() {
   const handleOpenReader = useCallback((item: PerangkatAjar) => {
     setReaderPerangkatId(item.id);
     setIsReaderModalOpen(true);
+  }, []);
+
+  // Studio Modul Ajar (Per-Pertemuan) State
+  const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
+  const [studioPerangkat, setStudioPerangkat] = useState<PerangkatAjar | null>(null);
+
+  const handleOpenStudio = useCallback((item: PerangkatAjar) => {
+    setStudioPerangkat(item);
+    setIsStudioModalOpen(true);
   }, []);
 
   // View & Pagination States
@@ -688,9 +698,21 @@ export default function PerangkatAjarPage() {
           <div className="flex items-center justify-end gap-1.5">
             <Button
               type="button"
+              onClick={() => handleOpenStudio(item)}
+              size="sm"
+              className="text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-indigo-500/20 cursor-pointer"
+              title="Buka Studio Penyusunan Modul Ajar (Per-Pertemuan)"
+            >
+              <Sparkles size={13} />
+              <span>Susun</span>
+            </Button>
+
+            <Button
+              type="button"
               onClick={() => handleOpenReader(item)}
               size="sm"
-              className="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-blue-500/20 cursor-pointer"
+              variant="outline"
+              className="text-xs font-black border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 cursor-pointer"
               title="Buka Mode Baca Digital & Panduan KBM"
             >
               <BookOpen size={13} />
@@ -934,6 +956,7 @@ export default function PerangkatAjarPage() {
                     isKurikulumOrAdmin={isKurikulumOrAdmin}
                     currentGuruId={currentGuru?.id}
                     onOpenPdf={undefined}
+                    onOpenStudio={handleOpenStudio}
                     onOpenReader={handleOpenReader}
                     onReview={(id) => {
                       setSelectedPerangkatId(id);
@@ -1074,6 +1097,19 @@ export default function PerangkatAjarPage() {
               isOpen={isReaderModalOpen}
               onClose={() => setIsReaderModalOpen(false)}
               perangkatId={readerPerangkatId}
+            />
+          )}
+
+          {isStudioModalOpen && studioPerangkat && (
+            <ModulAjarStudioModal
+              isOpen={isStudioModalOpen}
+              onClose={() => {
+                setIsStudioModalOpen(false);
+                setStudioPerangkat(null);
+              }}
+              perangkatId={studioPerangkat.id}
+              perangkatJudul={studioPerangkat.judul}
+              mapelNama={studioPerangkat.Mapel?.nama_mapel}
             />
           )}
 

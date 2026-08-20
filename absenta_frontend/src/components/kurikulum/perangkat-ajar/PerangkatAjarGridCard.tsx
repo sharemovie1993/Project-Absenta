@@ -36,6 +36,7 @@ interface PerangkatAjarGridCardProps {
   currentGuruId?: string;
   onOpenPdf?: ((item: PerangkatAjar) => void) | undefined;
   onOpenReader?: ((item: PerangkatAjar) => void) | undefined;
+  onOpenStudio?: ((item: PerangkatAjar) => void) | undefined;
   onReview: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: PerangkatAjar) => void;
@@ -47,6 +48,7 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
   isKurikulumOrAdmin,
   currentGuruId,
   onOpenReader,
+  onOpenStudio,
   onReview,
   onDelete,
   onEdit
@@ -101,13 +103,27 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
       </div>
 
       <div className="flex flex-wrap items-center justify-end pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 gap-2">
+        {onOpenStudio && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => onOpenStudio(item)}
+            className="text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 cursor-pointer"
+            title="Buka Studio Penyusunan Pertemuan & Materi Modul Ajar"
+          >
+            <span>✏️ SUSUN MODUL</span>
+          </Button>
+        )}
+
         {onOpenReader && (
           <Button
             type="button"
+            size="sm"
             onClick={() => onOpenReader(item)}
-            className="text-xs font-black bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
+            variant="outline"
+            className="text-xs font-black border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-xl flex items-center gap-1.5 cursor-pointer"
           >
-            <span>📖 BACA MODUL</span>
+            <span>📖 BACA</span>
           </Button>
         )}
 
