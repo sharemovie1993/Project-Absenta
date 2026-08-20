@@ -470,8 +470,25 @@ export class SesiLifecycleService {
 
     const physicalSessions = rawData.map((item: any) => {
       const summary = summaryMap.get(item.id) || { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 };
+      
+      let jam_mulai = item.jam_mulai;
+      let jam_selesai = item.jam_selesai;
+      let tanggal_formatted = item.tanggal ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeZone: tz }).format(new Date(item.tanggal)) : null;
+      let hari = item.tanggal ? new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: tz }).format(new Date(item.tanggal)) : null;
+
+      if (!jam_mulai && item.waktu_mulai) {
+        jam_mulai = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(item.waktu_mulai));
+      }
+      if (!jam_selesai && item.waktu_selesai) {
+        jam_selesai = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(item.waktu_selesai));
+      }
+
       return {
         ...item,
+        jam_mulai,
+        jam_selesai,
+        hari,
+        tanggal_formatted,
         status: item.status || 'MENDATANG',
         summary,
         progres: item.ProgresMateri || null,

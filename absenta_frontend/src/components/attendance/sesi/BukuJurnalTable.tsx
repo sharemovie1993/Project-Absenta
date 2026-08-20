@@ -114,18 +114,10 @@ export const BukuJurnalTable: React.FC<BukuJurnalTableProps> = ({
               const hasJournal = Boolean(progres && (progres.judul_materi || progres.deskripsi));
               const isLive = sesi.status === 'BERLANGSUNG' || sesi.isLive;
               
-              let dateFormatted = '-';
-              let dayFormatted = '';
-              try {
-                if (sesi.tanggal) {
-                  const d = new Date(sesi.tanggal);
-                  dateFormatted = format(d, 'dd MMM yyyy', { locale: id });
-                  dayFormatted = format(d, 'EEEE', { locale: id });
-                }
-              } catch (_) {}
-
-              const jamMulai = sesi.jam_mulai || formatLocalTimeFromISO(sesi.waktu_mulai) || '--:--';
-              const jamSelesai = sesi.jam_selesai || formatLocalTimeFromISO(sesi.waktu_selesai) || '--:--';
+              const dateFormatted = (sesi as any).tanggal_formatted || (sesi.tanggal ? format(new Date(sesi.tanggal), 'dd MMM yyyy', { locale: id }) : '-');
+              const dayFormatted = (sesi as any).hari || (sesi.tanggal ? format(new Date(sesi.tanggal), 'EEEE', { locale: id }) : '');
+              const jamMulai = sesi.jam_mulai || '--:--';
+              const jamSelesai = sesi.jam_selesai || '--:--';
               const slotLabel = sesi.jam_label || (sesi.slot_kbm ? `Slot ${sesi.slot_kbm}` : `${jamMulai} - ${jamSelesai}`);
 
               const sum = sesi.summary || {};
