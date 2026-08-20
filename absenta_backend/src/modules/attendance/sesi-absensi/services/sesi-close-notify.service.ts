@@ -52,7 +52,7 @@ export class SesiCloseNotifyService {
   async handleSessionClose(tenantId: string, sesiId: string, _sesi: any) {
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesiId, tenant_id: tenantId },
-      select: { id: true, kelas_id: true, tahun_pelajaran_id: true, semester_id: true }
+      select: { id: true, kelas_id: true, guru_id: true, tahun_pelajaran_id: true, semester_id: true }
     });
     if (!sesi) return;
 
@@ -60,8 +60,7 @@ export class SesiCloseNotifyService {
       kelas_id: sesi.kelas_id,
       status: 'AKTIF',
       siswa: {
-        status_siswa: 'AKTIF',
-        deleted_at: null
+        status: 'AKTIF'
       }
     };
     if (sesi.tahun_pelajaran_id && sesi.tahun_pelajaran_id !== 'default-tp') {
@@ -78,7 +77,13 @@ export class SesiCloseNotifyService {
 
     if (rawSiswaList.length === 0) {
       rawSiswaList = await prisma.siswaAkademik.findMany({
-        where: { kelas_id: sesi.kelas_id, status: 'AKTIF' },
+        where: { 
+          kelas_id: sesi.kelas_id, 
+          status: 'AKTIF',
+          siswa: {
+            status: 'AKTIF'
+          }
+        },
         select: { id: true, siswa_id: true }
       });
     }
@@ -112,6 +117,24 @@ export class SesiCloseNotifyService {
           catatan: 'Auto-marked ALPA on session close'
         }))
       });
+    }
+
+    // Update AbsenGuru jika belum hadir — HANYA JIKA GURU BERSTATUS AKTIF!
+    if (sesi.guru_id) {
+      const guru = await prisma.guru.findFirst({
+        where: { id: sesi.guru_id, tenant_id: tenantId },
+        select: { id: true, User: { select: { status: true } } }
+      });
+      const isGuruActive = !guru?.User || guru.User.status === 'ACTIVE';
+      if (isGuruActive) {
+        await prisma.absenGuru.updateMany({
+          where: { 
+            sesi_id: sesiId, 
+            status: { in: ['Belum Hadir', 'BELUM_HADIR'] } 
+          },
+          data: { status: 'ALPA' }
+        });
+      }
     }
   }
 

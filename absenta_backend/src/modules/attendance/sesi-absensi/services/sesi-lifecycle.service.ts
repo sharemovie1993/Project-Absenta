@@ -6,6 +6,7 @@ import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../.
 import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
 import { parseSafeDate } from './sesi-absensi.schema';
 import { sesiReminderService } from './sesi-reminder.service';
+import { sesiCloseNotifyService } from './sesi-close-notify.service';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -1083,6 +1084,14 @@ export class SesiLifecycleService {
         updated_at: new Date()
       }
     });
+
+    if (targetStatus === 'SELESAI') {
+      try {
+        await sesiCloseNotifyService.handleSessionClose(tenantId, sesiId, updated);
+      } catch (err: any) {
+        appLogger.warn({ error: err?.message, sesiId }, '[updateStatus] Failed to auto-finalize session absences on close');
+      }
+    }
 
     emitDomainEvent({
       event_type: 'SESI_UPDATED',

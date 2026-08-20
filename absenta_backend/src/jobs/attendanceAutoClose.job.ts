@@ -57,14 +57,20 @@ export async function runAttendanceAutoCloseCycle(): Promise<void> {
 }
 
 /**
- * Finalisasi sesi dan isi absen ALPA untuk siswa yang tidak hadir
+ * Finalisasi sesi dan isi absen ALPA untuk siswa dan guru yang tidak hadir (Hanya yang berstatus AKTIF)
  */
 async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
   return await prisma.$transaction(async (tx) => {
     const session = await tx.sesiAbsensi.findUnique({
       where: { id: sessionId },
       include: {
-        Kelas: { include: { SiswaAkademik: { where: { status: 'AKTIF' } } } }
+        Kelas: true,
+        Guru: {
+          select: {
+            id: true,
+            User: { select: { status: true } }
+          }
+        }
       }
     });
 
@@ -73,26 +79,65 @@ async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
     // 1. Update status sesi
     await tx.sesiAbsensi.update({
       where: { id: sessionId },
-      data: { status: 'SELESAI', is_auto_closed: true }
+      data: { status: 'SELESAI', is_auto_closed: true, updated_at: new Date() }
     });
 
-    // 2. Cari siswa yang sudah punya record absen (HADIR/IZIN/SAKIT/dll)
+    // 2. Query HANYA siswa yang AKTIF di rombel kelas, tahun ajaran, dan semester terkait
+    const saWhere: any = {
+      kelas_id: session.kelas_id,
+      status: 'AKTIF',
+      siswa: {
+        status: 'AKTIF'
+      }
+    };
+    if (session.tahun_pelajaran_id && session.tahun_pelajaran_id !== 'default-tp') {
+      saWhere.tahun_pelajaran_id = session.tahun_pelajaran_id;
+    }
+    if (session.semester_id && session.semester_id !== 'default-sem') {
+      saWhere.semester_id = session.semester_id;
+    }
+
+    let rawStudents = await tx.siswaAkademik.findMany({
+      where: saWhere,
+      select: { id: true, siswa_id: true }
+    });
+
+    if (rawStudents.length === 0) {
+      rawStudents = await tx.siswaAkademik.findMany({
+        where: {
+          kelas_id: session.kelas_id,
+          status: 'AKTIF',
+          siswa: {
+            status: 'AKTIF'
+          }
+        },
+        select: { id: true, siswa_id: true }
+      });
+    }
+
+    // Deduplicate by siswa_id agar riwayat multi-tahun tidak melipatgandakan data siswa
+    const uniqueMap = new Map<string, typeof rawStudents[0]>();
+    rawStudents.forEach(s => {
+      if (s.siswa_id && !uniqueMap.has(s.siswa_id)) {
+        uniqueMap.set(s.siswa_id, s);
+      }
+    });
+    const students = Array.from(uniqueMap.values());
+
+    // 3. Cari siswa yang sudah punya record absen (HADIR/IZIN/SAKIT/dll)
     const existingAbsents = await tx.absenSiswa.findMany({
       where: { sesi_id: sessionId },
       select: { siswa_akademik_id: true }
     });
     const existingIds = new Set(existingAbsents.map(a => a.siswa_akademik_id));
 
-    // 3. Sisanya tandai ALPA atau IZIN (Jika ada izin keluar piket)
-    const students = session.Kelas.SiswaAkademik || [];
+    // 4. Sisanya tandai ALPA atau IZIN (Jika ada izin keluar piket)
     const missingStudents = students.filter(s => !existingIds.has(s.id));
 
     if (missingStudents.length > 0) {
       const missingIds = missingStudents.map(s => s.id);
 
       // Cek Izin Keluar yang aktif selama sesi berlangsung
-      // Izin dianggap aktif jika jam_keluar < waktu_selesai sesi
-      // DAN (jam_kembali is null ATAU jam_kembali > waktu_mulai sesi)
       const activePermits = await tx.izinKeluarSiswa.findMany({
         where: {
           siswa_akademik_id: { in: missingIds },
@@ -120,7 +165,7 @@ async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
       const autoAttendanceData = missingStudents.map(s => {
          const permit = studentPermitMap.get(s.id);
          let isIzin = !!permit;
-         let finalCatatan = permit ? `[PIKET] ${permit.alasan}` : 'Auto-closed by system';
+         let finalCatatan = permit ? `[PIKET] ${permit.alasan}` : 'Auto-marked ALPA on session close';
          let finalStatus = isIzin ? 'IZIN' : 'ALPA';
 
          // SMART TIMEOUT LOGIC
@@ -134,11 +179,11 @@ async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
              finalCatatan = `[BOLOS] Izin keluar sementara melebihi batas ${maxIzinMenit} menit (Durasi: ${diffMenit}m)`;
            }
          }
- 
+
          return {
            tenant_id: tenantId,
            sesi_id: sessionId,
-           siswa_id: (s as any).siswa_id || null,
+           siswa_id: s.siswa_id || null,
            siswa_akademik_id: s.id,
            status: finalStatus,
            waktu_tap: null,
@@ -155,15 +200,21 @@ async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
       await tx.absenSiswa.createMany({ data: autoAttendanceData });
     }
 
-    // 4. Update AbsenGuru jika belum hadir
+    // 5. Update AbsenGuru jika belum hadir — HANYA JIKA GURU BERSTATUS AKTIF!
     if (session.guru_id) {
-      await tx.absenGuru.updateMany({
-        where: { sesi_id: sessionId, status: 'Belum Hadir' },
-        data: { status: 'ALPA' }
-      });
+      const isGuruActive = !session.Guru?.User || session.Guru.User.status === 'ACTIVE';
+      if (isGuruActive) {
+        await tx.absenGuru.updateMany({
+          where: { 
+            sesi_id: sessionId, 
+            status: { in: ['Belum Hadir', 'BELUM_HADIR'] } 
+          },
+          data: { status: 'ALPA' }
+        });
+      }
     }
 
-    // 5. Emit Event untuk notifikasi
+    // 6. Emit Event untuk notifikasi
     await emitDomainEvent({
       event_type: 'attendance.session.auto_closed',
       tenant_id: tenantId,
