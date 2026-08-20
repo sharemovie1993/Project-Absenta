@@ -62,53 +62,67 @@ export const RiwayatAjarToolbar: React.FC<RiwayatAjarToolbarProps> = React.memo(
 
   return (
     <div className="space-y-3 bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-      {/* ── MOBILE VIEW: ULTRA-COMPACT TOOLBAR (< sm) ── */}
+      {/* ── MOBILE VIEW: DIRECT ACCESSIBLE TOOLBAR (< sm) ── */}
       <div className="block sm:hidden space-y-2.5">
-        {/* Row 1: Month/Year + Filter Toggle Button */}
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 gap-1.5">
-            <select
-              className="flex-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-            >
-              {Array.from({ length: 12 }).map((_, i) => (
-                <option key={i} value={i}>
-                  {format(new Date(2022, i, 1), 'MMMM', { locale: id })}
-                </option>
-              ))}
-            </select>
-            <select
-              className="w-20 h-9 px-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Toggle Detail Filter Button */}
-          <button
-            type="button"
-            onClick={() => setShowMobileFilter(!showMobileFilter)}
-            className={cn(
-              "h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer",
-              showMobileFilter || hasExtraFilters
-                ? "bg-blue-50 dark:bg-blue-950/80 border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400"
-                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-            )}
+        {/* Row 1: Month & Year Selectors */}
+        <div className="flex gap-2">
+          <select
+            className="flex-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
           >
-            <Filter size={13} />
-            <span>Filter</span>
-            {hasExtraFilters && <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />}
-          </button>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <option key={i} value={i}>
+                {format(new Date(2022, i, 1), 'MMMM', { locale: id })}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-24 h-9 px-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Row 2: Quick Status Filter Pills (1-Tap Operation for Teachers) */}
+        {/* Row 2: Direct Filter Kelas (Langsung Tanpa Dibungkus) */}
+        <div className="flex flex-col gap-2">
+          <select
+            className="w-full h-9 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+            value={selectedKelasId}
+            onChange={(e) => setSelectedKelasId?.(e.target.value)}
+          >
+            <option value="">-- SEMUA KELAS --</option>
+            {kelasOptions.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.nama_kelas}
+              </option>
+            ))}
+          </select>
+
+          {/* Manager-only Guru Select */}
+          {isManager && (
+            <select
+              className="w-full h-9 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+              value={selectedGuruId}
+              onChange={(e) => setSelectedGuruId?.(e.target.value)}
+            >
+              <option value="">-- SEMUA GURU --</option>
+              {guruOptions.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nama_guru}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Row 3: Quick Status Filter Pills (1-Tap Operation) */}
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-0.5">
           <button
             type="button"
@@ -148,51 +162,16 @@ export const RiwayatAjarToolbar: React.FC<RiwayatAjarToolbarProps> = React.memo(
           </button>
         </div>
 
-        {/* Collapsible Detailed Filters on Mobile */}
-        {showMobileFilter && (
-          <div className="p-3 bg-slate-50/80 dark:bg-slate-950/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 animate-in fade-in duration-200">
-            {/* Search Input */}
-            <div className="relative w-full">
-              <Input
-                placeholder="Cari materi pokok, kelas, mapel..."
-                className="pl-8 h-9 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-medium"
-                value={search}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-              />
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-            </div>
-
-            {/* Kelas Select */}
-            <select
-              className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 outline-none"
-              value={selectedKelasId}
-              onChange={(e) => setSelectedKelasId?.(e.target.value)}
-            >
-              <option value="">-- SEMUA KELAS --</option>
-              {kelasOptions.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.nama_kelas}
-                </option>
-              ))}
-            </select>
-
-            {/* Manager-only Guru Select */}
-            {isManager && (
-              <select
-                className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-200 outline-none"
-                value={selectedGuruId}
-                onChange={(e) => setSelectedGuruId?.(e.target.value)}
-              >
-                <option value="">-- SEMUA GURU --</option>
-                {guruOptions.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nama_guru}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
+        {/* Row 4: Search Input (Langsung Terlihat) */}
+        <div className="relative w-full">
+          <Input
+            placeholder="Cari materi pokok, kelas, mapel..."
+            className="pl-8 h-9 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs font-medium"
+            value={search}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+          />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+        </div>
       </div>
 
       {/* ── DESKTOP & TABLET VIEW: FULL TOOLBAR (>= sm) ── */}
