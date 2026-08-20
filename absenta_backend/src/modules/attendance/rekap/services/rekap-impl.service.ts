@@ -330,11 +330,12 @@ export class RekapImplService {
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4,'0')}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
     const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
-    // Get Students
+    // Get Students (Hanya Siswa Aktif)
     const students = await prisma.siswa.findMany({
       where: {
         kelas_id: kelasId,
         tenant_id: tenantId,
+        status: 'AKTIF',
       },
       select: { id: true, nama_siswa: true, nis: true }
     });
@@ -641,9 +642,9 @@ export class RekapImplService {
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4, '0')}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
     const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
-    // 1. Fetch Students in Class
+    // 1. Fetch Students in Class (Hanya Siswa Aktif)
     const students = await prisma.siswa.findMany({
-      where: { kelas_id: kelasId, tenant_id: tenantId },
+      where: { kelas_id: kelasId, tenant_id: tenantId, status: 'AKTIF' },
       select: { id: true, nama_siswa: true, nis: true },
       orderBy: { nama_siswa: 'asc' }
     });
@@ -1719,9 +1720,9 @@ export class RekapImplService {
     });
     if (!kelas) throw new Error('Kelas not found');
 
-    // 2. Fetch all students in this class
+    // 2. Fetch all active students in this class
     const students = await prisma.siswa.findMany({
-      where: { kelas_id: kelasId, tenant_id: tenantId },
+      where: { kelas_id: kelasId, tenant_id: tenantId, status: 'AKTIF' },
       select: { id: true, nama_siswa: true, nis: true },
       orderBy: { nama_siswa: 'asc' }
     });

@@ -251,7 +251,13 @@ export async function markManualAbsence(params: {
       return buildDuplicateResponse(existing, AbsensiMode.SIMPLE as any, processingInfo);
     }
 
-    const siswaInfo = await gerbangDb.siswa.findFirst({ where: { id: siswaId, tenant_id: tenantId } as any, include: { Kelas: { select: { nama_kelas: true } } } as any });
+    const siswaInfo = await gerbangDb.siswa.findFirst({ 
+      where: { id: siswaId, tenant_id: tenantId, status: 'AKTIF' } as any, 
+      include: { Kelas: { select: { nama_kelas: true } } } as any 
+    });
+    if (!siswaInfo) {
+      throw new Error('Siswa tidak ditemukan atau berstatus tidak aktif');
+    }
     const activeYear = await gerbangDb.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } } as any);
     const tingkatData = (siswaInfo as any)?.kelas_id ? await gerbangDb.kelas.findUnique({ where: { id: (siswaInfo as any).kelas_id } as any, select: { tingkat: true } as any }) : null;
 

@@ -160,14 +160,23 @@ export async function generateSessionsForTenantDirect(
     // --- KBM GENERATION SECTION ---
     // Hanya generate KBM jika hari ini adalah Hari Sekolah/Operasional Tenant
     if (tenant.hari_sekolah.includes(hariEnum)) {
-      // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini (Hanya jenis_kegiatan = KBM)
+      // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini (Hanya jenis_kegiatan = KBM, kelas aktif, guru aktif)
       const schedules = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: activeYear.id,
           semester_id: activeSemester.id,
           hari: hariEnum,
-          jenis_kegiatan: 'KBM'
+          jenis_kegiatan: 'KBM',
+          Kelas: { is_active: true },
+          OR: [
+            { guru_id: null },
+            {
+              Guru: {
+                User: { status: 'ACTIVE' }
+              }
+            }
+          ]
         }
       });
 

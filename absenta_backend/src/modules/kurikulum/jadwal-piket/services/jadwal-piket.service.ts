@@ -401,7 +401,12 @@ export class JadwalPiketService {
     if (activeSem) whereClause.semester_id = activeSem.id;
 
     const list = await prisma.jadwalPiketGuru.findMany({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        Guru: {
+          User: { status: 'ACTIVE' }
+        }
+      },
       include: {
         Guru: {
           select: {
