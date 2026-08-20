@@ -43,7 +43,7 @@ export function resolveProfilePhotoUrl(url?: string | null): string {
   if (!url) return '';
   if (url.startsWith('data:')) return url;
 
-  let targetPath = url;
+  let targetPath = url.trim();
   if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
     try {
       const u = new URL(targetPath);
@@ -57,9 +57,21 @@ export function resolveProfilePhotoUrl(url?: string | null): string {
       return url;
     }
   }
-  
-  // Ensure it has /api prefix
-  const cleanUrl = targetPath.startsWith('/api') ? targetPath : `/api${targetPath.startsWith('/') ? '' : '/'}${targetPath}`;
+
+  // Remove leading slashes
+  let relativePath = targetPath.replace(/^\/+/, '');
+
+  // Strip 'api/' prefix if present to normalize
+  if (relativePath.startsWith('api/')) {
+    relativePath = relativePath.replace(/^api\//, '');
+  }
+
+  // Ensure upload assets have 'uploads/' prefix for fastify static route
+  if (!relativePath.startsWith('uploads/') && !relativePath.startsWith('academic/')) {
+    relativePath = `uploads/${relativePath}`;
+  }
+
+  const cleanUrl = `/api/${relativePath}`;
   
   // Prepend backend base host URL (removing trailing /api if necessary to avoid double /api)
   const apiBase = resolvePublicApiBaseUrl() || '';
