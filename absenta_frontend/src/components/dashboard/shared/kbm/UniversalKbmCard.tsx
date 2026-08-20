@@ -148,7 +148,11 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     || (item.session?.waktu_tap ? (item.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : (isLive ? 'HADIR' : 'BELUM_TAP'));
 
   const teacherMeta: TeacherStatusMeta = getTeacherStatusMeta(rawTeacherStatus);
-  const isTeacherPresent = teacherMeta.isHadir || isLive || rawTeacherStatus === 'HADIR' || rawTeacherStatus === 'TEPAT_WAKTU' || rawTeacherStatus === 'TERLAMBAT';
+  const isTeacherExcused = teacherMeta.key === 'IZIN' || teacherMeta.key === 'SAKIT' || teacherMeta.key === 'DINAS_LUAR' || teacherMeta.key === 'PENUGASAN' || teacherMeta.key === 'INVAL';
+  const isTeacherAlreadyPresent = isLive || rawTeacherStatus === 'HADIR' || rawTeacherStatus === 'TEPAT_WAKTU' || rawTeacherStatus === 'TERLAMBAT' || teacherMeta.key === 'HADIR';
+  const needsReminder = isReadyToOpen && !isLive && !isFinished && !isOverdue && !isTeacherExcused && !isTeacherAlreadyPresent;
+  const canChangeStatus = (isReadyToOpen || isOverdue || isTeacherExcused) && !isFinished && !isLive;
+  const isTeacherPresent = isTeacherAlreadyPresent;
 
   // 🛡️ Resolusi Status Pengingat WA & Cooldown Anti-Spam
   const reminderMeta = item.reminder_meta || item._summary?.reminder_meta || item.session?.reminder_meta || null;
@@ -635,8 +639,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
-              {/* Quick Actions untuk Guru Belum Masuk Kelas */}
-              {isReadyToOpen && !isLive && !isFinished && !isOverdue && (
+              {/* Quick Actions untuk Pengingat WA Guru Belum Masuk Kelas */}
+              {needsReminder && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {isRemindedRecently ? (
                     <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
@@ -677,23 +681,24 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                       )}
                     </>
                   )}
-
-                  {onChangeStatus && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onChangeStatus(item);
-                      }}
-                      title="Ubah status guru atau tugaskan Guru Inval / Pengganti"
-                      className="h-7 px-2.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 cursor-pointer border-none shadow-xs"
-                    >
-                      <User size={11} />
-                      <span>Ubah Status</span>
-                    </Button>
-                  )}
                 </div>
+              )}
+
+              {/* Action Ubah Status / Penugasan Guru Inval */}
+              {canChangeStatus && onChangeStatus && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeStatus(item);
+                  }}
+                  title={isTeacherExcused ? "Tugaskan Guru Inval / Pengganti" : "Ubah status guru atau tugaskan Guru Inval"}
+                  className="h-7 px-2.5 rounded-lg text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 cursor-pointer border-none shadow-xs"
+                >
+                  <User size={11} />
+                  <span>{isTeacherExcused ? 'Tugaskan Inval' : 'Ubah Status'}</span>
+                </Button>
               )}
 
               {hasJournal && (
