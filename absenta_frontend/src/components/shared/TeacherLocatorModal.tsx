@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -14,13 +14,14 @@ import {
   Calendar,
   Sparkles,
   Phone,
-  User
+  User,
+  RefreshCw
 } from 'lucide-react';
 import { getTeacherLocatorApi } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '../../store/authStore';
+import { useSocket } from '../../hooks/useSocket';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
-
 import { createPortal } from 'react-dom';
 
 interface TeacherLocatorModalProps {
@@ -29,13 +30,51 @@ interface TeacherLocatorModalProps {
 }
 
 export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen, onClose }) => {
+  const queryClient = useQueryClient();
+  const { isConnected, subscribe, unsubscribe } = useSocket();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const { user } = useAuthStore();
   const rawRole = typeof user?.role === 'object' ? (user?.role as any)?.name : user?.role;
   const isStudent = String(rawRole || '').toUpperCase() === 'SISWA';
 
-  // Handle escape key
+  // 1. Debounce search input (250ms) for high-performance UX
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // 2. Real-time WebSocket synchronization across tenants
+  useEffect(() => {
+    if (!isConnected || !isOpen) return;
+
+    const handleInvalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-locator'] });
+    };
+
+    subscribe('absen_guru_update', handleInvalidate);
+    subscribe('attendance_feed_update', handleInvalidate);
+    subscribe('sesi_status_update', handleInvalidate);
+    subscribe('sesi_reminder_updated', handleInvalidate);
+    subscribe('SESI_CREATED', handleInvalidate);
+    subscribe('SESI_UPDATED', handleInvalidate);
+    subscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
+
+    return () => {
+      unsubscribe('absen_guru_update', handleInvalidate);
+      unsubscribe('attendance_feed_update', handleInvalidate);
+      unsubscribe('sesi_status_update', handleInvalidate);
+      unsubscribe('sesi_reminder_updated', handleInvalidate);
+      unsubscribe('SESI_CREATED', handleInvalidate);
+      unsubscribe('SESI_UPDATED', handleInvalidate);
+      unsubscribe('SESSION_ATTENDANCE_UPDATE', handleInvalidate);
+    };
+  }, [isConnected, isOpen, subscribe, unsubscribe, queryClient]);
+
+  // 3. Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -46,18 +85,19 @@ export const TeacherLocatorModal: React.FC<TeacherLocatorModalProps> = ({ isOpen
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Reset search when modal opens
+  // 4. Reset search when modal opens
   useEffect(() => {
     if (isOpen) {
       setSearchTerm('');
+      setDebouncedSearch('');
       setExpandedTeacherId(null);
     }
   }, [isOpen]);
 
-  // Query teachers locator
-  const { data: locatorRes, isLoading, refetch } = useQuery({
-    queryKey: ['teacher-locator', searchTerm],
-    queryFn: () => getTeacherLocatorApi({ q: searchTerm }),
+  // 5. TanStack Query with Cache Invalidation & Stale Time Management
+  const { data: locatorRes, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['teacher-locator', debouncedSearch],
+    queryFn: () => getTeacherLocatorApi({ q: debouncedSearch }),
     enabled: isOpen,
     staleTime: 10 * 1000,
     refetchInterval: isOpen ? 15 * 1000 : false,

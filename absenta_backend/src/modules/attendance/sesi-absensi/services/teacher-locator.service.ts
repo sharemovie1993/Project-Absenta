@@ -68,58 +68,48 @@ export class TeacherLocatorService {
       const targetDate = options.tanggal || getTenantLocalTime(tz, new Date()).dateStr;
       const isStudent = (userRole || '').toUpperCase() === 'SISWA';
 
-      // 1. Ambil seluruh sesi KBM terpadu hari ini via SesiLifecycleService
-      const sessionResult = await SesiLifecycleService.getInstance().list(
-        tenantId,
-        {},
-        {
-          tanggal: targetDate,
-          include_scheduled: true,
-          summary: true,
-          limit: 1000
-        }
-      );
-
-      const allSessions: any[] = sessionResult.data || [];
-
-      // 2. Ambil master data Guru aktif di tenant
+      // 1. Setup multi-tenant query boundaries and dates in parallel
       const rawQuery = (options.query || '').trim();
-      const whereGuru: any = {
-        tenant_id: tenantId,
-      };
-
-      if (rawQuery) {
-        whereGuru.OR = [
-          { nama_guru: { contains: rawQuery, mode: 'insensitive' } },
-          { nip: { contains: rawQuery, mode: 'insensitive' } }
-        ];
-      }
-
-      const teachers = await prisma.guru.findMany({
-        where: whereGuru,
-        select: {
-          id: true,
-          nama_guru: true,
-          nip: true,
-          foto: true,
-          no_hp: true
-        },
-        orderBy: { nama_guru: 'asc' }
-      });
-
-      // 3. Ambil status AbsenGuru hari ini (Izin / Sakit / Penugasan)
       const startOfDay = new Date(targetDate);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(targetDate);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const guruAbsenRecords = await prisma.absenGuru.findMany({
-        where: {
-          tenant_id: tenantId,
-          created_at: { gte: startOfDay, lte: endOfDay },
-          status: { in: ['IZIN', 'SAKIT', 'PENUGASAN', 'CUTI'] }
-        }
-      });
+      // Execute all core aggregation queries in parallel (High-Throughput Concurrent Execution)
+      const [sessionResult, teachers, guruAbsenRecords] = await Promise.all([
+        SesiLifecycleService.getInstance().list(
+          tenantId,
+          {},
+          {
+            tanggal: targetDate,
+            include_scheduled: true,
+            summary: true,
+            limit: 1000
+          }
+        ),
+        prisma.guru.findMany({
+          where: {
+            tenant_id: tenantId,
+          },
+          select: {
+            id: true,
+            nama_guru: true,
+            nip: true,
+            foto: true,
+            no_hp: true
+          },
+          orderBy: { nama_guru: 'asc' }
+        }),
+        prisma.absenGuru.findMany({
+          where: {
+            tenant_id: tenantId,
+            created_at: { gte: startOfDay, lte: endOfDay },
+            status: { in: ['IZIN', 'SAKIT', 'PENUGASAN', 'CUTI'] }
+          }
+        })
+      ]);
+
+      const allSessions: any[] = sessionResult.data || [];
 
       const permitMap = new Map<string, any>();
       for (const p of guruAbsenRecords) {
@@ -137,10 +127,28 @@ export class TeacherLocatorService {
         sessionByGuru.get(gId)!.push(s);
       }
 
+      // Filter teachers by query: Matches nama_guru, nip, or currently taught Mapel / Kelas
+      const queryLower = rawQuery.toLowerCase();
+      const filteredTeachers = rawQuery
+        ? teachers.filter((t) => {
+            const matchesName = t.nama_guru?.toLowerCase().includes(queryLower);
+            const matchesNip = t.nip?.toLowerCase().includes(queryLower);
+            const tSessions = sessionByGuru.get(t.id) || [];
+            const matchesSession = tSessions.some(
+              (s) =>
+                (s.mapel_nama && s.mapel_nama.toLowerCase().includes(queryLower)) ||
+                (s.Mapel?.nama_mapel && s.Mapel.nama_mapel.toLowerCase().includes(queryLower)) ||
+                (s.kelas_nama && s.kelas_nama.toLowerCase().includes(queryLower)) ||
+                (s.Kelas?.nama_kelas && s.Kelas.nama_kelas.toLowerCase().includes(queryLower))
+            );
+            return matchesName || matchesNip || matchesSession;
+          })
+        : teachers;
+
       // 4. Transform dan tentukan status posisi real-time per guru
       const results: TeacherPositionInfo[] = [];
 
-      for (const teacher of teachers) {
+      for (const teacher of filteredTeachers) {
         const guruSessions = sessionByGuru.get(teacher.id) || [];
         const activePermit = permitMap.get(teacher.id) || null;
 
