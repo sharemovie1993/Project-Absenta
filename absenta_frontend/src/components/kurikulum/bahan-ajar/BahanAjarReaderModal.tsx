@@ -616,7 +616,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                 </div>
                 <div className="pt-2 flex items-center gap-2">
                   <a
-                    href="/kurikulum/perangkat-ajar"
+                    href="/kurikulum/perangkat"
                     className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
                   >
                     <span>+ Buat / Unggah Modul Ajar</span>

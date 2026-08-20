@@ -875,6 +875,11 @@ function App() {
                         <PerangkatAjarPage />
                     </ProtectedRoute>
                     } />
+                    <Route path="/kurikulum/perangkat-ajar" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <PerangkatAjarPage />
+                    </ProtectedRoute>
+                    } />
                     <Route path="/kurikulum/guru-mapel" element={
                       <ProtectedRoute requiredCapability="academic.teaching.view">
                         <GuruMapelPage />

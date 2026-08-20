@@ -114,7 +114,7 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
         <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
-            onClick={() => navigate('/kurikulum/perangkat-ajar')}
+            onClick={() => navigate('/kurikulum/perangkat')}
             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 active:scale-95"
           >
             <Plus size={14} />
@@ -203,7 +203,7 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => navigate('/kurikulum/perangkat-ajar')}
+                  onClick={() => navigate('/kurikulum/perangkat')}
                   className="text-xs font-bold bg-indigo-600 text-white"
                 >
                   <Plus size={13} className="mr-1" />
