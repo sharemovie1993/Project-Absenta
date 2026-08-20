@@ -317,6 +317,22 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
           {/* Right Header: Presensi Count or Test Alert */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            {/* Header Action: Buka Bahan Ajar Digital */}
+            {onOpenBahanAjar && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenBahanAjar(item);
+                }}
+                title="Buka Bahan Ajar Digital & Panduan KBM"
+                className="h-7 sm:h-auto sm:px-2.5 sm:py-1 rounded-xl text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shrink-0 shadow-xs"
+              >
+                <BookOpen size={12} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Bahan Ajar</span>
+              </button>
+            )}
+
             {mode === 'GURU' && onTestAlert && (
               <button
                 type="button"

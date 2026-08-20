@@ -26,6 +26,7 @@ import { UniversalKbmCard } from '../../../dashboard/shared/kbm/UniversalKbmCard
 import { RekapJurnalPanel } from '../kbm/RekapJurnalPanel';
 import { PerangkatAjarPanel } from '../kbm/PerangkatAjarPanel';
 import { JadwalInvalPanel } from '../kbm/JadwalInvalPanel';
+import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
   playSessionAlarmSound, 
@@ -110,6 +111,16 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     mapelNama?: string;
     timestamp?: string;
   } | null>(null);
+
+  // Bahan Ajar Digital Reader State
+  const [readerModalOpen, setReaderModalOpen] = useState<boolean>(false);
+  const [readerPerangkatId, setReaderPerangkatId] = useState<string>('');
+
+  const handleOpenBahanAjar = useCallback((item: any) => {
+    const targetId = item.mapel_id || item.Mapel?.id || item.session?.mapel_id || 'preset-b-indo-fase-e-modul-1';
+    setReaderPerangkatId(targetId);
+    setReaderModalOpen(true);
+  }, []);
 
   // Satu Kabel: Data timelineItems sudah digabung & diagregasi oleh Server (SesiLifecycleService)
   const mergedTimelineItems = (timelineItems as unknown as TimelineItem[]) || [];
@@ -417,6 +428,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                   isExpanded={canExpand && isExpanded}
                   onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
                   onOpenPhotoModal={handleOpenPhotoModal}
+                  onOpenBahanAjar={handleOpenBahanAjar}
                   onViewPhoto={(it) => {
                     const pUrl = it.session?.foto_kegiatan || it.foto_kegiatan || it.session?.foto_bukti_url || (it as any).AbsenGuru?.[0]?.foto_masuk;
                     if (pUrl) {
@@ -546,6 +558,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           kelasNama={previewPhotoData.kelasNama}
           mapelNama={previewPhotoData.mapelNama}
           timestamp={previewPhotoData.timestamp}
+        />
+      )}
+
+      {/* MODAL 4: BAHAN AJAR DIGITAL READER */}
+      {readerModalOpen && (
+        <BahanAjarReaderModal
+          isOpen={readerModalOpen}
+          onClose={() => setReaderModalOpen(false)}
+          perangkatId={readerPerangkatId}
         />
       )}
     </motion.div>
