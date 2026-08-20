@@ -179,14 +179,25 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
       if ((s as any).ProgresMateri?.judul_materi || (s as any)._summary?.hasJournal) withJournal++;
 
       const tStatus = String(s.status.teacherStatus || '').toUpperCase();
-      if (tStatus === 'HADIR' || tStatus === 'TEPAT_WAKTU') teacherOnTime++;
-      else if (tStatus === 'TERLAMBAT') teacherLate++;
-      else if (tStatus === 'DINAS_LUAR' || tStatus === 'PENUGASAN') teacherDinasLuar++;
-      else if (tStatus === 'INVAL' || tStatus === 'DIGANTIKAN') teacherInval++;
-      else if (tStatus === 'IZIN' || tStatus === 'SAKIT') teacherIzinSakit++;
-      else if (tStatus === 'PENDING_IZIN' || tStatus === 'MENUNGGU_VERIFIKASI') teacherPending++;
-      else if (tStatus === 'ALPA') teacherAlpa++;
-      else teacherNotArrived++;
+      const isReadyToOpen = Boolean(s.status.isReadyToOpen ?? (s as any)._summary?.isReadyToOpen);
+
+      if (tStatus === 'HADIR' || tStatus === 'TEPAT_WAKTU') {
+        teacherOnTime++;
+      } else if (tStatus === 'TERLAMBAT') {
+        teacherLate++;
+      } else if (tStatus === 'DINAS_LUAR' || tStatus === 'PENUGASAN') {
+        teacherDinasLuar++;
+      } else if (tStatus === 'INVAL' || tStatus === 'DIGANTIKAN') {
+        teacherInval++;
+      } else if (tStatus === 'IZIN' || tStatus === 'SAKIT') {
+        teacherIzinSakit++;
+      } else if (tStatus === 'PENDING_IZIN' || tStatus === 'MENUNGGU_VERIFIKASI') {
+        teacherPending++;
+      } else if (tStatus === 'ALPA' || s.status.isOverdue) {
+        teacherAlpa++;
+      } else if (isReadyToOpen && !s.status.isLive) {
+        teacherNotArrived++;
+      }
     });
 
     if (total === 0 && isSubscriptionRequired) {
@@ -295,17 +306,14 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Monitoring_KBM_${targetDate}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute('download', `monitoring_kbm_${targetDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast.success('Laporan KBM berhasil diunduh');
-  }, [processedSessions, targetDate, formatTime]);
+  }, [processedSessions, formatTime, targetDate]);
 
   const handleCloseDetail = useCallback(() => {
     setSelectedSesi(null);
@@ -320,17 +328,12 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
       {/* 🔮 Transparent Glass Watermark Overlay when Subscription Required */}
       {isSubscriptionRequired && (
         <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-          {/* Subtle Transparent Glass Backdrop (100% crystal clear!) */}
           <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/25 backdrop-blur-[1px]" />
-
-          {/* Diagonal Watermark Text */}
           <div className="absolute inset-0 flex items-center justify-center rotate-[-12deg] select-none opacity-[0.07] dark:opacity-[0.12]">
             <span className="text-7xl font-black uppercase tracking-widest text-indigo-950 dark:text-white whitespace-nowrap">
               ABSENTA PRO • LIVE MONITORING KBM
             </span>
           </div>
-
-          {/* Floating Glass Center Badge */}
           <div className="relative z-10 bg-white/85 dark:bg-slate-900/90 backdrop-blur-md border border-amber-300 dark:border-amber-700/80 px-8 py-5 rounded-3xl shadow-2xl space-y-2 max-w-md pointer-events-auto">
             <div className="w-12 h-12 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
               <Lock className="w-6 h-6" />
@@ -345,7 +348,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
         </div>
       )}
 
-      {/* ── LEVEL 1: EXECUTIVE KBM DIRECT STAT CARDS (LEGA, LAPANG & ZERO NOISE) ── */}
+      {/* ── LEVEL 1: EXECUTIVE KBM DIRECT STAT CARDS ── */}
       {isExecutive ? (
         <div className="space-y-4">
           {/* Header Bar */}
@@ -373,9 +376,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
             </div>
           </div>
 
-          {/* 4 Core Executive Metric Cards (Grid 1 -> 2 -> 4 Kolom, Rapi & Proporsional) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {/* Metric 1: Sesi Belajar Live */}
             <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
               <div className="flex items-start justify-between">
                 <div>
@@ -395,7 +396,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
               </p>
             </Card>
 
-            {/* Metric 2: Guru Belum Masuk Kelas (Warning ⚠️) */}
             <Card className={cn(
               "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
               stats.teacherNotArrived > 0
@@ -408,7 +408,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
                     Belum Masuk
                   </span>
                   <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {stats.teacherNotArrived > 0 ? `${stats.teacherNotArrived} Kelas` : '0 Kelas'}
+                    {stats.teacherNotArrived} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
@@ -431,7 +431,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
               </p>
             </Card>
 
-            {/* Metric 3: Kelas Kosong / Butuh Guru Inval (Critical 🚨) */}
             <Card className={cn(
               "rounded-2xl border shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all",
               stats.teacherAlpa > 0
@@ -444,7 +443,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
                     Kelas Kosong
                   </span>
                   <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2 leading-none">
-                    {stats.teacherAlpa > 0 ? `${stats.teacherAlpa} Kelas` : '0 Kelas'}
+                    {stats.teacherAlpa} <span className="text-sm font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
@@ -467,7 +466,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
               </p>
             </Card>
 
-            {/* Metric 4: Keterisian Jurnal Materi */}
             <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between min-h-[160px] hover:shadow-md transition-all">
               <div className="flex items-start justify-between">
                 <div>

@@ -441,57 +441,8 @@ export class DashboardService {
           })
         ]);
 
-        // 3. Calculate detailed session stats for Monitoring Page
-        const sessionStats = {
-          total: sessionList.length,
-          live: 0,
-          finished: 0,
-          withJournal: 0,
-          teacherOnTime: 0,
-          teacherLate: 0,
-          teacherNotArrived: 0,
-          teacherAlpa: 0,
-          teacherIzin: 0,
-          teacherSakit: 0,
-        };
-
-        sessionList.forEach(s => {
-          const now = new Date();
-          const startTime = new Date(s.waktu_mulai);
-          const endTime = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
-
-          const isFinished = s.status === 'SELESAI' || (endTime && now > endTime);
-          const isLive = !isFinished && (s.status === 'BERLANGSUNG' || (endTime && now >= startTime && now <= endTime));
-          
-          if (isLive) sessionStats.live++;
-          if (isFinished) sessionStats.finished++;
-          if (s.ProgresMateri) sessionStats.withJournal++;
-
-          const absenGuru = s.AbsenGuru?.[0];
-          const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
-          const isExplicitNonHadir = ['IZIN', 'SAKIT', 'ALPA', 'PENUGASAN', 'TUGAS_LUAR'].includes(sStatus);
-          const hasTap = !isExplicitNonHadir && !!absenGuru?.waktu_tap;
-          const isPresent = (sStatus === 'HADIR' || sStatus === 'TEPAT_WAKTU' || sStatus === 'HADIR_/_MENGAJAR' || hasTap) && !isExplicitNonHadir;
-
-          if (isPresent) {
-            if (absenGuru?.is_terlambat || sStatus === 'TERLAMBAT') sessionStats.teacherLate++;
-            else sessionStats.teacherOnTime++;
-          } else if (sStatus === 'IZIN') {
-            sessionStats.teacherIzin++;
-          } else if (sStatus === 'SAKIT') {
-            sessionStats.teacherSakit++;
-          } else if (sStatus === 'PENUGASAN' || sStatus === 'TUGAS_LUAR') {
-            sessionStats.teacherIzin++;
-          } else if (sStatus === 'ALPA') {
-            sessionStats.teacherAlpa++;
-          } else if (sStatus === 'BELUM_HADIR' || sStatus === 'BELUM_TAP' || sStatus === '' || !absenGuru) {
-            if (isLive) {
-              sessionStats.teacherNotArrived++;
-            } else if (isFinished) {
-              sessionStats.teacherAlpa++;
-            }
-          }
-        });
+        // 3. Consolidated SSOT Session Stats for Monitoring Page
+        const sessionStats = SesiLifecycleService.aggregateSessionStats(sessionList);
 
         // 4. Calculate Health Score
         const ka = activeClasses;

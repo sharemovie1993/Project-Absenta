@@ -954,6 +954,68 @@ export class SesiLifecycleService {
     };
   }
 
+  /**
+   * 🏛️ Single Source of Truth (SSOT) Agregasi Statistik Sesi KBM
+   * Digunakan seragam oleh Dashboard Kurikulum, Meja Piket, dan Monitoring Global.
+   */
+  static aggregateSessionStats(sessions: any[]) {
+    const list = Array.isArray(sessions) ? sessions : [];
+    const stats = {
+      total: list.length,
+      live: 0,
+      finished: 0,
+      overdue: 0,
+      upcoming: 0,
+      withJournal: 0,
+      teacherOnTime: 0,
+      teacherLate: 0,
+      teacherBelumMasuk: 0,
+      teacherNotArrived: 0, // Backward-compatible alias
+      teacherAlpa: 0,
+      teacherInval: 0,
+      teacherDinasLuar: 0,
+      teacherIzinSakit: 0,
+      teacherPending: 0,
+    };
+
+    list.forEach((s) => {
+      const isLive = s.isLive || s._summary?.isLive || false;
+      const isFinished = s.isFinished || s._summary?.isFinished || false;
+      const isOverdue = s.isOverdue || s.is_overdue || s._summary?.isOverdue || false;
+      const isUpcoming = s.isUpcoming || s._summary?.isUpcoming || false;
+      const isReadyToOpen = s.isReadyToOpen || s._summary?.isReadyToOpen || false;
+
+      if (isLive) stats.live++;
+      if (isFinished) stats.finished++;
+      if (isOverdue) stats.overdue++;
+      if (isUpcoming) stats.upcoming++;
+      if (s.ProgresMateri || s._summary?.hasJournal) stats.withJournal++;
+
+      const tStatus = String(s._summary?.teacherStatus || s.guru_status || '').toUpperCase();
+      if (tStatus === 'HADIR' || tStatus === 'TEPAT_WAKTU') {
+        stats.teacherOnTime++;
+      } else if (tStatus === 'TERLAMBAT') {
+        stats.teacherLate++;
+      } else if (tStatus === 'DINAS_LUAR' || tStatus === 'PENUGASAN') {
+        stats.teacherDinasLuar++;
+      } else if (tStatus === 'INVAL' || tStatus === 'DIGANTIKAN') {
+        stats.teacherInval++;
+      } else if (tStatus === 'IZIN' || tStatus === 'SAKIT') {
+        stats.teacherIzinSakit++;
+      } else if (tStatus === 'PENDING_IZIN' || tStatus === 'MENUNGGU_VERIFIKASI') {
+        stats.teacherPending++;
+      } else if (tStatus === 'ALPA' || isOverdue) {
+        stats.teacherAlpa++;
+      } else if (isReadyToOpen && !isLive) {
+        // 🎯 HANYA sesi yang sedang aktif jam ini yang dihitung Belum Masuk!
+        stats.teacherBelumMasuk++;
+        stats.teacherNotArrived++;
+      }
+    });
+
+    return stats;
+  }
+
   async updateStatus(tenantId: string, _org: any, sesiId: string, status: string) {
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesiId, tenant_id: tenantId }
