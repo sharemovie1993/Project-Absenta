@@ -147,13 +147,14 @@ export const KbmStatCards = React.memo<KbmStatCardsProps>(({
           </div>
         </div>
 
-        {/* 6 Clean Single-Word Interactive Chips (Zero Clipping) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+        {/* 7 Clean Interactive Chips (Zero Clipping) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
           {[
             { id: 'TEPAT_WAKTU', label: 'Tepat', val: stats.teacherOnTime, icon: CheckCircle2, bg: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800', activeBg: 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/30' },
             { id: 'TERLAMBAT', label: 'Telat', val: stats.teacherLate, icon: Clock, bg: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800', activeBg: 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30' },
-            { id: 'DINAS_LUAR', label: 'Dinas', val: stats.teacherDinasLuar, icon: Send, bg: 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800', activeBg: 'bg-purple-600 text-white border-purple-600 shadow-purple-600/30' },
+            { id: 'BELUM_MASUK', label: 'Belum Masuk', val: stats.teacherNotArrived, icon: AlertCircle, bg: 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800', activeBg: 'bg-orange-500 text-white border-orange-500 shadow-orange-500/30' },
             { id: 'INVAL', label: 'Inval', val: stats.teacherInval, icon: UserCheck, bg: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:border-fuchsia-800', activeBg: 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-fuchsia-600/30' },
+            { id: 'DINAS_LUAR', label: 'Dinas', val: stats.teacherDinasLuar, icon: Send, bg: 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800', activeBg: 'bg-purple-600 text-white border-purple-600 shadow-purple-600/30' },
             { id: 'IZIN', label: 'Izin', val: stats.teacherIzinSakit, icon: Users, bg: 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800', activeBg: 'bg-blue-600 text-white border-blue-600 shadow-blue-600/30' },
             { id: 'ALPA', label: 'Alpa', val: stats.teacherAlpa, icon: ShieldAlert, bg: 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800', activeBg: 'bg-rose-600 text-white border-rose-600 shadow-rose-600/30' },
           ].map((chip) => {
@@ -183,8 +184,9 @@ export const KbmStatCards = React.memo<KbmStatCardsProps>(({
         <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex shadow-inner">
           <div style={{ width: `${(stats.teacherOnTime / total) * 100}%` }} className="h-full bg-emerald-500 transition-all duration-500" title={`Tepat: ${stats.teacherOnTime}`} />
           <div style={{ width: `${(stats.teacherLate / total) * 100}%` }} className="h-full bg-amber-500 transition-all duration-500" title={`Telat: ${stats.teacherLate}`} />
-          <div style={{ width: `${(stats.teacherDinasLuar / total) * 100}%` }} className="h-full bg-purple-500 transition-all duration-500" title={`Dinas: ${stats.teacherDinasLuar}`} />
+          <div style={{ width: `${(stats.teacherNotArrived / total) * 100}%` }} className="h-full bg-orange-500 transition-all duration-500" title={`Belum Masuk: ${stats.teacherNotArrived}`} />
           <div style={{ width: `${(stats.teacherInval / total) * 100}%` }} className="h-full bg-fuchsia-500 transition-all duration-500" title={`Inval: ${stats.teacherInval}`} />
+          <div style={{ width: `${(stats.teacherDinasLuar / total) * 100}%` }} className="h-full bg-purple-500 transition-all duration-500" title={`Dinas: ${stats.teacherDinasLuar}`} />
           <div style={{ width: `${(stats.teacherIzinSakit / total) * 100}%` }} className="h-full bg-blue-500 transition-all duration-500" title={`Izin: ${stats.teacherIzinSakit}`} />
           <div style={{ width: `${(stats.teacherAlpa / total) * 100}%` }} className="h-full bg-rose-500 transition-all duration-500" title={`Alpa: ${stats.teacherAlpa}`} />
         </div>

@@ -157,15 +157,27 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       badgePropsVariant: 'secondary'
     };
   }
+  if (s === 'BELUM_MASUK' || s === 'BELUM_TAP' || s === 'BELUM_HADIR') {
+    return {
+      key: 'BELUM_MASUK',
+      label: 'BELUM MASUK KELAS',
+      shortLabel: 'BELUM MASUK',
+      titleCaseLabel: 'Belum Masuk',
+      colorVariant: 'warning',
+      badgeClass: 'bg-orange-500/20 text-orange-900 dark:text-orange-300 border border-orange-500/40',
+      dotClass: 'bg-orange-500 animate-pulse',
+      badgePropsVariant: 'warning'
+    };
+  }
   return {
     key: 'BELUM_TAP',
-    label: 'GURU BELUM TAP',
-    shortLabel: 'BELUM TAP',
-    titleCaseLabel: 'Belum Hadir',
-    colorVariant: 'slate',
-    badgeClass: 'bg-slate-500/20 text-slate-300 border border-slate-500/40',
-    dotClass: 'bg-slate-400 animate-pulse',
-    badgePropsVariant: 'info'
+    label: 'BELUM MASUK',
+    shortLabel: 'BELUM MASUK',
+    titleCaseLabel: 'Belum Masuk',
+    colorVariant: 'warning',
+    badgeClass: 'bg-orange-500/20 text-orange-900 dark:text-orange-300 border border-orange-500/40',
+    dotClass: 'bg-orange-500 animate-pulse',
+    badgePropsVariant: 'warning'
   };
 }
 

@@ -264,7 +264,11 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
         (statusFilter === 'UPCOMING' && s.status.isUpcoming) ||
         (statusFilter === 'JURNAL'   && !!(s as any).ProgresMateri);
 
-      const matchTeacherStatus = teacherStatusFilter === 'ALL' || s.status.teacherStatus === teacherStatusFilter;
+      const matchTeacherStatus = 
+        teacherStatusFilter === 'ALL' || 
+        (teacherStatusFilter === 'BELUM_MASUK'
+          ? (s.status.teacherStatus === 'BELUM_MASUK' || s.status.teacherStatus === 'BELUM_TAP' || s.status.teacherStatus === 'BELUM_HADIR' || (s.isReadyToOpen && !s.status.isLive))
+          : s.status.teacherStatus === teacherStatusFilter);
 
       return matchSearch && matchKelas && matchJurusan && matchTeacherStatus && statusMatch;
     });
