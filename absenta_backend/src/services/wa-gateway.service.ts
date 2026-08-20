@@ -136,6 +136,11 @@ async function connectTenant(tenantId: string): Promise<void> {
     return;
   }
 
+  if (process.env.WA_GATEWAY_DISABLED === 'true' || process.env.DISABLE_WA_GATEWAY === 'true') {
+    console.log(`[WA-Pool:${tenantId}] WA Gateway dinonaktifkan di environment ini (WA_GATEWAY_DISABLED=true).`);
+    return;
+  }
+
   const { hasCreds, savedNumber } = await getTenantDbCredsInfo(tenantId);
 
   // Pastikan slot ada di pool dengan status awal 'connected' jika creds sudah ada di DB
@@ -819,6 +824,10 @@ const waGatewayServiceLocal = {
   },
 
   async restoreConnections(): Promise<void> {
+    if (process.env.WA_GATEWAY_DISABLED === 'true' || process.env.DISABLE_WA_GATEWAY === 'true') {
+      console.log('🔇 [WA-Pool] WA Gateway auto-restore dinonaktifkan via ENV (WA_GATEWAY_DISABLED=true). Menghindari bentrok socket Baileys dengan server produksi.');
+      return;
+    }
     startWaWatchdog();
     try {
       const connections = await prisma.waTenantConnection.findMany({
