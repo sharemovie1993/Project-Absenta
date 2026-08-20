@@ -39,7 +39,8 @@ export class BahanAjarController {
    */
   static async getReaderContent(request: any, reply: any) {
     try {
-      const tenantId = request.tenantId || request.user?.tenantId;
+      const user = request.user;
+      const tenantId = user?.tenant_id || user?.tenantId || request.tenantId || request.tenant_id;
       const { id } = request.params;
       const query = request.query || {};
       const data = await BahanAjarService.getBahanAjarForReader(tenantId, id, {
@@ -60,10 +61,25 @@ export class BahanAjarController {
    */
   static async saveStructuredKonten(request: any, reply: any) {
     try {
-      const tenantId = request.tenantId || request.user?.tenantId;
+      const user = request.user;
+      const tenantId = user?.tenant_id || user?.tenantId || request.tenantId || request.tenant_id;
       const { id } = request.params;
       const body = request.body || {};
-      const data = await BahanAjarService.saveStructuredKonten(tenantId, id, body.konten_json, body.metadata || body);
+
+      let resolvedGuruId = body.metadata?.guru_id || body.guru_id;
+      if (!resolvedGuruId && user?.id) {
+        const guruRecord = await prisma.guru.findFirst({
+          where: { user_id: user.id, tenant_id: tenantId }
+        });
+        if (guruRecord) resolvedGuruId = guruRecord.id;
+      }
+
+      const meta = {
+        ...(body.metadata || body),
+        guru_id: resolvedGuruId
+      };
+
+      const data = await BahanAjarService.saveStructuredKonten(tenantId, id, body.konten_json, meta);
       return { success: true, message: 'Konten bahan ajar berhasil disimpan', data };
     } catch (error: any) {
       reply.status(error.statusCode || 500);
@@ -77,12 +93,12 @@ export class BahanAjarController {
   static async importPreset(request: any, reply: any) {
     try {
       const user = request.user;
-      const tenantId = request.tenantId || user.tenantId;
+      const tenantId = user?.tenant_id || user?.tenantId || request.tenantId || request.tenant_id;
       const { id } = request.params;
       const body = request.body || {};
 
       let targetGuruId = body.guru_id;
-      if (!targetGuruId) {
+      if (!targetGuruId && user?.id) {
         const guruRecord = await prisma.guru.findFirst({
           where: { user_id: user.id, tenant_id: tenantId }
         });
@@ -109,7 +125,7 @@ export class BahanAjarController {
       return { success: true, message: 'Preset bahan ajar berhasil disalin ke modul ajar Anda! ✨', data };
     } catch (error: any) {
       reply.status(error.statusCode || 500);
-      return { success: false, message: error.message || 'Gagal mengimpor preset bahan ajar' };
+      return { success: false, message: error.message || 'Gagal mengadopsi preset bahan ajar' };
     }
   }
 }
