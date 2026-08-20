@@ -120,6 +120,21 @@ const pendingIdentification = new Map<string, boolean>();
  */
 export const pendingGuruEditSession = new Map<string, 'EDIT_NIP' | 'EDIT_EMAIL'>();
 
+/**
+ * 🛡️ Anti-Flood / Rate Limiter per-JID (Throttle rapid duplicate messages < 700ms)
+ */
+const lastIncomingMessageTimestamp = new Map<string, number>();
+
+function isSpamming(cleanJid: string, minIntervalMs = 700): boolean {
+  const now = Date.now();
+  const last = lastIncomingMessageTimestamp.get(cleanJid) || 0;
+  if (now - last < minIntervalMs) {
+    return true;
+  }
+  safeSetMap(lastIncomingMessageTimestamp, cleanJid, now, 5000);
+  return false;
+}
+
 export class WaChatbotResolverService {
   /**
    * Normalisasi nomor HP ke berbagai format string pencarian DB.
@@ -199,6 +214,7 @@ export class WaChatbotResolverService {
               { User: { no_hp: { contains: searchSuffix } } }
             ]
           },
+          take: 20,
           include: { User: true }
         });
         guru = candidates.find(g => {
@@ -216,6 +232,7 @@ export class WaChatbotResolverService {
               { User: { no_hp: { contains: searchSuffix } } }
             ]
           },
+          take: 20,
           include: { Kelas: true, Jurusan: true, User: true }
         });
         siswa = candidates.find(s => {
@@ -228,6 +245,7 @@ export class WaChatbotResolverService {
       if (!ortu) {
         const candidates = await prisma.orangTua.findMany({
           where: { no_hp: { contains: searchSuffix } },
+          take: 20,
         });
         ortu = candidates.find(o => {
           const p1 = (o.no_hp || '').replace(/\D/g, '');
@@ -284,8 +302,12 @@ export class WaChatbotResolverService {
       return '';
     }
 
-    // ── Step 1: Normalize JID (handle LID variations like 12345:0@lid vs 12345@lid)
+    // ── Step 0.5: Anti-Flood Rate Limiting per Sender (<700ms throttle) ───────
     const cleanJid = fullJid.split('@')[0].split(':')[0];
+    if (isSpamming(cleanJid, 700)) {
+      console.log(`[Chatbot] Throttled rapid message flood from: ${cleanJid}`);
+      return '';
+    }
 
     let resolvedPhone = lidToPhoneGlobalMap.get(cleanJid) ?? lidToPhoneGlobalMap.get(fullJid) ?? fullJid;
     let isSelfIdJustCompleted = false;
