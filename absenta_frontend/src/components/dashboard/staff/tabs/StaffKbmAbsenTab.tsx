@@ -436,15 +436,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                     <div className="space-y-4">
                       {/* CASE 0: JADWAL KBM TELAH TERLEWAT (OVERDUE LOCK) */}
                       {isOverdue && !isFinished && (
-                        <div className="p-4 sm:p-5 rounded-2xl border border-dashed border-rose-500/30 bg-rose-950/15 text-center space-y-3">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto bg-rose-500/10 text-rose-400">
+                        <div className="p-4 sm:p-5 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800/80 bg-rose-50/80 dark:bg-rose-950/25 text-center space-y-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
                             <AlertCircle size={20} />
                           </div>
                           <div className="space-y-1 max-w-sm mx-auto">
-                            <h5 className="text-xs sm:text-sm font-extrabold text-white">
+                            <h5 className="text-xs sm:text-sm font-black text-rose-950 dark:text-rose-100">
                               Sesi KBM Telah Terlewat &amp; Terkunci
                             </h5>
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 font-medium">
                               Sesi terjadwal pukul {item.jam_mulai} - {item.jam_selesai} WIB dan batas waktu telah berakhir. Hubungi Piket/Kurikulum jika memerlukan koreksi kehadiran.
                             </p>
                           </div>

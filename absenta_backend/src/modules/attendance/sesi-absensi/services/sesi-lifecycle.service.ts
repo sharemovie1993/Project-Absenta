@@ -192,10 +192,11 @@ export class SesiLifecycleService {
             const base64Data = match[2];
             const buffer = Buffer.from(base64Data, 'base64');
             const ext = mimeType.split('/')[1] || 'jpeg';
-            const storageKey = `tenants/${tenantId}/sesi-kbm/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+            const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+            const storageKey = `uploads/tenants/${tenantId}/sesi-kbm/${fileName}`;
 
             await storageService.uploadBuffer(storageKey, buffer, { contentType: mimeType });
-            finalFotoUrl = storageKey;
+            finalFotoUrl = `/api/${storageKey}`;
           } else {
             finalFotoUrl = rawFoto;
           }
