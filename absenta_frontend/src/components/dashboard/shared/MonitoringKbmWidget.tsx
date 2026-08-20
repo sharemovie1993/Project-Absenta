@@ -199,7 +199,9 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
     queryKey: ['dashboard', 'kurikulum', 'monitoring-global', targetDate],
     queryFn: () => kurikulumApi.getKbmGlobalMonitoring(targetDate),
     refetchInterval: isToday ? 30000 : false,
-    retry: false,
+    staleTime: 30000,
+    placeholderData: (prev) => prev,
+    retry: 1,
   });
 
   // 3. Fetch Session List (Unified Source with include_scheduled: true)
@@ -208,7 +210,9 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
     queryFn: () => getSesiAbsensiList({ tanggal: targetDate, include_scheduled: true, summary: true, limit: 500 } as any),
     enabled: tenantMode !== 'SIMPLE',
     refetchInterval: isToday && tenantMode !== 'SIMPLE' ? 30000 : false, 
-    retry: false,
+    staleTime: 30000,
+    placeholderData: (prev) => prev,
+    retry: 1,
   });
 
   const isSubscriptionRequired = useMemo(() => {
