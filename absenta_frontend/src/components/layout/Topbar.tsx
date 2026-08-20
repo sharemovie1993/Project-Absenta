@@ -179,34 +179,34 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
         <div className="w-full h-full flex items-center px-4 transition-all duration-500">
 
         {/* Sisi Kiri: Branding */}
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
             {/* Mobile Menu Toggle */}
             <button
               onClick={onMenuClick}
               aria-label="Buka Menu"
-              className="lg:hidden p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
             {/* Logo & Info Sekolah */}
-            <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
                  {resolvedLogoUrl && !logoError ? (
                   <img 
                     src={resolvedLogoUrl} 
                     alt={systemConfig?.app_name || 'Logo App'} 
-                    className="w-8 h-8 rounded-lg object-contain" 
+                    className="w-8 h-8 rounded-lg object-contain shrink-0" 
                     onError={() => setLogoError(true)}
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md border border-blue-400/30">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md border border-blue-400/30 shrink-0">
                     <span className="text-white font-black text-xs tracking-wider">
                       {(systemConfig?.app_name || 'Absenta').slice(0,2).toUpperCase()}
                     </span>
                   </div>
                 )}
-                <div className="flex flex-col">
-                  <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-none uppercase">
+                <div className="hidden sm:flex flex-col min-w-0">
+                  <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-none uppercase truncate max-w-[150px] md:max-w-[220px]">
                     {systemConfig?.app_name || 'Sistem Absensi'}
                   </span>
                   {(() => {
@@ -216,8 +216,8 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                     const isSimple = norm === 'SIMPLE';
                     return (
                       <div className="flex items-center gap-1 mt-1">
-                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isSimple ? "bg-emerald-500" : "bg-blue-500")} />
-                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
+                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", isSimple ? "bg-emerald-500" : "bg-blue-500")} />
+                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none truncate">
                           {norm.replace('_', ' ')}
                         </span>
                       </div>
@@ -228,18 +228,18 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
-        <div className="flex items-center px-4 gap-2 sm:gap-3 ml-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 ml-auto shrink-0">
 
           {/* 🔍 Cari Posisi Guru (Teacher Locator) */}
           <button
             type="button"
             onClick={() => setLocatorModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
             title="Cari Posisi Guru (Shortcut: Ctrl + G)"
           >
-            <Search className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <Search className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 shrink-0" />
             <span className="hidden md:inline">Cari Guru</span>
-            <kbd className="hidden lg:inline-block px-1 py-0.2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[9px] font-mono text-slate-400">Ctrl+G</kbd>
+            <kbd className="hidden lg:inline-block px-1 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[9px] font-mono text-slate-400">Ctrl+G</kbd>
           </button>
 
           {/* 💬 Pusat Komunikasi Sekolah */}
