@@ -118,7 +118,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
 
   const handleSendWaReminder = useCallback(async (session: any, method: 'GATEWAY' | 'PERSONAL_LINK') => {
     try {
-      const userRole = user?.role || 'KURIKULUM';
+      const rawRole = typeof user?.role === 'object' ? (user?.role as any)?.name : user?.role;
+      const userRole = String(rawRole || (user as any)?.role_name || 'KURIKULUM').toUpperCase();
       const res = await sendKbmReminderApi(session.id, {
         method,
         senderRole: userRole,

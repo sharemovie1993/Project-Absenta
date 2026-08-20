@@ -100,11 +100,24 @@ export class SesiReminderService {
       }
     }
 
-    const senderTitle = payload.senderRole === 'KEPALA_SEKOLAH'
-      ? 'Kepala Sekolah'
-      : payload.senderRole === 'KURIKULUM'
-      ? 'Waka Kurikulum'
-      : 'Meja Piket';
+    const rawRoleStr = String(
+      typeof payload.senderRole === 'object'
+        ? (payload.senderRole as any)?.name || (payload.senderRole as any)?.display_name || ''
+        : payload.senderRole || ''
+    ).toUpperCase();
+
+    let senderTitle = 'Meja Piket';
+    if (rawRoleStr.includes('KEPALA') || rawRoleStr.includes('KEPSEK')) {
+      senderTitle = 'Kepala Sekolah';
+    } else if (rawRoleStr.includes('KURIKULUM') || rawRoleStr.includes('AKADEMIK')) {
+      senderTitle = 'Waka Kurikulum';
+    } else if (rawRoleStr.includes('KESISWAAN')) {
+      senderTitle = 'Waka Kesiswaan';
+    } else if (rawRoleStr.includes('ADMIN') || rawRoleStr.includes('OPERATOR') || rawRoleStr.includes('SUPERADMIN')) {
+      senderTitle = 'Kurikulum / Tim Akademik';
+    } else if (rawRoleStr.includes('PIKET')) {
+      senderTitle = 'Meja Piket';
+    }
 
     const messageText = 
       `Yth. Bapak/Ibu *${namaGuru}*,\n\n` +
