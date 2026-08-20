@@ -287,8 +287,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 11. Piket Harian (Strict: Hanya jika aktif bertugas Piket hari ini, Petugas Gerbang, Kesiswaan, atau Admin)
-    if (isPiketGuru || isGerbang || isKesiswaan || isAdminRole) {
+    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, Admin, atau Guru Piket biasa. Pejabat Kurikulum menggunakan Tab Kurikulum)
+    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan || isAdminRole)) {
       list.push({
         id: 'kelola',
         label: 'Piket Operasional',

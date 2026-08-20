@@ -610,8 +610,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
     }
 
-    // 11. Piket & Gerbang (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, Admin, atau Guru Piket Hari Ini)
-    if (isPiketGuru || isGerbang || isKesiswaan || isAdminRole) {
+    // 11. Piket & Gerbang (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, Admin, atau Guru Piket biasa. Pejabat Kurikulum menggunakan Tab Kurikulum)
+    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan || isAdminRole)) {
       list.push({ 
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
