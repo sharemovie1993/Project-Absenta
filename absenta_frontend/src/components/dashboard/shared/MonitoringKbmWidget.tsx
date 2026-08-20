@@ -118,12 +118,13 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
 
   const handleSendWaReminder = useCallback(async (session: any, method: 'GATEWAY' | 'PERSONAL_LINK') => {
     try {
+      const positionCode = user?.position_codes?.[0];
       const rawRole = typeof user?.role === 'object' ? (user?.role as any)?.name : user?.role;
-      const userRole = String(rawRole || (user as any)?.role_name || 'KURIKULUM').toUpperCase();
+      const userRole = String(positionCode || rawRole || (user as any)?.role_name || 'KURIKULUM').toUpperCase();
       const res = await sendKbmReminderApi(session.id, {
         method,
         senderRole: userRole,
-        senderName: user?.nama || user?.name || undefined,
+        senderName: user?.full_name || user?.nama || user?.name || undefined,
       });
 
       if (method === 'PERSONAL_LINK' && res.personal_wa_link) {

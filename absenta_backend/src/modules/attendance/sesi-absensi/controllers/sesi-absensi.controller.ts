@@ -1,3 +1,4 @@
+import { prisma } from '@/utils/prisma';
 import { sesiService } from '../services/sesi.service';
 import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
@@ -416,12 +417,34 @@ export const sesiAbsensiController = {
       }
 
       const method = body.method === 'PERSONAL_LINK' ? 'PERSONAL_LINK' : 'GATEWAY';
-      const senderRole = body.senderRole || request.user?.role || 'PIKET';
+      
+      let effectiveSenderRole = body.senderRole;
+      if (!effectiveSenderRole && request.user?.id) {
+        const assign = await prisma.organizationalAssignment.findFirst({
+          where: {
+            user_id: request.user.id,
+            tenant_id: tenantId,
+            is_active: true,
+            OR: [
+              { end_date: null },
+              { end_date: { gte: new Date() } }
+            ]
+          },
+          include: { Position: true }
+        });
+        if (assign?.Position?.code) {
+          effectiveSenderRole = assign.Position.code;
+        }
+      }
+      if (!effectiveSenderRole) {
+        effectiveSenderRole = request.user?.role || 'KURIKULUM';
+      }
+
       const senderName = body.senderName || request.user?.nama || request.user?.name || undefined;
 
       const result = await sesiReminderService.sendReminder(tenantId, sesiId, {
         method,
-        senderRole,
+        senderRole: effectiveSenderRole,
         senderName
       });
 
