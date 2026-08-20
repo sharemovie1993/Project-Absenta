@@ -24,12 +24,22 @@ export const PhotoPreviewModal: React.FC<PhotoPreviewModalProps> = ({
   mapelNama,
   timestamp,
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const resolvedPhoto = photoUrl ? resolveProfilePhotoUrl(photoUrl) : '';
+  const [currentSrc, setCurrentSrc] = useState<string>(resolvedPhoto);
+  const [imageError, setImageError] = useState<boolean>(false);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+
+  // Reset states on new photoUrl or modal opening
+  React.useEffect(() => {
+    if (photoUrl) {
+      const target = resolveProfilePhotoUrl(photoUrl);
+      setCurrentSrc(target);
+      setImageError(false);
+      setImageLoaded(false);
+    }
+  }, [photoUrl, isOpen]);
 
   if (!isOpen || !photoUrl) return null;
-
-  const resolvedPhoto = resolveProfilePhotoUrl(photoUrl);
 
   return createPortal(
     <AnimatePresence>
@@ -75,18 +85,17 @@ export const PhotoPreviewModal: React.FC<PhotoPreviewModalProps> = ({
             {imageError ? (
               <div className="py-16 text-center space-y-2 text-slate-400">
                 <AlertTriangle size={36} className="text-amber-500 mx-auto" />
-                <p className="text-xs font-bold text-slate-300">Gagal memuat file foto bukti KBM.</p>
+                <p className="text-xs font-bold text-slate-300">File foto bukti KBM tidak dapat ditemukan pada server.</p>
                 <p className="text-[10px] text-slate-500 font-mono max-w-sm truncate">{photoUrl}</p>
               </div>
             ) : (
               <img
-                src={resolvedPhoto}
+                src={currentSrc}
                 alt="Foto Bukti Pembelajaran Kelas"
                 onLoad={() => setImageLoaded(true)}
                 onError={() => {
-                  // Fallback: If resolved URL fails, try raw photoUrl before giving up
-                  if (photoUrl && photoUrl !== resolvedPhoto) {
-                    setImageError(false);
+                  if (currentSrc !== photoUrl && photoUrl.startsWith('http')) {
+                    setCurrentSrc(photoUrl);
                   } else {
                     setImageError(true);
                   }

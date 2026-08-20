@@ -167,9 +167,18 @@ export async function registerPlugins(fastify: any) {
   const handleUploadRequest = async (request: any, reply: any) => {
     const raw = String((request.params && (request.params as any)['*']) || '');
     const subPath = raw.replace(/^\/+/, '');
-    const key = `uploads/${subPath}`;
+    
+    let key = `uploads/${subPath}`;
+    let fileExists = await storageService.exists(key);
+    if (!fileExists) {
+      key = subPath;
+      fileExists = await storageService.exists(key);
+    }
+    if (!fileExists && subPath.startsWith('uploads/')) {
+      key = subPath.replace(/^uploads\//, '');
+      fileExists = await storageService.exists(key);
+    }
 
-    const fileExists = await storageService.exists(key);
     if (!fileExists) {
       reply.header('Access-Control-Allow-Origin', '*');
       return reply.status(404).send({ success: false, message: 'File not found' });
