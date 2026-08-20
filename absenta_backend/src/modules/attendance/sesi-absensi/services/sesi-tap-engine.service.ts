@@ -500,7 +500,8 @@ export class SesiTapEngineService {
     // 1. Fetch Students from SiswaAkademik with Active Filter
     const saWhere: any = {
       kelas_id: sesi.kelas_id,
-      status: 'AKTIF'
+      status: 'AKTIF',
+      siswa: { status: 'AKTIF' }
     };
     if (sesi.tahun_pelajaran_id && sesi.tahun_pelajaran_id !== 'default-tp') {
       saWhere.tahun_pelajaran_id = sesi.tahun_pelajaran_id;
@@ -517,7 +518,7 @@ export class SesiTapEngineService {
 
     if (rawSiswaAkademikList.length === 0) {
       rawSiswaAkademikList = await prisma.siswaAkademik.findMany({
-        where: { kelas_id: sesi.kelas_id },
+        where: { kelas_id: sesi.kelas_id, status: 'AKTIF', siswa: { status: 'AKTIF' } },
         select: {
           id: true,
           siswa_id: true,
@@ -535,11 +536,11 @@ export class SesiTapEngineService {
     });
     const siswaAkademikList = Array.from(uniqueMap.values());
 
-    // 1b. Fallback: If SiswaAkademik list is empty, fetch directly from Siswa table
+    // 1b. Fallback: If SiswaAkademik list is empty, fetch directly from Siswa table (Hanya yang Aktif)
     let directStudents: any[] = [];
     if (siswaAkademikList.length === 0 && sesi.kelas_id) {
       directStudents = await prisma.siswa.findMany({
-        where: { kelas_id: sesi.kelas_id, tenant_id: tenantId },
+        where: { kelas_id: sesi.kelas_id, tenant_id: tenantId, status: 'AKTIF' },
         select: { id: true, nama_siswa: true, nisn: true, nis: true }
       });
     }
