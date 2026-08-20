@@ -58,6 +58,21 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     return 999;
   };
 
+  // 0. Fetch Teacher's Assigned Subjects
+  const { data: teacherAssignedRes } = useQuery({
+    queryKey: ['guru-assigned-mapels-panel', guruId],
+    queryFn: () => (guruId ? kurikulumApi.getGuruMapel(guruId).catch(() => null) : null),
+    enabled: !!guruId
+  });
+
+  const assignedMapelList = useMemo(() => {
+    const raw = teacherAssignedRes?.data || [];
+    return raw.map((item: any) => ({
+      id: item.mapel_id || item.Mapel?.id || item.id,
+      name: item.Mapel?.nama_mapel || item.nama_mapel || ''
+    })).filter((m: any) => Boolean(m.name));
+  }, [teacherAssignedRes]);
+
   // 1. Fetch Real Teacher's Perangkat Ajar
   const { data: myPerangkatRes, isLoading: isLoadingMyPerangkat } = useQuery({
     queryKey: ['myPerangkatAjarKbm', guruId],
@@ -83,7 +98,12 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
         preset.nama_mapel_ref.toLowerCase().includes((p.Mapel?.nama_mapel || '').toLowerCase())
       );
 
-      const mapelId = matchedPerangkat?.Mapel?.id || myPerangkatList[0]?.Mapel?.id || 'mapel-default';
+      const matchedAssigned = assignedMapelList.find((m: any) =>
+        m.name.toLowerCase().includes(preset.nama_mapel_ref.toLowerCase()) ||
+        preset.nama_mapel_ref.toLowerCase().includes(m.name.toLowerCase())
+      );
+
+      const mapelId = matchedPerangkat?.Mapel?.id || matchedAssigned?.id || myPerangkatList[0]?.Mapel?.id || 'mapel-default';
 
       return importBahanAjarPreset(preset.id, {
         guru_id: guruId,
@@ -103,38 +123,56 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     }
   });
 
-  // Distinct subjects detected
+  // Distinct subjects detected: Prioritize teacher's real assigned subjects!
   const distinctSubjects = useMemo(() => {
-    const subjectsMap = new Map<string, { id: string; name: string; count: number }>();
+    const subjectsMap = new Map<string, { id: string; name: string; isAssigned: boolean }>();
 
-    // From global presets
-    globalPresets.forEach(p => {
-      if (p.nama_mapel_ref) {
-        subjectsMap.set(p.nama_mapel_ref, {
-          id: p.nama_mapel_ref,
-          name: p.nama_mapel_ref,
-          count: 0
+    // 1. Prioritaskan Mapel yang diampu guru di jadwal
+    if (assignedMapelList.length > 0) {
+      assignedMapelList.forEach((m: any) => {
+        subjectsMap.set(m.name, {
+          id: m.id,
+          name: m.name,
+          isAssigned: true
+        });
+      });
+    }
+
+    // 2. Mapel dari perangkat ajar yang sudah dimiliki guru
+    myPerangkatList.forEach((p: any) => {
+      const mapelName = p.Mapel?.nama_mapel;
+      if (mapelName && !subjectsMap.has(mapelName)) {
+        subjectsMap.set(mapelName, {
+          id: p.Mapel?.id || mapelName,
+          name: mapelName,
+          isAssigned: true
         });
       }
     });
 
-    // Count teacher's modules
-    myPerangkatList.forEach((p: any) => {
-      const mapelName = p.Mapel?.nama_mapel;
-      if (mapelName && subjectsMap.has(mapelName)) {
-        subjectsMap.get(mapelName)!.count += 1;
-      } else if (mapelName) {
-        subjectsMap.set(mapelName, { id: mapelName, name: mapelName, count: 1 });
-      }
-    });
+    // 3. Fallback: jika belum ada data pengampuan, tampilkan pilihan dari template global
+    if (subjectsMap.size === 0) {
+      globalPresets.forEach(p => {
+        if (p.nama_mapel_ref && !subjectsMap.has(p.nama_mapel_ref)) {
+          subjectsMap.set(p.nama_mapel_ref, {
+            id: p.nama_mapel_ref,
+            name: p.nama_mapel_ref,
+            isAssigned: false
+          });
+        }
+      });
+    }
 
     return Array.from(subjectsMap.values());
-  }, [globalPresets, myPerangkatList]);
+  }, [assignedMapelList, myPerangkatList, globalPresets]);
 
   // Active Subject for Chapter Map
-  const activeSubjectName = selectedMapelFilter === 'ALL'
-    ? (distinctSubjects[0]?.name || 'Bahasa Indonesia')
-    : selectedMapelFilter;
+  const activeSubjectName = useMemo(() => {
+    if (selectedMapelFilter !== 'ALL' && distinctSubjects.some(s => s.name.toLowerCase() === selectedMapelFilter.toLowerCase())) {
+      return selectedMapelFilter;
+    }
+    return distinctSubjects[0]?.name || 'Bahasa Indonesia';
+  }, [selectedMapelFilter, distinctSubjects]);
 
   // Chapter Readiness Calculation for Active Subject (Sorted in natural ascending order)
   const subjectPresets = useMemo(() => {
