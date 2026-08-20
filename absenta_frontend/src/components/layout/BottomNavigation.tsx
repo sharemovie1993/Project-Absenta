@@ -62,6 +62,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isBpbk,
     isBkk,
     isGerbang,
+    isPiketGuru,
     isTU,
     isTUKepegawaian,
     isKepsek,
@@ -286,8 +287,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 11. Piket Harian (Hanya jika memiliki tugas Piket/Gerbang, Kesiswaan, atau Admin)
-    if (isGerbang || isKesiswaan || isAdminRole) {
+    // 11. Piket Harian (Strict: Hanya jika aktif bertugas Piket hari ini, Petugas Gerbang, Kesiswaan, atau Admin)
+    if (isPiketGuru || isGerbang || isKesiswaan || isAdminRole) {
       list.push({
         id: 'kelola',
         label: 'Piket Operasional',
