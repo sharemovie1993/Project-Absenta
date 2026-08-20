@@ -92,16 +92,33 @@ export class SesiHelperService {
   async enrichWithSummary(tenantId: string, sessions: any[]) {
     if (!sessions || sessions.length === 0) return [];
 
-    return Promise.all(sessions.map(async (sesi) => {
+    const sessionIds = sessions.map(s => s.id).filter(Boolean);
+    const summaryMap = new Map<string, any>();
+
+    if (sessionIds.length > 0) {
       try {
-        const summary = await this.summaryById(tenantId, null, sesi.id);
-        return {
-          ...sesi,
-          summary
-        };
-      } catch {
-        return sesi;
+        const counts = await prisma.absenSiswa.groupBy({
+          by: ['sesi_id', 'status'],
+          where: { sesi_id: { in: sessionIds }, tenant_id: tenantId },
+          _count: { _all: true }
+        });
+        counts.forEach((c: any) => {
+          if (!summaryMap.has(c.sesi_id)) {
+            summaryMap.set(c.sesi_id, { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 });
+          }
+          const sum = summaryMap.get(c.sesi_id)!;
+          const countVal = typeof c._count === 'object' ? (c._count._all || 0) : (c._count || 0);
+          sum[c.status] = countVal;
+          sum.total = (sum.total || 0) + countVal;
+        });
+      } catch (err: any) {
+        console.warn('[enrichWithSummary] Batch groupBy error:', err?.message);
       }
+    }
+
+    return sessions.map(sesi => ({
+      ...sesi,
+      summary: summaryMap.get(sesi.id) || { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 }
     }));
   }
 
