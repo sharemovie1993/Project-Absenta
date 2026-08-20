@@ -41,7 +41,13 @@ export class BahanAjarController {
     try {
       const tenantId = request.tenantId || request.user?.tenantId;
       const { id } = request.params;
-      const data = await BahanAjarService.getBahanAjarForReader(tenantId, id);
+      const query = request.query || {};
+      const data = await BahanAjarService.getBahanAjarForReader(tenantId, id, {
+        fase: query.fase,
+        tingkat: query.tingkat ? Number(query.tingkat) : undefined,
+        mapel_nama: query.mapel_nama,
+        mapel_id: query.mapel_id
+      });
       return { success: true, data };
     } catch (error: any) {
       reply.status(404);

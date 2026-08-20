@@ -108,12 +108,25 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   const [journalSesiId, setJournalSesiId] = useState('');
   const [journalInitialData, setJournalInitialData] = useState<SesiAjar['ProgresMateri'] | null>(null);
   const [readerModalOpen, setReaderModalOpen] = useState(false);
-  const [readerPerangkatId, setReaderPerangkatId] = useState('');
+  const [readerContext, setReaderContext] = useState<{
+    perangkatId?: string;
+    mapelId?: string;
+    mapelNama?: string;
+    kelasNama?: string;
+    tingkat?: number;
+    fase?: string;
+  }>({});
   const [isExporting, setIsExporting] = useState(false);
 
   const handleOpenBahanAjar = useCallback((sesi: any) => {
-    const targetId = sesi.Mapel?.id || sesi.mapel_id || 'preset-b-indo-fase-e-modul-1';
-    setReaderPerangkatId(targetId);
+    setReaderContext({
+      perangkatId: sesi.perangkat_ajar_id || sesi.Mapel?.id || sesi.mapel_id,
+      mapelId: sesi.Mapel?.id || sesi.mapel_id,
+      mapelNama: sesi.Mapel?.nama_mapel || sesi.jenis_kegiatan,
+      kelasNama: sesi.Kelas?.nama_kelas || sesi.kelas_nama,
+      tingkat: sesi.Kelas?.tingkat,
+      fase: sesi.fase
+    });
     setReaderModalOpen(true);
   }, []);
   
@@ -461,7 +474,12 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
           <BahanAjarReaderModal
             isOpen={readerModalOpen}
             onClose={() => setReaderModalOpen(false)}
-            perangkatId={readerPerangkatId}
+            perangkatId={readerContext.perangkatId}
+            mapelId={readerContext.mapelId}
+            mapelNama={readerContext.mapelNama}
+            kelasNama={readerContext.kelasNama}
+            tingkat={readerContext.tingkat}
+            fase={readerContext.fase}
           />
         )}
       </Suspense>
@@ -483,7 +501,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     journalSesiId, 
     journalInitialData, 
     readerModalOpen,
-    readerPerangkatId,
+    readerContext,
     handleOpenBahanAjar,
     refetch,
     isExporting,

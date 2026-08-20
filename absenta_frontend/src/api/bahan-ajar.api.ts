@@ -45,10 +45,20 @@ export interface BahanAjarPresetData {
   created_at: string;
 }
 
+export interface AvailableModulItem {
+  id: string;
+  judul: string;
+  fase: string;
+  tingkat?: number;
+  total_alokasi_jp: number;
+  mapel: string;
+}
+
 export interface ReaderDataResponse {
   perangkat: any;
   konten: PertemuanItem[] | null;
   source: 'CUSTOM' | 'PRESET' | 'AUTO_MATCHED_PRESET' | 'NONE';
+  available_moduls?: AvailableModulItem[];
 }
 
 /**
@@ -72,10 +82,20 @@ export const getBahanAjarPresetById = async (id: string): Promise<BahanAjarPrese
 };
 
 /**
- * Mengambil konten bahan ajar untuk Reader berdasarkan ID Perangkat Ajar
+ * Mengambil konten bahan ajar untuk Reader berdasarkan ID Perangkat Ajar atau filter Mapel/Tingkat
  */
-export const getReaderContent = async (perangkatId: string): Promise<ReaderDataResponse> => {
-  const response = await axiosInstance.get(`/kurikulum/bahan-ajar/reader/${perangkatId}`);
+export const getReaderContent = async (
+  perangkatId: string,
+  params?: {
+    fase?: string;
+    tingkat?: number;
+    mapel_nama?: string;
+    mapel_id?: string;
+  }
+): Promise<ReaderDataResponse> => {
+  const response = await axiosInstance.get(`/kurikulum/bahan-ajar/reader/${perangkatId}`, {
+    params
+  });
   return response.data?.data;
 };
 

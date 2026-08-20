@@ -57,10 +57,57 @@ export class BahanAjarService {
   }
 
   /**
-   * Mengambil konten modul baca dari PerangkatAjar guru, Preset ID, atau Mapel ID
+   * Mengambil konten modul baca dari PerangkatAjar guru, Preset ID, atau Mapel ID dengan filter kontekstual
    */
-  static async getBahanAjarForReader(tenantId: string, targetIdentifier: string) {
-    // 1. Cek apakah targetIdentifier langsung merujuk ke BahanAjarPreset ID
+  static async getBahanAjarForReader(
+    tenantId: string,
+    targetIdentifier: string,
+    context: {
+      fase?: string;
+      tingkat?: number;
+      mapel_nama?: string;
+      mapel_id?: string;
+    } = {}
+  ) {
+    const { fase, tingkat, mapel_nama, mapel_id } = context;
+
+    let effectiveMapelNama = mapel_nama;
+    if (!effectiveMapelNama && mapel_id) {
+      const mapelRecord = await prisma.mapel.findFirst({ where: { id: mapel_id, tenant_id: tenantId } });
+      if (mapelRecord) effectiveMapelNama = mapelRecord.nama_mapel;
+    }
+
+    // 1. Dapatkan daftar seluruh modul yang relevan dengan Mapel & Fase/Tingkat ini
+    const presetWhere: any = { status: 'PUBLISHED' };
+    if (fase) {
+      presetWhere.fase = fase;
+    } else if (tingkat) {
+      presetWhere.tingkat = tingkat;
+    }
+
+    if (effectiveMapelNama) {
+      presetWhere.OR = [
+        { nama_mapel_ref: { contains: effectiveMapelNama, mode: 'insensitive' } },
+        { kode_mapel_ref: { contains: effectiveMapelNama, mode: 'insensitive' } },
+        { tags: { has: effectiveMapelNama } }
+      ];
+    }
+
+    const availablePresets = await prisma.bahanAjarPreset.findMany({
+      where: presetWhere,
+      orderBy: { created_at: 'asc' }
+    });
+
+    const availableModulsList = availablePresets.map(p => ({
+      id: p.id,
+      judul: p.judul_modul,
+      fase: p.fase,
+      tingkat: p.tingkat,
+      total_alokasi_jp: p.total_alokasi_jp,
+      mapel: p.nama_mapel_ref
+    }));
+
+    // 2. Cek apakah targetIdentifier langsung merujuk ke BahanAjarPreset ID
     const directPreset = await prisma.bahanAjarPreset.findUnique({
       where: { id: targetIdentifier }
     });
@@ -76,11 +123,12 @@ export class BahanAjarService {
           Mapel: { nama_mapel: directPreset.nama_mapel_ref }
         },
         konten: directPreset.konten_json,
-        source: 'PRESET'
+        source: 'PRESET',
+        available_moduls: availableModulsList
       };
     }
 
-    // 2. Cek apakah targetIdentifier adalah ID PerangkatAjar di database
+    // 3. Cek apakah targetIdentifier adalah ID PerangkatAjar di database
     const perangkat = await prisma.perangkatAjar.findFirst({
       where: { id: targetIdentifier, tenant_id: tenantId },
       include: {
@@ -92,16 +140,15 @@ export class BahanAjarService {
     });
 
     if (perangkat) {
-      // Jika memiliki konten terstruktur langsung
       if (perangkat.konten_struktur_json) {
         return {
           perangkat,
           konten: perangkat.konten_struktur_json,
-          source: 'CUSTOM'
+          source: 'CUSTOM',
+          available_moduls: availableModulsList
         };
       }
 
-      // Jika menautkan ke preset_ref_id
       if (perangkat.preset_ref_id) {
         const linkedPreset = await prisma.bahanAjarPreset.findUnique({
           where: { id: perangkat.preset_ref_id }
@@ -110,88 +157,82 @@ export class BahanAjarService {
           return {
             perangkat,
             konten: linkedPreset.konten_json,
-            source: 'PRESET'
+            source: 'PRESET',
+            available_moduls: availableModulsList
           };
         }
       }
 
-      // Fallback per-mapel untuk perangkat ini
-      const matchedPreset = await prisma.bahanAjarPreset.findFirst({
-        where: {
-          OR: [
-            { judul_modul: { contains: perangkat.judul, mode: 'insensitive' } },
-            { nama_mapel_ref: { contains: perangkat.Mapel?.nama_mapel || '', mode: 'insensitive' } }
-          ],
-          status: 'PUBLISHED'
-        }
-      });
+      // Fallback matching berdasarkan judul/mapel perangkat
+      const matchedPreset = availablePresets.find(p =>
+        p.judul_modul.toLowerCase().includes(perangkat.judul.toLowerCase()) ||
+        p.nama_mapel_ref.toLowerCase().includes((perangkat.Mapel?.nama_mapel || '').toLowerCase())
+      ) || availablePresets[0];
 
       if (matchedPreset) {
         return {
           perangkat,
           konten: matchedPreset.konten_json,
-          source: 'AUTO_MATCHED_PRESET'
+          source: 'AUTO_MATCHED_PRESET',
+          available_moduls: availableModulsList
         };
       }
     }
 
-    // 3. Cek apakah targetIdentifier adalah Mapel ID
-    const mapel = await prisma.mapel.findFirst({
-      where: { id: targetIdentifier, tenant_id: tenantId }
-    });
-
-    if (mapel) {
-      const mapelPreset = await prisma.bahanAjarPreset.findFirst({
-        where: {
-          OR: [
-            { nama_mapel_ref: { contains: mapel.nama_mapel, mode: 'insensitive' } },
-            { kode_mapel_ref: { contains: mapel.kode_mapel || '', mode: 'insensitive' } }
-          ],
-          status: 'PUBLISHED'
-        }
-      });
-
-      if (mapelPreset) {
-        return {
-          perangkat: {
-            id: mapelPreset.id,
-            judul: mapelPreset.judul_modul,
-            fase: mapelPreset.fase,
-            tingkat: mapelPreset.tingkat,
-            total_alokasi_jp: mapelPreset.total_alokasi_jp,
-            Mapel: { nama_mapel: mapel.nama_mapel }
-          },
-          konten: mapelPreset.konten_json,
-          source: 'PRESET'
-        };
-      }
+    // 4. Jika ada preset yang cocok dari availablePresets (misal Fase F untuk Kelas 11 atau Fase E untuk Kelas 10)
+    if (availablePresets.length > 0) {
+      const selectedPreset = availablePresets[0];
+      return {
+        perangkat: {
+          id: selectedPreset.id,
+          judul: selectedPreset.judul_modul,
+          fase: selectedPreset.fase,
+          tingkat: selectedPreset.tingkat,
+          total_alokasi_jp: selectedPreset.total_alokasi_jp,
+          Mapel: { nama_mapel: selectedPreset.nama_mapel_ref }
+        },
+        konten: selectedPreset.konten_json,
+        source: 'PRESET',
+        available_moduls: availableModulsList
+      };
     }
 
-    // 4. Fallback Terakhir: Ambil preset nasional pertama yang berstatus PUBLISHED
-    const defaultPreset = await prisma.bahanAjarPreset.findFirst({
+    // 5. Fallback Global: Ambil preset nasional pertama yang ada
+    const fallbackAll = await prisma.bahanAjarPreset.findFirst({
       where: { status: 'PUBLISHED' },
       orderBy: { created_at: 'asc' }
     });
 
-    if (defaultPreset) {
+    if (fallbackAll) {
       return {
         perangkat: {
-          id: defaultPreset.id,
-          judul: defaultPreset.judul_modul,
-          fase: defaultPreset.fase,
-          tingkat: defaultPreset.tingkat,
-          total_alokasi_jp: defaultPreset.total_alokasi_jp,
-          Mapel: { nama_mapel: defaultPreset.nama_mapel_ref }
+          id: fallbackAll.id,
+          judul: fallbackAll.judul_modul,
+          fase: fallbackAll.fase,
+          tingkat: fallbackAll.tingkat,
+          total_alokasi_jp: fallbackAll.total_alokasi_jp,
+          Mapel: { nama_mapel: fallbackAll.nama_mapel_ref }
         },
-        konten: defaultPreset.konten_json,
-        source: 'PRESET'
+        konten: fallbackAll.konten_json,
+        source: 'PRESET',
+        available_moduls: [
+          {
+            id: fallbackAll.id,
+            judul: fallbackAll.judul_modul,
+            fase: fallbackAll.fase,
+            tingkat: fallbackAll.tingkat,
+            total_alokasi_jp: fallbackAll.total_alokasi_jp,
+            mapel: fallbackAll.nama_mapel_ref
+          }
+        ]
       };
     }
 
     return {
       perangkat: null,
       konten: null,
-      source: 'NONE'
+      source: 'NONE',
+      available_moduls: []
     };
   }
 

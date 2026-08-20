@@ -1,8 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedBahanAjarPresets(prisma: PrismaClient) {
-  console.log('--- SEEDING BAHAN AJAR PRESET (DIGITAL TEACHING READER) ---');
+  console.log('--- SEEDING MULTI-MODUL BAHAN AJAR PRESET (DIGITAL TEACHING READER) ---');
 
+  // ==========================================
+  // MODUL 1: B. INDONESIA FASE E (KELAS 10) - LHO
+  // ==========================================
   const modul1Content = [
     {
       nomor_pertemuan: 1,
@@ -102,177 +105,23 @@ export async function seedBahanAjarPresets(prisma: PrismaClient) {
           ]
         }
       }
-    },
-    {
-      nomor_pertemuan: 3,
-      alokasi_jp: 3,
-      durasi_menit: 135,
-      topik: 'Praktik Observasi Lapangan & Perencanaan Laporan',
-      tujuan_pembelajaran: [
-        'Menentukan objek observasi lingkungan sekitar yang menarik dan aman.',
-        'Menyusun kerangka rencana observasi, pedoman pengamatan lapangan, dan instrumen pencatatan data faktual.'
-      ],
-      langkah_kbm: {
-        pendahuluan: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Salam, doa, dan penyampaian keselamatan kerja observasi lapangan.',
-            'Pertanyaan Pemantik: "Bagaimana cara mencatat data observasi agar tidak tercampur dengan asumsi pribadi?"'
-          ]
-        },
-        inti: {
-          durasi_menit: 105,
-          kegiatan: [
-            'Pembagian Kelompok Kerja & Penentuan Objek: Taman sekolah, kantin sehat, bank sampah sekolah, atau tanaman obat keluarga.',
-            'Observasi Langsung: Siswa turun ke lapangan melakukan pengamatan fisik, mencatat data kuantitatif & kualitatif.',
-            'Verifikasi Data: Kelompok mengonsolidasikan catatan hasil observasi dan mencocokkan dengan sumber referensi.'
-          ],
-          lkpd: {
-            judul: 'LKPD 3: Lembar Pengamatan Lapangan & Pengumpulan Fakta',
-            petunjuk: 'Catat objek yang diamati: nama objek, lokasi, waktu pengamatan, ciri-ciri fisik terukur, perilaku, dan manfaat lingkungan!'
-          }
-        },
-        penutup: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Cek rekapitulasi data lapangan tiap kelompok.',
-            'Instruksi penyusunan draf awal teks LHO pada pertemuan berikutnya.',
-            'Doa dan penutup.'
-          ]
-        }
-      }
-    },
-    {
-      nomor_pertemuan: 4,
-      alokasi_jp: 3,
-      durasi_menit: 135,
-      topik: 'Penyusunan Draf Teks LHO & Peer Review',
-      tujuan_pembelajaran: [
-        'Menulis draf teks LHO secara sistematis, runtut, logis, dan etis.',
-        'Melakukan uji silang (peer review) draf antarkelompok menggunakan rubrik evaluasi.'
-      ],
-      langkah_kbm: {
-        pendahuluan: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Salam, doa, dan motivasi kerja tim.',
-            'Meninjau rubrik standar penulisan LHO ilmiah populer.'
-          ]
-        },
-        inti: {
-          durasi_menit: 105,
-          kegiatan: [
-            'Penulisan Draf LHO Mandiri-Kelompok: Mengembangkan kerangka menjadi teks utuh 3 struktur.',
-            'Penerapan Kaidah Bahasa: Memastikan penggunaan ejaan, huruf kapital, tanda baca, dan konjungsi yang tepat.',
-            'Peer Review Silang: Saling menukar draf dengan kelompok lain dan memberi masukan perbaikan konstruktif.'
-          ],
-          lkpd: {
-            judul: 'LKPD 4: Lembar Penulisan Draf & Rubrik Peer-Assessment LHO',
-            petunjuk: 'Nilai kelengkapan struktur (Pernyataan Umum, Deskripsi Bagian, Manfaat) dan kejelasan data fakta pada draf kelompok rekan!'
-          }
-        },
-        penutup: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Refleksi proses penulisan dan komitmen revisi final draf.',
-            'Doa dan salam penutup.'
-          ]
-        }
-      }
-    },
-    {
-      nomor_pertemuan: 5,
-      alokasi_jp: 3,
-      durasi_menit: 135,
-      topik: 'Pengalihwahanaan LHO ke Media Kreatif Multimodal',
-      tujuan_pembelajaran: [
-        'Mengalihwahanakan teks LHO menjadi format kreatif digital (infografis Canva, poster, video singkat, podcast, atau slide interaktif).'
-      ],
-      langkah_kbm: {
-        pendahuluan: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Salam, doa, dan apresiasi karya draf siswa.',
-            'Pertanyaan Pemantik: "Media visual apa yang paling menarik bagi generasi sekarang untuk membaca laporan ilmiah?"'
-          ]
-        },
-        inti: {
-          durasi_menit: 105,
-          kegiatan: [
-            'Workshop Pengalihwahanaan: Siswa mendesain infografis atau slide presentasi interaktif menggunakan tools digital.',
-            'Penyusunan Narasi & Elemen Visual: Menyelaraskan teks fakta dengan diagram, foto asli observasi, dan ikon pendukung.',
-            'Uji Coba Presentasi Mini: Gladi bersih penyampaian materi di dalam kelompok.'
-          ],
-          lkpd: {
-            judul: 'LKPD 5: Lembar Kerja Desain Produk Kreatif Multimodal',
-            petunjuk: 'Buatlah media kreatif infografis / slide visual berbasis hasil laporan observasi kelompok Anda!'
-          }
-        },
-        penutup: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Finalisasi file karya dan persiapan urutan presentasi kelas pertemuan ke-6.',
-            'Doa dan salam penutup.'
-          ]
-        }
-      }
-    },
-    {
-      nomor_pertemuan: 6,
-      alokasi_jp: 3,
-      durasi_menit: 135,
-      topik: 'Gelar Karya & Presentasi LHO Multimodal',
-      tujuan_pembelajaran: [
-        'Mempresentasikan laporan hasil observasi multimodal di depan kelas dengan intonasi, metode, dan etika komunikasi yang tepat.',
-        'Menanggapi dan memberikan feedback kritis-apresiatif terhadap presentasi kelompok lain.'
-      ],
-      langkah_kbm: {
-        pendahuluan: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Salam, doa pembuka, dan pengundian urutan presentasi.',
-            'Penjelasan tata tertib dan rubrik penilaian presentasi kelas.'
-          ]
-        },
-        inti: {
-          durasi_menit: 105,
-          kegiatan: [
-            'Sesi Presentasi Kelompok: Tiap kelompok menayangkan media kreatif di proyektor kelas dan memaparkan hasil observasi (10 menit per kelompok).',
-            'Sesi Tanya Jawab Interaktif: Audiens mengajukan pertanyaan kritis dan tanggapan objektif.',
-            'Umpan Balik Guru: Guru memberikan apresiasi, penguatan konsep kebahasaan, dan catatan penilaian sumatif.'
-          ],
-          lkpd: {
-            judul: 'LKPD 6: Lembar Evaluasi & Rubrik Asesmen Sumatif Presentasi LHO',
-            petunjuk: 'Format penilaian mencakup: Penguasaan materi observasi, kejelasan intonasi berbicara, kualitas media visual, dan kemampuan menjawab pertanyaan.'
-          }
-        },
-        penutup: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Refleksi Penutup Bab 1: Menyimpulkan pencapaian seluruh materi LHO.',
-            'Pemberian apresiasi kelompok terfavorit dan karya infografis terbaik.',
-            'Doa penutup bab dan salam.'
-          ]
-        }
-      }
     }
   ];
 
-  // Upsert preset ke database
-  const preset = await prisma.bahanAjarPreset.upsert({
+  await prisma.bahanAjarPreset.upsert({
     where: { id: 'preset-b-indo-fase-e-modul-1' },
     update: {
       kode_mapel_ref: 'B.INDONESIA',
       nama_mapel_ref: 'Bahasa Indonesia',
       fase: 'E',
       tingkat: 10,
-      judul_modul: 'Modul 1: Mengungkap Fakta Alam Secara Objektif',
-      deskripsi: 'Panduan KBM mendalam (Deep Learning) materi Teks Laporan Hasil Observasi (LHO), teks eksplanasi, kaidah kebahasaan, observasi lapangan, dan gelar karya multimodal.',
+      judul_modul: 'Modul 1: Mengungkap Fakta Alam Secara Objektif (LHO)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) materi Teks Laporan Hasil Observasi (LHO), teks eksplanasi pendukung, dan gelar karya observasi.',
       total_alokasi_jp: 18,
       total_pertemuan: 6,
       pendekatan: 'Deep Learning (Mindful, Meaningful, Joyful Learning)',
       sumber: 'modulguruku.com / Kemendikbudristek 2024',
-      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'LHO', 'Kurikulum Merdeka', 'Deep Learning'],
+      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'LHO', 'Kurikulum Merdeka'],
       konten_json: modul1Content as any,
       status: 'PUBLISHED'
     },
@@ -282,22 +131,197 @@ export async function seedBahanAjarPresets(prisma: PrismaClient) {
       nama_mapel_ref: 'Bahasa Indonesia',
       fase: 'E',
       tingkat: 10,
-      judul_modul: 'Modul 1: Mengungkap Fakta Alam Secara Objektif',
-      deskripsi: 'Panduan KBM mendalam (Deep Learning) materi Teks Laporan Hasil Observasi (LHO), teks eksplanasi, kaidah kebahasaan, observasi lapangan, dan gelar karya multimodal.',
+      judul_modul: 'Modul 1: Mengungkap Fakta Alam Secara Objektif (LHO)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) materi Teks Laporan Hasil Observasi (LHO), teks eksplanasi pendukung, dan gelar karya observasi.',
       total_alokasi_jp: 18,
       total_pertemuan: 6,
       pendekatan: 'Deep Learning (Mindful, Meaningful, Joyful Learning)',
       sumber: 'modulguruku.com / Kemendikbudristek 2024',
-      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'LHO', 'Kurikulum Merdeka', 'Deep Learning'],
+      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'LHO', 'Kurikulum Merdeka'],
       konten_json: modul1Content as any,
       status: 'PUBLISHED'
     }
   });
 
-  console.log(`SUCCESS: Seeded Bahan Ajar Preset: ${preset.judul_modul} (${preset.total_pertemuan} Pertemuan, ${preset.total_alokasi_jp} JP)`);
+  // ==========================================
+  // MODUL 2: B. INDONESIA FASE E (KELAS 10) - ANEKDOT
+  // ==========================================
+  const modul2Content = [
+    {
+      nomor_pertemuan: 1,
+      alokasi_jp: 3,
+      durasi_menit: 135,
+      topik: 'Pengertian, Ciri Khas, dan Struktur Teks Anekdot',
+      tujuan_pembelajaran: [
+        'Menganalisis pesan tersirat dan kritik sosial dalam teks anekdot lisan maupun tulis.',
+        'Mengidentifikasi struktur teks anekdot (Abstraksi, Orientasi, Krisis, Reaksi, Koda).'
+      ],
+      langkah_kbm: {
+        pendahuluan: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Salam pembuka, doa, dan apersepsi humor berfaedah.',
+            'Pertanyaan Pemantik: "Pernahkah kalian mendengar cerita lucu yang sebenarnya menyindir kebiasaan buruk masyarakat? Menurut kalian mengapa humor sering dipakai menyampaikan kritik?"'
+          ]
+        },
+        inti: {
+          durasi_menit: 105,
+          kegiatan: [
+            'Menyimak teks komik/anekdot "Baju Tahanan KPK".',
+            'Membedah pesan tersirat di balik humor politik/sosial.',
+            'Analisis 5 struktur teks anekdot secara berkelompok.'
+          ],
+          teks_bacaan: {
+            judul: 'Baju Termahal di Indonesia',
+            paragraf: [
+              'Dua orang sahabat, Amar dan Bejo, sedang asyik berbincang di sebuah warung kopi di pinggir jalan.',
+              'Amar bertanya, "Bejo, kamu tahu nggak baju apa yang paling mahal di negara kita?" Bejo berpikir keras, "Mungkin jas impor dari Paris ya?"',
+              'Amar tersenyum kecut, "Bukan! Baju termahal itu rompi oranye KPK. Soalnya, seseorang harus mengantongi uang rakyat miliaran rupiah dulu baru bisa pakai baju itu!" Keduanya pun tertawa getir.'
+            ]
+          },
+          lkpd: {
+            judul: 'LKPD 1: Bedah Struktur & Kritik Tersirat Teks Anekdot',
+            petunjuk: '1. Tuliskan pesan moral dan kritik sosial pada teks di atas!\n2. Tandai bagian Abstraksi, Orientasi, Krisis, Reaksi, dan Koda!'
+          }
+        },
+        penutup: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Refleksi etika dalam menyampaikan kritik yang santun dan konstruktif.',
+            'Doa dan penutup.'
+          ]
+        }
+      }
+    }
+  ];
+
+  await prisma.bahanAjarPreset.upsert({
+    where: { id: 'preset-b-indo-fase-e-modul-2' },
+    update: {
+      kode_mapel_ref: 'B.INDONESIA',
+      nama_mapel_ref: 'Bahasa Indonesia',
+      fase: 'E',
+      tingkat: 10,
+      judul_modul: 'Modul 2: Mengungkapkan Kritik Lewat Senyuman (Teks Anekdot)',
+      deskripsi: 'Panduan KBM teks anekdot, lawakan tunggal (stand-up comedy), kritik sosial santun, dan komik potongan.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Joyful & Critical Thinking)',
+      sumber: 'modulguruku.com / Kemendikbudristek 2024',
+      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'Anekdot', 'Kurikulum Merdeka'],
+      konten_json: modul2Content as any,
+      status: 'PUBLISHED'
+    },
+    create: {
+      id: 'preset-b-indo-fase-e-modul-2',
+      kode_mapel_ref: 'B.INDONESIA',
+      nama_mapel_ref: 'Bahasa Indonesia',
+      fase: 'E',
+      tingkat: 10,
+      judul_modul: 'Modul 2: Mengungkapkan Kritik Lewat Senyuman (Teks Anekdot)',
+      deskripsi: 'Panduan KBM teks anekdot, lawakan tunggal (stand-up comedy), kritik sosial santun, dan komik potongan.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Joyful & Critical Thinking)',
+      sumber: 'modulguruku.com / Kemendikbudristek 2024',
+      tags: ['Bahasa Indonesia', 'Fase E', 'Kelas 10', 'Anekdot', 'Kurikulum Merdeka'],
+      konten_json: modul2Content as any,
+      status: 'PUBLISHED'
+    }
+  });
+
+  // ==========================================
+  // MODUL 1: B. INDONESIA FASE F (KELAS 11) - TEKS ARGUMENTASI & KETAHANAN PANGAN
+  // ==========================================
+  const modulFaseFContent = [
+    {
+      nomor_pertemuan: 1,
+      alokasi_jp: 3,
+      durasi_menit: 135,
+      topik: 'Membaca Kritis Teks Argumentasi: Ketahanan Pangan Lokal',
+      tujuan_pembelajaran: [
+        'Menemukan ide pokok dan ide pendukung pada teks argumentasi bertema diversifikasi pangan lokal.',
+        'Membedakan kalimat fakta dan opini dalam isu strategis ketahanan pangan nasional.'
+      ],
+      langkah_kbm: {
+        pendahuluan: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Pembukaan: Salam, doa bersama, dan presensi kelas XI.',
+            'Apersepsi: Guru menayangkan gambar aneka pangan lokal non-beras (sagu, singkong, jagung, talas).',
+            'Pertanyaan Pemantik: "Mengapa masyarakat Indonesia sangat bergantung pada beras padahal negeri kita kaya akan ragam umbi dan karbohidrat alternatif?"'
+          ]
+        },
+        inti: {
+          durasi_menit: 105,
+          kegiatan: [
+            'Membaca Kritis: Teks "Ketahanan Pangan Lokal: Masa Depan Kedaulatan Bangsa".',
+            'Diskusi Bedah Argumen: Menemukan premis pendukung, data statistik konsumsi, dan solusi diversifikasi pangan.',
+            'Menulis Paragraf Argumentasi: Siswa menyusun 1 paragraf argumentasi berbasis fakta tentang potensi komoditas pangan di daerah masing-masing.'
+          ],
+          teks_bacaan: {
+            judul: 'Diversifikasi Pangan Nusantara untuk Ketahanan Nasional',
+            paragraf: [
+              'Ketergantungan bangsa Indonesia terhadap komoditas beras sebagai makanan pokok utama telah berlangsung puluhan tahun. Pola konsumsi seragam ini rentan memicu krisis pangan saat anomali iklim El Nino melanda lahan persawahan nasional.',
+              'Kekayaan hayati Nusantara sesungguhnya menyediakan lebih dari 77 jenis tanaman sumber karbohidrat, mulai dari sagu Papua, ubi jalar Papua Barat, talas Bogor, hingga sukun di Kepulauan Seribu.',
+              'Diversifikasi pangan berbasis potensi lokal bukan sekadar upaya substitusi darurat, melainkan strategi kedaulatan jangka panjang yang memperkuat ekonomi petani pedesaan.'
+            ]
+          },
+          lkpd: {
+            judul: 'LKPD 1: Peta Konsep Argumen & Riset Pangan Lokal',
+            petunjuk: '1. Tuliskan gagasan utama pada tiap paragraf teks argumentasi di atas!\n2. Identifikasi 3 argumen logis yang diajukan penulis untuk mendukung diversifikasi pangan!'
+          }
+        },
+        penutup: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Refleksi: Menghargai keragaman pangan lokal sebagai warisan budaya dan ketahanan masa depan.',
+            'Rangkuman alur menyusun tesis dan argumen logis.',
+            'Doa dan salam penutup.'
+          ]
+        }
+      }
+    }
+  ];
+
+  await prisma.bahanAjarPreset.upsert({
+    where: { id: 'preset-b-indo-fase-f-modul-1' },
+    update: {
+      kode_mapel_ref: 'B.INDONESIA',
+      nama_mapel_ref: 'Bahasa Indonesia',
+      fase: 'F',
+      tingkat: 11,
+      judul_modul: 'Modul 1: Menulis Gagasan Kritis Teks Argumentasi (Pangan Lokal)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) Fase F Kelas 11 materi Teks Argumentasi, opini ilmiah, fakta statistik, dan poster advokasi pangan lokal.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Critical Thinking & Civic Engagement)',
+      sumber: 'Kemendikbudristek 2024 / Modulguruku',
+      tags: ['Bahasa Indonesia', 'Fase F', 'Kelas 11', 'Teks Argumentasi', 'Kurikulum Merdeka'],
+      konten_json: modulFaseFContent as any,
+      status: 'PUBLISHED'
+    },
+    create: {
+      id: 'preset-b-indo-fase-f-modul-1',
+      kode_mapel_ref: 'B.INDONESIA',
+      nama_mapel_ref: 'Bahasa Indonesia',
+      fase: 'F',
+      tingkat: 11,
+      judul_modul: 'Modul 1: Menulis Gagasan Kritis Teks Argumentasi (Pangan Lokal)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) Fase F Kelas 11 materi Teks Argumentasi, opini ilmiah, fakta statistik, dan poster advokasi pangan lokal.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Critical Thinking & Civic Engagement)',
+      sumber: 'Kemendikbudristek 2024 / Modulguruku',
+      tags: ['Bahasa Indonesia', 'Fase F', 'Kelas 11', 'Teks Argumentasi', 'Kurikulum Merdeka'],
+      konten_json: modulFaseFContent as any,
+      status: 'PUBLISHED'
+    }
+  });
+
+  console.log(`SUCCESS: Seeded all multi-module presets (Fase E Kelas 10 & Fase F Kelas 11)!`);
 }
 
-// Support direct CLI execution
 if (require.main === module) {
   const prisma = new PrismaClient();
   seedBahanAjarPresets(prisma)

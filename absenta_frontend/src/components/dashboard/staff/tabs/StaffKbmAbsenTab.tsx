@@ -114,11 +114,24 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
 
   // Bahan Ajar Digital Reader State
   const [readerModalOpen, setReaderModalOpen] = useState<boolean>(false);
-  const [readerPerangkatId, setReaderPerangkatId] = useState<string>('');
+  const [readerContext, setReaderContext] = useState<{
+    perangkatId?: string;
+    mapelId?: string;
+    mapelNama?: string;
+    kelasNama?: string;
+    tingkat?: number;
+    fase?: string;
+  }>({});
 
   const handleOpenBahanAjar = useCallback((item: any) => {
-    const targetId = item.mapel_id || item.Mapel?.id || item.session?.mapel_id || 'preset-b-indo-fase-e-modul-1';
-    setReaderPerangkatId(targetId);
+    setReaderContext({
+      perangkatId: item.perangkat_ajar_id || item.mapel_id || item.Mapel?.id,
+      mapelId: item.mapel_id || item.Mapel?.id || item.session?.mapel_id,
+      mapelNama: item.kegiatan || item.mapel_nama || item.Mapel?.nama_mapel,
+      kelasNama: item.kelas_nama,
+      tingkat: item.tingkat,
+      fase: item.fase
+    });
     setReaderModalOpen(true);
   }, []);
 
@@ -566,7 +579,19 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         <BahanAjarReaderModal
           isOpen={readerModalOpen}
           onClose={() => setReaderModalOpen(false)}
-          perangkatId={readerPerangkatId}
+          perangkatId={readerContext.perangkatId}
+          mapelId={readerContext.mapelId}
+          mapelNama={readerContext.mapelNama}
+          kelasNama={readerContext.kelasNama}
+          tingkat={readerContext.tingkat}
+          fase={readerContext.fase}
+          onOpenJurnal={(jurnalData) => {
+            setJournalModalOpen(true);
+            setTargetJournalSesi({
+              id: activeSesiId || targetJadwal?.id || '',
+              progres: { materi: jurnalData.judul_materi, deskripsi: jurnalData.deskripsi }
+            });
+          }}
         />
       )}
     </motion.div>

@@ -19,17 +19,23 @@ import {
   Presentation,
   Check,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Layers
 } from 'lucide-react';
 import { Modal, Button } from '../../ui';
-import { getReaderContent, PertemuanItem } from '../../../api/bahan-ajar.api';
+import { getReaderContent, PertemuanItem, AvailableModulItem } from '../../../api/bahan-ajar.api';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
 
 interface BahanAjarReaderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  perangkatId: string;
+  perangkatId?: string;
+  mapelId?: string;
+  mapelNama?: string;
+  kelasNama?: string;
+  tingkat?: number;
+  fase?: string;
   onOpenJurnal?: (data: { judul_materi: string; deskripsi: string }) => void;
 }
 
@@ -39,22 +45,64 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   isOpen,
   onClose,
   perangkatId,
+  mapelId,
+  mapelNama,
+  kelasNama,
+  tingkat,
+  fase,
   onOpenJurnal
 }) => {
   const [activePertemuanIdx, setActivePertemuanIdx] = useState<number>(0);
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
   const [activeProjectorTab, setActiveProjectorTab] = useState<ProjectorTab>('PEMANTIK');
-  const [fontSizeScale, setFontSizeScale] = useState<number>(1); // 0.9, 1, 1.15, 1.3
+  const [fontSizeScale, setFontSizeScale] = useState<number>(1);
+  const [selectedModulId, setSelectedModulId] = useState<string>('');
 
-  const effectiveTargetId = perangkatId || 'preset-b-indo-fase-e-modul-1';
+  // 1. Auto-detect Tingkat & Fase dari Nama Kelas jika belum disediakan
+  const detectedContext = useMemo(() => {
+    let resolvedTingkat = tingkat;
+    let resolvedFase = fase;
 
-  // Fetch Reader Content
-  const { data, isLoading } = useQuery({
-    queryKey: ['bahanAjarReader', effectiveTargetId],
-    queryFn: () => getReaderContent(effectiveTargetId),
+    if (kelasNama) {
+      const upper = kelasNama.toUpperCase().trim();
+      if (upper.startsWith('XII') || upper.startsWith('12')) {
+        resolvedTingkat = 12;
+        resolvedFase = 'F';
+      } else if (upper.startsWith('XI') || upper.startsWith('11')) {
+        resolvedTingkat = 11;
+        resolvedFase = 'F';
+      } else if (upper.startsWith('X') || upper.startsWith('10')) {
+        resolvedTingkat = 10;
+        resolvedFase = 'E';
+      }
+    }
+
+    return {
+      tingkat: resolvedTingkat,
+      fase: resolvedFase,
+      mapel_nama: mapelNama,
+      mapel_id: mapelId
+    };
+  }, [kelasNama, tingkat, fase, mapelNama, mapelId]);
+
+  const effectiveTargetId = selectedModulId || perangkatId || mapelId || 'auto';
+
+  // 2. Fetch Reader Content dengan Context Filter
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['bahanAjarReader', effectiveTargetId, detectedContext.fase, detectedContext.tingkat, detectedContext.mapel_nama],
+    queryFn: () => getReaderContent(effectiveTargetId, {
+      fase: detectedContext.fase,
+      tingkat: detectedContext.tingkat,
+      mapel_nama: detectedContext.mapel_nama,
+      mapel_id: detectedContext.mapel_id
+    }),
     enabled: isOpen,
     staleTime: 5 * 60 * 1000
   });
+
+  const availableModuls: AvailableModulItem[] = useMemo(() => {
+    return data?.available_moduls || [];
+  }, [data]);
 
   const pertemuanList: PertemuanItem[] = useMemo(() => {
     return data?.konten || [];
@@ -110,14 +158,15 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isProjectorMode, activeProjectorTab, activePertemuanIdx, pertemuanList.length]);
 
-  // Reset when opened
+  // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
       setActivePertemuanIdx(0);
       setIsProjectorMode(false);
       setActiveProjectorTab('PEMANTIK');
+      setSelectedModulId('');
     }
-  }, [isOpen, perangkatId]);
+  }, [isOpen, perangkatId, mapelId, kelasNama]);
 
   if (!isOpen) return null;
 
@@ -139,7 +188,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
           : "bg-slate-50 dark:bg-slate-900 border-slate-200/90 dark:border-slate-800"
       )}
       title={
-        <div className="flex items-center justify-between w-full pr-6">
+        <div className="flex items-center justify-between w-full pr-6 flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <div className={cn(
               "p-2.5 rounded-2xl shadow-md transition-all",
@@ -148,26 +197,59 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               {isProjectorMode ? <Presentation className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "font-black text-base tracking-tight",
-                  isProjectorMode ? "text-amber-400" : "text-slate-900 dark:text-white"
-                )}>
-                  {data?.perangkat?.judul || 'Bahan Ajar Digital & Panduan KBM'}
-                </span>
-                {data?.perangkat?.fase && (
-                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-extrabold text-[10px]">
-                    Fase {data.perangkat.fase}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Module Selector Dropdown if multiple exist */}
+                {availableModuls.length > 1 ? (
+                  <select
+                    value={data?.perangkat?.id || selectedModulId}
+                    onChange={(e) => {
+                      setSelectedModulId(e.target.value);
+                      setActivePertemuanIdx(0);
+                    }}
+                    className={cn(
+                      "font-black text-sm rounded-xl px-2.5 py-1 border cursor-pointer",
+                      isProjectorMode 
+                        ? "bg-slate-900 text-amber-300 border-amber-500/40"
+                        : "bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700"
+                    )}
+                  >
+                    {availableModuls.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.judul} (Fase {m.fase})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={cn(
+                    "font-black text-base tracking-tight",
+                    isProjectorMode ? "text-amber-400" : "text-slate-900 dark:text-white"
+                  )}>
+                    {data?.perangkat?.judul || 'Bahan Ajar Digital & Panduan KBM'}
                   </span>
                 )}
+
+                {/* Badges: Fase & Kelas */}
+                {kelasNama && (
+                  <span className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-black text-[10px]">
+                    {kelasNama}
+                  </span>
+                )}
+
+                {(data?.perangkat?.fase || detectedContext.fase) && (
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-extrabold text-[10px]">
+                    Fase {data?.perangkat?.fase || detectedContext.fase}
+                  </span>
+                )}
+
                 {isProjectorMode && (
                   <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-black text-[10px] animate-pulse">
                     📽️ MODE PROYEKTOR AKTIF
                   </span>
                 )}
               </div>
+
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {data?.perangkat?.Mapel?.nama_mapel || 'Kurikulum Merdeka'} • {pertemuanList.length} Pertemuan • Alokasi {data?.perangkat?.total_alokasi_jp || 18} JP
+                {data?.perangkat?.Mapel?.nama_mapel || detectedContext.mapel_nama || 'Kurikulum Merdeka'} • {pertemuanList.length} Pertemuan • Alokasi {data?.perangkat?.total_alokasi_jp || 18} JP
               </p>
             </div>
           </div>
@@ -209,7 +291,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               )}
             >
               {isProjectorMode ? <Minimize2 size={14} /> : <Presentation size={14} />}
-              <span>{isProjectorMode ? 'Keluar Proyektor' : '📽️ Mode Proyektor Kelas'}</span>
+              <span>{isProjectorMode ? 'Keluar Proyektor' : '📽️ Mode Proyektor'}</span>
             </button>
           </div>
         </div>
