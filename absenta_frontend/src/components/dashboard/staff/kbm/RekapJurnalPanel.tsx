@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
-  FileText, Search, Download, ChevronRight, Loader2, Edit3, BookOpen
+  FileText, Search, Download, ChevronRight, Loader2, Edit3, BookOpen, ExternalLink, Calendar
 } from 'lucide-react';
 import { getSesiAbsensiList } from '../../../../api/attendanceGerbang.api';
 import { JurnalKbmModal } from '../../../kurikulum/JurnalKbmModal';
@@ -32,7 +33,15 @@ export interface JurnalRecord {
   progresRaw?: any;
 }
 
-export const RekapJurnalPanel: React.FC = () => {
+interface RekapJurnalPanelProps {
+  compact?: boolean;
+  limitItems?: number;
+}
+
+export const RekapJurnalPanel: React.FC<RekapJurnalPanelProps> = ({
+  compact = true,
+  limitItems = 3,
+}) => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('ALL');
@@ -136,6 +145,14 @@ export const RekapJurnalPanel: React.FC = () => {
     });
   }, [jurnalList, searchTerm, selectedKelas]);
 
+  // ── Sliced Data for Compact View ──
+  const displayedJurnal = useMemo(() => {
+    if (compact && limitItems > 0) {
+      return filteredJurnal.slice(0, limitItems);
+    }
+    return filteredJurnal;
+  }, [filteredJurnal, compact, limitItems]);
+
   const handleExport = () => {
     if (filteredJurnal.length === 0) {
       toast.error('Tidak ada data jurnal untuk diekspor.');
@@ -159,41 +176,64 @@ export const RekapJurnalPanel: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* ── COMPACT TOOLBAR & FILTERS ── */}
+        {/* ── TOOLBAR & FILTERS ── */}
         <div className="p-2.5 sm:p-3 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <div className="relative flex-1">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Cari materi pokok, kelas, atau mapel..."
-                className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
+            {!compact ? (
+              <div className="relative flex-1">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Cari materi pokok, kelas, atau mapel..."
+                  className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-extrabold text-[11px]">
+                  {filteredJurnal.length > limitItems ? `${limitItems} Riwayat Terakhir` : `${filteredJurnal.length} Riwayat Sesi`}
+                </span>
+              </div>
+            )}
 
-            <select
-              value={selectedKelas}
-              onChange={e => setSelectedKelas(e.target.value)}
-              className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">Semua Kelas</option>
-              {uniqueClasses.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            {!compact && (
+              <select
+                value={selectedKelas}
+                onChange={e => setSelectedKelas(e.target.value)}
+                className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Semua Kelas</option>
+                {uniqueClasses.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleExport}
-            className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-            title="Ekspor PDF Jurnal"
-          >
-            <Download size={13} />
-            <span>Ekspor PDF</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {compact ? (
+              <Link
+                to="/attendance/riwayat-ajar"
+                className="h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border border-blue-200 dark:border-blue-800/80"
+              >
+                <BookOpen size={13} />
+                <span>Buka Buku Jurnal Lengkap</span>
+                <ExternalLink size={12} className="opacity-70" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Ekspor PDF Jurnal"
+              >
+                <Download size={13} />
+                <span>Ekspor PDF</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── JURNAL RECORDS LIST ── */}
@@ -208,13 +248,13 @@ export const RekapJurnalPanel: React.FC = () => {
               <p className="text-xs font-bold text-rose-500">Gagal memuat arsip jurnal.</p>
               <p className="text-[11px] text-slate-400">{(error as any)?.message || 'Terjadi kesalahan koneksi'}</p>
             </div>
-          ) : filteredJurnal.length === 0 ? (
+          ) : displayedJurnal.length === 0 ? (
             <div className="py-10 text-center space-y-2">
               <FileText className="text-slate-300 dark:text-slate-600 mx-auto" size={28} />
               <p className="text-xs font-bold text-slate-500">Belum ada arsip riwayat jurnal mengajar.</p>
             </div>
           ) : (
-            filteredJurnal.map((jurnal) => (
+            displayedJurnal.map((jurnal) => (
               <div
                 key={jurnal.sesiId}
                 onClick={() => setSelectedJurnal(jurnal)}
@@ -280,6 +320,22 @@ export const RekapJurnalPanel: React.FC = () => {
             ))
           )}
         </div>
+
+        {/* ── FOOTER BANNER FOR COMPACT MODE ── */}
+        {compact && filteredJurnal.length > limitItems && (
+          <div className="p-3 bg-slate-50/90 dark:bg-slate-800/80 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center sm:text-left">
+              Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{displayedJurnal.length}</span> dari <span className="font-bold text-slate-700 dark:text-slate-200">{filteredJurnal.length}</span> entri riwayat jurnal.
+            </p>
+            <Link
+              to="/attendance/riwayat-ajar"
+              className="text-xs font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1 shrink-0"
+            >
+              <span>Lihat Semua Arsip Jurnal</span>
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── MODAL DETAIL JURNAL ── */}

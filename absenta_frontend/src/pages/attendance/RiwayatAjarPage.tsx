@@ -134,10 +134,20 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     enabled: isManager || !!loggedInGuruId,
   });
 
+  // Helper to safely extract session array
+  const rawList = useMemo((): SesiAjar[] => {
+    const raw = (sesiData as any)?.data?.data || (sesiData as any)?.data || sesiData || [];
+    if (Array.isArray(raw)) return raw as SesiAjar[];
+    if (Array.isArray((raw as any)?.data)) return (raw as any).data as SesiAjar[];
+    if (Array.isArray((raw as any)?.items)) return (raw as any).items as SesiAjar[];
+    return [];
+  }, [sesiData]);
+
   // 4. Process & Group History
   const riwayatGrouped = useMemo((): GroupedRiwayat[] => {
-    const list = (sesiData?.data || []) as SesiAjar[];
+    const list = rawList;
     const filtered = list.filter((s) => {
+      if (!s?.tanggal) return false;
       const d = new Date(s.tanggal);
       const isCorrectMonth = d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
       if (!isCorrectMonth) return false;
@@ -166,7 +176,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
         date,
         sessions: (groups[date] || []).sort((a, b) => new Date(b.waktu_mulai).getTime() - new Date(a.waktu_mulai).getTime())
       })) || [];
-  }, [sesiData, search, selectedMonth, selectedYear]);
+  }, [rawList, search, selectedMonth, selectedYear]);
 
   const { data: detailAttendance, isLoading: detailLoading } = useQuery({
     queryKey: ['sesi-detail-attendance', selectedSesiForDetail?.id, tenantId],
@@ -175,16 +185,16 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   });
 
   const statsCalculation = useMemo(() => {
-    const allSesi = (sesiData?.data || []) as SesiAjar[];
+    const allSesi = rawList;
     const totalSesi = allSesi.length;
     const totalHadir = allSesi.reduce((acc, curr) => acc + (curr.summary?.HADIR || 0), 0);
-    const totalSiswa = allSesi.reduce((acc, curr) => acc + (curr.summary?.TOTAL || 0), 0);
+    const totalSiswa = allSesi.reduce((acc, curr) => acc + (curr.summary?.TOTAL || (curr.summary as any)?.total || 0), 0);
     const avgKehadiran = totalSiswa > 0 ? Math.round((totalHadir / totalSiswa) * 100) : 0;
     const jurnalTerisi = allSesi.filter(s => !!s.ProgresMateri).length;
     const kepatuhanJurnal = totalSesi > 0 ? Math.round((jurnalTerisi / totalSesi) * 100) : 0;
 
     return { totalSesi, avgKehadiran, jurnalTerisi, kepatuhanJurnal };
-  }, [sesiData]);
+  }, [rawList]);
 
   const stats = useMemo(() => [
     {
