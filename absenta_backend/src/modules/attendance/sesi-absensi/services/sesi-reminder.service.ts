@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { getRedisConnection } from '@/queue/redis';
 import { getTenantTimezone, getTimezoneLabel, formatTenantTime } from '@/utils/timezone.utils';
 import { waGatewayService } from '@/services/wa-gateway.service';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 import { SesiLifecycleService } from './sesi-lifecycle.service';
 
 export interface SendKbmReminderPayload {
@@ -102,21 +103,31 @@ export class SesiReminderService {
 
     const rawRoleStr = String(
       typeof payload.senderRole === 'object'
-        ? (payload.senderRole as any)?.name || (payload.senderRole as any)?.display_name || ''
+        ? (payload.senderRole as any)?.kode || (payload.senderRole as any)?.name || (payload.senderRole as any)?.display_name || ''
         : payload.senderRole || ''
-    ).toUpperCase();
+    ).toUpperCase().trim();
 
     let senderTitle = 'Meja Piket';
-    if (rawRoleStr.includes('KEPALA') || rawRoleStr.includes('KEPSEK')) {
+    if (rawRoleStr === STRUKTUR_CODES.KEPALA_SEKOLAH || rawRoleStr.includes('KEPALA') || rawRoleStr.includes('KEPSEK')) {
       senderTitle = 'Kepala Sekolah';
-    } else if (rawRoleStr.includes('KURIKULUM') || rawRoleStr.includes('AKADEMIK')) {
+    } else if (rawRoleStr === STRUKTUR_CODES.KURIKULUM || rawRoleStr.includes('KURIKULUM') || rawRoleStr.includes('AKADEMIK')) {
       senderTitle = 'Waka Kurikulum';
-    } else if (rawRoleStr.includes('KESISWAAN')) {
+    } else if (rawRoleStr === STRUKTUR_CODES.KESISWAAN || rawRoleStr.includes('KESISWAAN')) {
       senderTitle = 'Waka Kesiswaan';
-    } else if (rawRoleStr.includes('ADMIN') || rawRoleStr.includes('OPERATOR') || rawRoleStr.includes('SUPERADMIN')) {
-      senderTitle = 'Kurikulum / Tim Akademik';
-    } else if (rawRoleStr.includes('PIKET')) {
+    } else if (rawRoleStr === STRUKTUR_CODES.HUBIN || rawRoleStr.includes('HUBIN')) {
+      senderTitle = 'Waka Hubin';
+    } else if (rawRoleStr === STRUKTUR_CODES.SARPRAS || rawRoleStr.includes('SARPRAS')) {
+      senderTitle = 'Waka Sarpras';
+    } else if (rawRoleStr === STRUKTUR_CODES.KAPROG || rawRoleStr.includes('KAPROG') || rawRoleStr.includes('KAJUR')) {
+      senderTitle = 'Ketua Program Keahlian';
+    } else if (rawRoleStr === STRUKTUR_CODES.WALIKELAS || rawRoleStr.includes('WALIKELAS') || rawRoleStr.includes('WALI_KELAS')) {
+      senderTitle = 'Wali Kelas';
+    } else if (rawRoleStr === STRUKTUR_CODES.BPBK || rawRoleStr.includes('BPBK') || rawRoleStr.includes('BK')) {
+      senderTitle = 'Guru BK';
+    } else if (rawRoleStr === STRUKTUR_CODES.GERBANG || rawRoleStr.includes('GERBANG') || rawRoleStr.includes('PIKET')) {
       senderTitle = 'Meja Piket';
+    } else if (rawRoleStr.includes('ADMIN') || rawRoleStr.includes('OPERATOR') || rawRoleStr.includes('SUPERADMIN')) {
+      senderTitle = 'Tim Kurikulum / Akademik';
     }
 
     const messageText = 
