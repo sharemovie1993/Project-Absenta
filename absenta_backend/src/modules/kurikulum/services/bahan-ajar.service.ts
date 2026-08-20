@@ -77,7 +77,30 @@ export class BahanAjarService {
       if (mapelRecord) effectiveMapelNama = mapelRecord.nama_mapel;
     }
 
-    // 1. Dapatkan daftar seluruh modul yang relevan dengan Mapel & Fase/Tingkat ini
+    // 1. Dapatkan daftar seluruh modul Guru (PerangkatAjar) & Preset yang relevan
+    const perangkatWhere: any = { tenant_id: tenantId };
+    if (mapel_id) {
+      perangkatWhere.mapel_id = mapel_id;
+    } else if (effectiveMapelNama) {
+      perangkatWhere.Mapel = {
+        nama_mapel: { contains: effectiveMapelNama, mode: 'insensitive' }
+      };
+    }
+    if (fase) {
+      perangkatWhere.fase = fase;
+    }
+
+    const availablePerangkats = await prisma.perangkatAjar.findMany({
+      where: perangkatWhere,
+      include: {
+        Mapel: true,
+        Guru: true,
+        TahunPelajaran: true,
+        Semester: true
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
     const presetWhere: any = { status: 'PUBLISHED' };
     if (fase) {
       presetWhere.fase = fase;
@@ -98,19 +121,62 @@ export class BahanAjarService {
       orderBy: { created_at: 'asc' }
     });
 
-    const availableModulsList = availablePresets.map(p => ({
-      id: p.id,
-      judul: p.judul_modul,
-      fase: p.fase,
-      tingkat: p.tingkat,
-      total_alokasi_jp: p.total_alokasi_jp,
-      mapel: p.nama_mapel_ref
-    }));
+    const availableModulsList = [
+      ...availablePerangkats.map(p => ({
+        id: p.id,
+        judul: p.judul,
+        fase: p.fase || 'E',
+        tingkat: p.tingkat || 10,
+        total_alokasi_jp: p.total_alokasi_jp || 18,
+        mapel: p.Mapel?.nama_mapel || effectiveMapelNama || 'Mata Pelajaran'
+      })),
+      ...availablePresets.map(p => ({
+        id: p.id,
+        judul: p.judul_modul,
+        fase: p.fase,
+        tingkat: p.tingkat,
+        total_alokasi_jp: p.total_alokasi_jp,
+        mapel: p.nama_mapel_ref
+      }))
+    ];
 
-    // 2. Cek apakah targetIdentifier langsung merujuk ke BahanAjarPreset ID
-    const directPreset = await prisma.bahanAjarPreset.findUnique({
-      where: { id: targetIdentifier }
-    });
+    // 2. Cek apakah targetIdentifier langsung merujuk ke ID PerangkatAjar Guru
+    let directPerangkat = (targetIdentifier && targetIdentifier !== 'auto' && targetIdentifier !== 'empty-mapel')
+      ? availablePerangkats.find(p => p.id === targetIdentifier) || await prisma.perangkatAjar.findFirst({
+          where: { id: targetIdentifier, tenant_id: tenantId },
+          include: { Mapel: true, Guru: true, TahunPelajaran: true, Semester: true }
+        })
+      : availablePerangkats[0];
+
+    if (directPerangkat) {
+      if (directPerangkat.konten_struktur_json) {
+        return {
+          perangkat: directPerangkat,
+          konten: directPerangkat.konten_struktur_json,
+          source: 'CUSTOM',
+          available_moduls: availableModulsList
+        };
+      }
+
+      if (directPerangkat.preset_ref_id) {
+        const linkedPreset = await prisma.bahanAjarPreset.findUnique({
+          where: { id: directPerangkat.preset_ref_id }
+        });
+        if (linkedPreset) {
+          return {
+            perangkat: directPerangkat,
+            konten: linkedPreset.konten_json,
+            source: 'PRESET',
+            available_moduls: availableModulsList
+          };
+        }
+      }
+    }
+
+    // 3. Cek apakah targetIdentifier langsung merujuk ke BahanAjarPreset ID
+    const directPreset = (targetIdentifier && targetIdentifier !== 'auto')
+      ? await prisma.bahanAjarPreset.findUnique({ where: { id: targetIdentifier } })
+      : null;
 
     if (directPreset) {
       return {
@@ -126,57 +192,6 @@ export class BahanAjarService {
         source: 'PRESET',
         available_moduls: availableModulsList
       };
-    }
-
-    // 3. Cek apakah targetIdentifier adalah ID PerangkatAjar di database
-    const perangkat = await prisma.perangkatAjar.findFirst({
-      where: { id: targetIdentifier, tenant_id: tenantId },
-      include: {
-        Mapel: true,
-        Guru: true,
-        TahunPelajaran: true,
-        Semester: true
-      }
-    });
-
-    if (perangkat) {
-      if (perangkat.konten_struktur_json) {
-        return {
-          perangkat,
-          konten: perangkat.konten_struktur_json,
-          source: 'CUSTOM',
-          available_moduls: availableModulsList
-        };
-      }
-
-      if (perangkat.preset_ref_id) {
-        const linkedPreset = await prisma.bahanAjarPreset.findUnique({
-          where: { id: perangkat.preset_ref_id }
-        });
-        if (linkedPreset) {
-          return {
-            perangkat,
-            konten: linkedPreset.konten_json,
-            source: 'PRESET',
-            available_moduls: availableModulsList
-          };
-        }
-      }
-
-      // Fallback matching berdasarkan judul/mapel perangkat
-      const matchedPreset = availablePresets.find(p =>
-        p.judul_modul.toLowerCase().includes(perangkat.judul.toLowerCase()) ||
-        p.nama_mapel_ref.toLowerCase().includes((perangkat.Mapel?.nama_mapel || '').toLowerCase())
-      ) || availablePresets[0];
-
-      if (matchedPreset) {
-        return {
-          perangkat,
-          konten: matchedPreset.konten_json,
-          source: 'AUTO_MATCHED_PRESET',
-          available_moduls: availableModulsList
-        };
-      }
     }
 
     // 4. Jika ada preset yang cocok dari availablePresets
@@ -197,8 +212,7 @@ export class BahanAjarService {
       };
     }
 
-    // 5. Jika filter Mapel sudah ditentukan (misal PAI) tetapi belum ada modul tersimpan:
-    // JANGAN fallback ke mapel lain (seperti Bahasa Indonesia). Kembalikan empty state untuk mapel tersebut!
+    // 5. Jika filter Mapel sudah ditentukan tetapi belum ada modul tersimpan:
     if (effectiveMapelNama) {
       return {
         perangkat: {
