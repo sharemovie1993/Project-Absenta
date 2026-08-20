@@ -179,7 +179,7 @@ export class BahanAjarService {
       }
     }
 
-    // 4. Jika ada preset yang cocok dari availablePresets (misal Fase F untuk Kelas 11 atau Fase E untuk Kelas 10)
+    // 4. Jika ada preset yang cocok dari availablePresets
     if (availablePresets.length > 0) {
       const selectedPreset = availablePresets[0];
       return {
@@ -197,7 +197,25 @@ export class BahanAjarService {
       };
     }
 
-    // 5. Fallback Global: Ambil preset nasional pertama yang ada
+    // 5. Jika filter Mapel sudah ditentukan (misal PAI) tetapi belum ada modul tersimpan:
+    // JANGAN fallback ke mapel lain (seperti Bahasa Indonesia). Kembalikan empty state untuk mapel tersebut!
+    if (effectiveMapelNama) {
+      return {
+        perangkat: {
+          id: 'empty-mapel',
+          judul: `Bahan Ajar: ${effectiveMapelNama}`,
+          fase: fase,
+          tingkat: tingkat,
+          total_alokasi_jp: 0,
+          Mapel: { nama_mapel: effectiveMapelNama }
+        },
+        konten: null,
+        source: 'NONE',
+        available_moduls: []
+      };
+    }
+
+    // 6. Fallback Global HANYA jika TIDAK ADA mapel yang diminta sama sekali
     const fallbackAll = await prisma.bahanAjarPreset.findFirst({
       where: { status: 'PUBLISHED' },
       orderBy: { created_at: 'asc' }

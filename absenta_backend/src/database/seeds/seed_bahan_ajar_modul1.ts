@@ -319,7 +319,97 @@ export async function seedBahanAjarPresets(prisma: PrismaClient) {
     }
   });
 
-  console.log(`SUCCESS: Seeded all multi-module presets (Fase E Kelas 10 & Fase F Kelas 11)!`);
+  // ==========================================
+  // MODUL 1: PENDIDIKAN AGAMA ISLAM & BUDI PEKERTI (FASE E - KELAS 10)
+  // ==========================================
+  const modulPaiContent = [
+    {
+      nomor_pertemuan: 1,
+      alokasi_jp: 3,
+      durasi_menit: 135,
+      topik: 'Meraih Ketenteraman Hati dengan Berpikir Kritis & Mencintai Iptek (Q.S. Ali Imran: 190-191)',
+      tujuan_pembelajaran: [
+        'Membaca Q.S. Ali Imran: 190-191 dan Q.S. Ar-Rahman: 33 sesuai dengan kaidah tajwid, khususnya hukum bacaan tafkhim dan tarqiq.',
+        'Menganalisis keterkaitan antara fenomena alam semesta (ayat kauniyah) dengan karakter berpikir kritis generasi Ulil Albab.'
+      ],
+      langkah_kbm: {
+        pendahuluan: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Pembukaan: Guru membuka dengan salam, doa bersama, dan tadarus 5 menit.',
+            'Apersepsi: Guru menampilkan video rotasi bumi dan pergantian siang-malam di alam semesta.',
+            'Pertanyaan Pemantik: "Pernahkah kalian merenungkan bagaimana keteraturan alam semesta ini bekerja? Mengapa Islam memerintahkan umatnya untuk selalu berpikir kritis dan mencintai sains?"'
+          ]
+        },
+        inti: {
+          durasi_menit: 105,
+          kegiatan: [
+            'Membaca Tartil: Guru memodelkan bacaan Q.S. Ali Imran: 190-191 dan diikuti siswa bersama-sama.',
+            'Identifikasi Tajwid: Siswa menemukan hukum bacaan alif lam syamsiyah, qamariyah, tafkhim, dan tarqiq.',
+            'Kajian Tafsir & Karakter Ulil Albab: Diskusi kelompok tentang 2 ciri utama Ulil Albab (Dzikrullah dalam setiap keadaan dan Fikr / merenungi ciptaan Allah).',
+            'Presentasi Kelompok: Merumuskan langkah konkret pelajar muslim dalam memanfaatkan kemajuan teknologi untuk kebaikan.'
+          ],
+          teks_bacaan: {
+            judul: 'Tafsir Q.S. Ali Imran Ayat 190-191: Karakter Intelektual Muslim (Ulil Albab)',
+            paragraf: [
+              'Sesungguhnya dalam penciptaan langit dan bumi, dan silih bergantinya malam dan siang terdapat tanda-tanda kebesaran Allah bagi orang-orang yang berakal (Ulil Albab).',
+              'Yaitu orang-orang yang senantiasa mengingat Allah sambil berdiri, duduk, atau dalam keadaan berbaring, dan mereka memikirkan tentang penciptaan langit dan bumi seraya berkata: "Ya Tuhan kami, tiadalah Engkau menciptakan semua ini sia-sia; Maha Suci Engkau, maka peliharalah kami dari siksa neraka."',
+              'Ayat ini menegaskan bahwa sains dan keimanan bukanlah dua hal yang bertentangan. Berpikir kritis atas fenomena alam adalah ibadah intelektual yang mengantarkan manusia pada pengakuan atas keagungan Sang Pencipta.'
+            ]
+          },
+          lkpd: {
+            judul: 'LKPD 1: Bedah Tajwid & Refleksi Ciri Ulil Albab',
+            petunjuk: '1. Tuliskan 3 hukum tajwid yang ditemukan pada Q.S. Ali Imran: 190-191 beserta alasannya!\n2. Jelaskan bagaimana cara menerapkan konsep dzikir dan pikir dalam rutinitas belajar sehari-hari!'
+          }
+        },
+        penutup: {
+          durasi_menit: 15,
+          kegiatan: [
+            'Refleksi: Guru mengajak siswa mensyukuri akal budi sebagai karunia terbesar dari Allah SWT.',
+            'Penugasan hafalan mandiri Q.S. Ali Imran: 190-191 dengan intonasi tartil.',
+            'Doa kafaratul majelis dan salam penutup.'
+          ]
+        }
+      }
+    }
+  ];
+
+  await prisma.bahanAjarPreset.upsert({
+    where: { id: 'preset-pai-fase-e-modul-1' },
+    update: {
+      kode_mapel_ref: 'PAI',
+      nama_mapel_ref: 'Pendidikan Agama Islam dan Budi Pekerti',
+      fase: 'E',
+      tingkat: 10,
+      judul_modul: 'Modul 1: Meraih Ketenteraman Hati dengan Berpikir Kritis (Q.S. Ali Imran: 190-191)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) Fase E Kelas 10 materi Berpikir Kritis, Mencintai Iptek, Ayat Kauniyah, Tajwid Tafkhim-Tarqiq, dan Karakter Ulil Albab.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Mindful, Meaningful, Tadabbur Al-Quran)',
+      sumber: 'Kemendikbudristek 2024 / Modulguruku',
+      tags: ['PAI', 'Pendidikan Agama Islam', 'Fase E', 'Kelas 10', 'Ulil Albab', 'Kurikulum Merdeka'],
+      konten_json: modulPaiContent as any,
+      status: 'PUBLISHED'
+    },
+    create: {
+      id: 'preset-pai-fase-e-modul-1',
+      kode_mapel_ref: 'PAI',
+      nama_mapel_ref: 'Pendidikan Agama Islam dan Budi Pekerti',
+      fase: 'E',
+      tingkat: 10,
+      judul_modul: 'Modul 1: Meraih Ketenteraman Hati dengan Berpikir Kritis (Q.S. Ali Imran: 190-191)',
+      deskripsi: 'Panduan KBM mendalam (Deep Learning) Fase E Kelas 10 materi Berpikir Kritis, Mencintai Iptek, Ayat Kauniyah, Tajwid Tafkhim-Tarqiq, dan Karakter Ulil Albab.',
+      total_alokasi_jp: 18,
+      total_pertemuan: 6,
+      pendekatan: 'Deep Learning (Mindful, Meaningful, Tadabbur Al-Quran)',
+      sumber: 'Kemendikbudristek 2024 / Modulguruku',
+      tags: ['PAI', 'Pendidikan Agama Islam', 'Fase E', 'Kelas 10', 'Ulil Albab', 'Kurikulum Merdeka'],
+      konten_json: modulPaiContent as any,
+      status: 'PUBLISHED'
+    }
+  });
+
+  console.log(`SUCCESS: Seeded all multi-module presets (B. Indonesia & PAI Fase E & Fase F)!`);
 }
 
 if (require.main === module) {

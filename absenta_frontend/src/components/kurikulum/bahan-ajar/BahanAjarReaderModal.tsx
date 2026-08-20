@@ -601,6 +601,31 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
             )}
 
+            {!isLoading && pertemuanList.length === 0 && (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-lg mx-auto space-y-4 animate-in fade-in">
+                <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                  <BookOpen className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-black text-slate-800 dark:text-white">
+                    Belum Ada Modul Ajar Digital Tersimpan
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Mata pelajaran <strong className="text-slate-700 dark:text-slate-200">{detectedContext.mapel_nama || 'ini'}</strong> ({kelasNama ? `${kelasNama} • ` : ''}Fase {detectedContext.fase || 'E'}) belum memiliki perangkat ajar digital terdaftar di database.
+                  </p>
+                </div>
+                <div className="pt-2 flex items-center gap-2">
+                  <a
+                    href="/kurikulum/perangkat-ajar"
+                    className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
+                  >
+                    <span>+ Buat / Unggah Modul Ajar</span>
+                    <ArrowRight size={14} />
+                  </a>
+                </div>
+              </div>
+            )}
+
             {!isLoading && currentPertemuan && (
               <div
                 className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-8 space-y-6"
