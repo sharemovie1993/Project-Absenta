@@ -31,7 +31,9 @@ import {
   Mail,
   Inbox,
   Send,
-  Laptop
+  Laptop,
+  Clock,
+  Check
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useSmartMenu } from '@/hooks/useSmartMenu';
@@ -85,14 +87,20 @@ const TILE_GRADIENTS = [
 // Fallback items untuk tiap modul spesialisasi (Zero-Broken State saat loading API)
 const DEFAULT_KURIKULUM_PRIMARY: FlatMenuItem[] = [
   { id: 'str', title: 'Struktur Kurikulum', path: '/kurikulum/struktur', icon: 'Layers' },
-  { id: 'jdw', title: 'Jadwal KBM', path: '/kurikulum/jadwal', icon: 'Calendar' },
+  { id: 'mpl', title: 'Mata Pelajaran', path: '/academic/mapel', icon: 'BookOpen' },
   { id: 'gmp', title: 'Guru Mapel', path: '/kurikulum/guru-mapel', icon: 'Users' },
-  { id: 'prg', title: 'Perangkat Ajar', path: '/kurikulum/perangkat', icon: 'FileText' },
-  { id: 'spv', title: 'Supervisi Guru', path: '/kurikulum/supervisi', icon: 'ShieldCheck' },
+  { id: 'jdwk', title: 'Jadwal Kontrak', path: '/kurikulum/jadwal-kontrak-kbm', icon: 'Layers' },
+  { id: 'wlk', title: 'Wali Kelas', path: '/kurikulum/wali-kelas', icon: 'UserCheck' },
   { id: 'kld', title: 'Kalender Akad.', path: '/kurikulum/kalender', icon: 'CalendarDays' },
-  { id: 'ctk', title: 'Cetak Berkas', path: '/kurikulum/cetak', icon: 'Printer' },
-  { id: 'evg', title: 'Evaluasi Guru', path: '/kurikulum/evaluasi-kinerja', icon: 'Award' },
-  { id: 'mon', title: 'Monitor KBM', path: '/attendance/monitoring', icon: 'Activity' },
+  { id: 'jam', title: 'Pengaturan Jam', path: '/kurikulum/jam-kbm', icon: 'Clock' },
+  { id: 'jdw', title: 'Jadwal Pelajaran', path: '/kurikulum/jadwal', icon: 'Calendar' },
+  { id: 'pkt', title: 'Jadwal Piket', path: '/kurikulum/jadwal-piket', icon: 'ShieldCheck' },
+  { id: 'prg', title: 'Perangkat Ajar', path: '/kurikulum/perangkat', icon: 'FileText' },
+  { id: 'rkp', title: 'Audit Realisasi', path: '/kurikulum/rekap-kbm', icon: 'BarChart2' },
+  { id: 'spv', title: 'Supervisi Guru', path: '/kurikulum/supervisi', icon: 'ShieldCheck' },
+  { id: 'evg', title: 'Evaluasi Kinerja', path: '/kurikulum/evaluasi-kinerja', icon: 'Award' },
+  { id: 'ksp', title: 'Generator KOSP', path: '/kurikulum/kosp-builder', icon: 'Sparkles' },
+  { id: 'ctk', title: 'Cetak Berkas', path: '/kurikulum/cetak-berkas', icon: 'Printer' },
 ];
 
 const DEFAULT_ADMIN_PRIMARY: FlatMenuItem[] = [
@@ -118,39 +126,47 @@ const DEFAULT_SARPRAS_PRIMARY: FlatMenuItem[] = [
 ];
 
 const DEFAULT_KESISWAAN_PRIMARY: FlatMenuItem[] = [
-  { id: 'mon', title: 'Monitoring Disiplin', path: '/kesiswaan/monitoring', icon: 'Activity' },
-  { id: 'plg', title: 'Pelanggaran Siswa', path: '/kesiswaan/pelanggaran', icon: 'ShieldAlert' },
+  { id: 'plg', title: 'Kasus Pelanggaran', path: '/kesiswaan/pelanggaran', icon: 'ShieldAlert' },
   { id: 'jns', title: 'Jenis Pelanggaran', path: '/kesiswaan/jenis-pelanggaran', icon: 'Layers' },
   { id: 'prs', title: 'Prestasi Siswa', path: '/kesiswaan/prestasi', icon: 'Award' },
-  { id: 'pkt', title: 'Piket Gerbang', path: '/kesiswaan/piket', icon: 'ShieldCheck' },
-  { id: 'org', title: 'Organisasi & Ekskul', path: '/kesiswaan/organisasi', icon: 'Users' },
+  { id: 'pkt', title: 'Piket & Izin Keluar', path: '/kesiswaan/piket', icon: 'ShieldCheck' },
+  { id: 'jdw', title: 'Jadwal Kegiatan', path: '/kesiswaan/jadwal-kegiatan', icon: 'Calendar' },
+  { id: 'set', title: 'Pengaturan Poin', path: '/kesiswaan/settings', icon: 'Settings' },
+  { id: 'ctk', title: 'Cetak Berkas', path: '/kesiswaan/cetak-berkas', icon: 'ClipboardList' },
 ];
 
 const DEFAULT_HUBIN_PRIMARY: FlatMenuItem[] = [
   { id: 'mtr', title: 'Mitra Industri / MoU', path: '/hubin/mitra', icon: 'Building2' },
-  { id: 'pkl', title: 'Penempatan PKL', path: '/hubin/pkl', icon: 'Briefcase' },
-  { id: 'bkk', title: 'BKK Lowongan Kerja', path: '/hubin/bkk', icon: 'Award' },
-  { id: 'trc', title: 'Tracer Study Alumni', path: '/hubin/tracer-study', icon: 'GraduationCap' },
-  { id: 'lgb', title: 'Logbook Siswa PKL', path: '/hubin/logbook', icon: 'FileText' },
-  { id: 'abs', title: 'Presensi Siswa PKL', path: '/hubin/absensi', icon: 'CalendarCheck' },
+  { id: 'pkl', title: 'Penempatan PKL', path: '/hubin/penempatan', icon: 'Briefcase' },
+  { id: 'nil', title: 'Nilai & Sertifikat', path: '/hubin/nilai-pkl', icon: 'Award' },
+  { id: 'abs', title: 'Presensi Mandiri PKL', path: '/hubin/absensi', icon: 'CalendarDays' },
+  { id: 'mon', title: 'Monitoring & Jurnal', path: '/hubin/monitoring', icon: 'Activity' },
+  { id: 'bkk', title: 'BKK Lowongan Kerja', path: '/hubin/bkk', icon: 'Briefcase' },
+  { id: 'trc', title: 'Tracer Study Alumni', path: '/hubin/tracer', icon: 'GraduationCap' },
+  { id: 'tfa', title: 'Teaching Factory', path: '/hubin/tefa', icon: 'Tool' },
+  { id: 'ctk', title: 'Cetak Berkas', path: '/hubin/cetak-berkas', icon: 'ClipboardList' },
 ];
 
 const DEFAULT_BPBK_PRIMARY: FlatMenuItem[] = [
-  { id: 'kss', title: 'Data Kasus Siswa', path: '/bpbk/cases', icon: 'ShieldAlert' },
+  { id: 'sis', title: 'Data Siswa Kasus', path: '/bpbk/siswa', icon: 'Users' },
+  { id: 'kss', title: 'Monitoring Kasus', path: '/bpbk/cases', icon: 'ShieldAlert' },
   { id: 'ksl', title: 'Layanan Konseling', path: '/bpbk/konseling', icon: 'HeartHandshake' },
   { id: 'pmg', title: 'Pemanggilan Ortu', path: '/bpbk/pemanggilan', icon: 'Mail' },
-  { id: 'hmv', title: 'Kunjungan Rumah', path: '/bpbk/home-visit', icon: 'Building2' },
-  { id: 'ass', title: 'Asesmen & EWS', path: '/bpbk/asesmen', icon: 'Activity' },
-  { id: 'rjk', title: 'Rujukan Siswa', path: '/bpbk/rujukan', icon: 'FileText' },
+  { id: 'hmv', title: 'Home Visit', path: '/bpbk/homevisit', icon: 'Building2' },
+  { id: 'ass', title: 'Asesmen & Minat', path: '/bpbk/asesmen', icon: 'Activity' },
+  { id: 'rjk', title: 'Rujukan Kasus', path: '/bpbk/rujukan', icon: 'Send' },
+  { id: 'rep', title: 'Laporan & Statistik', path: '/bpbk/reports', icon: 'BarChart2' },
+  { id: 'ctk', title: 'Cetak Berkas', path: '/bpbk/cetak-berkas', icon: 'ClipboardList' },
 ];
 
 const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
-  { id: 'pos', title: 'POS Kasir & Penjualan', path: '/cooperative/pos', icon: 'Wallet' },
-  { id: 'mbr', title: 'Daftar Anggota', path: '/cooperative/members', icon: 'Users' },
-  { id: 'svg', title: 'Simpanan Anggota', path: '/cooperative/savings', icon: 'Wallet' },
-  { id: 'lon', title: 'Pinjaman Koperasi', path: '/cooperative/loans', icon: 'ArrowUpCircle' },
-  { id: 'shu', title: 'Pembagian SHU', path: '/cooperative/shu', icon: 'Award' },
-  { id: 'str', title: 'Katalog Produk', path: '/cooperative/store', icon: 'Package' },
+  { id: 'svg', title: 'Tabungan Saya', path: '/cooperative/savings', icon: 'Wallet' },
+  { id: 'lon', title: 'Pinjaman Saya', path: '/cooperative/loans', icon: 'ArrowUpCircle' },
+  { id: 'pos', title: 'Katalog Belanja', path: '/cooperative/pos?mode=catalog', icon: 'Package' },
+  { id: 'shu', title: 'SHU Saya', path: '/cooperative/shu', icon: 'Award' },
+  { id: 'vch', title: 'Poin & Benefit', path: '/cooperative/vouchers', icon: 'Sparkles' },
+  { id: 'anc', title: 'Pengumuman', path: '/cooperative/announcements', icon: 'Bell' },
+  { id: 'tck', title: 'Aduan & Keluhan', path: '/cooperative/tickets', icon: 'MessageSquare' },
 ];
 
 const DEFAULT_CBT_PRIMARY: FlatMenuItem[] = [
@@ -161,19 +177,26 @@ const DEFAULT_CBT_PRIMARY: FlatMenuItem[] = [
 ];
 
 const DEFAULT_RAPOR_PRIMARY: FlatMenuItem[] = [
-  { id: 'inp', title: 'Input Nilai Rapor', path: '/rapor/input-nilai', icon: 'FileText' },
-  { id: 'vrf', title: 'Verifikasi Walas', path: '/rapor/verifikasi', icon: 'CheckCircle2' },
+  { id: 'inp', title: 'Input Nilai', path: '/rapor/nilai', icon: 'Award' },
   { id: 'ctk', title: 'Cetak Lembar Rapor', path: '/rapor/cetak', icon: 'Printer' },
-  { id: 'ind', title: 'Buku Induk Nilai', path: '/rapor/buku-induk', icon: 'BookOpen' },
+  { id: 'p5', title: 'Projek P5', path: '/rapor/p5', icon: 'Layers' },
 ];
 
 const DEFAULT_CORRESPONDENCE_PRIMARY: FlatMenuItem[] = [
-  { id: 'inb', title: 'Surat Masuk', path: '/correspondence/inbox', icon: 'Inbox' },
-  { id: 'out', title: 'Surat Keluar', path: '/correspondence/outbox', icon: 'Send' },
-  { id: 'dsp', title: 'Disposisi Surat', path: '/correspondence/disposition', icon: 'FileText' },
-  { id: 'agd', title: 'Buku Agenda', path: '/correspondence/agenda', icon: 'Calendar' },
-  { id: 'tpl', title: 'Template Surat', path: '/correspondence/templates', icon: 'Layers' },
+  { id: 'inb', title: 'Surat Masuk', path: '/correspondence/surat-masuk', icon: 'Inbox' },
+  { id: 'out', title: 'Surat Keluar', path: '/correspondence/surat-keluar', icon: 'Send' },
 ];
+
+// Definisi Struktur Klaster Workflow
+interface WorkflowCluster {
+  id: string;
+  badge: string;
+  badgeColor: string;
+  title: string;
+  description: string;
+  icon: string;
+  items: FlatMenuItem[];
+}
 
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
   workspaceId: targetWorkspaceIdProp,
@@ -183,6 +206,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   className
 }) => {
   const [search, setSearch] = useState('');
+  const [activeClusterTab, setActiveClusterTab] = useState<string>('ALL');
   const { user } = useAuthStore();
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
 
@@ -204,17 +228,17 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   const activeWsId = targetWorkspace?.id || 'KURIKULUM_WORKSPACE';
   const wsLabel = targetWorkspace?.label || (targetWorkspace as any)?.name || 'Modul';
   const displayTitle = customTitle || `Ruang Kerja ${wsLabel}`;
-  const displaySubtitle = customSubtitle || `Akses seluruh sub-halaman dan fitur operasional ${wsLabel}.`;
+  const displaySubtitle = customSubtitle || `Akses alur kerja dan sub-halaman operasional ${wsLabel}.`;
 
   // 2. Normalisasi Flat Items Dinamis dari Sidebar
   const flatItems = useMemo(() => normalizeFlatMenu(backendGroupedMenu || []), [backendGroupedMenu]);
 
-  // 3. Filter 100% Focused Primary Workspace Items (Zero Cross-Module Noise)
+  // 3. Filter 100% Focused Primary Workspace Items
   const primaryItems = useMemo<FlatMenuItem[]>(() => {
     if (!flatItems || flatItems.length === 0) {
       if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_PRIMARY;
       if (activeWsId === 'SARPRAS_WORKSPACE') return DEFAULT_SARPRAS_PRIMARY;
-      if (activeWsId === 'KURIKULUM_WORKSPACE') return []; // Fallback statis dinonaktifkan atas instruksi pengujian
+      if (activeWsId === 'KURIKULUM_WORKSPACE') return DEFAULT_KURIKULUM_PRIMARY;
       if (activeWsId === 'KESISWAAN_WORKSPACE') return DEFAULT_KESISWAAN_PRIMARY;
       if (activeWsId === 'HUBIN_WORKSPACE') return DEFAULT_HUBIN_PRIMARY;
       if (activeWsId === 'BPBK_WORKSPACE') return DEFAULT_BPBK_PRIMARY;
@@ -227,14 +251,13 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
 
     let matchedItems: FlatMenuItem[] = [];
 
-    // 3.1 Pengecualian universal untuk halaman dashboard modul itu sendiri (agar tidak redundan)
+    // Pengecualian universal halaman dashboard modul itu sendiri
     const isModuleDashboardPath = (path: string, title: string) => {
       const p = path.toLowerCase();
       const t = title.toLowerCase();
       if (p === '/dashboard' || p === '#' || p.startsWith('menu:')) return true;
       if (p.endsWith('/dashboard')) return true;
       if (t === 'dashboard' || t.startsWith('dashboard ')) return true;
-      // Khusus kesiswaan: /kesiswaan/monitoring adalah dashboard kesiswaan
       if (activeWsId === 'KESISWAAN_WORKSPACE' && p === '/kesiswaan/monitoring') return true;
       return false;
     };
@@ -266,9 +289,9 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/kurikulum') || cat.includes('KURIKULUM')) && !isModuleDashboardPath(p, item.title);
+        return (p.startsWith('/kurikulum') || cat.includes('KURIKULUM') || p === '/academic/mapel') && !isModuleDashboardPath(p, item.title);
       });
-      // Fallback statis DEFAULT_KURIKULUM_PRIMARY dinonaktifkan (murni 100% hasil backend API)
+      if (matchedItems.length === 0) matchedItems = DEFAULT_KURIKULUM_PRIMARY;
     } else if (activeWsId === 'KESISWAAN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
@@ -329,14 +352,114 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
     return matchedItems;
   }, [flatItems, user, activeWsId]);
 
+  // 4. Pengelompokan Klaster Alur Kerja (Workflow Clusters) untuk Kurikulum
+  const clusters = useMemo<WorkflowCluster[]>(() => {
+    if (activeWsId !== 'KURIKULUM_WORKSPACE') {
+      return [
+        {
+          id: 'MAIN',
+          badge: 'MODUL UTAMA',
+          badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+          title: `Menu Operasional ${wsLabel}`,
+          description: `Daftar seluruh fitur dan sub-halaman ${wsLabel}`,
+          icon: '🏛️',
+          items: primaryItems
+        }
+      ];
+    }
+
+    const c1: FlatMenuItem[] = []; // 🏗️ Master & Pondasi Struktur
+    const c2: FlatMenuItem[] = []; // 📅 Penjadwalan & KBM
+    const c3: FlatMenuItem[] = []; // 📚 Perangkat & KOSP
+    const c4: FlatMenuItem[] = []; // 🎯 Supervisi & Evaluasi Mutu
+    const other: FlatMenuItem[] = [];
+
+    primaryItems.forEach(item => {
+      const p = (item.path || '').toLowerCase();
+      const t = item.title.toLowerCase();
+
+      if (p.includes('/struktur') || p.includes('/mapel') || p.includes('/guru-mapel') || p.includes('/wali-kelas') || p.includes('/kalender')) {
+        c1.push(item);
+      } else if (p.includes('/jam-kbm') || (p.includes('/jadwal') && !p.includes('/jadwal-piket') && !p.includes('/jadwal-kontrak')) || p.includes('/jadwal-piket') || p.includes('/jadwal-kontrak')) {
+        c2.push(item);
+      } else if (p.includes('/perangkat') || p.includes('/kosp') || p.includes('/rekap-kbm') || p.includes('/monitoring')) {
+        c3.push(item);
+      } else if (p.includes('/supervisi') || p.includes('/evaluasi') || p.includes('/cetak')) {
+        c4.push(item);
+      } else {
+        other.push(item);
+      }
+    });
+
+    const result: WorkflowCluster[] = [
+      {
+        id: 'STRUCTURE',
+        badge: '1. AWAL TAHUN / SEMESTER',
+        badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+        title: 'Master & Struktur KBM',
+        description: 'Pondasi struktur mata pelajaran, guru pengampu, wali kelas & kalender',
+        icon: '🏗️',
+        items: c1
+      },
+      {
+        id: 'SCHEDULE',
+        badge: '2. FASE PENJADWALAN',
+        badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+        title: 'Manajemen Jadwal Pelajaran',
+        description: 'Penyusunan jam pelajaran, jadwal mingguan, piket guru & kontrak KBM',
+        icon: '📅',
+        items: c2
+      },
+      {
+        id: 'LEARNING',
+        badge: '3. PEMBELAJARAN & PERANGKAT',
+        badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+        title: 'Perangkat Ajar & KOSP',
+        description: 'Modul ajar RPP, penyusunan KOSP, serta audit realisasi JP guru',
+        icon: '📚',
+        items: c3
+      },
+      {
+        id: 'SUPERVISION',
+        badge: '4. SUPERVISI & EVALUASI',
+        badgeColor: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+        title: 'Supervisi & Cetak Berkas',
+        description: 'Supervisi klinis KBM, evaluasi kinerja guru, dan cetak dokumen resmi',
+        icon: '🎯',
+        items: c4
+      }
+    ];
+
+    if (other.length > 0) {
+      result[0].items.push(...other);
+    }
+
+    return result.filter(c => c.items.length > 0);
+  }, [primaryItems, activeWsId, wsLabel]);
+
   // Search filtering
-  const filteredPrimary = useMemo(() => {
-    if (!search.trim()) return primaryItems;
-    const q = search.toLowerCase();
-    return primaryItems.filter(
-      item => item.title.toLowerCase().includes(q) || (item.categoryLabel && item.categoryLabel.toLowerCase().includes(q))
-    );
-  }, [primaryItems, search]);
+  const filteredClusters = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return clusters.map(cluster => {
+      let items = cluster.items;
+      if (q) {
+        items = items.filter(
+          item => item.title.toLowerCase().includes(q) || (item.categoryLabel && item.categoryLabel.toLowerCase().includes(q))
+        );
+      }
+      return {
+        ...cluster,
+        items
+      };
+    }).filter(c => c.items.length > 0);
+  }, [clusters, search]);
+
+  // Selected cluster tab filtering
+  const visibleClusters = useMemo(() => {
+    if (activeClusterTab === 'ALL') return filteredClusters;
+    return filteredClusters.filter(c => c.id === activeClusterTab);
+  }, [filteredClusters, activeClusterTab]);
 
   if (hideIfEmpty && primaryItems.length === 0 && !isMenuLoading) {
     return null;
@@ -345,7 +468,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   return (
     <div className={cn("space-y-4 w-full select-none", className)}>
       {/* ── HERO BANNER: Web Portal Header ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 p-5 sm:p-6 text-white shadow-xl shadow-indigo-950/20">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 p-4 sm:p-6 text-white shadow-xl shadow-indigo-950/20">
         {/* Ambient Decorative Glow */}
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -359,7 +482,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{primaryItems.length} Halaman Tersedia</span>
+                <span>{primaryItems.length} Sub-Halaman Terorganisir</span>
               </span>
             </div>
 
@@ -388,78 +511,160 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
             </div>
           </div>
         </div>
+
+        {/* ── Tab Filter Cepat (Hanya muncul jika ada multi-klaster, e.g. Kurikulum) ── */}
+        {clusters.length > 1 && (
+          <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => setActiveClusterTab('ALL')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
+                activeClusterTab === 'ALL'
+                  ? "bg-white text-indigo-950 shadow-md"
+                  : "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10"
+              )}
+            >
+              <span>Semua Alur</span>
+              <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-indigo-500/20 text-indigo-300">
+                {primaryItems.length}
+              </span>
+            </button>
+
+            {clusters.map(c => {
+              const isActive = activeClusterTab === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setActiveClusterTab(c.id)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
+                    isActive
+                      ? "bg-white text-indigo-950 shadow-md"
+                      : "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10"
+                  )}
+                >
+                  <span>{c.icon} {c.title}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-md text-[10px]",
+                    isActive ? "bg-indigo-950 text-white font-bold" : "bg-white/15 text-slate-300"
+                  )}>
+                    {c.items.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* ── BENTO APP LAUNCHER: 100% Focused Module Grid (Zero Cross Noise) ── */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
-          {filteredPrimary.map((item, idx) => {
-            const IconComp = iconForName(item.icon) || Layers;
-            const palette = TILE_GRADIENTS[idx % TILE_GRADIENTS.length];
-            const targetPath = item.path || '#';
-
-            return (
-              <Link
-                key={item.id || idx}
-                to={targetPath}
-                title={item.title}
-                className="group flex flex-col items-center justify-start p-2 sm:p-2.5 rounded-2xl hover:bg-slate-100/70 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer text-center w-full max-w-[100px] sm:max-w-[110px] mx-auto select-none"
-              >
-                {/* Smartphone Squircle App Icon + 🪞 Ultra-Smooth Seamless Mirror Reflection */}
-                <div className="relative flex flex-col items-center">
-                  {/* Soft Colored Ambient Glow */}
-                  <div
-                    aria-hidden="true"
-                    className={cn(
-                      "absolute inset-0 rounded-2xl opacity-20 group-hover:opacity-40 blur-md transition-all duration-300 pointer-events-none",
-                      palette.gradient
-                    )}
-                  />
-
-                  {/* Main Squircle App Icon */}
-                  <div
-                    className={cn(
-                      "relative z-10 w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-1 group-active:scale-95 border",
-                      palette.gradient,
-                      palette.border
-                    )}
-                  >
-                    <IconComp size={22} className="stroke-[2.2]" />
-
-                    {item.isPremium && (
-                      <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
-                        PRO
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 🪞 Apple macOS Dock Ultra-Smooth Mirror Reflection (100% Seamless Fade) */}
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
-                      WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
-                    }}
-                    className={cn(
-                      "w-10 h-3.5 sm:w-12 sm:h-4 rounded-b-xl opacity-35 group-hover:opacity-55 transition-all duration-300 blur-[1px] scale-y-[-1] -mt-0.5 pointer-events-none select-none overflow-hidden flex items-start justify-center",
-                      palette.gradient
-                    )}
-                  >
-                    <IconComp size={20} className="stroke-[2] -mt-2 opacity-50" />
-                  </div>
-
-                  {/* Soft Contact Floor Shadow */}
-                  <div className="w-8 sm:w-10 h-1 bg-slate-900/10 dark:bg-black/30 rounded-full blur-[2px] -mt-3.5 group-hover:scale-110 group-hover:opacity-30 transition-all duration-300 pointer-events-none" />
-                </div>
-
-                {/* App Name Under Icon */}
-                <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 mt-2 leading-tight line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {item.title}
+      {/* ── BENTO KLASTER WORKFLOW (Solusi 1: Kartu Alur Kerja Terkelompok) ── */}
+      <div className={cn(
+        "grid gap-4 sm:gap-5",
+        visibleClusters.length > 1 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+      )}>
+        {visibleClusters.map((cluster, clusterIdx) => (
+          <div
+            key={cluster.id}
+            className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+          >
+            {/* Header Klaster */}
+            <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className={cn(
+                  "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                  cluster.badgeColor
+                )}>
+                  {cluster.badge}
                 </span>
-              </Link>
-            );
-          })}
-        </div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                  {cluster.items.length} Menu
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2.5 mt-2">
+                <span className="text-xl sm:text-2xl">{cluster.icon}</span>
+                <div>
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
+                    {cluster.title}
+                  </h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    {cluster.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid Item Squircle di Dalam Klaster (Ramah HP: 3 Kolom Kompak, Desktop: 4 Kolom) */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3 pt-3.5 mt-auto">
+              {cluster.items.map((item, idx) => {
+                const IconComp = iconForName(item.icon) || Layers;
+                const palette = TILE_GRADIENTS[(clusterIdx * 3 + idx) % TILE_GRADIENTS.length];
+                const targetPath = item.path || '#';
+
+                return (
+                  <Link
+                    key={item.id || idx}
+                    to={targetPath}
+                    title={item.title}
+                    className="group flex flex-col items-center justify-start p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer text-center w-full select-none"
+                  >
+                    {/* Squircle App Icon + Mirror Reflection */}
+                    <div className="relative flex flex-col items-center">
+                      <div
+                        aria-hidden="true"
+                        className={cn(
+                          "absolute inset-0 rounded-2xl opacity-20 group-hover:opacity-40 blur-md transition-all duration-300 pointer-events-none",
+                          palette.gradient
+                        )}
+                      />
+
+                      <div
+                        className={cn(
+                          "relative z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-0.5 group-active:scale-95 border",
+                          palette.gradient,
+                          palette.border
+                        )}
+                      >
+                        <IconComp size={20} className="stroke-[2.2]" />
+
+                        {item.isPremium && (
+                          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Mirror Reflection */}
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
+                          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
+                        }}
+                        className={cn(
+                          "w-9 h-3 sm:w-10 sm:h-3.5 rounded-b-xl opacity-30 group-hover:opacity-50 transition-all duration-300 blur-[1px] scale-y-[-1] -mt-0.5 pointer-events-none select-none overflow-hidden flex items-start justify-center",
+                          palette.gradient
+                        )}
+                      >
+                        <IconComp size={18} className="stroke-[2] -mt-1.5 opacity-50" />
+                      </div>
+
+                      {/* Contact Shadow */}
+                      <div className="w-7 sm:w-8 h-1 bg-slate-900/10 dark:bg-black/30 rounded-full blur-[2px] -mt-3 group-hover:scale-110 group-hover:opacity-30 transition-all duration-300 pointer-events-none" />
+                    </div>
+
+                    {/* App Name Under Icon */}
+                    <span className="text-[10.5px] sm:text-[11.5px] font-bold text-slate-700 dark:text-slate-200 mt-1.5 leading-snug line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {item.title}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
