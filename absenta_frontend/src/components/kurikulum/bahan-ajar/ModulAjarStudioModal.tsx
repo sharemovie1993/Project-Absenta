@@ -97,57 +97,118 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     enabled: isOpen
   });
 
-  // Populate local state when readerData loads
+// ── CONTOH LENGKAP REALISTIS MODUL AJAR (FULL SAMPLE TEMPLATE) ──
+const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
+  {
+    nomor_pertemuan: 1,
+    alokasi_jp: 3,
+    durasi_menit: 135,
+    topik: 'Pertemuan 1: Karakteristik & Struktur Pokok Teks Laporan Hasil Observasi (LHO)',
+    tujuan_pembelajaran: [
+      'Peserta didik mampu menganalisis 3 struktur utama teks laporan hasil observasi (pernyataan umum, deskripsi bagian, dan deskripsi manfaat) secara kritis.',
+      'Peserta didik mampu memilah data fakta objektif dengan opini dalam teks bacaan sains.',
+      'Peserta didik mampu menyusun kesimpulan hasil diskusi kelompok dengan bergotong royong.'
+    ],
+    langkah_kbm: {
+      pendahuluan: {
+        durasi_menit: 15,
+        kegiatan: [
+          'Pembukaan: Guru membuka pelajaran dengan salam hangat, berdoa bersama, dan mengecek presensi siswa.',
+          'Apersepsi (Mindful Learning): Guru mengaitkan materi dengan tayangan visual tentang fenomena alam di sekitar kita.',
+          'Pertanyaan Pemantik: "Mengapa pengamatan yang objektif dan berbasis data sangat penting dalam menyusun laporan ilmiah?"'
+        ],
+        gambar_url: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=800&q=80',
+        gambar_caption: 'Gambar 1.1: Pengamatan Fenomena Sains dan Observasi Lapangan'
+      },
+      inti: {
+        durasi_menit: 105,
+        kegiatan: [
+          '1. Stimulasi & Eksplorasi: Siswa membaca teks observasi "Observatorium Bosscha" secara saksama.',
+          '2. Diskusi Kelompok: Siswa bekerja dalam kelompok (4-5 orang) membedah struktur paragraf dan data kuantitatif.',
+          '3. Pengerjaan LKPD: Setiap kelompok menuliskan hasil telaah pada lembar kerja analisis.',
+          '4. Presentasi & Umpan Balik: Perwakilan kelompok memaparkan temuan di depan kelas dan ditanggapi kelompok lain.'
+        ],
+        teks_bacaan: {
+          judul: 'Observatorium Bosscha: Jejak Astronomi Modern di Bumi Nusantara',
+          paragraf: [
+            'Observatorium Bosscha merupakan salah satu fasilitas observatorium astronomi tertua dan paling bersejarah di Indonesia. Terletak di Lembang, Kabupaten Bandung Barat pada ketinggian 1.310 meter di atas permukaan laut, fasilitas ini berdiri di bawah naungan Institut Teknologi Bandung (ITB) untuk menunjang penelitian dan pendidikan astrofisika.',
+            'Secara struktur fisik, Bosscha memiliki kubah teleskop besar yang menaungi Teleskop Ganda Zeiss 60 cm. Instrumen optik ini digunakan untuk mengamati bintang ganda, planet-planet di tata surya, serta gerhana matahari dan bulan dengan tingkat akurasi tinggi.',
+            'Keberadaan Observatorium Bosscha memiliki manfaat strategis tidak hanya bagi kemajuan riset astronomi nasional, tetapi juga sebagai cagar budaya sains yang menginspirasi generasi muda untuk mendalami literasi teknologi antariksa.'
+          ],
+          gambar_url: 'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=800&q=80',
+          gambar_caption: 'Gambar 1.2: Teropong Bintang & Kubah Observatorium Astronomi'
+        },
+        lkpd: {
+          judul: 'LKPD 1: Bedah Struktur & Uji Fakta Ilmiah Teks Observasi',
+          petunjuk: '1. Bacalah teks "Observatorium Bosscha" secara saksama bersama kelompokmu!\n2. Identifikasi bagian mana yang merupakan Pernyataan Umum, Deskripsi Bagian, dan Deskripsi Manfaat!\n3. Tuliskan minimal 3 kalimat fakta berbasis data yang terdapat di dalam teks!\n4. Siapkan 1 juru bicara kelompok untuk mempresentasikan hasil analisis di depan kelas!',
+          gambar_url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80',
+          gambar_caption: 'Gambar 1.3: Format Lembar Analisis Kolaborasi Siswa'
+        }
+      },
+      penutup: {
+        durasi_menit: 15,
+        kegiatan: [
+          'Refleksi Bersama: Siswa menyampaikan 1 wawasan baru yang didapatkan dan bagian yang paling menarik hari ini.',
+          'Penguatan Konsep: Guru memberikan apresiasi atas kerja sama seluruh kelompok dan merangkum poin esensial.',
+          'Doa penutup dan penyampaian sekilas agenda materi untuk pertemuan berikutnya.'
+        ]
+      }
+    }
+  },
+  {
+    nomor_pertemuan: 2,
+    alokasi_jp: 3,
+    durasi_menit: 135,
+    topik: 'Pertemuan 2: Kaidah Kebahasaan Teks LHO (Verba Material, Nomina, dan Kalimat Definisi)',
+    tujuan_pembelajaran: [
+      'Peserta didik mampu mengidentifikasi kaidah kebahasaan teks laporan hasil observasi (kata benda, kata kerja aksi, istilah teknis).',
+      'Peserta didik mampu menyunting ketepatan kalimat definisi dan deskripsi dalam draf laporan.'
+    ],
+    langkah_kbm: {
+      pendahuluan: {
+        durasi_menit: 15,
+        kegiatan: [
+          'Pembukaan: Salam hangat, doa, dan apersepsi mengaitkan dengan struktur teks pada Pertemuan 1.',
+          'Pertanyaan Pemantik: "Bagaimana pemilihan kata kerja dan istilah ilmiah membuat laporan kita terdengar lebih akurat dan terpercaya?"'
+        ]
+      },
+      inti: {
+        durasi_menit: 105,
+        kegiatan: [
+          '1. Telaah Kalimat: Siswa mengamati tabel perbandingan kalimat definisi vs kalimat deskripsi.',
+          '2. Praktik Berkelompok: Menemukan verba material dan kata istilah dalam artikel biologi/teknologi.',
+          '3. Uji Coba Kuis Singkat: Diskusi interaktif menebak istilah baku vs tidak baku.'
+        ],
+        teks_bacaan: {
+          judul: 'Kaidah Bahasa Ilmiah Populer dalam Laporan Observasi',
+          paragraf: [
+            'Teks laporan hasil observasi menggunakan bahasa yang lugas, baku, dan objektif. Ciri kebahasaan utamanya mencakup penggunaan verba relasional (seperti "ialah", "merupakan", "termasuk") untuk menyatakan definisi, serta verba material yang menggambarkan tindakan nyata.',
+            'Selain itu, teks observasi kerap memuat istilah teknis bidang keilmuan tertentu guna menyampaikan informasi secara presisi kepada pembaca.'
+          ]
+        },
+        lkpd: {
+          judul: 'LKPD 2: Berburu Istilah Teknis & Perbaikan Kalimat Observasi',
+          petunjuk: '1. Temukan 5 istilah ilmiah dalam teks bacaan dan tuliskan maknanya!\n2. Ubahlah 3 kalimat opini di bawah ini menjadi kalimat fakta objektif!'
+        }
+      },
+      penutup: {
+        durasi_menit: 15,
+        kegiatan: [
+          'Refleksi kilas balik pemahaman istilah kebahasaan.',
+          'Rangkuman bersama dan doa penutup.'
+        ]
+      }
+    }
+  }
+];
+
+// Populate local state when readerData loads
   useEffect(() => {
     if (readerData?.konten && readerData.konten.length > 0) {
       setPertemuanList(JSON.parse(JSON.stringify(readerData.konten)));
     } else if (pertemuanList.length === 0) {
       // Default initial meeting 1 if completely empty
-      setPertemuanList([
-        {
-          nomor_pertemuan: 1,
-          alokasi_jp: 3,
-          durasi_menit: 135,
-          topik: 'Pertemuan 1: Pengenalan Konsep & Eksplorasi Awal',
-          tujuan_pembelajaran: ['Peserta didik mampu memahami konsep dasar materi secara aktif dan bernalar kritis.'],
-          langkah_kbm: {
-            pendahuluan: {
-              durasi_menit: 15,
-              kegiatan: [
-                'Pembukaan: Guru membuka pelajaran dengan salam, doa bersama, dan presensi siswa.',
-                'Apersepsi (Mindful Learning): Guru mengaitkan pembelajaran dengan pengalaman nyata siswa.',
-                'Pertanyaan Pemantik: "Bagaimana materi ini membantu kita memecahkan masalah dalam kehidupan sehari-hari?"'
-              ]
-            },
-            inti: {
-              durasi_menit: 105,
-              kegiatan: [
-                'Eksplorasi Konsep: Siswa mengkaji materi dan teks bacaan secara mandiri/kelompok.',
-                'Diskusi Kelompok (Gotong Royong): Siswa berkolaborasi mengerjakan tantangan lembar kerja.',
-                'Presentasi & Umpan Balik: Perwakilan kelompok menyampaikan hasil temuan di depan kelas.'
-              ],
-              teks_bacaan: {
-                judul: 'Teks Bacaan Materi Pembelajaran',
-                paragraf: [
-                  'Tuliskan uraian materi pokok, studi kasus, atau teks bacaan siswa pada bagian ini.',
-                  'Paragraf ini akan otomatis tampil di layar proyektor kelas saat guru mengaktifkan Mode Proyektor.'
-                ]
-              },
-              lkpd: {
-                judul: 'LKPD 1: Lembar Diskusi & Analisis Kelompok',
-                petunjuk: '1. Diskusikan teks bacaan di atas bersama kelompokmu!\n2. Selesaikan pertanyaan analisis dan catat kesimpulan kelompokmu!'
-              }
-            },
-            penutup: {
-              durasi_menit: 15,
-              kegiatan: [
-                'Refleksi Pembelajaran: Siswa menyampaikan hal baru yang dipelajari hari ini.',
-                'Rangkuman bersama guru dan doa penutup.'
-              ]
-            }
-          }
-        }
-      ]);
+      setPertemuanList(JSON.parse(JSON.stringify(FULL_SAMPLE_MEETINGS)));
     }
   }, [readerData]);
 
@@ -320,6 +381,15 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     }
   };
 
+  const handleLoadFullSample = () => {
+    setModuleJudul('BAB 1: Teks Laporan Hasil Observasi (LHO) & Literasi Sains');
+    setSelectedFase('E');
+    setSelectedTingkat(10);
+    setPertemuanList(JSON.parse(JSON.stringify(FULL_SAMPLE_MEETINGS)));
+    setActiveMeetingIdx(0);
+    toast.success('🪄 Contoh Modul Lengkap Siap Tayang Berhasil Dimuat!', { icon: '✨' });
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -355,6 +425,18 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
 
           {/* Action Header Buttons */}
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleLoadFullSample}
+              className="h-9 px-3 rounded-xl font-bold text-xs bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+              title="Muat contoh lengkap modul ajar beserta teks bacaan, LKPD, dan gambar nyata"
+            >
+              <Sparkles size={13} className="text-purple-600 dark:text-purple-400" />
+              <span>Contoh Lengkap</span>
+            </Button>
+
             <Button
               type="button"
               variant="outline"
