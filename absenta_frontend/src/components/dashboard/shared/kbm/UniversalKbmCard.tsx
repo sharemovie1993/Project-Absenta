@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
@@ -23,6 +23,8 @@ import {
   ExternalLink,
   ShieldCheck
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getJadwalKegiatan } from '@/api/attendance/jadwalKegiatan.api';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { 
@@ -163,6 +165,60 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   }, [reminderMeta]);
   const isRemindedRecently = reminderMinutesAgo !== null && reminderMinutesAgo < 10;
 
+  // 🏛️ Prediksi Batas Aman Hadir — Berdasarkan JadwalKegiatan hari ini
+  // Hanya tampil di kartu mode GURU (bukan monitoring/petugas) dan hanya untuk sesi yang belum dimulai / siap dibuka
+  const { data: kegiatanData } = useQuery({
+    queryKey: ['jadwal-kegiatan-list', true],
+    queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
+    enabled: mode === 'GURU' && (isReadyToOpen || isUpcoming),
+  });
+
+  const kegiatanPrediksi = useMemo(() => {
+    if (mode !== 'GURU' || (!isReadyToOpen && !isUpcoming)) return null;
+    if (!jamMulai || !jamMulai.includes(':')) return null;
+
+    const rawList: any[] = Array.isArray(kegiatanData)
+      ? kegiatanData
+      : (Array.isArray((kegiatanData as any)?.data) ? (kegiatanData as any).data : []);
+
+    // Hari ini
+    const todayIndex = new Date().getDay();
+    const HARI_MAP: Record<number, string> = {
+      0: 'MINGGU', 1: 'SENIN', 2: 'SELASA', 3: 'RABU',
+      4: 'KAMIS', 5: 'JUMAT', 6: 'SABTU'
+    };
+    const todayStr = HARI_MAP[todayIndex];
+
+    const [schH, schM] = jamMulai.split(':').map(Number);
+    const scheduledMinutes = schH * 60 + schM;
+
+    // Cari kegiatan hari ini yang waktu_selesai-nya melewati jam mulai sesi
+    const matching = rawList
+      .filter((k: any) => {
+        if (!k.aktif) return false;
+        const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
+        if (!days.includes(todayStr)) return false;
+        if (!k.waktu_selesai) return false;
+        const [endH, endM] = k.waktu_selesai.split(':').map(Number);
+        const endMinutes = endH * 60 + endM;
+        return endMinutes > scheduledMinutes;
+      })
+      .sort((a: any, b: any) => {
+        const [aH, aM] = a.waktu_selesai.split(':').map(Number);
+        const [bH, bM] = b.waktu_selesai.split(':').map(Number);
+        return (bH * 60 + bM) - (aH * 60 + aM);
+      });
+
+    if (matching.length === 0) return null;
+
+    const latestKegiatan = matching[0];
+    return {
+      nama: latestKegiatan.nama,
+      batasAman: latestKegiatan.waktu_selesai,
+    };
+  }, [kegiatanData, jamMulai, mode, isReadyToOpen, isUpcoming]);
+
   // 2. Resolve Text Fields with robust fallbacks
   const mapelNama = item.mapel_nama 
     || item.Mapel?.nama_mapel 
@@ -301,6 +357,13 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               <span className="text-[11px] sm:text-xs font-mono font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1 shrink-0">
                 <Clock size={11} className="text-slate-400" />
                 <span>{jamMulai}{jamSelesai ? ` - ${jamSelesai}` : ''} WIB</span>
+              </span>
+            )}
+
+            {/* 🏛️ Prediksi Batas Aman Hadir (Jadwal Kegiatan Bertabrakan) */}
+            {kegiatanPrediksi && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0" title={`Kegiatan ${kegiatanPrediksi.nama} berlangsung hingga ${kegiatanPrediksi.batasAman} WIB — batas aman hadir disesuaikan`}>
+                ⚠️ Aman ≤ {kegiatanPrediksi.batasAman}
               </span>
             )}
 
