@@ -199,8 +199,8 @@ const StrukturOrganisasiPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            {activeTab === 'PEMBINA_ESKUL' && (
+          {activeTab === 'PEMBINA_ESKUL' && (
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               <Button
                 variant="outline"
                 onClick={() => navigate('/attendance/anggota-kegiatan-eskul')}
@@ -208,17 +208,8 @@ const StrukturOrganisasiPage: React.FC = () => {
               >
                 Manajemen Eskul
               </Button>
-            )}
-            {isGlobalStrukturAdmin && (
-              <Button 
-                onClick={handleOpenCreate}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs font-bold text-xs sm:text-sm h-9 sm:h-10 px-3.5 sm:px-5 flex items-center gap-1.5 sm:gap-2 group shrink-0"
-              >
-                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Tambah Jabatan</span>
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Main Content Area */}
