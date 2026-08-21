@@ -27,10 +27,15 @@ import {
   LayoutGrid, 
   Activity,
   Send,
-  Laptop,
   CheckCircle2,
   UserCog,
-  Settings
+  Settings,
+  Wallet,
+  Package,
+  ShoppingCart,
+  Zap,
+  Bell,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -224,6 +229,69 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
     items: [
       { label: 'Surat Masuk', shortLabel: 'Masuk', path: '/correspondence/surat-masuk', icon: Mail },
       { label: 'Surat Keluar', shortLabel: 'Keluar', path: '/correspondence/surat-keluar', icon: Send },
+    ]
+  },
+  // 12A. Grup Koperasi - Layanan Anggota Pribadi
+  {
+    id: 'coop_member',
+    matches: (p) => (
+      (p.startsWith('/cooperative/savings') && !p.includes('/manage')) ||
+      (p.startsWith('/cooperative/loans') && !p.includes('/manage')) ||
+      (p.startsWith('/cooperative/pos') && p.includes('catalog')) ||
+      (p.startsWith('/cooperative/shu') && !p.includes('/manage')) ||
+      (p.startsWith('/cooperative/vouchers') && !p.includes('/manage')) ||
+      (p.startsWith('/cooperative/announcements') && !p.includes('/manage')) ||
+      (p.startsWith('/cooperative/tickets') && !p.includes('/manage'))
+    ),
+    items: [
+      { label: 'Tabungan Saya', shortLabel: 'Tabungan', path: '/cooperative/savings', icon: Wallet },
+      { label: 'Pinjaman Saya', shortLabel: 'Pinjaman', path: '/cooperative/loans', icon: ArrowUpCircle },
+      { label: 'Katalog Belanja', shortLabel: 'Katalog', path: '/cooperative/pos?mode=catalog', icon: Package },
+      { label: 'SHU Saya', shortLabel: 'SHU', path: '/cooperative/shu', icon: Award },
+      { label: 'Poin & Benefit', shortLabel: 'Voucher', path: '/cooperative/vouchers', icon: Sparkles },
+      { label: 'Pengumuman', shortLabel: 'Pengumuman', path: '/cooperative/announcements', icon: Bell },
+      { label: 'Aduan & Keluhan', shortLabel: 'Aduan', path: '/cooperative/tickets', icon: MessageSquare },
+    ]
+  },
+  // 12B. Grup Koperasi - Toko, Kantin & Kasir POS
+  {
+    id: 'coop_store',
+    matches: (p) => (
+      p.startsWith('/cooperative/products') ||
+      p.startsWith('/cooperative/inventory-report') ||
+      p.startsWith('/cooperative/vouchers/manage') ||
+      (p.startsWith('/cooperative/pos') && !p.includes('catalog'))
+    ),
+    items: [
+      { label: 'Katalog Barang', shortLabel: 'Barang', path: '/cooperative/products', icon: Package },
+      { label: 'POS Kasir Toko', shortLabel: 'Kasir', path: '/cooperative/pos', icon: ShoppingCart },
+      { label: 'Voucher & Promo', shortLabel: 'Promo', path: '/cooperative/vouchers/manage', icon: Sparkles },
+      { label: 'Laporan Stok', shortLabel: 'Stok', path: '/cooperative/inventory-report', icon: Printer },
+    ]
+  },
+  // 12C. Grup Koperasi - Manajemen Pengurus & Simpan Pinjam
+  {
+    id: 'coop_manage',
+    matches: (p) => (
+      p.startsWith('/cooperative/members') ||
+      p.startsWith('/cooperative/savings/manage') ||
+      p.startsWith('/cooperative/loans/manage') ||
+      p.startsWith('/cooperative/ppob') ||
+      p.startsWith('/cooperative/reports') ||
+      p.startsWith('/cooperative/accounting') ||
+      p.startsWith('/cooperative/shu/manage') ||
+      p.startsWith('/cooperative/settings') ||
+      p.startsWith('/cooperative/tickets/manage') ||
+      p.startsWith('/cooperative/announcements/manage')
+    ),
+    items: [
+      { label: 'Kelola Anggota', shortLabel: 'Anggota', path: '/cooperative/members', icon: Users },
+      { label: 'Input Simpanan', shortLabel: 'Simpanan', path: '/cooperative/savings/manage', icon: Wallet },
+      { label: 'Approval Pinjam', shortLabel: 'Pinjaman', path: '/cooperative/loans/manage', icon: CheckCircle2 },
+      { label: 'PPOB Admin', shortLabel: 'PPOB', path: '/cooperative/ppob', icon: Zap },
+      { label: 'Laporan Keuangan', shortLabel: 'Keuangan', path: '/cooperative/reports', icon: Activity },
+      { label: 'Bagi Hasil SHU', shortLabel: 'SHU', path: '/cooperative/shu/manage', icon: Award },
+      { label: 'Pengaturan Koperasi', shortLabel: 'Pengaturan', path: '/cooperative/settings', icon: Settings },
     ]
   }
 ];

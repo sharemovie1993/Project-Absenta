@@ -169,13 +169,27 @@ const DEFAULT_BPBK_PRIMARY: FlatMenuItem[] = [
 ];
 
 const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
+  // 👤 Layanan Anggota (7 menu)
   { id: 'svg', title: 'Tabungan Saya', path: '/cooperative/savings', icon: 'Wallet' },
   { id: 'lon', title: 'Pinjaman Saya', path: '/cooperative/loans', icon: 'ArrowUpCircle' },
-  { id: 'pos', title: 'Katalog Belanja', path: '/cooperative/pos?mode=catalog', icon: 'Package' },
+  { id: 'pos_cat', title: 'Katalog Belanja', path: '/cooperative/pos?mode=catalog', icon: 'Package' },
   { id: 'shu', title: 'SHU Saya', path: '/cooperative/shu', icon: 'Award' },
   { id: 'vch', title: 'Poin & Benefit', path: '/cooperative/vouchers', icon: 'Sparkles' },
   { id: 'anc', title: 'Pengumuman', path: '/cooperative/announcements', icon: 'Bell' },
   { id: 'tck', title: 'Aduan & Keluhan', path: '/cooperative/tickets', icon: 'MessageSquare' },
+  // 🏪 Toko & Kasir (4 menu)
+  { id: 'prd', title: 'Katalog Barang', path: '/cooperative/products', icon: 'Package' },
+  { id: 'pos', title: 'POS Kasir Toko', path: '/cooperative/pos', icon: 'ShoppingCart' },
+  { id: 'vch_mng', title: 'Voucher & Promo', path: '/cooperative/vouchers/manage', icon: 'Sparkles' },
+  { id: 'inv_rep', title: 'Laporan Stok', path: '/cooperative/inventory-report', icon: 'Printer' },
+  // 💼 Manajemen Pengurus (7 menu)
+  { id: 'mbr', title: 'Kelola Anggota', path: '/cooperative/members', icon: 'Users' },
+  { id: 'svg_mng', title: 'Input Simpanan', path: '/cooperative/savings/manage', icon: 'Wallet' },
+  { id: 'lon_mng', title: 'Approval Pinjam', path: '/cooperative/loans/manage', icon: 'CheckCircle2' },
+  { id: 'ppb', title: 'PPOB Admin', path: '/cooperative/ppob', icon: 'Zap' },
+  { id: 'rep', title: 'Laporan Keuangan', path: '/cooperative/reports', icon: 'BarChart2' },
+  { id: 'shu_mng', title: 'Bagi Hasil SHU', path: '/cooperative/shu/manage', icon: 'Award' },
+  { id: 'stg', title: 'Pengaturan Koperasi', path: '/cooperative/settings', icon: 'Settings' },
 ];
 
 const DEFAULT_CBT_PRIMARY: FlatMenuItem[] = [
@@ -438,27 +452,41 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       return adminClusters.filter(c => c.items.length > 0);
     }
 
-    // ── KOPERASI WORKSPACE: 2 Klaster Alur Kerja ala GoPay Agen ──
+    // ── KOPERASI WORKSPACE: 3 Klaster Alur Kerja ala GoPay Agen ──
     if (activeWsId === 'COOPERATIVE_WORKSPACE' || activeWsId === 'KOPERASI_WORKSPACE') {
       const cMember: FlatMenuItem[] = [];
+      const cStore: FlatMenuItem[] = [];
       const cManage: FlatMenuItem[] = [];
 
       primaryItems.forEach(item => {
         const p = (item.path || '').toLowerCase();
         const t = (item.title || '').toLowerCase();
 
+        // 1. Toko, Kantin & Kasir (POS)
         if (
-          p.includes('/cooperative/savings') && !p.includes('/manage') ||
-          p.includes('/cooperative/loans') && !p.includes('/manage') ||
-          p.includes('/cooperative/pos') ||
-          p.includes('/cooperative/shu') && !p.includes('/manage') ||
-          p.includes('/cooperative/vouchers') ||
-          p.includes('/cooperative/announcements') && !p.includes('/manage') ||
-          p.includes('/cooperative/tickets') && !p.includes('/manage') ||
-          t.includes('saya') || t.includes('katalog') || t.includes('voucher')
+          p.includes('/products') ||
+          p.includes('/inventory-report') ||
+          p.includes('/vouchers/manage') ||
+          (p.includes('/cooperative/pos') && !p.includes('catalog')) ||
+          t.includes('barang') || t.includes('kasir') || t.includes('stok')
+        ) {
+          cStore.push(item);
+        }
+        // 2. Layanan Anggota Pribadi
+        else if (
+          (p.includes('/cooperative/savings') && !p.includes('/manage')) ||
+          (p.includes('/cooperative/loans') && !p.includes('/manage')) ||
+          (p.includes('/cooperative/pos') && p.includes('catalog')) ||
+          (p.includes('/cooperative/shu') && !p.includes('/manage')) ||
+          (p.includes('/cooperative/vouchers') && !p.includes('/manage')) ||
+          (p.includes('/cooperative/announcements') && !p.includes('/manage')) ||
+          (p.includes('/cooperative/tickets') && !p.includes('/manage')) ||
+          t.includes('saya') || t.includes('katalog')
         ) {
           cMember.push(item);
-        } else {
+        }
+        // 3. Manajemen Pengurus & Keuangan
+        else {
           cManage.push(item);
         }
       });
@@ -468,17 +496,26 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
           id: 'COOP_MEMBER',
           badge: '1. LAYANAN ANGGOTA',
           badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-          title: 'Layanan & Transaksi Anggota',
+          title: 'Layanan Anggota Pribadi',
           description: 'Tabungan saya, pinjaman, katalog belanja, SHU & voucher diskon',
-          icon: '🛒',
+          icon: '👤',
           items: cMember
         },
         {
+          id: 'COOP_STORE',
+          badge: '2. TOKO, KANTIN & KASIR',
+          badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+          title: 'Toko, Kantin & Kasir POS',
+          description: 'Kasir POS, inventori katalog barang, voucher promo & laporan stok',
+          icon: '🏪',
+          items: cStore
+        },
+        {
           id: 'COOP_MANAGE',
-          badge: '2. OPERASIONAL PENGURUS',
+          badge: '3. MANAJEMEN PENGURUS',
           badgeColor: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
-          title: 'Manajemen & Tata Kelola Toko',
-          description: 'Kelola anggota, input simpanan, persetujuan pinjaman & pembukuan',
+          title: 'Pengurus & Simpan Pinjam',
+          description: 'Kelola anggota, input simpanan, persetujuan pinjaman, pembukuan & SHU',
           icon: '💼',
           items: cManage
         }
