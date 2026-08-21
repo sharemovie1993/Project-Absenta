@@ -442,7 +442,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
         {clusters.map((cluster, clusterIdx) => (
           <div
             key={cluster.id}
-            className="p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between"
+            className="p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-start"
           >
             {/* Header Klaster ala GoPay Agen: Bersih, Ringkas, Sejajar */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -461,8 +461,8 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
               </span>
             </div>
 
-            {/* Grid 4-Kolom Tetap ala GoPay Agen (Sempurna di Layar HP & Desktop) */}
-            <div className="grid grid-cols-4 gap-y-3.5 gap-x-1 sm:gap-x-2 pt-2.5 mt-auto">
+            {/* Grid 4-Kolom Tetap ala GoPay Agen (Selalu Rata Atas / Top-Aligned) */}
+            <div className="grid grid-cols-4 gap-y-3.5 gap-x-1 sm:gap-x-2 pt-2.5">
               {cluster.items.map((item, idx) => {
                 const IconComp = iconForName(item.icon) || Layers;
                 const palette = TILE_GRADIENTS[(clusterIdx * 4 + idx) % TILE_GRADIENTS.length];
