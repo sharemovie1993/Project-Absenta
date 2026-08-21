@@ -135,24 +135,6 @@ export default function DashboardOverview() {
 
   const renderOverviewContent = () => (
     <>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Selamat {getTimeGreeting()}, {user?.name || 'Admin'} 👋
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 font-medium">
-            Inilah ringkasan aktivitas sekolah Anda hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
-        <Link
-          to="/academic"
-          className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer select-none shrink-0"
-        >
-          <span>Buka Ruang Kerja Akademik</span>
-          <ArrowRight size={14} />
-        </Link>
-      </div>
-
       {/* Workspace App Launcher Portal (Admin & Data Master Suite) */}
       <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" className="mb-8" />
 

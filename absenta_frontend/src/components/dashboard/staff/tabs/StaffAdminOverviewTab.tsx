@@ -1,10 +1,9 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   GraduationCap, 
   CalendarCheck, 
-  ArrowRight,
   Calendar,
   Settings
 } from 'lucide-react';
@@ -63,14 +62,6 @@ export const StaffAdminOverviewTab: React.FC<StaffAdminOverviewTabProps> = ({ us
     return () => { isMounted = false; };
   }, []);
 
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 11) return 'Pagi';
-    if (hour < 15) return 'Siang';
-    if (hour < 19) return 'Sore';
-    return 'Malam';
-  };
-
   const totalSiswa = stats?.total_siswa ?? academicStats?.total_siswa ?? 0;
   const totalGuru = stats?.total_guru ?? academicStats?.total_guru ?? 0;
   const persentaseSiswa = stats?.persentase_siswa ?? 0;
@@ -85,26 +76,6 @@ export const StaffAdminOverviewTab: React.FC<StaffAdminOverviewTabProps> = ({ us
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-            Selamat {getTimeGreeting()}, {user?.full_name || user?.name || 'Administrator'} 👋
-          </h2>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Inilah ringkasan aktivitas dan operasional sekolah Anda hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
-          </p>
-        </div>
-        <Link
-          to="/academic"
-          className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-2 shadow-md shadow-blue-600/20 transition-all select-none shrink-0"
-        >
-          <span>Ruang Kerja Akademik</span>
-          <ArrowRight size={14} />
-        </Link>
-      </div>
-
       {/* Workspace App Launcher Portal */}
       <WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" />
 
