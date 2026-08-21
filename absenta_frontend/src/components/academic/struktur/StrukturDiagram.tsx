@@ -248,7 +248,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     }
 
     // Handle "Remove Member" action (Trash/X Button)
-    if (actionType === 'MEMBER_REMOVE') {
+    if (actionType === 'MEMBER_REMOVE' || actionType === 'DELETE') {
       const personName = node.subLabel || node.label;
       
       const isConfirmed = await confirm({

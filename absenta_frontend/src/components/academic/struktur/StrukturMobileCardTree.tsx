@@ -111,7 +111,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
   const handleDeleteMember = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onAction) {
-      onAction(node, 'DELETE', cardRef.current);
+      onAction(node, 'MEMBER_REMOVE', cardRef.current);
     }
   };
 
