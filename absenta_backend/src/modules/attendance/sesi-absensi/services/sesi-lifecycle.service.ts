@@ -7,6 +7,7 @@ import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
 import { parseSafeDate } from './sesi-absensi.schema';
 import { sesiReminderService } from './sesi-reminder.service';
 import { sesiCloseNotifyService } from './sesi-close-notify.service';
+import { sesiHelperService } from './sesi-helper.service';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -27,74 +28,74 @@ async function loadShiftConfig(tenantId: string): Promise<any | null> {
  */
 function resolveSlotTimeSesi(
   shiftConfig: any,
-  kelasId: string,
-  hari: string,
+  _kelasId: string,
   slotIndex: number,
-): { start: string; end: string } | null {
-  if (!shiftConfig?.shifts) return null;
-  const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
-  const shift = shiftConfig.shifts.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts[0];
-  if (!shift) return null;
+  hariName: string
+): { jam_mulai?: string; jam_selesai?: string } | null {
+  if (!shiftConfig) return null;
+  const upperHari = hariName.toUpperCase();
 
-  const upperHari = (hari || '').toUpperCase();
   // Prioritaskan day_patterns[hari] jika punya slots
-  const daySlots =
-    (shift.day_patterns?.[upperHari]?.slots?.length > 0)
-      ? shift.day_patterns[upperHari].slots
-      : (shift.slots || []);
-  const found = daySlots.find((sl: any) => (sl.slot !== undefined ? sl.slot === slotIndex : sl.slot_index === slotIndex));
-  return found ? { start: found.start, end: found.end } : null;
+  const slots: any[] =
+    (shiftConfig.day_patterns?.[upperHari]?.slots?.length > 0)
+      ? shiftConfig.day_patterns[upperHari].slots
+      : (shiftConfig.slots || []);
+
+  if (slots.length === 0) return null;
+
+  // 1. Coba cari slot dengan index yang sama
+  const exactSlot = slots.find((s: any) => Number(s.index) === slotIndex || Number(s.jam_ke) === slotIndex);
+  if (exactSlot && exactSlot.jam_mulai && exactSlot.jam_selesai) {
+    return { jam_mulai: exactSlot.jam_mulai, jam_selesai: exactSlot.jam_selesai };
+  }
+
+  // 2. Fallback: index berbasis urutan 1-based (slot ke-1 = index 0)
+  const fallbackSlot = slots[slotIndex - 1];
+  if (fallbackSlot && fallbackSlot.jam_mulai && fallbackSlot.jam_selesai) {
+    return { jam_mulai: fallbackSlot.jam_mulai, jam_selesai: fallbackSlot.jam_selesai };
+  }
+
+  return null;
 }
 
 /**
- * Enrich JadwalKBM array with correct jam_mulai/jam_selesai from shift config.
- * Identical to JadwalKBMService.enrichJadwalWithDayTimes.
+ * Enrich JadwalKBM items with dynamic day_patterns / shift slot times for Sesi module.
  */
-function enrichJadwalWithDayTimesSesi(rawSchedules: any[], shiftConfig: any, defaultHari: string): any[] {
-  if (!shiftConfig) return rawSchedules;
-  return rawSchedules.map((item) => {
-    if (item.slot_index === undefined || item.slot_index === null) return item;
-    const effectiveHari = item.hari || defaultHari || '';
-    const resolved = resolveSlotTimeSesi(shiftConfig, item.kelas_id, effectiveHari, item.slot_index);
+function enrichJadwalWithDayTimesSesi(schedules: any[], shiftConfig: any, hariName: string): any[] {
+  if (!shiftConfig || !schedules || schedules.length === 0) return schedules;
+  return schedules.map(item => {
+    const slotIdx = item.slot_index ?? item.jam_ke_start;
+    if (slotIdx === undefined || slotIdx === null) return item;
+    const resolved = resolveSlotTimeSesi(shiftConfig, item.kelas_id, Number(slotIdx), hariName);
     if (!resolved) return item;
     return {
       ...item,
-      jam_mulai: resolved.start,
-      jam_selesai: resolved.end,
+      jam_mulai: resolved.jam_mulai || item.jam_mulai,
+      jam_selesai: resolved.jam_selesai || item.jam_selesai
     };
   });
 }
 
 /**
- * Validate Early Tolerance (15m before start) and Late Cutoff (after end time) in Tenant Timezone.
+ * Centralized Time-Window & Cutoff Guard saat membuat/membuka sesi KBM (Timezone-Aware)
  */
 function validateSessionTimeWindow(
-  startTarget: Date | null,
-  endTarget: Date | null,
-  hasFoto: boolean,
-  timezone: string = PLATFORM_TIMEZONE
-): void {
-  if (!hasFoto) return;
+  waktuMulai: Date | null,
+  _waktuSelesai: Date | null,
+  isLiveOpening: boolean,
+  tz: string = PLATFORM_TIMEZONE
+) {
+  if (!waktuMulai || isNaN(waktuMulai.getTime())) return;
   const now = new Date();
-  const tzLabel = getTimezoneLabel(timezone);
+  const EARLY_TOLERANCE_MS = 15 * 60 * 1000;
+  const earliestAllowed = new Date(waktuMulai.getTime() - EARLY_TOLERANCE_MS);
 
-  if (startTarget && !isNaN(startTarget.getTime())) {
-    const EARLY_TOLERANCE_MS = 15 * 60 * 1000;
-    const earliestAllowed = new Date(startTarget.getTime() - EARLY_TOLERANCE_MS);
-    if (now.getTime() < earliestAllowed.getTime()) {
-      const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
-      const openTimeStr = fmt(earliestAllowed);
-      const startTimeStr = fmt(startTarget);
-      throw new Error(`Sesi KBM belum dibuka. Anda baru dapat membuka sesi dan mencatat kehadiran untuk jam ${startTimeStr} mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
-    }
-  }
-
-  if (endTarget && !isNaN(endTarget.getTime())) {
-    if (now.getTime() > endTarget.getTime()) {
-      const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
-      const endTimeStr = fmt(endTarget);
-      throw new Error(`Jadwal sesi KBM telah berakhir pada pukul ${endTimeStr} ${tzLabel}. Anda tidak dapat lagi membuka sesi yang sudah terlewat.`);
-    }
+  if (isLiveOpening && now.getTime() < earliestAllowed.getTime()) {
+    const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+    const openTimeStr = fmt(earliestAllowed);
+    const startTimeStr = fmt(waktuMulai);
+    const tzLabel = getTimezoneLabel(tz);
+    throw new Error(`Sesi KBM belum dibuka. Presensi kehadiran guru untuk sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
   }
 }
 
@@ -108,16 +109,28 @@ async function upsertTeacherAttendanceOnOpen(
   startTarget: Date | null,
   tahunPelajaranId: string,
   semesterId: string,
-  catatan: string = 'Hadir saat pembukaan sesi KBM (Foto)'
+  catatan: string = 'Hadir saat pembukaan sesi KBM (Foto)',
+  kelasId?: string | null
 ): Promise<void> {
   try {
     const now = new Date();
+    
+    // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+    const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+      tenantId,
+      kelasId,
+      startTarget,
+      now
+    );
+
     let isTerlambat = false;
     let menitKeterlambatan = 0;
-    if (startTarget && !isNaN(startTarget.getTime()) && now.getTime() > startTarget.getTime()) {
+    if (effectiveStartTarget && !isNaN(effectiveStartTarget.getTime()) && now.getTime() > effectiveStartTarget.getTime()) {
       isTerlambat = true;
-      menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - startTarget.getTime()) / (60 * 1000)));
+      menitKeterlambatan = Math.max(0, Math.floor((now.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
     }
+
+    const finalCatatan = auditNote ? `${catatan} (${auditNote})` : catatan;
 
     const existingAbsen = await prisma.absenGuru.findFirst({
       where: { tenant_id: tenantId, sesi_id: sesiId, guru_id: guruId }
@@ -131,7 +144,7 @@ async function upsertTeacherAttendanceOnOpen(
           waktu_tap: now,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
-          catatan,
+          catatan: finalCatatan,
           updated_at: new Date()
         }
       });
@@ -145,7 +158,7 @@ async function upsertTeacherAttendanceOnOpen(
           waktu_tap: now,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
-          catatan,
+          catatan: finalCatatan,
           tahun_pelajaran_id: tahunPelajaranId || 'default-tp',
           semester_id: semesterId || 'default-sem',
         }
@@ -294,7 +307,8 @@ export class SesiLifecycleService {
             startTarget,
             existingSesi.tahun_pelajaran_id,
             existingSesi.semester_id,
-            'Hadir saat pembukaan sesi KBM (Foto)'
+            'Hadir saat pembukaan sesi KBM (Foto)',
+            existingSesi.kelas_id
           );
         }
         return updatedSesi;
@@ -361,7 +375,8 @@ export class SesiLifecycleService {
         parsedStart,
         targetTpId || 'default-tp',
         targetSemId || 'default-sem',
-        'Otomatis HADIR saat pembukaan sesi KBM (Foto)'
+        'Otomatis HADIR saat pembukaan sesi KBM (Foto)',
+        kelas_id
       );
     }
 

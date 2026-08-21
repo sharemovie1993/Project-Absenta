@@ -1,6 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
 import { AttendanceRuleEngine } from '../../../../domain/attendance/AttendanceRuleEngine';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
+import { sesiHelperService } from './sesi-helper.service';
 
 export class SesiTapEngineService {
   private static instance: SesiTapEngineService;
@@ -264,9 +265,18 @@ export class SesiTapEngineService {
         menitKeterlambatan = existing.menit_keterlambatan || 0;
       } else {
         effectiveTapTime = tapTime || new Date();
-        if (sesi.waktu_mulai && effectiveTapTime > sesi.waktu_mulai) {
+
+        // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+        const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+          tenantId,
+          sesi.kelas_id,
+          sesi.waktu_mulai,
+          effectiveTapTime
+        );
+
+        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
           isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
         }
       }
     } else {
@@ -415,6 +425,7 @@ export class SesiTapEngineService {
     let effectiveTapTime = tapTime;
     let isTerlambat = false;
     let menitKeterlambatan = 0;
+    let autoCatatan = catatan;
 
     if (status === 'HADIR') {
       // 🛡️ First-In Check-In Timestamp Preservation:
@@ -424,9 +435,22 @@ export class SesiTapEngineService {
         menitKeterlambatan = existing.menit_keterlambatan || 0;
       } else {
         effectiveTapTime = tapTime || new Date();
-        if (sesi.waktu_mulai && effectiveTapTime > sesi.waktu_mulai) {
+
+        // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+        const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+          tenantId,
+          sesi.kelas_id,
+          sesi.waktu_mulai,
+          effectiveTapTime
+        );
+
+        if (auditNote && !autoCatatan) {
+          autoCatatan = auditNote;
+        }
+
+        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
           isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
         }
       }
     } else {
@@ -444,7 +468,7 @@ export class SesiTapEngineService {
           waktu_tap: effectiveTapTime,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
-          catatan: catatan !== undefined ? catatan : existing.catatan,
+          catatan: autoCatatan !== undefined ? autoCatatan : existing.catatan,
           updated_at: new Date()
         }
       });
@@ -460,7 +484,7 @@ export class SesiTapEngineService {
           waktu_tap: effectiveTapTime,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
-          catatan: catatan || null
+          catatan: autoCatatan || null
         }
       });
     }

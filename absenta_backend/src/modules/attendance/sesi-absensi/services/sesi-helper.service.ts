@@ -133,6 +133,80 @@ export class SesiHelperService {
   async publishRedisEvent(channel: string, payload: any) {
     console.log(`[Redis Event] Channel: ${channel}`, payload);
   }
+
+  /**
+   * ⚖️ Keadilan Presensi KBM:
+   * 1. Deteksi Kejadian Khusus / Pembiasaan Sekolah (Upacara, Dhuha, Hujan Lebat) -> Abaikan keterlambatan
+   * 2. Deteksi Jeda Transisi Guru Molor (Handover Grace Period) -> Jam mulai disesuaikan dari waktu selesai sesi sebelumnya + 5 menit
+   */
+  async resolveEffectiveKbmStartTarget(
+    tenantId: string,
+    kelasId: string | null | undefined,
+    scheduledStart: Date | null,
+    currentDate: Date = new Date()
+  ): Promise<{ effectiveStartTarget: Date | null; isSpecialEventLateIgnored: boolean; isHandoverExtended: boolean; auditNote?: string }> {
+    if (!scheduledStart || isNaN(scheduledStart.getTime())) {
+      return { effectiveStartTarget: scheduledStart, isSpecialEventLateIgnored: false, isHandoverExtended: false };
+    }
+
+    try {
+      // 1. Cek Kejadian Khusus (Upacara/Pembiasaan/Hujan Lebat)
+      const todayStr = currentDate.toISOString().split('T')[0];
+      const specialEvent = await prisma.absensiKejadianKhusus.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tanggal: new Date(todayStr),
+          abaikan_terlambat: true
+        }
+      });
+
+      if (specialEvent) {
+        return {
+          effectiveStartTarget: null, // Abaikan keterlambatan
+          isSpecialEventLateIgnored: true,
+          isHandoverExtended: false,
+          auditNote: `Dispensasi KBM: ${specialEvent.keterangan || 'Kejadian Khusus / Pembiasaan'}`
+        };
+      }
+
+      // 2. Cek Sesi Sebelumnya di Kelas yang Sama (Handover Grace Period)
+      if (kelasId) {
+        const startOfToday = new Date(currentDate);
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(currentDate);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        const prevSession = await prisma.sesiAbsensi.findFirst({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: kelasId,
+            created_at: { gte: startOfToday, lte: endOfToday },
+            waktu_selesai: { not: null }
+          },
+          orderBy: { waktu_selesai: 'desc' }
+        });
+
+        if (prevSession && prevSession.waktu_selesai && prevSession.waktu_selesai.getTime() > scheduledStart.getTime()) {
+          const HANDOVER_BUFFER_MS = 5 * 60 * 1000; // 5 Menit Jeda Transisi
+          const effectiveStart = new Date(prevSession.waktu_selesai.getTime() + HANDOVER_BUFFER_MS);
+          return {
+            effectiveStartTarget: effectiveStart,
+            isSpecialEventLateIgnored: false,
+            isHandoverExtended: true,
+            auditNote: `Transisi Guru: Sesi sebelumnya selesai ${prevSession.waktu_selesai.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('[resolveEffectiveKbmStartTarget] Warning:', err?.message);
+    }
+
+    return {
+      effectiveStartTarget: scheduledStart,
+      isSpecialEventLateIgnored: false,
+      isHandoverExtended: false
+    };
+  }
 }
 
 export const sesiHelperService = SesiHelperService.getInstance();
