@@ -386,9 +386,20 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       if (previousQueryRes?.data) {
         const optimisticQueryData = previousQueryRes.data.map((rec: SesiAttendanceRecord) => {
           const currentId = rec.siswa_akademik_id || rec.siswa_id || rec.guru_id || rec.id;
-          return currentId === siswaAkademikId 
-            ? { ...rec, status: status, waktu_tap: status === 'HADIR' ? new Date().toISOString() : null }
-            : rec;
+          if (currentId !== siswaAkademikId) return rec;
+
+          const isAlreadyHadir = rec.status === 'HADIR' && Boolean(rec.waktu_tap);
+          const preservedWaktuTap = (isAlreadyHadir && status === 'HADIR') 
+            ? rec.waktu_tap 
+            : (status === 'HADIR' ? new Date().toISOString() : null);
+
+          return { 
+            ...rec, 
+            status: status, 
+            waktu_tap: preservedWaktuTap,
+            is_terlambat: (isAlreadyHadir && status === 'HADIR') ? rec.is_terlambat : (status === 'HADIR' ? rec.is_terlambat : false),
+            menit_keterlambatan: (isAlreadyHadir && status === 'HADIR') ? rec.menit_keterlambatan : (status === 'HADIR' ? rec.menit_keterlambatan : 0)
+          };
         });
         queryClient.setQueryData(['sesi-detail-attendance', sesi.id], {
           ...previousQueryRes,
@@ -495,10 +506,17 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
 
     // 1. Instant optimistic update to local state
     const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
-    
+    const isAlreadyHadir = targetRec?.status === 'HADIR' && Boolean(targetRec?.waktu_tap);
     let isLate = targetRec?.is_terlambat || false;
-    if (status === 'HADIR') {
-      const jamMulaiStr = sesi?.jam_mulai || sesi?.JamPelajaran?.jam_mulai;
+    let lateMinutes = targetRec?.menit_keterlambatan || 0;
+
+    if (isAlreadyHadir && status === 'HADIR') {
+      // 🛡️ First-In Check-In Timestamp Preservation:
+      // Jaga waktu tap dan menit keterlambatan pertama jika status sudah HADIR
+      isLate = targetRec.is_terlambat || false;
+      lateMinutes = targetRec.menit_keterlambatan || 0;
+    } else if (status === 'HADIR') {
+      const jamMulaiStr = sesi?.jam_mulai || (sesi as any)?.JamPelajaran?.jam_mulai;
       if (jamMulaiStr) {
         const tenantNow = getVirtualDate();
         const tenantTz = getTimezone();
@@ -516,10 +534,17 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         const [startH, startM] = jamMulaiStr.split(':').map(Number);
         const startMinutes = (startH || 0) * 60 + (startM || 0);
         
-        isLate = nowMinutes > startMinutes + (sesi?.toleransi_menit || 5);
+        if (nowMinutes > startMinutes) {
+          isLate = true;
+          lateMinutes = nowMinutes - startMinutes;
+        } else {
+          isLate = false;
+          lateMinutes = 0;
+        }
       }
     } else {
       isLate = false;
+      lateMinutes = 0;
     }
 
     const tenantNowISO = formatLocalDateTime(getVirtualDate());
@@ -527,15 +552,25 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
     setLocalRecords(prev => 
       prev.map(r => {
         const currentId = r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id;
-        return currentId === siswaAkademikId 
-          ? { 
-              ...r, 
-              status: status, 
-              catatan: catatan !== undefined ? catatan : r.catatan,
-              is_terlambat: isLate,
-              waktu_tap: status === 'BELUM_TAP' ? null : (r.waktu_tap || tenantNowISO)
-            }
-          : r;
+        if (currentId !== siswaAkademikId) return r;
+
+        const isCurrentAlreadyHadir = r.status === 'HADIR' && Boolean(r.waktu_tap);
+        const preservedTap = (isCurrentAlreadyHadir && status === 'HADIR')
+          ? r.waktu_tap
+          : (status === 'HADIR' ? tenantNowISO : null);
+
+        const preservedLateMin = (isCurrentAlreadyHadir && status === 'HADIR')
+          ? (r.menit_keterlambatan || lateMinutes)
+          : lateMinutes;
+
+        return { 
+          ...r, 
+          status: status, 
+          catatan: catatan !== undefined ? catatan : r.catatan,
+          is_terlambat: isLate,
+          menit_keterlambatan: preservedLateMin,
+          waktu_tap: preservedTap
+        };
       })
     );
 

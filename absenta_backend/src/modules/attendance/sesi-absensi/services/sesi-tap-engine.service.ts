@@ -242,15 +242,6 @@ export class SesiTapEngineService {
       throw new Error('Siswa tidak ditemukan');
     }
 
-    let isTerlambat = false;
-    let menitKeterlambatan = 0;
-    if (sesi.waktu_mulai && tapTime > sesi.waktu_mulai) {
-      isTerlambat = true;
-      menitKeterlambatan = Math.max(0, Math.floor((tapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
-    }
-
-    const poin = AttendanceRuleEngine.calculateAttendancePoints(status, isTerlambat);
-
     const existing = await prisma.absenSiswa.findFirst({
       where: {
         tenant_id: tenantId,
@@ -258,6 +249,33 @@ export class SesiTapEngineService {
         siswa_akademik_id: siswaAkademik.id
       }
     });
+
+    let effectiveTapTime: Date | null = tapTime;
+    let isTerlambat = false;
+    let menitKeterlambatan = 0;
+
+    if (status === 'HADIR') {
+      // 🛡️ First-In Check-In Timestamp Preservation:
+      // Jika siswa sudah tercatat HADIR dan sudah memiliki waktu_tap pertama,
+      // jangan ubah waktu_tap dan menit_keterlambatan saat ada klik ulang/idempotent tap.
+      if (existing && existing.status === 'HADIR' && existing.waktu_tap && !waktu_tap) {
+        effectiveTapTime = existing.waktu_tap;
+        isTerlambat = existing.is_terlambat || false;
+        menitKeterlambatan = existing.menit_keterlambatan || 0;
+      } else {
+        effectiveTapTime = tapTime || new Date();
+        if (sesi.waktu_mulai && effectiveTapTime > sesi.waktu_mulai) {
+          isTerlambat = true;
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
+        }
+      }
+    } else {
+      effectiveTapTime = null;
+      isTerlambat = false;
+      menitKeterlambatan = 0;
+    }
+
+    const poin = AttendanceRuleEngine.calculateAttendancePoints(status, isTerlambat);
 
     let result;
     if (existing) {
@@ -273,7 +291,7 @@ export class SesiTapEngineService {
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
           poin_kehadiran: poin,
-          waktu_tap: tapTime,
+          waktu_tap: effectiveTapTime,
           catatan: catatan !== undefined ? catatan : existing.catatan,
           updated_at: new Date()
         }
@@ -289,7 +307,7 @@ export class SesiTapEngineService {
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
           poin_kehadiran: poin,
-          waktu_tap: tapTime,
+          waktu_tap: effectiveTapTime,
           catatan: catatan || null
         }
       });
@@ -383,13 +401,6 @@ export class SesiTapEngineService {
       }
     }
 
-    let isTerlambat = false;
-    let menitKeterlambatan = 0;
-    if (status === 'HADIR' && sesi.waktu_mulai && tapTime && tapTime > sesi.waktu_mulai) {
-      isTerlambat = true;
-      menitKeterlambatan = Math.max(0, Math.floor((tapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
-    }
-
     const effectiveGuruId = guruId || sesi.guru_id;
     if (!effectiveGuruId) throw new Error('Guru ID tidak ditemukan untuk sesi ini');
 
@@ -401,13 +412,36 @@ export class SesiTapEngineService {
       }
     });
 
+    let effectiveTapTime = tapTime;
+    let isTerlambat = false;
+    let menitKeterlambatan = 0;
+
+    if (status === 'HADIR') {
+      // 🛡️ First-In Check-In Timestamp Preservation:
+      if (existing && existing.status === 'HADIR' && existing.waktu_tap && !waktu_tap) {
+        effectiveTapTime = existing.waktu_tap;
+        isTerlambat = existing.is_terlambat || false;
+        menitKeterlambatan = existing.menit_keterlambatan || 0;
+      } else {
+        effectiveTapTime = tapTime || new Date();
+        if (sesi.waktu_mulai && effectiveTapTime > sesi.waktu_mulai) {
+          isTerlambat = true;
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
+        }
+      }
+    } else {
+      effectiveTapTime = null;
+      isTerlambat = false;
+      menitKeterlambatan = 0;
+    }
+
     let result;
     if (existing) {
       result = await prisma.absenGuru.update({
         where: { id: existing.id },
         data: {
           status,
-          waktu_tap: tapTime,
+          waktu_tap: effectiveTapTime,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
           catatan: catatan !== undefined ? catatan : existing.catatan,
@@ -423,7 +457,7 @@ export class SesiTapEngineService {
           tahun_pelajaran_id: sesi.tahun_pelajaran_id,
           semester_id: sesi.semester_id,
           status,
-          waktu_tap: tapTime,
+          waktu_tap: effectiveTapTime,
           is_terlambat: isTerlambat,
           menit_keterlambatan: menitKeterlambatan,
           catatan: catatan || null
