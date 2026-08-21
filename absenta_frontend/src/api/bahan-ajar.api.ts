@@ -3,13 +3,19 @@ import axiosInstance from '../lib/axiosInstance';
 export interface LangkahKbmSection {
   durasi_menit?: number;
   kegiatan: string[];
+  gambar_url?: string;
+  gambar_caption?: string;
   teks_bacaan?: {
     judul: string;
     paragraf: string[];
+    gambar_url?: string;
+    gambar_caption?: string;
   };
   lkpd?: {
     judul: string;
     petunjuk: string;
+    gambar_url?: string;
+    gambar_caption?: string;
   };
 }
 

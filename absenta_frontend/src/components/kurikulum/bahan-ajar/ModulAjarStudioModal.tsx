@@ -20,7 +20,9 @@ import {
   Layers,
   X,
   AlertCircle,
-  Eye
+  Eye,
+  Image as ImageIcon,
+  UploadCloud
 } from 'lucide-react';
 import { Modal, Button } from '../../ui';
 import {
@@ -662,9 +664,88 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                           }
                         }
                       }))}
-                      placeholder="Pembukaan: Guru membuka dengan salam dan doa.\nApersepsi: Guru menampilkan gambar fenomena alam.\nPertanyaan Pemantik: Mengapa fakta penting dalam observasi?"
-                      className="w-full px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
+                      placeholder="Pembukaan: Guru membuka dengan salam dan doa.\nApersepsi: Guru menampilkan gambar fenomena alam.\nPertanyaan Pe                      className="w-full px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
                     />
+                  </div>
+
+                  {/* Foto Pemantik / Kasus */}
+                  <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                        <ImageIcon size={13} className="text-amber-600" />
+                        <span>Foto / Ilustrasi Pemantik (Opsional - Tampil di Slide 1):</span>
+                      </label>
+                      {currentMeeting.langkah_kbm?.pendahuluan?.gambar_url && (
+                        <button
+                          type="button"
+                          onClick={() => updateCurrentMeeting(prev => ({
+                            ...prev,
+                            langkah_kbm: {
+                              ...prev.langkah_kbm,
+                              pendahuluan: {
+                                ...prev.langkah_kbm.pendahuluan,
+                                gambar_url: undefined,
+                                gambar_caption: undefined
+                              }
+                            }
+                          }))}
+                          className="text-[10px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                        >
+                          Hapus Foto
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={currentMeeting.langkah_kbm?.pendahuluan?.gambar_url || ''}
+                        onChange={(e) => updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            pendahuluan: {
+                              ...prev.langkah_kbm.pendahuluan,
+                              gambar_url: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Tempel link URL foto pemantik (https://...)"
+                        className="w-full px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={currentMeeting.langkah_kbm?.pendahuluan?.gambar_caption || ''}
+                        onChange={(e) => updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            pendahuluan: {
+                              ...prev.langkah_kbm.pendahuluan,
+                              gambar_caption: e.target.value
+                            }
+                          }
+                        }))}
+                        placeholder="Keterangan / Caption Foto Kasus"
+                        className="w-full px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none"
+                      />
+                    </div>
+
+                    {currentMeeting.langkah_kbm?.pendahuluan?.gambar_url && (
+                      <div className="relative rounded-2xl overflow-hidden border border-amber-300 dark:border-amber-800 max-w-xs bg-slate-900/40 mt-1">
+                        <img
+                          src={currentMeeting.langkah_kbm?.pendahuluan?.gambar_url}
+                          alt="Preview Pemantik"
+                          className="w-full h-32 object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        {currentMeeting.langkah_kbm?.pendahuluan?.gambar_caption && (
+                          <div className="p-1.5 text-[10px] text-amber-900 dark:text-amber-200 italic bg-amber-100/90 dark:bg-amber-950/90 text-center font-medium">
+                            {currentMeeting.langkah_kbm?.pendahuluan?.gambar_caption}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -726,7 +807,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                             ...prev.langkah_kbm.inti,
                             teks_bacaan: {
                               judul: e.target.value,
-                              paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || ['']
+                              paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [''],
+                              gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
+                              gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
                             }
                           }
                         }
@@ -746,7 +829,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                             ...prev.langkah_kbm.inti,
                             teks_bacaan: {
                               judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                              paragraf: e.target.value.split('\n\n').filter(Boolean)
+                              paragraf: e.target.value.split('\n\n').filter(Boolean),
+                              gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
+                              gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
                             }
                           }
                         }
@@ -754,6 +839,106 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                       placeholder="Isi paragraf teks bacaan (Pisahkan antar-paragraf dengan baris kosong)..."
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal"
                     />
+
+                    {/* Lampiran Gambar / Diagram Materi */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                          <ImageIcon size={13} className="text-blue-600" />
+                          <span>Lampiran Gambar / Diagram Materi (Opsional - Tampil di Slide 2):</span>
+                        </label>
+                        {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
+                          <button
+                            type="button"
+                            onClick={() => updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  teks_bacaan: {
+                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
+                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
+                                    gambar_url: undefined,
+                                    gambar_caption: undefined
+                                  }
+                                }
+                              }
+                            }))}
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                          >
+                            Hapus Gambar
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  teks_bacaan: {
+                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
+                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
+                                    gambar_url: val,
+                                    gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
+                                  }
+                                }
+                              }
+                            }));
+                          }}
+                          placeholder="Tempel link URL gambar materi (https://...)"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  teks_bacaan: {
+                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
+                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
+                                    gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
+                                    gambar_caption: val
+                                  }
+                                }
+                              }
+                            }));
+                          }}
+                          placeholder="Keterangan / Caption Gambar Diagram"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                        />
+                      </div>
+
+                      {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
+                        <div className="relative rounded-2xl overflow-hidden border border-blue-300 dark:border-blue-800 max-w-xs bg-slate-900/40 mt-1">
+                          <img
+                            src={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url}
+                            alt="Preview Materi"
+                            className="w-full h-32 object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption && (
+                            <div className="p-1.5 text-[10px] text-blue-900 dark:text-blue-200 italic bg-blue-100/90 dark:bg-blue-950/90 text-center font-medium">
+                              {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* LKPD / Tugas Kelompok */}
@@ -774,7 +959,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                             ...prev.langkah_kbm.inti,
                             lkpd: {
                               judul: e.target.value,
-                              petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || ''
+                              petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                              gambar_url: prev.langkah_kbm.inti?.lkpd?.gambar_url,
+                              gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
                             }
                           }
                         }
@@ -794,7 +981,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                             ...prev.langkah_kbm.inti,
                             lkpd: {
                               judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
-                              petunjuk: e.target.value
+                              petunjuk: e.target.value,
+                              gambar_url: prev.langkah_kbm.inti?.lkpd?.gambar_url,
+                              gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
                             }
                           }
                         }
@@ -802,6 +991,106 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                       placeholder="1. Diskusikan bersama kelompok...\n2. Tuliskan 3 kalimat fakta ilmiah..."
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal"
                     />
+
+                    {/* Lampiran Gambar Soal LKPD */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                          <ImageIcon size={13} className="text-emerald-600" />
+                          <span>Lampiran Gambar Soal / Kasus LKPD (Opsional - Tampil di Slide 3):</span>
+                        </label>
+                        {currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url && (
+                          <button
+                            type="button"
+                            onClick={() => updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  lkpd: {
+                                    judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
+                                    petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                                    gambar_url: undefined,
+                                    gambar_caption: undefined
+                                  }
+                                }
+                              }
+                            }))}
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                          >
+                            Hapus Gambar
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  lkpd: {
+                                    judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
+                                    petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                                    gambar_url: val,
+                                    gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
+                                  }
+                                }
+                              }
+                            }));
+                          }}
+                          placeholder="Tempel link URL gambar tugas LKPD (https://...)"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_caption || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateCurrentMeeting(prev => ({
+                              ...prev,
+                              langkah_kbm: {
+                                ...prev.langkah_kbm,
+                                inti: {
+                                  ...prev.langkah_kbm.inti,
+                                  lkpd: {
+                                    judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
+                                    petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                                    gambar_url: prev.langkah_kbm.inti?.lkpd?.gambar_url,
+                                    gambar_caption: val
+                                  }
+                                }
+                              }
+                            }));
+                          }}
+                          placeholder="Keterangan / Caption Gambar Soal LKPD"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                        />
+                      </div>
+
+                      {currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url && (
+                        <div className="relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 max-w-xs bg-slate-900/40 mt-1">
+                          <img
+                            src={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url}
+                            alt="Preview LKPD"
+                            className="w-full h-32 object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          {currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_caption && (
+                            <div className="p-1.5 text-[10px] text-emerald-900 dark:text-emerald-200 italic bg-emerald-100/90 dark:bg-emerald-950/90 text-center font-medium">
+                              {currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_caption}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

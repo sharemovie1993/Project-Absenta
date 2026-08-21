@@ -386,6 +386,22 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     "{currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.find(k => k.includes('Pemantik'))?.replace('Pertanyaan Pemantik: ', '') || currentPertemuan.topik}"
                   </p>
 
+                  {/* Foto Pemantik / Kasus */}
+                  {currentPertemuan.langkah_kbm?.pendahuluan?.gambar_url && (
+                    <div className="rounded-3xl overflow-hidden border-2 border-amber-500/30 bg-slate-950/80 my-4 shadow-xl">
+                      <img
+                        src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
+                        alt="Foto Pemantik"
+                        className="w-full max-h-[360px] object-contain mx-auto"
+                      />
+                      {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption && (
+                        <div className="p-2 text-center text-xs sm:text-sm text-amber-300 font-semibold italic bg-amber-950/40">
+                          {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
                     {currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.filter(k => !k.includes('Pemantik')).map((item, i) => (
                       <div key={i} className="flex items-start gap-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
@@ -411,6 +427,22 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.judul || currentPertemuan.topik}
                   </h3>
 
+                  {/* Gambar / Diagram Materi */}
+                  {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
+                    <div className="rounded-3xl overflow-hidden border-2 border-blue-500/30 bg-slate-950/80 my-4 shadow-xl">
+                      <img
+                        src={currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url}
+                        alt="Diagram Materi"
+                        className="w-full max-h-[420px] object-contain mx-auto"
+                      />
+                      {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption && (
+                        <div className="p-2 text-center text-xs sm:text-sm text-blue-300 font-semibold italic bg-blue-950/40">
+                          {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed">
                     {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.paragraf?.map((p, i) => (
                       <p key={i} className="indent-6 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80">
@@ -434,6 +466,22 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   <h3 className="text-2xl sm:text-3xl font-black text-emerald-300">
                     {currentPertemuan.langkah_kbm?.inti?.lkpd?.judul || 'Petunjuk Tugas Kelompok'}
                   </h3>
+
+                  {/* Gambar Soal LKPD */}
+                  {currentPertemuan.langkah_kbm?.inti?.lkpd?.gambar_url && (
+                    <div className="rounded-3xl overflow-hidden border-2 border-emerald-500/30 bg-slate-950/80 my-4 shadow-xl">
+                      <img
+                        src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
+                        alt="Gambar LKPD"
+                        className="w-full max-h-[380px] object-contain mx-auto"
+                      />
+                      {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption && (
+                        <div className="p-2 text-center text-xs sm:text-sm text-emerald-300 font-semibold italic bg-emerald-950/40">
+                          {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <pre className="font-sans text-base sm:text-xl text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-950 p-6 rounded-2xl border border-emerald-500/30">
                     {currentPertemuan.langkah_kbm?.inti?.lkpd?.petunjuk}
@@ -682,6 +730,21 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                         </div>
                       ))}
                     </div>
+
+                    {currentPertemuan.langkah_kbm.pendahuluan.gambar_url && (
+                      <div className="rounded-2xl overflow-hidden border border-amber-200 dark:border-amber-900/60 max-w-md mt-2 bg-slate-900/40">
+                        <img
+                          src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
+                          alt="Foto Pemantik"
+                          className="w-full max-h-56 object-cover"
+                        />
+                        {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption && (
+                          <p className="p-1.5 text-[10px] text-amber-900 dark:text-amber-200 italic text-center font-medium bg-amber-100/80 dark:bg-amber-950/80">
+                            {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -715,6 +778,22 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                           <BookOpen size={14} />
                           <span>Teks Bacaan Siswa: {currentPertemuan.langkah_kbm.inti.teks_bacaan.judul}</span>
                         </div>
+
+                        {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url && (
+                          <div className="rounded-2xl overflow-hidden border border-blue-200 dark:border-blue-900 max-w-lg my-2 bg-slate-900/40">
+                            <img
+                              src={currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url}
+                              alt="Diagram Materi"
+                              className="w-full max-h-72 object-contain bg-slate-950"
+                            />
+                            {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption && (
+                              <p className="p-1.5 text-[10px] text-blue-900 dark:text-blue-200 italic text-center font-medium bg-blue-100/80 dark:bg-blue-950/80">
+                                {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         <div className="space-y-2 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
                           {currentPertemuan.langkah_kbm.inti.teks_bacaan.paragraf.map((p, idx) => (
                             <p key={idx} className="indent-4">{p}</p>
@@ -730,6 +809,22 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                           <Users size={14} />
                           <span>{currentPertemuan.langkah_kbm.inti.lkpd.judul}</span>
                         </div>
+
+                        {currentPertemuan.langkah_kbm.inti.lkpd.gambar_url && (
+                          <div className="rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-900 max-w-md my-2 bg-slate-900/40">
+                            <img
+                              src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
+                              alt="Gambar LKPD"
+                              className="w-full max-h-60 object-contain bg-slate-950"
+                            />
+                            {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption && (
+                              <p className="p-1.5 text-[10px] text-emerald-900 dark:text-emerald-200 italic text-center font-medium bg-emerald-100/80 dark:bg-emerald-950/80">
+                                {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         <pre className="font-sans text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
                           {currentPertemuan.langkah_kbm.inti.lkpd.petunjuk}
                         </pre>
