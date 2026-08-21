@@ -1,5 +1,13 @@
 import axiosInstance from '../lib/axiosInstance';
 
+export interface MateriSlideItem {
+  id?: string;
+  judul: string;
+  paragraf: string[];
+  gambar_url?: string;
+  gambar_caption?: string;
+}
+
 export interface LangkahKbmSection {
   durasi_menit?: number;
   kegiatan: string[];
@@ -11,6 +19,7 @@ export interface LangkahKbmSection {
     gambar_url?: string;
     gambar_caption?: string;
   };
+  materi_slides?: MateriSlideItem[];
   lkpd?: {
     judul: string;
     petunjuk: string;
@@ -18,6 +27,29 @@ export interface LangkahKbmSection {
     gambar_caption?: string;
   };
 }
+
+/**
+ * Normalizes multi-slide materials or fallback to single teks_bacaan
+ */
+export const getMateriSlides = (section?: LangkahKbmSection): MateriSlideItem[] => {
+  if (section?.materi_slides && Array.isArray(section.materi_slides) && section.materi_slides.length > 0) {
+    return section.materi_slides;
+  }
+  if (section?.teks_bacaan) {
+    return [{
+      judul: section.teks_bacaan.judul || 'Materi Pembelajaran Pokok',
+      paragraf: section.teks_bacaan.paragraf || [''],
+      gambar_url: section.teks_bacaan.gambar_url,
+      gambar_caption: section.teks_bacaan.gambar_caption
+    }];
+  }
+  return [{
+    judul: 'Materi Pembelajaran Pokok (Slide 1)',
+    paragraf: ['Tuliskan uraian materi pokok, studi kasus, atau teks bacaan siswa pada bagian ini.'],
+    gambar_url: undefined,
+    gambar_caption: undefined
+  }];
+};
 
 export interface PertemuanItem {
   nomor_pertemuan: number;

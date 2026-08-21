@@ -31,6 +31,8 @@ import {
   getBahanAjarPresets,
   getBahanAjarPresetById,
   uploadBahanAjarImage,
+  getMateriSlides,
+  MateriSlideItem,
   PertemuanItem,
   BahanAjarPresetData
 } from '../../../api/bahan-ajar.api';
@@ -340,6 +342,83 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
   };
 
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+  const [activeMateriSlideIdx, setActiveMateriSlideIdx] = useState<number>(0);
+
+  // Get current slides
+  const currentMateriSlides: MateriSlideItem[] = getMateriSlides(currentMeeting?.langkah_kbm?.inti);
+  const activeSlide: MateriSlideItem = currentMateriSlides[activeMateriSlideIdx] || currentMateriSlides[0] || {
+    judul: 'Materi Pembelajaran Pokok',
+    paragraf: [''],
+    gambar_url: undefined,
+    gambar_caption: undefined
+  };
+
+  // Update active slide
+  const updateActiveSlide = (updater: (prevSlide: MateriSlideItem) => MateriSlideItem) => {
+    const allSlides = [...currentMateriSlides];
+    const targetIdx = Math.min(activeMateriSlideIdx, allSlides.length - 1);
+    if (targetIdx >= 0 && allSlides[targetIdx]) {
+      allSlides[targetIdx] = updater(allSlides[targetIdx]);
+    }
+    updateCurrentMeeting(prev => ({
+      ...prev,
+      langkah_kbm: {
+        ...prev.langkah_kbm,
+        inti: {
+          ...prev.langkah_kbm.inti,
+          materi_slides: allSlides,
+          teks_bacaan: allSlides[0]
+        }
+      }
+    }));
+  };
+
+  // Add new slide
+  const handleAddMateriSlide = () => {
+    const newNum = currentMateriSlides.length + 1;
+    const newSlide: MateriSlideItem = {
+      judul: `Materi Pokok: Bagian ${newNum}`,
+      paragraf: ['Tuliskan uraian sub-materi lanjutan di sini...'],
+      gambar_url: undefined,
+      gambar_caption: undefined
+    };
+    const updated = [...currentMateriSlides, newSlide];
+    updateCurrentMeeting(prev => ({
+      ...prev,
+      langkah_kbm: {
+        ...prev.langkah_kbm,
+        inti: {
+          ...prev.langkah_kbm.inti,
+          materi_slides: updated,
+          teks_bacaan: updated[0]
+        }
+      }
+    }));
+    setActiveMateriSlideIdx(updated.length - 1);
+    toast.success(`Slide Materi ${newNum} berhasil ditambahkan!`, { icon: '📄' });
+  };
+
+  // Delete slide
+  const handleDeleteMateriSlide = (idxToDelete: number) => {
+    if (currentMateriSlides.length <= 1) {
+      toast.error('Minimal harus ada 1 slide materi pokok!');
+      return;
+    }
+    const updated = currentMateriSlides.filter((_, i) => i !== idxToDelete);
+    updateCurrentMeeting(prev => ({
+      ...prev,
+      langkah_kbm: {
+        ...prev.langkah_kbm,
+        inti: {
+          ...prev.langkah_kbm.inti,
+          materi_slides: updated,
+          teks_bacaan: updated[0]
+        }
+      }
+    }));
+    setActiveMateriSlideIdx(Math.max(0, idxToDelete - 1));
+    toast.success('Slide materi berhasil dihapus!');
+  };
 
   // Upload image to Storage Engine (S3 / MinIO / Local)
   const handleFileUpload = async (file: File, onSuccess: (url: string) => void) => {
@@ -928,193 +1007,177 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                     />
                   </div>
 
-                  {/* Teks Bacaan Pokok Siswa */}
+                  {/* Multi-Slide Materi Pokok Siswa */}
                   <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/60 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                        <BookOpen size={13} />
-                        <span>Teks Bacaan / Materi Pokok Siswa:</span>
-                      </span>
-                    </div>
+                    {/* Header with Slide Chips & Add Slide Button */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black uppercase text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                          <BookOpen size={13} />
+                          <span>Slide Materi Pokok ({currentMateriSlides.length} Slide):</span>
+                        </span>
 
-                    <input
-                      type="text"
-                      value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.judul || ''}
-                      onChange={(e) => updateCurrentMeeting(prev => ({
-                        ...prev,
-                        langkah_kbm: {
-                          ...prev.langkah_kbm,
-                          inti: {
-                            ...prev.langkah_kbm.inti,
-                            teks_bacaan: {
-                              judul: e.target.value,
-                              paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [''],
-                              gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
-                              gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
-                            }
-                          }
-                        }
-                      }))}
-                      placeholder="Judul Teks Bacaan (Contoh: Observatorium Bosscha)"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
-                    />
+                        {/* Slide Selector Chips */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {currentMateriSlides.map((s, sIdx) => (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => setActiveMateriSlideIdx(sIdx)}
+                              className={cn(
+                                "px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1",
+                                activeMateriSlideIdx === sIdx
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                              )}
+                            >
+                              <span>Slide {sIdx + 1}</span>
+                              {s.gambar_url && <ImageIcon size={10} className="opacity-80" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-                    <textarea
-                      rows={4}
-                      value={(currentMeeting.langkah_kbm?.inti?.teks_bacaan?.paragraf || []).join('\n\n')}
-                      onChange={(e) => updateCurrentMeeting(prev => ({
-                        ...prev,
-                        langkah_kbm: {
-                          ...prev.langkah_kbm,
-                          inti: {
-                            ...prev.langkah_kbm.inti,
-                            teks_bacaan: {
-                              judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                              paragraf: e.target.value.split('\n\n').filter(Boolean),
-                              gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
-                              gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
-                            }
-                          }
-                        }
-                      }))}
-                      placeholder="Isi paragraf teks bacaan (Pisahkan antar-paragraf dengan baris kosong)..."
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal"
-                    />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddMateriSlide}
+                          className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-xs"
+                          title="Tambahkan slide materi baru untuk topik ini"
+                        >
+                          <Plus size={12} />
+                          <span>Tambah Slide</span>
+                        </button>
 
-                    {/* Lampiran Gambar / Diagram Materi */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                          <ImageIcon size={13} className="text-blue-600" />
-                          <span>Lampiran Gambar / Diagram Materi (Opsional - Tampil di Slide 2):</span>
-                        </label>
-                        {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
+                        {currentMateriSlides.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => updateCurrentMeeting(prev => ({
-                              ...prev,
-                              langkah_kbm: {
-                                ...prev.langkah_kbm,
-                                inti: {
-                                  ...prev.langkah_kbm.inti,
-                                  teks_bacaan: {
-                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
-                                    gambar_url: undefined,
-                                    gambar_caption: undefined
-                                  }
-                                }
-                              }
-                            }))}
-                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                            onClick={() => handleDeleteMateriSlide(activeMateriSlideIdx)}
+                            className="px-2 py-1 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                            title="Hapus slide materi ini"
                           >
-                            Hapus Gambar
+                            <Trash2 size={12} />
+                            <span>Hapus Slide {activeMateriSlideIdx + 1}</span>
                           </button>
                         )}
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url || ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              updateCurrentMeeting(prev => ({
-                                ...prev,
-                                langkah_kbm: {
-                                  ...prev.langkah_kbm,
-                                  inti: {
-                                    ...prev.langkah_kbm.inti,
-                                    teks_bacaan: {
-                                      judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                                      paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
-                                      gambar_url: val,
-                                      gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
-                                    }
-                                  }
-                                }
-                              }));
-                            }}
-                            placeholder="Tempel URL atau klik Unggah..."
-                            className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
-                          />
-                          <label className="px-3 py-2 rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/60 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-blue-300 dark:border-blue-800 transition-all shrink-0 active:scale-95 shadow-xs">
-                            <UploadCloud size={14} className="text-blue-700 dark:text-blue-300" />
-                            <span>{isUploadingImage ? 'Mengunggah...' : 'Upload'}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={isUploadingImage}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) {
-                                  handleFileUpload(f, (uploadedUrl) => {
-                                    updateCurrentMeeting(prev => ({
-                                      ...prev,
-                                      langkah_kbm: {
-                                        ...prev.langkah_kbm,
-                                        inti: {
-                                          ...prev.langkah_kbm.inti,
-                                          teks_bacaan: {
-                                            judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                                            paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
-                                            gambar_url: uploadedUrl,
-                                            gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
-                                          }
-                                        }
-                                      }
-                                    }));
-                                  });
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-
-                        <input
-                          type="text"
-                          value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateCurrentMeeting(prev => ({
-                              ...prev,
-                              langkah_kbm: {
-                                ...prev.langkah_kbm,
-                                inti: {
-                                  ...prev.langkah_kbm.inti,
-                                  teks_bacaan: {
-                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
-                                    gambar_url: prev.langkah_kbm.inti?.teks_bacaan?.gambar_url,
-                                    gambar_caption: val
-                                  }
-                                }
-                              }
-                            }));
-                          }}
-                          placeholder="Keterangan / Caption Gambar Diagram"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
-                        />
+                    {/* Active Slide Form Fields */}
+                    <div className="space-y-3 pt-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400">
+                          Judul Sub-Materi (Slide {activeMateriSlideIdx + 1}):
+                        </label>
                       </div>
 
-                      {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
-                        <div className="relative rounded-2xl overflow-hidden border border-blue-300 dark:border-blue-800 max-w-xs bg-slate-900/40 mt-1">
-                          <img
-                            src={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url}
-                            alt="Preview Materi"
-                            className="w-full h-32 object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                          {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption && (
-                            <div className="p-1.5 text-[10px] text-blue-900 dark:text-blue-200 italic bg-blue-100/90 dark:bg-blue-950/90 text-center font-medium">
-                              {currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption}
-                            </div>
+                      <input
+                        type="text"
+                        value={activeSlide.judul || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateActiveSlide(prev => ({ ...prev, judul: val }));
+                        }}
+                        placeholder={`Judul Slide Materi ${activeMateriSlideIdx + 1} (Contoh: Pengertian & Karakteristik Pokok)`}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white"
+                      />
+
+                      <textarea
+                        rows={4}
+                        value={(activeSlide.paragraf || []).join('\n\n')}
+                        onChange={(e) => {
+                          const paras = e.target.value.split('\n\n').filter(Boolean);
+                          updateActiveSlide(prev => ({ ...prev, paragraf: paras }));
+                        }}
+                        placeholder={`Isi paragraf teks bacaan untuk Slide ${activeMateriSlideIdx + 1} (Pisahkan antar-paragraf dengan baris kosong)...`}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal"
+                      />
+
+                      {/* Lampiran Gambar / Diagram Materi untuk Slide Ini */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                            <ImageIcon size={13} className="text-blue-600" />
+                            <span>Lampiran Gambar / Diagram (Slide {activeMateriSlideIdx + 1}):</span>
+                          </label>
+                          {activeSlide.gambar_url && (
+                            <button
+                              type="button"
+                              onClick={() => updateActiveSlide(prev => ({
+                                ...prev,
+                                gambar_url: undefined,
+                                gambar_caption: undefined
+                              }))}
+                              className="text-[10px] font-bold text-rose-500 hover:text-rose-600 cursor-pointer"
+                            >
+                              Hapus Gambar
+                            </button>
                           )}
                         </div>
-                      )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={activeSlide.gambar_url || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateActiveSlide(prev => ({ ...prev, gambar_url: val }));
+                              }}
+                              placeholder="Tempel URL atau klik Unggah..."
+                              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                            />
+                            <label className="px-3 py-2 rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/60 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-blue-300 dark:border-blue-800 transition-all shrink-0 active:scale-95 shadow-xs">
+                              <UploadCloud size={14} className="text-blue-700 dark:text-blue-300" />
+                              <span>{isUploadingImage ? 'Mengunggah...' : 'Upload'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploadingImage}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    handleFileUpload(f, (uploadedUrl) => {
+                                      updateActiveSlide(prev => ({ ...prev, gambar_url: uploadedUrl }));
+                                    });
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={activeSlide.gambar_caption || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateActiveSlide(prev => ({ ...prev, gambar_caption: val }));
+                            }}
+                            placeholder="Keterangan / Caption Gambar Diagram"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {activeSlide.gambar_url && (
+                          <div className="relative rounded-2xl overflow-hidden border border-blue-300 dark:border-blue-800 max-w-xs bg-slate-900/40 mt-1">
+                            <img
+                              src={activeSlide.gambar_url}
+                              alt={`Preview Materi Slide ${activeMateriSlideIdx + 1}`}
+                              className="w-full h-32 object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                            {activeSlide.gambar_caption && (
+                              <div className="p-1.5 text-[10px] text-blue-900 dark:text-blue-200 italic bg-blue-100/90 dark:bg-blue-950/90 text-center font-medium">
+                                {activeSlide.gambar_caption}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  </div>
+
                   </div>
 
                   {/* LKPD / Tugas Kelompok */}
