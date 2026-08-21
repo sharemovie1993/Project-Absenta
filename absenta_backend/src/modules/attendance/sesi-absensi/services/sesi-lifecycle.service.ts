@@ -329,18 +329,48 @@ export class SesiLifecycleService {
 
     // 🛡️ Safely resolve foreign key for jadwal_kbm_id (strip sched_ prefix & verify DB existence)
     let validJadwalKbmId: string | null = null;
+    let fallbackJamSelesai: string | null = null;
+    let fallbackJamMulai: string | null = null;
+
     if (payload.jadwal_kbm_id) {
       const cleanJadwalId = String(payload.jadwal_kbm_id).replace(/^sched_/, '');
       try {
         const existingJadwal = await (prisma as any).jadwalKBM.findUnique({
           where: { id: cleanJadwalId },
-          select: { id: true }
+          select: { id: true, jam_mulai: true, jam_selesai: true }
         });
         if (existingJadwal) {
           validJadwalKbmId = existingJadwal.id;
+          fallbackJamSelesai = existingJadwal.jam_selesai;
+          fallbackJamMulai = existingJadwal.jam_mulai;
         }
       } catch (e) {
         validJadwalKbmId = null;
+      }
+    }
+
+    // 🛡️ Resolve fallback waktu_selesai dari JadwalKegiatan jika jadwal_kbm_id tidak ada
+    if (!fallbackJamSelesai && payload.jadwal_kegiatan_id) {
+      try {
+        const existingKegiatan = await (prisma as any).jadwalKegiatan.findUnique({
+          where: { id: payload.jadwal_kegiatan_id },
+          select: { waktu_selesai: true }
+        });
+        if (existingKegiatan?.waktu_selesai) {
+          fallbackJamSelesai = existingKegiatan.waktu_selesai;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 🛡️ Pastikan waktu_selesai fisik selalu terisi jika terkait Jadwal
+    let effectiveParsedEnd = parsedEnd;
+    const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(parsedStart);
+    if (!effectiveParsedEnd && fallbackJamSelesai) {
+      const computedEnd = new Date(`${todayDateStr}T${fallbackJamSelesai}:00.000${tzOffset}`);
+      if (!isNaN(computedEnd.getTime())) {
+        effectiveParsedEnd = computedEnd;
       }
     }
 
@@ -360,7 +390,7 @@ export class SesiLifecycleService {
         sumber_sesi: resolvedSumberSesi,
         tanggal: sessionDate,
         waktu_mulai: parsedStart,
-        waktu_selesai: parsedEnd,
+        waktu_selesai: effectiveParsedEnd,
         status: initialStatus,
         foto_kegiatan: finalFotoUrl,
         created_by_user_id: userId
@@ -371,21 +401,10 @@ export class SesiLifecycleService {
       // ⚖️ Aturan KERAS: Guru dievaluasi dari jam jadwal resmi (JadwalKBM.jam_mulai),
       // BUKAN dari parsedStart (waktu fisik guru buka sesi).
       let teacherScheduledStart: Date = parsedStart;
-      if (validJadwalKbmId) {
-        try {
-          const jadwalForTeacher = await (prisma as any).jadwalKBM.findUnique({
-            where: { id: validJadwalKbmId },
-            select: { jam_mulai: true }
-          });
-          if (jadwalForTeacher?.jam_mulai) {
-            const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(parsedStart);
-            const fromSchedule = new Date(`${todayDateStr}T${jadwalForTeacher.jam_mulai}:00.000${tzOffset}`);
-            if (!isNaN(fromSchedule.getTime())) {
-              teacherScheduledStart = fromSchedule;
-            }
-          }
-        } catch (e) {
-          // fallback ke parsedStart
+      if (fallbackJamMulai) {
+        const fromSchedule = new Date(`${todayDateStr}T${fallbackJamMulai}:00.000${tzOffset}`);
+        if (!isNaN(fromSchedule.getTime())) {
+          teacherScheduledStart = fromSchedule;
         }
       }
 
