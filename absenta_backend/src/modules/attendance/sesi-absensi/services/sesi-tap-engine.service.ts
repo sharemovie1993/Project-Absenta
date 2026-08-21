@@ -263,12 +263,14 @@ export class SesiTapEngineService {
       
       effectiveTapTime = historicalTap || tapTime || new Date();
 
-      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Kegiatan Rutin Slot 0)
+      // skipHandover=true: siswa dinilai dari jam jadwal resmi, bukan dari transisi guru sebelumnya
       const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
         tenantId,
         sesi.kelas_id,
         sesi.waktu_mulai,
-        effectiveTapTime
+        effectiveTapTime,
+        { skipHandover: true }
       );
 
       if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
@@ -432,12 +434,14 @@ export class SesiTapEngineService {
       
       effectiveTapTime = historicalTap || tapTime || new Date();
 
-      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Kegiatan Rutin Slot 0)
+      // skipHandover=true: penilaian manual guru menggunakan jam jadwal resmi sebagai patokan
       const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
         tenantId,
         sesi.kelas_id,
         sesi.waktu_mulai,
-        effectiveTapTime
+        effectiveTapTime,
+        { skipHandover: true }
       );
 
       if (auditNote && !autoCatatan) {

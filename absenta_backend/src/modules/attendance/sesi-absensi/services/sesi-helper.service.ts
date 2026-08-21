@@ -138,13 +138,18 @@ export class SesiHelperService {
    * ⚖️ Keadilan Presensi KBM:
    * 1. Deteksi Kejadian Khusus Sekolah (Apel Mendadak, Hari Guru, Hujan Lebat) -> Abaikan keterlambatan
    * 2. Deteksi Jadwal Kegiatan Rutin Slot 0 (Upacara, Sholat Dhuha, Senam) dari Visual Builder / JadwalKegiatan -> Jam mulai disesuaikan setelah kegiatan selesai
-   * 3. Deteksi Jeda Transisi Guru Molor (Handover Grace Period) -> Jam mulai disesuaikan dari waktu selesai sesi sebelumnya + 5 menit
+   * 3. Deteksi Jeda Transisi Guru Molor (Handover Grace Period) -> Hanya berlaku saat guru membuka sesi (skipHandover=false).
+   *    TIDAK berlaku untuk tap siswa (skipHandover=true) agar siswa dinilai dari jam jadwal resmi.
+   *
+   * @param skipHandover - Set true saat dipanggil dari tapSiswa/updateAttendance (penilaian siswa).
+   *                       Handover Grace hanya adil untuk guru yang terhalang masuk kelas.
    */
   async resolveEffectiveKbmStartTarget(
     tenantId: string,
     kelasId: string | null | undefined,
     scheduledStart: Date | null,
-    currentDate: Date = new Date()
+    currentDate: Date = new Date(),
+    options?: { skipHandover?: boolean }
   ): Promise<{ effectiveStartTarget: Date | null; isSpecialEventLateIgnored: boolean; isHandoverExtended: boolean; auditNote?: string }> {
     if (!scheduledStart || isNaN(scheduledStart.getTime())) {
       return { effectiveStartTarget: scheduledStart, isSpecialEventLateIgnored: false, isHandoverExtended: false };
@@ -221,7 +226,9 @@ export class SesiHelperService {
       }
 
       // 3. Cek Sesi Sebelumnya di Kelas yang Sama (Handover Grace Period)
-      if (kelasId) {
+      //    ⚠️ HANYA berlaku saat guru membuka sesi (skipHandover = false/undefined).
+      //    Untuk tapSiswa, handover dilewati agar siswa dinilai dari jam jadwal resmi.
+      if (kelasId && !options?.skipHandover) {
         const startOfToday = new Date(currentDate);
         startOfToday.setHours(0, 0, 0, 0);
         const endOfToday = new Date(currentDate);
