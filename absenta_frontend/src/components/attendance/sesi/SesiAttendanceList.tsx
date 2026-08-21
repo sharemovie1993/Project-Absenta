@@ -50,7 +50,10 @@ export interface SesiAttendanceRecord {
 
 export interface SesiDetail {
   id: string;
-  status: 'BERLANGSUNG' | 'SELESAI';
+  status: 'BERLANGSUNG' | 'SELESAI' | string;
+  waktu_mulai?: string | Date | null;
+  jam_mulai?: string | null;
+  jam_selesai?: string | null;
   guru_id?: string;
   nama_guru?: string;
   guru_status?: string;
@@ -60,6 +63,7 @@ export interface SesiDetail {
     Guru?: GuruDetail;
     guru_id?: string;
     nama_guru?: string;
+    jam_mulai?: string;
   };
   ProgresMateri?: {
     judul_materi: string;
@@ -77,11 +81,13 @@ type Props = {
 // Memoized Sub-Component for High-Performance Rendering (Fase 2)
 const SesiAttendanceRow = React.memo(({
   record,
+  sesi,
   isReportMode,
   isPending,
   onUpdateStatus
 }: {
   record: SesiAttendanceRecord;
+  sesi?: SesiDetail;
   isReportMode: boolean;
   isPending: boolean;
   onUpdateStatus: (siswaAkademikId: string, status: string) => void;
@@ -117,6 +123,36 @@ const SesiAttendanceRow = React.memo(({
 
     return str;
   };
+
+  // Dynamic fallback calculation for late minutes if waktu_tap and schedule start exist
+  const lateMinutes = useMemo(() => {
+    if (record.menit_keterlambatan && Number(record.menit_keterlambatan) > 0) {
+      return Number(record.menit_keterlambatan);
+    }
+    if (record.is_terlambat && rawWaktuTap) {
+      // 1. Try from sesi.waktu_mulai
+      if (sesi?.waktu_mulai) {
+        const tTap = new Date(rawWaktuTap);
+        const tStart = new Date(sesi.waktu_mulai);
+        if (!isNaN(tTap.getTime()) && !isNaN(tStart.getTime()) && tTap.getTime() > tStart.getTime()) {
+          return Math.max(1, Math.floor((tTap.getTime() - tStart.getTime()) / (60 * 1000)));
+        }
+      }
+      // 2. Try parsing HH:mm from rawWaktuTap vs sesi.jam_mulai
+      const strTap = formatWaktuTapDisplay(rawWaktuTap);
+      const strStart = sesi?.jam_mulai || (sesi as any)?.JamPelajaran?.jam_mulai || (sesi as any)?.start_time || '';
+      if (strTap.includes(':') && strStart.includes(':')) {
+        const [h1, m1] = strTap.split(':').map(Number);
+        const [h2, m2] = strStart.split(':').map(Number);
+        const min1 = h1 * 60 + m1;
+        const min2 = h2 * 60 + m2;
+        if (min1 > min2) {
+          return min1 - min2;
+        }
+      }
+    }
+    return record.menit_keterlambatan || 0;
+  }, [record.menit_keterlambatan, record.is_terlambat, rawWaktuTap, sesi?.waktu_mulai, sesi?.jam_mulai]);
 
   return (
     <motion.div 
@@ -160,9 +196,9 @@ const SesiAttendanceRow = React.memo(({
            {formatWaktuTapDisplay(rawWaktuTap)}
         </span>
         {record.is_terlambat && (
-          <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50 flex items-center gap-0.5">
+          <span className="px-1.5 py-0.5 text-[8px] font-black bg-rose-50 text-rose-600 rounded-md uppercase tracking-wider border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 flex items-center justify-center gap-1 shadow-xs">
             <span>TELAT</span>
-            {record.menit_keterlambatan ? <span>{record.menit_keterlambatan}'</span> : null}
+            {lateMinutes > 0 ? <span>: {lateMinutes} m</span> : null}
           </span>
         )}
         {(record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI')) && (
@@ -587,6 +623,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
                       <SesiAttendanceRow 
                         key={r.id || r.siswa_akademik_id || r.guru_id}
                         record={r}
+                        sesi={sesi}
                         isReportMode={isReportMode}
                         isPending={
                           updateAttendanceMutation.isPending && 

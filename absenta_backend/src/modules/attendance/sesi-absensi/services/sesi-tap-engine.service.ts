@@ -243,8 +243,10 @@ export class SesiTapEngineService {
     }
 
     let isTerlambat = false;
+    let menitKeterlambatan = 0;
     if (sesi.waktu_mulai && tapTime > sesi.waktu_mulai) {
       isTerlambat = true;
+      menitKeterlambatan = Math.max(0, Math.floor((tapTime.getTime() - sesi.waktu_mulai.getTime()) / (60 * 1000)));
     }
 
     const poin = AttendanceRuleEngine.calculateAttendancePoints(status, isTerlambat);
@@ -269,6 +271,7 @@ export class SesiTapEngineService {
         data: {
           status,
           is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
           poin_kehadiran: poin,
           waktu_tap: tapTime,
           catatan: catatan !== undefined ? catatan : existing.catatan,
@@ -284,6 +287,7 @@ export class SesiTapEngineService {
           siswa_akademik_id: siswaAkademik.id,
           status,
           is_terlambat: isTerlambat,
+          menit_keterlambatan: menitKeterlambatan,
           poin_kehadiran: poin,
           waktu_tap: tapTime,
           catatan: catatan || null
