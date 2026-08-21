@@ -813,56 +813,90 @@ export const UnifiedStaffDashboard: React.FC = () => {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Adopsi Gambar Guru)             */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden">
-        
-        {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            {/* 1. NAMA */}
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
-              {user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd'}
-            </h1>
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* TOP HERO BANNER & DESKTOP TAB NAV (Contextual Display)                    */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'ringkasan' ? (
+        /* 🌟 TAB BERANDA: Tampilkan Full Hero Profile Card (Nama, NIP, Jabatan) */
+        <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden">
+          {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div className="space-y-1">
+              {/* 1. NAMA */}
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
+                {user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd'}
+              </h1>
 
-            {/* 2. NIP */}
-            {nipText && nipText !== '-' && (
-              <div className="pt-0.5">
-                <span className="inline-block text-[11px] sm:text-xs font-mono font-bold text-indigo-100 bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-lg border border-white/20">
-                  NIP: {nipText}
-                </span>
-              </div>
+              {/* 2. NIP */}
+              {nipText && nipText !== '-' && (
+                <div className="pt-0.5">
+                  <span className="inline-block text-[11px] sm:text-xs font-mono font-bold text-indigo-100 bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-lg border border-white/20">
+                    NIP: {nipText}
+                  </span>
+                </div>
+              )}
+
+              {/* 3. JABATAN */}
+              <p className="text-xs sm:text-sm font-semibold text-white/90 pt-0.5">
+                {jabatanLabel}
+              </p>
+            </div>
+
+            {/* Right Action: Sesuai Role Pengguna */}
+            {(isWaliKelas || isPetugasKelas) && (
+              <button
+                type="button"
+                onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
+                className="group relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs flex items-center gap-2.5 shrink-0 self-start sm:self-auto shadow-md shadow-amber-950/30 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
+              >
+                <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
+                  <Flag className="w-4 h-4 text-white" />
+                </div>
+                <div className="text-left">
+                  <span className="text-[9px] font-black text-amber-100 uppercase tracking-wider block">
+                    PRESENSI KEGIATAN
+                  </span>
+                  <span className="text-xs font-black text-white tracking-tight group-hover:underline">
+                    Apel, Upacara &amp; Pembiasaan ➔
+                  </span>
+                </div>
+              </button>
             )}
-
-            {/* 3. JABATAN */}
-            <p className="text-xs sm:text-sm font-semibold text-white/90 pt-0.5">
-              {jabatanLabel}
-            </p>
           </div>
 
-          {/* Right Action: Sesuai Role Pengguna */}
-          {(isWaliKelas || isPetugasKelas) && (
-            /* Khusus Wali Kelas & Petugas Kelas: PRESENSI KEGIATAN */
-            <button
-              type="button"
-              onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
-              className="group relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs flex items-center gap-2.5 shrink-0 self-start sm:self-auto shadow-md shadow-amber-950/30 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
-            >
-              <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">
-                <Flag className="w-4 h-4 text-white" />
-              </div>
-              <div className="text-left">
-                <span className="text-[9px] font-black text-amber-100 uppercase tracking-wider block">
-                  PRESENSI KEGIATAN
-                </span>
-                <span className="text-xs font-black text-white tracking-tight group-hover:underline">
-                  Apel, Upacara &amp; Pembiasaan ➔
-                </span>
-              </div>
-            </button>
-          )}
-        </div>
+          {/* Tab Navigation Row Inset (Desktop) */}
+          <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
+            {tabs.map((tab) => {
+              const TabIcon = tab.icon;
+              const isTabActive = activeTab === tab.id;
 
-        {/* Tab Navigation Row Inset (Embedded Dark Navigation Bar) — hidden on mobile, replaced by bottom nav */}
-        <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap select-none",
+                    isTabActive
+                      ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
+                      : "text-slate-300 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
+                  <span>{tab.label}</span>
+                  {tab.badge && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs uppercase">
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ⚡ TAB MODUL KERJA (Kurikulum, Sarpras, Kesiswaan, dll): Clean Full-Width Workspace */
+        <div className="hidden md:flex p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar shadow-xs">
           {tabs.map((tab) => {
             const TabIcon = tab.icon;
             const isTabActive = activeTab === tab.id;
@@ -873,16 +907,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
                 className={cn(
-                  "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap select-none",
+                  "px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap select-none border",
                   isTabActive
-                    ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/30"
+                    : "bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
+                <TabIcon size={14} className={isTabActive ? "text-white" : "text-indigo-500 dark:text-indigo-400"} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs uppercase">
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase",
+                    isTabActive ? "bg-white/20 text-white" : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
+                  )}>
                     {tab.badge}
                   </span>
                 )}
@@ -890,7 +927,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             );
           })}
         </div>
-      </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* TAB CONTENT AREA                                                   */}
