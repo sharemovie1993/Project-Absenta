@@ -13,6 +13,7 @@ import Breadcrumb, { type BreadcrumbItem } from '@/components/ui/Breadcrumb';
 // Impor komponen standardisasi hardening terpusat tingkat layout
 import { InfraErrorBoundary } from '../superadmin/infra/InfraErrorBoundary';
 import { HardeningInspector } from '../superadmin/infra/InfraSharedComponents';
+import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
 import { getHardeningConfig } from '../../config/hardeningRegistry';
 import auditReport from '../../config/hardeningAuditReport.json';
 import { useTvStore } from '@/store/tvStore';
@@ -225,19 +226,22 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
       {/* Top Navigation & Hardening Bar */}
       {!isTvMode && (
-        <div className="px-3 sm:px-0 flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
-          <div className="flex items-center gap-3">
+        <div className="px-3 sm:px-0 flex items-center justify-between gap-2.5 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
             {isNotDashboard && (
               <button
                 type="button"
                 onClick={handleGoBack}
-                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none"
+                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
                 title="Kembali ke halaman sebelumnya"
               >
                 <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
                 <span className="tracking-tight">Kembali</span>
               </button>
             )}
+
+            {/* Bilah Navigasi Menu Terkait Otomatis Sejajar (Shared Related Module Nav Pills) */}
+            <RelatedModuleNavPills />
 
             {hardeningConfig && resolvedKey && (
               <HardeningInspector 

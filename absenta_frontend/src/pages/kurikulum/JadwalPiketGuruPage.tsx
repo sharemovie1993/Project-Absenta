@@ -523,7 +523,6 @@ export default function JadwalPiketGuruPage() {
       ]}
       stats={stats}
       isLoadingStats={loading}
-      topSlot={<JadwalNavPill />}
       instruction={{
         title: isKurikulumAdmin ? 'Panduan Pengelolaan Piket Guru (Kurikulum)' : 'Panduan Penugasan Piket Guru',
         description: isKurikulumAdmin ? 'Tentukan penugasan guru piket harian untuk menjaga kedisiplinan dan keamanan lingkungan sekolah.' : 'Informasi penugasan piket harian guru.',

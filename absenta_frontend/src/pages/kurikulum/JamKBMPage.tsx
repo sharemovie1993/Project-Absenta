@@ -238,7 +238,6 @@ export const JamKBMPage: React.FC = () => {
       description="Atur durasi jam pelajaran KBM per shift dan petakan kelas masing-masing."
       breadcrumbs={breadcrumbs}
       instruction={instruction}
-      topSlot={<JadwalNavPill />}
       toolbar={
         canManage && (
           <Button

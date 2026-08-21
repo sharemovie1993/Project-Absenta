@@ -715,7 +715,6 @@ export default function JadwalPelajaranPage() {
     <AcademicPageLayout
       title="Jadwal KBM & Visual Builder"
       description="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
-      topSlot={<JadwalNavPill />}
       instruction={{
         title: 'Panduan Penyusunan Jadwal (Full Screen Workspace)',
         description: 'Jadwal pelajaran bertindak sebagai blueprint KBM harian yang menggerakkan generator absensi otomatis.',

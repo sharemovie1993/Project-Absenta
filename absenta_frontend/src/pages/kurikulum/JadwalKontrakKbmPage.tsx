@@ -90,7 +90,6 @@ const JadwalKontrakKbmPage: React.FC = () => {
     <AcademicPageLayout
       title="Jadwal Kontrak KBM"
       description="Daftar kontrak pelajaran hasil impor atau konfigurasi manual per kelas, guru, dan mata pelajaran"
-      topSlot={<JadwalNavPill />}
     >
       {/* === SUMMARY STATS === */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
