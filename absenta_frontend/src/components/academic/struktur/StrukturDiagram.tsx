@@ -405,45 +405,47 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   return (
     <div className="space-y-8 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
       {/* Responsive View Switcher Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Mode Tampilan:</span>
-          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Tampilan:
+          </span>
+          <div className="grid grid-cols-3 sm:flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 w-full sm:w-auto gap-1">
             <button
               onClick={() => setViewMode('auto')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                 viewMode === 'auto' 
                   ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Otomatis</span>
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Otomatis</span>
             </button>
             <button
               onClick={() => setViewMode('card')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                 viewMode === 'card' 
                   ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
             >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Kartu Vertikal (HP)</span>
+              <Smartphone className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Kartu HP</span>
             </button>
             <button
               onClick={() => setViewMode('tree')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
                 viewMode === 'tree' 
                   ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               )}
             >
-              <Network className="w-3.5 h-3.5" />
-              <span>Diagram Pohon (PC)</span>
+              <Network className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Pohon PC</span>
             </button>
           </div>
         </div>

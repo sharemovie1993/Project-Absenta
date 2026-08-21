@@ -66,7 +66,14 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
   const cardRef = React.useRef<HTMLDivElement>(null);
 
   const roleCode = node.data?.roleCode;
-  const isUnassigned = node.data?.isUnassigned || node.subLabel === 'Belum diisi' || node.id?.startsWith('unassigned-');
+  const isUnassigned = Boolean(
+    node.data?.isUnassigned || 
+    !node.subLabel || 
+    node.subLabel === '—' || 
+    node.subLabel === 'Belum diisi' || 
+    node.subLabel === 'Belum Ditugaskan' ||
+    node.id?.startsWith('unassigned-')
+  );
   const hasChildren = node.children && node.children.length > 0;
   const isCategory = node.type === 'CATEGORY' || node.type === 'GROUP';
   const isRoot = node.type === 'ROOT' || node.type === 'LEADER' || roleCode === 'KEPALA_SEKOLAH';
@@ -84,7 +91,12 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
   const handleAddMember = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onAction) {
-      onAction(node, 'MEMBER_ADD', cardRef.current);
+      onAction({
+        ...node,
+        id: `add-new-${node.id}`,
+        actionType: 'MEMBER_ADD',
+        parentStrukturId: node.data?.realStrukturId || node.id
+      }, 'MEMBER_ADD', cardRef.current);
     }
   };
 
@@ -122,7 +134,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
         className={cn(
           "rounded-2xl border transition-all shadow-sm bg-white dark:bg-slate-900 overflow-hidden",
           isUnassigned 
-            ? "border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/10" 
+            ? "border-amber-300 dark:border-amber-900/70 bg-amber-50/40 dark:bg-amber-950/20" 
             : isRoot
             ? "border-indigo-200 dark:border-indigo-800 shadow-md ring-1 ring-indigo-500/20"
             : "border-slate-200 dark:border-slate-800",
@@ -151,24 +163,43 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
             </span>
           </div>
 
-          {/* Expand / Collapse for branches */}
-          {hasChildren && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(!isExpanded);
-              }}
-              className={cn(
-                "p-1 rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold",
-                isRoot 
-                  ? "bg-white/20 hover:bg-white/30 text-white" 
-                  : "bg-slate-200/60 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-slate-300"
-              )}
-            >
-              <span>{node.children!.length} Tim</span>
-              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Direct Add Member in Header for parent groups */}
+            {hasChildren && (
+              <button
+                onClick={handleAddMember}
+                title="Tambah Staf Baru ke Bidang Ini"
+                className={cn(
+                  "p-1 px-2 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all active:scale-95",
+                  isRoot 
+                    ? "bg-white/20 hover:bg-white/30 text-white" 
+                    : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
+                )}
+              >
+                <Plus className="w-3 h-3" />
+                <span>Tambah</span>
+              </button>
+            )}
+
+            {/* Expand / Collapse for branches */}
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(!isExpanded);
+                }}
+                className={cn(
+                  "p-1 rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold",
+                  isRoot 
+                    ? "bg-white/20 hover:bg-white/30 text-white" 
+                    : "bg-slate-200/60 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-slate-300"
+                )}
+              >
+                <span>{node.children!.length} Tim</span>
+                {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content Body: Personil Information */}
@@ -182,7 +213,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
             <div className={cn(
               "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border relative overflow-hidden",
               isUnassigned 
-                ? "bg-amber-100 dark:bg-amber-950/50 text-amber-600 border-amber-300 dark:border-amber-800" 
+                ? "bg-amber-100 dark:bg-amber-950/60 text-amber-600 border-amber-300 dark:border-amber-800" 
                 : "bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-slate-800 dark:to-slate-700 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-slate-700"
             )}>
               {node.data?.photoUrl ? (
@@ -192,7 +223,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : isUnassigned ? (
-                <AlertCircle className="w-5 h-5 animate-pulse" />
+                <Plus className="w-5 h-5 text-amber-600 animate-bounce" />
               ) : (
                 <User className="w-5 h-5" />
               )}
@@ -202,12 +233,12 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
             <div className="min-w-0 flex-1">
               <h4 className={cn(
                 "text-xs sm:text-sm font-extrabold truncate leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors",
-                isUnassigned ? "text-amber-700 dark:text-amber-400 italic" : "text-slate-900 dark:text-slate-100"
+                isUnassigned ? "text-amber-700 dark:text-amber-400 font-black" : "text-slate-900 dark:text-slate-100"
               )}>
-                {node.subLabel || (isUnassigned ? 'Belum Ditugaskan' : '—')}
+                {isUnassigned ? 'Belum Ditugaskan' : node.subLabel}
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
-                {node.data?.nip ? `NIP: ${node.data.nip}` : node.data?.nuptk ? `NUPTK: ${node.data.nuptk}` : isUnassigned ? 'Klik untuk memilih guru' : 'Personil Terdaftar'}
+                {node.data?.nip ? `NIP: ${node.data.nip}` : node.data?.nuptk ? `NUPTK: ${node.data.nuptk}` : isUnassigned ? 'Ketuk untuk memilih guru' : 'Personil Terdaftar'}
               </p>
             </div>
           </div>
@@ -217,10 +248,10 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
             {isUnassigned ? (
               <button
                 onClick={handleCardClick}
-                className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1 transition-all"
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 transition-all ring-2 ring-amber-400/30"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Pilih</span>
+                <Plus className="w-4 h-4" />
+                <span>Tugaskan</span>
               </button>
             ) : (
               <>
@@ -265,6 +296,17 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
                   editingId={editingId}
                 />
               ))}
+
+              {/* Explicit Add Member Button under Subordinates */}
+              <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
+                <button
+                  onClick={handleAddMember}
+                  className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs"
+                >
+                  <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>+ Tambah Anggota ke {node.label || 'Bidang'}</span>
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
