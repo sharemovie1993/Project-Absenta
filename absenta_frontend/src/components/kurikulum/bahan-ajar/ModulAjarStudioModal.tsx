@@ -1178,8 +1178,6 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                     </div>
                   </div>
 
-                  </div>
-
                   {/* LKPD / Tugas Kelompok */}
                   <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 space-y-3">
                     <span className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
