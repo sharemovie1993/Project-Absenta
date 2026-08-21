@@ -62,6 +62,8 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   const [activeMeetingIdx, setActiveMeetingIdx] = useState<number>(0);
   const [pertemuanList, setPertemuanList] = useState<PertemuanItem[]>([]);
   const [moduleJudul, setModuleJudul] = useState<string>(perangkatJudul || '');
+  const [selectedFase, setSelectedFase] = useState<string>(fase || 'E');
+  const [selectedTingkat, setSelectedTingkat] = useState<number>(tingkat || 10);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
@@ -71,6 +73,11 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
       setModuleJudul(perangkatJudul);
     }
   }, [perangkatJudul]);
+
+  useEffect(() => {
+    if (fase) setSelectedFase(fase);
+    if (tingkat) setSelectedTingkat(tingkat);
+  }, [fase, tingkat]);
 
   // 1. Fetch Existing Structured Content for this Perangkat
   const { data: readerData, isLoading: isLoadingContent } = useQuery({
@@ -151,8 +158,8 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
       mapel_id: mapelId,
       mapel_nama: mapelNama,
       guru_id: guruId,
-      fase,
-      tingkat
+      fase: selectedFase,
+      tingkat: selectedTingkat
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bahanAjarReader'] });
@@ -288,11 +295,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                 <span className="font-black text-slate-900 dark:text-white text-base">
                   Studio Modul Ajar &amp; Asisten Mengajar Guru
                 </span>
-                {fase && (
-                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-black text-[10px]">
-                    Fase {fase} (Kelas {tingkat || 10})
-                  </span>
-                )}
+                <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-black text-[10px]">
+                  Fase {selectedFase} (Kelas {selectedTingkat})
+                </span>
                 <span className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold text-[10px]">
                   {mapelNama || 'Perangkat Ajar'}
                 </span>
@@ -467,6 +472,46 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                     placeholder="Contoh: Bab 1: Teks Laporan Hasil Observasi (LHO)"
                     className="w-full px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 font-black text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs"
                   />
+                </div>
+
+                {/* Fase & Tingkat Kelas Target Selector */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Fase &amp; Tingkat Kelas Target:
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { label: 'Fase E (Kelas 10)', faseVal: 'E', tingkatVal: 10, desc: 'Kurikulum Kelas X' },
+                      { label: 'Fase F (Kelas 11)', faseVal: 'F', tingkatVal: 11, desc: 'Kurikulum Kelas XI' },
+                      { label: 'Fase F (Kelas 12)', faseVal: 'F', tingkatVal: 12, desc: 'Kurikulum Kelas XII' }
+                    ].map((opt) => {
+                      const isSelected = selectedFase === opt.faseVal && selectedTingkat === opt.tingkatVal;
+                      return (
+                        <button
+                          key={`${opt.faseVal}-${opt.tingkatVal}`}
+                          type="button"
+                          onClick={() => {
+                            setSelectedFase(opt.faseVal);
+                            setSelectedTingkat(opt.tingkatVal);
+                          }}
+                          className={cn(
+                            "px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex flex-col items-start gap-0.5 text-left active:scale-95",
+                            isSelected
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20 ring-2 ring-indigo-400 font-black"
+                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60"
+                          )}
+                        >
+                          <span className="font-black text-xs">{opt.label}</span>
+                          <span className={cn(
+                            "text-[10px]",
+                            isSelected ? "text-indigo-100" : "text-slate-400"
+                          )}>
+                            {opt.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
