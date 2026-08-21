@@ -208,10 +208,15 @@ export const transformDataToTree = (
           },
           children: sortedMembers.slice(1).map((m: any) => ({
              id: `member-${kode}-${node.id}-${m.id}`,
-             label: m.name,
-             subLabel: cleanDetails(m.details),
+             label: shortenPosition(displayLabel),
+             subLabel: m.name,
              type: 'MEMBER' as any,
-             data: { roleCode: kode, realMemberId: m.id, realStrukturId: node.id }
+             data: { 
+               roleCode: kode, 
+               realMemberId: m.id, 
+               realStrukturId: node.id,
+               details: cleanDetails(m.details)
+             }
           }))
         });
       });

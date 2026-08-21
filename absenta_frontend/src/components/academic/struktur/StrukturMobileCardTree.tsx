@@ -67,12 +67,14 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
 
   const roleCode = node.data?.roleCode;
   const isUnassigned = Boolean(
-    node.data?.isUnassigned || 
-    !node.subLabel || 
-    node.subLabel === '—' || 
-    node.subLabel === 'Belum diisi' || 
-    node.subLabel === 'Belum Ditugaskan' ||
-    node.id?.startsWith('unassigned-')
+    node.type !== 'MEMBER' && (
+      node.data?.isUnassigned || 
+      !node.subLabel || 
+      node.subLabel === '—' || 
+      node.subLabel === 'Belum diisi' || 
+      node.subLabel === 'Belum Ditugaskan' ||
+      node.id?.startsWith('unassigned-')
+    )
   );
   const hasChildren = Boolean(node.children && node.children.length > 0);
   const isCategory = Boolean(
@@ -214,12 +216,13 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
   const isCoordinatorCard = Boolean(
     node.data?.realStrukturId && 
     roleCode !== 'KEPALA_SEKOLAH' && 
+    !['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(roleCode || '') &&
     !node.data?.kelas_id && 
     node.type !== 'MEMBER' &&
     !node.id?.startsWith('staff-') &&
     !node.id?.startsWith('member-') &&
     (
-      ['BPBK', 'PEMBINA_ESKUL', 'GERBANG', 'TOOLMAN', 'KABENG', 'KOPERASI', 'TU', 'GURU'].some(code => String(roleCode || '').includes(code)) ||
+      ['BPBK', 'PEMBINA_ESKUL', 'GERBANG', 'TOOLMAN', 'KABENG', 'KOPERASI', 'TU_KEPALA', 'GURU'].some(code => String(roleCode || '').includes(code)) ||
       Boolean(node.data?.isCoordinator)
     )
   );
