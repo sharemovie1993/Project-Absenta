@@ -14,7 +14,8 @@ import {
   List,
   Zap,
   Edit3,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
