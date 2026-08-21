@@ -32,6 +32,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
+  const [internalRefreshKey, setInternalRefreshKey] = useState(0);
 
   // Strict Screen Detection: Mobile will ONLY render StrukturMobileCardTree, Desktop will ONLY render TopologyTree
   const [isMobile, setIsMobile] = useState<boolean>(() => 
@@ -69,7 +70,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
   // Queries
   const { data: treeRes, isLoading: isTreeLoading } = useQuery({
-    queryKey: ['strukturTree', refreshKey],
+    queryKey: ['strukturTree', refreshKey, internalRefreshKey],
     queryFn: getStrukturTree,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -117,7 +118,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     },
     onSuccess: (_, { node }) => {
       toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
-      setRefreshKey(k => k + 1);
+      setInternalRefreshKey(k => k + 1);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
       queryClient.refetchQueries({ queryKey: ['strukturTree'] });
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
@@ -146,7 +147,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     },
     onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
-      setRefreshKey(k => k + 1);
+      setInternalRefreshKey(k => k + 1);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
       queryClient.refetchQueries({ queryKey: ['strukturTree'] });
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
