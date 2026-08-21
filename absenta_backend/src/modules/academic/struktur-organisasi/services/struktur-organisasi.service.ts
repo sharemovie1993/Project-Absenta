@@ -588,6 +588,7 @@ export class StrukturOrganisasiService {
       });
 
       await organizationalContextCache.invalidateUser(String(guru.user_id));
+      await cacheInvalidationService.invalidateStrukturTree(tenantId);
       return updated;
     }
 
@@ -741,6 +742,7 @@ export class StrukturOrganisasiService {
         },
       });
       await organizationalContextCache.invalidateUser(String(siswa.user_id));
+      await cacheInvalidationService.invalidateStrukturTree(tenantId);
       return updated;
     }
 
@@ -775,6 +777,7 @@ export class StrukturOrganisasiService {
         data: { is_active: false, end_date: new Date(), updated_at: new Date() }
       });
       await organizationalContextCache.invalidateUser(String(directAssignment.user_id));
+      await cacheInvalidationService.invalidateStrukturTree(tenantId);
       return;
     }
 
@@ -795,6 +798,7 @@ export class StrukturOrganisasiService {
     });
 
     await organizationalContextCache.invalidateUser(String(siswa.user_id));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async initializeTenant(tenantId: string) {
