@@ -196,33 +196,45 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const jamLabel = item.jamLabel || item.jam_label || (item.JamPelajaran?.nama_jam) || null;
 
-  // 🏛️ Prediksi Batas Aman Hadir — Berdasarkan JadwalKegiatan hari ini
-  // Hanya tampil di kartu mode GURU dan hanya untuk sesi yang belum dimulai / siap dibuka
+  // 🏛️ Prediksi Batas Aman Hadir — Real-Time, update tiap menit
+  // Hanya aktif untuk kartu mode GURU yang belum dimulai / siap dibuka
+  const isGuroPrediksiActive = mode === 'GURU' && (isReadyToOpen || isUpcoming);
+
   const { data: kegiatanData } = useQuery({
     queryKey: ['jadwal-kegiatan-list', true],
     queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
     staleTime: 5 * 60 * 1000,
-    enabled: mode === 'GURU' && (isReadyToOpen || isUpcoming),
+    enabled: isGuroPrediksiActive,
   });
 
-  const kegiatanPrediksi = useMemo(() => {
-    if (mode !== 'GURU' || (!isReadyToOpen && !isUpcoming)) return null;
+  // Clock state — tick setiap 30 detik agar badge TERLAMBAT X menit tetap akurat
+  const [nowTick, setNowTick] = React.useState(() => new Date());
+  React.useEffect(() => {
+    if (!isGuroPrediksiActive) return;
+    const interval = setInterval(() => setNowTick(new Date()), 30_000);
+    return () => clearInterval(interval);
+  }, [isGuroPrediksiActive]);
+
+  const prediksiRealtime = useMemo(() => {
+    if (!isGuroPrediksiActive) return null;
     if (!jamMulai || !jamMulai.includes(':')) return null;
 
+    // 1. Hitung deadline jadwal resmi (JadwalKBM.jam_mulai)
+    const [schH, schM] = jamMulai.split(':').map(Number);
+    const scheduledMinutes = schH * 60 + schM;
+
+    // 2. Cek JadwalKegiatan hari ini — apakah ada yang selesai melewati jam jadwal?
     const rawList: any[] = Array.isArray(kegiatanData)
       ? kegiatanData
       : (Array.isArray((kegiatanData as any)?.data) ? (kegiatanData as any).data : []);
 
-    const todayIndex = new Date().getDay();
     const HARI_MAP: Record<number, string> = {
       0: 'MINGGU', 1: 'SENIN', 2: 'SELASA', 3: 'RABU',
       4: 'KAMIS', 5: 'JUMAT', 6: 'SABTU'
     };
-    const todayStr = HARI_MAP[todayIndex];
-    const [schH, schM] = jamMulai.split(':').map(Number);
-    const scheduledMinutes = schH * 60 + schM;
+    const todayStr = HARI_MAP[nowTick.getDay()];
 
-    const matching = rawList
+    const matchingKegiatan = rawList
       .filter((k: any) => {
         if (!k.aktif) return false;
         const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
@@ -237,9 +249,30 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         return (bH * 60 + bM) - (aH * 60 + aM);
       });
 
-    if (matching.length === 0) return null;
-    return { nama: matching[0].nama, batasAman: matching[0].waktu_selesai };
-  }, [kegiatanData, jamMulai, mode, isReadyToOpen, isUpcoming]);
+    // 3. Tentukan deadline efektif
+    let deadlineMinutes = scheduledMinutes;
+    let deadlineStr = jamMulai;
+    let kegiatanNama: string | null = null;
+
+    if (matchingKegiatan.length > 0) {
+      const top = matchingKegiatan[0];
+      const [endH, endM] = top.waktu_selesai.split(':').map(Number);
+      deadlineMinutes = endH * 60 + endM;
+      deadlineStr = top.waktu_selesai;
+      kegiatanNama = top.nama;
+    }
+
+    // 4. Bandingkan waktu sekarang vs deadline
+    const currentMinutes = nowTick.getHours() * 60 + nowTick.getMinutes();
+    const lateMinutes = currentMinutes - deadlineMinutes;
+
+    return {
+      status: lateMinutes > 0 ? 'TERLAMBAT' : 'AMAN',
+      menit: lateMinutes > 0 ? lateMinutes : 0,
+      deadline: deadlineStr,
+      kegiatanNama,
+    };
+  }, [nowTick, kegiatanData, jamMulai, isGuroPrediksiActive]);
 
   const hadirVal = item.summary?.hadir 
     ?? item._summary?.hadir 
@@ -351,11 +384,30 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               </span>
             )}
 
-            {/* 🏛️ Prediksi Batas Aman Hadir (Jadwal Kegiatan Bertabrakan) */}
-            {kegiatanPrediksi && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0" title={`Kegiatan ${kegiatanPrediksi.nama} berlangsung hingga ${kegiatanPrediksi.batasAman} WIB — batas aman hadir disesuaikan`}>
-                ⚠️ Aman ≤ {kegiatanPrediksi.batasAman}
-              </span>
+            {/* 🏛️ Prediksi Batas Aman Real-Time */}
+            {prediksiRealtime && (
+              prediksiRealtime.status === 'TERLAMBAT' ? (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-[10px] font-bold shrink-0"
+                  title={`Sudah melewati batas aman hadir${prediksiRealtime.kegiatanNama ? ` (${prediksiRealtime.kegiatanNama})` : ''}`}
+                >
+                  🔴 Terlambat {prediksiRealtime.menit} m
+                </span>
+              ) : prediksiRealtime.kegiatanNama ? (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0"
+                  title={`Kegiatan ${prediksiRealtime.kegiatanNama} berlangsung — batas aman hadir s.d ${prediksiRealtime.deadline} WIB`}
+                >
+                  ⚠️ Aman ≤ {prediksiRealtime.deadline}
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0"
+                  title={`Masuk tepat waktu sebelum ${prediksiRealtime.deadline} WIB`}
+                >
+                  ✅ Aman ≤ {prediksiRealtime.deadline}
+                </span>
+              )
             )}
 
             {/* Jadwal Resmi Badge */}
