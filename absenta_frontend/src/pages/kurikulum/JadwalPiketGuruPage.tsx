@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { JadwalNavPill } from '@/components/kurikulum/JadwalNavPill';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   ShieldCheck,
@@ -522,6 +523,7 @@ export default function JadwalPiketGuruPage() {
       ]}
       stats={stats}
       isLoadingStats={loading}
+      topSlot={<JadwalNavPill />}
       instruction={{
         title: isKurikulumAdmin ? 'Panduan Pengelolaan Piket Guru (Kurikulum)' : 'Panduan Penugasan Piket Guru',
         description: isKurikulumAdmin ? 'Tentukan penugasan guru piket harian untuk menjaga kedisiplinan dan keamanan lingkungan sekolah.' : 'Informasi penugasan piket harian guru.',

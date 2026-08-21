@@ -32,6 +32,7 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { JadwalNavPill } from '@/components/kurikulum/JadwalNavPill';
 import { getJadwalKBM, deleteJadwalKBM, clearJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
@@ -714,6 +715,7 @@ export default function JadwalPelajaranPage() {
     <AcademicPageLayout
       title="Jadwal KBM & Visual Builder"
       description="Workspace Operasional Penyusunan & Mapping Jadwal Pelajaran"
+      topSlot={<JadwalNavPill />}
       instruction={{
         title: 'Panduan Penyusunan Jadwal (Full Screen Workspace)',
         description: 'Jadwal pelajaran bertindak sebagai blueprint KBM harian yang menggerakkan generator absensi otomatis.',

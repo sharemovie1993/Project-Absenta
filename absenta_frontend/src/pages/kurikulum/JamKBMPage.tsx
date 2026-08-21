@@ -6,6 +6,7 @@ import { Button, SectionCard } from '@/components/ui';
 import { Save, RefreshCw, Clock, Users } from 'lucide-react';
 import { getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { JadwalNavPill } from '@/components/kurikulum/JadwalNavPill';
 import { useJenjang } from '@/hooks/useJenjang';
 import { useKelasOptions } from '@/components/common';
 import { toast } from 'react-hot-toast';
@@ -237,6 +238,7 @@ export const JamKBMPage: React.FC = () => {
       description="Atur durasi jam pelajaran KBM per shift dan petakan kelas masing-masing."
       breadcrumbs={breadcrumbs}
       instruction={instruction}
+      topSlot={<JadwalNavPill />}
       toolbar={
         canManage && (
           <Button
