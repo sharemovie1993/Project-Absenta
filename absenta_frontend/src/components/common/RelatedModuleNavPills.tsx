@@ -202,17 +202,17 @@ export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({
     return null;
   }
 
-  // Render Varian Bottombar Mobile (Level 2 Contextual Nav)
+  // Render Varian Bottombar Mobile (Level 2 Contextual Nav - Mengadopsi Style Level 1)
   if (variant === 'bottombar') {
     return (
       <div 
         aria-label="Navigasi Menu Terkait Mobile"
         className={cn(
-          "w-full bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-700/60 px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar shadow-2xl",
+          "w-full bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1 pb-1 flex items-center shadow-md overflow-x-auto no-scrollbar",
           className
         )}
       >
-        <div className="flex items-center gap-1.5 min-w-max mx-auto px-1">
+        <div className="flex items-center justify-around w-full min-w-max gap-1 px-1">
           {matchedGroup.items.map(item => {
             const IconComp = item.icon;
             const isCurrentActive = currentPath === item.path.toLowerCase().replace(/\/$/, "");
@@ -224,20 +224,28 @@ export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({
                 replace={true}
                 title={item.label}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black transition-all duration-150 cursor-pointer select-none shrink-0 border active:scale-95",
+                  "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-[58px] cursor-pointer relative active:scale-95",
                   isCurrentActive
-                    ? "bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/40 ring-1 ring-white/30"
-                    : "bg-slate-800/90 text-slate-300 border-slate-700/80 hover:bg-slate-700 hover:text-white"
+                    ? "text-indigo-600 dark:text-indigo-400 font-black"
+                    : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                 )}
               >
-                <IconComp 
-                  size={13} 
+                <div
                   className={cn(
-                    "stroke-[2.5]", 
-                    isCurrentActive ? "text-white" : "text-indigo-400"
-                  )} 
-                />
-                <span className="tracking-tight">{item.shortLabel || item.label}</span>
+                    "p-1.5 rounded-xl transition-all relative",
+                    isCurrentActive
+                      ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                      : "bg-transparent"
+                  )}
+                >
+                  <IconComp size={17} className="stroke-[2.2]" />
+                  {isCurrentActive && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  )}
+                </div>
+                <span className="truncate max-w-[64px] font-extrabold text-[9.5px]">
+                  {item.shortLabel || item.label}
+                </span>
               </Link>
             );
           })}
