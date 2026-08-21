@@ -56,7 +56,7 @@ interface MobileCardNodeProps {
   editingId?: string | null;
 }
 
-const MobileCardNode: React.FC<MobileCardNodeProps> = ({ 
+const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({ 
   node, 
   depth = 0, 
   onAction,
@@ -364,14 +364,20 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
       )}
     </div>
   );
-};
+}, (prev, next) => {
+  return (
+    prev.editingId === next.editingId &&
+    prev.depth === next.depth &&
+    prev.node === next.node
+  );
+});
 
-export const StrukturMobileCardTree: React.FC<StrukturMobileCardTreeProps> = ({ 
+export const StrukturMobileCardTree: React.FC<StrukturMobileCardTreeProps> = React.memo(({ 
   data, 
   onAction,
   editingId 
 }) => {
-  const nodes = Array.isArray(data) ? data : [data];
+  const nodes = useMemo(() => Array.isArray(data) ? data : [data], [data]);
 
   if (!nodes || nodes.length === 0) {
     return (
@@ -394,4 +400,4 @@ export const StrukturMobileCardTree: React.FC<StrukturMobileCardTreeProps> = ({
       ))}
     </div>
   );
-};
+});

@@ -1,29 +1,16 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  getStrukturTree, 
-  createStruktur,
-  updateStruktur,
-  deleteStruktur,
-  type CreateStrukturInput,
-  type UpdateStrukturInput,
-  type StrukturOrganisasi 
-} from '@/api/academic/strukturOrganisasi.api';
-import { Loader } from '@/components/ui/Loader';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { getStrukturTree } from '@/api/academic/strukturOrganisasi.api';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button } from '@/components/ui/Button';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
-import toast from 'react-hot-toast';
-import { useConfirm } from '@/providers/ConfirmProvider';
 import { SectionCard } from '@/components/ui/SectionCard';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { 
-  Plus, 
-  LayoutGrid,
   Crown,
   Building2,
   Briefcase,
@@ -36,10 +23,7 @@ import {
   ClipboardList,
   ShoppingCart
 } from 'lucide-react';
-import Modal from '@/components/ui/Modal';
 import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram';
-
-const StrukturForm = lazy(() => import('@/components/academic/struktur/StrukturForm').then(m => ({ default: m.StrukturForm })));
 
 const TABS = [
   { id: 'PIMPINAN', label: 'Pimpinan', icon: Crown, codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'BKK'] },
@@ -57,16 +41,21 @@ const TABS = [
 
 const StrukturOrganisasiPage: React.FC = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
-  const { confirm } = useConfirm();
   const { user } = useAuthStore();
   const { isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
-  const { jenjang, sekolah } = useJenjang();
+  const { jenjang } = useJenjang();
 
-  const isGlobalStrukturAdmin = isAdmin || isKurikulum || can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
   const canManageAcademic = isAdmin || isKurikulum || isKepalaSekolah || can('academic.structures.view.tree') || can('academic.structures.view.list');
+
+  // Pre-warm data cache & loading guard (Pillar 9 & 31)
+  const { isLoading } = useQuery({
+    queryKey: ['strukturTree'],
+    queryFn: getStrukturTree,
+    enabled: canManageAcademic,
+    staleTime: 5 * 60 * 1000
+  });
 
   const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
 
@@ -89,54 +78,26 @@ const StrukturOrganisasiPage: React.FC = () => {
     const tabParam = searchParams.get('tab');
     return tabParam && visibleTabs.some(t => t.id === tabParam) ? tabParam : 'PIMPINAN';
   }, [searchParams, visibleTabs]);
+
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
-  // Modal State
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<StrukturOrganisasi | null>(null);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-
-  // Queries
-  const { data: treeRes, isLoading: isTreeLoading } = useQuery({
-    queryKey: ['strukturTree'],
-    queryFn: getStrukturTree,
-    enabled: canManageAcademic
-  });
-
-  const rawMap = useMemo(() => treeRes?.data || {}, [treeRes]);
-  const allStrukturs = useMemo(() => Object.values(rawMap).flat() as StrukturOrganisasi[], [rawMap]);
-
   const activeTabCodes = useMemo(() => {
-    const tab = visibleTabs.find(t => t.id === activeTab);
+    const tab = (visibleTabs || []).find(t => t.id === activeTab);
     return tab ? tab.codes : [];
   }, [activeTab, visibleTabs]);
 
-  const handleOpenCreate = useCallback(() => {
-    setEditingItem(null);
-    setIsFormOpen(true);
+  // Memoized Tab Change Handler for Performance Optimization (Pillar 3 DOM Churn Guard)
+  const handleTabChange = useCallback((newTab: string) => {
+    setActiveTab(newTab);
   }, []);
 
-  const handleFormSubmit = async (values: CreateStrukturInput | UpdateStrukturInput) => {
-    setIsSubmittingForm(true);
-    try {
-      if (editingItem) {
-        await updateStruktur(editingItem.id, values);
-        toast.success('Jabatan berhasil diperbarui');
-      } else {
-        await createStruktur(values as CreateStrukturInput);
-        toast.success('Jabatan baru berhasil dibuat');
-      }
-      setIsFormOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    } catch (err: unknown) {
-      const error = err as { message?: string } | null;
-      toast.error(error?.message || 'Gagal menyimpan jabatan');
-    } finally {
-      setIsSubmittingForm(false);
-    }
-  };
+  const tabOptions = useMemo(() => {
+    return (visibleTabs || []).map(tab => ({
+      id: tab.id,
+      label: tab.label,
+      icon: tab.icon
+    }));
+  }, [visibleTabs]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },
@@ -177,8 +138,8 @@ const StrukturOrganisasiPage: React.FC = () => {
           </div>
         ),
         items: [
-          { text: "Pilih tab Jabatan untuk menambah atau mengubah daftar jabatan." },
-          { text: "Pilih tab Personel untuk menugaskan guru ke jabatan tersebut." }
+          { text: "Pilih tab Jabatan untuk melihat pembagian divisi kepengurusan." },
+          { text: "Ketuk tombol Tugaskan / Pensil pada kartu personil untuk memilih guru atau staf." }
         ]
       }}
       hardeningModuleKey="academic_struktur_organisasi"
@@ -189,13 +150,9 @@ const StrukturOrganisasiPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <div className="w-full sm:w-auto overflow-x-auto no-scrollbar py-0.5">
             <TabSwitcher
-              options={visibleTabs?.map(tab => ({ 
-                id: tab.id, 
-                label: tab.label,
-                icon: tab.icon 
-              }))}
+              options={tabOptions}
               activeTab={activeTab}
-              onChange={setActiveTab}
+              onChange={handleTabChange}
             />
           </div>
 
@@ -212,48 +169,17 @@ const StrukturOrganisasiPage: React.FC = () => {
           )}
         </div>
 
-        {/* Main Content Area */}
-        {isTreeLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader size="lg" />
-            <p className="text-sm text-slate-500 font-bold tracking-wide animate-pulse">Memuat Struktur Organisasi...</p>
-          </div>
-        ) : allStrukturs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border shadow-sm">
-            <LayoutGrid className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-bold text-sm">Tidak ada data struktur organisasi.</p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+        {/* Main Content Area: Protected by Skeleton & Loading Guard (Pillar 9) */}
+        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+          <React.Suspense fallback={<div className="p-8 text-center"><span className="text-sm font-bold text-slate-400 animate-pulse">Memuat Struktur...</span></div>}>
             <StrukturDiagram 
               activeTab={activeTab}
               activeCodes={activeTabCodes}
               refreshKey={0}
             />
-          </div>
-        )}
+          </React.Suspense>
+        </div>
       </div>
-
-      {/* MODAL: CREATE / EDIT JABATAN */}
-      {isFormOpen && (
-        <Modal 
-          isOpen={isFormOpen} 
-          onClose={() => setIsFormOpen(false)} 
-          title={editingItem ? 'Edit Jabatan Struktur' : 'Tambah Jabatan Baru'}
-          size="lg"
-        >
-          <div className="pt-2">
-            <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
-              <StrukturForm 
-                initialData={editingItem}
-                onSubmit={handleFormSubmit}
-                onCancel={() => setIsFormOpen(false)}
-                isLoading={isSubmittingForm}
-              />
-            </Suspense>
-          </div>
-        </Modal>
-      )}
       </SectionCard>
     </AcademicPageLayout>
   );
