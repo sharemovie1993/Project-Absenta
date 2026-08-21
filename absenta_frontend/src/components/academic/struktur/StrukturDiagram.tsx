@@ -32,7 +32,19 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
-  const [viewMode, setViewMode] = useState<'auto' | 'tree' | 'card'>('auto');
+
+  // Strict Screen Detection: Mobile will ONLY render StrukturMobileCardTree, Desktop will ONLY render TopologyTree
+  const [isMobile, setIsMobile] = useState<boolean>(() => 
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { confirm } = useConfirm();
   const { jenjang, tingkatList } = useJenjang();
@@ -278,9 +290,9 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   const renderTreeOrCards = useCallback((treeData: TopologyNodeData, keyPrefix = '') => {
     if (!treeData) return null;
 
-    if (viewMode === 'card') {
+    if (isMobile) {
       return (
-        <TreeErrorBoundary key={`card-${keyPrefix}`}>
+        <TreeErrorBoundary key={`mobile-card-${keyPrefix}`}>
           <StrukturMobileCardTree 
             data={treeData} 
             editingId={editingNode?.node.id}
@@ -290,45 +302,16 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       );
     }
 
-    if (viewMode === 'tree') {
-      return (
-        <TreeErrorBoundary key={`tree-${keyPrefix}`}>
-          <TopologyTree 
-            data={treeData} 
-            editingId={editingNode?.node.id}
-            onAction={handleNodeAction}
-          />
-        </TreeErrorBoundary>
-      );
-    }
-
-    // Default 'auto': Responsive (Mobile -> Card, Desktop -> Tree)
     return (
-      <div key={`auto-${keyPrefix}`} className="w-full">
-        {/* Mobile View: Vertical Cards */}
-        <div className="block md:hidden">
-          <TreeErrorBoundary>
-            <StrukturMobileCardTree 
-              data={treeData} 
-              editingId={editingNode?.node.id}
-              onAction={handleNodeAction}
-            />
-          </TreeErrorBoundary>
-        </div>
-
-        {/* Desktop View: Horizontal Tree Canvas */}
-        <div className="hidden md:block">
-          <TreeErrorBoundary>
-            <TopologyTree 
-              data={treeData} 
-              editingId={editingNode?.node.id}
-              onAction={handleNodeAction}
-            />
-          </TreeErrorBoundary>
-        </div>
-      </div>
+      <TreeErrorBoundary key={`desktop-tree-${keyPrefix}`}>
+        <TopologyTree 
+          data={treeData} 
+          editingId={editingNode?.node.id}
+          onAction={handleNodeAction}
+        />
+      </TreeErrorBoundary>
     );
-  }, [viewMode, editingNode?.node.id, handleNodeAction]);
+  }, [isMobile, editingNode?.node.id, handleNodeAction]);
 
   const renderedGroups = useMemo(() => {
     return GROUP_CONFIG.map(group => {
@@ -404,53 +387,6 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
   return (
     <div className="space-y-8 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
-      {/* Responsive View Switcher Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Tampilan:
-          </span>
-          <div className="grid grid-cols-3 sm:flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 w-full sm:w-auto gap-1">
-            <button
-              onClick={() => setViewMode('auto')}
-              className={cn(
-                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
-                viewMode === 'auto' 
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-              )}
-            >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Otomatis</span>
-            </button>
-            <button
-              onClick={() => setViewMode('card')}
-              className={cn(
-                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
-                viewMode === 'card' 
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-              )}
-            >
-              <Smartphone className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Kartu HP</span>
-            </button>
-            <button
-              onClick={() => setViewMode('tree')}
-              className={cn(
-                "py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
-                viewMode === 'tree' 
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-              )}
-            >
-              <Network className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Pohon PC</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {isTabularDiagram ? (
         activeTab === 'PIMPINAN' ? (
           <div className="flex flex-col gap-12">

@@ -23,7 +23,18 @@ import { useConfirm } from '@/providers/ConfirmProvider';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { 
   Plus, 
-  LayoutGrid
+  LayoutGrid,
+  Crown,
+  Building2,
+  Briefcase,
+  Wrench,
+  Laptop,
+  UserCheck,
+  Sparkles,
+  HeartHandshake,
+  ShieldCheck,
+  ClipboardList,
+  ShoppingCart
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram';
@@ -31,17 +42,17 @@ import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram'
 const StrukturForm = lazy(() => import('@/components/academic/struktur/StrukturForm').then(m => ({ default: m.StrukturForm })));
 
 const TABS = [
-  { id: 'PIMPINAN', label: 'Pimpinan', codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'BKK'] },
-  { id: 'TATA_USAHA', label: 'Tata Usaha', codes: ['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] },
-  { id: 'KAPROG', label: 'Kaprog', codes: ['KAPROG'] },
-  { id: 'KABENG', label: 'Kabeng', codes: ['KABENG'] },
-  { id: 'TOOLMAN', label: 'Toolman', codes: ['TOOLMAN'] },
-  { id: 'WALI_KELAS', label: 'Wali Kelas', codes: ['WALIKELAS'] },
-  { id: 'PEMBINA_ESKUL', label: 'Pembina Eskul', codes: ['PEMBINA_ESKUL'] },
-  { id: 'BP_BK', label: 'BP/BK', codes: ['BPBK'] },
-  { id: 'GERBANG', label: 'Gerbang', codes: ['GERBANG'] },
-  { id: 'PETUGAS_KELAS', label: 'Petugas Kelas', codes: ['PETUGAS_KELAS', 'PETUGAS_ABSENSI'] },
-  { id: 'KOPERASI', label: 'Koperasi', codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] }
+  { id: 'PIMPINAN', label: 'Pimpinan', icon: Crown, codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'BKK'] },
+  { id: 'TATA_USAHA', label: 'Tata Usaha', icon: Building2, codes: ['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] },
+  { id: 'KAPROG', label: 'Kaprog', icon: Briefcase, codes: ['KAPROG'] },
+  { id: 'KABENG', label: 'Kabeng', icon: Wrench, codes: ['KABENG'] },
+  { id: 'TOOLMAN', label: 'Toolman', icon: Laptop, codes: ['TOOLMAN'] },
+  { id: 'WALI_KELAS', label: 'Wali Kelas', icon: UserCheck, codes: ['WALIKELAS'] },
+  { id: 'PEMBINA_ESKUL', label: 'Pembina Eskul', icon: Sparkles, codes: ['PEMBINA_ESKUL'] },
+  { id: 'BP_BK', label: 'BP/BK', icon: HeartHandshake, codes: ['BPBK'] },
+  { id: 'GERBANG', label: 'Gerbang', icon: ShieldCheck, codes: ['GERBANG'] },
+  { id: 'PETUGAS_KELAS', label: 'Petugas Kelas', icon: ClipboardList, codes: ['PETUGAS_KELAS', 'PETUGAS_ABSENSI'] },
+  { id: 'KOPERASI', label: 'Koperasi', icon: ShoppingCart, codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] }
 ];
 
 const StrukturOrganisasiPage: React.FC = () => {
@@ -175,27 +186,33 @@ const StrukturOrganisasiPage: React.FC = () => {
       <SectionCard fullWidth className="bg-transparent border-none p-0 shadow-none dark:bg-transparent min-w-0">
       <div className="space-y-6">
         {/* Navigation & Controls header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
-          <TabSwitcher
-            options={visibleTabs?.map(tab => ({ id: tab.id, label: tab.label }))}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs">
+          <div className="w-full sm:w-auto overflow-x-auto no-scrollbar py-0.5">
+            <TabSwitcher
+              options={visibleTabs?.map(tab => ({ 
+                id: tab.id, 
+                label: tab.label,
+                icon: tab.icon 
+              }))}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+            />
+          </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             {activeTab === 'PEMBINA_ESKUL' && (
               <Button
                 variant="outline"
                 onClick={() => navigate('/attendance/anggota-kegiatan-eskul')}
-                className="font-bold text-sm h-10 px-5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="font-bold text-xs sm:text-sm h-9 sm:h-10 px-3.5 sm:px-5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0"
               >
-                Kembali ke Manajemen Eskul
+                Manajemen Eskul
               </Button>
             )}
             {isGlobalStrukturAdmin && (
               <Button 
                 onClick={handleOpenCreate}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold text-sm h-10 px-5 flex items-center gap-2 group"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs font-bold text-xs sm:text-sm h-9 sm:h-10 px-3.5 sm:px-5 flex items-center gap-1.5 sm:gap-2 group shrink-0"
               >
                 <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span>Tambah Jabatan</span>
