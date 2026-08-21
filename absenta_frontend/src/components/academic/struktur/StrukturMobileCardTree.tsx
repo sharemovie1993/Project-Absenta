@@ -74,6 +74,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     node.subLabel === 'Belum Ditugaskan' ||
     node.id?.startsWith('unassigned-')
   );
+  const hasChildren = Boolean(node.children && node.children.length > 0);
   const isCategory = Boolean(
     node.type === 'CATEGORY' || 
     node.type === 'GROUP' || 
