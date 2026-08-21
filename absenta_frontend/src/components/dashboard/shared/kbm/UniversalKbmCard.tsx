@@ -165,60 +165,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   }, [reminderMeta]);
   const isRemindedRecently = reminderMinutesAgo !== null && reminderMinutesAgo < 10;
 
-  // 🏛️ Prediksi Batas Aman Hadir — Berdasarkan JadwalKegiatan hari ini
-  // Hanya tampil di kartu mode GURU (bukan monitoring/petugas) dan hanya untuk sesi yang belum dimulai / siap dibuka
-  const { data: kegiatanData } = useQuery({
-    queryKey: ['jadwal-kegiatan-list', true],
-    queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
-    staleTime: 5 * 60 * 1000,
-    enabled: mode === 'GURU' && (isReadyToOpen || isUpcoming),
-  });
-
-  const kegiatanPrediksi = useMemo(() => {
-    if (mode !== 'GURU' || (!isReadyToOpen && !isUpcoming)) return null;
-    if (!jamMulai || !jamMulai.includes(':')) return null;
-
-    const rawList: any[] = Array.isArray(kegiatanData)
-      ? kegiatanData
-      : (Array.isArray((kegiatanData as any)?.data) ? (kegiatanData as any).data : []);
-
-    // Hari ini
-    const todayIndex = new Date().getDay();
-    const HARI_MAP: Record<number, string> = {
-      0: 'MINGGU', 1: 'SENIN', 2: 'SELASA', 3: 'RABU',
-      4: 'KAMIS', 5: 'JUMAT', 6: 'SABTU'
-    };
-    const todayStr = HARI_MAP[todayIndex];
-
-    const [schH, schM] = jamMulai.split(':').map(Number);
-    const scheduledMinutes = schH * 60 + schM;
-
-    // Cari kegiatan hari ini yang waktu_selesai-nya melewati jam mulai sesi
-    const matching = rawList
-      .filter((k: any) => {
-        if (!k.aktif) return false;
-        const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
-        if (!days.includes(todayStr)) return false;
-        if (!k.waktu_selesai) return false;
-        const [endH, endM] = k.waktu_selesai.split(':').map(Number);
-        const endMinutes = endH * 60 + endM;
-        return endMinutes > scheduledMinutes;
-      })
-      .sort((a: any, b: any) => {
-        const [aH, aM] = a.waktu_selesai.split(':').map(Number);
-        const [bH, bM] = b.waktu_selesai.split(':').map(Number);
-        return (bH * 60 + bM) - (aH * 60 + aM);
-      });
-
-    if (matching.length === 0) return null;
-
-    const latestKegiatan = matching[0];
-    return {
-      nama: latestKegiatan.nama,
-      batasAman: latestKegiatan.waktu_selesai,
-    };
-  }, [kegiatanData, jamMulai, mode, isReadyToOpen, isUpcoming]);
-
   // 2. Resolve Text Fields with robust fallbacks
   const mapelNama = item.mapel_nama 
     || item.Mapel?.nama_mapel 
@@ -249,6 +195,51 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     || (item.waktu && item.waktu.includes('-') ? item.waktu.split('-')[1].replace('WIB', '').trim() : '');
 
   const jamLabel = item.jamLabel || item.jam_label || (item.JamPelajaran?.nama_jam) || null;
+
+  // 🏛️ Prediksi Batas Aman Hadir — Berdasarkan JadwalKegiatan hari ini
+  // Hanya tampil di kartu mode GURU dan hanya untuk sesi yang belum dimulai / siap dibuka
+  const { data: kegiatanData } = useQuery({
+    queryKey: ['jadwal-kegiatan-list', true],
+    queryFn: () => getJadwalKegiatan({ aktif: true }).catch(() => null),
+    staleTime: 5 * 60 * 1000,
+    enabled: mode === 'GURU' && (isReadyToOpen || isUpcoming),
+  });
+
+  const kegiatanPrediksi = useMemo(() => {
+    if (mode !== 'GURU' || (!isReadyToOpen && !isUpcoming)) return null;
+    if (!jamMulai || !jamMulai.includes(':')) return null;
+
+    const rawList: any[] = Array.isArray(kegiatanData)
+      ? kegiatanData
+      : (Array.isArray((kegiatanData as any)?.data) ? (kegiatanData as any).data : []);
+
+    const todayIndex = new Date().getDay();
+    const HARI_MAP: Record<number, string> = {
+      0: 'MINGGU', 1: 'SENIN', 2: 'SELASA', 3: 'RABU',
+      4: 'KAMIS', 5: 'JUMAT', 6: 'SABTU'
+    };
+    const todayStr = HARI_MAP[todayIndex];
+    const [schH, schM] = jamMulai.split(':').map(Number);
+    const scheduledMinutes = schH * 60 + schM;
+
+    const matching = rawList
+      .filter((k: any) => {
+        if (!k.aktif) return false;
+        const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
+        if (!days.includes(todayStr)) return false;
+        if (!k.waktu_selesai) return false;
+        const [endH, endM] = k.waktu_selesai.split(':').map(Number);
+        return (endH * 60 + endM) > scheduledMinutes;
+      })
+      .sort((a: any, b: any) => {
+        const [aH, aM] = a.waktu_selesai.split(':').map(Number);
+        const [bH, bM] = b.waktu_selesai.split(':').map(Number);
+        return (bH * 60 + bM) - (aH * 60 + aM);
+      });
+
+    if (matching.length === 0) return null;
+    return { nama: matching[0].nama, batasAman: matching[0].waktu_selesai };
+  }, [kegiatanData, jamMulai, mode, isReadyToOpen, isUpcoming]);
 
   const hadirVal = item.summary?.hadir 
     ?? item._summary?.hadir 
