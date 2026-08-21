@@ -124,6 +124,76 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
     );
   }
 
+  // ── PURE CATEGORY / BIDANG BANNER (Fokus ke Label Divisi tanpa tombol + dan tanpa kotak orang) ──
+  if (isCategory) {
+    return (
+      <div className="w-full mt-4 first:mt-0">
+        <div 
+          onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+          className={cn(
+            "px-4 py-2.5 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer transition-all shadow-xs select-none",
+            "bg-gradient-to-r from-slate-100/90 to-slate-50 dark:from-slate-800/90 dark:to-slate-800/50 border-slate-200/90 dark:border-slate-700/80 hover:border-slate-300"
+          )}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50 shadow-xs">
+              <RoleIcon className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider truncate">
+              {node.label}
+            </span>
+          </div>
+
+          {hasChildren && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-extrabold">
+                {node.children!.length} Tim
+              </span>
+              <div className="text-slate-400">
+                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Render Subordinate Children */}
+        {hasChildren && (
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2.5 w-full mt-2.5"
+              >
+                {node.children!.map(child => (
+                  <MobileCardNode 
+                    key={child.id} 
+                    node={child} 
+                    depth={depth + 1} 
+                    onAction={onAction}
+                    editingId={editingId}
+                  />
+                ))}
+
+                {/* Tombol Tambah Staf Baru di paling bawah daftar tim bidang */}
+                <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
+                  <button
+                    onClick={handleAddMember}
+                    className="w-full py-2 px-4 rounded-2xl border border-dashed border-indigo-300 hover:border-indigo-500 dark:border-slate-700 dark:hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-100/50 dark:bg-slate-800/30 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-[11px] font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>+ Tambah Anggota {node.label}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={cn("w-full relative flex flex-col", depth > 0 && "pl-3.5 sm:pl-5 border-l-2 border-indigo-100 dark:border-slate-800 ml-2.5 sm:ml-4 mt-2.5")}>
       {/* Node Card */}
@@ -163,43 +233,24 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Direct Add Member in Header for parent groups */}
-            {hasChildren && (
-              <button
-                onClick={handleAddMember}
-                title="Tambah Staf Baru ke Bidang Ini"
-                className={cn(
-                  "p-1 px-2 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all active:scale-95",
-                  isRoot 
-                    ? "bg-white/20 hover:bg-white/30 text-white" 
-                    : "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
-                )}
-              >
-                <Plus className="w-3 h-3" />
-                <span>Tambah</span>
-              </button>
-            )}
-
-            {/* Expand / Collapse for branches */}
-            {hasChildren && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className={cn(
-                  "p-1 rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold",
-                  isRoot 
-                    ? "bg-white/20 hover:bg-white/30 text-white" 
-                    : "bg-slate-200/60 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-slate-300"
-                )}
-              >
-                <span>{node.children!.length} Tim</span>
-                {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-              </button>
-            )}
-          </div>
+          {/* Expand / Collapse for branches */}
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className={cn(
+                "p-1 rounded-md transition-colors flex items-center gap-1 text-[10px] font-bold",
+                isRoot 
+                  ? "bg-white/20 hover:bg-white/30 text-white" 
+                  : "bg-slate-200/60 dark:bg-slate-700 hover:bg-slate-200 text-slate-600 dark:text-slate-300"
+              )}
+            >
+              <span>{node.children!.length} Tim</span>
+              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+          )}
         </div>
 
         {/* Content Body: Personil Information */}
