@@ -2,6 +2,7 @@ import React from 'react';
 import { Mail, Inbox, Send, FileText, Clock, UserCheck, TrendingUp, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
@@ -42,6 +43,7 @@ export default function CorrespondenceDashboard() {
     <AcademicPageLayout 
       title="Dashboard Persuratan" 
       description="Monitoring volume surat masuk, surat keluar, dan disposisi aktif"
+      topSlot={<WorkspaceAppLauncherCard workspaceId="TU_KOORDINATOR_WORKSPACE" />}
       toolbar={<TvModeToggle />}
     >
       <div className="space-y-6">

@@ -2,6 +2,7 @@ import React from 'react';
 import { BookOpen, FileText, CheckSquare, Award, Clock, Users, ArrowUpRight, ShieldAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
@@ -41,6 +42,7 @@ export default React.memo(function RaporDashboard() {
     <AcademicPageLayout 
       title="Dashboard E-Rapor" 
       description="Monitoring progres pengisian nilai, verifikasi wali kelas, dan pembagian rapor"
+      topSlot={<WorkspaceAppLauncherCard workspaceId="RAPOR_WORKSPACE" />}
       toolbar={<TvModeToggle />}
     >
       <div className="space-y-6">

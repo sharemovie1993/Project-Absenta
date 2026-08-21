@@ -217,6 +217,42 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
         const cat = (item.categoryLabel || '').toUpperCase();
         return (p.startsWith('/kesiswaan') || cat.includes('KESISWAAN')) && p !== '/kesiswaan/dashboard' && p !== '#';
       });
+    } else if (activeWsId === 'HUBIN_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/hubin') || cat.includes('HUBIN') || cat.includes('INDUSTRI') || cat.includes('PKL')) && p !== '/hubin/dashboard' && p !== '#';
+      });
+    } else if (activeWsId === 'BPBK_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/bpbk') || cat.includes('BPBK') || cat.includes('BP/BK') || cat.includes('KONSELING')) && p !== '/bpbk/dashboard' && p !== '#';
+      });
+    } else if (activeWsId === 'COOPERATIVE_WORKSPACE' || activeWsId === 'KOPERASI_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/cooperative') || cat.includes('KOPERASI') || cat.includes('KANTIN')) && p !== '/cooperative/dashboard' && p !== '#';
+      });
+    } else if (activeWsId === 'CBT_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/cbt') || cat.includes('CBT') || cat.includes('UJIAN')) && p !== '/cbt/dashboard' && p !== '#';
+      });
+    } else if (activeWsId === 'RAPOR_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/rapor') || cat.includes('RAPOR') || cat.includes('NILAI')) && p !== '/rapor/dashboard' && p !== '#';
+      });
+    } else if (activeWsId === 'TU_KOORDINATOR_WORKSPACE' || activeWsId === 'PERSURATAN_WORKSPACE') {
+      matchedItems = flatItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        const cat = (item.categoryLabel || '').toUpperCase();
+        return (p.startsWith('/correspondence') || cat.includes('PERSURATAN') || cat.includes('SURAT')) && p !== '/correspondence/dashboard' && p !== '#';
+      });
     } else {
       const { primaryItems: filtered } = filterNavByWorkspace(flatItems, user, activeWsId);
       matchedItems = filtered.filter(item => {

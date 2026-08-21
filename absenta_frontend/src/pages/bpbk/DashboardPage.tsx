@@ -1,6 +1,7 @@
 import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { DashboardSection } from './components/DashboardSection';
 import { Loader } from '../../components/ui/Loader';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -41,6 +42,7 @@ export default React.memo(function DashboardPage() {
           { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' }
         ]}
         hardeningModuleKey="bpbk_dashboard"
+        topSlot={<WorkspaceAppLauncherCard workspaceId="BPBK_WORKSPACE" />}
         toolbar={
           <Link
             to="/bpbk/konseling"

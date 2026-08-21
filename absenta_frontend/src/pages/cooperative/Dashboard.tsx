@@ -15,6 +15,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
 import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
+import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { useTvStore } from '../../store/tvStore';
 import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -229,6 +230,7 @@ const Dashboard: React.FC = React.memo(() => {
           { label: 'Koperasi', path: '/cooperative' },
           { label: 'Dashboard', path: '/cooperative/dashboard' },
         ]}
+        topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
         instruction={{
           title: 'Panduan Dashboard Koperasi',
           description: 'Pantau statistik anggota, simpanan, pinjaman, dan aktivitas belanja dalam satu layar.',

@@ -11,6 +11,7 @@ import { useTvStore } from '@/store/tvStore';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { hubinApi } from '@/api/hubin.api';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { 
   Divider, TracerStudyUraian, TopJurusanList, RecentPklTable, 
   TopMitraGrid, ActivityLogTimeline, type HubinStats, type HubinActivity 
@@ -175,6 +176,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
         hardeningModuleKey="hubin_dashboard"
         breadcrumbs={breadcrumbs}
         instruction={instruction}
+        topSlot={<WorkspaceAppLauncherCard workspaceId="HUBIN_WORKSPACE" />}
         toolbar={
           <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-2 shadow-sm items-center">
              <TvModeToggle />

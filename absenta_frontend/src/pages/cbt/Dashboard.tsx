@@ -2,6 +2,7 @@ import React from 'react';
 import { Laptop, Cpu, BookOpen, Clock, Users, ArrowUpRight, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
@@ -40,7 +41,8 @@ export default function CbtDashboard() {
   return (
     <AcademicPageLayout 
       title="Dashboard CBT (Computer Based Test)" 
-      description="Mockup monitoring ujian aktif, bank soal, dan analisis hasil tes siswa"
+      description="Monitoring ujian aktif, bank soal, dan analisis hasil tes siswa"
+      topSlot={<WorkspaceAppLauncherCard workspaceId="CBT_WORKSPACE" />}
       toolbar={<TvModeToggle />}
     >
       <div className="space-y-6">
