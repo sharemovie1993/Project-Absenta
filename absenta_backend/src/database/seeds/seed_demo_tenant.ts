@@ -1,0 +1,445 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import { STRUKTUR_CODES } from '../../config/organization-structure';
+import { ensureTenantBaseRoles } from './seed_policies';
+import { seedDefaultJenisKegiatanForTenant } from '../../modules/academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
+
+const prisma = new PrismaClient();
+
+export async function seedDemoTenant() {
+  console.log('🚀 [DEMO SEEDER] Memulai inisialisasi Tenant Demo Absenta...');
+
+  const DEMO_TENANT_ID = 'demo-tenant-absenta';
+  const DEMO_SUBDOMAIN = 'demo';
+  const DEMO_CUSTOM_DOMAIN = 'demo.absenta.id';
+  const DEFAULT_PASSWORD = await bcrypt.hash('password123', 10);
+
+  // 1. Dapatkan atau Buat Tenant Demo
+  let demoTenant = await prisma.tenant.findFirst({
+    where: {
+      OR: [
+        { id: DEMO_TENANT_ID },
+        { subdomain: DEMO_SUBDOMAIN },
+        { custom_domain: DEMO_CUSTOM_DOMAIN }
+      ]
+    }
+  });
+
+  if (demoTenant) {
+    demoTenant = await prisma.tenant.update({
+      where: { id: demoTenant.id },
+      data: {
+        name: 'SMK Negeri 1 Absenta (Demo Portal)',
+        subdomain: DEMO_SUBDOMAIN,
+        custom_domain: DEMO_CUSTOM_DOMAIN,
+        status: 'ACTIVE',
+      }
+    });
+  } else {
+    demoTenant = await prisma.tenant.create({
+      data: {
+        id: DEMO_TENANT_ID,
+        name: 'SMK Negeri 1 Absenta (Demo Portal)',
+        subdomain: DEMO_SUBDOMAIN,
+        custom_domain: DEMO_CUSTOM_DOMAIN,
+        status: 'ACTIVE',
+      }
+    });
+  }
+
+  const effectiveTenantId = demoTenant.id;
+  console.log(`✅ Tenant Demo Siap: ${demoTenant.name} (ID: ${effectiveTenantId}, Subdomain: ${demoTenant.subdomain})`);
+
+  // 1.1 Pastikan Subscription Tenant Demo Aktif
+  const existingSub = await prisma.subscription.findFirst({
+    where: { tenant_id: effectiveTenantId }
+  });
+  if (!existingSub) {
+    await prisma.subscription.create({
+      data: {
+        tenant_id: effectiveTenantId,
+        plan_id: 'ENTERPRISE_DEMO',
+        service_code: 'CORE',
+        status: 'ACTIVE',
+        start_date: new Date(),
+        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      }
+    });
+  }
+
+  // 2. Pastikan Role Baseline Tenant Demo Siap
+  const roleMap = await ensureTenantBaseRoles(effectiveTenantId);
+
+  let roleOrtu = await prisma.role.findFirst({ 
+    where: { 
+      OR: [
+        { tenant_id: effectiveTenantId, name: 'ORANG_TUA' },
+        { tenant_id: null, name: 'ORANG_TUA' }
+      ]
+    } 
+  });
+  if (!roleOrtu) {
+    roleOrtu = await prisma.role.create({
+      data: {
+        tenant_id: effectiveTenantId,
+        name: 'ORANG_TUA',
+        description: 'Orang Tua / Wali Murid',
+        is_system: true
+      }
+    });
+  }
+
+  const roleAdminId = roleMap['ADMIN'];
+  const roleGuruId = roleMap['GURU'];
+  const roleSiswaId = roleMap['SISWA'];
+  const roleOrtuId = roleOrtu.id;
+
+  // 3. Inisialisasi Master Data Akademik Demo (Tahun Ajaran, Jurusan, Kelas)
+  await prisma.tahunPelajaran.upsert({
+    where: { tenant_id_tahun: { tenant_id: effectiveTenantId, tahun: '2025/2026' } },
+    update: { is_active: true },
+    create: {
+      tenant_id: effectiveTenantId,
+      tahun: '2025/2026',
+      is_active: true
+    }
+  });
+
+  // Master Jurusan
+  const jurusanList = [
+    { kode: 'RPL', nama: 'Rekayasa Perangkat Lunak' },
+    { kode: 'TKJ', nama: 'Teknik Komputer & Jaringan' },
+    { kode: 'AKL', nama: 'Akuntansi & Keuangan Lembaga' },
+    { kode: 'TKR', nama: 'Teknik Kendaraan Ringan' }
+  ];
+
+  const jurusans: Record<string, any> = {};
+  for (const j of jurusanList) {
+    const jur = await prisma.jurusan.upsert({
+      where: { tenant_id_kode: { tenant_id: effectiveTenantId, kode: j.kode } },
+      update: { nama: j.nama },
+      create: {
+        tenant_id: effectiveTenantId,
+        kode: j.kode,
+        nama: j.nama
+      }
+    });
+    jurusans[j.kode] = jur;
+  }
+
+  // Master Kelas
+  const kelases: Record<string, any> = {};
+  const kelasDefs = [
+    { nama: 'X-RPL-1', tingkat: 10, jur: 'RPL' },
+    { nama: 'XI-RPL-1', tingkat: 11, jur: 'RPL' },
+    { nama: 'XII-RPL-1', tingkat: 12, jur: 'RPL' },
+    { nama: 'X-TKJ-1', tingkat: 10, jur: 'TKJ' },
+    { nama: 'XI-TKJ-1', tingkat: 11, jur: 'TKJ' },
+    { nama: 'XII-TKJ-1', tingkat: 12, jur: 'TKJ' },
+  ];
+
+  for (const k of kelasDefs) {
+    let kl = await prisma.kelas.findFirst({
+      where: { tenant_id: effectiveTenantId, nama_kelas: k.nama }
+    });
+    if (!kl) {
+      kl = await prisma.kelas.create({
+        data: {
+          tenant_id: effectiveTenantId,
+          nama_kelas: k.nama,
+          tingkat: k.tingkat,
+          jurusan_id: jurusans[k.jur]?.id
+        }
+      });
+    }
+    kelases[k.nama] = kl;
+  }
+
+  // Seed default jenis kegiatan
+  try {
+    await seedDefaultJenisKegiatanForTenant(effectiveTenantId);
+  } catch {}
+
+  // 4. Daftar Akun Demo & Pemetaan Jabatan Fungsional
+  const DEMO_ACCOUNTS = [
+    // ── 👑 PIMPINAN ──
+    { email: 'kepsek@absenta.id', name: 'Dr. H. Ahmad Fauzi, M.Pd', role: roleAdminId, roleCode: STRUKTUR_CODES.KEPALA_SEKOLAH, nip: '197001011995011001' },
+    { email: 'kurikulum@absenta.id', name: 'Dra. Hj. Siti Rahma, M.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.KURIKULUM, nip: '197502022000012002' },
+    { email: 'kesiswaan@absenta.id', name: 'Budi Santoso, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.KESISWAAN, nip: '198003032005011003' },
+    { email: 'hubin@absenta.id', name: 'Agus Setiawan, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.HUBIN, nip: '198204042008011004' },
+    { email: 'sarpras@absenta.id', name: 'Ir. Hendra Gunawan', role: roleGuruId, roleCode: STRUKTUR_CODES.SARPRAS, nip: '197805052003011005' },
+    { email: 'tu@absenta.id', name: 'Ahmad Hidayat, S.AP', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_KEPALA, nip: '198506062010011006' },
+
+    // ── 💼 MANAJEMEN & UNIT ──
+    { email: 'bpbk@absenta.id', name: 'Nurul Aini, S.Psi', role: roleGuruId, roleCode: STRUKTUR_CODES.BPBK, nip: '198807072012012007' },
+    { email: 'bkk@absenta.id', name: 'Denny Ramdani, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.BKK, nip: '198708082011011008' },
+    { email: 'kaprog@absenta.id', name: 'Indra Lesmana, M.Kom', role: roleGuruId, roleCode: STRUKTUR_CODES.KAPROG, nip: '198409092009011009', unit_id: jurusans['RPL']?.id },
+    { email: 'kabeng@absenta.id', name: 'Mulyadi, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.KABENG, nip: '198610102010011010', unit_id: jurusans['RPL']?.id },
+    { email: 'toolman@absenta.id', name: 'Asep Supriatna', role: roleGuruId, roleCode: STRUKTUR_CODES.TOOLMAN, nip: '199011112015011011', unit_id: jurusans['RPL']?.id },
+    { email: 'gerbang@absenta.id', name: 'Rudi Hermawan', role: roleAdminId, roleCode: STRUKTUR_CODES.GERBANG, nip: '199212122018011012' },
+
+    // ── 🏛️ TATA USAHA ──
+    { email: 'tu.persuratan@absenta.id', name: 'Fitri Handayani, S.Sos', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_PERSURATAN, nip: '199101132014012013' },
+    { email: 'tu.keuangan@absenta.id', name: 'Dewi Lestari, S.E', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_KEUANGAN, nip: '199302142016012014' },
+    { email: 'tu.kepegawaian@absenta.id', name: 'Ginanzhar Sudiarto, S.Kom', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_KEPEGAWAIAN, nip: '198903152013011015' },
+    { email: 'tu.sarpras@absenta.id', name: 'Depi Kurniawan', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_SARPRAS, nip: '199404162017011016' },
+
+    // ── 🛒 KOPERASI ERP ──
+    { email: 'koperasi.ketua@absenta.id', name: 'Siti Maryam, S.E', role: roleGuruId, roleCode: STRUKTUR_CODES.KETUA_KOPERASI, nip: '198305172007012017' },
+    { email: 'koperasi.bendahara@absenta.id', name: 'Nur Hasanah, S.Ak', role: roleGuruId, roleCode: STRUKTUR_CODES.BENDAHARA_KOPERASI, nip: '199006182015012018' },
+    { email: 'koperasi.sekretaris@absenta.id', name: 'Yuni Astuti, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.SEKRETARIS_KOPERASI, nip: '199207192018012019' },
+    { email: 'koperasi.kasir@absenta.id', name: 'Dadan Hamdan', role: roleAdminId, roleCode: STRUKTUR_CODES.MANAJER_TOKO_KOPERASI, nip: '199508202019011020' },
+    { email: 'koperasi.pengawas@absenta.id', name: 'Drs. H. Syarif Hidayat', role: roleGuruId, roleCode: STRUKTUR_CODES.PENGAWAS_KOPERASI, nip: '196809211993011021' },
+
+    // ── 👨‍🏫 GURU & WALI KELAS ──
+    { email: 'walikelas@absenta.id', name: 'Ratna Dewi, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.WALIKELAS, nip: '198710222011012022', kelas_id: kelases['XII-RPL-1']?.id },
+    { email: 'guru@absenta.id', name: 'Farhan Maulana, S.Pd', role: roleGuruId, roleCode: 'GURU_MAPEL', nip: '198911232014011023' },
+    { email: 'eskul@absenta.id', name: 'Eko Prasetyo, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.PEMBINA_ESKUL, nip: '199112242017011024' },
+  ];
+
+  console.log(`👥 Menyemai ${DEMO_ACCOUNTS.length} Akun Guru & Staf Demo...`);
+
+  for (const acc of DEMO_ACCOUNTS) {
+    // 1. Upsert User
+    const user = await prisma.user.upsert({
+      where: { tenant_id_email: { tenant_id: effectiveTenantId, email: acc.email } },
+      update: {
+        full_name: acc.name,
+        password: DEFAULT_PASSWORD,
+        role_id: acc.role,
+        status: 'ACTIVE',
+        email_verified: true,
+      },
+      create: {
+        tenant_id: effectiveTenantId,
+        email: acc.email,
+        full_name: acc.name,
+        password: DEFAULT_PASSWORD,
+        role_id: acc.role,
+        status: 'ACTIVE',
+        email_verified: true,
+      }
+    });
+
+    // 2. Upsert Profil Guru
+    await prisma.guru.upsert({
+      where: { user_id: user.id },
+      update: {
+        nama_guru: acc.name,
+        nip: acc.nip,
+        tenant_id: effectiveTenantId,
+        status_kepegawaian: 'PNS',
+        jenis_ptk: 'PENDIDIK',
+      },
+      create: {
+        user_id: user.id,
+        nama_guru: acc.name,
+        nip: acc.nip,
+        tenant_id: effectiveTenantId,
+        status_kepegawaian: 'PNS',
+        jenis_ptk: 'PENDIDIK',
+      }
+    });
+
+    // 3. Upsert OrganizationalPosition jika memiliki roleCode khusus
+    if (acc.roleCode && acc.roleCode !== 'GURU_MAPEL') {
+      const position = await prisma.organizationalPosition.upsert({
+        where: {
+          tenant_id_code: {
+            tenant_id: effectiveTenantId,
+            code: acc.roleCode,
+          }
+        },
+        update: {
+          name: acc.roleCode.replace(/_/g, ' '),
+        },
+        create: {
+          tenant_id: effectiveTenantId,
+          code: acc.roleCode,
+          name: acc.roleCode.replace(/_/g, ' '),
+          scope_type: acc.kelas_id ? 'CLASS' : acc.unit_id ? 'UNIT' : 'TENANT',
+        }
+      });
+
+      // Assign user ke posisi struktur
+      const existingAssign = await prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: effectiveTenantId,
+          position_id: position.id,
+          user_id: user.id,
+        }
+      });
+
+      if (!existingAssign) {
+        await prisma.organizationalAssignment.create({
+          data: {
+            tenant_id: effectiveTenantId,
+            position_id: position.id,
+            user_id: user.id,
+            kelas_id: acc.kelas_id || null,
+            unit_id: acc.unit_id || null,
+          }
+        });
+      }
+    }
+  }
+
+  // ── 🎒 SISWA & ORANG TUA DEMO ──
+  console.log('🎒 Menyemai Akun Siswa, Petugas Kelas & Orang Tua Demo...');
+
+  // User Siswa Demo
+  const userSiswa = await prisma.user.upsert({
+    where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'siswa@absenta.id' } },
+    update: {
+      full_name: 'Muhammad Rizky Pratama',
+      password: DEFAULT_PASSWORD,
+      role_id: roleSiswaId,
+      status: 'ACTIVE',
+      email_verified: true,
+    },
+    create: {
+      tenant_id: effectiveTenantId,
+      email: 'siswa@absenta.id',
+      full_name: 'Muhammad Rizky Pratama',
+      password: DEFAULT_PASSWORD,
+      role_id: roleSiswaId,
+      status: 'ACTIVE',
+      email_verified: true,
+    }
+  });
+
+  await prisma.siswa.upsert({
+    where: { user_id: userSiswa.id },
+    update: {
+      nama_siswa: 'Muhammad Rizky Pratama',
+      nis: '202510001',
+      nisn: '0071234567',
+      tenant_id: effectiveTenantId,
+      kelas_id: kelases['XII-RPL-1']?.id,
+      jenis_kelamin: 'L',
+    },
+    create: {
+      user_id: userSiswa.id,
+      nama_siswa: 'Muhammad Rizky Pratama',
+      nis: '202510001',
+      nisn: '0071234567',
+      tenant_id: effectiveTenantId,
+      kelas_id: kelases['XII-RPL-1']?.id,
+      jenis_kelamin: 'L',
+    }
+  });
+
+  // User Petugas Kelas Demo
+  const userPetugas = await prisma.user.upsert({
+    where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'petugas.kelas@absenta.id' } },
+    update: {
+      full_name: 'Ananda Putri',
+      password: DEFAULT_PASSWORD,
+      role_id: roleSiswaId,
+      status: 'ACTIVE',
+      email_verified: true,
+    },
+    create: {
+      tenant_id: effectiveTenantId,
+      email: 'petugas.kelas@absenta.id',
+      full_name: 'Ananda Putri',
+      password: DEFAULT_PASSWORD,
+      role_id: roleSiswaId,
+      status: 'ACTIVE',
+      email_verified: true,
+    }
+  });
+
+  await prisma.siswa.upsert({
+    where: { user_id: userPetugas.id },
+    update: {
+      nama_siswa: 'Ananda Putri',
+      nis: '202510002',
+      nisn: '0071234568',
+      tenant_id: effectiveTenantId,
+      kelas_id: kelases['XII-RPL-1']?.id,
+      jenis_kelamin: 'P',
+    },
+    create: {
+      user_id: userPetugas.id,
+      nama_siswa: 'Ananda Putri',
+      nis: '202510002',
+      nisn: '0071234568',
+      tenant_id: effectiveTenantId,
+      kelas_id: kelases['XII-RPL-1']?.id,
+      jenis_kelamin: 'P',
+    }
+  });
+
+  // Petugas Kelas Struktur
+  const positionPetugas = await prisma.organizationalPosition.upsert({
+    where: {
+      tenant_id_code: {
+        tenant_id: effectiveTenantId,
+        code: STRUKTUR_CODES.PETUGAS_KELAS,
+      }
+    },
+    update: {
+      name: 'Petugas Absensi Kelas',
+    },
+    create: {
+      tenant_id: effectiveTenantId,
+      code: STRUKTUR_CODES.PETUGAS_KELAS,
+      name: 'Petugas Absensi Kelas',
+      scope_type: 'CLASS',
+    }
+  });
+
+  const existingAssignPetugas = await prisma.organizationalAssignment.findFirst({
+    where: {
+      tenant_id: effectiveTenantId,
+      position_id: positionPetugas.id,
+      user_id: userPetugas.id,
+    }
+  });
+  if (!existingAssignPetugas) {
+    await prisma.organizationalAssignment.create({
+      data: {
+        tenant_id: effectiveTenantId,
+        position_id: positionPetugas.id,
+        user_id: userPetugas.id,
+        kelas_id: kelases['XII-RPL-1']?.id
+      }
+    });
+  }
+
+  // User Orang Tua Demo
+  await prisma.user.upsert({
+    where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'ortu@absenta.id' } },
+    update: {
+      full_name: 'Bapak Hartono (Orang Tua)',
+      password: DEFAULT_PASSWORD,
+      role_id: roleOrtuId,
+      status: 'ACTIVE',
+      email_verified: true,
+    },
+    create: {
+      tenant_id: effectiveTenantId,
+      email: 'ortu@absenta.id',
+      full_name: 'Bapak Hartono (Orang Tua)',
+      password: DEFAULT_PASSWORD,
+      role_id: roleOrtuId,
+      status: 'ACTIVE',
+      email_verified: true,
+    }
+  });
+
+  console.log('🎉 [DEMO SEEDER] Seluruh akun peran demo berhasil disemai dan siap digunakan 100%!');
+}
+
+// Support direct execution via `npx ts-node src/database/seeds/seed_demo_tenant.ts`
+if (require.main === module) {
+  seedDemoTenant()
+    .catch((e) => {
+      console.error('❌ Error executing Demo Seeder:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -34,6 +34,7 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "worker": "cross-env NODE_OPTIONS=--max-old-space-size=4096 ts-node -r tsconfig-paths/register src/worker.ts",
     "seed": "npx prisma db seed",
+    "seed:demo": "ts-node -r tsconfig-paths/register src/database/seeds/seed_demo_tenant.ts",
     "seed:visual": "ts-node -r tsconfig-paths/register src/database/seeds/seed_visual_dummies.ts",
     "import:bahan-ajar": "ts-node --transpile-only scripts/import-docx-modules.ts",
     "db:seed": "ts-node -r tsconfig-paths/register scripts/performance/seed-simulator.ts",
