@@ -38,6 +38,7 @@ export interface SesiAttendanceRecord {
   status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DISPEN' | 'ALPA' | 'BELUM_TAP' | string;
   waktu_tap?: string | null;
   is_terlambat?: boolean;
+  menit_keterlambatan?: number | null;
   asal_gerbang?: boolean;
   catatan?: string | null;
   Siswa?: SiswaDetail;
@@ -159,8 +160,9 @@ const SesiAttendanceRow = React.memo(({
            {formatWaktuTapDisplay(rawWaktuTap)}
         </span>
         {record.is_terlambat && (
-          <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
-            TELAT
+          <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50 flex items-center gap-0.5">
+            <span>TELAT</span>
+            {record.menit_keterlambatan ? <span>{record.menit_keterlambatan}'</span> : null}
           </span>
         )}
         {(record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI')) && (

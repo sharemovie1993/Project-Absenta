@@ -460,7 +460,7 @@ export class SesiTapEngineService {
         Guru: { select: { nama_guru: true } },
         AbsenGuru: {
           take: 1,
-          select: { id: true, guru_id: true, status: true, waktu_tap: true, catatan: true, is_terlambat: true }
+          select: { id: true, guru_id: true, status: true, waktu_tap: true, catatan: true, is_terlambat: true, menit_keterlambatan: true }
         }
       }
     });
@@ -518,7 +518,7 @@ export class SesiTapEngineService {
 
     if (rawSiswaAkademikList.length === 0) {
       rawSiswaAkademikList = await prisma.siswaAkademik.findMany({
-        where: { kelas_id: sesi.kelas_id, status: 'AKTIF', siswa: { status: 'AKTIF' } },
+        where: { kelas_id: sesi.kelas_id, status: 'AKTIF' },
         select: {
           id: true,
           siswa_id: true,
@@ -527,14 +527,12 @@ export class SesiTapEngineService {
       });
     }
 
-    // Deduplicate by unique siswa_id to prevent duplicates across academic years/semesters
-    const uniqueMap = new Map<string, typeof rawSiswaAkademikList[0]>();
-    rawSiswaAkademikList.forEach(sa => {
-      if (sa.siswa_id && !uniqueMap.has(sa.siswa_id)) {
-        uniqueMap.set(sa.siswa_id, sa);
-      }
+    // Sort alphabetically by student name (Indonesian Academic Standard)
+    const siswaAkademikList = rawSiswaAkademikList.sort((a, b) => {
+      const nameA = a.siswa?.nama_siswa || '';
+      const nameB = b.siswa?.nama_siswa || '';
+      return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
     });
-    const siswaAkademikList = Array.from(uniqueMap.values());
 
     // 1b. Fallback: If SiswaAkademik list is empty, fetch directly from Siswa table (Hanya yang Aktif)
     let directStudents: any[] = [];
@@ -552,6 +550,7 @@ export class SesiTapEngineService {
         siswa_akademik_id: true,
         status: true,
         is_terlambat: true,
+        menit_keterlambatan: true,
         poin_kehadiran: true,
         waktu_tap: true,
         catatan: true,
@@ -579,6 +578,7 @@ export class SesiTapEngineService {
           is_guru: false,
           status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
           is_terlambat: a?.is_terlambat || false,
+          menit_keterlambatan: a?.menit_keterlambatan || 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
           waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
@@ -601,6 +601,7 @@ export class SesiTapEngineService {
           is_guru: false,
           status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
           is_terlambat: a?.is_terlambat || false,
+          menit_keterlambatan: a?.menit_keterlambatan || 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
           waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
@@ -633,6 +634,7 @@ export class SesiTapEngineService {
       is_guru: true,
       status: teacherAbsen?.status || 'BELUM_HADIR',
       is_terlambat: teacherAbsen?.is_terlambat || false,
+      menit_keterlambatan: teacherAbsen?.menit_keterlambatan || 0,
       poin_kehadiran: 0,
       waktu_tap: teacherAbsen?.waktu_tap ? teacherAbsen.waktu_tap.toISOString() : (teacherAbsen?.status === 'HADIR' ? sesi.created_at.toISOString() : null),
       catatan: teacherAbsen?.catatan || null,
