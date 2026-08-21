@@ -524,6 +524,48 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       return coopClusters.filter(c => c.items.length > 0);
     }
 
+    // ── HUBIN WORKSPACE: 2 Klaster Alur Kerja ala GoPay Agen ──
+    if (activeWsId === 'HUBIN_WORKSPACE') {
+      const cPkl: FlatMenuItem[] = [];
+      const cCareer: FlatMenuItem[] = [];
+
+      primaryItems.forEach(item => {
+        const p = (item.path || '').toLowerCase();
+        if (
+          p.includes('/bkk') ||
+          p.includes('/tracer') ||
+          p.includes('/tefa')
+        ) {
+          cCareer.push(item);
+        } else {
+          cPkl.push(item);
+        }
+      });
+
+      const hubinClusters: WorkflowCluster[] = [
+        {
+          id: 'HUBIN_PKL',
+          badge: '1. MAGANG & PKL DU/DI',
+          badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+          title: 'Program Magang & PKL DU/DI',
+          description: 'Mitra industri, penempatan siswa, presensi, jurnal & sertifikat PKL',
+          icon: '🤝',
+          items: cPkl
+        },
+        {
+          id: 'HUBIN_CAREER',
+          badge: '2. KARIR, BKK & ALUMNI',
+          badgeColor: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+          title: 'Karir, BKK, Alumni & TEFA',
+          description: 'Bursa lowongan kerja BKK, tracer study alumni & unit produksi TEFA',
+          icon: '💼',
+          items: cCareer
+        }
+      ];
+
+      return hubinClusters.filter(c => c.items.length > 0);
+    }
+
     if (activeWsId !== 'KURIKULUM_WORKSPACE') {
       return [
         {

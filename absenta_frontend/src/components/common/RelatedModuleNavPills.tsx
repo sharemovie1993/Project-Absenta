@@ -126,17 +126,38 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Rujukan', shortLabel: 'Rujukan', path: '/bpbk/rujukan', icon: Send },
     ]
   },
-  // 7. Grup Hubin & Industri PKL
+  // 7A. Grup Hubin - Magang & PKL DU/DI
   {
-    id: 'hubin',
-    matches: (p) => p.startsWith('/hubin') && p !== '/hubin/dashboard',
+    id: 'hubin_pkl',
+    matches: (p) => (
+      p.startsWith('/hubin/mitra') ||
+      p.startsWith('/hubin/penempatan') ||
+      p.startsWith('/hubin/nilai-pkl') ||
+      p.startsWith('/hubin/monitoring') ||
+      p.startsWith('/hubin/absensi') ||
+      p.startsWith('/hubin/cetak-berkas')
+    ),
     items: [
       { label: 'Mitra & MoU', shortLabel: 'Mitra', path: '/hubin/mitra', icon: Building2 },
       { label: 'Penempatan PKL', shortLabel: 'PKL', path: '/hubin/penempatan', icon: Briefcase },
-      { label: 'Nilai PKL', shortLabel: 'Nilai', path: '/hubin/nilai-pkl', icon: Award },
+      { label: 'Presensi Mandiri', shortLabel: 'Absensi', path: '/hubin/absensi', icon: Clock },
       { label: 'Logbook & Jurnal', shortLabel: 'Logbook', path: '/hubin/monitoring', icon: Activity },
+      { label: 'Nilai & Sertifikat', shortLabel: 'Nilai', path: '/hubin/nilai-pkl', icon: Award },
+      { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/hubin/cetak-berkas', icon: Printer },
+    ]
+  },
+  // 7B. Grup Hubin - Karir, BKK, Alumni & TEFA
+  {
+    id: 'hubin_career',
+    matches: (p) => (
+      p.startsWith('/hubin/bkk') ||
+      p.startsWith('/hubin/tracer') ||
+      p.startsWith('/hubin/tefa')
+    ),
+    items: [
       { label: 'BKK Lowongan', shortLabel: 'BKK', path: '/hubin/bkk', icon: Briefcase },
       { label: 'Tracer Study', shortLabel: 'Tracer', path: '/hubin/tracer', icon: GraduationCap },
+      { label: 'Teaching Factory', shortLabel: 'TEFA', path: '/hubin/tefa', icon: Wrench },
     ]
   },
   // 8A. Grup Master Data Pokok (Admin / TU)
