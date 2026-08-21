@@ -27,7 +27,10 @@ import {
   LayoutGrid, 
   Activity,
   Send,
-  Laptop
+  Laptop,
+  CheckCircle2,
+  UserCog,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -130,18 +133,67 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Tracer Study', shortLabel: 'Tracer', path: '/hubin/tracer', icon: GraduationCap },
     ]
   },
-  // 8. Grup Master Data Akademik
+  // 8A. Grup Master Data Pokok (Admin / TU)
   {
-    id: 'academic_master',
-    matches: (p) => p.startsWith('/academic') && p !== '/academic' && p !== '/academic/dashboard',
+    id: 'admin_master',
+    matches: (p) => (
+      p.startsWith('/academic/siswa') ||
+      p.startsWith('/academic/guru') ||
+      p.startsWith('/academic/kelas') ||
+      p.startsWith('/academic/mapel') ||
+      p.startsWith('/academic/tahun-pelajaran') ||
+      p.startsWith('/academic/semester') ||
+      p.startsWith('/academic/jurusan') ||
+      p.startsWith('/documents')
+    ),
     items: [
       { label: 'Data Siswa', shortLabel: 'Siswa', path: '/academic/siswa', icon: GraduationCap },
       { label: 'Data Guru', shortLabel: 'Guru', path: '/academic/guru', icon: Users },
       { label: 'Rombel Kelas', shortLabel: 'Kelas', path: '/academic/kelas', icon: LayoutGrid },
       { label: 'Mata Pelajaran', shortLabel: 'Mapel', path: '/academic/mapel', icon: BookOpen },
       { label: 'Tahun Ajaran', shortLabel: 'Tahun Ajaran', path: '/academic/tahun-pelajaran', icon: Calendar },
-      { label: 'Semester', shortLabel: 'Semester', path: '/academic/semester', icon: CalendarDays },
+      { label: 'Semester', shortLabel: 'Semester', path: '/academic/semester', icon: Clock },
       { label: 'Jurusan', shortLabel: 'Jurusan', path: '/academic/jurusan', icon: Briefcase },
+      { label: 'Dokumen Legalitas', shortLabel: 'Legalitas', path: '/documents', icon: FileText },
+      { label: 'Arsip Pegawai', shortLabel: 'Arsip', path: '/documents/member-docs', icon: Archive },
+    ]
+  },
+  // 8B. Grup Persiapan & Tata Kelola Akademik (Admin / TU)
+  {
+    id: 'admin_prep',
+    matches: (p) => (
+      p.startsWith('/academic/jenis-kegiatan') ||
+      p.startsWith('/academic/siswa-cards') ||
+      p.startsWith('/academic/transition') ||
+      p.startsWith('/academic/struktur-organisasi') ||
+      p.startsWith('/academic/prep-checklist') ||
+      p.startsWith('/academic/backup') ||
+      p.startsWith('/academic/staff-logs')
+    ),
+    items: [
+      { label: 'Jenis Kegiatan', shortLabel: 'Kegiatan', path: '/academic/jenis-kegiatan', icon: Activity },
+      { label: 'Kartu Siswa', shortLabel: 'Kartu Siswa', path: '/academic/siswa-cards', icon: CheckCircle2 },
+      { label: 'Kenaikan Kelas', shortLabel: 'Kenaikan', path: '/academic/transition', icon: Layers },
+      { label: 'Struktur Organisasi', shortLabel: 'Struktur Org', path: '/academic/struktur-organisasi', icon: Building2 },
+      { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/academic/prep-checklist', icon: Printer },
+      { label: 'Backup Database', shortLabel: 'Backup', path: '/academic/backup', icon: Archive },
+      { label: 'Log Aktivitas Staf', shortLabel: 'Log Staf', path: '/academic/staff-logs', icon: Clock },
+    ]
+  },
+  // 8C. Grup Sistem & Kontrol IT (Admin)
+  {
+    id: 'admin_system',
+    matches: (p) => (
+      p.startsWith('/users') ||
+      p.startsWith('/management/platform-compliance') ||
+      p.startsWith('/settings') ||
+      p.startsWith('/attendance/ops')
+    ),
+    items: [
+      { label: 'Kelola User', shortLabel: 'User', path: '/users', icon: UserCog },
+      { label: 'Kepatuhan Platform', shortLabel: 'Kepatuhan', path: '/management/platform-compliance', icon: ShieldCheck },
+      { label: 'Pengaturan Sekolah', shortLabel: 'Pengaturan', path: '/settings', icon: Settings },
+      { label: 'Operasional Absensi', shortLabel: 'Ops Absen', path: '/attendance/ops', icon: Activity },
     ]
   },
   // 9. Grup CBT Ujian
