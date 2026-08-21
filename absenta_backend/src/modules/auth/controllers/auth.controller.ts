@@ -14,6 +14,7 @@ import { activityLogService } from '@/modules/activity/services/activity-log.ser
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '../../../utils/url-helper';
+import { WireguardManager } from '@/services/wireguardManager';
 import * as jwt from 'jsonwebtoken';
 
 export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
@@ -1488,13 +1489,28 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
       }
       
       let isTunnelActive = false;
-      if (tenantRecord.subdomain) {
-        const tunnel = await prisma.easyTunnel.findFirst({
-          where: { slug: tenantRecord.subdomain }
+      try {
+        const tunnels = await prisma.easyTunnel.findMany({
+          where: tenantRecord.subdomain 
+            ? { OR: [{ slug: tenantRecord.subdomain }, { status: 'active' }] }
+            : {}
         });
-        if (tunnel && tunnel.status === 'connected') {
-          isTunnelActive = true;
+
+        for (const t of tunnels) {
+          if (t.status === 'active' || t.status === 'connected') {
+            isTunnelActive = true;
+            break;
+          }
+          if (t.slug) {
+            const wg = WireguardManager.getStatus(t.slug);
+            if (wg.status === 'connected') {
+              isTunnelActive = true;
+              break;
+            }
+          }
         }
+      } catch (tunnelErr) {
+        console.warn('[tenantInfo] Failed to check easy tunnel status:', tunnelErr);
       }
 
       // Fetch address and phone from Config table

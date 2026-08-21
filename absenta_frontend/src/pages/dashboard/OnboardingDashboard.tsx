@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/u
 import { useAuthStore } from '@/store/authStore';
 import axiosInstance from '@/lib/axiosInstance';
 import { getPrepChecklist, type PrepChecklistData } from '@/api/academic/cetak-berkas.api';
+import { easyTunnelApi } from '@/api/easyTunnel.api';
 import { 
   CheckCircle, 
   XCircle, 
@@ -42,10 +43,13 @@ export default function OnboardingDashboard({ mode = 'page', onClose }: { mode?:
   const loadOnboardingData = useCallback(async () => {
     try {
       setLoading(true);
-      const [tenantInfoRes, checklistRes] = await Promise.allSettled([
+      const [tenantInfoRes, checklistRes, tunnelsRes] = await Promise.allSettled([
         axiosInstance.get('/auth/tenant-info'),
-        getPrepChecklist()
+        getPrepChecklist(),
+        easyTunnelApi.getTunnels()
       ]);
+
+      let publicActive = false;
 
       if (tenantInfoRes.status === 'fulfilled' && tenantInfoRes.value.data?.success) {
         const tenant = tenantInfoRes.value.data.data;
@@ -55,8 +59,24 @@ export default function OnboardingDashboard({ mode = 'page', onClose }: { mode?:
         } else {
           setProfileCompleted(false);
         }
-        setIsPublic(!!tenant?.is_tunnel_active);
+        if (tenant?.is_tunnel_active) {
+          publicActive = true;
+        }
       }
+
+      if (tunnelsRes.status === 'fulfilled' && tunnelsRes.value?.success) {
+        const tunnels = Array.isArray(tunnelsRes.value.data) ? tunnelsRes.value.data : [];
+        const hasConnectedTunnel = tunnels.some((t: any) => 
+          t.status === 'active' || 
+          t.status === 'connected' || 
+          t.wg_status?.status === 'connected'
+        );
+        if (hasConnectedTunnel) {
+          publicActive = true;
+        }
+      }
+
+      setIsPublic(publicActive);
 
       if (checklistRes.status === 'fulfilled' && checklistRes.value.success) {
         setChecklistData(checklistRes.value.data);
