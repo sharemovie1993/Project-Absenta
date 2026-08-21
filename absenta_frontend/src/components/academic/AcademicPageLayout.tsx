@@ -281,7 +281,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   return (
     <div className={cn(
       "space-y-4 max-w-full relative transition-all duration-300 min-w-0 overflow-x-hidden",
-      isTvMode ? "p-6 min-h-screen" : "px-0 sm:px-4 pt-1.5 sm:pt-2 pb-4 sm:pb-6"
+      isTvMode ? "p-6 min-h-screen" : "px-0 sm:px-4 pt-1.5 sm:pt-2 pb-24 sm:pb-6"
     )}>
       {/* Top Slot (Positioned at Top, e.g. App Launcher if provided) */}
       {!isTvMode && topSlot && (
@@ -306,8 +306,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
               </button>
             )}
 
-            {/* Bilah Navigasi Menu Terkait Otomatis Sejajar (Shared Related Module Nav Pills) */}
-            <RelatedModuleNavPills />
+            {/* Bilah Navigasi Menu Terkait Otomatis Sejajar (Desktop / Tablet Topbar) */}
+            <RelatedModuleNavPills className="hidden sm:flex" />
 
             {hardeningConfig && resolvedKey && (
               <HardeningInspector 

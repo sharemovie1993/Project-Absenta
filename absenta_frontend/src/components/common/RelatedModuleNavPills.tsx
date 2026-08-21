@@ -31,21 +31,21 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface NavPillItem {
+export interface NavPillItem {
   label: string;
   shortLabel?: string;
   path: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
-interface NavPillGroup {
+export interface NavPillGroup {
   id: string;
   matches: (pathname: string) => boolean;
   items: NavPillItem[];
 }
 
 // Master Registrasi Grup Menu Terkait (Related Nav Clusters)
-const RELATED_NAV_GROUPS: NavPillGroup[] = [
+export const RELATED_NAV_GROUPS: NavPillGroup[] = [
   // 1. Grup Penjadwalan Kurikulum
   {
     id: 'kurikulum_jadwal',
@@ -176,23 +176,77 @@ const RELATED_NAV_GROUPS: NavPillGroup[] = [
   }
 ];
 
+export const getRelatedNavGroupForPath = (pathname: string): NavPillGroup | undefined => {
+  const cleanPath = pathname.toLowerCase().replace(/\/$/, "");
+  return RELATED_NAV_GROUPS.find(g => g.matches(cleanPath));
+};
+
 export interface RelatedModuleNavPillsProps {
   className?: string;
+  variant?: 'topbar' | 'bottombar';
 }
 
-export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({ className }) => {
+export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({ 
+  className,
+  variant = 'topbar'
+}) => {
   const location = useLocation();
   const currentPath = location.pathname.toLowerCase().replace(/\/$/, "");
 
   // Resolve grup yang cocok dengan path aktif
   const matchedGroup = useMemo(() => {
-    return RELATED_NAV_GROUPS.find(g => g.matches(currentPath));
+    return getRelatedNavGroupForPath(currentPath);
   }, [currentPath]);
 
   if (!matchedGroup || matchedGroup.items.length === 0) {
     return null;
   }
 
+  // Render Varian Bottombar Mobile (Level 2 Contextual Nav)
+  if (variant === 'bottombar') {
+    return (
+      <div 
+        aria-label="Navigasi Menu Terkait Mobile"
+        className={cn(
+          "w-full bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-700/60 px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar shadow-2xl",
+          className
+        )}
+      >
+        <div className="flex items-center gap-1.5 min-w-max mx-auto px-1">
+          {matchedGroup.items.map(item => {
+            const IconComp = item.icon;
+            const isCurrentActive = currentPath === item.path.toLowerCase().replace(/\/$/, "");
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                replace={true}
+                title={item.label}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black transition-all duration-150 cursor-pointer select-none shrink-0 border active:scale-95",
+                  isCurrentActive
+                    ? "bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/40 ring-1 ring-white/30"
+                    : "bg-slate-800/90 text-slate-300 border-slate-700/80 hover:bg-slate-700 hover:text-white"
+                )}
+              >
+                <IconComp 
+                  size={13} 
+                  className={cn(
+                    "stroke-[2.5]", 
+                    isCurrentActive ? "text-white" : "text-indigo-400"
+                  )} 
+                />
+                <span className="tracking-tight">{item.shortLabel || item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Render Varian Topbar Desktop (Sejajar dengan Tombol Kembali)
   return (
     <div className={cn(
       "flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar max-w-[calc(100vw-120px)] sm:max-w-none py-0.5",

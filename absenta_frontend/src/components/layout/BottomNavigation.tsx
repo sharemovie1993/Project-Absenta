@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { getUserPositions } from '@/config/navigation.config';
+import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
 
 export interface MobileBottomSubItem {
   id: string;
@@ -429,55 +430,61 @@ export const BottomNavigation: React.FC = React.memo(() => {
         )}
       </AnimatePresence>
 
-      {/* ── BOTTOM NAVIGATION BAR ── */}
-      <nav
-        aria-label="Navigasi Bawah Seluler"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl overflow-x-auto no-scrollbar"
-      >
-        <div className="flex items-center justify-around w-full min-w-max gap-1 px-1">
-          {activeTabsList.map((item) => {
-            const ItemIcon = item.icon;
-            const isSelected = item.isActive(location.pathname, currentTab);
-            const hasChildren = Boolean(item.children && item.children.length > 0);
-            const isFlyoutOpen = openFlyoutId === item.id;
+      {/* ── 2-LEVEL CONTEXTUAL MOBILE BOTTOM NAVIGATION ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col pointer-events-auto">
+        {/* LEVEL 2: Contextual Sub-Module Related Nav (Hanya tampil saat di sub-halaman terkait) */}
+        <RelatedModuleNavPills variant="bottombar" />
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabClick(item)}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-[58px] cursor-pointer relative",
-                  isSelected || isFlyoutOpen
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                )}
-              >
-                <div
+        {/* LEVEL 1: Root Bottom Navigation Bar */}
+        <nav
+          aria-label="Navigasi Bawah Seluler"
+          className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl overflow-x-auto no-scrollbar"
+        >
+          <div className="flex items-center justify-around w-full min-w-max gap-1 px-1">
+            {activeTabsList.map((item) => {
+              const ItemIcon = item.icon;
+              const isSelected = item.isActive(location.pathname, currentTab);
+              const hasChildren = Boolean(item.children && item.children.length > 0);
+              const isFlyoutOpen = openFlyoutId === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabClick(item)}
                   className={cn(
-                    "p-1.5 rounded-xl transition-all relative",
+                    "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-[58px] cursor-pointer relative",
                     isSelected || isFlyoutOpen
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                      : "bg-transparent"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   )}
                 >
-                  <ItemIcon size={18} />
-                  {item.badge && (
-                    <span className="absolute -top-1 -right-1 text-[8px] font-black px-1 py-0.2 rounded-full bg-emerald-500 text-white leading-none scale-75">
-                      {item.badge}
-                    </span>
-                  )}
-                  {hasChildren && (
-                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  )}
-                </div>
-                <span className="truncate max-w-[64px] font-extrabold text-[9.5px]">
-                  {item.shortLabel}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+                  <div
+                    className={cn(
+                      "p-1.5 rounded-xl transition-all relative",
+                      isSelected || isFlyoutOpen
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                        : "bg-transparent"
+                    )}
+                  >
+                    <ItemIcon size={18} />
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 text-[8px] font-black px-1 py-0.2 rounded-full bg-emerald-500 text-white leading-none scale-75">
+                        {item.badge}
+                      </span>
+                    )}
+                    {hasChildren && (
+                      <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    )}
+                  </div>
+                  <span className="truncate max-w-[64px] font-extrabold text-[9.5px]">
+                    {item.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </>
   );
 });
