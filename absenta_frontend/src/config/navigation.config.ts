@@ -367,6 +367,43 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/sarpras/inventory'
     ]
   },
+  {
+    id: 'COOPERATIVE_WORKSPACE',
+    label: 'Koperasi',
+    badge: 'Koperasi',
+    icon: Wallet,
+    color: 'text-orange-600',
+    bg: 'bg-orange-50',
+    solidBg: 'bg-orange-600',
+    desc: 'Koperasi & Kantin Sekolah',
+    requiredCapability: 'cooperative.dashboard.view.overview',
+    defaultPath: '/cooperative/dashboard',
+    targetGroupKeywords: ['KOPERASI', 'KANTIN', 'COOPERATIVE']
+  },
+  {
+    id: 'CBT_WORKSPACE',
+    label: 'CBT Ujian',
+    badge: 'CBT',
+    icon: Laptop,
+    color: 'text-violet-600',
+    bg: 'bg-violet-50',
+    solidBg: 'bg-violet-600',
+    desc: 'Ujian Berbasis Komputer & Bank Soal',
+    defaultPath: '/cbt/dashboard',
+    targetGroupKeywords: ['CBT', 'UJIAN']
+  },
+  {
+    id: 'RAPOR_WORKSPACE',
+    label: 'Rapor',
+    badge: 'E-Rapor',
+    icon: FileText,
+    color: 'text-sky-600',
+    bg: 'bg-sky-50',
+    solidBg: 'bg-sky-600',
+    desc: 'E-Rapor & Input Nilai',
+    defaultPath: '/rapor/dashboard',
+    targetGroupKeywords: ['RAPOR', 'NILAI']
+  },
   // ─── TATA USAHA GRANULAR WORKSPACES ────────────────────────────────
   {
     id: 'TU_KOORDINATOR_WORKSPACE',

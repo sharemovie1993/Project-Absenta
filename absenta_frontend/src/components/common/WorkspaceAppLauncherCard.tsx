@@ -223,6 +223,19 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       const found = ROLE_WORKSPACES.find(w => w.id === targetWorkspaceIdProp)
         || userWorkspaces.find(w => w.id === targetWorkspaceIdProp);
       if (found) return found;
+
+      const isCoop = targetWorkspaceIdProp.includes('COOP') || targetWorkspaceIdProp.includes('KOPERASI');
+      return {
+        id: targetWorkspaceIdProp,
+        label: isCoop ? 'Koperasi' : 'Modul',
+        badge: isCoop ? 'Koperasi' : 'Modul',
+        icon: Wallet,
+        color: 'text-orange-600',
+        bg: 'bg-orange-50',
+        solidBg: 'bg-orange-600',
+        desc: 'Ruang Kerja Modul',
+        defaultPath: '#'
+      };
     }
     return userWorkspaces.find(w => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE')
       || userWorkspaces[0]
@@ -423,6 +436,55 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       ];
 
       return adminClusters.filter(c => c.items.length > 0);
+    }
+
+    // ── KOPERASI WORKSPACE: 2 Klaster Alur Kerja ala GoPay Agen ──
+    if (activeWsId === 'COOPERATIVE_WORKSPACE' || activeWsId === 'KOPERASI_WORKSPACE') {
+      const cMember: FlatMenuItem[] = [];
+      const cManage: FlatMenuItem[] = [];
+
+      primaryItems.forEach(item => {
+        const p = (item.path || '').toLowerCase();
+        const t = (item.title || '').toLowerCase();
+
+        if (
+          p.includes('/cooperative/savings') && !p.includes('/manage') ||
+          p.includes('/cooperative/loans') && !p.includes('/manage') ||
+          p.includes('/cooperative/pos') ||
+          p.includes('/cooperative/shu') && !p.includes('/manage') ||
+          p.includes('/cooperative/vouchers') ||
+          p.includes('/cooperative/announcements') && !p.includes('/manage') ||
+          p.includes('/cooperative/tickets') && !p.includes('/manage') ||
+          t.includes('saya') || t.includes('katalog') || t.includes('voucher')
+        ) {
+          cMember.push(item);
+        } else {
+          cManage.push(item);
+        }
+      });
+
+      const coopClusters: WorkflowCluster[] = [
+        {
+          id: 'COOP_MEMBER',
+          badge: '1. LAYANAN ANGGOTA',
+          badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+          title: 'Layanan & Transaksi Anggota',
+          description: 'Tabungan saya, pinjaman, katalog belanja, SHU & voucher diskon',
+          icon: '🛒',
+          items: cMember
+        },
+        {
+          id: 'COOP_MANAGE',
+          badge: '2. OPERASIONAL PENGURUS',
+          badgeColor: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+          title: 'Manajemen & Tata Kelola Toko',
+          description: 'Kelola anggota, input simpanan, persetujuan pinjaman & pembukuan',
+          icon: '💼',
+          items: cManage
+        }
+      ];
+
+      return coopClusters.filter(c => c.items.length > 0);
     }
 
     if (activeWsId !== 'KURIKULUM_WORKSPACE') {
