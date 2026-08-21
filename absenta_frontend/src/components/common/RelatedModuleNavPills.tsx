@@ -206,6 +206,7 @@ export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({ cl
           <Link
             key={item.path}
             to={item.path}
+            replace={true}
             title={item.label}
             className={cn(
               "flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.2 rounded-full text-[11px] sm:text-xs font-black transition-all duration-200 cursor-pointer select-none shrink-0 border",

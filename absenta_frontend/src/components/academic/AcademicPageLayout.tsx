@@ -179,15 +179,81 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
   const navigate = useNavigate();
   const location = useLocation();
-  const isNotDashboard = location.pathname !== '/' && location.pathname !== '/dashboard';
+  const currentPath = location.pathname.toLowerCase().replace(/\/$/, "");
+  
+  const isModuleRootDashboard = useMemo(() => {
+    return (
+      currentPath === '' ||
+      currentPath === '/' ||
+      currentPath === '/dashboard' ||
+      currentPath === '/kurikulum/dashboard' ||
+      currentPath === '/kesiswaan/monitoring' ||
+      currentPath === '/sarpras/dashboard' ||
+      currentPath === '/bpbk/dashboard' ||
+      currentPath === '/hubin/dashboard' ||
+      currentPath === '/cooperative/dashboard' ||
+      currentPath === '/cbt/dashboard' ||
+      currentPath === '/rapor/dashboard' ||
+      currentPath === '/correspondence/dashboard' ||
+      currentPath === '/attendance/dashboard'
+    );
+  }, [currentPath]);
+
+  const isNotDashboard = !isModuleRootDashboard;
 
   const handleGoBack = useCallback(() => {
+    // Smart Parent Resolver: Kembali langsung ke Dashboard Modul Induk tanpa terjebak di loop history
+    if (currentPath.startsWith('/kurikulum')) {
+      navigate('/kurikulum/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/kesiswaan')) {
+      navigate('/kesiswaan/monitoring');
+      return;
+    }
+    if (currentPath.startsWith('/sarpras')) {
+      navigate('/sarpras/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/bpbk')) {
+      navigate('/bpbk/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/hubin')) {
+      navigate('/hubin/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/cooperative')) {
+      navigate('/cooperative/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/cbt')) {
+      navigate('/cbt/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/rapor')) {
+      navigate('/rapor/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/correspondence')) {
+      navigate('/correspondence/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/attendance')) {
+      navigate('/attendance/dashboard');
+      return;
+    }
+    if (currentPath.startsWith('/academic')) {
+      navigate('/dashboard');
+      return;
+    }
+
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
     } else {
       navigate('/dashboard');
     }
-  }, [navigate]);
+  }, [navigate, currentPath]);
 
   if (isLoading) {
     return (
