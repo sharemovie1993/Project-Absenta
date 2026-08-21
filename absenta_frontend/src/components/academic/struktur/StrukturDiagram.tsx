@@ -23,6 +23,7 @@ import { useConfirm } from '@/providers/ConfirmProvider';
 import { useJenjang } from '@/hooks/useJenjang';
 import { LayoutGrid, Network, Smartphone, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { syncStrukturCache } from '@/helpers/strukturQuerySync';
 
 export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({ 
   activeCodes = [], 
@@ -116,18 +117,10 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
         });
       }
     },
-    onSuccess: (_, { node }) => {
+    onSuccess: async (_, { node }) => {
       toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
       setInternalRefreshKey(k => k + 1);
-      queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
-      queryClient.refetchQueries({ queryKey: ['strukturTree'] });
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
-      queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
-      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
-      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+      await syncStrukturCache(queryClient);
       setEditingNode(null);
     },
     onError: (error: any) => {
@@ -145,18 +138,10 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
         return removeGuruFromStruktur(realStrukturId, realMemberId);
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Anggota berhasil dihapus');
       setInternalRefreshKey(k => k + 1);
-      queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
-      queryClient.refetchQueries({ queryKey: ['strukturTree'] });
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
-      queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
-      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
-      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+      await syncStrukturCache(queryClient);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Gagal menghapus anggota');

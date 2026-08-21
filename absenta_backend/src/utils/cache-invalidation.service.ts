@@ -1,5 +1,6 @@
 import { cacheService } from './cache.service';
 import { CACHE_KEYS, CACHE_TAGS } from '../constants/cache-keys';
+import { organizationalContextCache } from '../modules/auth/services/organizational-context-cache';
 
 /**
  * 🗑️ Cache Invalidation Service
@@ -103,13 +104,43 @@ export class CacheInvalidationService {
   }
 
   /**
-   * 🏛️ Invalidate cache struktur organisasi & penugasan wali kelas
+   * 🏛️ Invalidate cache struktur organisasi, penugasan guru/wali kelas, dan user organizational context
    */
-  async invalidateStrukturTree(tenantId: string) {
+  async invalidateStrukturTree(tenantId: string, userIds?: string | string[]) {
+    // 1. Purge primary tree & structure listing cache
     await cacheService.delete(CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId));
     await cacheService.deletePattern(`academic:${tenantId}:wali_kelas:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:struktur:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:beban_guru:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:guru_options:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:stats*`);
+    
+    // 2. Purge related KBM, workload & dashboard caches
     await this.invalidateBebanGuruCache(tenantId);
     await this.invalidateRekapCache(tenantId);
+    await this.invalidateDashboardCache(tenantId);
+
+    // 3. Purge organizational context & capabilities for affected users
+    if (userIds) {
+      const uids = Array.isArray(userIds) ? userIds : [userIds];
+      const validUids = uids.filter(Boolean).map(String);
+      
+      if (validUids.length > 0) {
+        await Promise.all(
+          validUids.map(async (uid) => {
+            try {
+              await organizationalContextCache.invalidateUser(uid);
+              await cacheService.deletePattern(`user:${uid}:*`);
+              await cacheService.deletePattern(`user:capabilities:${uid}*`);
+              await cacheService.deletePattern(`user:sidebar:${uid}*`);
+              await cacheService.deletePattern(`user:profile:${uid}*`);
+            } catch (err) {
+              console.warn(`[CacheInvalidation] Failed to invalidate context for user ${uid}:`, err);
+            }
+          })
+        );
+      }
+    }
   }
 
   /**

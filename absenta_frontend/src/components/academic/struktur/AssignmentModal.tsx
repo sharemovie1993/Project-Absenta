@@ -21,6 +21,8 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGuruOptions, useKelasOptions, useJurusanOptions, useSiswaOptions, KelasSelect, JurusanSelect } from '@/components/common';
 import { SimpleFormField } from '@/components/ui/SimpleFormField';
+import { useQueryClient } from '@tanstack/react-query';
+import { syncStrukturCache } from '@/helpers/strukturQuerySync';
 
 interface AssignmentModalProps {
   isOpen: boolean;
@@ -41,6 +43,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   defaultKelasId,
   onSuccess 
 }) => {
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<'GURU' | 'SISWA'>('GURU');
   const [struktur, setStruktur] = useState<StrukturOrganisasi | null>(null);
   const [guruAssignments, setGuruAssignments] = useState<GuruStrukturOrganisasi[]>([]);
@@ -68,15 +71,6 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const [pendingGuruId, setPendingGuruId] = useState<string | null>(null);
   const [pendingSiswaId, setPendingSiswaId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && strukturId) {
-      // Auto-fill context from diagram if provided
-      setSelectedUnitId(defaultUnitId || '');
-      setSelectedKelasIdAssignment(defaultKelasId || '');
-      loadData();
-    }
-  }, [isOpen, strukturId, defaultUnitId, defaultKelasId]);
-
   const loadData = async () => {
     if (!strukturId) return;
     setIsLoading(true);
@@ -84,40 +78,49 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       const res = await getStrukturDetail(strukturId);
       if (res.data) {
         setStruktur(res.data);
-        if (res.data.kode === 'PETUGAS_KELAS') {
-          setTab('SISWA');
-        } else {
-          setTab('GURU');
-        }
-        const allAssigns = res.data.organizationalAssigns || [];
-        
-        // Map assignments to categories
-        setGuruAssignments(allAssigns.filter(a => !!a.User?.Guru));
-        setSiswaAssignments(allAssigns.filter(a => !!a.User?.Siswa));
-        
-        if (res.data.kelas_id) {
-          setSelectedKelasId(res.data.kelas_id);
-        }
+        setGuruAssignments(res.data.guru || []);
+        setSiswaAssignments(res.data.siswa || []);
       }
-    } catch (error) {
-      toast.error('Gagal memuat detail struktur');
+    } catch (error: any) {
+      toast.error(error?.message || 'Gagal memuat detail penugasan');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAddGuru = async (guruId: string) => {
-    if (!strukturId) return;
-    
-    // Auto-resolve context: priority 1 (default from diagram), priority 2 (manual selection)
-    const activeUnitId = selectedUnitId || defaultUnitId;
-    const activeKelasId = selectedKelasIdAssignment || defaultKelasId;
+  useEffect(() => {
+    if (isOpen && strukturId) {
+      loadData();
+    } else {
+      setStruktur(null);
+      setGuruAssignments([]);
+      setSiswaAssignments([]);
+      setSearch('');
+      setSelectedKelasId('');
+      setSelectedUnitId('');
+      setSelectedKelasIdAssignment('');
+      setPendingGuruId(null);
+      setPendingSiswaId(null);
+      setIsContextDialogOpen(false);
+    }
+  }, [isOpen, strukturId]);
 
-    // Only show dialog if context is missing for roles that require it
+  const handleAddGuru = async (guruId: string) => {
+    if (!strukturId || isSubmitting) return;
+
     const needsJurusan = ['KAPROG', 'KABENG', 'TOOLMAN'].includes(struktur?.kode || '');
     const needsKelas = ['WALIKELAS'].includes(struktur?.kode || '');
 
-    if ((needsJurusan && !activeUnitId) || (needsKelas && !activeKelasId)) {
+    const activeUnitId = defaultUnitId || selectedUnitId;
+    const activeKelasId = defaultKelasId || selectedKelasIdAssignment || selectedKelasId;
+
+    if (needsJurusan && !activeUnitId && !struktur?.unit_id) {
+      setPendingGuruId(guruId);
+      setIsContextDialogOpen(true);
+      return;
+    }
+
+    if (needsKelas && !activeKelasId && !struktur?.kelas_id) {
       setPendingGuruId(guruId);
       setIsContextDialogOpen(true);
       return;
@@ -137,6 +140,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       setSelectedUnitId('');
       setSelectedKelasIdAssignment('');
       setIsContextDialogOpen(false);
+      await syncStrukturCache(queryClient);
       await loadData();
       onSuccess?.();
     } catch (error: any) {
@@ -174,6 +178,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     try {
       await removeGuruFromStruktur(strukturId, guruId);
       toast.success('Penugasan guru dihapus');
+      await syncStrukturCache(queryClient);
       await loadData();
       onSuccess?.();
     } catch (error: any) {
@@ -203,6 +208,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         start_date: startDate
       });
       toast.success('Siswa berhasil ditugaskan');
+      await syncStrukturCache(queryClient);
       await loadData();
       onSuccess?.();
     } catch (error: any) {
@@ -218,6 +224,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     try {
       await removeSiswaFromStruktur(strukturId, siswaId);
       toast.success('Penugasan siswa dihapus');
+      await syncStrukturCache(queryClient);
       await loadData();
       onSuccess?.();
     } catch (error: any) {

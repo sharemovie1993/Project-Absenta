@@ -1,5 +1,4 @@
 import { prisma } from '@/utils/prisma';
-import { organizationalContextCache } from '@/modules/auth/services/organizational-context-cache';
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { DEFAULT_STRUKTUR_ORGANISASI } from '@/config/organization-structure';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
@@ -62,13 +61,13 @@ export class StrukturOrganisasiService {
     return !!assignment;
   }
 
-  private async invalidateUsersByPosition(positionId: string) {
+  private async invalidateUsersByPosition(tenantId: string, positionId: string) {
     const assigns = await prisma.organizationalAssignment.findMany({
       where: { position_id: positionId, is_active: true },
       select: { user_id: true },
     });
     const userIds = Array.from(new Set(assigns.map((a) => String(a.user_id)).filter(Boolean)));
-    await Promise.all(userIds.map((uid) => organizationalContextCache.invalidateUser(uid)));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId, userIds);
   }
 
   async getTree(tenantId: string) {
@@ -314,8 +313,7 @@ export class StrukturOrganisasiService {
       },
     });
 
-    await this.invalidateUsersByPosition(id);
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await this.invalidateUsersByPosition(tenantId, id);
     return updated;
   }
 
@@ -326,9 +324,8 @@ export class StrukturOrganisasiService {
     });
     if (!existing) throw new Error('Struktur not found');
 
-    await this.invalidateUsersByPosition(id);
+    await this.invalidateUsersByPosition(tenantId, id);
     await prisma.organizationalPosition.delete({ where: { id } });
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async getPermissions(tenantId: string, strukturId: string) {
@@ -374,7 +371,7 @@ export class StrukturOrganisasiService {
       });
     });
 
-    await this.invalidateUsersByPosition(strukturId);
+    await this.invalidateUsersByPosition(tenantId, strukturId);
     return this.getPermissions(tenantId, strukturId);
   }
 
@@ -412,7 +409,7 @@ export class StrukturOrganisasiService {
       }
     });
 
-    await Promise.all(targets.map((t) => this.invalidateUsersByPosition(t.id)));
+    await Promise.all(targets.map((t) => this.invalidateUsersByPosition(tenantId, t.id)));
     return { affected: targets.length };
   }
 
@@ -489,9 +486,8 @@ export class StrukturOrganisasiService {
           where: { id: { in: previousAssignments.map(p => p.id) } },
           data: { is_active: false, end_date: new Date(), updated_at: new Date() }
         });
-        await Promise.all(
-          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
-        );
+        const prevUserIds = previousAssignments.map(p => String(p.user_id)).filter(Boolean);
+        await cacheInvalidationService.invalidateStrukturTree(tenantId, prevUserIds);
       }
 
       // 2. Menonaktifkan penugasan pejabat ini di jurusan/unit kerja LAIN untuk posisi yang sama
@@ -533,9 +529,8 @@ export class StrukturOrganisasiService {
           where: { id: { in: previousAssignments.map(p => p.id) } },
           data: { is_active: false, end_date: new Date(), updated_at: new Date() }
         });
-        await Promise.all(
-          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
-        );
+        const prevUserIds = previousAssignments.map(p => String(p.user_id)).filter(Boolean);
+        await cacheInvalidationService.invalidateStrukturTree(tenantId, prevUserIds);
       }
 
       // 2. Menonaktifkan penugasan WALIKELAS guru ini di kelas-kelas LAIN
@@ -587,8 +582,7 @@ export class StrukturOrganisasiService {
         },
       });
 
-      await organizationalContextCache.invalidateUser(String(guru.user_id));
-      await cacheInvalidationService.invalidateStrukturTree(tenantId);
+      await cacheInvalidationService.invalidateStrukturTree(tenantId, String(guru.user_id));
       return updated;
     }
 
@@ -607,8 +601,7 @@ export class StrukturOrganisasiService {
       } as any,
     });
 
-    await organizationalContextCache.invalidateUser(String(guru.user_id));
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId, String(guru.user_id));
     return created;
   }
 
@@ -629,8 +622,7 @@ export class StrukturOrganisasiService {
         data: { is_active: false, end_date: new Date(), updated_at: new Date() }
       });
 
-      await organizationalContextCache.invalidateUser(String(directAssignment.user_id));
-      await cacheInvalidationService.invalidateStrukturTree(tenantId);
+      await cacheInvalidationService.invalidateStrukturTree(tenantId, String(directAssignment.user_id));
       return;
     }
 
@@ -640,8 +632,6 @@ export class StrukturOrganisasiService {
       select: { user_id: true },
     });
     if (!guru?.user_id) return;
-
-
 
     await prisma.organizationalAssignment.updateMany({
       where: {
@@ -653,8 +643,7 @@ export class StrukturOrganisasiService {
       data: { is_active: false, end_date: new Date(), updated_at: new Date() },
     });
 
-    await organizationalContextCache.invalidateUser(String(guru.user_id));
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId, String(guru.user_id));
   }
 
   async assignSiswa(tenantId: string, input: AssignSiswaInput) {
@@ -701,9 +690,8 @@ export class StrukturOrganisasiService {
           where: { id: { in: previousAssignments.map(p => p.id) } },
           data: { is_active: false, end_date: new Date(), updated_at: new Date() }
         });
-        await Promise.all(
-          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
-        );
+        const prevUserIds = previousAssignments.map(p => String(p.user_id)).filter(Boolean);
+        await cacheInvalidationService.invalidateStrukturTree(tenantId, prevUserIds);
       }
 
       // Otomatis menonaktifkan penugasan user ini di kelas-kelas LAIN untuk posisi yang sama
@@ -741,8 +729,7 @@ export class StrukturOrganisasiService {
           updated_at: new Date(),
         },
       });
-      await organizationalContextCache.invalidateUser(String(siswa.user_id));
-      await cacheInvalidationService.invalidateStrukturTree(tenantId);
+      await cacheInvalidationService.invalidateStrukturTree(tenantId, String(siswa.user_id));
       return updated;
     }
 
@@ -760,8 +747,7 @@ export class StrukturOrganisasiService {
       } as any,
     });
 
-    await organizationalContextCache.invalidateUser(String(siswa.user_id));
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId, String(siswa.user_id));
     return created;
   }
 
@@ -776,8 +762,7 @@ export class StrukturOrganisasiService {
         where: { id: directAssignment.id },
         data: { is_active: false, end_date: new Date(), updated_at: new Date() }
       });
-      await organizationalContextCache.invalidateUser(String(directAssignment.user_id));
-      await cacheInvalidationService.invalidateStrukturTree(tenantId);
+      await cacheInvalidationService.invalidateStrukturTree(tenantId, String(directAssignment.user_id));
       return;
     }
 
@@ -797,8 +782,7 @@ export class StrukturOrganisasiService {
       data: { is_active: false, end_date: new Date(), updated_at: new Date() },
     });
 
-    await organizationalContextCache.invalidateUser(String(siswa.user_id));
-    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId, String(siswa.user_id));
   }
 
   async initializeTenant(tenantId: string) {
