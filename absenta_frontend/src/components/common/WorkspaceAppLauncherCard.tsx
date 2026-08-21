@@ -227,6 +227,18 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
 
     let matchedItems: FlatMenuItem[] = [];
 
+    // 3.1 Pengecualian universal untuk halaman dashboard modul itu sendiri (agar tidak redundan)
+    const isModuleDashboardPath = (path: string, title: string) => {
+      const p = path.toLowerCase();
+      const t = title.toLowerCase();
+      if (p === '/dashboard' || p === '#' || p.startsWith('menu:')) return true;
+      if (p.endsWith('/dashboard')) return true;
+      if (t === 'dashboard' || t.startsWith('dashboard ')) return true;
+      // Khusus kesiswaan: /kesiswaan/monitoring adalah dashboard kesiswaan
+      if (activeWsId === 'KESISWAAN_WORKSPACE' && p === '/kesiswaan/monitoring') return true;
+      return false;
+    };
+
     if (activeWsId === 'ADMIN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
@@ -240,77 +252,77 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
           cat.includes('AKADEMIK') ||
           cat.includes('DATA MASTER') ||
           cat.includes('SISTEM')
-        ) && p !== '/dashboard' && p !== '#';
+        ) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_ADMIN_PRIMARY;
     } else if (activeWsId === 'SARPRAS_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/sarpras') || cat.includes('SARPRAS') || cat.includes('ASET')) && p !== '/sarpras/dashboard' && p !== '#';
+        return (p.startsWith('/sarpras') || cat.includes('SARPRAS') || cat.includes('ASET')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_SARPRAS_PRIMARY;
     } else if (activeWsId === 'KURIKULUM_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/kurikulum') || cat.includes('KURIKULUM')) && p !== '/kurikulum/dashboard' && p !== '#';
+        return (p.startsWith('/kurikulum') || cat.includes('KURIKULUM')) && !isModuleDashboardPath(p, item.title);
       });
       // Fallback statis DEFAULT_KURIKULUM_PRIMARY dinonaktifkan (murni 100% hasil backend API)
     } else if (activeWsId === 'KESISWAAN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/kesiswaan') || cat.includes('KESISWAAN')) && p !== '/kesiswaan/dashboard' && p !== '#';
+        return (p.startsWith('/kesiswaan') || cat.includes('KESISWAAN')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_KESISWAAN_PRIMARY;
     } else if (activeWsId === 'HUBIN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/hubin') || cat.includes('HUBIN') || cat.includes('INDUSTRI') || cat.includes('PKL')) && p !== '/hubin/dashboard' && p !== '#';
+        return (p.startsWith('/hubin') || cat.includes('HUBIN') || cat.includes('INDUSTRI') || cat.includes('PKL')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_HUBIN_PRIMARY;
     } else if (activeWsId === 'BPBK_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/bpbk') || cat.includes('BPBK') || cat.includes('BP/BK') || cat.includes('KONSELING')) && p !== '/bpbk/dashboard' && p !== '#';
+        return (p.startsWith('/bpbk') || cat.includes('BPBK') || cat.includes('BP/BK') || cat.includes('KONSELING')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_BPBK_PRIMARY;
     } else if (activeWsId === 'COOPERATIVE_WORKSPACE' || activeWsId === 'KOPERASI_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/cooperative') || cat.includes('KOPERASI') || cat.includes('KANTIN')) && p !== '/cooperative/dashboard' && p !== '#';
+        return (p.startsWith('/cooperative') || cat.includes('KOPERASI') || cat.includes('KANTIN')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_COOPERATIVE_PRIMARY;
     } else if (activeWsId === 'CBT_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/cbt') || cat.includes('CBT') || cat.includes('UJIAN')) && p !== '/cbt/dashboard' && p !== '#';
+        return (p.startsWith('/cbt') || cat.includes('CBT') || cat.includes('UJIAN')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_CBT_PRIMARY;
     } else if (activeWsId === 'RAPOR_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/rapor') || cat.includes('RAPOR') || cat.includes('NILAI')) && p !== '/rapor/dashboard' && p !== '#';
+        return (p.startsWith('/rapor') || cat.includes('RAPOR') || cat.includes('NILAI')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_RAPOR_PRIMARY;
     } else if (activeWsId === 'TU_KOORDINATOR_WORKSPACE' || activeWsId === 'PERSURATAN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         const cat = (item.categoryLabel || '').toUpperCase();
-        return (p.startsWith('/correspondence') || cat.includes('PERSURATAN') || cat.includes('SURAT')) && p !== '/correspondence/dashboard' && p !== '#';
+        return (p.startsWith('/correspondence') || cat.includes('PERSURATAN') || cat.includes('SURAT')) && !isModuleDashboardPath(p, item.title);
       });
       if (matchedItems.length === 0) matchedItems = DEFAULT_CORRESPONDENCE_PRIMARY;
     } else {
       const { primaryItems: filtered } = filterNavByWorkspace(flatItems, user, activeWsId);
       matchedItems = filtered.filter(item => {
         const p = (item.path || '').toLowerCase();
-        return p && p !== '#' && p !== '/dashboard' && !p.startsWith('menu:');
+        return !isModuleDashboardPath(p, item.title);
       });
     }
 
