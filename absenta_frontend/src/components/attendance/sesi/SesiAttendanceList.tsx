@@ -37,6 +37,7 @@ export interface SesiAttendanceRecord {
   is_guru?: boolean;
   status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DISPEN' | 'ALPA' | 'BELUM_TAP' | string;
   waktu_tap?: string | null;
+  original_waktu_tap?: string | null;
   is_terlambat?: boolean;
   menit_keterlambatan?: number | null;
   asal_gerbang?: boolean;
@@ -311,6 +312,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         is_guru: true,
         status: savedGuruData?.status || sesi?.guru_status || 'BELUM_TAP',
         waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : (sesi?.waktu_tap_guru ?? null),
+        original_waktu_tap: savedGuruData?.waktu_tap !== undefined ? savedGuruData.waktu_tap : (sesi?.waktu_tap_guru ?? null),
         is_terlambat: savedGuruData?.is_terlambat || false,
         Guru: guruDetail,
         catatan: savedGuruData?.catatan !== undefined ? savedGuruData.catatan : null
@@ -320,6 +322,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
     }
 
     return baseRecords.map(r => {
+      const origTap = r.original_waktu_tap || (r.status === 'HADIR' ? r.waktu_tap : null);
       const isG = r.is_guru || Boolean(r.Guru) || Boolean(r.guru_id) || (r as any)._type === 'guru';
       if (isG) {
         const teacherId = r.guru_id || r.Guru?.id || gId;
@@ -329,6 +332,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
             const parsed = JSON.parse(stored);
             return {
               ...r,
+              original_waktu_tap: origTap || parsed.waktu_tap || null,
               status: parsed.status || r.status,
               waktu_tap: parsed.waktu_tap !== undefined ? parsed.waktu_tap : r.waktu_tap,
               is_terlambat: parsed.is_terlambat !== undefined ? parsed.is_terlambat : r.is_terlambat,
@@ -337,7 +341,10 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           }
         } catch {}
       }
-      return r;
+      return {
+        ...r,
+        original_waktu_tap: origTap
+      };
     });
   }, [records, sesi]);
 
@@ -349,7 +356,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
 
   // Mutation for updating student OR teacher attendance with advanced React Query Optimistic Updates
   const updateAttendanceMutation = useMutation({
-    mutationFn: async ({ siswaAkademikId, status, catatan }: { siswaAkademikId: string, status: string, catatan?: string }) => {
+    mutationFn: async ({ siswaAkademikId, status, catatan, waktu_tap }: { siswaAkademikId: string, status: string, catatan?: string, waktu_tap?: string }) => {
       const targetRecord = localRecords.find(r => 
         (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId
       );
@@ -360,6 +367,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         return requestWithFallback('patch', `/attendance/sesi-absensi/${sesi?.id}/absen-guru/${guruId}`, {
           data: {
             status: status,
+            waktu_tap: waktu_tap,
             catatan: catatan
           }
         });
@@ -369,11 +377,12 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
         data: {
           siswa_akademik_id: siswaAkademikId,
           status: status,
+          waktu_tap: waktu_tap,
           catatan: catatan
         }
       });
     },
-    onMutate: async ({ siswaAkademikId, status }) => {
+    onMutate: async ({ siswaAkademikId, status, waktu_tap }) => {
       if (!sesi?.id) return;
 
       // Cancel outgoing refetches
@@ -388,17 +397,16 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
           const currentId = rec.siswa_akademik_id || rec.siswa_id || rec.guru_id || rec.id;
           if (currentId !== siswaAkademikId) return rec;
 
-          const isAlreadyHadir = rec.status === 'HADIR' && Boolean(rec.waktu_tap);
-          const preservedWaktuTap = (isAlreadyHadir && status === 'HADIR') 
-            ? rec.waktu_tap 
-            : (status === 'HADIR' ? new Date().toISOString() : null);
+          const historicalTap = rec.original_waktu_tap || (rec.status === 'HADIR' ? rec.waktu_tap : null);
+          const effectiveTap = status === 'HADIR' ? (waktu_tap || historicalTap || new Date().toISOString()) : null;
 
           return { 
             ...rec, 
             status: status, 
-            waktu_tap: preservedWaktuTap,
-            is_terlambat: (isAlreadyHadir && status === 'HADIR') ? rec.is_terlambat : (status === 'HADIR' ? rec.is_terlambat : false),
-            menit_keterlambatan: (isAlreadyHadir && status === 'HADIR') ? rec.menit_keterlambatan : (status === 'HADIR' ? rec.menit_keterlambatan : 0)
+            waktu_tap: effectiveTap,
+            original_waktu_tap: historicalTap || effectiveTap,
+            is_terlambat: status === 'HADIR' ? rec.is_terlambat : false,
+            menit_keterlambatan: status === 'HADIR' ? rec.menit_keterlambatan : 0
           };
         });
         queryClient.setQueryData(['sesi-detail-attendance', sesi.id], {
@@ -467,76 +475,72 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       izin: localRecords.filter(r => r.status === 'IZIN').length,
       sakit: localRecords.filter(r => r.status === 'SAKIT').length,
       alpa: localRecords.filter(r => r.status === 'ALPA').length,
-      dispen: localRecords.filter(r => r.status === 'DISPEN').length,
+      dispen: localRecords.filter(r => r.status === 'DISPEN' || r.catatan?.includes('DISPENSASI')).length,
       terlambat: localRecords.filter(r => r.is_terlambat).length,
       pending_gate: localRecords.filter(r => r.status === 'HADIR' && r.asal_gerbang === false).length,
-      belum_tap: localRecords.filter(r => r.status === 'BELUM_TAP').length,
+      belum_tap: localRecords.filter(r => r.status === 'BELUM_TAP' || !r.status).length,
     };
   }, [localRecords]);
 
   const filteredRecords = useMemo(() => {
-    return localRecords
-      .filter(r => {
-        const name = r.Guru?.nama_guru || r.Siswa?.nama_siswa || '';
-        const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
-        const matchSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchStatus && matchSearch;
-      })
-      .sort((a, b) => {
-        const isGuruA = a.is_guru || Boolean(a.Guru) || Boolean(a.guru_id) || (a as any)._type === 'guru';
-        const isGuruB = b.is_guru || Boolean(b.Guru) || Boolean(b.guru_id) || (b as any)._type === 'guru';
-
-        if (isGuruA && !isGuruB) return -1;
-        if (!isGuruA && isGuruB) return 1;
-
-        const nameA = (a.Guru?.nama_guru || a.Siswa?.nama_siswa || '').toLowerCase();
-        const nameB = (b.Guru?.nama_guru || b.Siswa?.nama_siswa || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
+    return localRecords.filter(record => {
+      const studentName = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama || '';
+      const matchesSearch = studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (record.Siswa?.nisn && record.Siswa.nisn.includes(searchTerm));
+      
+      if (!matchesSearch) return false;
+      if (filterStatus === 'ALL') return true;
+      if (filterStatus === 'HADIR') return record.status === 'HADIR';
+      if (filterStatus === 'IZIN') return record.status === 'IZIN' || record.status === 'SAKIT';
+      if (filterStatus === 'ALPA') return record.status === 'ALPA';
+      if (filterStatus === 'DISPEN') return record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI');
+      if (filterStatus === 'BELUM_TAP') return record.status === 'BELUM_TAP' || !record.status;
+      return true;
+    });
   }, [localRecords, filterStatus, searchTerm]);
 
   const handleUpdateStatus = (siswaAkademikId: string, status: string, catatan?: string) => {
-    if ((status === 'SAKIT' || status === 'IZIN' || status === 'DISPEN') && !catatan) {
+    if (['SAKIT', 'IZIN', 'DISPEN'].includes(status) && catatan === undefined) {
       const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
-      const sName = rec?.Guru?.nama_guru || rec?.Siswa?.nama_siswa || 'Pengguna';
-      setNoteTarget({ siswaAkademikId, studentName: sName, status: status as 'SAKIT' | 'IZIN' | 'DISPEN' });
+      const studentName = rec?.Siswa?.nama_siswa || (rec as any)?.nama_siswa || 'Siswa';
+      setNoteTarget({ siswaAkademikId, studentName, status: status as any });
       setNoteModalOpen(true);
       return;
     }
 
     // 1. Instant optimistic update to local state
     const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === siswaAkademikId);
-    const isAlreadyHadir = targetRec?.status === 'HADIR' && Boolean(targetRec?.waktu_tap);
-    let isLate = targetRec?.is_terlambat || false;
-    let lateMinutes = targetRec?.menit_keterlambatan || 0;
+    const tenantNowISO = formatLocalDateTime(getVirtualDate());
 
-    if (isAlreadyHadir && status === 'HADIR') {
-      // 🛡️ First-In Check-In Timestamp Preservation:
-      // Jaga waktu tap dan menit keterlambatan pertama jika status sudah HADIR
-      isLate = targetRec.is_terlambat || false;
-      lateMinutes = targetRec.menit_keterlambatan || 0;
-    } else if (status === 'HADIR') {
+    // 🛡️ Original Check-In Timestamp Restoration (Human Error Protection):
+    // Jika guru pernah menandai HADIR (misal telat 2 menit), lalu tidak sengaja klik ALPA,
+    // lalu kembali klik HADIR, kembalikan jam tap original agar siswa tidak terkena akumulasi telat palsu.
+    const historicalTap = targetRec?.original_waktu_tap || (targetRec?.status === 'HADIR' ? targetRec?.waktu_tap : null);
+    const effectiveTap = status === 'HADIR' ? (historicalTap || tenantNowISO) : null;
+
+    let isLate = false;
+    let lateMinutes = 0;
+
+    if (status === 'HADIR') {
       const jamMulaiStr = sesi?.jam_mulai || (sesi as any)?.JamPelajaran?.jam_mulai;
-      if (jamMulaiStr) {
-        const tenantNow = getVirtualDate();
-        const tenantTz = getTimezone();
+      if (jamMulaiStr && effectiveTap) {
         const parts = new Intl.DateTimeFormat('en-GB', {
-          timeZone: tenantTz,
+          timeZone: getTimezone(),
           hour: '2-digit',
           minute: '2-digit',
           hour12: false
-        }).formatToParts(tenantNow);
+        }).formatToParts(new Date(effectiveTap));
         
         const map: Record<string, string> = {};
         parts.forEach(p => map[p.type] = p.value);
         
-        const nowMinutes = parseInt(map.hour || '0', 10) * 60 + parseInt(map.minute || '0', 10);
+        const tapMinutes = parseInt(map.hour || '0', 10) * 60 + parseInt(map.minute || '0', 10);
         const [startH, startM] = jamMulaiStr.split(':').map(Number);
         const startMinutes = (startH || 0) * 60 + (startM || 0);
         
-        if (nowMinutes > startMinutes) {
+        if (tapMinutes > startMinutes) {
           isLate = true;
-          lateMinutes = nowMinutes - startMinutes;
+          lateMinutes = tapMinutes - startMinutes;
         } else {
           isLate = false;
           lateMinutes = 0;
@@ -547,35 +551,30 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       lateMinutes = 0;
     }
 
-    const tenantNowISO = formatLocalDateTime(getVirtualDate());
-
     setLocalRecords(prev => 
       prev.map(r => {
         const currentId = r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id;
         if (currentId !== siswaAkademikId) return r;
-
-        const isCurrentAlreadyHadir = r.status === 'HADIR' && Boolean(r.waktu_tap);
-        const preservedTap = (isCurrentAlreadyHadir && status === 'HADIR')
-          ? r.waktu_tap
-          : (status === 'HADIR' ? tenantNowISO : null);
-
-        const preservedLateMin = (isCurrentAlreadyHadir && status === 'HADIR')
-          ? (r.menit_keterlambatan || lateMinutes)
-          : lateMinutes;
 
         return { 
           ...r, 
           status: status, 
           catatan: catatan !== undefined ? catatan : r.catatan,
           is_terlambat: isLate,
-          menit_keterlambatan: preservedLateMin,
-          waktu_tap: preservedTap
+          menit_keterlambatan: lateMinutes,
+          waktu_tap: effectiveTap,
+          original_waktu_tap: historicalTap || effectiveTap
         };
       })
     );
 
     // 2. Fire mutation
-    updateAttendanceMutation.mutate({ siswaAkademikId, status, catatan });
+    updateAttendanceMutation.mutate({ 
+      siswaAkademikId, 
+      status, 
+      catatan,
+      waktu_tap: effectiveTap || undefined
+    });
   };
 
   const handleNoteSubmit = async (catatan: string) => {
