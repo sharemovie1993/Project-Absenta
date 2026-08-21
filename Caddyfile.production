@@ -1,0 +1,79 @@
+{
+    auto_https off
+}
+
+http://smkn1pld.absenta.id, http://demo.absenta.id {
+    reverse_proxy /api/* 127.0.0.1:3003
+    reverse_proxy /socket.io/* 127.0.0.1:3003
+    reverse_proxy 127.0.0.1:5175
+    encode gzip zstd
+}
+
+https://smkn1pld.absenta.id, https://demo.absenta.id {
+    reverse_proxy /api/* 127.0.0.1:3003
+    reverse_proxy /socket.io/* 127.0.0.1:3003
+    reverse_proxy 127.0.0.1:5175
+    encode gzip zstd
+    tls /etc/caddy/ssl/cert.pem /etc/caddy/ssl/key.pem
+}
+
+# === BEGIN PROJECT: undangan ===
+:80 {
+    root * /var/www/undangan-digital/frontend/dist
+
+    # Backend API endpoints proxy
+    handle /api/* {
+        reverse_proxy localhost:4001
+    }
+    handle /uploads/* {
+        reverse_proxy localhost:4001
+    }
+    handle /undangan-storage/* {
+        reverse_proxy localhost:9000
+    }
+    handle /absenta-storage/* {
+        reverse_proxy localhost:9000
+    }
+    handle /health* {
+        reverse_proxy localhost:4001
+    }
+
+    # SPA frontend static files and routing fallback
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    encode gzip zstd
+}
+
+https://luxury.absenta.id {
+    root * /var/www/undangan-digital/frontend/dist
+
+    # Backend API endpoints proxy
+    handle /api/* {
+        reverse_proxy localhost:4001
+    }
+    handle /uploads/* {
+        reverse_proxy localhost:4001
+    }
+    handle /undangan-storage/* {
+        reverse_proxy localhost:9000
+    }
+    handle /absenta-storage/* {
+        reverse_proxy localhost:9000
+    }
+    handle /health* {
+        reverse_proxy localhost:4001
+    }
+
+    # SPA frontend static files and routing fallback
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    encode gzip zstd
+    tls /etc/caddy/ssl/cert.pem /etc/caddy/ssl/key.pem
+}
+# === END PROJECT: undangan ===
