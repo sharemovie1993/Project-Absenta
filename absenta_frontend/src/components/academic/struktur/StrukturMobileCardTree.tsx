@@ -96,6 +96,18 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     }
   };
 
+  const handleAddMember = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onAction) {
+      onAction({
+        ...node,
+        id: `add-new-${node.id}`,
+        actionType: 'MEMBER_ADD',
+        parentStrukturId: node.data?.realStrukturId || node.id
+      }, 'MEMBER_ADD', cardRef.current);
+    }
+  };
+
   const handleDeleteMember = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onAction) {
@@ -120,8 +132,14 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     );
   }
 
-  // ── PURE CATEGORY / BIDANG BANNER (Fokus ke Label Divisi tanpa tombol + dan tanpa kotak orang) ──
+  // ── PURE CATEGORY / BIDANG BANNER (Fokus ke Label Divisi tanpa tombol + di header) ──
   if (isCategory) {
+    const isDirectUnit = Boolean(
+      node.type === 'CATEGORY' || 
+      node.id?.startsWith('mgmt-group-') || 
+      node.data?.realStrukturId
+    );
+
     return (
       <div className="w-full mt-4 first:mt-0">
         <div 
@@ -171,6 +189,19 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                     editingId={editingId}
                   />
                 ))}
+
+                {/* Tombol Tambah Anggota / Staf khusus di bawah daftar personil bidang */}
+                {isDirectUnit && (
+                  <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
+                    <button
+                      onClick={handleAddMember}
+                      className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span>+ Tambah Anggota {node.label}</span>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
