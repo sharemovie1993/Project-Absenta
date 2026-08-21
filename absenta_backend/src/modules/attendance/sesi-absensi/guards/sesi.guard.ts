@@ -77,11 +77,6 @@ export class SesiGuard {
       return; // Allowed for Management / Piket
     }
 
-    if (isManagement) {
-      reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca.' });
-      return;
-    }
-
     const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
     const { device_id } = request.body || {};
 
@@ -119,10 +114,10 @@ export class SesiGuard {
     });
     const siswaKelasId = siswa?.SiswaAkademik?.[0]?.kelas_id || (siswa as any)?.kelas_id;
 
-    if (isGuru) {
+    if (isGuru > 0) {
         const guruRecord = await prisma.guru.findFirst({ where: { user_id: userId, tenant_id: tenantId }, select: { id: true } });
         
-        // 0. Jika Guru adalah Petugas Piket hari ini
+        // 0. Jika Guru adalah Petugas Piket hari ini atau memiliki otorisasi piket
         if (guruRecord) {
           const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
           const hariIni = todayDays[new Date().getDay()];
@@ -134,7 +129,7 @@ export class SesiGuard {
           }
         }
 
-        // 1. Jika Guru adalah pengajar di sesi ini, berikan akses (termasuk DELETE)
+        // 1. Jika Guru adalah pengajar di sesi ini, berikan akses penuh (tap, close, update, journal, delete)
         if (guruRecord && String(sesi.guru_id || '') === String(guruRecord.id)) {
             return; // Allowed
         }
@@ -154,6 +149,12 @@ export class SesiGuard {
                  reply.status(403).send({ success: false, message: 'Forbidden: Wali Kelas hanya memiliki akses di modul Gerbang (Sakit/Izin/Alfa).' });
                  return;
             }
+        }
+
+        // 4. Jika Guru bukan pengajar di sesi ini dan bukan piket
+        if (isManagement) {
+            reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca pada sesi kelas yang tidak diampu.' });
+            return;
         }
 
         reply.status(403).send({ success: false, message: 'Forbidden: Anda tidak memiliki akses ke sesi ini.' });
@@ -182,6 +183,14 @@ export class SesiGuard {
         reply.status(403).send({ success: false, message: 'Forbidden: Akses ditolak.' });
         return;
     }
+
+    // Pure administrative / management without Guru profile
+    if (isManagement) {
+      reply.status(403).send({ success: false, message: 'Forbidden: Role Pimpinan hanya memiliki akses baca.' });
+      return;
+    }
+
+    reply.status(403).send({ success: false, message: 'Forbidden: Akses ditolak.' });
   }
 
   static async validateList(request: any, reply: any) {
