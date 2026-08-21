@@ -50,7 +50,47 @@ export async function seedDemoTenant() {
   const effectiveTenantId = demoTenant.id;
   console.log(`✅ Tenant Demo Siap: ${demoTenant.name} (ID: ${effectiveTenantId}, Subdomain: ${demoTenant.subdomain})`);
 
-  // 1.1 Pastikan Subscription Tenant Demo Aktif
+  // 1.1 Pastikan Plan Enterprise Full Suite Ada
+  const allFeatures = [
+    'CORE',
+    'ABSENSI',
+    'KOPERASI',
+    'REPORTING',
+    'RAPOR',
+    'PPDB',
+    'PERPUSTAKAAN',
+    'HUBIN',
+    'SARPRAS',
+    'WHATSAPP',
+    'ACADEMIC',
+    'KESISWAAN',
+    'KURIKULUM',
+    'BPBK',
+    'BKK',
+    'EXAM',
+  ];
+
+  const demoPlan = await prisma.plan.upsert({
+    where: { code: 'ENTERPRISE_DEMO' },
+    update: {
+      name: 'Absenta Enterprise Full Suite (Demo Showcase)',
+      service_code: 'ALL',
+      max_user: 99999,
+      features_json: allFeatures,
+      absensi_mode: 'MULTI_SESI',
+    },
+    create: {
+      code: 'ENTERPRISE_DEMO',
+      name: 'Absenta Enterprise Full Suite (Demo Showcase)',
+      service_code: 'ALL',
+      price_monthly: 0,
+      max_user: 99999,
+      features_json: allFeatures,
+      absensi_mode: 'MULTI_SESI',
+    }
+  });
+
+  // 1.2 Pastikan Subscription Tenant Demo Aktif & Terhubung ke Plan Full Suite
   const existingSub = await prisma.subscription.findFirst({
     where: { tenant_id: effectiveTenantId }
   });
@@ -58,11 +98,21 @@ export async function seedDemoTenant() {
     await prisma.subscription.create({
       data: {
         tenant_id: effectiveTenantId,
-        plan_id: 'ENTERPRISE_DEMO',
-        service_code: 'CORE',
+        plan_id: demoPlan.id,
+        service_code: 'ALL',
         status: 'ACTIVE',
         start_date: new Date(),
-        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        end_date: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000),
+      }
+    });
+  } else {
+    await prisma.subscription.update({
+      where: { id: existingSub.id },
+      data: {
+        plan_id: demoPlan.id,
+        service_code: 'ALL',
+        status: 'ACTIVE',
+        end_date: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000),
       }
     });
   }
