@@ -143,5 +143,27 @@ export const importBahanAjarPreset = async (
     `/kurikulum/bahan-ajar/presets/${presetId}/import`,
     payload
   );
-  return response.data;
+  return response.data?.data;
+};
+
+/**
+ * Unggah berkas gambar bahan ajar ke Storage Engine (S3 / MinIO / Local Disk)
+ */
+export const uploadBahanAjarImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await axiosInstance.post('/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+
+  if (res.data?.data?.url) {
+    return res.data.data.url;
+  }
+  if (res.data?.url) {
+    return res.data.url;
+  }
+  throw new Error('Gagal mendapatkan URL gambar hasil upload');
 };

@@ -30,6 +30,7 @@ import {
   saveReaderContent,
   getBahanAjarPresets,
   getBahanAjarPresetById,
+  uploadBahanAjarImage,
   PertemuanItem,
   BahanAjarPresetData
 } from '../../../api/bahan-ajar.api';
@@ -275,6 +276,33 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
       }
       return copy;
     });
+  };
+
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+
+  // Upload image to Storage Engine (S3 / MinIO / Local)
+  const handleFileUpload = async (file: File, onSuccess: (url: string) => void) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya berkas gambar (JPG, PNG, WebP, GIF) yang diperbolehkan!');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran berkas gambar maksimal 5MB!');
+      return;
+    }
+
+    const toastId = toast.loading('Mengunggah gambar ke Storage Engine...');
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadBahanAjarImage(file);
+      onSuccess(url);
+      toast.success('Gambar berhasil disimpan ke storage!', { id: toastId, icon: '🖼️' });
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengunggah gambar', { id: toastId });
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Clone from preset template
@@ -698,22 +726,52 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={currentMeeting.langkah_kbm?.pendahuluan?.gambar_url || ''}
-                        onChange={(e) => updateCurrentMeeting(prev => ({
-                          ...prev,
-                          langkah_kbm: {
-                            ...prev.langkah_kbm,
-                            pendahuluan: {
-                              ...prev.langkah_kbm.pendahuluan,
-                              gambar_url: e.target.value
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={currentMeeting.langkah_kbm?.pendahuluan?.gambar_url || ''}
+                          onChange={(e) => updateCurrentMeeting(prev => ({
+                            ...prev,
+                            langkah_kbm: {
+                              ...prev.langkah_kbm,
+                              pendahuluan: {
+                                ...prev.langkah_kbm.pendahuluan,
+                                gambar_url: e.target.value
+                              }
                             }
-                          }
-                        }))}
-                        placeholder="Tempel link URL foto pemantik (https://...)"
-                        className="w-full px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none"
-                      />
+                          }))}
+                          placeholder="Tempel URL atau klik Unggah..."
+                          className="flex-1 px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none"
+                        />
+                        <label className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300 dark:border-amber-800 transition-all shrink-0 active:scale-95 shadow-xs">
+                          <UploadCloud size={14} className="text-amber-700 dark:text-amber-300" />
+                          <span>{isUploadingImage ? 'Mengunggah...' : 'Upload'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={isUploadingImage}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                handleFileUpload(f, (uploadedUrl) => {
+                                  updateCurrentMeeting(prev => ({
+                                    ...prev,
+                                    langkah_kbm: {
+                                      ...prev.langkah_kbm,
+                                      pendahuluan: {
+                                        ...prev.langkah_kbm.pendahuluan,
+                                        gambar_url: uploadedUrl
+                                      }
+                                    }
+                                  }));
+                                });
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+
                       <input
                         type="text"
                         value={currentMeeting.langkah_kbm?.pendahuluan?.gambar_caption || ''}
@@ -874,30 +932,65 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateCurrentMeeting(prev => ({
-                              ...prev,
-                              langkah_kbm: {
-                                ...prev.langkah_kbm,
-                                inti: {
-                                  ...prev.langkah_kbm.inti,
-                                  teks_bacaan: {
-                                    judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
-                                    paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
-                                    gambar_url: val,
-                                    gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_url || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateCurrentMeeting(prev => ({
+                                ...prev,
+                                langkah_kbm: {
+                                  ...prev.langkah_kbm,
+                                  inti: {
+                                    ...prev.langkah_kbm.inti,
+                                    teks_bacaan: {
+                                      judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
+                                      paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
+                                      gambar_url: val,
+                                      gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
+                                    }
                                   }
                                 }
-                              }
-                            }));
-                          }}
-                          placeholder="Tempel link URL gambar materi (https://...)"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
-                        />
+                              }));
+                            }}
+                            placeholder="Tempel URL atau klik Unggah..."
+                            className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                          />
+                          <label className="px-3 py-2 rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/60 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-blue-300 dark:border-blue-800 transition-all shrink-0 active:scale-95 shadow-xs">
+                            <UploadCloud size={14} className="text-blue-700 dark:text-blue-300" />
+                            <span>{isUploadingImage ? 'Mengunggah...' : 'Upload'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={isUploadingImage}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  handleFileUpload(f, (uploadedUrl) => {
+                                    updateCurrentMeeting(prev => ({
+                                      ...prev,
+                                      langkah_kbm: {
+                                        ...prev.langkah_kbm,
+                                        inti: {
+                                          ...prev.langkah_kbm.inti,
+                                          teks_bacaan: {
+                                            judul: prev.langkah_kbm.inti?.teks_bacaan?.judul || 'Teks Materi',
+                                            paragraf: prev.langkah_kbm.inti?.teks_bacaan?.paragraf || [],
+                                            gambar_url: uploadedUrl,
+                                            gambar_caption: prev.langkah_kbm.inti?.teks_bacaan?.gambar_caption
+                                          }
+                                        }
+                                      }
+                                    }));
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
                         <input
                           type="text"
                           value={currentMeeting.langkah_kbm?.inti?.teks_bacaan?.gambar_caption || ''}
@@ -1026,30 +1119,65 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            updateCurrentMeeting(prev => ({
-                              ...prev,
-                              langkah_kbm: {
-                                ...prev.langkah_kbm,
-                                inti: {
-                                  ...prev.langkah_kbm.inti,
-                                  lkpd: {
-                                    judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
-                                    petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
-                                    gambar_url: val,
-                                    gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateCurrentMeeting(prev => ({
+                                ...prev,
+                                langkah_kbm: {
+                                  ...prev.langkah_kbm,
+                                  inti: {
+                                    ...prev.langkah_kbm.inti,
+                                    lkpd: {
+                                      judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
+                                      petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                                      gambar_url: val,
+                                      gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
+                                    }
                                   }
                                 }
-                              }
-                            }));
-                          }}
-                          placeholder="Tempel link URL gambar tugas LKPD (https://...)"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
-                        />
+                              }));
+                            }}
+                            placeholder="Tempel URL atau klik Unggah..."
+                            className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 outline-none"
+                          />
+                          <label className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-300 dark:border-emerald-800 transition-all shrink-0 active:scale-95 shadow-xs">
+                            <UploadCloud size={14} className="text-emerald-700 dark:text-emerald-300" />
+                            <span>{isUploadingImage ? 'Mengunggah...' : 'Upload'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={isUploadingImage}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  handleFileUpload(f, (uploadedUrl) => {
+                                    updateCurrentMeeting(prev => ({
+                                      ...prev,
+                                      langkah_kbm: {
+                                        ...prev.langkah_kbm,
+                                        inti: {
+                                          ...prev.langkah_kbm.inti,
+                                          lkpd: {
+                                            judul: prev.langkah_kbm.inti?.lkpd?.judul || 'Petunjuk Tugas',
+                                            petunjuk: prev.langkah_kbm.inti?.lkpd?.petunjuk || '',
+                                            gambar_url: uploadedUrl,
+                                            gambar_caption: prev.langkah_kbm.inti?.lkpd?.gambar_caption
+                                          }
+                                        }
+                                      }
+                                    }));
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
                         <input
                           type="text"
                           value={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_caption || ''}
