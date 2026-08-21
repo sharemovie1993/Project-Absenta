@@ -17,7 +17,7 @@ import {
   Trophy, 
   Archive, 
   ArrowUpCircle, 
-  Tool, 
+  Wrench, 
   HeartHandshake, 
   Mail, 
   Home, 
@@ -100,7 +100,7 @@ const RELATED_NAV_GROUPS: NavPillGroup[] = [
     items: [
       { label: 'Inventory Aset', shortLabel: 'Inventory', path: '/sarpras/inventory', icon: Archive },
       { label: 'Peminjaman', shortLabel: 'Peminjaman', path: '/sarpras/loans', icon: ArrowUpCircle },
-      { label: 'Pemeliharaan', shortLabel: 'Pemeliharaan', path: '/sarpras/maintenance', icon: Tool },
+      { label: 'Pemeliharaan', shortLabel: 'Pemeliharaan', path: '/sarpras/maintenance', icon: Wrench },
       { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/sarpras/cetak-berkas', icon: Printer },
     ]
   },
