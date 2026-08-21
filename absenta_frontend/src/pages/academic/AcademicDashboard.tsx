@@ -158,15 +158,6 @@ const AcademicDashboard: React.FC = React.memo(() => {
       isLoading={isLoading}
       hardeningModuleKey="academic_dashboard"
       topSlot={<WorkspaceAppLauncherCard workspaceId="ADMIN_WORKSPACE" />}
-      toolbar={
-        <Link
-          to="/academic/siswa"
-          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer select-none"
-        >
-          <span>Buka Ruang Kerja</span>
-          <ArrowRight size={14} />
-        </Link>
-      }
       instruction={{
         title: "Panduan Modul Akademik & Kepegawaian",
         description: "Gunakan modul ini untuk membangun pondasi data sekolah. Pastikan data master (Tahun & Semester) diatur terlebih dahulu.",

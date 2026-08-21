@@ -356,13 +356,6 @@ const MonitoringKesiswaanPage: React.FC = () => {
       toolbar={
         <div className="flex gap-2 items-center flex-wrap">
           <TvModeToggle />
-          <Link
-            to="/kesiswaan/pelanggaran"
-            className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer select-none"
-          >
-            <span>Buka Ruang Kerja</span>
-            <ChevronRight size={14} />
-          </Link>
           <Button 
             onClick={() => setTindakMasalModalOpen(true)}
             variant="outline"

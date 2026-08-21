@@ -43,15 +43,6 @@ export default React.memo(function DashboardPage() {
         ]}
         hardeningModuleKey="bpbk_dashboard"
         topSlot={<WorkspaceAppLauncherCard workspaceId="BPBK_WORKSPACE" />}
-        toolbar={
-          <Link
-            to="/bpbk/konseling"
-            className="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-violet-600/20 transition-all cursor-pointer select-none"
-          >
-            <span>Buka Ruang Kerja</span>
-            <span style={{fontSize: '14px'}}>→</span>
-          </Link>
-        }
         instruction={{
           title: "Panduan Dashboard BPBK",
           description: "Halaman ini menampilkan ringkasan data kasus, konseling aktif, dan tindak lanjut terbaru.",

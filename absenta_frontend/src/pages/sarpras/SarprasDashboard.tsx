@@ -214,13 +214,6 @@ const SarprasDashboard: React.FC = React.memo(() => {
                 </span>
              </div>
              <TvModeToggle />
-             <Link
-               to="/sarpras/inventory"
-               className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all cursor-pointer select-none shrink-0"
-             >
-               <span>Buka Ruang Kerja</span>
-               <ArrowRight size={14} />
-             </Link>
           </div>
         }
       >
