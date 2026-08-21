@@ -586,15 +586,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
-    // 1. Beranda Guru / Scan Gerbang
-    list.push({ 
-      id: 'ringkasan', 
-      label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
-      icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
-    });
+    // 1. Beranda Guru / Scan Gerbang (Hanya muncul jika BUKAN Admin murni)
+    if (!isAdminRole || isPendidik) {
+      list.push({ 
+        id: 'ringkasan', 
+        label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
+        icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
+      });
+    }
 
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
-    if (hasGerbangDuty || isGerbang || isPureGerbangStaff) {
+    if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isPendidik)) {
       list.push({
         id: 'manual_presensi',
         label: 'Input Manual',
@@ -604,52 +606,52 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif)
-    if (!isPureGerbangStaff && (!isTuStaff || isKurikulum || isAdminRole)) {
+    if (!isPureGerbangStaff && (!isTuStaff || isKurikulum) && (!isAdminRole || isPendidik)) {
       list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
     }
 
     // 3. Wali Kelas (hanya jika ditugaskan sebagai Wali Kelas)
-    if (isWaliKelas || isAdminRole) {
+    if (isWaliKelas) {
       list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
     }
 
-    // 4. Kurikulum (hanya jika ada SK Kurikulum)
+    // 4. Kurikulum (hanya jika ada SK Kurikulum / Kepsek / Admin)
     if (isKurikulum || isAdminRole || isKepsek) {
       list.push({ id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' });
     }
 
-    // 5. Kesiswaan (hanya jika ada SK Kesiswaan)
+    // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Kepsek / Admin)
     if (isKesiswaan || isAdminRole || isKepsek) {
       list.push({ id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' });
     }
 
-    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng)
+    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin / Kepsek)
     if (isSarpras || isToolman || isKabeng || isAdminRole || isKepsek) {
       list.push({ id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' });
     }
 
-    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog)
+    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin / Kepsek)
     if (isHubin || isBkk || isKaprog || isAdminRole || isKepsek) {
       list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
     }
 
-    // 8. Koperasi (hanya jika ada SK Pengelola Koperasi)
+    // 8. Koperasi (hanya jika ada SK Pengelola Koperasi / Admin / Kepsek)
     if (isKoperasi || isAdminRole || isKepsek) {
       list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
     }
 
-    // 9. BP/BK (hanya jika ada SK Guru BK)
+    // 9. BP/BK (hanya jika ada SK Guru BK / Admin / Kepsek)
     if (isBpbk || isAdminRole || isKepsek) {
       list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
-    // 10. TU Kepegawaian (hanya jika ada SK TU Kepegawaian)
+    // 10. TU Kepegawaian (hanya jika ada SK TU Kepegawaian / Admin / Kepsek)
     if (isTUKepegawaian || isTU || isAdminRole || isKepsek) {
       list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
     }
 
-    // 11. Piket & Gerbang (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, Admin, atau Guru Piket biasa. Pejabat Kurikulum menggunakan Tab Kurikulum)
-    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan || isAdminRole)) {
+    // 11. Piket & Gerbang (Hanya jika ada tugas piket / gerbang / kesiswaan nyata, bukan Admin murni)
+    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik)) {
       list.push({ 
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
@@ -658,8 +660,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 12. Profil Guru / Staf
-    list.push({ id: 'profil', label: isPureGerbangStaff ? 'Profil' : 'Profil Guru', icon: User });
+    // 12. Profil Pengguna / Guru / Staf
+    list.push({ 
+      id: 'profil', 
+      label: isAdminRole && !isPendidik ? 'Profil Akun' : isPureGerbangStaff ? 'Profil' : 'Profil Guru', 
+      icon: User 
+    });
 
     return list;
   }, [

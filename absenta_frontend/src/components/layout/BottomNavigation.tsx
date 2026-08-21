@@ -78,6 +78,18 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
   const isTuStaff = user?.role === 'TU' || isTU || (guruProfile?.is_tu ?? false);
 
+  const jenisPtk = (
+    guruProfile?.jenis_ptk ||
+    (user?.guru_profile as any)?.jenis_ptk ||
+    (user as any)?.jenis_ptk ||
+    ''
+  ).toUpperCase();
+
+  const isPendidik = (
+    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps))) &&
+    !isTuStaff
+  );
+
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
     !!((user?.guru_profile as any)?.wali_kelas_di?.id);
@@ -151,20 +163,22 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 1. Beranda Guru / Staff (Paling Depan / Utama)
-    list.push({
-      id: 'ringkasan',
-      label: 'Beranda',
-      shortLabel: 'Beranda',
-      icon: Home,
-      targetPath: '/dashboard',
-      isActive: (pathname, tabParam) =>
-        (pathname === '/dashboard' || pathname === '/dashboard/') &&
-        (!tabParam || tabParam === 'ringkasan'),
-    });
+    // 1. Beranda Guru / Staff (Paling Depan / Utama untuk Guru/Staff, Sembunyikan untuk Admin murni)
+    if (!isAdminRole || isPendidik) {
+      list.push({
+        id: 'ringkasan',
+        label: 'Beranda',
+        shortLabel: 'Beranda',
+        icon: Home,
+        targetPath: '/dashboard',
+        isActive: (pathname, tabParam) =>
+          (pathname === '/dashboard' || pathname === '/dashboard/') &&
+          (!tabParam || tabParam === 'ringkasan'),
+      });
+    }
 
     // 2. KBM & Absen (Guru Mapel)
-    if (!isAdminRole && !isTuStaff) {
+    if ((!isAdminRole || isPendidik) && !isTuStaff) {
       list.push({
         id: 'jadwal',
         label: 'KBM & Absen',
@@ -177,7 +191,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     // 3. Wali Kelas (dengan sub-tab anak yang melayang)
-    if (isWaliKelas || isAdminRole) {
+    if (isWaliKelas) {
       list.push({
         id: 'binaan',
         label: 'Wali Kelas',
@@ -288,8 +302,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, Admin, atau Guru Piket biasa. Pejabat Kurikulum menggunakan Tab Kurikulum)
-    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan || isAdminRole)) {
+    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, atau Guru Piket biasa. Sembunyikan untuk Admin murni)
+    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik)) {
       list.push({
         id: 'kelola',
         label: 'Piket Operasional',
