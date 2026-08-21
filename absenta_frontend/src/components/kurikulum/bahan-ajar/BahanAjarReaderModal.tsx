@@ -372,120 +372,185 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
           </div>
 
           {/* Projector Slide Body (Giant Display for Students in Back Row) */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 sm:p-12 flex flex-col justify-center max-w-5xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-10 flex flex-col justify-center max-w-7xl mx-auto w-full">
             {/* SLIDE 1: PERTANYAAN PEMANTIK & APERSEPSI */}
             {activeProjectorTab === 'PEMANTIK' && currentPertemuan && (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
+                <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-amber-400" />
                   <span>Tahap 1: Pertanyaan Pemantik &amp; Mindful Learning (15 Menit)</span>
                 </div>
 
-                <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-amber-500/40 shadow-2xl space-y-6">
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-200 leading-relaxed italic">
-                    "{currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.find(k => k.includes('Pemantik'))?.replace('Pertanyaan Pemantik: ', '') || currentPertemuan.topik}"
-                  </p>
-
-                  {/* Foto Pemantik / Kasus */}
-                  {currentPertemuan.langkah_kbm?.pendahuluan?.gambar_url && (
-                    <div className="rounded-3xl overflow-hidden border-2 border-amber-500/30 bg-slate-950/80 my-4 shadow-xl">
-                      <img
-                        src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
-                        alt="Foto Pemantik"
-                        className="w-full max-h-[360px] object-contain mx-auto"
-                      />
-                      {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption && (
-                        <div className="p-2 text-center text-xs sm:text-sm text-amber-300 font-semibold italic bg-amber-950/40">
-                          {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption}
+                <div className="p-6 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-amber-500/40 shadow-2xl">
+                  {currentPertemuan.langkah_kbm?.pendahuluan?.gambar_url ? (
+                    /* 2-Kolom Split Layout jika ada Gambar */
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                      <div className="lg:col-span-7 space-y-6">
+                        <div className="space-y-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono">
+                            Pertanyaan Pemantik Diskusi:
+                          </span>
+                          <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-200 leading-tight italic tracking-tight">
+                            "{currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.find(k => k.includes('Pemantik'))?.replace(/^Pertanyaan Pemantik:\s*/i, '').replace(/^["'“”«»]+|["'“”«»]+$/g, '') || currentPertemuan.topik}"
+                          </p>
                         </div>
-                      )}
+
+                        <div className="space-y-2.5 pt-2 border-t border-slate-800">
+                          {currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.filter(k => !k.includes('Pemantik')).map((item, i) => (
+                            <div key={i} className="flex items-start gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 text-slate-300 text-sm sm:text-base">
+                              <span className="text-amber-400 font-black text-base leading-none">▶</span>
+                              <p className="font-medium leading-snug">{item}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-5">
+                        <div className="rounded-3xl overflow-hidden border-2 border-amber-500/40 bg-slate-950 shadow-2xl flex flex-col">
+                          <img
+                            src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
+                            alt="Foto Pemantik"
+                            className="w-full max-h-[420px] object-contain mx-auto bg-slate-950 p-2"
+                          />
+                          {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption && (
+                            <div className="p-3 text-center text-xs sm:text-sm text-amber-300 font-bold italic bg-amber-950/60 border-t border-amber-500/20">
+                              {currentPertemuan.langkah_kbm.pendahuluan.gambar_caption}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 1-Kolom Lebar Tengah jika tanpa Gambar */
+                    <div className="space-y-8 max-w-4xl mx-auto text-center">
+                      <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-amber-200 leading-tight italic tracking-tight">
+                        "{currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.find(k => k.includes('Pemantik'))?.replace(/^Pertanyaan Pemantik:\s*/i, '').replace(/^["'“”«»]+|["'“”«»]+$/g, '') || currentPertemuan.topik}"
+                      </p>
+
+                      <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm sm:text-base text-slate-300 text-left">
+                        {currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.filter(k => !k.includes('Pemantik')).map((item, i) => (
+                          <div key={i} className="flex items-start gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                            <span className="text-amber-400 font-bold text-lg leading-none">▶</span>
+                            <p className="font-medium leading-normal">{item}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-
-                  <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
-                    {currentPertemuan.langkah_kbm?.pendahuluan?.kegiatan?.filter(k => !k.includes('Pemantik')).map((item, i) => (
-                      <div key={i} className="flex items-start gap-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
-                        <span className="text-amber-400 font-bold">▶</span>
-                        <p className="font-medium leading-normal">{item}</p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
 
             {/* SLIDE 2: TEKS BACAAN POKOK / MATERI INTI */}
             {activeProjectorTab === 'MATERI' && currentPertemuan && (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="p-4 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
+                <div className="p-3.5 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-blue-400" />
                   <span>Tahap 2: Teks Observasi &amp; Eksplorasi Konsep (105 Menit)</span>
                 </div>
 
-                <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-blue-500/40 shadow-2xl space-y-6">
-                  <h3 className="text-2xl sm:text-3xl font-black text-blue-300">
-                    {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.judul || currentPertemuan.topik}
-                  </h3>
+                <div className="p-6 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-blue-500/40 shadow-2xl">
+                  {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.gambar_url ? (
+                    /* 2-Kolom Split Layout jika ada Gambar Materi */
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                      <div className="lg:col-span-7 space-y-4 max-h-[560px] overflow-y-auto custom-scrollbar pr-2">
+                        <h3 className="text-2xl sm:text-3xl font-black text-blue-300 leading-snug">
+                          {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.judul || currentPertemuan.topik}
+                        </h3>
 
-                  {/* Gambar / Diagram Materi */}
-                  {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.gambar_url && (
-                    <div className="rounded-3xl overflow-hidden border-2 border-blue-500/30 bg-slate-950/80 my-4 shadow-xl">
-                      <img
-                        src={currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url}
-                        alt="Diagram Materi"
-                        className="w-full max-h-[420px] object-contain mx-auto"
-                      />
-                      {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption && (
-                        <div className="p-2 text-center text-xs sm:text-sm text-blue-300 font-semibold italic bg-blue-950/40">
-                          {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption}
+                        <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed font-normal">
+                          {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.paragraf?.map((p, i) => (
+                            <p key={i} className="indent-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                              {p}
+                            </p>
+                          ))}
                         </div>
-                      )}
+                      </div>
+
+                      <div className="lg:col-span-5 sticky top-0">
+                        <div className="rounded-3xl overflow-hidden border-2 border-blue-500/40 bg-slate-950 shadow-2xl flex flex-col">
+                          <img
+                            src={currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url}
+                            alt="Diagram Materi"
+                            className="w-full max-h-[460px] object-contain mx-auto bg-slate-950 p-2"
+                          />
+                          {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption && (
+                            <div className="p-3 text-center text-xs sm:text-sm text-blue-300 font-bold italic bg-blue-950/60 border-t border-blue-500/20">
+                              {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_caption}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 1-Kolom Lebar jika tanpa Gambar */
+                    <div className="space-y-6 max-w-4xl mx-auto">
+                      <h3 className="text-2xl sm:text-3xl font-black text-blue-300 text-center">
+                        {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.judul || currentPertemuan.topik}
+                      </h3>
+
+                      <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed font-normal">
+                        {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.paragraf?.map((p, i) => (
+                          <p key={i} className="indent-6 bg-slate-950/50 p-5 rounded-2xl border border-slate-800/80">
+                            {p}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   )}
-
-                  <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed">
-                    {currentPertemuan.langkah_kbm?.inti?.teks_bacaan?.paragraf?.map((p, i) => (
-                      <p key={i} className="indent-6 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80">
-                        {p}
-                      </p>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
 
             {/* SLIDE 3: LEMBAR KERJA DISKUSI (LKPD) */}
             {activeProjectorTab === 'LKPD' && currentPertemuan && (
-              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <Users className="w-5 h-5 text-emerald-400" />
                   <span>Tahap 3: Lembar Kerja Peserta Didik &amp; Diskusi Kelompok</span>
                 </div>
 
-                <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-emerald-500/40 shadow-2xl space-y-6">
-                  <h3 className="text-2xl sm:text-3xl font-black text-emerald-300">
-                    {currentPertemuan.langkah_kbm?.inti?.lkpd?.judul || 'Petunjuk Tugas Kelompok'}
-                  </h3>
+                <div className="p-6 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-emerald-500/40 shadow-2xl">
+                  {currentPertemuan.langkah_kbm?.inti?.lkpd?.gambar_url ? (
+                    /* 2-Kolom Split Layout jika ada Gambar LKPD */
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                      <div className="lg:col-span-7 space-y-4">
+                        <h3 className="text-2xl sm:text-3xl font-black text-emerald-300">
+                          {currentPertemuan.langkah_kbm?.inti?.lkpd?.judul || 'Petunjuk Tugas Kelompok'}
+                        </h3>
 
-                  {/* Gambar Soal LKPD */}
-                  {currentPertemuan.langkah_kbm?.inti?.lkpd?.gambar_url && (
-                    <div className="rounded-3xl overflow-hidden border-2 border-emerald-500/30 bg-slate-950/80 my-4 shadow-xl">
-                      <img
-                        src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
-                        alt="Gambar LKPD"
-                        className="w-full max-h-[380px] object-contain mx-auto"
-                      />
-                      {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption && (
-                        <div className="p-2 text-center text-xs sm:text-sm text-emerald-300 font-semibold italic bg-emerald-950/40">
-                          {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption}
+                        <pre className="font-sans text-base sm:text-lg text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-950/80 p-6 rounded-2xl border border-emerald-500/30">
+                          {currentPertemuan.langkah_kbm?.inti?.lkpd?.petunjuk}
+                        </pre>
+                      </div>
+
+                      <div className="lg:col-span-5">
+                        <div className="rounded-3xl overflow-hidden border-2 border-emerald-500/40 bg-slate-950 shadow-2xl flex flex-col">
+                          <img
+                            src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
+                            alt="Gambar LKPD"
+                            className="w-full max-h-[420px] object-contain mx-auto bg-slate-950 p-2"
+                          />
+                          {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption && (
+                            <div className="p-3 text-center text-xs sm:text-sm text-emerald-300 font-bold italic bg-emerald-950/60 border-t border-emerald-500/20">
+                              {currentPertemuan.langkah_kbm.inti.lkpd.gambar_caption}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* 1-Kolom jika tanpa Gambar */
+                    <div className="space-y-6 max-w-4xl mx-auto">
+                      <h3 className="text-2xl sm:text-3xl font-black text-emerald-300 text-center">
+                        {currentPertemuan.langkah_kbm?.inti?.lkpd?.judul || 'Petunjuk Tugas Kelompok'}
+                      </h3>
+
+                      <pre className="font-sans text-base sm:text-xl text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-950 p-6 rounded-2xl border border-emerald-500/30">
+                        {currentPertemuan.langkah_kbm?.inti?.lkpd?.petunjuk}
+                      </pre>
                     </div>
                   )}
-
-                  <pre className="font-sans text-base sm:text-xl text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-950 p-6 rounded-2xl border border-emerald-500/30">
-                    {currentPertemuan.langkah_kbm?.inti?.lkpd?.petunjuk}
-                  </pre>
                 </div>
               </div>
             )}
