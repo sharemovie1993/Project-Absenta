@@ -249,6 +249,21 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     toast.success('📑 Pertemuan berhasil diduplikasi!');
   };
 
+  // Clean topic name helper
+  const cleanTopicName = (topik: string) => {
+    if (!topik) return '';
+    return topik.replace(/^Pertemuan\s*\d+\s*:\s*/i, '').trim();
+  };
+
+  // Check if meeting has content
+  const isMeetingComplete = (m: PertemuanItem) => {
+    const cleanTopik = cleanTopicName(m.topik);
+    const hasTopic = Boolean(cleanTopik && cleanTopik !== 'Topik Pembelajaran Lanjutan' && cleanTopik !== 'Pengenalan Konsep & Eksplorasi Awal');
+    const hasTujuan = Boolean(m.tujuan_pembelajaran && m.tujuan_pembelajaran.length > 0 && m.tujuan_pembelajaran[0].trim());
+    const hasInti = Boolean(m.langkah_kbm?.inti?.kegiatan && m.langkah_kbm.inti.kegiatan.length > 0);
+    return Boolean(hasTopic || (hasTujuan && hasInti));
+  };
+
   // Update field on current meeting
   const updateCurrentMeeting = (updater: (prev: PertemuanItem) => PertemuanItem) => {
     setPertemuanList(prevList => {
@@ -363,6 +378,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
 
             {pertemuanList.map((pt, idx) => {
               const isActive = idx === activeMeetingIdx;
+              const isComplete = isMeetingComplete(pt);
+              const cleanTopic = cleanTopicName(pt.topik);
+
               return (
                 <div
                   key={idx}
@@ -370,19 +388,31 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                   className={cn(
                     "p-3 rounded-2xl transition-all cursor-pointer border flex flex-col gap-1 text-xs relative group",
                     isActive
-                      ? "bg-indigo-50 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                      ? "bg-indigo-50 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 shadow-xs ring-1 ring-indigo-400"
                       : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100"
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={cn(
-                      "font-black text-[11px] px-2 py-0.5 rounded-md",
-                      isActive
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold"
-                    )}>
-                      Pertemuan {pt.nomor_pertemuan || idx + 1}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn(
+                        "font-black text-[11px] px-2 py-0.5 rounded-md",
+                        isActive
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold"
+                      )}>
+                        Pertemuan {pt.nomor_pertemuan || idx + 1}
+                      </span>
+                      {isComplete ? (
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-black text-[9px]">
+                          🟢 Lengkap
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-black text-[9px]">
+                          🟡 Draf
+                        </span>
+                      )}
+                    </div>
+
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
                         {pt.alokasi_jp || 3} JP
@@ -418,9 +448,9 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                   </div>
                   <p className={cn(
                     "font-bold text-xs line-clamp-2 leading-snug pt-0.5",
-                    isActive ? "text-indigo-950 dark:text-indigo-100" : "text-slate-700 dark:text-slate-300"
+                    isActive ? "text-indigo-950 dark:text-indigo-100 font-black" : "text-slate-700 dark:text-slate-300"
                   )}>
-                    {pt.topik}
+                    {cleanTopic || 'Belum ada topik'}
                   </p>
                 </div>
               );
@@ -528,7 +558,7 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
                       <span>Alokasi JP:</span>
                       <input
                         type="number"
@@ -545,23 +575,42 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                         }}
                         className="w-14 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-center font-black"
                       />
-                      <span className="text-slate-400 font-mono text-[11px]">({(currentMeeting.alokasi_jp || 3) * 45}m)</span>
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono text-[11px] font-bold">
+                        {(currentMeeting.alokasi_jp || 3) * 45} Menit
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Input Judul / Topik Pertemuan */}
+                {/* Input Judul / Topik Pertemuan dengan Locked Prefix */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                    Topik / Materi Pokok Pertemuan:
-                  </label>
-                  <input
-                    type="text"
-                    value={currentMeeting.topik}
-                    onChange={(e) => updateCurrentMeeting(prev => ({ ...prev, topik: e.target.value }))}
-                    placeholder="Contoh: Pengertian, Fungsi, dan Struktur Teks LHO"
-                    className="w-full px-4 py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Topik / Materi Pokok Pertemuan Ini:
+                    </label>
+                    <span className="text-[11px] font-bold text-slate-400 font-mono">
+                      15m Pembuka • {(currentMeeting.alokasi_jp || 3) * 45 - 30}m Inti • 15m Penutup
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-3.5 py-2.5 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-black text-xs shrink-0 border border-indigo-200 dark:border-indigo-800 shadow-xs">
+                      Pertemuan {currentMeeting.nomor_pertemuan}:
+                    </span>
+                    <input
+                      type="text"
+                      value={cleanTopicName(currentMeeting.topik)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          topik: `Pertemuan ${currentMeeting.nomor_pertemuan}: ${val}`
+                        }));
+                      }}
+                      placeholder="Contoh: Pengenalan Konsep, Ciri-ciri & Struktur Teks"
+                      className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs"
+                    />
+                  </div>
                 </div>
 
                 {/* Input Tujuan Pembelajaran */}
