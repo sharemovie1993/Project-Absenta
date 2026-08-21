@@ -214,7 +214,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
     if (!flatItems || flatItems.length === 0) {
       if (activeWsId === 'ADMIN_WORKSPACE') return DEFAULT_ADMIN_PRIMARY;
       if (activeWsId === 'SARPRAS_WORKSPACE') return DEFAULT_SARPRAS_PRIMARY;
-      if (activeWsId === 'KURIKULUM_WORKSPACE') return DEFAULT_KURIKULUM_PRIMARY;
+      if (activeWsId === 'KURIKULUM_WORKSPACE') return []; // Fallback statis dinonaktifkan atas instruksi pengujian
       if (activeWsId === 'KESISWAAN_WORKSPACE') return DEFAULT_KESISWAAN_PRIMARY;
       if (activeWsId === 'HUBIN_WORKSPACE') return DEFAULT_HUBIN_PRIMARY;
       if (activeWsId === 'BPBK_WORKSPACE') return DEFAULT_BPBK_PRIMARY;
@@ -256,7 +256,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
         const cat = (item.categoryLabel || '').toUpperCase();
         return (p.startsWith('/kurikulum') || cat.includes('KURIKULUM')) && p !== '/kurikulum/dashboard' && p !== '#';
       });
-      if (matchedItems.length === 0) matchedItems = DEFAULT_KURIKULUM_PRIMARY;
+      // Fallback statis DEFAULT_KURIKULUM_PRIMARY dinonaktifkan (murni 100% hasil backend API)
     } else if (activeWsId === 'KESISWAAN_WORKSPACE') {
       matchedItems = flatItems.filter(item => {
         const p = (item.path || '').toLowerCase();
