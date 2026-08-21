@@ -128,13 +128,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const { menu: _groupedMenu } = useSmartMenu();
 
-  // Synchronize Active Tab with Query Param (?tab=ringkasan)
-  const activeTab = searchParams.get('tab') || 'ringkasan';
-
-  const handleTabChange = React.useCallback((newTab: string) => {
-    setSearchParams({ tab: newTab }, { replace: true });
-  }, [setSearchParams]);
-
   // ── 1. Base Data ──────────────────────────────────────────────────────────────
   const { data: guruProfileRes, refetch: refetchGuruProfile } = useQuery({
     queryKey: ['guru-profile-me'],
@@ -202,28 +195,30 @@ export const UnifiedStaffDashboard: React.FC = () => {
     ''
   ).toUpperCase();
 
-  // Petugas Gerbang Detection
-  const hasGerbangDuty = isGerbang ||
-    roleName === 'GERBANG' ||
+  // Petugas Gerbang Detection (Murni untuk staf satpam/gerbang, bukan Admin/Kepsek/Kurikulum)
+  const isSecurityRole = roleName === 'GERBANG' ||
     roleName === 'PETUGAS_GERBANG' ||
-    jabatanList.some((j: string) => j.toUpperCase().includes('GERBANG')) ||
+    jabatanList.some((j: string) => j.toUpperCase().includes('GERBANG') || j.toUpperCase().includes('SATPAM') || j.toUpperCase().includes('SECURITY')) ||
     jabatan.toUpperCase().includes('GERBANG') ||
     jabatan.toUpperCase().includes('SATPAM') ||
-    jabatan.toUpperCase().includes('SECURITY') ||
-    can('attendance.gate.scan') ||
-    can('attendance.gate.tap.entry') ||
-    can('dashboard.view.gerbang');
+    jabatan.toUpperCase().includes('SECURITY');
+
+  const hasGerbangDuty = isGerbang || isSecurityRole || (
+    !isAdminRole && !isKurikulum && !isKepsek && (
+      can('attendance.gate.scan') ||
+      can('attendance.gate.tap.entry') ||
+      can('dashboard.view.gerbang')
+    )
+  );
 
   // True Pendidik (Guru Pengajar KBM)
   const isPendidik = (
-    (jenisPtk === 'PENDIDIK' || (!jenisPtk && roleName === 'GURU')) &&
-    !hasGerbangDuty &&
-    roleName !== 'GERBANG' &&
-    roleName !== 'PETUGAS_GERBANG' &&
+    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps))) &&
+    !isSecurityRole &&
     !isTuStaff
   );
 
-  const isPureGerbangStaff = hasGerbangDuty || !isPendidik;
+  const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
@@ -235,8 +230,51 @@ export const UnifiedStaffDashboard: React.FC = () => {
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
 
-  const { setActiveWorkspaceId } = useNavStore();
+  // 🎯 SMART DEFAULT TAB RESOLUTION (Matriks Fokus Pertama Tab Berdasarkan Role/Jabatan)
+  const defaultTabId = useMemo(() => {
+    if (isAdminRole) return 'admin';
+    if (isKurikulum || isKepsek) return 'kurikulum';
+    if (isKesiswaan) return 'kesiswaan';
+    if (isWaliKelas && !isPendidik) return 'binaan';
+    if (isPendidik) return 'jadwal';
+    if (isWaliKelas) return 'binaan';
+    if (isSarpras || isToolman || isKabeng) return 'sarpras';
+    if (isHubin || isBkk || isKaprog) return 'hubin';
+    if (isBpbk) return 'bpbk';
+    if (isKoperasi) return 'koperasi';
+    if (isTUKepegawaian || isTU) return 'kepegawaian';
+    if (isPiketGuru) return 'kelola';
+    if (isPureGerbangStaff) return 'ringkasan';
+    return 'ringkasan';
+  }, [
+    isAdminRole,
+    isKurikulum,
+    isKepsek,
+    isKesiswaan,
+    isWaliKelas,
+    isPendidik,
+    isSarpras,
+    isToolman,
+    isKabeng,
+    isHubin,
+    isBkk,
+    isKaprog,
+    isBpbk,
+    isKoperasi,
+    isTUKepegawaian,
+    isTU,
+    isPiketGuru,
+    isPureGerbangStaff,
+  ]);
 
+  // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab
+  const activeTab = searchParams.get('tab') || defaultTabId;
+
+  const handleTabChange = React.useCallback((newTab: string) => {
+    setSearchParams({ tab: newTab }, { replace: true });
+  }, [setSearchParams]);
+
+  const { setActiveWorkspaceId } = useNavStore();
 
   // Sync NavStore activeWorkspaceId based on active tab
   useEffect(() => {
@@ -650,9 +688,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
     if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
-      setSearchParams({ tab: tabs[0].id }, { replace: true });
+      const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
+      setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, setSearchParams]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
