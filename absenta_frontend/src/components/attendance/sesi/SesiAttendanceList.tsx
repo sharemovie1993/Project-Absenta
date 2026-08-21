@@ -130,7 +130,7 @@ const SesiAttendanceRow = React.memo(({
     if (record.menit_keterlambatan && Number(record.menit_keterlambatan) > 0) {
       return Number(record.menit_keterlambatan);
     }
-    if (record.is_terlambat && rawWaktuTap) {
+    if (rawWaktuTap) {
       // 1. Try from sesi.waktu_mulai
       if (sesi?.waktu_mulai) {
         const tTap = new Date(rawWaktuTap);
@@ -152,8 +152,10 @@ const SesiAttendanceRow = React.memo(({
         }
       }
     }
-    return record.menit_keterlambatan || 0;
-  }, [record.menit_keterlambatan, record.is_terlambat, rawWaktuTap, sesi?.waktu_mulai, sesi?.jam_mulai]);
+    return Number(record.menit_keterlambatan) || 0;
+  }, [record.menit_keterlambatan, rawWaktuTap, sesi?.waktu_mulai, sesi?.jam_mulai, (sesi as any)?.JamPelajaran?.jam_mulai]);
+
+  const isLate = (Boolean(record.is_terlambat) || lateMinutes > 0) && record.status === 'HADIR';
 
   return (
     <motion.div 
@@ -196,7 +198,7 @@ const SesiAttendanceRow = React.memo(({
         <span className="text-[10px] font-bold text-gray-500">
            {formatWaktuTapDisplay(rawWaktuTap)}
         </span>
-        {record.is_terlambat && (
+        {isLate && (
           <span className="px-1.5 py-0.5 text-[8px] font-black bg-rose-50 text-rose-600 rounded-md uppercase tracking-wider border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 flex items-center justify-center gap-1 shadow-xs">
             <span>TELAT</span>
             {lateMinutes > 0 ? <span>: {lateMinutes} m</span> : null}

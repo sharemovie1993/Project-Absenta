@@ -488,6 +488,14 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                                 status: isFinished ? 'SELESAI' : isOverdue ? 'SELESAI' : 'BERLANGSUNG',
                                 guru_id: guruId,
                                 nama_guru: guruNama,
+                                waktu_mulai: (sesi as any)?.waktu_mulai || (item as any)?.jam_mulai_iso || (item as any)?.waktu_mulai,
+                                jam_mulai: item.jam_mulai,
+                                jam_selesai: item.jam_selesai,
+                                JamPelajaran: {
+                                  jam_mulai: item.jam_mulai,
+                                  nama_guru: guruNama,
+                                  guru_id: guruId
+                                }
                               }}
                             />
                           )}
