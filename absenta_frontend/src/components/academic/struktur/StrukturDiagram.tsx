@@ -117,7 +117,9 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     },
     onSuccess: (_, { node }) => {
       toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
+      setRefreshKey(k => k + 1);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.refetchQueries({ queryKey: ['strukturTree'] });
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
       queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
@@ -144,7 +146,9 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     },
     onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
+      setRefreshKey(k => k + 1);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.refetchQueries({ queryKey: ['strukturTree'] });
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
       queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });

@@ -629,6 +629,7 @@ export class StrukturOrganisasiService {
       });
 
       await organizationalContextCache.invalidateUser(String(directAssignment.user_id));
+      await cacheInvalidationService.invalidateStrukturTree(tenantId);
       return;
     }
 
