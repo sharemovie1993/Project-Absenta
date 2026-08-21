@@ -221,7 +221,52 @@ interface WorkflowCluster {
   items: FlatMenuItem[];
 }
 
-export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
+// Memoized individual Launcher Tile Component for maximum DOM performance
+interface LauncherTileProps {
+  item: FlatMenuItem;
+  palette: typeof TILE_GRADIENTS[0];
+}
+
+const LauncherTile = React.memo<LauncherTileProps>(({ item, palette }) => {
+  const IconComp = iconForName(item.icon) || Layers;
+  const targetPath = item.path || '#';
+
+  return (
+    <Link
+      to={targetPath}
+      title={item.title}
+      aria-label={`Buka menu ${item.title}`}
+      className="group flex flex-col items-center justify-start p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none active:scale-95"
+    >
+      {/* Squircle Icon Container ala GoPay */}
+      <div className="relative flex items-center justify-center">
+        <div
+          className={cn(
+            "w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105 border",
+            palette.gradient,
+            palette.border
+          )}
+        >
+          <IconComp size={20} className="stroke-[2.2]" />
+
+          {item.isPremium && (
+            <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full text-[7.5px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
+              PRO
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* App Name Under Icon */}
+      <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-1.5 leading-tight line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors max-w-[72px] sm:max-w-[80px]">
+        {item.title}
+      </span>
+    </Link>
+  );
+});
+LauncherTile.displayName = 'LauncherTile';
+
+export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = React.memo(({
   workspaceId: targetWorkspaceIdProp,
   hideIfEmpty = false,
   className
@@ -685,41 +730,13 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
             {/* Grid 4-Kolom Tetap ala GoPay Agen (Selalu Rata Atas / Top-Aligned) */}
             <div className="grid grid-cols-4 gap-y-3.5 gap-x-1 sm:gap-x-2 pt-2.5">
               {cluster.items.map((item, idx) => {
-                const IconComp = iconForName(item.icon) || Layers;
                 const palette = TILE_GRADIENTS[(clusterIdx * 4 + idx) % TILE_GRADIENTS.length];
-                const targetPath = item.path || '#';
-
                 return (
-                  <Link
-                    key={item.id || idx}
-                    to={targetPath}
-                    title={item.title}
-                    className="group flex flex-col items-center justify-start p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none active:scale-95"
-                  >
-                    {/* Squircle Icon Container ala GoPay */}
-                    <div className="relative flex items-center justify-center">
-                      <div
-                        className={cn(
-                          "w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105 border",
-                          palette.gradient,
-                          palette.border
-                        )}
-                      >
-                        <IconComp size={20} className="stroke-[2.2]" />
-
-                        {item.isPremium && (
-                          <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full text-[7.5px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
-                            PRO
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* App Name Under Icon */}
-                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-1.5 leading-tight line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors max-w-[72px] sm:max-w-[80px]">
-                      {item.title}
-                    </span>
-                  </Link>
+                  <LauncherTile 
+                    key={item.id || idx} 
+                    item={item} 
+                    palette={palette} 
+                  />
                 );
               })}
             </div>
@@ -728,5 +745,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       </div>
     </div>
   );
-};
+});
+
+WorkspaceAppLauncherCard.displayName = 'WorkspaceAppLauncherCard';
 export default WorkspaceAppLauncherCard;

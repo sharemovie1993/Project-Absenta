@@ -328,7 +328,7 @@ export interface RelatedModuleNavPillsProps {
   variant?: 'topbar' | 'bottombar';
 }
 
-export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({ 
+export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = React.memo(({ 
   className,
   variant = 'topbar'
 }) => {
@@ -433,6 +433,7 @@ export const RelatedModuleNavPills: React.FC<RelatedModuleNavPillsProps> = ({
       })}
     </div>
   );
-};
+});
 
+RelatedModuleNavPills.displayName = 'RelatedModuleNavPills';
 export default RelatedModuleNavPills;
