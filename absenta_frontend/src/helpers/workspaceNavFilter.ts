@@ -389,7 +389,7 @@ export const toTwoWordTitle = (title: string): string => {
 
 /**
  * Normalisasi raw backend grouped menu → FlatMenuItem[]
- * Digunakan oleh StaffPortalAppLauncher (useSmartMenu sudah mengembalikan grouped-menu)
+ * Melakukan Deep Recursive Flattening untuk mengekstrak seluruh sub-menu bersarang (e.g. Data Master & Persiapan Akademik)
  */
 export const normalizeFlatMenu = (
   backendGroupedMenu: { label?: string; items?: any[] }[]
@@ -397,18 +397,43 @@ export const normalizeFlatMenu = (
   if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
   const flat: FlatMenuItem[] = [];
+  const seenPaths = new Set<string>();
+
+  const extractRecursively = (item: any, categoryLabel?: string) => {
+    if (!item) return;
+
+    // 1. Jika item memiliki anak (nested children), telusuri seluruh anak-anaknya secara mendalam
+    if (Array.isArray(item.children) && item.children.length > 0) {
+      item.children.forEach((child: any) => {
+        extractRecursively(child, categoryLabel || item.name || item.label);
+      });
+    }
+
+    // 2. Jika item memiliki path valid (leaf menu), masukkan ke dalam array flat
+    const rawPath = item.path || '';
+    const cleanPath = String(rawPath).trim().toLowerCase();
+
+    if (cleanPath && cleanPath !== '#' && !cleanPath.startsWith('menu:')) {
+      if (!seenPaths.has(cleanPath)) {
+        seenPaths.add(cleanPath);
+        flat.push({
+          id: item.id,
+          title: toTwoWordTitle(item.name || item.title || item.label || ''),
+          path: item.path,
+          icon: item.icon || item.name,
+          isPremium: item.premiumInfo?.isPremium || false,
+          categoryLabel: categoryLabel || item.categoryLabel,
+        });
+      }
+    }
+  };
+
   backendGroupedMenu.forEach((group) => {
     if (!group.items || group.items.length === 0) return;
     group.items.forEach((item) => {
-      flat.push({
-        id: item.id,
-        title: toTwoWordTitle(item.name),
-        path: item.path,
-        icon: item.icon || item.name,
-        isPremium: item.premiumInfo?.isPremium || false,
-        categoryLabel: group.label,
-      });
+      extractRecursively(item, group.label);
     });
   });
+
   return flat;
 };
