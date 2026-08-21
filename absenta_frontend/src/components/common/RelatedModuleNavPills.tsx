@@ -27,6 +27,7 @@ import {
   LayoutGrid, 
   Activity,
   Send,
+  Laptop,
   CheckCircle2,
   UserCog,
   Settings,
