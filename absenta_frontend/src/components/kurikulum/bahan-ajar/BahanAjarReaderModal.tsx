@@ -117,6 +117,77 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
 
   const currentPertemuan: PertemuanItem | undefined = pertemuanList[activePertemuanIdx];
 
+  // Dynamic Slide Deck (Expands Tahap 2 into N separate first-class slides)
+  const currentSlideDeck = useMemo(() => {
+    if (!currentPertemuan) return [];
+    const deck: Array<{
+      key: string;
+      type: 'PEMANTIK' | 'MATERI' | 'LKPD' | 'REFLEKSI';
+      slideNumber: string;
+      title: string;
+      shortTitle: string;
+      materiIdx?: number;
+    }> = [];
+
+    // 1. Slide 1: Pemantik & Apersepsi
+    deck.push({
+      key: 'PEMANTIK',
+      type: 'PEMANTIK',
+      slideNumber: '1',
+      title: '1. Pemantik & Apersepsi',
+      shortTitle: '1. Pemantik'
+    });
+
+    // 2. Tahap 2: Multi-slides N slots
+    const materiSlides = getMateriSlides(currentPertemuan.langkah_kbm?.inti);
+    if (materiSlides.length <= 1) {
+      deck.push({
+        key: 'MATERI_0',
+        type: 'MATERI',
+        materiIdx: 0,
+        slideNumber: '2',
+        title: `2. ${materiSlides[0]?.judul || 'Teks Materi Pokok'}`,
+        shortTitle: '2. Materi Pokok'
+      });
+    } else {
+      materiSlides.forEach((slide, idx) => {
+        const titleStr = slide.judul || `Materi Bagian ${idx + 1}`;
+        const short = titleStr.length > 20 ? titleStr.slice(0, 20) + '...' : titleStr;
+        deck.push({
+          key: `MATERI_${idx}`,
+          type: 'MATERI',
+          materiIdx: idx,
+          slideNumber: `2.${idx + 1}`,
+          title: `2.${idx + 1}. ${titleStr}`,
+          shortTitle: `2.${idx + 1}. ${short}`
+        });
+      });
+    }
+
+    // 3. Slide LKPD
+    deck.push({
+      key: 'LKPD',
+      type: 'LKPD',
+      slideNumber: '3',
+      title: '3. Lembar Diskusi / LKPD',
+      shortTitle: '3. Diskusi / LKPD'
+    });
+
+    // 4. Slide Refleksi
+    deck.push({
+      key: 'REFLEKSI',
+      type: 'REFLEKSI',
+      slideNumber: '4',
+      title: '4. Refleksi Kelas',
+      shortTitle: '4. Refleksi'
+    });
+
+    return deck;
+  }, [currentPertemuan]);
+
+  const [activeSlideDeckIdx, setActiveSlideDeckIdx] = useState<number>(0);
+  const activeSlideInfo = currentSlideDeck[activeSlideDeckIdx] || currentSlideDeck[0];
+
   // Fullscreen helper
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -131,63 +202,51 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
     }
   }, []);
 
+  // Slide navigation handlers
+  const handleNextSlide = useCallback(() => {
+    if (activeSlideDeckIdx < currentSlideDeck.length - 1) {
+      setActiveSlideDeckIdx(prev => prev + 1);
+    } else if (activePertemuanIdx < pertemuanList.length - 1) {
+      setActivePertemuanIdx(prev => prev + 1);
+      setActiveSlideDeckIdx(0);
+      toast.success(`Beralih ke Pertemuan ${activePertemuanIdx + 2}`, { icon: '⏭️' });
+    }
+  }, [activeSlideDeckIdx, currentSlideDeck.length, activePertemuanIdx, pertemuanList.length]);
+
+  const handlePrevSlide = useCallback(() => {
+    if (activeSlideDeckIdx > 0) {
+      setActiveSlideDeckIdx(prev => prev - 1);
+    } else if (activePertemuanIdx > 0) {
+      const prevPertemuan = pertemuanList[activePertemuanIdx - 1];
+      const prevSlides = getMateriSlides(prevPertemuan?.langkah_kbm?.inti);
+      const prevDeckLen = 2 + prevSlides.length + 1; // 1 pemantik + N materi + 1 lkpd + 1 refleksi
+      setActivePertemuanIdx(prev => prev - 1);
+      setActiveSlideDeckIdx(Math.max(0, prevDeckLen - 1));
+    }
+  }, [activeSlideDeckIdx, activePertemuanIdx, pertemuanList]);
+
   // Keyboard navigation for projector slides
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
-        if (isProjectorMode) {
-          const currentSlides = getMateriSlides(currentPertemuan?.langkah_kbm?.inti);
-          if (activeProjectorTab === 'MATERI' && activeMateriSlideIdx < currentSlides.length - 1) {
-            setActiveMateriSlideIdx(prev => prev + 1);
-            return;
-          }
-
-          const tabs: ProjectorTab[] = ['PEMANTIK', 'MATERI', 'LKPD', 'REFLEKSI'];
-          const curIdx = tabs.indexOf(activeProjectorTab);
-          if (curIdx < tabs.length - 1) {
-            setActiveProjectorTab(tabs[curIdx + 1]);
-            setActiveMateriSlideIdx(0);
-          } else if (activePertemuanIdx < pertemuanList.length - 1) {
-            setActivePertemuanIdx(prev => prev + 1);
-            setActiveProjectorTab('PEMANTIK');
-            setActiveMateriSlideIdx(0);
-          }
-        }
+        if (isProjectorMode) handleNextSlide();
       } else if (e.key === 'ArrowLeft') {
-        if (isProjectorMode) {
-          if (activeProjectorTab === 'MATERI' && activeMateriSlideIdx > 0) {
-            setActiveMateriSlideIdx(prev => prev - 1);
-            return;
-          }
-
-          const tabs: ProjectorTab[] = ['PEMANTIK', 'MATERI', 'LKPD', 'REFLEKSI'];
-          const curIdx = tabs.indexOf(activeProjectorTab);
-          if (curIdx > 0) {
-            setActiveProjectorTab(tabs[curIdx - 1]);
-            const prevSlides = getMateriSlides(currentPertemuan?.langkah_kbm?.inti);
-            setActiveMateriSlideIdx(tabs[curIdx - 1] === 'MATERI' ? prevSlides.length - 1 : 0);
-          } else if (activePertemuanIdx > 0) {
-            setActivePertemuanIdx(prev => prev - 1);
-            setActiveProjectorTab('REFLEKSI');
-            setActiveMateriSlideIdx(0);
-          }
-        }
+        if (isProjectorMode) handlePrevSlide();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isProjectorMode, activeProjectorTab, activeMateriSlideIdx, activePertemuanIdx, currentPertemuan, pertemuanList.length]);
+  }, [isOpen, isProjectorMode, handleNextSlide, handlePrevSlide]);
 
-  // Reset when modal opens
+  // Reset when modal opens or meeting changes
   useEffect(() => {
     if (isOpen) {
       setActivePertemuanIdx(0);
       setIsProjectorMode(false);
-      setActiveProjectorTab('PEMANTIK');
-      setActiveMateriSlideIdx(0);
+      setActiveSlideDeckIdx(0);
       setSelectedModulId('');
     }
   }, [isOpen, perangkatId, mapelId, kelasNama]);
@@ -229,6 +288,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     onChange={(e) => {
                       setSelectedModulId(e.target.value);
                       setActivePertemuanIdx(0);
+                      setActiveSlideDeckIdx(0);
                     }}
                     className={cn(
                       "font-black text-sm rounded-xl px-2.5 py-1 border cursor-pointer",
@@ -324,81 +384,59 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
       {/* ── MODE 1: PROJECTOR PRESENTATION STAGE (FULLSCREEN PROJEKTOR SISWA) ── */}
       {isProjectorMode ? (
         <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
-          {/* Projector Top Slide Tabs */}
+          {/* Projector Top Slide Tabs (Dynamically Flattened by N Sub-Slides) */}
           <div className="p-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs">
                 PERTEMUAN {currentPertemuan?.nomor_pertemuan || activePertemuanIdx + 1}
               </span>
-              <span className="text-xs font-bold text-slate-400">
+              <span className="text-xs font-bold text-slate-400 max-w-xs sm:max-w-md truncate">
                 {currentPertemuan?.topik}
               </span>
             </div>
 
-            {/* Stage Tabs (Tahap KBM) */}
-            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setActiveProjectorTab('PEMANTIK')}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer",
-                  activeProjectorTab === 'PEMANTIK'
-                    ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <HelpCircle size={14} />
-                <span>1. Pemantik &amp; Apersepsi</span>
-              </button>
+            {/* Dynamic Stage Tabs */}
+            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800 flex-wrap">
+              {currentSlideDeck.map((slide, sIdx) => {
+                const isActive = activeSlideDeckIdx === sIdx;
+                let activeColor = "bg-amber-500 text-slate-950 shadow-amber-500/20";
+                let Icon = HelpCircle;
 
-              <button
-                type="button"
-                onClick={() => setActiveProjectorTab('MATERI')}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer",
-                  activeProjectorTab === 'MATERI'
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <BookOpen size={14} />
-                <span>2. Teks Bacaan Pokok</span>
-              </button>
+                if (slide.type === 'MATERI') {
+                  activeColor = "bg-blue-600 text-white shadow-blue-500/20";
+                  Icon = BookOpen;
+                } else if (slide.type === 'LKPD') {
+                  activeColor = "bg-emerald-600 text-white shadow-emerald-500/20";
+                  Icon = Users;
+                } else if (slide.type === 'REFLEKSI') {
+                  activeColor = "bg-indigo-600 text-white shadow-indigo-500/20";
+                  Icon = Compass;
+                }
 
-              <button
-                type="button"
-                onClick={() => setActiveProjectorTab('LKPD')}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer",
-                  activeProjectorTab === 'LKPD'
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <Users size={14} />
-                <span>3. Lembar Diskusi / LKPD</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveProjectorTab('REFLEKSI')}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer",
-                  activeProjectorTab === 'REFLEKSI'
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <Compass size={14} />
-                <span>4. Refleksi Kelas</span>
-              </button>
+                return (
+                  <button
+                    key={slide.key}
+                    type="button"
+                    onClick={() => setActiveSlideDeckIdx(sIdx)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer",
+                      isActive
+                        ? cn(activeColor, "shadow-md scale-102")
+                        : "text-slate-400 hover:text-white hover:bg-slate-900"
+                    )}
+                  >
+                    <Icon size={13} />
+                    <span>{slide.shortTitle}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Projector Slide Body (Giant Display for Students in Back Row) */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-10 flex flex-col justify-center max-w-7xl mx-auto w-full">
             {/* SLIDE 1: PERTANYAAN PEMANTIK & APERSEPSI */}
-            {activeProjectorTab === 'PEMANTIK' && currentPertemuan && (
+            {activeSlideInfo?.type === 'PEMANTIK' && currentPertemuan && (
               <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
                 <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <HelpCircle className="w-5 h-5 text-amber-400" />
@@ -465,11 +503,10 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
             )}
 
-            {/* SLIDE 2: TEKS BACAAN POKOK / MATERI INTI (MULTI-SLIDE N SUPPORT) */}
-            {activeProjectorTab === 'MATERI' && currentPertemuan && (() => {
-              const slides: MateriSlideItem[] = getMateriSlides(currentPertemuan.langkah_kbm?.inti);
-              const safeSlideIdx = Math.min(activeMateriSlideIdx, slides.length - 1);
-              const activeSlide = slides[safeSlideIdx] || slides[0];
+            {/* SLIDE 2: TEKS BACAAN POKOK / MATERI INTI (DYNAMIC SUB-SLIDES) */}
+            {activeSlideInfo?.type === 'MATERI' && currentPertemuan && (() => {
+              const slides = getMateriSlides(currentPertemuan.langkah_kbm?.inti);
+              const activeSlide = slides[activeSlideInfo.materiIdx ?? 0] || slides[0];
 
               return (
                 <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
@@ -481,51 +518,10 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                       </span>
                     </div>
 
-                    {/* Sub-Slide Stepper / Selector if > 1 slide */}
                     {slides.length > 1 && (
-                      <div className="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1 rounded-xl border border-blue-500/30">
-                        <span className="text-[11px] font-bold text-slate-400 pr-1">
-                          Slide {safeSlideIdx + 1} dari {slides.length}:
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {slides.map((s, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setActiveMateriSlideIdx(idx)}
-                              className={cn(
-                                "px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                                safeSlideIdx === idx
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : "text-slate-400 hover:text-white bg-slate-900"
-                              )}
-                            >
-                              {idx + 1}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center gap-0.5 pl-1 border-l border-slate-800">
-                          <button
-                            type="button"
-                            disabled={safeSlideIdx === 0}
-                            onClick={() => setActiveMateriSlideIdx(prev => Math.max(0, prev - 1))}
-                            className="p-1 text-slate-300 hover:text-white disabled:opacity-20 cursor-pointer"
-                            title="Sub-Slide Sebelumnya"
-                          >
-                            <ChevronLeft size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={safeSlideIdx >= slides.length - 1}
-                            onClick={() => setActiveMateriSlideIdx(prev => Math.min(slides.length - 1, prev + 1))}
-                            className="p-1 text-slate-300 hover:text-white disabled:opacity-20 cursor-pointer"
-                            title="Sub-Slide Selanjutnya"
-                          >
-                            <ChevronRight size={14} />
-                          </button>
-                        </div>
-                      </div>
+                      <span className="px-3 py-1 rounded-full bg-blue-600 text-white font-black text-xs shadow-xs">
+                        Slide {activeSlideInfo.slideNumber} • Bagian {(activeSlideInfo.materiIdx ?? 0) + 1} dari {slides.length}
+                      </span>
                     )}
                   </div>
 
@@ -534,16 +530,9 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                       /* 2-Kolom Split Layout jika ada Gambar Materi */
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                         <div className="lg:col-span-7 space-y-4 max-h-[560px] overflow-y-auto custom-scrollbar pr-2">
-                          <div className="flex items-center gap-2">
-                            {slides.length > 1 && (
-                              <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white font-black text-[10px]">
-                                Bagian {safeSlideIdx + 1}/{slides.length}
-                              </span>
-                            )}
-                            <h3 className="text-2xl sm:text-3xl font-black text-blue-300 leading-snug">
-                              {activeSlide.judul || currentPertemuan.topik}
-                            </h3>
-                          </div>
+                          <h3 className="text-2xl sm:text-3xl font-black text-blue-300 leading-snug">
+                            {activeSlide.judul || currentPertemuan.topik}
+                          </h3>
 
                           <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed font-normal">
                             {activeSlide.paragraf?.map((p, i) => (
@@ -572,16 +561,9 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     ) : (
                       /* 1-Kolom Lebar jika tanpa Gambar */
                       <div className="space-y-6 max-w-4xl mx-auto">
-                        <div className="text-center space-y-2">
-                          {slides.length > 1 && (
-                            <span className="px-3 py-1 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40 font-black text-xs">
-                              Bagian {safeSlideIdx + 1} dari {slides.length}
-                            </span>
-                          )}
-                          <h3 className="text-2xl sm:text-3xl font-black text-blue-300">
-                            {activeSlide.judul || currentPertemuan.topik}
-                          </h3>
-                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-black text-blue-300 text-center">
+                          {activeSlide.judul || currentPertemuan.topik}
+                        </h3>
 
                         <div className="space-y-4 text-base sm:text-lg text-slate-200 leading-relaxed font-normal">
                           {activeSlide.paragraf?.map((p, i) => (
@@ -598,7 +580,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
             })()}
 
             {/* SLIDE 3: LEMBAR KERJA DISKUSI (LKPD) */}
-            {activeProjectorTab === 'LKPD' && currentPertemuan && (
+            {activeSlideInfo?.type === 'LKPD' && currentPertemuan && (
               <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300 w-full">
                 <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <Users className="w-5 h-5 text-emerald-400" />
@@ -651,7 +633,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
             )}
 
             {/* SLIDE 4: REFLEKSI & PENUTUP */}
-            {activeProjectorTab === 'REFLEKSI' && currentPertemuan && (
+            {activeSlideInfo?.type === 'REFLEKSI' && currentPertemuan && (
               <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
                 <div className="p-4 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-black text-xs uppercase tracking-widest flex items-center gap-2">
                   <Compass className="w-5 h-5 text-indigo-400" />
@@ -677,23 +659,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                onClick={() => {
-                  if (activeProjectorTab === 'MATERI' && activeMateriSlideIdx > 0) {
-                    setActiveMateriSlideIdx(prev => prev - 1);
-                    return;
-                  }
-                  const tabs: ProjectorTab[] = ['PEMANTIK', 'MATERI', 'LKPD', 'REFLEKSI'];
-                  const curIdx = tabs.indexOf(activeProjectorTab);
-                  if (curIdx > 0) {
-                    setActiveProjectorTab(tabs[curIdx - 1]);
-                    const prevSlides = getMateriSlides(currentPertemuan?.langkah_kbm?.inti);
-                    setActiveMateriSlideIdx(tabs[curIdx - 1] === 'MATERI' ? prevSlides.length - 1 : 0);
-                  } else if (activePertemuanIdx > 0) {
-                    setActivePertemuanIdx(prev => prev - 1);
-                    setActiveProjectorTab('REFLEKSI');
-                    setActiveMateriSlideIdx(0);
-                  }
-                }}
+                onClick={handlePrevSlide}
                 className="h-10 px-4 rounded-xl font-black text-xs bg-slate-800 hover:bg-slate-700 text-white flex items-center gap-1.5 cursor-pointer"
               >
                 <ChevronLeft size={16} />
@@ -702,23 +668,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
 
               <Button
                 type="button"
-                onClick={() => {
-                  const currentSlides = getMateriSlides(currentPertemuan?.langkah_kbm?.inti);
-                  if (activeProjectorTab === 'MATERI' && activeMateriSlideIdx < currentSlides.length - 1) {
-                    setActiveMateriSlideIdx(prev => prev + 1);
-                    return;
-                  }
-                  const tabs: ProjectorTab[] = ['PEMANTIK', 'MATERI', 'LKPD', 'REFLEKSI'];
-                  const curIdx = tabs.indexOf(activeProjectorTab);
-                  if (curIdx < tabs.length - 1) {
-                    setActiveProjectorTab(tabs[curIdx + 1]);
-                    setActiveMateriSlideIdx(0);
-                  } else if (activePertemuanIdx < pertemuanList.length - 1) {
-                    setActivePertemuanIdx(prev => prev + 1);
-                    setActiveProjectorTab('PEMANTIK');
-                    setActiveMateriSlideIdx(0);
-                  }
-                }}
+                onClick={handleNextSlide}
                 className="h-10 px-4 rounded-xl font-black text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 cursor-pointer shadow-md"
               >
                 <span>Slide Selanjutnya (Panah Kanan)</span>
