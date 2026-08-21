@@ -198,7 +198,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                       className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs cursor-pointer"
                     >
                       <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      <span>+ Tambah Anggota {node.label}</span>
+                      <span>Tambah Anggota {node.label}</span>
                     </button>
                   </div>
                 )}
@@ -210,10 +210,14 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     );
   }
 
-  const isMultiMemberRole = Boolean(
+  // Identifikasi apakah ini adalah kartu Koordinator / Posisi Utama (bukan staf bawahan)
+  const isCoordinatorCard = Boolean(
     node.data?.realStrukturId && 
     roleCode !== 'KEPALA_SEKOLAH' && 
     !node.data?.kelas_id && 
+    node.type !== 'MEMBER' &&
+    !node.id?.startsWith('staff-') &&
+    !node.id?.startsWith('member-') &&
     (
       ['BPBK', 'PEMBINA_ESKUL', 'GERBANG', 'TOOLMAN', 'KABENG', 'KOPERASI', 'TU', 'GURU'].some(code => String(roleCode || '').includes(code)) ||
       Boolean(node.data?.isCoordinator)
@@ -351,7 +355,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
       </motion.div>
 
       {/* Render Subordinate Children or Multi-member Add Action */}
-      {(hasChildren || isMultiMemberRole) && (
+      {(hasChildren || isCoordinatorCard) && (
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -370,15 +374,15 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                 />
               ))}
 
-              {/* Tombol Tambah Anggota jika posisi ini mendukung banyak personil (misal BPBK, Pembina Eskul, Gerbang, Toolman) */}
-              {isMultiMemberRole && (
+              {/* Tombol Tambah Anggota TEPAT 1 KALI di bawah Koordinator / Posisi Utama */}
+              {isCoordinatorCard && (
                 <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
                   <button
                     onClick={handleAddMember}
                     className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs cursor-pointer"
                   >
                     <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>+ Tambah Anggota / Staf {node.label}</span>
+                    <span>Tambah Staf / Anggota {node.label.replace(/^KOORDINATOR\s+/i, '')}</span>
                   </button>
                 </div>
               )}
