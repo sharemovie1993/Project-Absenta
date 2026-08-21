@@ -49,8 +49,11 @@ export class SesiTapEngineService {
   async tapSiswa(tenantId: string, _org: any, sesi_id: string, data: any, _userId: string) {
     const { siswa_id, siswa_akademik_id, status = 'HADIR', catatan, waktu_tap, nisn, rfid } = data;
 
-    let sesi = await prisma.sesiAbsensi.findFirst({
-      where: { id: sesi_id, tenant_id: tenantId }
+    let sesi: any = await prisma.sesiAbsensi.findFirst({
+      where: { id: sesi_id, tenant_id: tenantId },
+      include: {
+        JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } }
+      }
     });
 
     if (!sesi && typeof sesi_id === 'string' && (sesi_id.startsWith('sched_') || sesi_id.startsWith('sched-') || !sesi_id.includes('-'))) {
@@ -73,6 +76,9 @@ export class SesiTapEngineService {
             tenant_id: tenantId,
             jadwal_kbm_id: jadwal.id,
             tanggal: { gte: startOfDay, lte: endOfDay }
+          },
+          include: {
+            JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } }
           }
         });
 
@@ -95,7 +101,7 @@ export class SesiTapEngineService {
             ? (activeLeave.status === 'DISETUJUI' ? (activeLeave.GuruInval ? 'PENUGASAN' : (activeLeave.tipe_izin === 'DINAS_LUAR' ? 'DINAS_LUAR' : (activeLeave.tipe_izin === 'SAKIT' ? 'SAKIT' : 'IZIN'))) : 'PENDING_IZIN')
             : 'MENDATANG';
 
-          sesi = await prisma.sesiAbsensi.create({
+          const createdSesi = await prisma.sesiAbsensi.create({
             data: {
               tenant_id: tenantId,
               jadwal_kbm_id: jadwal.id,
@@ -114,17 +120,20 @@ export class SesiTapEngineService {
             }
           });
 
+          // Attach JadwalKBM fields directly so lateness calc can use jam_mulai without extra query
+          sesi = { ...createdSesi, JadwalKBM: { id: jadwal.id, jam_mulai: jadwal.jam_mulai, jam_selesai: jadwal.jam_selesai } };
+
           // Create AbsenGuru record for leave if applicable
           if (activeLeave && jadwal.guru_id) {
             await prisma.absenGuru.create({
               data: {
                 tenant_id: tenantId,
-                sesi_id: sesi.id,
+                sesi_id: createdSesi.id,
                 guru_id: jadwal.guru_id,
                 status: initialGuruStatus === 'DINAS_LUAR' || initialGuruStatus === 'PENUGASAN' ? 'PENUGASAN' : (initialGuruStatus === 'SAKIT' ? 'SAKIT' : (initialGuruStatus === 'IZIN' ? 'IZIN' : 'PENUGASAN')),
                 catatan: `Izin Disetujui: ${activeLeave.alasan}`,
-                tahun_pelajaran_id: sesi.tahun_pelajaran_id || jadwal.tahun_pelajaran_id || 'default-tp',
-                semester_id: sesi.semester_id || jadwal.semester_id || 'default-sem'
+                tahun_pelajaran_id: createdSesi.tahun_pelajaran_id || jadwal.tahun_pelajaran_id || 'default-tp',
+                semester_id: createdSesi.semester_id || jadwal.semester_id || 'default-sem'
               }
             });
           }
@@ -263,19 +272,34 @@ export class SesiTapEngineService {
       
       effectiveTapTime = historicalTap || tapTime || new Date();
 
-      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Kegiatan Rutin Slot 0)
-      // skipHandover=true: siswa dinilai dari jam jadwal resmi, bukan dari transisi guru sebelumnya
-      const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
-        tenantId,
-        sesi.kelas_id,
-        sesi.waktu_mulai,
-        effectiveTapTime,
-        { skipHandover: true }
-      );
+      // ⚖️ Resolusi Target Mulai Efektif menggunakan jam jadwal resmi (JadwalKBM.jam_mulai)
+      // Aturan KERAS: Tidak ada fallback ke sesi.waktu_mulai (waktu guru buka sesi).
+      // Guru dan siswa dinilai dari jam jadwal kurikulum yang sama.
+      // skipHandover=true: Handover Grace hanya untuk guru buka sesi, bukan penilaian siswa.
+      const jadwalJamMulai: string | null = sesi.JadwalKBM?.jam_mulai || null;
 
-      if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
-        isTerlambat = true;
-        menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+      if (!jadwalJamMulai) {
+        // Tidak ada referensi jadwal resmi — tidak dapat menilai keterlambatan
+        isTerlambat = false;
+        menitKeterlambatan = 0;
+      } else {
+        const tz = await getTenantTimezone(tenantId);
+        const tzOffset = getTenantOffsetString(tz);
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(effectiveTapTime);
+        const scheduledStart = new Date(`${todayDateStr}T${jadwalJamMulai}:00.000${tzOffset}`);
+
+        const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+          tenantId,
+          sesi.kelas_id,
+          scheduledStart,
+          effectiveTapTime,
+          { skipHandover: true }
+        );
+
+        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
+          isTerlambat = true;
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+        }
       }
     } else {
       // Saat status ALPA, IZIN, SAKIT, DISPEN:
@@ -330,8 +354,11 @@ export class SesiTapEngineService {
   async updateAbsenGuru(tenantId: string, _org: any, sesiId: string, guruId: string, data: any) {
     const { status = 'HADIR', catatan, waktu_tap } = data;
 
-    let sesi = await prisma.sesiAbsensi.findFirst({
-      where: { id: sesiId, tenant_id: tenantId }
+    let sesi: any = await prisma.sesiAbsensi.findFirst({
+      where: { id: sesiId, tenant_id: tenantId },
+      include: {
+        JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } }
+      }
     });
 
     const tz = await getTenantTimezone(tenantId);
@@ -434,23 +461,35 @@ export class SesiTapEngineService {
       
       effectiveTapTime = historicalTap || tapTime || new Date();
 
-      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Kegiatan Rutin Slot 0)
-      // skipHandover=true: penilaian manual guru menggunakan jam jadwal resmi sebagai patokan
-      const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
-        tenantId,
-        sesi.kelas_id,
-        sesi.waktu_mulai,
-        effectiveTapTime,
-        { skipHandover: true }
-      );
+      // ⚖️ Resolusi Target Mulai Efektif menggunakan jam jadwal resmi (JadwalKBM.jam_mulai)
+      // Aturan KERAS: Tidak ada fallback ke sesi.waktu_mulai (waktu guru buka sesi).
+      // Guru dan siswa dinilai dari jam jadwal kurikulum yang sama.
+      const jadwalJamMulaiGuru: string | null = sesi.JadwalKBM?.jam_mulai || null;
 
-      if (auditNote && !autoCatatan) {
-        autoCatatan = auditNote;
-      }
+      if (!jadwalJamMulaiGuru) {
+        // Tidak ada referensi jadwal resmi — tidak dapat menilai keterlambatan
+        isTerlambat = false;
+        menitKeterlambatan = 0;
+      } else {
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(effectiveTapTime!);
+        const scheduledStart = new Date(`${todayDateStr}T${jadwalJamMulaiGuru}:00.000${tzOffset}`);
 
-      if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
-        isTerlambat = true;
-        menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+        const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+          tenantId,
+          sesi.kelas_id,
+          scheduledStart,
+          effectiveTapTime!,
+          { skipHandover: true }
+        );
+
+        if (auditNote && !autoCatatan) {
+          autoCatatan = auditNote;
+        }
+
+        if (effectiveStartTarget && effectiveTapTime! > effectiveStartTarget) {
+          isTerlambat = true;
+          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime!.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+        }
       }
     } else {
       effectiveTapTime = existing?.waktu_tap || null;
