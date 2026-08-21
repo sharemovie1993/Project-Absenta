@@ -1,8 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Search, 
-  Sparkles, 
   Layers, 
   Calendar, 
   Users, 
@@ -26,7 +24,7 @@ import {
   Zap, 
   HeartHandshake, 
   Wallet, 
-  Building2,
+  Building2, 
   CheckCircle2,
   Mail,
   Inbox,
@@ -37,7 +35,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useSmartMenu } from '@/hooks/useSmartMenu';
-import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { 
   normalizeFlatMenu, 
   filterNavByWorkspace,
@@ -200,13 +197,9 @@ interface WorkflowCluster {
 
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = ({
   workspaceId: targetWorkspaceIdProp,
-  customTitle,
-  customSubtitle,
   hideIfEmpty = false,
   className
 }) => {
-  const [search, setSearch] = useState('');
-  const [activeClusterTab, setActiveClusterTab] = useState<string>('ALL');
   const { user } = useAuthStore();
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
 
@@ -227,8 +220,6 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
 
   const activeWsId = targetWorkspace?.id || 'KURIKULUM_WORKSPACE';
   const wsLabel = targetWorkspace?.label || (targetWorkspace as any)?.name || 'Modul';
-  const displayTitle = customTitle || `Ruang Kerja ${wsLabel}`;
-  const displaySubtitle = customSubtitle || `Akses alur kerja dan sub-halaman operasional ${wsLabel}.`;
 
   // 2. Normalisasi Flat Items Dinamis dari Sidebar
   const flatItems = useMemo(() => normalizeFlatMenu(backendGroupedMenu || []), [backendGroupedMenu]);
@@ -437,134 +428,18 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
     return result.filter(c => c.items.length > 0);
   }, [primaryItems, activeWsId, wsLabel]);
 
-  // Search filtering
-  const filteredClusters = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    return clusters.map(cluster => {
-      let items = cluster.items;
-      if (q) {
-        items = items.filter(
-          item => item.title.toLowerCase().includes(q) || (item.categoryLabel && item.categoryLabel.toLowerCase().includes(q))
-        );
-      }
-      return {
-        ...cluster,
-        items
-      };
-    }).filter(c => c.items.length > 0);
-  }, [clusters, search]);
-
-  // Selected cluster tab filtering
-  const visibleClusters = useMemo(() => {
-    if (activeClusterTab === 'ALL') return filteredClusters;
-    return filteredClusters.filter(c => c.id === activeClusterTab);
-  }, [filteredClusters, activeClusterTab]);
-
   if (hideIfEmpty && primaryItems.length === 0 && !isMenuLoading) {
     return null;
   }
 
   return (
-    <div className={cn("space-y-4 w-full select-none", className)}>
-      {/* ── HERO BANNER: Web Portal Header ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-900/50 p-4 sm:p-6 text-white shadow-xl shadow-indigo-950/20">
-        {/* Ambient Decorative Glow */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1 max-w-2xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 flex items-center gap-1">
-                <Sparkles size={11} className="text-indigo-300" />
-                <span>RUANG KERJA {wsLabel.toUpperCase()}</span>
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{primaryItems.length} Sub-Halaman Terorganisir</span>
-              </span>
-            </div>
-
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-white">
-              {displayTitle}
-            </h1>
-            <p className="text-xs text-slate-300 font-medium leading-relaxed">
-              {displaySubtitle}
-            </p>
-          </div>
-
-          {/* Floating Search Hub & Quick Controls */}
-          <div className="flex items-center gap-2.5 w-full lg:w-auto shrink-0">
-            <div className="relative w-full lg:w-64">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={`Cari menu ${wsLabel}...`}
-                className="w-full h-10 pl-9 pr-4 text-xs font-semibold rounded-2xl bg-white/10 hover:bg-white/15 focus:bg-white/20 backdrop-blur-md border border-white/20 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-inner"
-              />
-            </div>
-            <div className="shrink-0 bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-1 shadow-inner flex items-center justify-center">
-              <TvModeToggle />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Tab Filter Cepat (Hanya muncul jika ada multi-klaster, e.g. Kurikulum) ── */}
-        {clusters.length > 1 && (
-          <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-white/10">
-            <button
-              type="button"
-              onClick={() => setActiveClusterTab('ALL')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
-                activeClusterTab === 'ALL'
-                  ? "bg-white text-indigo-950 shadow-md"
-                  : "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10"
-              )}
-            >
-              <span>Semua Alur</span>
-              <span className="px-1.5 py-0.2 rounded-md text-[10px] bg-indigo-500/20 text-indigo-300">
-                {primaryItems.length}
-              </span>
-            </button>
-
-            {clusters.map(c => {
-              const isActive = activeClusterTab === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActiveClusterTab(c.id)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
-                    isActive
-                      ? "bg-white text-indigo-950 shadow-md"
-                      : "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10"
-                  )}
-                >
-                  <span>{c.icon} {c.title}</span>
-                  <span className={cn(
-                    "px-1.5 py-0.2 rounded-md text-[10px]",
-                    isActive ? "bg-indigo-950 text-white font-bold" : "bg-white/15 text-slate-300"
-                  )}>
-                    {c.items.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── BENTO KLASTER WORKFLOW (Solusi 1: Kartu Alur Kerja Terkelompok) ── */}
+    <div className={cn("w-full select-none", className)}>
+      {/* ── BENTO KLASTER WORKFLOW (Kartu Alur Kerja Terkelompok Bersih & Cepat) ── */}
       <div className={cn(
         "grid gap-4 sm:gap-5",
-        visibleClusters.length > 1 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+        clusters.length > 1 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
       )}>
-        {visibleClusters.map((cluster, clusterIdx) => (
+        {clusters.map((cluster, clusterIdx) => (
           <div
             key={cluster.id}
             className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
