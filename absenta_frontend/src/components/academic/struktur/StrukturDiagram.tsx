@@ -12,6 +12,7 @@ import { getJurusanList } from '@/api/academic/jurusan.api';
 import { Loader } from '@/components/ui/Loader';
 import toast from 'react-hot-toast';
 import { TopologyTree } from './TopologyTree';
+import { StrukturMobileCardTree } from './StrukturMobileCardTree';
 import { LiveNodeEditor } from './LiveNodeEditor';
 import { TreeErrorBoundary } from './TreeErrorBoundary';
 import { TreeSkeleton } from './NodeSkeleton';
@@ -20,6 +21,8 @@ import { transformDataToTree, transformManagementToTree, transformTuTabToTree } 
 import type { GroupedStruktur, StrukturDiagramProps, TopologyNodeData } from './types';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import { useJenjang } from '@/hooks/useJenjang';
+import { LayoutGrid, Network, Smartphone, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({ 
   activeCodes = [], 
@@ -29,6 +32,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
+  const [viewMode, setViewMode] = useState<'auto' | 'tree' | 'card'>('auto');
 
   const { confirm } = useConfirm();
   const { jenjang, tingkatList } = useJenjang();
@@ -271,6 +275,61 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     }
   }, [confirm, removeMutation]);
 
+  const renderTreeOrCards = useCallback((treeData: TopologyNodeData, keyPrefix = '') => {
+    if (!treeData) return null;
+
+    if (viewMode === 'card') {
+      return (
+        <TreeErrorBoundary key={`card-${keyPrefix}`}>
+          <StrukturMobileCardTree 
+            data={treeData} 
+            editingId={editingNode?.node.id}
+            onAction={handleNodeAction}
+          />
+        </TreeErrorBoundary>
+      );
+    }
+
+    if (viewMode === 'tree') {
+      return (
+        <TreeErrorBoundary key={`tree-${keyPrefix}`}>
+          <TopologyTree 
+            data={treeData} 
+            editingId={editingNode?.node.id}
+            onAction={handleNodeAction}
+          />
+        </TreeErrorBoundary>
+      );
+    }
+
+    // Default 'auto': Responsive (Mobile -> Card, Desktop -> Tree)
+    return (
+      <div key={`auto-${keyPrefix}`} className="w-full">
+        {/* Mobile View: Vertical Cards */}
+        <div className="block md:hidden">
+          <TreeErrorBoundary>
+            <StrukturMobileCardTree 
+              data={treeData} 
+              editingId={editingNode?.node.id}
+              onAction={handleNodeAction}
+            />
+          </TreeErrorBoundary>
+        </div>
+
+        {/* Desktop View: Horizontal Tree Canvas */}
+        <div className="hidden md:block">
+          <TreeErrorBoundary>
+            <TopologyTree 
+              data={treeData} 
+              editingId={editingNode?.node.id}
+              onAction={handleNodeAction}
+            />
+          </TreeErrorBoundary>
+        </div>
+      </div>
+    );
+  }, [viewMode, editingNode?.node.id, handleNodeAction]);
+
   const renderedGroups = useMemo(() => {
     return GROUP_CONFIG.map(group => {
       const isMultiLayer = group.id === 'G1' || group.id === 'G2' || group.id === 'G3';
@@ -291,15 +350,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
           {isMultiLayer ? (
             <div className="flex flex-col gap-8">
-              {stableTreeDataMap[`${group.id}_TOP`] && (
-                <TreeErrorBoundary>
-                  <TopologyTree 
-                    data={stableTreeDataMap[`${group.id}_TOP`]} 
-                    editingId={editingNode?.node.id}
-                    onAction={handleNodeAction}
-                  />
-                </TreeErrorBoundary>
-              )}
+              {stableTreeDataMap[`${group.id}_TOP`] && renderTreeOrCards(stableTreeDataMap[`${group.id}_TOP`], `${group.id}_TOP`)}
               
               {stableTreeDataMap[`${group.id}_BOTTOM`] && (
                 <>
@@ -314,31 +365,19 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
                     </div>
                   </div>
 
-                  <TreeErrorBoundary>
-                    <TopologyTree 
-                      data={stableTreeDataMap[`${group.id}_BOTTOM`]} 
-                      editingId={editingNode?.node.id}
-                      onAction={handleNodeAction}
-                    />
-                  </TreeErrorBoundary>
+                  {renderTreeOrCards(stableTreeDataMap[`${group.id}_BOTTOM`], `${group.id}_BOTTOM`)}
                 </>
               )}
             </div>
           ) : (
             <div className="flex flex-col gap-8">
-              <TreeErrorBoundary>
-                <TopologyTree 
-                  data={stableTreeDataMap[group.id]} 
-                  editingId={editingNode?.node.id}
-                  onAction={handleNodeAction}
-                />
-              </TreeErrorBoundary>
+              {renderTreeOrCards(stableTreeDataMap[group.id], group.id)}
             </div>
           )}
         </div>
       );
     });
-  }, [stableTreeDataMap, editingNode?.node.id, handleNodeAction]);
+  }, [stableTreeDataMap, renderTreeOrCards]);
 
   const renderedOther = useMemo(() => {
     const treeData = stableTreeDataMap['other'];
@@ -353,16 +392,10 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
           </div>
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mt-2" role="none" />
         </div>
-        <TreeErrorBoundary>
-          <TopologyTree 
-            data={treeData} 
-            editingId={editingNode?.node.id}
-            onAction={handleNodeAction}
-          />
-        </TreeErrorBoundary>
+        {renderTreeOrCards(treeData, 'other')}
       </div>
     );
-  }, [stableTreeDataMap, editingNode?.node.id, handleNodeAction]);
+  }, [stableTreeDataMap, renderTreeOrCards]);
 
   if (isTreeLoading) return <TreeSkeleton />;
   if (Object.keys(data).length === 0) return <div className="text-center p-8 text-gray-500">Tidak ada data struktur organisasi.</div>;
@@ -370,23 +403,60 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   const isTabularDiagram = activeTab && activeCodes && activeCodes.length > 0;
 
   return (
-    <div className="space-y-12 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
+    <div className="space-y-8 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
+      {/* Responsive View Switcher Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Mode Tampilan:</span>
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <button
+              onClick={() => setViewMode('auto')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                viewMode === 'auto' 
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Otomatis</span>
+            </button>
+            <button
+              onClick={() => setViewMode('card')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                viewMode === 'card' 
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Kartu Vertikal (HP)</span>
+            </button>
+            <button
+              onClick={() => setViewMode('tree')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                viewMode === 'tree' 
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>Diagram Pohon (PC)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {isTabularDiagram ? (
         activeTab === 'PIMPINAN' ? (
           <div className="flex flex-col gap-12">
-            {currentTreeData1 && (
-              <TreeErrorBoundary>
-                <TopologyTree 
-                  data={currentTreeData1} 
-                  editingId={editingNode?.node.id}
-                  onAction={handleNodeAction}
-                />
-              </TreeErrorBoundary>
-            )}
+            {currentTreeData1 && renderTreeOrCards(currentTreeData1, 'pimpinan_g1')}
             
             {/* Divider */}
             {currentTreeData1 && currentTreeData2 && (
-              <div className="relative py-8" role="none">
+              <div className="relative py-4" role="none">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true" role="none">
                   <div className="w-full border-t-2 border-slate-200 dark:border-slate-800 border-dashed" role="none"></div>
                 </div>
@@ -398,24 +468,10 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
               </div>
             )}
 
-            {currentTreeData2 && (
-              <TreeErrorBoundary>
-                <TopologyTree 
-                  data={currentTreeData2} 
-                  editingId={editingNode?.node.id}
-                  onAction={handleNodeAction}
-                />
-              </TreeErrorBoundary>
-            )}
+            {currentTreeData2 && renderTreeOrCards(currentTreeData2, 'pimpinan_g2')}
           </div>
         ) : currentTreeData ? (
-          <TreeErrorBoundary>
-            <TopologyTree 
-              data={currentTreeData} 
-              editingId={editingNode?.node.id}
-              onAction={handleNodeAction}
-            />
-          </TreeErrorBoundary>
+          renderTreeOrCards(currentTreeData, activeTab || 'tab')
         ) : (
           <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 shadow-sm">
             <p className="text-slate-400 font-bold text-sm italic">Tidak ada bagan struktur untuk kategori ini.</p>

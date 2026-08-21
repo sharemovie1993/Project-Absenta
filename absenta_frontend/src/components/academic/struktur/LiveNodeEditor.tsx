@@ -122,6 +122,84 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
 
   if (!node) return null;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  if (isMobile) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div 
+          ref={containerRef}
+          className="w-full max-h-[85vh] bg-white dark:bg-slate-900 rounded-t-3xl border-t border-amber-400 dark:border-amber-600 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300"
+        >
+          {/* Mobile Handle & Header */}
+          <div className="flex flex-col items-center pt-3 pb-2 px-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mb-2" />
+            <div className="flex items-center justify-between w-full">
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest block">
+                  Penugasan Jabatan
+                </span>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                  {node.label || 'Pilih Personil'}
+                </h4>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-1.5 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+
+          {/* Search Box */}
+          <div className="relative flex items-center px-4 h-12 border-b border-slate-100 dark:border-slate-800 bg-amber-50/40 dark:bg-slate-800/40">
+            <Search size={16} className="text-amber-500 mr-3 flex-shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={handleSearchChange}
+              placeholder="Ketik nama guru atau siswa..."
+              className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 w-full"
+              autoComplete="off"
+            />
+            {saving && <Loader2 size={16} className="animate-spin text-amber-500 ml-2" />}
+          </div>
+
+          {/* Options List */}
+          <div onScroll={handleScrollList} className="overflow-y-auto custom-scrollbar p-3 flex-1 max-h-[60vh]">
+            {searching ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <Loader2 size={24} className="animate-spin text-amber-500/60" />
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Mencari Data...</span>
+              </div>
+            ) : options.length === 0 ? (
+              <div className="py-8 text-center bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                <p className="text-xs font-bold text-slate-400">Data personil tidak ditemukan</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5 pb-6">
+                {(options || []).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleSelect(opt.value, opt.label)}
+                    className="flex items-center px-4 py-3 w-full text-left transition-all rounded-xl hover:bg-amber-500 hover:text-white dark:hover:bg-amber-600 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 active:scale-98"
+                  >
+                    <span className="text-xs font-bold truncate">
+                      {opt.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   return createPortal(
     <div 
       ref={containerRef}
