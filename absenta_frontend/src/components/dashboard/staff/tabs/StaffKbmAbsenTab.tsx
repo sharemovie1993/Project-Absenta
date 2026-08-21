@@ -222,24 +222,6 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
     },
   });
 
-  // Mutation: Tutup Sesi KBM
-  const closeSessionMutation = useMutation({
-    mutationFn: async (sesiId: string) => {
-      return updateSesiStatus(sesiId, 'SELESAI');
-    },
-    onSuccess: () => {
-      toast.success('Sesi KBM telah berhasil ditutup!');
-      queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
-      queryClient.invalidateQueries({ queryKey: ['sesi-absensi'] });
-      queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
-      if (onRefreshTimeline) onRefreshTimeline();
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan';
-      toast.error('Gagal menutup sesi: ' + msg);
-    },
-  });
-
   const handleOpenPhotoModal = (jadwal: TimelineItem) => {
     setTargetJadwal(jadwal);
     setPhotoModalOpen(true);
@@ -456,7 +438,6 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                     }
                   }}
                   onOpenJournalModal={() => handleOpenJournalModal({ id: sesi?.id || item.id })}
-                  onCloseSession={(sId) => closeSessionMutation.mutate(sId)}
                   onTestAlert={handleTestAlertForSession}
                   expandedContent={canExpand ? (
                     <div className="space-y-4">

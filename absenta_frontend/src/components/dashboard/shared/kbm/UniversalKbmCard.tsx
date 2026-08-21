@@ -44,7 +44,6 @@ export interface UniversalKbmCardProps {
   onOpenPhotoModal?: (item: any) => void;
   onOpenJournalModal?: (item: any) => void;
   onOpenBahanAjar?: (item: any) => void;
-  onCloseSession?: (sesiId: string) => void;
   onOpenScanModal?: (sesiId: string) => void;
   onSelectSession?: (item: any) => void;
   onTestAlert?: (item: any) => void;
@@ -76,7 +75,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   onOpenPhotoModal,
   onOpenJournalModal,
   onOpenBahanAjar,
-  onCloseSession,
   onOpenScanModal,
   onSelectSession,
   onTestAlert,
@@ -616,22 +614,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 >
                   <FileText size={13} />
                   <span>Jurnal</span>
-                </Button>
-              )}
-
-              {/* Tutup Sesi Button */}
-              {isLive && !isFinished && !isOverdue && onCloseSession && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseSession(item.session?.id || item.id);
-                  }}
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-rose-900/20"
-                >
-                  <X size={13} />
-                  <span>Tutup</span>
                 </Button>
               )}
 
