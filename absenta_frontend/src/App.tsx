@@ -29,6 +29,7 @@ import { LogService } from './utils/LogService';
 import { loadActiveSystemConfig } from './services/systemConfig';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
+import { FloatingDemoSwitcher } from './components/common/FloatingDemoSwitcher';
 
 // Lazy Loaded Pages
 const CheckEmail = lazy(() => import('./pages/auth/CheckEmail'));
@@ -1612,6 +1613,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             )}
+            <FloatingDemoSwitcher />
           </BrowserRouter>
           </SocketProvider>
         </ConfirmProvider>
