@@ -210,6 +210,16 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     );
   }
 
+  const isMultiMemberRole = Boolean(
+    node.data?.realStrukturId && 
+    roleCode !== 'KEPALA_SEKOLAH' && 
+    !node.data?.kelas_id && 
+    (
+      ['BPBK', 'PEMBINA_ESKUL', 'GERBANG', 'TOOLMAN', 'KABENG', 'KOPERASI', 'TU', 'GURU'].some(code => String(roleCode || '').includes(code)) ||
+      Boolean(node.data?.isCoordinator)
+    )
+  );
+
   return (
     <div className={cn("w-full relative flex flex-col", depth > 0 && "pl-3.5 sm:pl-5 border-l-2 border-indigo-100 dark:border-slate-800 ml-2.5 sm:ml-4 mt-2.5")}>
       {/* Node Card */}
@@ -278,34 +288,30 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
           >
             {/* Avatar Thumbnail */}
             <div className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border relative overflow-hidden",
+              "w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs border transition-transform group-hover:scale-105",
               isUnassigned 
-                ? "bg-amber-100 dark:bg-amber-950/60 text-amber-600 border-amber-300 dark:border-amber-800" 
-                : "bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-slate-800 dark:to-slate-700 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-slate-700"
+                ? "bg-amber-100 dark:bg-amber-900/50 border-amber-300 text-amber-600 dark:text-amber-400" 
+                : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
             )}>
-              {node.data?.photoUrl ? (
-                <img 
-                  src={node.data.photoUrl} 
-                  alt={node.subLabel || 'Foto'} 
-                  className="w-full h-full object-cover"
-                />
-              ) : isUnassigned ? (
-                <Plus className="w-5 h-5 text-amber-600 animate-bounce" />
+              {isUnassigned ? (
+                <Plus className="w-5 h-5 stroke-[2.5]" />
               ) : (
-                <User className="w-5 h-5" />
+                <User className="w-5 h-5 stroke-[2]" />
               )}
             </div>
 
-            {/* Nama & NIP */}
+            {/* Nama & NIP / Role Info */}
             <div className="min-w-0 flex-1">
-              <h4 className={cn(
-                "text-xs sm:text-sm font-extrabold truncate leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors",
-                isUnassigned ? "text-amber-700 dark:text-amber-400 font-black" : "text-slate-900 dark:text-slate-100"
+              <h3 className={cn(
+                "text-sm font-extrabold truncate leading-tight transition-colors",
+                isUnassigned 
+                  ? "text-amber-800 dark:text-amber-400" 
+                  : "text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
               )}>
                 {isUnassigned ? 'Belum Ditugaskan' : node.subLabel}
-              </h4>
+              </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
-                {node.data?.nip ? `NIP: ${node.data.nip}` : node.data?.nuptk ? `NUPTK: ${node.data.nuptk}` : isUnassigned ? 'Ketuk untuk memilih guru' : 'Personil Terdaftar'}
+                {isUnassigned ? 'Ketuk untuk memilih guru' : (node.data?.details || 'Personil Terdaftar')}
               </p>
             </div>
           </div>
@@ -315,9 +321,9 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
             {isUnassigned ? (
               <button
                 onClick={handleCardClick}
-                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 transition-all ring-2 ring-amber-400/30"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Tugaskan</span>
               </button>
             ) : (
@@ -325,7 +331,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                 <button
                   onClick={handleCardClick}
                   title="Ganti Personil"
-                  className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-600 dark:text-slate-300 rounded-xl transition-all active:scale-90"
+                  className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all active:scale-90"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
@@ -344,8 +350,8 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
         </div>
       </motion.div>
 
-      {/* Render Subordinate Children */}
-      {hasChildren && (
+      {/* Render Subordinate Children or Multi-member Add Action */}
+      {(hasChildren || isMultiMemberRole) && (
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -354,7 +360,7 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
               exit={{ opacity: 0, height: 0 }}
               className="space-y-2.5 w-full mt-2.5"
             >
-              {node.children!.map(child => (
+              {hasChildren && node.children!.map(child => (
                 <MobileCardNode 
                   key={child.id} 
                   node={child} 
@@ -363,6 +369,19 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                   editingId={editingId}
                 />
               ))}
+
+              {/* Tombol Tambah Anggota jika posisi ini mendukung banyak personil (misal BPBK, Pembina Eskul, Gerbang, Toolman) */}
+              {isMultiMemberRole && (
+                <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
+                  <button
+                    onClick={handleAddMember}
+                    className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>+ Tambah Anggota / Staf {node.label}</span>
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
