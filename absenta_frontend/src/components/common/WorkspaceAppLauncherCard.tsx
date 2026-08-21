@@ -101,17 +101,29 @@ const DEFAULT_KURIKULUM_PRIMARY: FlatMenuItem[] = [
 ];
 
 const DEFAULT_ADMIN_PRIMARY: FlatMenuItem[] = [
+  // 🏛️ Master Pokok (9 menu)
   { id: 'sis', title: 'Data Siswa', path: '/academic/siswa', icon: 'GraduationCap' },
   { id: 'gru', title: 'Data Guru', path: '/academic/guru', icon: 'Users' },
   { id: 'kls', title: 'Rombel Kelas', path: '/academic/kelas', icon: 'LayoutGrid' },
   { id: 'mpl', title: 'Mata Pelajaran', path: '/academic/mapel', icon: 'BookOpen' },
   { id: 'thp', title: 'Tahun Ajaran', path: '/academic/tahun-pelajaran', icon: 'Calendar' },
-  { id: 'smt', title: 'Semester', path: '/academic/semester', icon: 'CalendarDays' },
+  { id: 'smt', title: 'Semester', path: '/academic/semester', icon: 'Clock' },
   { id: 'jrs', title: 'Jurusan', path: '/academic/jurusan', icon: 'Briefcase' },
-  { id: 'ops', title: 'Operasional Absen', path: '/attendance/ops', icon: 'Activity' },
-  { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'Smartphone' },
+  { id: 'doc', title: 'Legalitas Sekolah', path: '/documents', icon: 'FileText' },
+  { id: 'ars', title: 'Arsip Pegawai', path: '/documents/member-docs', icon: 'Archive' },
+  // 🛠️ Persiapan Akademik (7 menu)
+  { id: 'jkg', title: 'Jenis Kegiatan', path: '/academic/jenis-kegiatan', icon: 'Activity' },
+  { id: 'krt', title: 'Kartu Siswa', path: '/academic/siswa-cards', icon: 'CheckCircle2' },
+  { id: 'trn', title: 'Kenaikan Kelas', path: '/academic/transition', icon: 'Layers' },
+  { id: 'sto', title: 'Struktur Organ.', path: '/academic/struktur-organisasi', icon: 'Building2' },
+  { id: 'chk', title: 'Cetak Berkas', path: '/academic/prep-checklist', icon: 'Printer' },
+  { id: 'bak', title: 'Backup Data', path: '/academic/backup', icon: 'Archive' },
+  { id: 'log', title: 'Log Aktivitas', path: '/academic/staff-logs', icon: 'Clock' },
+  // ⚙️ Sistem & Operasional (4 menu)
   { id: 'usr', title: 'Kelola User', path: '/users', icon: 'UserCog' },
+  { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'ShieldCheck' },
   { id: 'stg', title: 'Pengaturan', path: '/settings', icon: 'Settings' },
+  { id: 'ops', title: 'Operasional Absen', path: '/attendance/ops', icon: 'Activity' },
 ];
 
 const DEFAULT_SARPRAS_PRIMARY: FlatMenuItem[] = [
@@ -259,6 +271,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
         const cat = (item.categoryLabel || '').toUpperCase();
         return (
           p.startsWith('/academic') ||
+          p.startsWith('/documents') ||
           p.startsWith('/attendance/ops') ||
           p.startsWith('/management') ||
           p.startsWith('/users') ||
@@ -343,8 +356,75 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
     return matchedItems;
   }, [flatItems, user, activeWsId]);
 
-  // 4. Pengelompokan Klaster Alur Kerja (Workflow Clusters) untuk Kurikulum
+  // 4. Pengelompokan Klaster Alur Kerja (Workflow Clusters) untuk Kurikulum & Admin
   const clusters = useMemo<WorkflowCluster[]>(() => {
+    // ── ADMIN WORKSPACE: 3 Klaster Alur Kerja ala GoPay Agen ──
+    if (activeWsId === 'ADMIN_WORKSPACE') {
+      const cMaster: FlatMenuItem[] = [];
+      const cPrep: FlatMenuItem[] = [];
+      const cSystem: FlatMenuItem[] = [];
+
+      primaryItems.forEach(item => {
+        const p = (item.path || '').toLowerCase();
+        if (
+          p.includes('/academic/siswa') ||
+          p.includes('/academic/guru') ||
+          p.includes('/academic/kelas') ||
+          p.includes('/academic/mapel') ||
+          p.includes('/academic/tahun-pelajaran') ||
+          p.includes('/academic/semester') ||
+          p.includes('/academic/jurusan') ||
+          p.includes('/documents')
+        ) {
+          cMaster.push(item);
+        } else if (
+          p.includes('/academic/jenis-kegiatan') ||
+          p.includes('/academic/siswa-cards') ||
+          p.includes('/academic/transition') ||
+          p.includes('/academic/struktur-organisasi') ||
+          p.includes('/academic/prep-checklist') ||
+          p.includes('/academic/backup') ||
+          p.includes('/academic/staff-logs')
+        ) {
+          cPrep.push(item);
+        } else {
+          cSystem.push(item);
+        }
+      });
+
+      const adminClusters: WorkflowCluster[] = [
+        {
+          id: 'ADMIN_MASTER',
+          badge: '1. DATA MASTER POKOK',
+          badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+          title: 'Master Data Pokok',
+          description: 'Database siswa, guru, rombel kelas, mapel, tahun ajaran & legalitas',
+          icon: '🏛️',
+          items: cMaster
+        },
+        {
+          id: 'ADMIN_PREP',
+          badge: '2. PERSIAPAN AKADEMIK',
+          badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+          title: 'Persiapan & Tata Kelola',
+          description: 'Kartu siswa, kenaikan kelas, jenis kegiatan, checklist, backup & log',
+          icon: '🛠️',
+          items: cPrep
+        },
+        {
+          id: 'ADMIN_SYSTEM',
+          badge: '3. SISTEM & KONTROL IT',
+          badgeColor: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+          title: 'Sistem, User & Operasional',
+          description: 'Kelola akun user, audit kepatuhan platform, setelan sekolah & absensi',
+          icon: '⚙️',
+          items: cSystem
+        }
+      ];
+
+      return adminClusters.filter(c => c.items.length > 0);
+    }
+
     if (activeWsId !== 'KURIKULUM_WORKSPACE') {
       return [
         {
