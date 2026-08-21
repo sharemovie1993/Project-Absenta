@@ -664,7 +664,8 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
                           }
                         }
                       }))}
-                      placeholder="Pembukaan: Guru membuka dengan salam dan doa.\nApersepsi: Guru menampilkan gambar fenomena alam.\nPertanyaan Pe                      className="w-full px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
+                      placeholder="Pembukaan: Guru membuka dengan salam dan doa.\nApersepsi: Guru menampilkan gambar fenomena alam.\nPertanyaan Pemantik: Mengapa fakta penting dalam observasi?"
+                      className="w-full px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
                     />
                   </div>
 
