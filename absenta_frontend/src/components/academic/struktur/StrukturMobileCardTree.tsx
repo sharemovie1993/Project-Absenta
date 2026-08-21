@@ -74,9 +74,16 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     node.subLabel === 'Belum Ditugaskan' ||
     node.id?.startsWith('unassigned-')
   );
-  const hasChildren = node.children && node.children.length > 0;
-  const isCategory = node.type === 'CATEGORY' || node.type === 'GROUP';
-  const isRoot = node.type === 'ROOT' || node.type === 'LEADER' || roleCode === 'KEPALA_SEKOLAH';
+  const isCategory = Boolean(
+    node.type === 'CATEGORY' || 
+    node.type === 'GROUP' || 
+    (node.type === 'ROOT' && roleCode !== 'KEPALA_SEKOLAH') || 
+    node.id?.includes('ROOT') || 
+    node.id?.includes('mgmt-group') ||
+    node.id?.includes('PIMPINAN_GRP2') ||
+    node.label?.toUpperCase().includes('MANAJEMEN')
+  );
+  const isRoot = !isCategory && (node.type === 'ROOT' || node.type === 'LEADER' || roleCode === 'KEPALA_SEKOLAH');
 
   const RoleIcon = getRoleIcon(roleCode, node.type);
   const roleGradient = getRoleColor(roleCode, node.type);
@@ -85,18 +92,6 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
     e.stopPropagation();
     if (!isCategory && onAction) {
       onAction(node, 'EDIT', cardRef.current);
-    }
-  };
-
-  const handleAddMember = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onAction) {
-      onAction({
-        ...node,
-        id: `add-new-${node.id}`,
-        actionType: 'MEMBER_ADD',
-        parentStrukturId: node.data?.realStrukturId || node.id
-      }, 'MEMBER_ADD', cardRef.current);
     }
   };
 
@@ -175,17 +170,6 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                     editingId={editingId}
                   />
                 ))}
-
-                {/* Tombol Tambah Staf Baru di paling bawah daftar tim bidang */}
-                <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
-                  <button
-                    onClick={handleAddMember}
-                    className="w-full py-2 px-4 rounded-2xl border border-dashed border-indigo-300 hover:border-indigo-500 dark:border-slate-700 dark:hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-100/50 dark:bg-slate-800/30 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-[11px] font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-2xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>+ Tambah Anggota {node.label}</span>
-                  </button>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -347,17 +331,6 @@ const MobileCardNode: React.FC<MobileCardNodeProps> = React.memo(({
                   editingId={editingId}
                 />
               ))}
-
-              {/* Explicit Add Member Button under Subordinates */}
-              <div className="pl-3.5 sm:pl-5 ml-2.5 sm:ml-4 pt-1">
-                <button
-                  onClick={handleAddMember}
-                  className="w-full py-2.5 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 dark:border-slate-700 dark:hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-100/60 dark:bg-slate-800/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-tight transition-all active:scale-98 shadow-xs"
-                >
-                  <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>+ Tambah Anggota ke {node.label || 'Bidang'}</span>
-                </button>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>

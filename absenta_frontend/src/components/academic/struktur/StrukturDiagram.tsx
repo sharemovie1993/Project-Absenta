@@ -389,11 +389,11 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     <div className="space-y-8 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
       {isTabularDiagram ? (
         activeTab === 'PIMPINAN' ? (
-          <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-4 sm:gap-12">
             {currentTreeData1 && renderTreeOrCards(currentTreeData1, 'pimpinan_g1')}
             
-            {/* Divider */}
-            {currentTreeData1 && currentTreeData2 && (
+            {/* Divider (Desktop Diagram Only) */}
+            {!isMobile && currentTreeData1 && currentTreeData2 && (
               <div className="relative py-4" role="none">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true" role="none">
                   <div className="w-full border-t-2 border-slate-200 dark:border-slate-800 border-dashed" role="none"></div>
