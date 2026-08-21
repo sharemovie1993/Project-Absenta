@@ -136,8 +136,9 @@ export class SesiHelperService {
 
   /**
    * ⚖️ Keadilan Presensi KBM:
-   * 1. Deteksi Kejadian Khusus / Pembiasaan Sekolah (Upacara, Dhuha, Hujan Lebat) -> Abaikan keterlambatan
-   * 2. Deteksi Jeda Transisi Guru Molor (Handover Grace Period) -> Jam mulai disesuaikan dari waktu selesai sesi sebelumnya + 5 menit
+   * 1. Deteksi Kejadian Khusus Sekolah (Apel Mendadak, Hari Guru, Hujan Lebat) -> Abaikan keterlambatan
+   * 2. Deteksi Jadwal Kegiatan Rutin Slot 0 (Upacara, Sholat Dhuha, Senam) dari Visual Builder / JadwalKegiatan -> Jam mulai disesuaikan setelah kegiatan selesai
+   * 3. Deteksi Jeda Transisi Guru Molor (Handover Grace Period) -> Jam mulai disesuaikan dari waktu selesai sesi sebelumnya + 5 menit
    */
   async resolveEffectiveKbmStartTarget(
     tenantId: string,
@@ -150,7 +151,7 @@ export class SesiHelperService {
     }
 
     try {
-      // 1. Cek Kejadian Khusus (Upacara/Pembiasaan/Hujan Lebat)
+      // 1. Cek Kejadian Khusus (Apel Mendadak/Hujan Lebat)
       const todayStr = currentDate.toISOString().split('T')[0];
       const specialEvent = await prisma.absensiKejadianKhusus.findFirst({
         where: {
@@ -169,7 +170,57 @@ export class SesiHelperService {
         };
       }
 
-      // 2. Cek Sesi Sebelumnya di Kelas yang Sama (Handover Grace Period)
+      // 2. Cek Jadwal Kegiatan Rutin Slot 0 (Upacara, Dhuha, Pembiasaan) dari JadwalKegiatan
+      const dayIndex = currentDate.getDay();
+      const HARI_MAP: Record<number, any> = {
+        0: 'MINGGU',
+        1: 'SENIN',
+        2: 'SELASA',
+        3: 'RABU',
+        4: 'KAMIS',
+        5: 'JUMAT',
+        6: 'SABTU'
+      };
+      const hariEnum = HARI_MAP[dayIndex];
+
+      if (hariEnum) {
+        const activeKegiatan = await prisma.jadwalKegiatan.findFirst({
+          where: {
+            tenant_id: tenantId,
+            aktif: true,
+            berlaku_mulai: { lte: currentDate },
+            OR: [
+              { berlaku_sampai: null },
+              { berlaku_sampai: { gte: currentDate } }
+            ],
+            hari: { has: hariEnum },
+            ...(kelasId ? {
+              OR: [
+                { target_semua_kelas: true },
+                { target_kelas_ids: { has: kelasId } }
+              ]
+            } : {})
+          },
+          orderBy: { waktu_selesai: 'desc' }
+        });
+
+        if (activeKegiatan && activeKegiatan.waktu_selesai) {
+          const [endH, endM] = activeKegiatan.waktu_selesai.split(':').map(Number);
+          const kegiatanEndTarget = new Date(scheduledStart);
+          kegiatanEndTarget.setHours(endH || 0, endM || 0, 0, 0);
+
+          if (kegiatanEndTarget.getTime() > scheduledStart.getTime()) {
+            return {
+              effectiveStartTarget: kegiatanEndTarget,
+              isSpecialEventLateIgnored: false,
+              isHandoverExtended: true,
+              auditNote: `Kegiatan ${activeKegiatan.nama} (s.d ${activeKegiatan.waktu_selesai})`
+            };
+          }
+        }
+      }
+
+      // 3. Cek Sesi Sebelumnya di Kelas yang Sama (Handover Grace Period)
       if (kelasId) {
         const startOfToday = new Date(currentDate);
         startOfToday.setHours(0, 0, 0, 0);
