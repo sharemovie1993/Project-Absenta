@@ -368,11 +368,32 @@ export class SesiLifecycleService {
     });
 
     if (guru_id && finalFotoUrl) {
+      // ⚖️ Aturan KERAS: Guru dievaluasi dari jam jadwal resmi (JadwalKBM.jam_mulai),
+      // BUKAN dari parsedStart (waktu fisik guru buka sesi).
+      let teacherScheduledStart: Date = parsedStart;
+      if (validJadwalKbmId) {
+        try {
+          const jadwalForTeacher = await (prisma as any).jadwalKBM.findUnique({
+            where: { id: validJadwalKbmId },
+            select: { jam_mulai: true }
+          });
+          if (jadwalForTeacher?.jam_mulai) {
+            const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(parsedStart);
+            const fromSchedule = new Date(`${todayDateStr}T${jadwalForTeacher.jam_mulai}:00.000${tzOffset}`);
+            if (!isNaN(fromSchedule.getTime())) {
+              teacherScheduledStart = fromSchedule;
+            }
+          }
+        } catch (e) {
+          // fallback ke parsedStart
+        }
+      }
+
       await upsertTeacherAttendanceOnOpen(
         tenantId,
         sesi.id,
         guru_id,
-        parsedStart,
+        teacherScheduledStart,
         targetTpId || 'default-tp',
         targetSemId || 'default-sem',
         'Otomatis HADIR saat pembukaan sesi KBM (Foto)',
