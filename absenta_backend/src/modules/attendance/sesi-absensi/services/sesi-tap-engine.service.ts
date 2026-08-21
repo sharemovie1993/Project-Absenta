@@ -251,36 +251,35 @@ export class SesiTapEngineService {
       }
     });
 
-    let effectiveTapTime: Date | null = tapTime;
+    let effectiveTapTime: Date | null = null;
     let isTerlambat = false;
     let menitKeterlambatan = 0;
 
     if (status === 'HADIR') {
-      // 🛡️ First-In Check-In Timestamp Preservation:
-      // Jika siswa sudah tercatat HADIR dan sudah memiliki waktu_tap pertama,
-      // jangan ubah waktu_tap dan menit_keterlambatan saat ada klik ulang/idempotent tap.
-      if (existing && existing.status === 'HADIR' && existing.waktu_tap && !waktu_tap) {
-        effectiveTapTime = existing.waktu_tap;
-        isTerlambat = existing.is_terlambat || false;
-        menitKeterlambatan = existing.menit_keterlambatan || 0;
-      } else {
-        effectiveTapTime = tapTime || new Date();
+      // 🛡️ Historical Check-In Timestamp Restoration (Human Error Protection):
+      // 1. Jika ada waktu_tap yang dikirim eksplisit, gunakan itu
+      // 2. Jika di database sudah pernah ada waktu_tap tercatat (bahkan saat siswa sempat diubah ke ALPA), pulihkan waktu tersebut!
+      const historicalTap = (waktu_tap ? new Date(waktu_tap) : null) || (existing?.waktu_tap ? new Date(existing.waktu_tap) : null);
+      
+      effectiveTapTime = historicalTap || tapTime || new Date();
 
-        // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
-        const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
-          tenantId,
-          sesi.kelas_id,
-          sesi.waktu_mulai,
-          effectiveTapTime
-        );
+      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+      const { effectiveStartTarget } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+        tenantId,
+        sesi.kelas_id,
+        sesi.waktu_mulai,
+        effectiveTapTime
+      );
 
-        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
-          isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
-        }
+      if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
+        isTerlambat = true;
+        menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
       }
     } else {
-      effectiveTapTime = null;
+      // Saat status ALPA, IZIN, SAKIT, DISPEN:
+      // Pertahankan existing.waktu_tap di database agar jika guru salah klik lalu mengembalikan ke HADIR,
+      // jam kedatangan asli siswa tidak hilang/berubah maju!
+      effectiveTapTime = existing?.waktu_tap || null;
       isTerlambat = false;
       menitKeterlambatan = 0;
     }
@@ -428,33 +427,29 @@ export class SesiTapEngineService {
     let autoCatatan = catatan;
 
     if (status === 'HADIR') {
-      // 🛡️ First-In Check-In Timestamp Preservation:
-      if (existing && existing.status === 'HADIR' && existing.waktu_tap && !waktu_tap) {
-        effectiveTapTime = existing.waktu_tap;
-        isTerlambat = existing.is_terlambat || false;
-        menitKeterlambatan = existing.menit_keterlambatan || 0;
-      } else {
-        effectiveTapTime = tapTime || new Date();
+      // 🛡️ Historical Check-In Timestamp Restoration (Human Error Protection):
+      const historicalTap = (waktu_tap ? new Date(waktu_tap) : null) || (existing?.waktu_tap ? new Date(existing.waktu_tap) : null);
+      
+      effectiveTapTime = historicalTap || tapTime || new Date();
 
-        // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
-        const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
-          tenantId,
-          sesi.kelas_id,
-          sesi.waktu_mulai,
-          effectiveTapTime
-        );
+      // ⚖️ Resolusi Target Mulai Efektif (Pembiasaan & Transisi Guru Molor)
+      const { effectiveStartTarget, auditNote } = await sesiHelperService.resolveEffectiveKbmStartTarget(
+        tenantId,
+        sesi.kelas_id,
+        sesi.waktu_mulai,
+        effectiveTapTime
+      );
 
-        if (auditNote && !autoCatatan) {
-          autoCatatan = auditNote;
-        }
+      if (auditNote && !autoCatatan) {
+        autoCatatan = auditNote;
+      }
 
-        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
-          isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
-        }
+      if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
+        isTerlambat = true;
+        menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
       }
     } else {
-      effectiveTapTime = null;
+      effectiveTapTime = existing?.waktu_tap || null;
       isTerlambat = false;
       menitKeterlambatan = 0;
     }
@@ -639,10 +634,11 @@ export class SesiTapEngineService {
           nisn: sa.siswa?.nisn || '-',
           is_guru: false,
           status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
-          is_terlambat: a?.is_terlambat || false,
-          menit_keterlambatan: a?.menit_keterlambatan || 0,
+          is_terlambat: a?.status === 'HADIR' ? (a?.is_terlambat || false) : false,
+          menit_keterlambatan: a?.status === 'HADIR' ? (a?.menit_keterlambatan || 0) : 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
-          waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
+          waktu_tap: (a?.status === 'HADIR' && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
+          original_waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
           Siswa: {
             id: sa.siswa?.id,
@@ -662,10 +658,11 @@ export class SesiTapEngineService {
           nisn: s.nisn || s.nis || '-',
           is_guru: false,
           status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
-          is_terlambat: a?.is_terlambat || false,
-          menit_keterlambatan: a?.menit_keterlambatan || 0,
+          is_terlambat: a?.status === 'HADIR' ? (a?.is_terlambat || false) : false,
+          menit_keterlambatan: a?.status === 'HADIR' ? (a?.menit_keterlambatan || 0) : 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
-          waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
+          waktu_tap: (a?.status === 'HADIR' && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
+          original_waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
           Siswa: {
             id: s.id,
@@ -687,6 +684,9 @@ export class SesiTapEngineService {
     }
 
     const teacherAbsen = sesi.AbsenGuru?.[0];
+    const isTeacherHadir = teacherAbsen?.status === 'HADIR';
+    const teacherTapStr = teacherAbsen?.waktu_tap ? teacherAbsen.waktu_tap.toISOString() : (isTeacherHadir ? sesi.created_at.toISOString() : null);
+
     const teacherRec = {
       id: teacherAbsen?.id || `guru-${sesi.guru_id || 'unassigned'}`,
       siswa_akademik_id: `guru-${sesi.guru_id || 'unassigned'}`,
@@ -695,10 +695,11 @@ export class SesiTapEngineService {
       nisn: 'GURU',
       is_guru: true,
       status: teacherAbsen?.status || 'BELUM_HADIR',
-      is_terlambat: teacherAbsen?.is_terlambat || false,
-      menit_keterlambatan: teacherAbsen?.menit_keterlambatan || 0,
+      is_terlambat: isTeacherHadir ? (teacherAbsen?.is_terlambat || false) : false,
+      menit_keterlambatan: isTeacherHadir ? (teacherAbsen?.menit_keterlambatan || 0) : 0,
       poin_kehadiran: 0,
-      waktu_tap: teacherAbsen?.waktu_tap ? teacherAbsen.waktu_tap.toISOString() : (teacherAbsen?.status === 'HADIR' ? sesi.created_at.toISOString() : null),
+      waktu_tap: isTeacherHadir ? teacherTapStr : null,
+      original_waktu_tap: teacherAbsen?.waktu_tap ? teacherAbsen.waktu_tap.toISOString() : (sesi.created_at ? sesi.created_at.toISOString() : null),
       catatan: teacherAbsen?.catatan || null,
       Guru: {
         id: sesi.guru_id,
