@@ -79,8 +79,8 @@ const SarprasDashboard = React.lazy(() => import('@/pages/sarpras/SarprasDashboa
 const HubinDashboard = React.lazy(() => import('@/pages/hubin/HubinDashboardPage'));
 const CooperativeDashboard = React.lazy(() => import('@/pages/cooperative/Dashboard'));
 const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
-// Admin Overview Dashboard — dirender di tab Admin untuk role ADMIN/SUPERADMIN
-const AdminOverviewDashboard = React.lazy(() => import('@/pages/dashboard/DashboardOverview'));
+// Admin Overview Tab — dirender di tab Admin untuk role ADMIN/SUPERADMIN
+import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 // Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
 const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
 
@@ -984,9 +984,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
         {/* 🛡️ TAB ADMIN: DASHBOARD OPERASIONAL ADMIN/SUPERADMIN */}
         {activeTab === 'admin' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <AdminOverviewDashboard />
-          </Suspense>
+          <StaffAdminOverviewTab user={user} />
         )}
 
         {/* 🧑‍💼 TAB 10: TU KEPEGAWAIAN (DATA INDUK & DAPODIK) */}
