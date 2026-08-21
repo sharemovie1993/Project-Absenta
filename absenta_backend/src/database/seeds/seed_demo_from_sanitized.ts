@@ -239,9 +239,30 @@ export async function seedDemoFromSanitized() {
     }
   }
 
-  // 7. Guru & Users
-  console.log(`👨‍🏫 Menyemai ${data.gurus.length} Guru & Tendik Riil (Tersanitasi)...`);
+  // 7. Akun Administrator Tenant & Guru/Tendik
+  console.log(`👨‍🏫 Menyemai Akun Admin & ${data.gurus.length} Guru & Tendik Riil (Tersanitasi)...`);
   const guruUserMap: Record<string, { userId: string; guruId: string }> = {};
+
+  // Dedicated Admin Sekolah
+  await prisma.user.upsert({
+    where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'admin@absenta.id' } },
+    update: {
+      full_name: 'Administrator Sekolah (Demo)',
+      password: data.gurus[0]?.user.password_hash,
+      role_id: roleAdminId,
+      status: 'ACTIVE',
+      email_verified: true,
+    },
+    create: {
+      tenant_id: effectiveTenantId,
+      email: 'admin@absenta.id',
+      full_name: 'Administrator Sekolah (Demo)',
+      password: data.gurus[0]?.user.password_hash,
+      role_id: roleAdminId,
+      status: 'ACTIVE',
+      email_verified: true,
+    }
+  });
 
   for (const g of data.gurus) {
     const isPimpinan = g.user.email.includes('kepsek@') || g.user.email.includes('tu@') || g.user.email.includes('gerbang@');
