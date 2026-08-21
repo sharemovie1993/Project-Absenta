@@ -434,48 +434,38 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
 
   return (
     <div className={cn("w-full select-none", className)}>
-      {/* ── BENTO KLASTER WORKFLOW (Kartu Alur Kerja Terkelompok Bersih & Cepat) ── */}
+      {/* ── BENTO KLASTER WORKFLOW (GoPay Agen Style: 4-Kolom, Kompak & Rapi) ── */}
       <div className={cn(
-        "grid gap-4 sm:gap-5",
+        "grid gap-3 sm:gap-4",
         clusters.length > 1 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
       )}>
         {clusters.map((cluster, clusterIdx) => (
           <div
             key={cluster.id}
-            className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+            className="p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between"
           >
-            {/* Header Klaster */}
-            <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                  cluster.badgeColor
-                )}>
-                  {cluster.badge}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                  {cluster.items.length} Menu
-                </span>
+            {/* Header Klaster ala GoPay Agen: Bersih, Ringkas, Sejajar */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg">{cluster.icon}</span>
+                <h2 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                  {cluster.title}
+                </h2>
               </div>
 
-              <div className="flex items-center gap-2.5 mt-2">
-                <span className="text-xl sm:text-2xl">{cluster.icon}</span>
-                <div>
-                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                    {cluster.title}
-                  </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                    {cluster.description}
-                  </p>
-                </div>
-              </div>
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[9.5px] font-extrabold border shrink-0",
+                cluster.badgeColor
+              )}>
+                {cluster.items.length} Menu
+              </span>
             </div>
 
-            {/* Grid Item Squircle di Dalam Klaster (Ramah HP: 3 Kolom Kompak, Desktop: 4 Kolom) */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3 pt-3.5 mt-auto">
+            {/* Grid 4-Kolom Tetap ala GoPay Agen (Sempurna di Layar HP & Desktop) */}
+            <div className="grid grid-cols-4 gap-y-3.5 gap-x-1 sm:gap-x-2 pt-2.5 mt-auto">
               {cluster.items.map((item, idx) => {
                 const IconComp = iconForName(item.icon) || Layers;
-                const palette = TILE_GRADIENTS[(clusterIdx * 3 + idx) % TILE_GRADIENTS.length];
+                const palette = TILE_GRADIENTS[(clusterIdx * 4 + idx) % TILE_GRADIENTS.length];
                 const targetPath = item.path || '#';
 
                 return (
@@ -483,21 +473,13 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
                     key={item.id || idx}
                     to={targetPath}
                     title={item.title}
-                    className="group flex flex-col items-center justify-start p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all duration-200 cursor-pointer text-center w-full select-none"
+                    className="group flex flex-col items-center justify-start p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full select-none active:scale-95"
                   >
-                    {/* Squircle App Icon + Mirror Reflection */}
-                    <div className="relative flex flex-col items-center">
-                      <div
-                        aria-hidden="true"
-                        className={cn(
-                          "absolute inset-0 rounded-2xl opacity-20 group-hover:opacity-40 blur-md transition-all duration-300 pointer-events-none",
-                          palette.gradient
-                        )}
-                      />
-
+                    {/* Squircle Icon Container ala GoPay */}
+                    <div className="relative flex items-center justify-center">
                       <div
                         className={cn(
-                          "relative z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-0.5 group-active:scale-95 border",
+                          "w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-xs transition-all duration-200 group-hover:scale-105 border",
                           palette.gradient,
                           palette.border
                         )}
@@ -505,33 +487,15 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
                         <IconComp size={20} className="stroke-[2.2]" />
 
                         {item.isPremium && (
-                          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
+                          <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full text-[7.5px] font-black bg-rose-500 text-white shadow-xs leading-none ring-2 ring-white dark:ring-slate-900">
                             PRO
                           </span>
                         )}
                       </div>
-
-                      {/* Mirror Reflection */}
-                      <div
-                        aria-hidden="true"
-                        style={{
-                          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
-                          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)',
-                        }}
-                        className={cn(
-                          "w-9 h-3 sm:w-10 sm:h-3.5 rounded-b-xl opacity-30 group-hover:opacity-50 transition-all duration-300 blur-[1px] scale-y-[-1] -mt-0.5 pointer-events-none select-none overflow-hidden flex items-start justify-center",
-                          palette.gradient
-                        )}
-                      >
-                        <IconComp size={18} className="stroke-[2] -mt-1.5 opacity-50" />
-                      </div>
-
-                      {/* Contact Shadow */}
-                      <div className="w-7 sm:w-8 h-1 bg-slate-900/10 dark:bg-black/30 rounded-full blur-[2px] -mt-3 group-hover:scale-110 group-hover:opacity-30 transition-all duration-300 pointer-events-none" />
                     </div>
 
                     {/* App Name Under Icon */}
-                    <span className="text-[10.5px] sm:text-[11.5px] font-bold text-slate-700 dark:text-slate-200 mt-1.5 leading-snug line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-1.5 leading-tight line-clamp-2 text-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors max-w-[72px] sm:max-w-[80px]">
                       {item.title}
                     </span>
                   </Link>
