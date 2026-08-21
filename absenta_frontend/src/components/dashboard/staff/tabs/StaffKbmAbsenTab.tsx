@@ -194,6 +194,8 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       const foto = payload.fotoDataUrl;
       const rawJadwalId = (payload.jadwal as any).jadwal_kbm_id || payload.jadwal.id;
       const cleanJadwalId = rawJadwalId ? String(rawJadwalId).replace(/^sched_/, '') : undefined;
+      const jamSelesai = (payload.jadwal as any).jam_selesai || null;
+      const waktuSelesaiISO = jamSelesai ? `${today}T${jamSelesai}:00${formatLocalDateTime(getVirtualDate()).slice(19)}` : undefined;
       return createSesiAbsensi({
         jadwal_kbm_id: cleanJadwalId,
         kelas_id: payload.jadwal.kelas_id,
@@ -202,9 +204,10 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         jenis_kegiatan: 'KBM',
         tanggal: today,
         waktu_mulai: nowISO,
+        waktu_selesai: waktuSelesaiISO,  // ← wajib agar auto-close job bisa tutup sesi
         foto_bukti_url: foto,
         foto_kegiatan: foto,
-      });
+      } as any);
     },
     onSuccess: (_, variables) => {
       const namaKegiatan = variables.jadwal.mapel_nama || (variables.jadwal as any).mapel || variables.jadwal.kegiatan || (variables.jadwal as any).Mapel?.nama_mapel || 'Mata Pelajaran';
