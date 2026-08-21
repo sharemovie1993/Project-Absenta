@@ -256,6 +256,40 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
         </div>
       )}
 
+      {/* Premium Stats Grid (Analytics Cards) */}
+      {(stats.length > 0 || isLoadingStats) && (
+        <div className="px-3 sm:px-0 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-h-[60px] sm:min-h-[80px]">
+          {isLoadingStats ? (
+            [...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "h-[60px] sm:h-[80px] bg-white dark:bg-slate-900 border border-gray-100 dark:border-gray-800 rounded-lg sm:rounded-xl animate-pulse",
+                  i >= 2 && "hidden sm:block",
+                  i >= 4 && "hidden lg:block"
+                )}
+              />
+            ))
+          ) : (
+            (stats || []).map((stat, idx) => (
+              <MemoizedAnalyticsCard
+                key={idx}
+                title={stat.title}
+                value={stat.value}
+                isLoading={isLoadingStats}
+                icon={stat.icon}
+                gradient={stat.gradient}
+                subtitle={stat.subtitle}
+                onClick={stat.onClick}
+                subCards={stat.subCards}
+                variant={stat.variant || 'premium'}
+                mobileCompact={true}
+              />
+            ))
+          )}
+        </div>
+      )}
+
       {/* Unified Main Content Container - Secured dynamically via Isolated layout-level ErrorBoundary */}
       <div className="w-full">
         <InfraErrorBoundary 
