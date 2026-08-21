@@ -301,7 +301,8 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         )
       )
     ), {
-      duration: Infinity,
+      id: `session-test-alert-${targetSession.id}`,
+      duration: 15000,
       position: 'top-right',
       style: {
         background: '#090d16',

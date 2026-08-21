@@ -160,7 +160,7 @@ export function useSessionWindowAlert({
         // Picu Alarm Suara (Find My Device style), Getar Berulang, dan Push Banner OS
         notifySessionReady(title, body, targetUrl);
 
-        // Toast interaktif persisten (berbunyi terus sampai user menekan tombol)
+        // Toast interaktif (dengan id unik agar tidak menumpuk & auto-dismiss dalam 15 detik)
         toast((t) => (
           React.createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm p-1' },
             React.createElement('div', { className: 'space-y-1' },
@@ -192,7 +192,8 @@ export function useSessionWindowAlert({
             )
           )
         ), {
-          duration: Infinity, // Tetap berbunyi & tampil sampai user mematikan
+          id: `session-window-alert-${item.id}`,
+          duration: 15000,
           position: 'top-right',
           style: {
             background: '#090d16',

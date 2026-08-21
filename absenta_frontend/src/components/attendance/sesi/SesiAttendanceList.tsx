@@ -361,7 +361,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       return { previousQueryRes };
     },
     onSuccess: (_, variables) => {
-      toast.success('Status absensi diperbarui');
+      toast.success('Status absensi diperbarui', { id: 'status-absensi-toast', duration: 1500 });
       
       // Save persistent teacher attendance ONLY WHEN SERVER ACCEPTS THE TRANSACTION
       const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.guru_id || r.id) === variables.siswaAkademikId);
@@ -399,7 +399,7 @@ export function SesiAttendanceList({ records, sesi, isReportMode = false }: Prop
       }
 
       const msg = formatErrorMessage(error);
-      toast.error(msg);
+      toast.error(msg, { id: 'status-absensi-toast', duration: 3000 });
     },
     onSettled: () => {
       // Force synchronization with server
