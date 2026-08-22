@@ -38,27 +38,52 @@ export function useCapabilities() {
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TU & KOPERASI)
     // ═══════════════════════════════════════════════════════════════════
+    const isTUKepala =
+      userPositions.includes('TU_KEPALA') ||
+      can('correspondence.outbox.sign');
+
     const isTUPersuratan =
-      userPositions.includes('TU_PERSURATAN');
+      userPositions.includes('TU_PERSURATAN') ||
+      can('correspondence.inbox.view');
 
     const isTUKeuangan =
-      userPositions.includes('TU_KEUANGAN');
+      userPositions.includes('TU_KEUANGAN') ||
+      can('tu.finance.recap.view');
 
     const isTUKepegawaian =
-      userPositions.includes('TU_KEPEGAWAIAN');
+      userPositions.includes('TU_KEPEGAWAIAN') ||
+      can('academic.teachers.manage') ||
+      can('academic.students.manage');
 
     const isTUSarpras =
-      userPositions.includes('TU_SARPRAS');
-
-    const isKoperasi =
-      userPositions.includes('KOPERASI');
+      userPositions.includes('TU_SARPRAS') ||
+      can('sarpras.inventory.manage');
 
     const isTU =
-      userPositions.includes('TU_KEPALA') ||
+      isTUKepala ||
       isTUPersuratan ||
       isTUKeuangan ||
       isTUKepegawaian ||
       isTUSarpras;
+
+    // Koperasi: 5 Jabatan Kanonikal (Ketua, Bendahara, Sekretaris, Manajer/Kasir, Pengawas)
+    const isKoperasiHead = userPositions.includes('KETUA_KOPERASI');
+    const isKoperasiFinance = userPositions.includes('BENDAHARA_KOPERASI');
+    const isKoperasiSecretary = userPositions.includes('SEKRETARIS_KOPERASI');
+    const isKoperasiStore = userPositions.includes('MANAJER_TOKO_KOPERASI');
+    const isKoperasiAuditor = userPositions.includes('PENGAWAS_KOPERASI');
+
+    const isKoperasi =
+      userPositions.includes('KOPERASI') ||
+      userPositions.some(p => p.includes('KOPERASI')) ||
+      isKoperasiHead ||
+      isKoperasiFinance ||
+      isKoperasiSecretary ||
+      isKoperasiStore ||
+      isKoperasiAuditor ||
+      can('cooperative.dashboard.view') ||
+      can('cooperative.members.view') ||
+      can('cooperative.pos.access');
 
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 3: KOORDINATOR UNIT & PEMBINA
@@ -101,9 +126,6 @@ export function useCapabilities() {
     const isSarpras =
       userPositions.includes('SARPRAS') ||
       can('dashboard.view.sarpras');
-
-    const isTUKepala =
-      userPositions.includes('TU_KEPALA');
 
     const isKepsek =
       userPositions.includes('KEPALA_SEKOLAH') ||
