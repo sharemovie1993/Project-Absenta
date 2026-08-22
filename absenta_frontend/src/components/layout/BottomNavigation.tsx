@@ -65,7 +65,11 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isGerbang,
     isPiketGuru,
     isTU,
+    isTUKepala,
     isTUKepegawaian,
+    isTUPersuratan,
+    isTUKeuangan,
+    isTUSarpras,
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
@@ -76,7 +80,6 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const guruProfile = user?.guru_profile;
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
-  const isTuStaff = user?.role === 'TU' || isTU || (guruProfile?.is_tu ?? false);
 
   const jenisPtk = (
     guruProfile?.jenis_ptk ||
@@ -85,10 +88,18 @@ export const BottomNavigation: React.FC = React.memo(() => {
     ''
   ).toUpperCase();
 
+  const isTuStaff = isTU ||
+    user?.role === 'TU' ||
+    jenisPtk === 'TENAGA_KEPENDIDIKAN' ||
+    (guruProfile?.is_tu ?? false);
+
   const isPendidik = (
-    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps))) &&
-    !isTuStaff
+    !isTuStaff &&
+    !isKepsek &&
+    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps)))
   );
+
+  const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || (isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
@@ -99,6 +110,16 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
   const currentTab = searchParams.get('tab');
   const currentSubtab = searchParams.get('subtab');
+
+  // Dynamic TU Tab Label & Badge
+  const tuTabMeta = useMemo(() => {
+    if (isTUKepala) return { label: 'Tata Usaha', shortLabel: 'TU', badge: 'KOR TU' };
+    if (isTUKepegawaian) return { label: 'TU Kepegawaian', shortLabel: 'Kepegawaian', badge: 'DAPODIK' };
+    if (isTUPersuratan) return { label: 'TU Persuratan', shortLabel: 'Persuratan', badge: 'SURAT' };
+    if (isTUKeuangan) return { label: 'TU Keuangan', shortLabel: 'Keuangan', badge: 'SPP' };
+    if (isTUSarpras) return { label: 'TU Sarpras & Logistik', shortLabel: 'Logistik', badge: 'KIB' };
+    return { label: 'Tata Usaha', shortLabel: 'TU', badge: 'TU' };
+  }, [isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras]);
 
   // Close floating flyout ONLY when navigating to a different page route (pathname change)
   useEffect(() => {
@@ -150,8 +171,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const staffTabs = useMemo<MobileBottomTabItem[]>(() => {
     const list: MobileBottomTabItem[] = [];
 
-    // 0. Dashboard Admin (Khusus Admin)
-    if (isAdminRole) {
+    // 0. Dashboard Admin (Khusus Admin Sistem Murni, bukan Kepala Sekolah)
+    if (isAdminRole && !isKepsek) {
       list.push({
         id: 'admin',
         label: 'Admin',
@@ -163,12 +184,24 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 1. Beranda Guru / Staff (Paling Depan / Utama untuk Guru/Staff, Sembunyikan untuk Admin murni)
-    if (!isAdminRole || isPendidik) {
+    // 1. Beranda Guru / Staff / Overview Eksekutif Kepsek
+    if (isKepsek) {
       list.push({
         id: 'ringkasan',
-        label: 'Beranda',
-        shortLabel: 'Beranda',
+        label: 'Overview Eksekutif',
+        shortLabel: 'Overview',
+        icon: Home,
+        badge: 'KEPSEK',
+        targetPath: '/dashboard',
+        isActive: (pathname, tabParam) =>
+          (pathname === '/dashboard' || pathname === '/dashboard/') &&
+          (!tabParam || tabParam === 'ringkasan'),
+      });
+    } else if ((isPendidik || isPureGerbangStaff) && !isAdminRole) {
+      list.push({
+        id: 'ringkasan',
+        label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda',
+        shortLabel: isPureGerbangStaff ? 'Gerbang' : 'Beranda',
         icon: Home,
         targetPath: '/dashboard',
         isActive: (pathname, tabParam) =>
@@ -177,8 +210,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 2. KBM & Absen (Guru Mapel)
-    if ((!isAdminRole || isPendidik) && !isTuStaff) {
+    // 2. KBM & Absen (Guru Mapel Pendidik Aktif)
+    if (!isKepsek && !isTuStaff && (!isAdminRole || isPendidik)) {
       list.push({
         id: 'jadwal',
         label: 'KBM & Absen',
@@ -191,7 +224,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     }
 
     // 3. Wali Kelas (dengan sub-tab anak yang melayang)
-    if (isWaliKelas) {
+    if (isWaliKelas && !isKepsek) {
       list.push({
         id: 'binaan',
         label: 'Wali Kelas',
@@ -211,8 +244,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 4. Kurikulum (hanya jika ada SK Kurikulum)
-    if (isKurikulum || isAdminRole || isKepsek) {
+    // 4. Kurikulum (hanya jika ada SK Kurikulum / Admin murni)
+    if ((isKurikulum || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'kurikulum',
         label: 'Kurikulum',
@@ -224,8 +257,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 5. Kesiswaan (hanya jika ada SK Kesiswaan)
-    if (isKesiswaan || isAdminRole || isKepsek) {
+    // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Admin murni)
+    if ((isKesiswaan || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'kesiswaan',
         label: 'Kesiswaan',
@@ -237,8 +270,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 6. Sarpras (hanya jika ada SK Sarpras)
-    if (isSarpras || isToolman || isKabeng || isAdminRole || isKepsek) {
+    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin murni)
+    if ((isSarpras || isToolman || isKabeng || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'sarpras',
         label: 'Sarpras',
@@ -250,8 +283,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 7. Hubin (hanya jika ada SK Hubin)
-    if (isHubin || isBkk || isKaprog || isAdminRole || isKepsek) {
+    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin murni)
+    if ((isHubin || isBkk || isKaprog || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'hubin',
         label: 'Hubin',
@@ -263,8 +296,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 8. Koperasi (hanya jika ada SK Koperasi)
-    if (isKoperasi || isAdminRole || isKepsek) {
+    // 8. Koperasi (hanya jika ada SK Koperasi / Admin murni)
+    if ((isKoperasi || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'koperasi',
         label: 'Koperasi',
@@ -276,8 +309,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 9. BP/BK (hanya jika ada SK BPBK)
-    if (isBpbk || isAdminRole || isKepsek) {
+    // 9. BP/BK (hanya jika ada SK BPBK / Admin murni)
+    if ((isBpbk || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'bpbk',
         label: 'BP/BK',
@@ -289,21 +322,21 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 10. TU Kepegawaian (hanya jika ada SK TU)
-    if (isTUKepegawaian || isAdminRole || isKepsek) {
+    // 10. TU (hanya jika ada SK TU / Admin murni)
+    if ((isTUKepegawaian || isTU || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({
         id: 'kepegawaian',
-        label: 'Data Induk & TU',
-        shortLabel: 'Data Induk',
+        label: tuTabMeta.label,
+        shortLabel: tuTabMeta.shortLabel,
         icon: ClipboardList,
-        badge: 'TU',
+        badge: tuTabMeta.badge,
         targetPath: '/dashboard?tab=kepegawaian',
         isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'kepegawaian') || pathname.startsWith('/academic'),
       });
     }
 
-    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, atau Guru Piket biasa. Sembunyikan untuk Admin murni)
-    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik)) {
+    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, atau Guru Piket biasa. Sembunyikan untuk Admin murni & Kepsek)
+    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik) && !isKepsek) {
       list.push({
         id: 'kelola',
         label: 'Piket Operasional',
@@ -318,7 +351,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     // 12. Profil Saya (Selalu ada untuk semua staff)
     list.push({
       id: 'profil',
-      label: 'Profil Saya',
+      label: isKepsek ? 'Profil Kepala Sekolah' : 'Profil Saya',
       shortLabel: 'Profil',
       icon: User,
       targetPath: '/dashboard?tab=profil',
@@ -345,7 +378,11 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isGerbang,
     isTUKepegawaian,
     isTU,
+    tuTabMeta,
     guruProfile,
+    isPendidik,
+    isPureGerbangStaff,
+    isPiketGuru,
   ]);
 
   const activeTabsList = isSiswa ? siswaTabs : staffTabs;
