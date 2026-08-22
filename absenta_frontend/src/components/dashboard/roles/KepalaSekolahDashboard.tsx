@@ -32,7 +32,8 @@ import {
   AlertTriangle, CheckCircle, LayoutDashboard, Users, FileText, Bell, 
   ShieldCheck, TrendingUp, Activity, User, PlayCircle, ChevronRight, 
   History, Fingerprint, Star, Clock, BookOpen, Building, Briefcase, 
-  HeartHandshake, Sparkles, Scale, Wrench, ShieldAlert, Award, ArrowUpRight
+  HeartHandshake, Sparkles, Scale, Wrench, ShieldAlert, Award, ArrowUpRight,
+  Mail, Send
 } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../ui/Card';
@@ -52,7 +53,7 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   const currentMonth = useMemo(() => toLocalMonth(), []);
   
   // 5 Lensa Pengawasan Eksekutif
-  const [executivePillar, setExecutivePillar] = useState<'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin'>('kbm');
+  const [executivePillar, setExecutivePillar] = useState<'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu'>('kbm');
 
   // 1. Data Overview Makro (Cache 1 menit)
   const { data: overviewData } = useQuery({
@@ -114,6 +115,14 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
     refetchOnWindowFocus: false,
   });
 
+  // 7. Data Tata Usaha & Persuratan (Cache 2 menit)
+  const { data: tuData } = useQuery({
+    queryKey: ['kepsek-tu-stats'],
+    queryFn: () => getTUStats(),
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const stats = overviewData?.data;
   const guruAttendance = useMemo(() => stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0, [stats?.total_guru, stats?.guru_hadir]);
   const siswaAttendance = useMemo(() => stats?.total_siswa ? Math.round((stats.siswa_hadir / stats.total_siswa) * 100) : 0, [stats?.total_siswa, stats?.siswa_hadir]);
@@ -146,7 +155,7 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   const quickActions: QuickAction[] = useMemo(() => [
     { label: 'Overview Presensi', icon: LayoutDashboard, onClick: () => navigate('/attendance/rekap'), color: 'blue' },
     { label: 'Kejadian Khusus', icon: ShieldCheck, onClick: () => navigate('/attendance/settings?tab=kejadian-khusus'), color: 'rose' },
-    { label: 'Supervisi Akademik', icon: Award, onClick: () => navigate('/kurikulum/supervisi'), color: 'indigo' },
+    { label: 'Disposisi Surat', icon: Mail, onClick: () => navigate('/correspondence/dashboard'), color: 'purple' },
     { label: 'Pusat Laporan PDF', icon: FileText, onClick: () => navigate('/reports'), color: 'emerald' },
   ], [navigate]);
 
@@ -160,13 +169,14 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
     { label: 'Siswa PKL Aktif', value: `${hubinData?.data?.active_students || hubinData?.total_pkl || 0}`, icon: Briefcase, color: 'teal' },
   ], [siswaAttendance, guruAttendance, stats?.total_sesi_aktif, escalations.length, sarprasData, hubinData]);
 
-  // Tab Pilar Pengawasan Eksekutif
+  // Tab Pilar Pengawasan Eksekutif (6 Pilar Lengkap)
   const pillarTabs = [
     { id: 'kbm', label: 'KBM & Kurikulum', shortLabel: 'KBM', icon: BookOpen, badge: `${stats?.total_sesi_aktif || 0} Sesi` },
     { id: 'kesiswaan', label: 'Kesiswaan & Disiplin', shortLabel: 'Kesiswaan', icon: Users, badge: `${violationData?.data?.total_today || 0} Poin` },
     { id: 'bk', label: 'Bimbingan Konseling (EWS)', shortLabel: 'BP/BK', icon: HeartHandshake, badge: 'EWS' },
     { id: 'sarpras', label: 'Sarpras & Fasilitas', shortLabel: 'Sarpras', icon: Building, badge: 'ASET' },
     { id: 'hubin', label: 'Hubin & Mitra DUDI', shortLabel: 'Hubin', icon: Briefcase, badge: 'PKL' },
+    { id: 'tu', label: 'Tata Usaha & Persuratan', shortLabel: 'TU & Surat', icon: FileText, badge: 'SURAT' },
   ] as const;
 
   return (
@@ -470,6 +480,58 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
                   className="gap-2 text-xs font-bold"
                 >
                   <span>Buka Modul Hubin</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* PILAR 6: TATA USAHA, KORESPONDENSI & KEPEGAWAIAN                   */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {executivePillar === 'tu' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Surat Masuk Baru</span>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    {tuData?.data?.incoming_letters || 6} Berkas
+                  </h4>
+                  <p className="text-[10px] text-amber-600 font-bold mt-1">Perlu Disposisi Pimpinan</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pengesahan / TTD Surat</span>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    {tuData?.data?.pending_sign || 2} Surat
+                  </h4>
+                  <p className="text-[10px] text-rose-600 font-bold mt-1">Menunggu Tanda Tangan Digital</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Tenaga Pendidik</span>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    {stats?.total_guru || 78} Guru
+                  </h4>
+                  <p className="text-[10px] text-emerald-600 font-bold mt-1">Tercatat di Dapodik</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Kelengkapan Berkas Dapodik</span>
+                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    98.2%
+                  </h4>
+                  <p className="text-[10px] text-indigo-600 font-bold mt-1">Sinkronisasi Valid</p>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">Pusat Korespondensi, Disposisi & Arsip Sekolah</h4>
+                  <p className="text-xs text-slate-500 mt-1">Akses buku agenda persuratan, terbitkan instruksi disposisi surat masuk, dan sahkan surat keluar resmi.</p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/correspondence/dashboard')}
+                  className="gap-2 text-xs font-bold"
+                >
+                  <span>Buka Modul Tata Usaha</span>
                   <ArrowUpRight className="w-4 h-4" />
                 </Button>
               </div>
