@@ -19,19 +19,24 @@ export default defineCronJob({
       return;
     }
 
-    let processedCount = 0;
+    let sentCount = 0;
+    let skippedCount = 0;
     for (const row of configRows) {
       try {
         const config = JSON.parse(row.value);
         if (config.enabled && config.nightEnabled && config.targetGroupId) {
-          await service.sendPiketReminderToGroup(row.tenant_id, true);
-          processedCount++;
+          const result = await service.sendPiketReminderToGroup(row.tenant_id, true);
+          if (result.skipped) {
+            skippedCount++;
+          } else {
+            sentCount++;
+          }
         }
       } catch (err: any) {
         appLogger.error({ job: PIKET_NIGHT_REMINDER_JOB_NAME, tenantId: row.tenant_id, err: err.message }, 'Gagal mengirim pengingat malam piket guru');
       }
     }
 
-    appLogger.info({ job: PIKET_NIGHT_REMINDER_JOB_NAME, processedCount }, `Selesai mengirim pengingat malam piket guru ke WA Group. Terkirim: ${processedCount}`);
+    appLogger.info({ job: PIKET_NIGHT_REMINDER_JOB_NAME, sentCount, skippedCount }, `Selesai memproses pengingat malam piket guru ke WA Group. Terkirim: ${sentCount}, Dilewati (Libur): ${skippedCount}`);
   }
 });

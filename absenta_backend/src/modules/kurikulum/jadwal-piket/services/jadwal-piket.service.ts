@@ -1,6 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
 import { Hari } from '@prisma/client';
 import { cacheInvalidationService } from '../../../../utils/cache-invalidation.service';
+import { appLogger } from '../../../../utils/app-logger';
 
 export class JadwalPiketService {
   /**
@@ -554,13 +555,83 @@ export class JadwalPiketService {
     return msg;
   }
 
+  /**
+   * 10. Helper untuk memeriksa apakah tanggal target merupakan Hari Kerja Sekolah Aktif
+   * Memeriksa:
+   * 1. Konfigurasi Hari Sekolah Tenant (5 hari vs 6 hari kerja di tenant.hari_sekolah)
+   * 2. Kejadian Khusus / Libur Darurat Global (AbsensiKejadianKhusus)
+   * 3. Kalender Akademik (Libur Nasional / Libur Semester / Cuti Bersama di KalenderAkademik)
+   */
+  async checkSchoolWorkingDay(tenantId: string, dateTarget: Date, timezone: string = 'Asia/Jakarta'): Promise<{ isWorkingDay: boolean; reason?: string }> {
+    const hariEnum = this.getHariEnum(dateTarget, timezone);
 
+    // 1. Cek konfigurasi hari operasional tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { hari_sekolah: true, name: true }
+    });
 
+    const operationalDays = (tenant?.hari_sekolah && tenant.hari_sekolah.length > 0)
+      ? tenant.hari_sekolah
+      : [Hari.SENIN, Hari.SELASA, Hari.RABU, Hari.KAMIS, Hari.JUMAT];
+
+    if (!operationalDays.includes(hariEnum)) {
+      return {
+        isWorkingDay: false,
+        reason: `Bukan hari operasional sekolah (${hariEnum}). Sekolah menerapkan sistem ${operationalDays.length} hari kerja.`
+      };
+    }
+
+    // Normalisasi rentang tanggal target (UTC date boundary)
+    const targetDateStart = new Date(dateTarget);
+    targetDateStart.setUTCHours(0, 0, 0, 0);
+    const targetDateEnd = new Date(dateTarget);
+    targetDateEnd.setUTCHours(23, 59, 59, 999);
+
+    // 2. Cek Kejadian Khusus Global (Libur Darurat / Kebencanaan)
+    const globalSpecialEvent = await prisma.absensiKejadianKhusus.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tanggal: {
+          gte: targetDateStart,
+          lte: targetDateEnd
+        },
+        kelas_id: null,
+        mode_kejadian: 'LIBUR'
+      }
+    });
+
+    if (globalSpecialEvent) {
+      return {
+        isWorkingDay: false,
+        reason: `Sekolah diliburkan secara global (Kejadian Khusus: ${globalSpecialEvent.keterangan || 'Libur Darurat'})`
+      };
+    }
+
+    // 3. Cek Kalender Akademik (Libur Terjadwal / Libur Nasional)
+    const academicHoliday = await prisma.kalenderAkademik.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tanggal_mulai: { lte: targetDateEnd },
+        tanggal_selesai: { gte: targetDateStart },
+        jenis: { startsWith: 'LIBUR' }
+      }
+    });
+
+    if (academicHoliday) {
+      return {
+        isWorkingDay: false,
+        reason: `Hari Libur Akademik Terjadwal (${academicHoliday.judul})`
+      };
+    }
+
+    return { isWorkingDay: true };
+  }
 
   /**
-   * 10. Kirim Pengingat Piket ke WA Group
+   * 11. Kirim Pengingat Piket ke WA Group (Hanya Mengirim pada Hari Kerja Sekolah)
    */
-  async sendPiketReminderToGroup(tenantId: string, isNightReminder: boolean, overrideTargetGroupId?: string): Promise<{ success: boolean; message: string }> {
+  async sendPiketReminderToGroup(tenantId: string, isNightReminder: boolean, overrideTargetGroupId?: string): Promise<{ success: boolean; skipped?: boolean; message: string }> {
     const config = await this.getPiketNotifConfig(tenantId);
     const targetGroupId = overrideTargetGroupId || config.targetGroupId;
 
@@ -577,6 +648,20 @@ export class JadwalPiketService {
 
     if (isNightReminder) {
       dateTarget.setDate(dateTarget.getDate() + 1);
+    }
+
+    // 🔍 Smart Guard: Cek apakah hari target adalah hari kerja sekolah
+    const workingDayCheck = await this.checkSchoolWorkingDay(tenantId, dateTarget, timezone);
+    if (!workingDayCheck.isWorkingDay) {
+      appLogger.info(
+        { tenantId, targetGroupId, isNightReminder, reason: workingDayCheck.reason, dateTarget: dateTarget.toISOString() },
+        'Pengingat jadwal piket guru dilewati (Hari Libur / Non-Hari Kerja Sekolah)'
+      );
+      return {
+        success: true,
+        skipped: true,
+        message: `Pengingat piket dilewati: ${workingDayCheck.reason}`
+      };
     }
 
     const messageText = await this.formatPiketScheduleMessage(tenantId, dateTarget, isNightReminder);
