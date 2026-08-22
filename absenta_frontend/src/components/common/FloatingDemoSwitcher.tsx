@@ -164,30 +164,33 @@ export const FloatingDemoSwitcher: React.FC = () => {
 
   return (
     <>
-      {/* Floating Action Pill at Bottom-Right */}
-      <aside aria-label="Demo Role Switcher" className="fixed bottom-5 right-5 z-[9998] flex items-center gap-2">
+      {/* Floating Action Pill: Dinaikkan ke bottom-20 pada mobile agar tidak menghalangi Bottom Navigation */}
+      <aside 
+        aria-label="Demo Role Switcher" 
+        className="fixed bottom-20 right-3.5 md:bottom-5 md:right-5 z-[9990] flex items-center gap-2"
+      >
         <motion.button
           type="button"
           aria-label="Buka switcher peran demo"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 shadow-2xl backdrop-blur-md border border-slate-700/50 dark:border-slate-300/50 cursor-pointer group"
+          className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-full bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 shadow-2xl backdrop-blur-md border border-slate-700/50 dark:border-slate-300/50 cursor-pointer group hover:border-amber-400/60 transition-colors"
         >
           <div className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black text-[10px] shrink-0 animate-pulse">
             <Sparkles size={11} />
           </div>
 
           <div className="flex flex-col text-left leading-tight pr-1">
-            <span className="text-[9px] font-bold text-amber-300 dark:text-amber-600 uppercase tracking-widest">
+            <span className="text-[8px] sm:text-[9px] font-bold text-amber-300 dark:text-amber-600 uppercase tracking-widest">
               Mode Demo
             </span>
-            <span className="text-xs font-black truncate max-w-[140px] sm:max-w-[180px]">
+            <span className="text-[11px] sm:text-xs font-black truncate max-w-[110px] sm:max-w-[180px]">
               {activePersonName ? `${activePersonName} (${activeRoleName})` : activeRoleName}
             </span>
           </div>
 
-          <ChevronUp className={cn("w-4 h-4 transition-transform duration-200", isOpen && "rotate-180")} />
+          <ChevronUp className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200", isOpen && "rotate-180")} />
         </motion.button>
       </aside>
 
