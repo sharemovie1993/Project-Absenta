@@ -267,8 +267,15 @@ export default function ParentDashboard() {
             <RefreshCw size={16} className={cn(isRefreshing && "animate-spin")} />
           </button>
           <button
-            onClick={() => { logout(); navigate('/parent-app/access?error=logout'); }}
-            className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            onClick={() => {
+              logout();
+              localStorage.removeItem('parent_access_token');
+              sessionStorage.removeItem('is_demo_session');
+              sessionStorage.removeItem('demo_active_role');
+              sessionStorage.removeItem('demo_active_name');
+              window.location.href = '/login';
+            }}
+            className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
             title="Keluar / Logout"
           >
             <LogOut size={16} />

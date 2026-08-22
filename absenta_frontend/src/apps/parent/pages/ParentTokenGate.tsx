@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { getParentDashboard } from '../../../api/parent.api';
 import { useParentAuthStore } from '../../../store/parentAuthStore';
 
@@ -48,17 +48,47 @@ export default function ParentTokenGate() {
     validate();
   }, [searchParams, setToken, setData]);
 
+  if (searchParams.get('error') === 'logout') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-slate-50 dark:bg-slate-900">
+        <div className="w-16 h-16 mb-4 text-amber-500 bg-amber-100 dark:bg-amber-950/50 rounded-2xl flex items-center justify-center shadow-inner">
+          <LogOut size={28} />
+        </div>
+        <h1 className="text-xl font-black text-slate-900 dark:text-white mb-2">Sesi Anda Telah Berakhir</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
+          Anda telah keluar dari Portal Orang Tua. Silakan gunakan tautan terbaru dari WhatsApp sekolah atau kembali ke halaman masuk.
+        </p>
+        <div className="mt-6 flex items-center gap-3">
+          <Link
+            to="/login"
+            className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+          >
+            Ke Halaman Masuk
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-gray-50">
-        <div className="w-16 h-16 mb-4 text-red-500 bg-red-100 rounded-full flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-slate-50 dark:bg-slate-900">
+        <div className="w-16 h-16 mb-4 text-rose-500 bg-rose-100 dark:bg-rose-950/50 rounded-2xl flex items-center justify-center shadow-inner">
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
-        <p className="text-gray-600">{error ?? 'Link tidak valid atau sudah kedaluwarsa.'}</p>
-        <p className="mt-4 text-sm text-gray-500">Silakan minta link akses baru dari sekolah.</p>
+        <h1 className="text-xl font-black text-slate-900 dark:text-white mb-2">Akses Ditolak</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">{error ?? 'Link tidak valid atau sudah kedaluwarsa.'}</p>
+        <p className="mt-2 text-xs text-slate-400">Silakan minta link akses baru dari sekolah atau pihak administrasi.</p>
+        <div className="mt-6 flex items-center gap-3">
+          <Link
+            to="/login"
+            className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+          >
+            Ke Halaman Utama
+          </Link>
+        </div>
       </div>
     );
   }
