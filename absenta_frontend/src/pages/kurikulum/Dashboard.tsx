@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo, useCallback, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen, ClipboardList, ShieldCheck, Users, LayoutGrid,
@@ -533,6 +533,63 @@ export default function KurikulumDashboard() {
   /* ────────────────────────────────────────────────────────────────────────
      NORMAL MODE
   ──────────────────────────────────────────────────────────────────────── */
+  const [curriculumTab, setCurriculumTab] = useState<'overview' | 'beban' | 'perangkat' | 'supervisi'>('overview');
+  const navigate = useNavigate();
+
+  const teachersPendingPerangkat = useMemo(() => {
+    const list = safeArr<{ status?: string; guru_id?: string }>(perangkatR);
+    const approvedGuruIds = new Set(
+      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id).map(p => p.guru_id)
+    );
+    return activeEducators
+      .filter(g => !approvedGuruIds.has(g.id))
+      .map(g => ({
+        id: g.id,
+        nama: g.nama_guru,
+        nip: (g as any).nip || '-',
+        hasSubmitted: list.some(p => p.guru_id === g.id),
+      }));
+  }, [activeEducators, perangkatR]);
+
+  const metricsData = [
+    {
+      label: 'Semester Aktif',
+      value: semNama || '—',
+      sub: tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran',
+      icon: CalendarDays,
+      color: 'teal',
+      loading: lSem,
+      onClick: () => navigate('/academic/semester'),
+    },
+    {
+      label: 'Guru Pendidik',
+      value: totalGuru > 0 ? `${totalGuru}` : '—',
+      sub: 'Pendidik aktif mengajar',
+      icon: Users,
+      color: 'blue',
+      loading: lGuru,
+      onClick: () => navigate('/academic/guru'),
+    },
+    {
+      label: 'Rombongan Belajar',
+      value: totalKelas > 0 ? `${totalKelas}` : '—',
+      sub: 'Kelas terdaftar aktif',
+      icon: LayoutGrid,
+      color: 'purple',
+      loading: lKelas,
+      onClick: () => navigate('/academic/kelas'),
+    },
+    {
+      label: 'Mata Pelajaran',
+      value: totalMapel > 0 ? `${totalMapel}` : '—',
+      sub: 'Struktur kurikulum aktif',
+      icon: BookOpen,
+      color: 'amber',
+      loading: lMapel,
+      onClick: () => navigate('/academic/mapel'),
+    },
+  ];
+
   return (
     <AcademicPageLayout
       breadcrumbs={[]}
@@ -541,160 +598,237 @@ export default function KurikulumDashboard() {
       topSlot={<WorkspaceAppLauncherCard workspaceId="KURIKULUM_WORKSPACE" />}
     >
       <div className="space-y-6 pt-1">
-        {/* ==========================================
-            SECTION 1: RINGKASAN AKADEMIK & KBM
-            ========================================== */}
-        <div className="space-y-6">
 
-          {/* HERO STAT CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
-            <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran'} icon={<CalendarDays size={20} className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
-            <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru pendidik aktif" icon={<Users size={20} className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
-            <AnalyticsCard variant="premium" title="Rombongan Belajar" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid size={20} className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
-            <AnalyticsCard variant="premium" title="Mata Pelajaran" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} subtitle="total mata pelajaran" icon={<BookOpen size={20} className="text-white" />} gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" isLoading={lMapel} />
-          </div>
+        {/* 1. HERO UNIFIED BLOCK METRICS CONTAINER */}
+        <div className="w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs p-4 sm:p-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
+            {metricsData.map((m, idx) => {
+              const Icon = m.icon;
+              const colorStyles: Record<string, { bg: string; text: string; ring: string }> = {
+                teal: { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-600 dark:text-teal-400', ring: 'ring-teal-500/20' },
+                blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-600 dark:text-blue-400', ring: 'ring-blue-500/20' },
+                purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-600 dark:text-purple-400', ring: 'ring-purple-500/20' },
+                amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20' },
+              };
+              const style = colorStyles[m.color] || colorStyles.teal;
 
-          {/* Charts (Distribusi JP & Beban JP) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Distribusi JP */}
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                    {isVocational ? 'Distribusi JP per Jurusan / Kelompok' : 'Beban JP per Kelas / Tingkat'}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {isVocational 
-                      ? 'Total jam pelajaran per minggu dari struktur kurikulum aktif' 
-                      : 'Total alokasi jam pelajaran per minggu di setiap tingkat kelas'
-                    }
-                  </p>
-                </div>
-                <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
-                  <TrendingUp size={15} className="text-teal-600 dark:text-teal-400" />
-                </div>
-              </div>
-              <div className="h-64 flex-1"><DistribusiChart data={distribusi} loading={lStr} /></div>
-            </Card>
-
-            {/* Beban JP */}
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                    Beban JP per Kelompok Mapel
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total alokasi jam pelajaran per kelompok mata pelajaran aktif</p>
-                </div>
-                <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-2xl">
-                  <Activity size={15} className="text-violet-600 dark:text-violet-400" />
-                </div>
-              </div>
-              <div className="h-64 flex-1">
-                {lStr ? (
-                  <div className="h-full flex items-end gap-3 animate-pulse">
-                    {[...Array(6)]?.map((_, i) => <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${35 + i * 10}%` }} />)}
+              return (
+                <div
+                  key={idx}
+                  onClick={m.onClick}
+                  className={cn(
+                    "flex flex-col justify-between p-3 sm:p-4 rounded-2xl transition-all cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                    idx % 2 === 1 && "pt-3 sm:pt-4",
+                    idx >= 2 && "pt-3 sm:pt-4"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 truncate">
+                      {m.label}
+                    </span>
+                    <div className={cn("p-2 rounded-xl ring-1 transition-transform group-hover:scale-110", style.bg, style.text, style.ring)}>
+                      <Icon size={16} />
+                    </div>
                   </div>
-                ) : beban.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                      <XAxis dataKey="nama" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={chartTooltipContentStyle} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
-                       <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                        {beban?.map((b, i) => (
-                          <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                        ))}
-                        <LabelList dataKey="jp" position="top" style={chartLabelStyle} formatter={(v: number) => `${v} JP`} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyState text="Belum ada data struktur kurikulum" />
+
+                  <div>
+                    {m.loading ? (
+                      <div className="h-7 w-20 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg my-1" />
+                    ) : (
+                      <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-baseline gap-1">
+                        {m.value}
+                      </div>
+                    )}
+                    <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                      {m.sub}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. QUICK ACTIONS BAR WAKA KURIKULUM */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/attendance/jadwal')}
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CalendarDays size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Jadwal KBM</span>
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Susun Jadwal</h4>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/kurikulum/perangkat')}
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <FileText size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Perangkat Ajar</span>
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Verifikasi Modul</h4>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/kurikulum/supervisi')}
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-300 dark:hover:border-amber-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ShieldCheck size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Supervisi</span>
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Jadwal Observasi</h4>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/kurikulum/cetak-berkas')}
+            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ClipboardList size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Cetak Berkas</span>
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">SK Pembagian Jam</h4>
+            </div>
+          </button>
+        </div>
+
+        {/* 3. SUB-TAB SWITCHER */}
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'overview', label: 'Ringkasan & KBM Live', icon: Activity },
+            { id: 'beban', label: 'Beban JP & Konflik', icon: TrendingUp },
+            { id: 'perangkat', label: 'Perangkat Ajar Guru', icon: FileText, badge: teachersPendingPerangkat.length > 0 ? `${teachersPendingPerangkat.length}` : undefined },
+            { id: 'supervisi', label: 'Supervisi Akademik', icon: ShieldCheck },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = curriculumTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCurriculumTab(tab.id as any)}
+                className={cn(
+                  "px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                  active
+                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-700"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
-              </div>
-            </Card>
-          </div>
-
-          {/* KBM MONITORING */}
-          <MonitoringKbmWidget />
+              >
+                <Icon size={14} />
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* ==========================================
-            SECTION 2: ADMINISTRASI & PERANGKAT AJAR
+            TAB CONTENT: OVERVIEW (RINGKASAN & KBM LIVE)
             ========================================== */}
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                    Statistik Perangkat Ajar
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Persentase kelengkapan administrasi guru</p>
+        {(curriculumTab === 'overview' || curriculumTab === 'beban') && (
+          <div className="space-y-6">
+            {/* Charts (Distribusi JP & Beban JP) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Distribusi JP */}
+              <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
+                <div className="flex items-start justify-between mb-5">
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      {isVocational ? 'Distribusi JP per Jurusan / Kelompok' : 'Beban JP per Kelas / Tingkat'}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {isVocational 
+                        ? 'Total jam pelajaran per minggu dari struktur kurikulum aktif' 
+                        : 'Total alokasi jam pelajaran per minggu di setiap tingkat kelas'
+                      }
+                    </p>
+                  </div>
+                  <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
+                    <TrendingUp size={15} className="text-teal-600 dark:text-teal-400" />
+                  </div>
                 </div>
-              </div>
-              <PerangkatPanel stats={perangkatStats} recent={recentPerangkat} loading={lPerangkat} teachersCount={totalGuru} />
-            </Card>
+                <div className="h-64 flex-1"><DistribusiChart data={distribusi} loading={lStr} /></div>
+              </Card>
 
-            <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px] flex flex-col justify-between">
-              <div className="space-y-4 flex-1">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Panduan Kelengkapan Berkas</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Modul Ajar / RPP</h4>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">Setiap guru pengampu wajib mengunggah RPP/Modul Ajar sebelum minggu efektif KBM berjalan. Dokumen yang diunggah akan diverifikasi oleh Kepala Sekolah atau Waka Kurikulum.</p>
+              {/* Beban JP */}
+              <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
+                <div className="flex items-start justify-between mb-5">
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Beban JP per Kelompok Mapel
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Total alokasi jam pelajaran per kelompok mata pelajaran aktif</p>
                   </div>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Silabus & Ketercapaian</h4>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">Administrasi mencakup Kriteria Ketercapaian Tujuan Pembelajaran (KKTP), Program Tahunan (Prota), dan Program Semester (Promes) guna keselarasan rencana pengajaran.</p>
-                  </div>
-                </div>
-                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3 mt-4">
-                  <div className="p-1.5 bg-indigo-500 text-white rounded-lg flex-shrink-0">
-                    <FileText size={16} />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300">Status Verifikasi Administrasi</h4>
-                    <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">Sistem secara otomatis mendeteksi kepatuhan administrasi. Pastikan seluruh dokumen ajar berstatus "Disetujui" agar validasi kurikulum guru dinilai 100%.</p>
+                  <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-2xl">
+                    <Activity size={15} className="text-violet-600 dark:text-violet-400" />
                   </div>
                 </div>
-              </div>
-            </Card>
+                <div className="h-64 flex-1">
+                  {lStr ? (
+                    <div className="h-full flex items-end gap-3 animate-pulse">
+                      {[...Array(6)]?.map((_, i) => <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${35 + i * 10}%` }} />)}
+                    </div>
+                  ) : beban.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
+                        <XAxis dataKey="nama" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={chartTooltipContentStyle} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
+                        <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          {beban?.map((b, i) => (
+                            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                          ))}
+                          <LabelList dataKey="jp" position="top" style={chartLabelStyle} formatter={(v: number) => `${v} JP`} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <EmptyState text="Belum ada data struktur kurikulum" />
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* LIVE KBM MONITORING */}
+            {curriculumTab === 'overview' && <MonitoringKbmWidget />}
           </div>
-        </div>
+        )}
 
         {/* ==========================================
-            SECTION 3: SUPERVISI & RESOLUSI KONFLIK
+            TAB CONTENT: BEBAN & KONFLIK JADWAL
             ========================================== */}
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Progress Supervisi */}
-            <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                    Progress Supervisi
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Monitoring kegiatan pembelajaran guru</p>
-                </div>
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl">
-                  <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-              <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} hasPermission={hasSupervisiAccess} />
-            </Card>
-
+        {(curriculumTab === 'overview' || curriculumTab === 'beban') && (
+          <div className="space-y-6">
             {/* Resolusi Konflik (Beban + Bentrok) */}
-            <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
+            <Card className="bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
               <div className="space-y-4 flex-1">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                      Resolusi Konflik & Beban Mengajar
+                      Resolusi Konflik & Beban Mengajar Guru
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Verifikasi validitas pembagian beban mengajar & jadwal KBM</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Verifikasi otomatis kelebihan/kekurangan jam mengajar & bentrok jadwal KBM</p>
                   </div>
                 </div>
 
@@ -766,7 +900,150 @@ export default function KurikulumDashboard() {
               </div>
             </Card>
           </div>
-        </div>
+        )}
+
+        {/* ==========================================
+            TAB CONTENT: PERANGKAT AJAR GURU
+            ========================================== */}
+        {(curriculumTab === 'overview' || curriculumTab === 'perangkat') && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
+                <div className="flex items-start justify-between mb-5">
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Statistik Perangkat Ajar
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Persentase kelengkapan administrasi guru</p>
+                  </div>
+                </div>
+                <PerangkatPanel stats={perangkatStats} recent={recentPerangkat} loading={lPerangkat} teachersCount={totalGuru} />
+              </Card>
+
+              <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px] flex flex-col justify-between">
+                <div className="space-y-4 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      Radar Kelengkapan Modul Guru
+                    </h3>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {teachersPendingPerangkat.length} Guru Belum Lengkap
+                    </span>
+                  </div>
+
+                  {teachersPendingPerangkat.length > 0 ? (
+                    <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                      {teachersPendingPerangkat.slice(0, 6).map((tp, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                          <div className="min-w-0">
+                            <h5 className="text-xs font-bold text-slate-800 dark:text-white truncate">{tp.nama}</h5>
+                            <p className="text-[10px] text-slate-400 font-mono">NIP: {tp.nip}</p>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0",
+                            tp.hasSubmitted ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                          )}>
+                            {tp.hasSubmitted ? 'Menunggu ACC' : 'Belum Unggah'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                      <CheckCircle2 size={28} className="text-emerald-500 mx-auto mb-2" />
+                      <h4 className="text-xs font-black text-emerald-800 dark:text-emerald-300">Seluruh Guru Sudah Melengkapi Administrasi</h4>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">100% dokumen ajar telah disetujui untuk semester ini.</p>
+                    </div>
+                  )}
+
+                  <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3 mt-2">
+                    <div className="p-1.5 bg-indigo-500 text-white rounded-lg flex-shrink-0">
+                      <FileText size={16} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300">Status Verifikasi Administrasi</h4>
+                      <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">Sistem secara otomatis mendeteksi kepatuhan administrasi. Pastikan seluruh dokumen ajar berstatus "Disetujui" agar validasi kurikulum dinilai 100%.</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* ==========================================
+            TAB CONTENT: SUPERVISI AKADEMIK
+            ========================================== */}
+        {(curriculumTab === 'overview' || curriculumTab === 'supervisi') && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Progress Supervisi */}
+              <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Progress Supervisi
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Monitoring kegiatan pembelajaran guru</p>
+                  </div>
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl">
+                    <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                </div>
+                <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} hasPermission={hasSupervisiAccess} />
+              </Card>
+
+              {/* Panduan Supervisi & Quick Action */}
+              <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
+                <div className="space-y-4 flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                        Instrumen & Hasil Penilaian Supervisi
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">Observasi kelas, instrumen penilaian proses KBM, dan tindak lanjut pembinaan</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 text-center">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase block">Tuntas Dinilai</span>
+                      <h4 className="text-xl font-black text-emerald-700 dark:text-emerald-300 mt-1">{supSelesai} Guru</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 text-center">
+                      <span className="text-[10px] font-black text-amber-600 uppercase block">Terjadwal</span>
+                      <h4 className="text-xl font-black text-amber-700 dark:text-amber-300 mt-1">{supTerjadwal} Sesi</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-center">
+                      <span className="text-[10px] font-black text-slate-500 uppercase block">Belum Dijadwalkan</span>
+                      <h4 className="text-xl font-black text-slate-700 dark:text-slate-300 mt-1">{supBelum} Guru</h4>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2 mt-4">
+                    <h5 className="text-xs font-bold text-slate-800 dark:text-white">Alur Pelaksanaan Supervisi Akademik:</h5>
+                    <ul className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1 list-disc pl-4 leading-relaxed">
+                      <li>Penetapan jadwal observasi tatap muka di kelas bersama guru bersangkutan.</li>
+                      <li>Pengisian instrumen kurikulum berbasis rubrik kompetensi pedagogik & profesional.</li>
+                      <li>Pemberian umpan balik konstruktif dan rekomendasi pengembangan keprofesian berkelanjutan (PKB).</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/kurikulum/supervisi')}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <span>Buka Jadwal & Instrumen Supervisi</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
 
       </div>
     </AcademicPageLayout>
