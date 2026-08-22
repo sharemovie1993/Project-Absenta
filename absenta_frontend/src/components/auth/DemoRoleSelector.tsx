@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useDeferredValue, useCallback } from 'react';
 import { 
   Crown, 
   BookOpen, 
@@ -15,13 +14,10 @@ import {
   GraduationCap, 
   Sparkles, 
   Smartphone,
-  ChevronRight,
   Loader2,
   KeyRound,
   Search,
-  CheckCircle2,
-  Compass,
-  School
+  Compass
 } from 'lucide-react';
 import { 
   DEMO_ROLE_PROFILES, 
@@ -54,6 +50,106 @@ const ICON_MAP: Record<string, React.FC<{ className?: string; size?: number }>> 
   Smartphone,
 };
 
+// ── 1. SUB-KOMPONEN TER-MEMOISASI: SQUIRCLE APP TILE (PERF 60 FPS) ──
+interface RoleAppTileProps {
+  profile: DemoRoleProfile;
+  isLoading: boolean;
+  isThisLoading: boolean;
+  onSelect: (profile: DemoRoleProfile) => void;
+}
+
+const RoleAppTile: React.FC<RoleAppTileProps> = React.memo(({
+  profile,
+  isLoading,
+  isThisLoading,
+  onSelect
+}) => {
+  const Icon = ICON_MAP[profile.iconName] || Crown;
+
+  return (
+    <button
+      type="button"
+      disabled={isLoading}
+      onClick={() => onSelect(profile)}
+      className={cn(
+        "group flex flex-col items-center text-center p-2 rounded-2xl transition-transform duration-150 transform-gpu cursor-pointer relative select-none",
+        "hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-95",
+        isThisLoading && "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/40"
+      )}
+    >
+      {/* Squircle App Tile Icon */}
+      <div className={cn(
+        "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.25rem] flex items-center justify-center shadow-md shadow-slate-200/50 dark:shadow-none bg-gradient-to-br transition-transform duration-150 transform-gpu group-hover:scale-105 shrink-0 mb-2 relative overflow-hidden border",
+        profile.gradient,
+        profile.border
+      )}>
+        {isThisLoading ? (
+          <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 animate-spin text-white" />
+        ) : (
+          <Icon size={26} className="stroke-[2.2] drop-shadow-xs pointer-events-none" />
+        )}
+
+        {/* Top-Right Mini Status Dot */}
+        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white/70 shadow-xs pointer-events-none" />
+      </div>
+
+      {/* Label Judul Jabatan Bersih */}
+      <span className="text-[11.5px] sm:text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 leading-tight max-w-[110px] text-center">
+        {profile.title}
+      </span>
+    </button>
+  );
+});
+
+RoleAppTile.displayName = 'RoleAppTile';
+
+// ── 2. SUB-KOMPONEN TER-MEMOISASI: KARTU KONTAINER KLASTER (BENTO CARD) ──
+interface RoleClusterCardProps {
+  label: string;
+  profiles: DemoRoleProfile[];
+  isLoading: boolean;
+  activeLoadingRoleId?: string | null;
+  onSelectRole: (profile: DemoRoleProfile) => void;
+}
+
+const RoleClusterCard: React.FC<RoleClusterCardProps> = React.memo(({
+  label,
+  profiles,
+  isLoading,
+  activeLoadingRoleId,
+  onSelectRole
+}) => {
+  return (
+    <div className="p-5 sm:p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+      {/* Header Kartu Klaster */}
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
+        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
+          {label}
+        </h3>
+        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          {profiles.length} Peran
+        </span>
+      </div>
+
+      {/* Grid 4-Kolom Squircles App Icons */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-2 sm:gap-x-3 pt-4 flex-1 items-start">
+        {profiles.map((profile) => (
+          <RoleAppTile
+            key={profile.id}
+            profile={profile}
+            isLoading={isLoading}
+            isThisLoading={isLoading && activeLoadingRoleId === profile.id}
+            onSelect={onSelectRole}
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+RoleClusterCard.displayName = 'RoleClusterCard';
+
+// ── 3. KOMPONEN UTAMA DEMO ROLE SELECTOR ──
 export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
   onSelectRole,
   isLoading,
@@ -62,12 +158,14 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // React 18 Deferred Value: Input search tetap responsif tanpa freeze/lag
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
-  // Kelompokkan peran berdasarkan kategori (Model Bento Klaster App Launcher)
+  // Memoized Clustered Filtering
   const clusteredProfiles = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = deferredSearchQuery.trim().toLowerCase();
     
-    // Filter kategori yang aktif
     const targetCategories = selectedCategory === 'ALL' 
       ? DEMO_CATEGORIES.filter(c => c.id !== 'ALL')
       : DEMO_CATEGORIES.filter(c => c.id === selectedCategory);
@@ -85,20 +183,26 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
       }
 
       return {
-        ...cat,
+        id: cat.id,
+        label: cat.label,
         profiles
       };
     }).filter(group => group.profiles.length > 0);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, deferredSearchQuery]);
 
-  const totalCount = useMemo(() => {
-    return clusteredProfiles.reduce((acc, curr) => acc + curr.profiles.length, 0);
-  }, [clusteredProfiles]);
+  const handleCategoryClick = useCallback((catId: string) => {
+    setSelectedCategory(catId);
+  }, []);
+
+  const handleResetSearch = useCallback(() => {
+    setSearchQuery('');
+    setSelectedCategory('ALL');
+  }, []);
 
   return (
     <div className="w-full space-y-6 select-none">
-      {/* ── Top Bar Kontrol: Filter Kategori & Search Bar (Modern Dashboard Header) ── */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── Top Bar Kontrol: Filter Kategori & Search Bar ── */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Branding & Status */}
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
@@ -127,8 +231,8 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari peran, jabatan, atau pengguna..."
-              className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/40"
+              placeholder="Cari peran, jabatan, atau nama..."
+              className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/40 transition-shadow"
             />
           </div>
 
@@ -153,11 +257,11 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
             <button
               key={cat.id}
               type="button"
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => handleCategoryClick(cat.id)}
               className={cn(
                 "px-3.5 py-1.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border",
                 isActive
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm scale-[1.02]"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs scale-[1.02]"
                   : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80"
               )}
             >
@@ -167,85 +271,26 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
         })}
       </div>
 
-      {/* ── BENTO KLASTER WORKFLOW GRID (Dipisah Per Kartu Kontainer Besar ala Workspace Dashboard) ── */}
+      {/* ── BENTO KLASTER WORKFLOW GRID (Ringan & Cepat Tanpa Layout Thrashing) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <AnimatePresence mode="popLayout">
-          {clusteredProfiles.map((group, groupIdx) => (
-            <motion.div
-              key={group.id}
-              layout
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2, delay: groupIdx * 0.05 }}
-              className="p-5 sm:p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              {/* Header Kartu Klaster */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
-                <div className="flex items-center gap-2.5">
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                    {group.label}
-                  </h3>
-                </div>
-
-                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  {group.profiles.length} Peran
-                </span>
-              </div>
-
-              {/* Grid 4-Kolom Squircles App Icons (Apple / Web Portal Style) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-5 gap-x-2 sm:gap-x-3 pt-4 flex-1 items-start">
-                {group.profiles.map((profile) => {
-                  const Icon = ICON_MAP[profile.iconName] || Crown;
-                  const isThisLoading = isLoading && activeLoadingRoleId === profile.id;
-
-                  return (
-                    <button
-                      key={profile.id}
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => onSelectRole(profile)}
-                      className={cn(
-                        "group flex flex-col items-center text-center p-2 rounded-2xl transition-all duration-200 cursor-pointer relative",
-                        "hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-95",
-                        isThisLoading && "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/40"
-                      )}
-                    >
-                      {/* Squircle App Tile Icon (Mewah & Berkelas) */}
-                      <div className={cn(
-                        "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.25rem] flex items-center justify-center shadow-md shadow-slate-200/50 dark:shadow-none bg-gradient-to-br transition-all duration-200 group-hover:scale-108 group-hover:shadow-lg shrink-0 mb-2 relative overflow-hidden border",
-                        profile.gradient,
-                        profile.border
-                      )}>
-                        {isThisLoading ? (
-                          <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 animate-spin text-white" />
-                        ) : (
-                          <Icon size={26} className="stroke-[2.2] drop-shadow-xs" />
-                        )}
-
-                        {/* Top-Right Mini Badge / Status Dot */}
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white/70 shadow-xs" />
-                      </div>
-
-                      {/* Label Judul Jabatan (Tebal & Rapi) */}
-                      <span className="text-[11.5px] sm:text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 leading-tight max-w-[110px] text-center">
-                        {profile.title}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {clusteredProfiles.map((group) => (
+          <RoleClusterCard
+            key={group.id}
+            label={group.label}
+            profiles={group.profiles}
+            isLoading={isLoading}
+            activeLoadingRoleId={activeLoadingRoleId}
+            onSelectRole={onSelectRole}
+          />
+        ))}
       </div>
 
       {clusteredProfiles.length === 0 && (
         <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-          <p className="text-sm font-bold text-slate-500">Tidak ada peran yang cocok dengan kata kunci "{searchQuery}"</p>
+          <p className="text-sm font-bold text-slate-500">Tidak ada peran yang cocok dengan kata kunci "{deferredSearchQuery}"</p>
           <button
             type="button"
-            onClick={() => { setSearchQuery(''); setSelectedCategory('ALL'); }}
+            onClick={handleResetSearch}
             className="px-4 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-md hover:bg-amber-600 cursor-pointer"
           >
             Tampilkan Semua Peran
