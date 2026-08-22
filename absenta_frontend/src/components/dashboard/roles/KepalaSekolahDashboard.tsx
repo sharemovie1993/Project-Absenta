@@ -44,6 +44,7 @@ import { QuickActionGrid, type QuickAction } from '../shared/QuickActionGrid';
 import { InfoStripGrid, type InfoStripItem } from '../shared/InfoStripGrid';
 import { CompactSectionCard } from '../shared/CompactSectionCard';
 import { Button } from '../../ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { KepalaSekolahBkDashboardWidget } from '../widgets/KepalaSekolahBkDashboardWidget';
 
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
@@ -348,28 +349,31 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'kesiswaan' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Pelanggaran Hari Ini</span>
-                  <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {violationData?.data?.total_today || 0} <span className="text-xs font-bold text-rose-500">Kasus</span>
-                  </h4>
-                  <p className="text-[10px] text-slate-500 mt-1">Total akumulasi poin: {violationData?.data?.points_today || 0} Poin</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">Catatan Pelanggaran</span>
-                  <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {Array.isArray(pelanggaranData?.data) ? pelanggaranData.data.length : 0} <span className="text-xs font-bold text-amber-500">Kasus</span>
-                  </h4>
-                  <p className="text-[10px] text-slate-500 mt-1">Tercatat dalam rekapitulasi tata tertib</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">Eskalasi Prioritas</span>
-                  <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {escalations.length} <span className="text-xs font-bold text-indigo-500">Butuh Tindakan</span>
-                  </h4>
-                  <p className="text-[10px] text-slate-500 mt-1">Kasus disiplin tingkat lanjut / pemanggilan ortu</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <AnalyticsCard
+                  title="Pelanggaran Hari Ini"
+                  value={`${violationData?.data?.total_today || 0} Kasus`}
+                  subtitle={`Total poin: ${violationData?.data?.points_today || 0} Poin`}
+                  icon={<ShieldAlert size={18} className="text-white" />}
+                  gradient="from-rose-600 to-red-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Catatan Tata Tertib"
+                  value={`${Array.isArray(pelanggaranData?.data) ? pelanggaranData.data.length : 0} Kasus`}
+                  subtitle="Tercatat dalam rekapitulasi"
+                  icon={<Scale size={18} className="text-white" />}
+                  gradient="from-amber-600 to-orange-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Eskalasi Prioritas"
+                  value={`${escalations.length} Kasus`}
+                  subtitle="Kasus disiplin tingkat lanjut"
+                  icon={<AlertTriangle size={18} className="text-white" />}
+                  gradient="from-indigo-600 to-purple-700"
+                  variant="compact-premium"
+                />
               </div>
 
               {/* Daftar Eskalasi Kasus Kesiswaan */}
@@ -412,35 +416,40 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'sarpras' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Aset KIB</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {sarprasData?.data?.total_assets || sarprasData?.total_assets || 0} Unit
-                  </h4>
-                  <p className="text-[10px] text-emerald-600 font-bold mt-1">Tercatat di Buku Induk</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ruangan & Lab</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {sarprasData?.data?.total_rooms || 32} Ruang
-                  </h4>
-                  <p className="text-[10px] text-indigo-600 font-bold mt-1">Kondisi Baik & Siap Pakai</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Peminjaman Aktif</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {sarprasData?.data?.active_loans || 0} Transaksi
-                  </h4>
-                  <p className="text-[10px] text-amber-600 font-bold mt-1">Alat Praktik / Lab</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Usulan Perbaikan</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {sarprasData?.data?.pending_repairs || 0} Usulan
-                  </h4>
-                  <p className="text-[10px] text-rose-600 font-bold mt-1">Memerlukan Approval Pimpinan</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <AnalyticsCard
+                  title="Total Aset KIB"
+                  value={`${sarprasData?.data?.total_assets || sarprasData?.total_assets || 0} Unit`}
+                  subtitle="Tercatat di Buku Induk"
+                  icon={<Building size={18} className="text-white" />}
+                  gradient="from-emerald-600 to-teal-700"
+                  variant="compact-premium"
+                  onClick={() => navigate('/sarpras/inventory')}
+                />
+                <AnalyticsCard
+                  title="Ruangan & Lab"
+                  value={`${sarprasData?.data?.total_rooms || 32} Ruang`}
+                  subtitle="Kondisi Baik & Siap Pakai"
+                  icon={<Building size={18} className="text-white" />}
+                  gradient="from-indigo-600 to-blue-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Peminjaman Aktif"
+                  value={`${sarprasData?.data?.active_loans || 0} Transaksi`}
+                  subtitle="Alat Praktik / Lab"
+                  icon={<Wrench size={18} className="text-white" />}
+                  gradient="from-amber-600 to-orange-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Usulan Perbaikan"
+                  value={`${sarprasData?.data?.pending_repairs || 0} Usulan`}
+                  subtitle="Menunggu Approval Pimpinan"
+                  icon={<AlertTriangle size={18} className="text-white" />}
+                  gradient="from-rose-600 to-red-700"
+                  variant="compact-premium"
+                />
               </div>
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -464,35 +473,40 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'hubin' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Siswa PKL Aktif</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {hubinData?.data?.active_students || hubinData?.total_pkl || 0} Siswa
-                  </h4>
-                  <p className="text-[10px] text-emerald-600 font-bold mt-1">Sedang Magang di Industri</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mitra Industri (DUDI)</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {hubinData?.data?.total_mitra || 48} Perusahaan
-                  </h4>
-                  <p className="text-[10px] text-indigo-600 font-bold mt-1">MoU Aktif Berjalan</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Lowongan Kerja BKK</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {bkkData?.data?.active_jobs || 12} Loker
-                  </h4>
-                  <p className="text-[10px] text-teal-600 font-bold mt-1">Tersedia untuk Alumni</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tracer Study Response</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    84.5%
-                  </h4>
-                  <p className="text-[10px] text-purple-600 font-bold mt-1">Terserap Bekerja / Wirausaha</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <AnalyticsCard
+                  title="Siswa PKL Aktif"
+                  value={`${hubinData?.data?.active_students || hubinData?.total_pkl || 0} Siswa`}
+                  subtitle="Sedang Magang di Industri"
+                  icon={<Briefcase size={18} className="text-white" />}
+                  gradient="from-teal-600 to-emerald-700"
+                  variant="compact-premium"
+                  onClick={() => navigate('/hubin/dashboard')}
+                />
+                <AnalyticsCard
+                  title="Mitra Industri (DUDI)"
+                  value={`${hubinData?.data?.total_mitra || 48} PT`}
+                  subtitle="MoU Kemitraan Aktif"
+                  icon={<Building size={18} className="text-white" />}
+                  gradient="from-indigo-600 to-violet-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Lowongan Kerja BKK"
+                  value={`${bkkData?.data?.active_jobs || 12} Loker`}
+                  subtitle="Tersedia untuk Alumni"
+                  icon={<Award size={18} className="text-white" />}
+                  gradient="from-cyan-600 to-blue-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Tracer Study"
+                  value="84.5%"
+                  subtitle="Terserap Kerja / Usaha"
+                  icon={<TrendingUp size={18} className="text-white" />}
+                  gradient="from-purple-600 to-pink-700"
+                  variant="compact-premium"
+                />
               </div>
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -516,35 +530,41 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'tu' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Surat Masuk Baru</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {tuData?.data?.incoming_letters || 6} Berkas
-                  </h4>
-                  <p className="text-[10px] text-amber-600 font-bold mt-1">Perlu Disposisi Pimpinan</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pengesahan / TTD Surat</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {tuData?.data?.pending_sign || 2} Surat
-                  </h4>
-                  <p className="text-[10px] text-rose-600 font-bold mt-1">Menunggu Tanda Tangan Digital</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Tenaga Pendidik</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    {stats?.total_guru || 78} Guru
-                  </h4>
-                  <p className="text-[10px] text-emerald-600 font-bold mt-1">Tercatat di Dapodik</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Kelengkapan Berkas Dapodik</span>
-                  <h4 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                    98.2%
-                  </h4>
-                  <p className="text-[10px] text-indigo-600 font-bold mt-1">Sinkronisasi Valid</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <AnalyticsCard
+                  title="Surat Masuk Baru"
+                  value={`${tuData?.data?.incoming_letters || 6} Berkas`}
+                  subtitle="Perlu Disposisi Pimpinan"
+                  icon={<Mail size={18} className="text-white" />}
+                  gradient="from-amber-600 to-orange-700"
+                  variant="compact-premium"
+                  onClick={() => navigate('/correspondence/dashboard')}
+                />
+                <AnalyticsCard
+                  title="Pengesahan / TTD Surat"
+                  value={`${tuData?.data?.pending_sign || 2} Surat`}
+                  subtitle="Menunggu Tanda Tangan"
+                  icon={<FileText size={18} className="text-white" />}
+                  gradient="from-rose-600 to-pink-700"
+                  variant="compact-premium"
+                  onClick={() => navigate('/correspondence/dashboard')}
+                />
+                <AnalyticsCard
+                  title="Total Tenaga Pendidik"
+                  value={`${stats?.total_guru || 78} Guru`}
+                  subtitle="Tercatat di Dapodik"
+                  icon={<Users size={18} className="text-white" />}
+                  gradient="from-emerald-600 to-teal-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Kelengkapan Dapodik"
+                  value="98.2%"
+                  subtitle="Sinkronisasi Valid"
+                  icon={<CheckCircle size={18} className="text-white" />}
+                  gradient="from-blue-600 to-indigo-700"
+                  variant="compact-premium"
+                />
               </div>
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
