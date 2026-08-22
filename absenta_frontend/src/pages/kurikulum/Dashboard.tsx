@@ -649,64 +649,6 @@ export default function KurikulumDashboard() {
           </div>
         </div>
 
-        {/* 2. QUICK ACTIONS BAR WAKA KURIKULUM */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/attendance/jadwal')}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <CalendarDays size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Jadwal KBM</span>
-              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Susun Jadwal</h4>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/kurikulum/perangkat')}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <FileText size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Perangkat Ajar</span>
-              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Verifikasi Modul</h4>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/kurikulum/supervisi')}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-amber-300 dark:hover:border-amber-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <ShieldCheck size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Supervisi</span>
-              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">Jadwal Observasi</h4>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/kurikulum/cetak-berkas')}
-            className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs hover:shadow-md transition-all text-left cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <ClipboardList size={20} />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Cetak Berkas</span>
-              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">SK Pembagian Jam</h4>
-            </div>
-          </button>
-        </div>
 
         {/* 3. SUB-TAB SWITCHER */}
         <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto no-scrollbar">
