@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 import { getUserPositions } from '@/config/navigation.config';
 import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
 
@@ -169,8 +170,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
   ], []);
 
   // 1.1 Kepala Sekolah Mobile Bottom Tabs (6 Pilar 360° + Profil)
+  const { currentPillar, setPillar } = useExecutivePillarStore();
   const kepsekTabs = useMemo<MobileBottomTabItem[]>(() => {
-    const currentPillar = searchParams.get('pillar') || 'kbm';
     const isProfileTab = currentTab === 'profil';
 
     return [
@@ -179,7 +180,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'KBM & Kurikulum',
         shortLabel: 'KBM',
         icon: BookOpen,
-        targetPath: '/dashboard?pillar=kbm',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab,
       },
       {
@@ -187,7 +188,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'Kesiswaan & Disiplin',
         shortLabel: 'Kesiswaan',
         icon: Users,
-        targetPath: '/dashboard?pillar=kesiswaan',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab,
       },
       {
@@ -195,7 +196,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'Bimbingan Konseling (EWS)',
         shortLabel: 'BP/BK',
         icon: HeartHandshake,
-        targetPath: '/dashboard?pillar=bk',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab,
       },
       {
@@ -203,7 +204,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'Sarpras & Fasilitas',
         shortLabel: 'Sarpras',
         icon: Building,
-        targetPath: '/dashboard?pillar=sarpras',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'sarpras' && !isProfileTab,
       },
       {
@@ -211,7 +212,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'Hubin & Kemitraan',
         shortLabel: 'Hubin',
         icon: Briefcase,
-        targetPath: '/dashboard?pillar=hubin',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'hubin' && !isProfileTab,
       },
       {
@@ -219,7 +220,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         label: 'Tata Usaha & Surat',
         shortLabel: 'TU',
         icon: FileText,
-        targetPath: '/dashboard?pillar=tu',
+        targetPath: '/dashboard',
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'tu' && !isProfileTab,
       },
       {
@@ -231,7 +232,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile'),
       },
     ];
-  }, [searchParams, currentTab]);
+  }, [currentPillar, currentTab]);
 
   // 2. Staff / Guru / Waka / Admin Mobile Bottom Tabs (Strictly by Position)
   const staffTabs = useMemo<MobileBottomTabItem[]>(() => {
@@ -467,6 +468,16 @@ export const BottomNavigation: React.FC = React.memo(() => {
       return;
     }
     setOpenFlyoutId(null);
+
+    // Khusus Kepala Sekolah: Switching 6 pilar instan tanpa reload rute / tanpa reset
+    if (isKepsek && ['kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu'].includes(item.id)) {
+      setPillar(item.id as ExecutivePillar);
+      if (location.pathname !== '/dashboard' || currentTab === 'profil') {
+        navigate('/dashboard');
+      }
+      return;
+    }
+
     navigate(item.targetPath);
   };
 

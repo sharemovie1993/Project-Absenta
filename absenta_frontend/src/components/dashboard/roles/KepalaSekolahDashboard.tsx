@@ -46,23 +46,17 @@ import { CompactSectionCard } from '../shared/CompactSectionCard';
 import { Button } from '../../ui';
 import { KepalaSekolahBkDashboardWidget } from '../widgets/KepalaSekolahBkDashboardWidget';
 
+import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
+
 const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const currentMonth = useMemo(() => toLocalMonth(), []);
   
-  // 6 Lensa Pengawasan Eksekutif (Sinkron dengan URL agar terhubung dengan BottomNav)
-  const pillarParam = (searchParams.get('pillar') as any) || 'kbm';
-  const executivePillar = (['kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu'].includes(pillarParam) ? pillarParam : 'kbm') as 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu';
-
-  const setExecutivePillar = (p: 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu') => {
-    const next = new URLSearchParams(searchParams);
-    next.set('pillar', p);
-    setSearchParams(next, { replace: true });
-  };
+  // 6 Lensa Pengawasan Eksekutif (Zustand Global Store: Instant 0ms Tab Switching di Desktop & Mobile)
+  const { currentPillar: executivePillar, setPillar: setExecutivePillar } = useExecutivePillarStore();
 
   // 1. Data Overview Makro (Cache 1 menit)
   const { data: overviewData } = useQuery({
