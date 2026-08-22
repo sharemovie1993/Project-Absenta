@@ -10,7 +10,7 @@ export interface InfoStripItem {
   label: string;
   value: string;
   icon?: LucideIcon;
-  color?: 'blue' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'purple' | 'orange';
+  color?: 'blue' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'purple' | 'orange' | 'teal' | 'cyan' | 'slate' | 'green' | 'red';
 }
 
 interface InfoStripGridProps {
@@ -21,11 +21,16 @@ interface InfoStripGridProps {
 const colorMap: Record<string, { icon: string; bg: string }> = {
   blue:    { icon: 'text-blue-500',    bg: 'bg-blue-50 dark:bg-blue-900/20' },
   emerald: { icon: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  green:   { icon: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
   amber:   { icon: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/20' },
   rose:    { icon: 'text-rose-500',    bg: 'bg-rose-50 dark:bg-rose-900/20' },
+  red:     { icon: 'text-rose-500',    bg: 'bg-rose-50 dark:bg-rose-900/20' },
   indigo:  { icon: 'text-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
   purple:  { icon: 'text-purple-500',  bg: 'bg-purple-50 dark:bg-purple-900/20' },
   orange:  { icon: 'text-orange-500',  bg: 'bg-orange-50 dark:bg-orange-900/20' },
+  teal:    { icon: 'text-teal-500',    bg: 'bg-teal-50 dark:bg-teal-900/20' },
+  cyan:    { icon: 'text-cyan-500',    bg: 'bg-cyan-50 dark:bg-cyan-900/20' },
+  slate:   { icon: 'text-slate-500',   bg: 'bg-slate-50 dark:bg-slate-900/20' },
 };
 
 export const InfoStripGrid: React.FC<InfoStripGridProps> = ({ items, variant = 'default' }) => {
@@ -36,7 +41,7 @@ export const InfoStripGrid: React.FC<InfoStripGridProps> = ({ items, variant = '
     }>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {items.map((item, idx) => {
-          const colors = colorMap[item.color || 'blue'];
+          const colors = colorMap[item.color || 'blue'] || colorMap.blue;
           return (
             <div key={idx} className="flex items-center gap-2.5 p-2 rounded-md">
               {item.icon && (
