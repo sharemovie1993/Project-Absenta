@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [devTenantsLoading, setDevTenantsLoading] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  // Demo Mode Detection: Active on demo.absenta.id, ?demo=1, or VITE_DEMO_MODE=true
+  // Demo Mode Detection: Active on demo.absenta.id, ?demo=1, VITE_DEMO_MODE=true, or local dev mode
   const isDemoEnvironment = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const hn = window.location.hostname.toLowerCase();
@@ -35,7 +35,15 @@ export default function LoginPage() {
     const isExplicitDemoParam = params.get('demo') === '1' || params.get('demo') === 'true';
     const isDemoDomain = hn.includes('demo') || hn.startsWith('demo.');
     const isEnvDemo = String(import.meta.env.VITE_DEMO_MODE || '').toLowerCase() === 'true';
-    return isExplicitDemoParam || isDemoDomain || isEnvDemo;
+    const isDev = Boolean(
+      import.meta.env.DEV ||
+      import.meta.env.MODE !== 'production' ||
+      hn === 'localhost' ||
+      hn === '127.0.0.1' ||
+      hn.endsWith('.local') ||
+      String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true'
+    );
+    return isExplicitDemoParam || isDemoDomain || isEnvDemo || isDev;
   }, []);
 
   const [showManualLogin, setShowManualLogin] = useState(false);
