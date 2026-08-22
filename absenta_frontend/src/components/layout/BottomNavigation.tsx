@@ -20,6 +20,7 @@ import {
   ScrollText,
   HeartHandshake,
   FileText,
+  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
