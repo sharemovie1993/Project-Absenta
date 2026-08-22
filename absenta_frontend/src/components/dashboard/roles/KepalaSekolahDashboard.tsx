@@ -479,4 +479,6 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
       </AnimatePresence>
     </div>
   );
-};
+});
+
+KepalaSekolahDashboard.displayName = 'KepalaSekolahDashboard';
