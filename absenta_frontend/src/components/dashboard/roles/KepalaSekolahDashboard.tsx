@@ -34,7 +34,7 @@ import {
   ShieldCheck, TrendingUp, Activity, User, PlayCircle, ChevronRight, 
   History, Fingerprint, Star, Clock, BookOpen, Building, Briefcase, 
   HeartHandshake, Sparkles, Scale, Wrench, ShieldAlert, Award, ArrowUpRight,
-  Mail, Send
+  Mail, Send, Trophy
 } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../ui/Card';
@@ -46,6 +46,9 @@ import { CompactSectionCard } from '../shared/CompactSectionCard';
 import { Button } from '../../ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { KepalaSekolahBkDashboardWidget } from '../widgets/KepalaSekolahBkDashboardWidget';
+import { getLeaderboardGuru } from '../../../api/attendanceGerbang.api';
+import { TeacherAttendanceLeaderboardModal } from '../../attendance/my_attendance/TeacherAttendanceLeaderboardModal';
+import { CareSpotlightSection, type CareStudentItem, type LeaderboardItem } from '../../kesiswaan/monitoring/CareSpotlightSection';
 
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 
@@ -190,6 +193,55 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
     staleTime: 2 * 60_000,
     refetchOnWindowFocus: false,
   });
+
+  // Modal & Tab State
+  const [isTeacherLeaderboardOpen, setIsTeacherLeaderboardOpen] = useState(false);
+  const [spotlightTab, setSpotlightTab] = useState<'violations' | 'achievements'>('violations');
+
+  // 8. Leaderboard Kedisiplinan Guru / PTK
+  const { data: teacherLeaderboardRes } = useQuery({
+    queryKey: ['kepsek-teacher-leaderboard'],
+    queryFn: () => getLeaderboardGuru(5, 'PENDIDIK'),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const teacherLeaderboard = teacherLeaderboardRes?.data || [];
+
+  // 9. Leaderboard Prestasi Siswa
+  const { data: studentLeaderboardRes, isLoading: isLoadingStudentLb } = useQuery({
+    queryKey: ['kepsek-student-leaderboard'],
+    queryFn: () => kesiswaanApi.getLeaderboard(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const studentLeaderboard = useMemo((): LeaderboardItem[] => {
+    return (studentLeaderboardRes?.data as LeaderboardItem[]) || [];
+  }, [studentLeaderboardRes]);
+
+  // 10. Care Students (Siswa Butuh Pembinaan Khusus)
+  const careStudents = useMemo((): CareStudentItem[] => {
+    const list = Array.isArray(pelanggaranData?.data) ? pelanggaranData.data : (pelanggaranData?.data?.list || []);
+    if (!list.length) return [];
+    const studentPoints: Record<string, { id: string; name: string; class: string; points: number }> = {};
+    
+    list.forEach((v: any) => {
+      const id = v.siswa_id || v.id;
+      if (!id) return;
+      if (!studentPoints[id]) {
+        studentPoints[id] = { 
+          id,
+          name: v.Siswa?.nama_siswa || v.nama_siswa || 'Siswa', 
+          class: v.Siswa?.Kelas?.nama_kelas || v.nama_kelas || '-', 
+          points: 0 
+        };
+      }
+      studentPoints[id].points += (v.poin || 0);
+    });
+
+    return Object.values(studentPoints)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 5);
+  }, [pelanggaranData]);
 
   const stats = overviewData?.data;
   const guruAttendance = useMemo(() => stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0, [stats?.total_guru, stats?.guru_hadir]);
@@ -415,6 +467,71 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
                 </div>
                 <MonitoringKbmWidget isExecutive={true} />
               </div>
+
+              {/* Klasemen Kedisiplinan & Kinerja PTK (Top Guru Teladan) */}
+              <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 text-amber-500 rounded-xl">
+                      <Trophy size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                        Klasemen Kedisiplinan & Kinerja PTK (Guru)
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-bold">
+                        Peringkat kepatuhan jam mengajar KBM & presensi gerbang sekolah
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsTeacherLeaderboardOpen(true)}
+                    className="text-xs font-bold gap-1.5 self-start sm:self-auto"
+                  >
+                    <span>Buka Klasemen Lengkap</span>
+                    <ArrowUpRight size={14} />
+                  </Button>
+                </div>
+
+                {teacherLeaderboard.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {teacherLeaderboard.slice(0, 5).map((teacher: any, idx: number) => {
+                      const rankMedal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                      return (
+                        <div 
+                          key={teacher.id || idx}
+                          className="p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-black">{rankMedal}</span>
+                              <Badge variant="outline" className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40">
+                                {teacher.points || 0} Poin
+                              </Badge>
+                            </div>
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white line-clamp-1 truncate">
+                              {teacher.nama}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                              {teacher.nip ? `NIP: ${teacher.nip}` : 'Pendidik'}
+                            </p>
+                          </div>
+                          <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-slate-500">
+                            <span>Sesi: {teacher.kbm_count || 0} KBM</span>
+                            <span>Hadir: {teacher.hadir_count || 0}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-slate-400 text-xs font-bold italic">
+                    Memuat data peringkat kedisiplinan guru...
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -431,6 +548,17 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
                   { label: 'Catatan Tata Tertib', value: `${Array.isArray(pelanggaranData?.data) ? pelanggaranData.data.length : 0} Kasus`, subtitle: 'Rekapitulasi aktif', icon: Scale, color: 'amber' },
                   { label: 'Eskalasi Prioritas', value: `${escalations.length} Kasus`, subtitle: 'Butuh tindakan lanjut', icon: AlertTriangle, color: 'indigo' },
                 ]}
+              />
+
+              {/* Care Spotlight & Apresiasi Prestasi Siswa */}
+              <CareSpotlightSection
+                spotlightTab={spotlightTab}
+                setSpotlightTab={setSpotlightTab}
+                careStudents={careStudents}
+                leaderboardData={studentLeaderboard}
+                isLoading={false}
+                isLoadingLeaderboard={isLoadingStudentLb}
+                onNavigateToPelanggaran={() => navigate('/kesiswaan/pelanggaran')}
               />
 
               {/* Daftar Eskalasi Kasus Kesiswaan */}
@@ -562,6 +690,13 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Modal Klasemen Kedisiplinan & Kinerja PTK */}
+      <TeacherAttendanceLeaderboardModal
+        isOpen={isTeacherLeaderboardOpen}
+        onClose={() => setIsTeacherLeaderboardOpen(false)}
+        teacherLeaderboard={teacherLeaderboard}
+      />
     </div>
   );
 });
