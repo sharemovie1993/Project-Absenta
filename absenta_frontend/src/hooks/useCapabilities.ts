@@ -155,6 +155,7 @@ export function useCapabilities() {
       isKoperasiSecretary: isKoperasi,
       isKoperasiAuditor: isKoperasi,
       isTU,
+      isTUKepala,
       isTuHead: isTUKepala,      // canonical alias
       isKoperasi,
 
@@ -172,7 +173,6 @@ export function useCapabilities() {
       isHubin,
       isBkk,
       isSarpras,
-      isTUKepala,
       isKepsek,
       isKepalaSekolah: isKepsek,  // canonical alias
       isBillingAdmin,

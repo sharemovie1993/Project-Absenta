@@ -177,7 +177,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isPiketGuru,
     isPetugasKelas,
     isTU,
+    isTUKepala,
     isTUKepegawaian,
+    isTUPersuratan,
+    isTUKeuangan,
+    isTUSarpras,
     isKepsek,
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
@@ -558,13 +562,18 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isBpbk)      parts.push('Guru BK');
     if (isBkk)       parts.push('Pengelola BKK');
     if (isGerbang)   parts.push('Petugas Gerbang');
-    if (isTUKepegawaian) parts.push('TU Kepegawaian');
+    if (isTUKepala)  parts.push('Kepala Tata Usaha');
+    else if (isTUKepegawaian) parts.push('TU Kepegawaian & Dapodik');
+    else if (isTUPersuratan)  parts.push('TU Persuratan & Agenda');
+    else if (isTUKeuangan)    parts.push('TU Keuangan & SPP');
+    else if (isTUSarpras)     parts.push('TU Sarpras & Pengurus KIB');
+    else if (isTU)            parts.push('Staf Tata Usaha');
     if (parts.length > 0) {
       return parts.join(' & ');
     }
     if (jabatan) return jabatan;
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
-  }, [jabatan, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepegawaian, isTuStaff]);
+  }, [jabatan, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff]);
 
   const teacherInitials = useMemo(() => {
     const name = user?.full_name || user?.name || 'Hendra Wijaya';
@@ -576,6 +585,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [user]);
 
   const nipText = guruProfile?.nip || (user as any)?.nip || '19850314 201001 1 008';
+
+  // Dynamic TU Tab Label & Badge
+  const tuTabMeta = useMemo(() => {
+    if (isTUKepala) return { label: 'Tata Usaha', badge: 'KOR TU' };
+    if (isTUKepegawaian) return { label: 'TU Kepegawaian', badge: 'DAPODIK' };
+    if (isTUPersuratan) return { label: 'TU Persuratan', badge: 'SURAT' };
+    if (isTUKeuangan) return { label: 'TU Keuangan', badge: 'SPP' };
+    if (isTUSarpras) return { label: 'TU Sarpras & Logistik', badge: 'KIB' };
+    return { label: 'Tata Usaha', badge: 'TU' };
+  }, [isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras]);
 
   // Navigation Tabs Definition STRICTLY based on SK/Position Codes (Jabatan Nyata)
   const tabs = useMemo(() => {
@@ -645,9 +664,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
-    // 10. TU Kepegawaian (hanya jika ada SK TU Kepegawaian / Admin / Kepsek)
+    // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
     if (isTUKepegawaian || isTU || isAdminRole || isKepsek) {
-      list.push({ id: 'kepegawaian', label: 'TU Kepegawaian', icon: Users, badge: 'TU' });
+      list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users, badge: tuTabMeta.badge });
     }
 
     // 11. Piket & Gerbang (Hanya jika ada tugas piket / gerbang / kesiswaan nyata, bukan Admin murni)
