@@ -612,17 +612,23 @@ export const UnifiedStaffDashboard: React.FC = () => {
     const list: Array<{ id: string; label: string; icon: any; badge?: string }> = [];
 
     // 0. Tab khusus Admin
-    if (isAdminRole) {
+    if (isAdminRole && !isKepsek) {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
     // 1. Beranda Guru / Scan Gerbang / Overview Eksekutif Kepsek
-    if ((isPendidik || isPureGerbangStaff || isKepsek) && !isAdminRole) {
+    if (isKepsek) {
       list.push({ 
         id: 'ringkasan', 
-        label: isKepsek ? 'Overview Eksekutif' : (isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru'), 
-        icon: isKepsek ? Award : (isPureGerbangStaff ? ShieldCheck : UserCheck),
-        badge: isKepsek ? 'KEPSEK' : undefined
+        label: 'Overview Eksekutif', 
+        icon: Award,
+        badge: 'KEPSEK'
+      });
+    } else if ((isPendidik || isPureGerbangStaff) && !isAdminRole) {
+      list.push({ 
+        id: 'ringkasan', 
+        label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
+        icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
       });
     }
 
@@ -642,42 +648,42 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     // 3. Wali Kelas (hanya jika ditugaskan sebagai Wali Kelas)
-    if (isWaliKelas) {
+    if (isWaliKelas && !isKepsek) {
       list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
     }
 
     // 4. Kurikulum (hanya jika ada SK Kurikulum / Admin)
-    if (isKurikulum || isAdminRole) {
+    if (isKurikulum || (isAdminRole && !isKepsek)) {
       list.push({ id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' });
     }
 
     // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Admin)
-    if (isKesiswaan || isAdminRole) {
+    if (isKesiswaan || (isAdminRole && !isKepsek)) {
       list.push({ id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' });
     }
 
     // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin)
-    if (isSarpras || isToolman || isKabeng || isAdminRole) {
+    if (isSarpras || isToolman || isKabeng || (isAdminRole && !isKepsek)) {
       list.push({ id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' });
     }
 
     // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin)
-    if (isHubin || isBkk || isKaprog || isAdminRole) {
+    if (isHubin || isBkk || isKaprog || (isAdminRole && !isKepsek)) {
       list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
     }
 
     // 8. Koperasi (hanya jika ada SK Pengelola Koperasi / Admin)
-    if (isKoperasi || isAdminRole) {
+    if (isKoperasi || (isAdminRole && !isKepsek)) {
       list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
     }
 
     // 9. BP/BK (hanya jika ada SK Guru BK / Admin)
-    if (isBpbk || isAdminRole) {
+    if (isBpbk || (isAdminRole && !isKepsek)) {
       list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
     // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
-    if ((isTUKepegawaian || isTU || isAdminRole) && !isKepsek) {
+    if ((isTUKepegawaian || isTU || (isAdminRole && !isKepsek)) && !isKepsek) {
       list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users, badge: tuTabMeta.badge });
     }
 

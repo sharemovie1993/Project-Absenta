@@ -516,6 +516,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
 export const normalizePositionCode = (codeOrName: string): string => {
   if (!codeOrName) return '';
   const s = String(codeOrName).toUpperCase().trim();
+  if (s.includes('TU_SARPRAS')) return 'TU_SARPRAS';
+  if (s.includes('TU_KEUANGAN')) return 'TU_KEUANGAN';
+  if (s.includes('TU_PERSURATAN')) return 'TU_PERSURATAN';
+  if (s.includes('TU_KEPEGAWAIAN')) return 'TU_KEPEGAWAIAN';
+  if (s.includes('TU_KEPALA') || s === 'TU') return 'TU_KEPALA';
   if (s.includes('KURIKULUM')) return 'KURIKULUM';
   if (s.includes('WALIKELAS') || s.includes('WALI KELAS') || s.includes('WALI_KELAS')) return 'WALIKELAS';
   if (s.includes('KESISWAAN')) return 'KESISWAAN';
@@ -530,11 +535,6 @@ export const normalizePositionCode = (codeOrName: string): string => {
   if (s.includes('TOOLMAN')) return 'TOOLMAN';
   if (s.includes('BKK')) return 'BKK';
   if (s.includes('PEMBINA')) return 'PEMBINA_ESKUL';
-  if (s.includes('TU_KEUANGAN')) return 'TU_KEUANGAN';
-  if (s.includes('TU_PERSURATAN')) return 'TU_PERSURATAN';
-  if (s.includes('TU_KEPEGAWAIAN')) return 'TU_KEPEGAWAIAN';
-  if (s.includes('TU_SARPRAS')) return 'TU_SARPRAS';
-  if (s.includes('TU_KEPALA') || s === 'TU') return 'TU_KEPALA';
   return s;
 };
 
