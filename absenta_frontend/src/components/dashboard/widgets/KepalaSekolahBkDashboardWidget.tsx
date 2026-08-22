@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { bpbkApi } from '../../../api/bpbk.api';
 import { Card, CardContent } from '../../ui/Card';
+import { AnalyticsCard } from '../../ui/AnalyticsCard';
 import { Loader } from '../../ui/Loader';
 import { Badge } from '../../ui/Badge';
 import { cn } from '../../../lib/utils';
@@ -110,79 +111,40 @@ export const KepalaSekolahBkDashboardWidget: React.FC = () => {
         </Badge>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Completion Rate Card */}
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-4 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Completion Rate</span>
-              <span className="text-xl font-black tracking-tight text-slate-800 dark:text-white">
-                {statistikPenyelesaian.completionRate}%
-              </span>
-            </div>
-            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 rounded-xl">
-              <CheckCircle size={16} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">
-            {statistikPenyelesaian.totalCompleted} dari {statistikPenyelesaian.totalOpened} kasus BK selesai
-          </span>
-        </Card>
-
-        {/* Mean Resolution Time Card */}
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-4 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mean Resolution Time</span>
-              <span className="text-xl font-black tracking-tight text-slate-800 dark:text-white">
-                {statistikPenyelesaian.meanResolutionTimeDays} <span className="text-xs font-semibold text-slate-400">Hari</span>
-              </span>
-            </div>
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 rounded-xl">
-              <Clock size={16} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">
-            Rata-rata waktu penyelesaian sejak kasus dibuka
-          </span>
-        </Card>
-
-        {/* Jurusan Paling Berisiko Card */}
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-4 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Jurusan Paling Berisiko</span>
-              <span className="text-lg font-black tracking-tight text-rose-500 uppercase">
-                {topRiskJurusan ? topRiskJurusan.jurusan : '-'}
-              </span>
-            </div>
-            <div className="p-2 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl">
-              <AlertTriangle size={16} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">
-            EWS Avg: {topRiskJurusan ? topRiskJurusan.averageRiskScore : 0} • {topRiskJurusan ? topRiskJurusan.jumlahKasus : 0} Kasus
-          </span>
-        </Card>
-
-        {/* Total Kasus Aktif Card */}
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-4 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Kasus Aktif</span>
-              <span className="text-xl font-black tracking-tight text-slate-800 dark:text-white">
-                {statistikKasus.active}
-              </span>
-            </div>
-            <div className="p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-500 rounded-xl">
-              <Activity size={16} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">
-            Kasus dalam penanganan guru BK
-          </span>
-        </Card>
+      {/* KPI Stats Grid (Premium Mode HP/Desktop) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <AnalyticsCard
+          title="Completion Rate"
+          value={`${statistikPenyelesaian.completionRate}%`}
+          subtitle={`${statistikPenyelesaian.totalCompleted} dari ${statistikPenyelesaian.totalOpened} kasus selesai`}
+          icon={<CheckCircle size={18} className="text-white" />}
+          gradient="from-emerald-600 to-teal-700"
+          variant="compact-premium"
+        />
+        <AnalyticsCard
+          title="Mean Resolution Time"
+          value={`${statistikPenyelesaian.meanResolutionTimeDays} Hari`}
+          subtitle="Rata-rata waktu penyelesaian kasus"
+          icon={<Clock size={18} className="text-white" />}
+          gradient="from-indigo-600 to-blue-700"
+          variant="compact-premium"
+        />
+        <AnalyticsCard
+          title="Jurusan Berisiko EWS"
+          value={topRiskJurusan ? topRiskJurusan.jurusan : '-'}
+          subtitle={`EWS Avg: ${topRiskJurusan ? topRiskJurusan.averageRiskScore : 0} • ${topRiskJurusan ? topRiskJurusan.jumlahKasus : 0} Kasus`}
+          icon={<AlertTriangle size={18} className="text-white" />}
+          gradient="from-rose-600 to-red-700"
+          variant="compact-premium"
+        />
+        <AnalyticsCard
+          title="Total Kasus Aktif"
+          value={`${statistikKasus.active} Kasus`}
+          subtitle="Dalam penanganan konselor BK"
+          icon={<Activity size={18} className="text-white" />}
+          gradient="from-amber-600 to-orange-700"
+          variant="compact-premium"
+        />
       </div>
 
       {/* Analytics Charts Grid */}

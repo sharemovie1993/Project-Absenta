@@ -272,6 +272,44 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'kbm' && (
             <div className="space-y-6">
+              {/* Metrik Utama KBM (Compact Premium Mode) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <AnalyticsCard
+                  title="Hadir Siswa"
+                  value={`${siswaAttendance}%`}
+                  subtitle="Tingkat kehadiran hari ini"
+                  icon={<Users size={18} className="text-white" />}
+                  gradient="from-blue-600 to-indigo-700"
+                  variant="compact-premium"
+                  onClick={() => navigate('/attendance/rekap')}
+                />
+                <AnalyticsCard
+                  title="Hadir Guru"
+                  value={`${guruAttendance}%`}
+                  subtitle="Tenaga pendidik bertugas"
+                  icon={<CheckCircle size={18} className="text-white" />}
+                  gradient="from-emerald-600 to-teal-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Sesi KBM Live"
+                  value={`${stats?.total_sesi_aktif || 0} Kelas`}
+                  subtitle="Sedang melangsungkan belajar"
+                  icon={<PlayCircle size={18} className="text-white" />}
+                  gradient="from-purple-600 to-indigo-700"
+                  variant="compact-premium"
+                />
+                <AnalyticsCard
+                  title="Supervisi KBM"
+                  value="98.4%"
+                  subtitle="Ketercapaian jam efektif"
+                  icon={<Award size={18} className="text-white" />}
+                  gradient="from-amber-500 to-orange-600"
+                  variant="compact-premium"
+                  onClick={() => navigate('/kurikulum/supervisi')}
+                />
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Tren Kehadiran Bulanan */}
                 <CompactSectionCard title="Tren Kehadiran Sekolah (Guru vs Siswa)" icon={TrendingUp} iconColor="blue">
