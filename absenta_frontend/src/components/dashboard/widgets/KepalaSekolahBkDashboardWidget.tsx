@@ -111,40 +111,77 @@ export const KepalaSekolahBkDashboardWidget: React.FC = () => {
         </Badge>
       </div>
 
-      {/* KPI Stats Grid (Premium Mode HP/Desktop) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <AnalyticsCard
-          title="Completion Rate"
-          value={`${statistikPenyelesaian.completionRate}%`}
-          subtitle={`${statistikPenyelesaian.totalCompleted} dari ${statistikPenyelesaian.totalOpened} kasus selesai`}
-          icon={<CheckCircle size={18} className="text-white" />}
-          gradient="from-emerald-600 to-teal-700"
-          variant="compact-premium"
-        />
-        <AnalyticsCard
-          title="Mean Resolution Time"
-          value={`${statistikPenyelesaian.meanResolutionTimeDays} Hari`}
-          subtitle="Rata-rata waktu penyelesaian kasus"
-          icon={<Clock size={18} className="text-white" />}
-          gradient="from-indigo-600 to-blue-700"
-          variant="compact-premium"
-        />
-        <AnalyticsCard
-          title="Jurusan Berisiko EWS"
-          value={topRiskJurusan ? topRiskJurusan.jurusan : '-'}
-          subtitle={`EWS Avg: ${topRiskJurusan ? topRiskJurusan.averageRiskScore : 0} • ${topRiskJurusan ? topRiskJurusan.jumlahKasus : 0} Kasus`}
-          icon={<AlertTriangle size={18} className="text-white" />}
-          gradient="from-rose-600 to-red-700"
-          variant="compact-premium"
-        />
-        <AnalyticsCard
-          title="Total Kasus Aktif"
-          value={`${statistikKasus.active} Kasus`}
-          subtitle="Dalam penanganan konselor BK"
-          icon={<Activity size={18} className="text-white" />}
-          gradient="from-amber-600 to-orange-700"
-          variant="compact-premium"
-        />
+      {/* KPI Stats Grid (Model Blok Terpadu 1 Kartu) */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 p-2 rounded-2xl min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-xs">
+              <CheckCircle size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                Completion Rate
+              </span>
+              <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
+                {statistikPenyelesaian.completionRate}%
+              </h4>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                {statistikPenyelesaian.totalCompleted} dari {statistikPenyelesaian.totalOpened} kasus
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3 p-2 rounded-2xl min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+              <Clock size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                Resolution Time
+              </span>
+              <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
+                {statistikPenyelesaian.meanResolutionTimeDays} Hari
+              </h4>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                Rata-rata waktu beres
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3 p-2 rounded-2xl min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-xs">
+              <AlertTriangle size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                Jurusan EWS
+              </span>
+              <h4 className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 tracking-tight truncate mt-0.5">
+                {topRiskJurusan ? topRiskJurusan.jurusan : '-'}
+              </h4>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                EWS Score: {topRiskJurusan ? topRiskJurusan.averageRiskScore : 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3 p-2 rounded-2xl min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
+              <Activity size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                Kasus Aktif
+              </span>
+              <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
+                {statistikKasus.active} Kasus
+              </h4>
+              <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                Dalam bimbingan BK
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Analytics Charts Grid */}

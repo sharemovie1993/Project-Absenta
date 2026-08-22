@@ -49,6 +49,70 @@ import { KepalaSekolahBkDashboardWidget } from '../widgets/KepalaSekolahBkDashbo
 
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 
+interface MetricBlockItem {
+  label: string;
+  value: string | number;
+  icon: any;
+  color: 'blue' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'purple' | 'teal' | 'cyan' | 'orange';
+  subtitle?: string;
+  onClick?: () => void;
+}
+
+const colorStyles: Record<string, { bg: string; text: string }> = {
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-600 dark:text-blue-400' },
+  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-600 dark:text-emerald-400' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400' },
+  rose: { bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-600 dark:text-rose-400' },
+  indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-600 dark:text-indigo-400' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-600 dark:text-purple-400' },
+  teal: { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-600 dark:text-teal-400' },
+  cyan: { bg: 'bg-cyan-50 dark:bg-cyan-950/40', text: 'text-cyan-600 dark:text-cyan-400' },
+  orange: { bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-600 dark:text-orange-400' },
+};
+
+export const UnifiedBlockMetrics: React.FC<{ items: MetricBlockItem[]; columns?: 2 | 3 | 4 }> = ({ items, columns = 4 }) => {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+      <div className={cn(
+        "grid grid-cols-2 gap-2.5 sm:gap-4",
+        columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"
+      )}>
+        {items.map((item, idx) => {
+          const Icon = item.icon;
+          const style = colorStyles[item.color] || colorStyles.blue;
+          return (
+            <div
+              key={idx}
+              onClick={item.onClick}
+              className={cn(
+                "flex items-center gap-2.5 sm:gap-3 p-2 rounded-2xl transition-all select-none min-w-0",
+                item.onClick ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-98" : ""
+              )}
+            >
+              <div className={cn("w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-xs", style.bg, style.text)}>
+                <Icon size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                  {item.label}
+                </span>
+                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate mt-0.5">
+                  {item.value}
+                </h4>
+                {item.subtitle && (
+                  <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                    {item.subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export const KepalaSekolahDashboard: React.FC = React.memo(() => {
@@ -272,43 +336,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'kbm' && (
             <div className="space-y-6">
-              {/* Metrik Utama KBM (Compact Premium Mode) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <AnalyticsCard
-                  title="Hadir Siswa"
-                  value={`${siswaAttendance}%`}
-                  subtitle="Tingkat kehadiran hari ini"
-                  icon={<Users size={18} className="text-white" />}
-                  gradient="from-blue-600 to-indigo-700"
-                  variant="compact-premium"
-                  onClick={() => navigate('/attendance/rekap')}
-                />
-                <AnalyticsCard
-                  title="Hadir Guru"
-                  value={`${guruAttendance}%`}
-                  subtitle="Tenaga pendidik bertugas"
-                  icon={<CheckCircle size={18} className="text-white" />}
-                  gradient="from-emerald-600 to-teal-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Sesi KBM Live"
-                  value={`${stats?.total_sesi_aktif || 0} Kelas`}
-                  subtitle="Sedang melangsungkan belajar"
-                  icon={<PlayCircle size={18} className="text-white" />}
-                  gradient="from-purple-600 to-indigo-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Supervisi KBM"
-                  value="98.4%"
-                  subtitle="Ketercapaian jam efektif"
-                  icon={<Award size={18} className="text-white" />}
-                  gradient="from-amber-500 to-orange-600"
-                  variant="compact-premium"
-                  onClick={() => navigate('/kurikulum/supervisi')}
-                />
-              </div>
+              {/* Metrik Utama KBM (Model Blok Terpadu) */}
+              <UnifiedBlockMetrics 
+                items={[
+                  { label: 'Hadir Siswa', value: `${siswaAttendance}%`, subtitle: 'Kehadiran hari ini', icon: Users, color: 'blue', onClick: () => navigate('/attendance/rekap') },
+                  { label: 'Hadir Guru', value: `${guruAttendance}%`, subtitle: 'Pendidik bertugas', icon: CheckCircle, color: 'emerald' },
+                  { label: 'Sesi KBM Live', value: `${stats?.total_sesi_aktif || 0} Kelas`, subtitle: 'Sedang belajar', icon: PlayCircle, color: 'purple' },
+                  { label: 'Supervisi KBM', value: '98.4%', subtitle: 'Jam efektif tercapai', icon: Award, color: 'amber', onClick: () => navigate('/kurikulum/supervisi') },
+                ]}
+              />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Tren Kehadiran Bulanan */}
@@ -387,32 +423,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'kesiswaan' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                <AnalyticsCard
-                  title="Pelanggaran Hari Ini"
-                  value={`${violationData?.data?.total_today || 0} Kasus`}
-                  subtitle={`Total poin: ${violationData?.data?.points_today || 0} Poin`}
-                  icon={<ShieldAlert size={18} className="text-white" />}
-                  gradient="from-rose-600 to-red-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Catatan Tata Tertib"
-                  value={`${Array.isArray(pelanggaranData?.data) ? pelanggaranData.data.length : 0} Kasus`}
-                  subtitle="Tercatat dalam rekapitulasi"
-                  icon={<Scale size={18} className="text-white" />}
-                  gradient="from-amber-600 to-orange-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Eskalasi Prioritas"
-                  value={`${escalations.length} Kasus`}
-                  subtitle="Kasus disiplin tingkat lanjut"
-                  icon={<AlertTriangle size={18} className="text-white" />}
-                  gradient="from-indigo-600 to-purple-700"
-                  variant="compact-premium"
-                />
-              </div>
+              {/* Metrik Kesiswaan (Model Blok Terpadu) */}
+              <UnifiedBlockMetrics 
+                columns={3}
+                items={[
+                  { label: 'Pelanggaran Hari Ini', value: `${violationData?.data?.total_today || 0} Kasus`, subtitle: `Akumulasi: ${violationData?.data?.points_today || 0} Poin`, icon: ShieldAlert, color: 'rose' },
+                  { label: 'Catatan Tata Tertib', value: `${Array.isArray(pelanggaranData?.data) ? pelanggaranData.data.length : 0} Kasus`, subtitle: 'Rekapitulasi aktif', icon: Scale, color: 'amber' },
+                  { label: 'Eskalasi Prioritas', value: `${escalations.length} Kasus`, subtitle: 'Butuh tindakan lanjut', icon: AlertTriangle, color: 'indigo' },
+                ]}
+              />
 
               {/* Daftar Eskalasi Kasus Kesiswaan */}
               <CompactSectionCard title="Daftar Eskalasi Kasus Kesiswaan Mendesak" icon={ShieldAlert} iconColor="rose">
@@ -454,41 +473,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'sarpras' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <AnalyticsCard
-                  title="Total Aset KIB"
-                  value={`${sarprasData?.data?.total_assets || sarprasData?.total_assets || 0} Unit`}
-                  subtitle="Tercatat di Buku Induk"
-                  icon={<Building size={18} className="text-white" />}
-                  gradient="from-emerald-600 to-teal-700"
-                  variant="compact-premium"
-                  onClick={() => navigate('/sarpras/inventory')}
-                />
-                <AnalyticsCard
-                  title="Ruangan & Lab"
-                  value={`${sarprasData?.data?.total_rooms || 32} Ruang`}
-                  subtitle="Kondisi Baik & Siap Pakai"
-                  icon={<Building size={18} className="text-white" />}
-                  gradient="from-indigo-600 to-blue-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Peminjaman Aktif"
-                  value={`${sarprasData?.data?.active_loans || 0} Transaksi`}
-                  subtitle="Alat Praktik / Lab"
-                  icon={<Wrench size={18} className="text-white" />}
-                  gradient="from-amber-600 to-orange-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Usulan Perbaikan"
-                  value={`${sarprasData?.data?.pending_repairs || 0} Usulan`}
-                  subtitle="Menunggu Approval Pimpinan"
-                  icon={<AlertTriangle size={18} className="text-white" />}
-                  gradient="from-rose-600 to-red-700"
-                  variant="compact-premium"
-                />
-              </div>
+              {/* Metrik Sarpras (Model Blok Terpadu) */}
+              <UnifiedBlockMetrics 
+                items={[
+                  { label: 'Total Aset KIB', value: `${sarprasData?.data?.total_assets || sarprasData?.total_assets || 0} Unit`, subtitle: 'Buku Induk KIB', icon: Building, color: 'emerald', onClick: () => navigate('/sarpras/inventory') },
+                  { label: 'Ruangan & Lab', value: `${sarprasData?.data?.total_rooms || 32} Ruang`, subtitle: 'Siap pakai & baik', icon: Building, color: 'indigo' },
+                  { label: 'Peminjaman Aktif', value: `${sarprasData?.data?.active_loans || 0} Transaksi`, subtitle: 'Alat praktik lab', icon: Wrench, color: 'amber' },
+                  { label: 'Usulan Perbaikan', value: `${sarprasData?.data?.pending_repairs || 0} Usulan`, subtitle: 'Butuh persetujuan', icon: AlertTriangle, color: 'rose' },
+                ]}
+              />
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div>
@@ -511,41 +504,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'hubin' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <AnalyticsCard
-                  title="Siswa PKL Aktif"
-                  value={`${hubinData?.data?.active_students || hubinData?.total_pkl || 0} Siswa`}
-                  subtitle="Sedang Magang di Industri"
-                  icon={<Briefcase size={18} className="text-white" />}
-                  gradient="from-teal-600 to-emerald-700"
-                  variant="compact-premium"
-                  onClick={() => navigate('/hubin/dashboard')}
-                />
-                <AnalyticsCard
-                  title="Mitra Industri (DUDI)"
-                  value={`${hubinData?.data?.total_mitra || 48} PT`}
-                  subtitle="MoU Kemitraan Aktif"
-                  icon={<Building size={18} className="text-white" />}
-                  gradient="from-indigo-600 to-violet-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Lowongan Kerja BKK"
-                  value={`${bkkData?.data?.active_jobs || 12} Loker`}
-                  subtitle="Tersedia untuk Alumni"
-                  icon={<Award size={18} className="text-white" />}
-                  gradient="from-cyan-600 to-blue-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Tracer Study"
-                  value="84.5%"
-                  subtitle="Terserap Kerja / Usaha"
-                  icon={<TrendingUp size={18} className="text-white" />}
-                  gradient="from-purple-600 to-pink-700"
-                  variant="compact-premium"
-                />
-              </div>
+              {/* Metrik Hubin (Model Blok Terpadu) */}
+              <UnifiedBlockMetrics 
+                items={[
+                  { label: 'Siswa PKL Aktif', value: `${hubinData?.data?.active_students || hubinData?.total_pkl || 0} Siswa`, subtitle: 'Magang di industri', icon: Briefcase, color: 'teal', onClick: () => navigate('/hubin/dashboard') },
+                  { label: 'Mitra Industri (DUDI)', value: `${hubinData?.data?.total_mitra || 48} PT`, subtitle: 'MoU aktif berjalan', icon: Building, color: 'indigo' },
+                  { label: 'Lowongan Kerja BKK', value: `${bkkData?.data?.active_jobs || 12} Loker`, subtitle: 'Tersedia untuk alumni', icon: Award, color: 'cyan' },
+                  { label: 'Tracer Study', value: '84.5%', subtitle: 'Terserap kerja/usaha', icon: TrendingUp, color: 'purple' },
+                ]}
+              />
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div>
@@ -568,42 +535,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           {executivePillar === 'tu' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <AnalyticsCard
-                  title="Surat Masuk Baru"
-                  value={`${tuData?.data?.incoming_letters || 6} Berkas`}
-                  subtitle="Perlu Disposisi Pimpinan"
-                  icon={<Mail size={18} className="text-white" />}
-                  gradient="from-amber-600 to-orange-700"
-                  variant="compact-premium"
-                  onClick={() => navigate('/correspondence/dashboard')}
-                />
-                <AnalyticsCard
-                  title="Pengesahan / TTD Surat"
-                  value={`${tuData?.data?.pending_sign || 2} Surat`}
-                  subtitle="Menunggu Tanda Tangan"
-                  icon={<FileText size={18} className="text-white" />}
-                  gradient="from-rose-600 to-pink-700"
-                  variant="compact-premium"
-                  onClick={() => navigate('/correspondence/dashboard')}
-                />
-                <AnalyticsCard
-                  title="Total Tenaga Pendidik"
-                  value={`${stats?.total_guru || 78} Guru`}
-                  subtitle="Tercatat di Dapodik"
-                  icon={<Users size={18} className="text-white" />}
-                  gradient="from-emerald-600 to-teal-700"
-                  variant="compact-premium"
-                />
-                <AnalyticsCard
-                  title="Kelengkapan Dapodik"
-                  value="98.2%"
-                  subtitle="Sinkronisasi Valid"
-                  icon={<CheckCircle size={18} className="text-white" />}
-                  gradient="from-blue-600 to-indigo-700"
-                  variant="compact-premium"
-                />
-              </div>
+              {/* Metrik TU (Model Blok Terpadu) */}
+              <UnifiedBlockMetrics 
+                items={[
+                  { label: 'Surat Masuk Baru', value: `${tuData?.data?.incoming_letters || 6} Berkas`, subtitle: 'Perlu disposisi', icon: Mail, color: 'amber', onClick: () => navigate('/correspondence/dashboard') },
+                  { label: 'Pengesahan / TTD', value: `${tuData?.data?.pending_sign || 2} Surat`, subtitle: 'Menunggu TTD digital', icon: FileText, color: 'rose', onClick: () => navigate('/correspondence/dashboard') },
+                  { label: 'Total Tenaga Pendidik', value: `${stats?.total_guru || 78} Guru`, subtitle: 'Tercatat di Dapodik', icon: Users, color: 'emerald' },
+                  { label: 'Kelengkapan Dapodik', value: '98.2%', subtitle: 'Sinkronisasi valid', icon: CheckCircle, color: 'blue' },
+                ]}
+              />
 
               <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div>
