@@ -262,10 +262,13 @@ export async function tenantMiddleware(
     }
   }
   
-  // Validate tenant ID format (UUID or 'system' for platform staff)
+  // Validate tenant ID format (UUID, 'system', or dev demo tenant slugs)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const isPlatformTenant = request.tenantId === 'system';
-  if (!uuidRegex.test(request.tenantId) && !isPlatformTenant && !(systemSuperAdmin && allowNonUuidForSuperadminLocal)) {
+  const isDemoSlugTenant = typeof request.tenantId === 'string' && (request.tenantId.startsWith('demo-') || request.tenantId === 'demo');
+  const isValidTenantFormat = uuidRegex.test(request.tenantId) || isPlatformTenant || isDemoSlugTenant || (isLocalHost && Boolean(request.tenantId));
+
+  if (!isValidTenantFormat && !(systemSuperAdmin && allowNonUuidForSuperadminLocal)) {
     return reply.status(400).send({
       error: 'Invalid tenant ID',
       message: 'X-Tenant-ID must be a valid UUID'
