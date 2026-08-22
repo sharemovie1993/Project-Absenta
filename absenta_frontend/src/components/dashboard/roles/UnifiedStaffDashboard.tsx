@@ -128,39 +128,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const { menu: _groupedMenu } = useSmartMenu();
 
-  // ── 1. Base Data ──────────────────────────────────────────────────────────────
-  const { data: guruProfileRes, refetch: refetchGuruProfile } = useQuery({
-    queryKey: ['guru-profile-me'],
-    queryFn: () => guruApi.getMe(),
-    enabled: !!user?.id,
-    staleTime: 10 * 60 * 1000,
-  });
-  const guruProfile = guruProfileRes?.data as any;
-
-  const guruId = user?.guru_profile?.id || guruProfile?.id;
-  const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
-
-  // 🔔 Global KBM Window Alert for Teacher (works across all tabs in dashboard)
-  useSessionWindowAlert({
-    schedules: Array.isArray(timelineItems) ? (timelineItems as any) : [],
-    enabled: !isTuStaff && !!guruId,
-    roleLabel: 'guru',
-  });
-
-  // ── 2. Role Detection ─────────────────────────────────────────────────────────
-  const jabatanList: string[] = useMemo(() => {
-    const list = [...(guruProfile?.jabatan_list || [])];
-    const userCodes = (user as any)?.position_codes || [];
-    if (Array.isArray(userCodes)) {
-      userCodes.forEach((code: string) => {
-        if (code && !list.includes(code)) list.push(code);
-      });
-    }
-    return list;
-  }, [guruProfile?.jabatan_list, user]);
-
-  const jabatan: string = guruProfile?.jabatan || (user?.guru_profile as any)?.jabatan || '';
-
+  // ── 1. Role & Capability Detection ──────────────────────────────────────────
   const {
     can,
     isAdmin,
@@ -186,6 +154,31 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKesiswaan,
     isKoperasi,
   } = useCapabilities();
+
+  // ── 2. Base Data ──────────────────────────────────────────────────────────────
+  const { data: guruProfileRes, refetch: refetchGuruProfile } = useQuery({
+    queryKey: ['guru-profile-me'],
+    queryFn: () => guruApi.getMe(),
+    enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+  });
+  const guruProfile = guruProfileRes?.data as any;
+
+  const guruId = user?.guru_profile?.id || guruProfile?.id;
+  const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
+
+  const jabatanList: string[] = useMemo(() => {
+    const list = [...(guruProfile?.jabatan_list || [])];
+    const userCodes = (user as any)?.position_codes || [];
+    if (Array.isArray(userCodes)) {
+      userCodes.forEach((code: string) => {
+        if (code && !list.includes(code)) list.push(code);
+      });
+    }
+    return list;
+  }, [guruProfile?.jabatan_list, user]);
+
+  const jabatan: string = guruProfile?.jabatan || (user?.guru_profile as any)?.jabatan || '';
 
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
@@ -227,6 +220,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
     (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps)))
   );
 
+  // 🔔 Global KBM Window Alert for Teacher (works across all tabs in dashboard)
+  useSessionWindowAlert({
+    schedules: Array.isArray(timelineItems) ? (timelineItems as any) : [],
+    enabled: !isTuStaff && !!guruId,
+    roleLabel: 'guru',
+  });
+
   const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
   const isWaliKelas = isWaliKelasFromCaps ||
@@ -238,6 +238,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
+
+
 
   // 🎯 SMART DEFAULT TAB RESOLUTION (Matriks Fokus Pertama Tab Berdasarkan Role/Jabatan)
   const defaultTabId = useMemo(() => {
