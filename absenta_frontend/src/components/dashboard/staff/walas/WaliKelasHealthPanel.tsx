@@ -46,8 +46,8 @@ export const WaliKelasHealthPanel: React.FC<WaliKelasHealthPanelProps> = ({
 
       if (!matchesSearch) return false;
 
-      if (statusFilter === 'AtRisk') return item.student.alphaCount >= 2 || item.student.sakitCount >= 4;
-      if (statusFilter === 'Perfect') return item.student.attendanceRate === 100;
+      if (statusFilter === 'AtRisk') return item.counts.A >= 2 || item.counts.S >= 4;
+      if (statusFilter === 'Perfect') return item.attendanceRate === 100 && item.recordedDaysCount > 0;
 
       return true;
     });
@@ -273,10 +273,12 @@ export const WaliKelasHealthPanel: React.FC<WaliKelasHealthPanelProps> = ({
         <div className="flex flex-wrap items-center gap-3 text-xs mb-4 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="font-semibold text-slate-500 dark:text-slate-400">Keterangan Legend:</span>
           <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold flex items-center justify-center text-[10px]">H</span> Hadir</span>
+          <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold flex items-center justify-center text-[10px]">T</span> Telat</span>
           <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold flex items-center justify-center text-[10px]">S</span> Sakit</span>
           <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-bold flex items-center justify-center text-[10px]">I</span> Izin</span>
           <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold flex items-center justify-center text-[10px]">A</span> Alpha</span>
           <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 font-bold flex items-center justify-center text-[10px]">D</span> Dispensasi</span>
+          <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 font-bold flex items-center justify-center text-[10px]">-</span> Belum Ada / Libur</span>
         </div>
 
         {/* Responsive Table Container */}
@@ -324,13 +326,15 @@ export const WaliKelasHealthPanel: React.FC<WaliKelasHealthPanelProps> = ({
 
                     {/* Daily Attendance Cells */}
                     {dateLabels.map((date, idx) => {
-                      const val = item.dailyRecords[date] || 'H';
-                      let cellBg = 'bg-slate-50 dark:bg-slate-900/40 text-slate-400';
+                      const val = item.dailyRecords[date] || '-';
+                      let cellBg = 'bg-slate-50/50 dark:bg-slate-900/30 text-slate-300 dark:text-slate-600 font-normal';
                       if (val === 'H') cellBg = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold';
-                      if (val === 'S') cellBg = 'bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 font-bold';
-                      if (val === 'I') cellBg = 'bg-blue-100 dark:bg-blue-950/50 text-blue-900 dark:text-blue-300 font-bold';
-                      if (val === 'A') cellBg = 'bg-rose-500 text-white font-extrabold animate-pulse';
-                      if (val === 'D') cellBg = 'bg-purple-100 dark:bg-purple-950/50 text-purple-900 dark:text-purple-300 font-bold';
+                      else if (val === 'T') cellBg = 'bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 font-bold';
+                      else if (val === 'S') cellBg = 'bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 font-bold';
+                      else if (val === 'I') cellBg = 'bg-blue-100 dark:bg-blue-950/50 text-blue-900 dark:text-blue-300 font-bold';
+                      else if (val === 'A') cellBg = 'bg-rose-500 text-white font-extrabold animate-pulse';
+                      else if (val === 'D') cellBg = 'bg-purple-100 dark:bg-purple-950/50 text-purple-900 dark:text-purple-300 font-bold';
+                      else if (val === 'B') cellBg = 'bg-red-700 text-white font-extrabold';
 
                       return (
                         <td key={idx} className={`p-1 text-center font-mono text-[10px] border-l border-slate-100 dark:border-slate-800 ${cellBg}`}>
@@ -340,14 +344,20 @@ export const WaliKelasHealthPanel: React.FC<WaliKelasHealthPanelProps> = ({
                     })}
 
                     {/* Totals */}
-                    <td className="p-2 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-l border-slate-200 dark:border-slate-800">{item.counts.H}</td>
-                    <td className="p-2 text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 border-l border-slate-200 dark:border-slate-800">{item.counts.S}</td>
-                    <td className="p-2 text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 border-l border-slate-200 dark:border-slate-800">{item.counts.I}</td>
+                    <td className="p-2 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-l border-slate-200 dark:border-slate-800">
+                      {item.counts.H + item.counts.T}
+                    </td>
+                    <td className="p-2 text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 border-l border-slate-200 dark:border-slate-800">
+                      {item.counts.S}
+                    </td>
+                    <td className="p-2 text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 border-l border-slate-200 dark:border-slate-800">
+                      {item.counts.I}
+                    </td>
                     <td className={`p-2 text-center font-extrabold border-l border-slate-200 dark:border-slate-800 ${isHasAlpha ? 'bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300' : 'text-slate-400'}`}>
                       {item.counts.A}
                     </td>
                     <td className="p-2 text-center font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/80 border-l border-slate-200 dark:border-slate-800">
-                      {s.attendanceRate}%
+                      {item.recordedDaysCount > 0 ? `${item.attendanceRate}%` : '-'}
                     </td>
                   </tr>
                 );
