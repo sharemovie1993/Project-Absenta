@@ -136,7 +136,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     staleTime: 10 * 60 * 1000,
   });
   const guruProfile = guruProfileRes?.data as any;
-  const isTuStaff = user?.guru_profile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' || guruProfile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
   const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
@@ -199,6 +198,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     ''
   ).toUpperCase();
 
+  const isTuStaff = isTU ||
+    jenisPtk === 'TENAGA_KEPENDIDIKAN' ||
+    user?.guru_profile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ||
+    guruProfile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ||
+    jabatanList.some((j: string) => j.toUpperCase().startsWith('TU') || j.toUpperCase().includes('TATA USAHA'));
+
   // Petugas Gerbang Detection (Murni untuk staf satpam/gerbang, bukan Admin/Kepsek/Kurikulum)
   const isSecurityRole = roleName === 'GERBANG' ||
     roleName === 'PETUGAS_GERBANG' ||
@@ -217,9 +222,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // True Pendidik (Guru Pengajar KBM)
   const isPendidik = (
-    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps))) &&
+    !isTuStaff &&
     !isSecurityRole &&
-    !isTuStaff
+    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps)))
   );
 
   const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);

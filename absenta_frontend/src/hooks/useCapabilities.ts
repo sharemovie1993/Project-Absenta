@@ -39,32 +39,27 @@ export function useCapabilities() {
     // LEVEL 2: STAF OPERASIONAL & ADMINISTRASI (TU & KOPERASI)
     // ═══════════════════════════════════════════════════════════════════
     const isTUKepala =
-      userPositions.includes('TU_KEPALA') ||
-      can('correspondence.outbox.sign');
+      userPositions.includes('TU_KEPALA');
 
     const isTUPersuratan =
-      userPositions.includes('TU_PERSURATAN') ||
-      can('correspondence.inbox.view');
+      userPositions.includes('TU_PERSURATAN');
 
     const isTUKeuangan =
-      userPositions.includes('TU_KEUANGAN') ||
-      can('tu.finance.recap.view');
+      userPositions.includes('TU_KEUANGAN');
 
     const isTUKepegawaian =
-      userPositions.includes('TU_KEPEGAWAIAN') ||
-      can('academic.teachers.manage') ||
-      can('academic.students.manage');
+      userPositions.includes('TU_KEPEGAWAIAN');
 
     const isTUSarpras =
-      userPositions.includes('TU_SARPRAS') ||
-      can('sarpras.inventory.manage');
+      userPositions.includes('TU_SARPRAS');
 
     const isTU =
       isTUKepala ||
       isTUPersuratan ||
       isTUKeuangan ||
       isTUKepegawaian ||
-      isTUSarpras;
+      isTUSarpras ||
+      userPositions.includes('TU');
 
     // Koperasi: 5 Jabatan Kanonikal (Ketua, Bendahara, Sekretaris, Manajer/Kasir, Pengawas)
     const isKoperasiHead = userPositions.includes('KETUA_KOPERASI');
