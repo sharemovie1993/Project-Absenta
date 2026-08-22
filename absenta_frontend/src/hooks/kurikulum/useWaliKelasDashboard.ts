@@ -11,6 +11,7 @@ import {
   getPrestasiList,
   getSiswaWalasList,
 } from '../../api/kurikulum/waliKelas.api';
+import { kesiswaanApi } from '../../api/kesiswaan.api';
 import { resolveProfilePhotoUrl } from '../../lib/utils';
 import type { JournalEntry, LeaveRequest, AtRiskStudent, Student, ViolationRecord, AchievementRecord } from '../../components/dashboard/staff/walas/types';
 
@@ -138,7 +139,17 @@ export function useWaliKelasDashboard(kelasId?: string) {
     }));
   }, [rawAchievements]);
 
-  // 6. Fetch Siswa & Attendance Matrix
+  // 6. Fetch Presensi Kelas Harian Live
+  const attendanceQuery = useQuery({
+    queryKey: ['walas-presensi-harian', kelasId],
+    queryFn: () => kesiswaanApi.getRekapHarianSiswa({ kelas_id: kelasId }).catch(() => ({ success: true, data: [] })),
+    enabled: Boolean(kelasId),
+    staleTime: 60 * 1000,
+  });
+
+  const rawAttendance = extractArrayData(attendanceQuery.data);
+
+  // 7. Fetch Siswa & Attendance Matrix
   const studentQuery = useQuery({
     queryKey: ['walas-siswa', kelasId],
     queryFn: () => getSiswaWalasList(kelasId),
@@ -147,32 +158,109 @@ export function useWaliKelasDashboard(kelasId?: string) {
 
   const rawStudents = extractArrayData(studentQuery.data);
   const students: Student[] = useMemo(() => {
-    return rawStudents
-      .filter((item: any) => {
-        const s = String(item.status || 'AKTIF').toUpperCase();
-        return s === 'AKTIF' || s === 'ACTIVE';
-      })
-      .map((item: any, idx: number) => ({
-      id: item.id,
-      nis: item.nis || '-',
-      name: item.nama_siswa,
-      gender: item.jenis_kelamin === 'P' ? 'P' : 'L',
-      avatar: item.foto ? resolveProfilePhotoUrl(item.foto) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      parentName: item.nama_ayah || item.nama_ibu || item.nama_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.nama || 'Orang Tua',
-      parentPhone: item.no_hp_ortu || item.no_hp_ayah || item.no_hp_ibu || item.no_hp_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.no_hp || item.no_hp || '',
-      todayStatus: item.nisn === '0114956858' ? 'Alpha' : item.nisn === '0127212982' ? 'Alpha' : item.nisn === '0115190115' ? 'Sakit' : item.nisn === '0106442141' ? 'Izin' : 'Hadir',
-      attendanceRate: item.nisn === '0114956858' ? 0 : item.nisn === '0127212982' ? 60 : item.nisn === '0115190115' ? 70 : 100,
-      alphaCount: item.nisn === '0114956858' ? 10 : 0,
-      sakitCount: item.nisn === '0115190115' ? 3 : 0,
-      izinCount: item.nisn === '0106442141' ? 2 : 0,
-      violationPoints: item.nisn === '0127212982' ? 25 : item.nisn === '0115190115' ? 10 : 0,
-      goodDeedsPoints: item.nisn === '0109275978' ? 50 : item.nisn === '0106442141' ? 95 : 10,
-      academicAverage: 88,
-      isStarStudent: idx < 3,
-      starRank: idx < 3 ? idx + 1 : undefined,
-      badges: item.nisn === '0109275978' ? [{ id: 'b1', name: 'Juara LKS', icon: 'Trophy', description: 'Juara 1 LKS Akuntansi' }] : []
-    }));
-  }, [rawStudents]);
+    // Bangun lookup map untuk presensi, pelanggaran, prestasi, dan EWS
+    const attMap = new Map<string, any>();
+    rawAttendance.forEach((a: any) => {
+      const sId = a.siswa_id || a.id;
+      if (sId) attMap.set(sId, a);
+    });
+
+    const violMap = new Map<string, ViolationRecord[]>();
+    violations.forEach((v) => {
+      if (!violMap.has(v.studentId)) violMap.set(v.studentId, []);
+      violMap.get(v.studentId)!.push(v);
+    });
+
+    const achMap = new Map<string, AchievementRecord[]>();
+    achievements.forEach((a) => {
+      if (!achMap.has(a.studentId)) achMap.set(a.studentId, []);
+      achMap.get(a.studentId)!.push(a);
+    });
+
+    const ewsMap = new Map<string, AtRiskStudent>();
+    atRiskStudents.forEach((e) => {
+      if (e.studentId) ewsMap.set(e.studentId, e);
+    });
+
+    const activeList = rawStudents.filter((item: any) => {
+      const s = String(item.status || 'AKTIF').toUpperCase();
+      return s === 'AKTIF' || s === 'ACTIVE';
+    });
+
+    const mapped = activeList.map((item: any) => {
+      const sId = item.id;
+      const att = attMap.get(sId);
+      const studentViolations = violMap.get(sId) || [];
+      const totalViolPoints = studentViolations.reduce((acc, v) => acc + (v.points || 0), 0);
+      const studentAchievements = achMap.get(sId) || [];
+      const totalAchPoints = studentAchievements.reduce((acc, a) => acc + (a.points || 0), 0);
+      const ews = ewsMap.get(sId);
+
+      // Status kehadiran hari ini
+      let todayStatus: any = 'Hadir';
+      const rawStatus = att?.status_kehadiran || att?.status || item.status_kehadiran_hari_ini;
+      if (rawStatus === 'A' || rawStatus === 'ALPHA') todayStatus = 'Alpha';
+      else if (rawStatus === 'I' || rawStatus === 'IZIN') todayStatus = 'Izin';
+      else if (rawStatus === 'S' || rawStatus === 'SAKIT') todayStatus = 'Sakit';
+      else if (rawStatus === 'D' || rawStatus === 'DISPENSASI') todayStatus = 'Dispensasi';
+      else if (rawStatus === 'B' || rawStatus === 'BOLOS') todayStatus = 'Bolos';
+      else if (ews?.totalAlphaThisMonth && ews.totalAlphaThisMonth >= 3) todayStatus = 'Alpha';
+
+      const alphaCount = ews?.totalAlphaThisMonth ?? (todayStatus === 'Alpha' ? 1 : 0);
+      const sakitCount = todayStatus === 'Sakit' ? 1 : 0;
+      const izinCount = todayStatus === 'Izin' ? 1 : 0;
+
+      // Kalkulasi rasio kehadiran dinamis (default 100%, dipotong jika ada alpha/sakit)
+      const penalty = (alphaCount * 10) + (sakitCount * 2) + (izinCount * 1);
+      const attendanceRate = Math.max(0, Math.min(100, 100 - penalty));
+
+      // Badges dari prestasi riil
+      const badges = studentAchievements.map((ach, bIdx) => ({
+        id: `badge-${ach.id || bIdx}`,
+        name: ach.title,
+        icon: 'Trophy',
+        description: `${ach.category} (${ach.level})`
+      }));
+
+      return {
+        id: sId,
+        nis: item.nis || '-',
+        name: item.nama_siswa,
+        gender: item.jenis_kelamin === 'P' ? 'P' : 'L',
+        avatar: item.foto ? resolveProfilePhotoUrl(item.foto) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        parentName: item.nama_ayah || item.nama_ibu || item.nama_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.nama || 'Orang Tua',
+        parentPhone: item.no_hp_ortu || item.no_hp_ayah || item.no_hp_ibu || item.no_hp_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.no_hp || item.no_hp || '',
+        todayStatus,
+        attendanceRate,
+        alphaCount,
+        sakitCount,
+        izinCount,
+        violationPoints: totalViolPoints,
+        goodDeedsPoints: Math.max(10, totalAchPoints),
+        academicAverage: 85,
+        isStarStudent: false,
+        starRank: undefined as number | undefined,
+        badges,
+        atRiskReason: ews?.atRiskReason,
+      };
+    });
+
+    // Urutkan siswa untuk mencari Star Students (prestasi tertinggi & poin pelanggaran 0)
+    const sortedForStar = [...mapped].sort((a, b) => {
+      if (b.goodDeedsPoints !== a.goodDeedsPoints) return b.goodDeedsPoints - a.goodDeedsPoints;
+      return a.violationPoints - b.violationPoints;
+    });
+
+    sortedForStar.slice(0, 3).forEach((star, idx) => {
+      const target = mapped.find(m => m.id === star.id);
+      if (target && target.goodDeedsPoints > 10) {
+        target.isStarStudent = true;
+        target.starRank = idx + 1;
+      }
+    });
+
+    return mapped;
+  }, [rawStudents, rawAttendance, violations, achievements, atRiskStudents]);
 
   // Mutations
   const updateLeaveMutation = useMutation({
