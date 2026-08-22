@@ -276,7 +276,7 @@ export default function LoginPage() {
           <div className="absolute top-1/4 right-1/4 w-[36rem] h-[36rem] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-amber-600/5" />
           <div className="absolute bottom-1/4 left-1/4 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-blue-600/5" />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 relative z-10">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-22 pb-16 relative z-10">
             <DemoRoleSelector
               onSelectRole={handleDemoRoleLogin}
               isLoading={isLoading}
