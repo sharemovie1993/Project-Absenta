@@ -180,23 +180,15 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   ] as const;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* 1. Welcome Banner Pimpinan */}
-      <WelcomeBanner
-        title={`Selamat Datang, Bapak/Ibu Kepala Sekolah`}
-        subtitle="Pantau perkembangan mutu sekolah, efektivitas KBM, tata tertib, aset, dan kemitraan industri dari satu panel eksekutif."
-        icon={ShieldCheck}
-        badge={{ label: 'Executive 360° View', color: 'blue' }}
-      />
-
-      {/* 2. Quick Actions Navigation */}
+    <div className="w-full space-y-5">
+      {/* 1. Quick Actions Navigation */}
       <QuickActionGrid title="Navigasi Strategis Pimpinan" actions={quickActions} columns={4} />
 
-      {/* 3. Top-Level KPI Ribbon (Responsive Grid) */}
+      {/* 2. Top-Level KPI Ribbon (Responsive Grid) */}
       <InfoStripGrid items={infoStrips} />
 
-      {/* 4. 5-Pilar Executive Tab Selector (Mobile Touch Friendly & Desktop) */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar">
+      {/* 3. 6-Pilar Executive Tab Selector (Mobile Touch Friendly & Desktop) */}
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar">
         <div className="flex gap-2 min-w-max">
           {pillarTabs.map(tab => {
             const Icon = tab.icon;
