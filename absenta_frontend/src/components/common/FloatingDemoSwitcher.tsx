@@ -57,7 +57,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
   const [isSwitching, setIsSwitching] = useState(false);
   const [switchingRoleId, setSwitchingRoleId] = useState<string | null>(null);
 
-  const { isAuthenticated, user, loginAction, logoutAction } = useAuthStore();
+  const { isAuthenticated, user, loginAction, logout } = useAuthStore();
 
   const isDemoSession = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -68,11 +68,15 @@ export const FloatingDemoSwitcher: React.FC = () => {
   }, []);
 
   const activeRoleName = useMemo(() => {
-    return sessionStorage.getItem('demo_active_role') || user?.role?.name || 'Demo User';
+    const sessionRole = sessionStorage.getItem('demo_active_role');
+    if (sessionRole) return sessionRole;
+    return user?.role?.name || 'Demo User';
   }, [user]);
 
   const activePersonName = useMemo(() => {
-    return sessionStorage.getItem('demo_active_name') || user?.name || '';
+    const sessionName = sessionStorage.getItem('demo_active_name');
+    if (sessionName) return sessionName;
+    return user?.full_name || 'Pengguna Demo';
   }, [user]);
 
   const filteredProfiles = useMemo(() => {
@@ -107,7 +111,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
       const devTenantArg = (isDevMode && isLocalhostLogin) ? currentTenantId : undefined;
 
       // 1. Silent logout
-      await logoutAction();
+      logout();
 
       // 2. Set new demo session data
       sessionStorage.setItem('is_demo_session', 'true');
@@ -139,7 +143,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
     sessionStorage.removeItem('is_demo_session');
     sessionStorage.removeItem('demo_active_role');
     sessionStorage.removeItem('demo_active_name');
-    await logoutAction();
+    logout();
     window.location.href = '/login';
   };
 
