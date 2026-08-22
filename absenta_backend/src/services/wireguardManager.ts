@@ -117,19 +117,61 @@ export class WireguardManager {
     return `/etc/wireguard/et-${slug}.conf`;
   }
 
-  /** Tulis file konfigurasi WireGuard ke disk dengan PersistentKeepalive = 25 hardening */
+  /** Menghitung ID tabel routing numerik unik (1000 - 8999) dari slug */
+  static getTableId(slug: string): number {
+    let hash = 0;
+    for (let i = 0; i < slug.length; i++) {
+      hash = (hash << 5) - hash + slug.charCodeAt(i);
+      hash |= 0;
+    }
+    return 1000 + (Math.abs(hash) % 8000);
+  }
+
+  /** Tulis file konfigurasi WireGuard ke disk dengan PersistentKeepalive = 25 & PBR Multi-Tunnel Hardening */
   static writeConfig(slug: string, configContent: string): string {
     this.ensureTunnelsDir();
     const confPath = this.confPath(slug);
+    let hardenedConfig = configContent;
 
     // Hardening: Ensure PersistentKeepalive = 25 is present in [Peer] section to prevent NAT timeout & auto-reconnect on disconnect
-    let hardenedConfig = configContent;
     if (/\[Peer\]/i.test(hardenedConfig) && !/PersistentKeepalive/i.test(hardenedConfig)) {
       hardenedConfig = hardenedConfig.replace(/(\[Peer\][\s\S]*?)(?=\n\[|\s*$)/gi, '$1\nPersistentKeepalive = 25\n');
     }
-    // Mencegah error "RTNETLINK answers: File exists" saat multi-tunnel aktif di Linux
-    if (!this.isWindows() && !/Table\s*=/i.test(hardenedConfig)) {
-      hardenedConfig = hardenedConfig.replace(/\[Interface\]/i, '[Interface]\nTable = off\nPostUp = ip -4 route replace 10.0.0.1/32 dev %i 2>/dev/null || true');
+
+    // Mencegah error "RTNETLINK answers: File exists" dan routing conflict saat multi-tunnel aktif di Linux
+    if (!this.isWindows()) {
+      // 1. Ekstrak Client IP dari Address
+      const addrMatch = hardenedConfig.match(/Address\s*=\s*([0-9.]+)/i);
+      const clientIp = addrMatch ? addrMatch[1] : '';
+
+      // 2. Ekstrak Gateway IP dari AllowedIPs atau hitung berdasarkan subnet client IP (10.0.X.1)
+      let gatewayIp = '10.0.0.1';
+      const allowedMatch = hardenedConfig.match(/AllowedIPs\s*=\s*([0-9.]+)/i);
+      if (allowedMatch) {
+        gatewayIp = allowedMatch[1];
+      } else if (clientIp) {
+        const parts = clientIp.split('.');
+        if (parts.length === 4) {
+          gatewayIp = `${parts[0]}.${parts[1]}.${parts[2]}.1`;
+        }
+      }
+
+      const tableId = this.getTableId(slug);
+
+      // Bersihkan konfigurasi Table / PostUp / PreDown lama agar tidak duplikat
+      hardenedConfig = hardenedConfig
+        .replace(/Table\s*=\s*[^\n]+\n?/gi, '')
+        .replace(/PostUp\s*=\s*[^\n]+\n?/gi, '')
+        .replace(/PreDown\s*=\s*[^\n]+\n?/gi, '');
+
+      // Pasang Policy-Based Routing (PBR) per-interface dengan Tabel Numerik:
+      // - ip rule add from <CLIENT_IP>: Hanya mengarahkan paket keluar dari IP client spesifik ke tabel rute unik tableId
+      // - ip route add <GATEWAY_IP> dev %i table tableId: Mengarahkan traffic gateway ke interface %i tanpa mengganggu interface lain
+      const pbrPostUp = `Table = off\n` +
+        `PostUp = ip -4 rule add from ${clientIp}/32 table ${tableId} 2>/dev/null || true; ip -4 route add ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || ip -4 route replace ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || true\n` +
+        `PreDown = ip -4 rule del from ${clientIp}/32 table ${tableId} 2>/dev/null || true; ip -4 route flush table ${tableId} 2>/dev/null || true`;
+
+      hardenedConfig = hardenedConfig.replace(/\[Interface\]/i, `[Interface]\n${pbrPostUp}`);
     }
 
     fs.writeFileSync(confPath, hardenedConfig, { encoding: 'utf8', mode: 0o600 });
