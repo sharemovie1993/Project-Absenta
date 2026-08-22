@@ -228,21 +228,8 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
                       </div>
 
                       {/* Label Judul Jabatan (Tebal & Rapi) */}
-                      <span className="text-[11.5px] sm:text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 leading-tight max-w-[110px]">
+                      <span className="text-[11.5px] sm:text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 leading-tight max-w-[110px] text-center">
                         {profile.title}
-                      </span>
-
-                      {/* Nama Simulasi Guru / Staf */}
-                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[100px] mt-0.5">
-                        {profile.simulatedName}
-                      </span>
-
-                      {/* Mini Role Badge */}
-                      <span className={cn(
-                        "mt-1.5 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-tight border truncate max-w-[95px]",
-                        profile.badgeColor
-                      )}>
-                        {profile.badge}
                       </span>
                     </button>
                   );
