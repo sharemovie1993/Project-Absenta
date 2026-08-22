@@ -17,8 +17,9 @@ import {
   MailCheck,
   HeartPulse,
   Scale,
-  Trophy,
   ScrollText,
+  HeartHandshake,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -166,6 +167,71 @@ export const BottomNavigation: React.FC = React.memo(() => {
       isActive: (pathname) => pathname.startsWith('/profile'),
     },
   ], []);
+
+  // 1.1 Kepala Sekolah Mobile Bottom Tabs (6 Pilar 360° + Profil)
+  const kepsekTabs = useMemo<MobileBottomTabItem[]>(() => {
+    const currentPillar = searchParams.get('pillar') || 'kbm';
+    const isProfileTab = currentTab === 'profil';
+
+    return [
+      {
+        id: 'kbm',
+        label: 'KBM & Kurikulum',
+        shortLabel: 'KBM',
+        icon: BookOpen,
+        targetPath: '/dashboard?pillar=kbm',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab,
+      },
+      {
+        id: 'kesiswaan',
+        label: 'Kesiswaan & Disiplin',
+        shortLabel: 'Kesiswaan',
+        icon: Users,
+        targetPath: '/dashboard?pillar=kesiswaan',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab,
+      },
+      {
+        id: 'bk',
+        label: 'Bimbingan Konseling (EWS)',
+        shortLabel: 'BP/BK',
+        icon: HeartHandshake,
+        targetPath: '/dashboard?pillar=bk',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab,
+      },
+      {
+        id: 'sarpras',
+        label: 'Sarpras & Fasilitas',
+        shortLabel: 'Sarpras',
+        icon: Building,
+        targetPath: '/dashboard?pillar=sarpras',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'sarpras' && !isProfileTab,
+      },
+      {
+        id: 'hubin',
+        label: 'Hubin & Kemitraan',
+        shortLabel: 'Hubin',
+        icon: Briefcase,
+        targetPath: '/dashboard?pillar=hubin',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'hubin' && !isProfileTab,
+      },
+      {
+        id: 'tu',
+        label: 'Tata Usaha & Surat',
+        shortLabel: 'TU',
+        icon: FileText,
+        targetPath: '/dashboard?pillar=tu',
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'tu' && !isProfileTab,
+      },
+      {
+        id: 'profil',
+        label: 'Profil Saya',
+        shortLabel: 'Profil',
+        icon: User,
+        targetPath: '/dashboard?tab=profil',
+        isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile'),
+      },
+    ];
+  }, [searchParams, currentTab]);
 
   // 2. Staff / Guru / Waka / Admin Mobile Bottom Tabs (Strictly by Position)
   const staffTabs = useMemo<MobileBottomTabItem[]>(() => {
@@ -385,7 +451,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isPiketGuru,
   ]);
 
-  const activeTabsList = isSiswa ? siswaTabs : staffTabs;
+  const activeTabsList = isSiswa ? siswaTabs : (isKepsek ? kepsekTabs : staffTabs);
   const openFlyoutItem = activeTabsList.find((item) => item.id === openFlyoutId);
 
   const handleTabClick = (item: MobileBottomTabItem) => {

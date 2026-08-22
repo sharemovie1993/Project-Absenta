@@ -8,11 +8,12 @@ import {
   getSarprasStats,
   getHubinStats,
   getBkkStats,
-  getViolationStats
+  getViolationStats,
+  getTUStats
 } from '../../../api/dashboard.api';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { toLocalMonth, toLocalDate } from '../../../utils/attendance/time';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -50,10 +51,18 @@ const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'
 export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentMonth = useMemo(() => toLocalMonth(), []);
   
-  // 5 Lensa Pengawasan Eksekutif
-  const [executivePillar, setExecutivePillar] = useState<'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu'>('kbm');
+  // 6 Lensa Pengawasan Eksekutif (Sinkron dengan URL agar terhubung dengan BottomNav)
+  const pillarParam = (searchParams.get('pillar') as any) || 'kbm';
+  const executivePillar = (['kbm', 'kesiswaan', 'bk', 'sarpras', 'hubin', 'tu'].includes(pillarParam) ? pillarParam : 'kbm') as 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu';
+
+  const setExecutivePillar = (p: 'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin' | 'tu') => {
+    const next = new URLSearchParams(searchParams);
+    next.set('pillar', p);
+    setSearchParams(next, { replace: true });
+  };
 
   // 1. Data Overview Makro (Cache 1 menit)
   const { data: overviewData } = useQuery({
@@ -187,8 +196,8 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
       {/* 2. Top-Level KPI Ribbon (Responsive Grid) */}
       <InfoStripGrid items={infoStrips} />
 
-      {/* 3. 6-Pilar Executive Tab Selector (Mobile Touch Friendly & Desktop) */}
-      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar">
+      {/* 3. 6-Pilar Executive Tab Selector (Desktop Only - Mobile menggunakan Bottom Nav) */}
+      <div className="hidden md:block bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-x-auto no-scrollbar">
         <div className="flex gap-2 min-w-max">
           {pillarTabs.map(tab => {
             const Icon = tab.icon;
