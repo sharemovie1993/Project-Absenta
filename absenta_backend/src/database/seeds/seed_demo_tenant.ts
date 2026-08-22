@@ -157,10 +157,10 @@ export async function seedDemoTenant() {
 
   // Master Jurusan
   const jurusanList = [
-    { kode: 'RPL', nama: 'Rekayasa Perangkat Lunak' },
-    { kode: 'TKJ', nama: 'Teknik Komputer & Jaringan' },
-    { kode: 'AKL', nama: 'Akuntansi & Keuangan Lembaga' },
-    { kode: 'TKR', nama: 'Teknik Kendaraan Ringan' }
+    { kode: 'TJKT', nama: 'Teknik Jaringan Komputer dan Telekomunikasi' },
+    { kode: 'TKRO', nama: 'Teknik Kendaraan Ringan Otomotif' },
+    { kode: 'AKL', nama: 'Akuntansi dan Keuangan Lembaga' },
+    { kode: 'KUL', nama: 'Kuliner' }
   ];
 
   const jurusans: Record<string, any> = {};
@@ -177,15 +177,15 @@ export async function seedDemoTenant() {
     jurusans[j.kode] = jur;
   }
 
-  // Master Kelas
+  // Master Kelas Unggulan Demo: X TJKT 1
   const kelases: Record<string, any> = {};
   const kelasDefs = [
-    { nama: 'X-RPL-1', tingkat: 10, jur: 'RPL' },
-    { nama: 'XI-RPL-1', tingkat: 11, jur: 'RPL' },
-    { nama: 'XII-RPL-1', tingkat: 12, jur: 'RPL' },
-    { nama: 'X-TKJ-1', tingkat: 10, jur: 'TKJ' },
-    { nama: 'XI-TKJ-1', tingkat: 11, jur: 'TKJ' },
-    { nama: 'XII-TKJ-1', tingkat: 12, jur: 'TKJ' },
+    { nama: 'X TJKT 1', tingkat: 10, jur: 'TJKT' },
+    { nama: 'X TJKT 2', tingkat: 10, jur: 'TJKT' },
+    { nama: 'XI TJKT 1', tingkat: 11, jur: 'TJKT' },
+    { nama: 'XII TJKT 1', tingkat: 12, jur: 'TJKT' },
+    { nama: 'X TKRO 1', tingkat: 10, jur: 'TKRO' },
+    { nama: 'X AKL 1', tingkat: 10, jur: 'AKL' },
   ];
 
   for (const k of kelasDefs) {
@@ -210,6 +210,8 @@ export async function seedDemoTenant() {
     await seedDefaultJenisKegiatanForTenant(effectiveTenantId);
   } catch {}
 
+  const targetDemoClass = kelases['X TJKT 1'];
+
   // 4. Daftar Akun Demo & Pemetaan Jabatan Fungsional
   const DEMO_ACCOUNTS = [
     // ── 👑 PIMPINAN ──
@@ -223,9 +225,9 @@ export async function seedDemoTenant() {
     // ── 💼 MANAJEMEN & UNIT ──
     { email: 'bpbk@absenta.id', name: 'Nurul Aini, S.Psi', role: roleGuruId, roleCode: STRUKTUR_CODES.BPBK, nip: '198807072012012007' },
     { email: 'bkk@absenta.id', name: 'Denny Ramdani, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.BKK, nip: '198708082011011008' },
-    { email: 'kaprog@absenta.id', name: 'Indra Lesmana, M.Kom', role: roleGuruId, roleCode: STRUKTUR_CODES.KAPROG, nip: '198409092009011009', unit_id: jurusans['RPL']?.id },
-    { email: 'kabeng@absenta.id', name: 'Mulyadi, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.KABENG, nip: '198610102010011010', unit_id: jurusans['RPL']?.id },
-    { email: 'toolman@absenta.id', name: 'Asep Supriatna', role: roleGuruId, roleCode: STRUKTUR_CODES.TOOLMAN, nip: '199011112015011011', unit_id: jurusans['RPL']?.id },
+    { email: 'kaprog@absenta.id', name: 'Indra Lesmana, M.Kom', role: roleGuruId, roleCode: STRUKTUR_CODES.KAPROG, nip: '198409092009011009', unit_id: jurusans['TJKT']?.id },
+    { email: 'kabeng@absenta.id', name: 'Mulyadi, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.KABENG, nip: '198610102010011010', unit_id: jurusans['TJKT']?.id },
+    { email: 'toolman@absenta.id', name: 'Asep Supriatna', role: roleGuruId, roleCode: STRUKTUR_CODES.TOOLMAN, nip: '199011112015011011', unit_id: jurusans['TJKT']?.id },
     { email: 'gerbang@absenta.id', name: 'Rudi Hermawan', role: roleAdminId, roleCode: STRUKTUR_CODES.GERBANG, nip: '199212122018011012' },
 
     // ── 🏛️ TATA USAHA ──
@@ -235,15 +237,15 @@ export async function seedDemoTenant() {
     { email: 'tu.sarpras@absenta.id', name: 'Depi Kurniawan', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_SARPRAS, nip: '199404162017011016' },
 
     // ── 🛒 KOPERASI ERP ──
-    { email: 'koperasi.ketua@absenta.id', name: 'Siti Maryam, S.E', role: roleGuruId, roleCode: STRUKTUR_CODES.KETUA_KOPERASI, nip: '198305172007012017' },
-    { email: 'koperasi.bendahara@absenta.id', name: 'Nur Hasanah, S.Ak', role: roleGuruId, roleCode: STRUKTUR_CODES.BENDAHARA_KOPERASI, nip: '199006182015012018' },
-    { email: 'koperasi.sekretaris@absenta.id', name: 'Yuni Astuti, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.SEKRETARIS_KOPERASI, nip: '199207192018012019' },
-    { email: 'koperasi.kasir@absenta.id', name: 'Dadan Hamdan', role: roleAdminId, roleCode: STRUKTUR_CODES.MANAJER_TOKO_KOPERASI, nip: '199508202019011020' },
-    { email: 'koperasi.pengawas@absenta.id', name: 'Drs. H. Syarif Hidayat', role: roleGuruId, roleCode: STRUKTUR_CODES.PENGAWAS_KOPERASI, nip: '196809211993011021' },
+    { email: 'koperasi.ketua@absenta.id', name: 'Indra Mohamad Gozali, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.KETUA_KOPERASI, nip: '198504202022211000' },
+    { email: 'koperasi.bendahara@absenta.id', name: 'Dani Setiawan, S.E', role: roleGuruId, roleCode: STRUKTUR_CODES.BENDAHARA_KOPERASI, nip: '198003072023211000' },
+    { email: 'koperasi.sekretaris@absenta.id', name: 'Sarip Hidayat, S.Pd.I', role: roleGuruId, roleCode: STRUKTUR_CODES.SEKRETARIS_KOPERASI, nip: '198210262025211000' },
+    { email: 'koperasi.kasir@absenta.id', name: 'Tati Karyati, S.Pd', role: roleAdminId, roleCode: STRUKTUR_CODES.MANAJER_TOKO_KOPERASI, nip: '198509102022212000' },
+    { email: 'koperasi.pengawas@absenta.id', name: 'Siswoko, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.PENGAWAS_KOPERASI, nip: '197509092022211000' },
 
-    // ── 👨‍🏫 GURU & WALI KELAS ──
-    { email: 'walikelas@absenta.id', name: 'Ratna Dewi, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.WALIKELAS, nip: '198710222011012022', kelas_id: kelases['XII-RPL-1']?.id },
-    { email: 'guru@absenta.id', name: 'Farhan Maulana, S.Pd', role: roleGuruId, roleCode: 'GURU_MAPEL', nip: '198911232014011023' },
+    // ── 👨‍🏫 GURU & WALI KELAS (1 KELAS: X TJKT 1) ──
+    { email: 'walikelas@absenta.id', name: 'Ai Kustiani, S.Pd.', role: roleGuruId, roleCode: STRUKTUR_CODES.WALIKELAS, nip: '198710222011012022', kelas_id: targetDemoClass?.id },
+    { email: 'guru@absenta.id', name: 'Erwin, S.Pd.', role: roleGuruId, roleCode: 'GURU_MAPEL', nip: '198911232014011023' },
     { email: 'eskul@absenta.id', name: 'Eko Prasetyo, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.PEMBINA_ESKUL, nip: '199112242017011024' },
   ];
 
@@ -334,14 +336,14 @@ export async function seedDemoTenant() {
     }
   }
 
-  // ── 🎒 SISWA & ORANG TUA DEMO ──
-  console.log('🎒 Menyemai Akun Siswa, Petugas Kelas & Orang Tua Demo...');
+  // ── 🎒 SISWA, PETUGAS KELAS & ORANG TUA (1 KELAS: X TJKT 1) ──
+  console.log('🎒 Menyemai Akun Siswa, Petugas Kelas & Orang Tua Demo di Kelas X TJKT 1...');
 
-  // User Siswa Demo
+  // 1. Siswa Demo (Amelia Reygina Putri di X TJKT 1)
   const userSiswa = await prisma.user.upsert({
     where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'siswa@absenta.id' } },
     update: {
-      full_name: 'Muhammad Rizky Pratama',
+      full_name: 'Amelia Reygina Putri',
       password: DEFAULT_PASSWORD,
       role_id: roleSiswaId,
       status: 'ACTIVE',
@@ -350,7 +352,7 @@ export async function seedDemoTenant() {
     create: {
       tenant_id: effectiveTenantId,
       email: 'siswa@absenta.id',
-      full_name: 'Muhammad Rizky Pratama',
+      full_name: 'Amelia Reygina Putri',
       password: DEFAULT_PASSWORD,
       role_id: roleSiswaId,
       status: 'ACTIVE',
@@ -358,32 +360,38 @@ export async function seedDemoTenant() {
     }
   });
 
-  await prisma.siswa.upsert({
+  const siswaEntity = await prisma.siswa.upsert({
     where: { user_id: userSiswa.id },
     update: {
-      nama_siswa: 'Muhammad Rizky Pratama',
-      nis: '202510001',
-      nisn: '0071234567',
+      nama_siswa: 'Amelia Reygina Putri',
+      nis: '20251906',
+      nisn: '0071906001',
       tenant_id: effectiveTenantId,
-      kelas_id: kelases['XII-RPL-1']?.id,
-      jenis_kelamin: 'L',
+      kelas_id: targetDemoClass?.id,
+      jenis_kelamin: 'P',
+      nama_ayah: 'Bapak Hartono',
+      no_hp_ayah: '081234567890',
+      no_hp_ortu: '081234567890',
     },
     create: {
       user_id: userSiswa.id,
-      nama_siswa: 'Muhammad Rizky Pratama',
-      nis: '202510001',
-      nisn: '0071234567',
+      nama_siswa: 'Amelia Reygina Putri',
+      nis: '20251906',
+      nisn: '0071906001',
       tenant_id: effectiveTenantId,
-      kelas_id: kelases['XII-RPL-1']?.id,
-      jenis_kelamin: 'L',
+      kelas_id: targetDemoClass?.id,
+      jenis_kelamin: 'P',
+      nama_ayah: 'Bapak Hartono',
+      no_hp_ayah: '081234567890',
+      no_hp_ortu: '081234567890',
     }
   });
 
-  // User Petugas Kelas Demo
+  // 2. Petugas Absensi Kelas (Putri Amelia di X TJKT 1)
   const userPetugas = await prisma.user.upsert({
     where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'petugas.kelas@absenta.id' } },
     update: {
-      full_name: 'Ananda Putri',
+      full_name: 'Putri Amelia (Sekretaris Kelas)',
       password: DEFAULT_PASSWORD,
       role_id: roleSiswaId,
       status: 'ACTIVE',
@@ -392,7 +400,7 @@ export async function seedDemoTenant() {
     create: {
       tenant_id: effectiveTenantId,
       email: 'petugas.kelas@absenta.id',
-      full_name: 'Ananda Putri',
+      full_name: 'Putri Amelia (Sekretaris Kelas)',
       password: DEFAULT_PASSWORD,
       role_id: roleSiswaId,
       status: 'ACTIVE',
@@ -403,25 +411,24 @@ export async function seedDemoTenant() {
   await prisma.siswa.upsert({
     where: { user_id: userPetugas.id },
     update: {
-      nama_siswa: 'Ananda Putri',
-      nis: '202510002',
-      nisn: '0071234568',
+      nama_siswa: 'Putri Amelia',
+      nis: '20251907',
+      nisn: '0071907002',
       tenant_id: effectiveTenantId,
-      kelas_id: kelases['XII-RPL-1']?.id,
+      kelas_id: targetDemoClass?.id,
       jenis_kelamin: 'P',
     },
     create: {
       user_id: userPetugas.id,
-      nama_siswa: 'Ananda Putri',
-      nis: '202510002',
-      nisn: '0071234568',
+      nama_siswa: 'Putri Amelia',
+      nis: '20251907',
+      nisn: '0071907002',
       tenant_id: effectiveTenantId,
-      kelas_id: kelases['XII-RPL-1']?.id,
+      kelas_id: targetDemoClass?.id,
       jenis_kelamin: 'P',
     }
   });
 
-  // Petugas Kelas Struktur
   const positionPetugas = await prisma.organizationalPosition.upsert({
     where: {
       tenant_id_code: {
@@ -453,16 +460,16 @@ export async function seedDemoTenant() {
         tenant_id: effectiveTenantId,
         position_id: positionPetugas.id,
         user_id: userPetugas.id,
-        kelas_id: kelases['XII-RPL-1']?.id
+        kelas_id: targetDemoClass?.id
       }
     });
   }
 
-  // User Orang Tua Demo
+  // 3. User Orang Tua Demo (Bapak Hartono - Ayah Amelia di X TJKT 1)
   await prisma.user.upsert({
     where: { tenant_id_email: { tenant_id: effectiveTenantId, email: 'ortu@absenta.id' } },
     update: {
-      full_name: 'Bapak Hartono (Orang Tua)',
+      full_name: 'Bapak Hartono (Orang Tua Amelia)',
       password: DEFAULT_PASSWORD,
       role_id: roleOrtuId,
       status: 'ACTIVE',
@@ -471,7 +478,7 @@ export async function seedDemoTenant() {
     create: {
       tenant_id: effectiveTenantId,
       email: 'ortu@absenta.id',
-      full_name: 'Bapak Hartono (Orang Tua)',
+      full_name: 'Bapak Hartono (Orang Tua Amelia)',
       password: DEFAULT_PASSWORD,
       role_id: roleOrtuId,
       status: 'ACTIVE',
@@ -479,7 +486,38 @@ export async function seedDemoTenant() {
     }
   });
 
-  console.log('🎉 [DEMO SEEDER] Seluruh akun peran demo berhasil disemai dan siap digunakan 100%!');
+  // Relasi OrangTua & OrangTuaSiswa
+  let parentEntity = await prisma.orangTua.findFirst({
+    where: { tenant_id: effectiveTenantId, email: 'ortu@absenta.id' }
+  });
+  if (!parentEntity) {
+    parentEntity = await prisma.orangTua.create({
+      data: {
+        tenant_id: effectiveTenantId,
+        nama: 'Bapak Hartono',
+        email: 'ortu@absenta.id',
+        no_hp: '081234567890',
+        hubungan: 'AYAH'
+      }
+    });
+  }
+
+  const existingOrtuSiswa = await prisma.orangTuaSiswa.findFirst({
+    where: {
+      orang_tua_id: parentEntity.id,
+      siswa_id: siswaEntity.id
+    }
+  });
+  if (!existingOrtuSiswa) {
+    await prisma.orangTuaSiswa.create({
+      data: {
+        orang_tua_id: parentEntity.id,
+        siswa_id: siswaEntity.id
+      }
+    });
+  }
+
+  console.log('🎉 [DEMO SEEDER] Seluruh akun peran demo berhasil disemai & disinkronkan 100% pada Kelas X TJKT 1!');
 }
 
 // Support direct execution via `npx ts-node src/database/seeds/seed_demo_tenant.ts`
