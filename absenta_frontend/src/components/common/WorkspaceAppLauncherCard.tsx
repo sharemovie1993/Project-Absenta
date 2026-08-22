@@ -611,6 +611,74 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
       return hubinClusters.filter(c => c.items.length > 0);
     }
 
+    // ── BPBK WORKSPACE: 3 Klaster Alur Kerja Bimbingan Konseling ──
+    if (activeWsId === 'BPBK_WORKSPACE') {
+      const cCounseling: FlatMenuItem[] = [];
+      const cIntervention: FlatMenuItem[] = [];
+      const cReports: FlatMenuItem[] = [];
+
+      primaryItems.forEach(item => {
+        const p = (item.path || '').toLowerCase();
+        const t = (item.title || '').toLowerCase();
+
+        // 1. Konseling & Kasus Siswa
+        if (
+          p.includes('/bpbk/cases') ||
+          p.includes('/bpbk/konseling') ||
+          p.includes('/bpbk/siswa') ||
+          p.includes('/bpbk/rujukan') ||
+          t.includes('kasus') || t.includes('konseling') || t.includes('rujukan')
+        ) {
+          cCounseling.push(item);
+        }
+        // 2. Intervensi, Pemanggilan & Home Visit
+        else if (
+          p.includes('/bpbk/pemanggilan') ||
+          p.includes('/bpbk/homevisit') ||
+          p.includes('/bpbk/asesmen') ||
+          t.includes('panggilan') || t.includes('home') || t.includes('asesmen') || t.includes('minat')
+        ) {
+          cIntervention.push(item);
+        }
+        // 3. Laporan, Statistik & Cetak Berkas
+        else {
+          cReports.push(item);
+        }
+      });
+
+      const bpbkClusters: WorkflowCluster[] = [
+        {
+          id: 'BPBK_COUNSELING',
+          badge: '1. LAYANAN KONSELING & KASUS',
+          badgeColor: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+          title: 'Konseling & Penanganan Kasus',
+          description: 'Catatan bimbingan individual/kelompok, data siswa kasus & rujukan ahli',
+          icon: '💬',
+          items: cCounseling
+        },
+        {
+          id: 'BPBK_INTERVENTION',
+          badge: '2. INTERVENSI & HOME VISIT',
+          badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+          title: 'Pemanggilan Ortu & Kunjungan Rumah',
+          description: 'Surat panggilan dinas orang tua, berita acara home visit & asesmen diagnostik',
+          icon: '🏠',
+          items: cIntervention
+        },
+        {
+          id: 'BPBK_REPORTS',
+          badge: '3. LAPORAN & DOKUMENTASI',
+          badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+          title: 'Statistik & Cetak Berkas BK',
+          description: 'Rekapitulasi tren kasus siswa, statistik bimbingan & cetak laporan evaluasi BK',
+          icon: '📊',
+          items: cReports
+        }
+      ];
+
+      return bpbkClusters.filter(c => c.items.length > 0);
+    }
+
     if (activeWsId !== 'KURIKULUM_WORKSPACE') {
       return [
         {
