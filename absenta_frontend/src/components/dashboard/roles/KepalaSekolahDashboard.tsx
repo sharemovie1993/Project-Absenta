@@ -226,6 +226,36 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
         </div>
       </div>
 
+      {/* 4. Active Pillar Badge & Title for Mobile (Header Penanda Lensa Aktif di Layar HP) */}
+      <div className="md:hidden flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md border border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-emerald-400 border border-white/10 shrink-0">
+            {executivePillar === 'kbm' && <BookOpen size={16} />}
+            {executivePillar === 'kesiswaan' && <Users size={16} />}
+            {executivePillar === 'bk' && <HeartHandshake size={16} />}
+            {executivePillar === 'sarpras' && <Building size={16} />}
+            {executivePillar === 'hubin' && <Briefcase size={16} />}
+            {executivePillar === 'tu' && <FileText size={16} />}
+          </div>
+          <div>
+            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 block">
+              Lensa Pengawasan Aktif
+            </span>
+            <h3 className="text-sm font-black text-white tracking-tight">
+              {executivePillar === 'kbm' && 'Pilar KBM & Kurikulum'}
+              {executivePillar === 'kesiswaan' && 'Pilar Kesiswaan & Ketertiban'}
+              {executivePillar === 'bk' && 'Pilar Bimbingan Konseling (BP/BK)'}
+              {executivePillar === 'sarpras' && 'Pilar Sarpras & Fasilitas'}
+              {executivePillar === 'hubin' && 'Pilar Hubungan Industri (PKL/BKK)'}
+              {executivePillar === 'tu' && 'Pilar Tata Usaha & Persuratan'}
+            </h3>
+          </div>
+        </div>
+        <Badge variant="outline" className="text-[10px] font-black bg-white/10 border-white/20 text-white uppercase tracking-wider">
+          360°
+        </Badge>
+      </div>
+
       {/* 5. Dynamic Executive Content Panels */}
       <AnimatePresence mode="wait">
         <motion.div
