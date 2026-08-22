@@ -295,11 +295,23 @@ export const useAuthStore = create<AuthState>()(
 
       // Logout action
       logout: () => {
-        // Hapus dari localStorage
+        // Hapus seluruh token & session state dari localStorage
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('tenant_id');
         localStorage.removeItem('tenant_domain');
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('active_system_config');
+        localStorage.removeItem('selected_tenant');
+        localStorage.removeItem('portal_active_ws');
+        localStorage.removeItem('absenta_nav_state');
+
+        // Bersihkan demo session state dari sessionStorage
+        try {
+          sessionStorage.removeItem('is_demo_session');
+          sessionStorage.removeItem('demo_active_role');
+          sessionStorage.removeItem('demo_active_name');
+        } catch (_) {}
         
         // Clear React Query cache to prevent multitenant data leak
         queryClient.clear();
