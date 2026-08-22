@@ -57,7 +57,9 @@ import { NotificationToast, ToastMessage } from './NotificationToast';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSiswaById } from '../../../../api/academic/siswa.api';
+import { getKelasDetail } from '../../../../api/academic/kelas.api';
 import { useWaliKelasDashboard } from '../../../../hooks/kurikulum/useWaliKelasDashboard';
+import { useAuthStore } from '../../../../store/authStore';
 
 interface WaliKelasDashboardContainerProps {
   waliKelasNama?: string;
@@ -65,7 +67,12 @@ interface WaliKelasDashboardContainerProps {
 }
 
 export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKelasDashboardContainerProps) {
-  // Real API hooks for Jurnal, Permohonan Izin, EWS, Violations, Achievements, Students
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subtabParam = searchParams.get('subtab');
+
+  // Real API hooks for Jurnal, Permohonan Izin, EWS, Violations, Achievements, Students, Rekap Bulanan
   const {
     journalEntries: apiJournalEntries,
     leaveRequests: apiLeaveRequests,
@@ -73,11 +80,25 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     violations: apiViolations,
     achievements: apiAchievements,
     students: apiStudents,
+    rekapBulananKelas,
     isApiConnected,
     updateLeaveStatus,
     createJournal,
-    deleteJournal
+    deleteJournal,
+    createViolation,
+    updateViolation,
+    createAchievement
   } = useWaliKelasDashboard(kelasId);
+
+  // Fetch detail kelas riil dari database (Jurusan, Ruang, Nama Wali)
+  const { data: kelasDetailRes } = useQuery({
+    queryKey: ['kelas-detail-walas', kelasId],
+    queryFn: () => getKelasDetail(kelasId!),
+    enabled: Boolean(kelasId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const kelasDetail = kelasDetailRes?.data;
 
   // Main State
   const [classInfo, setClassInfo] = useState<ClassInfo>(() => ({
@@ -85,13 +106,25 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     className: waliKelasNama || DEFAULT_CLASS_INFO.className,
   }));
 
-  React.useEffect(() => {
-    if (waliKelasNama) {
-      setClassInfo(prev => ({ ...prev, className: waliKelasNama }));
-    }
-  }, [waliKelasNama]);
+  useEffect(() => {
+    const teacherName = user?.full_name || user?.name || (user?.guru_profile as any)?.nama_guru || 'Wali Kelas';
+    const teacherNip = (user?.guru_profile as any)?.nip || (user as any)?.nip || '-';
+    const majorName = kelasDetail?.Jurusan?.nama_jurusan || kelasDetail?.Jurusan?.nama || 'Umum';
 
-  // Directly derive data from useWaliKelasDashboard hook without dangerous useEffect sync loops
+    setClassInfo({
+      className: waliKelasNama || kelasDetail?.nama_kelas || DEFAULT_CLASS_INFO.className,
+      academicYear: '2025/2026',
+      semester: 'Semester Ganjil',
+      homeroomTeacher: teacherName,
+      nip: teacherNip,
+      totalStudents: apiStudents?.length || 0,
+      maleCount: apiStudents?.filter(s => s.gender === 'L').length || 0,
+      femaleCount: apiStudents?.filter(s => s.gender === 'P').length || 0,
+      roomNumber: kelasDetail?.nama_kelas ? `Ruang ${kelasDetail.nama_kelas}` : 'Ruang Kelas',
+      major: majorName,
+    });
+  }, [waliKelasNama, kelasDetail, apiStudents, user]);
+
   const students = apiStudents || [];
   const leaveRequests = apiLeaveRequests || [];
   const atRiskStudents = apiAtRiskStudents || [];
@@ -116,20 +149,22 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     const attendancePenalty = Math.max(0, 100 - avgAttendance);
     const overallScore = Math.max(10, Math.min(100, 100 - violationPenalty - attendancePenalty - (atRiskCount * 5)));
 
+    // Real-time parent response rate (rasio izin yang sudah diproses atau konfirmasi kehadiran)
+    const processedRequests = leaveRequests.filter(r => r.status === 'Disetujui' || r.status === 'Ditolak').length;
+    const parentResponseRate = leaveRequests.length > 0
+      ? Math.round((processedRequests / leaveRequests.length) * 100)
+      : 100;
+
     return {
       overallScore,
       attendancePercentage: avgAttendance,
       activeRequestsCount: activeReqs,
       atRiskCount,
       totalViolationPoints: totalViolPoints,
-      parentResponseRate: 98,
+      parentResponseRate,
       zeroSevereViolations: severeViolations === 0,
     };
   }, [students, leaveRequests, atRiskStudents, violations]);
-
-  const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const subtabParam = searchParams.get('subtab');
 
   // Active Tab & Search Filter
   const [activeTab, setActiveTab] = useState<string>(subtabParam || 'approval');
@@ -147,8 +182,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     newParams.set('subtab', newTab);
     setSearchParams(newParams, { replace: true });
   };
-
-  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Modals & Overlay States
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -171,9 +204,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     if (!editingStudentId) return null;
     return fullSiswaData || students.find((s) => s.id === editingStudentId) || null;
   }, [editingStudentId, fullSiswaData, students]);
-
-  const maleCount = useMemo(() => students.filter((s) => s.gender === 'L').length, [students]);
-  const femaleCount = useMemo(() => students.filter((s) => s.gender === 'P').length, [students]);
 
   // WhatsApp Modal state
   const [waModalData, setWaModalData] = useState<{
@@ -198,12 +228,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Switch Rombel Handler
-  const handleClassChange = (className: string) => {
-    setClassInfo(prev => ({ ...prev, className }));
-    showToast('Pindah Rombel', `Menampilkan Command Center untuk kelas ${className}`, 'info');
-  };
-
   // Leave Approval Handlers
   const handleApproveLeave = async (id: string) => {
     const req = leaveRequests.find(r => r.id === id);
@@ -211,17 +235,13 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
 
     try {
       await updateLeaveStatus({ id, status: 'DISETUJUI' });
-      queryClient.invalidateQueries({ queryKey: ['walas-permohonan-izin'] });
-      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
-      queryClient.invalidateQueries({ queryKey: ['walas-presensi-harian'] });
-    } catch (e) {
-      // Handled by toast or mutation error
+      showToast(
+        'Permohonan Disetujui',
+        `Surat izin ${req.type} ananda ${req.studentName} telah disetujui dan dicatat di presensi resmi.`
+      );
+    } catch (e: any) {
+      showToast('Gagal Menyetujui', e?.message || 'Terjadi kesalahan sistem', 'warning');
     }
-
-    showToast(
-      'Permohonan Disetujui',
-      `Surat izin ${req.type} ananda ${req.studentName} telah disetujui dan dicatat di presensi resmi.`
-    );
   };
 
   const handleRejectLeave = async (id: string, reason: string) => {
@@ -230,16 +250,14 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
 
     try {
       await updateLeaveStatus({ id, status: 'DITOLAK', catatan: reason });
-      queryClient.invalidateQueries({ queryKey: ['walas-permohonan-izin'] });
-    } catch (e) {
-      // Handled by toast or mutation error
+      showToast(
+        'Permohonan Ditolak',
+        `Permohonan izin ${req.studentName} ditolak. Catatan dikirimkan ke akun orang tua.`,
+        'warning'
+      );
+    } catch (e: any) {
+      showToast('Gagal Menolak Izin', e?.message || 'Terjadi kesalahan sistem', 'warning');
     }
-
-    showToast(
-      'Permohonan Ditolak',
-      `Permohonan izin ${req.studentName} ditolak. Catatan dikirimkan ke akun orang tua.`,
-      'warning'
-    );
   };
 
   const handleApproveAllPending = async () => {
@@ -252,10 +270,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
       } catch (e) {}
     }
 
-    queryClient.invalidateQueries({ queryKey: ['walas-permohonan-izin'] });
-    queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
-    queryClient.invalidateQueries({ queryKey: ['walas-presensi-harian'] });
-
     showToast(
       'Batch Approval Berhasil',
       `${pendingReqs.length} permohonan izin orang tua telah disetujui secara serentak.`
@@ -265,56 +279,46 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
   // WhatsApp trigger
   const handleOpenWhatsApp = (parentName: string, parentPhone: string, studentName: string, reasonText: string) => {
     setWaModalData({
-      parentName,
-      parentPhone,
+      parentName: parentName || `Orang Tua ${studentName}`,
+      parentPhone: parentPhone || '',
       studentName,
       reasonText
     });
   };
 
-  // Award Badge
-  const handleAwardBadge = (studentId: string, badgeName: string, icon: string, note: string) => {
-    const newBadge = {
-      id: `b-${Date.now()}`,
-      badgeName,
-      icon,
-      category: 'Apresiasi Walas',
-      awardedBy: classInfo.homeroomTeacher,
-      awardedAt: 'Hari Ini',
-      note
-    };
+  // Award Badge (Persisted to Backend API)
+  const handleAwardBadge = async (studentId: string, badgeName: string, icon: string, note: string) => {
+    try {
+      await createAchievement({
+        siswa_id: studentId,
+        nama_prestasi: badgeName,
+        poin: 25,
+        keterangan: note,
+        tanggal: new Date().toISOString().split('T')[0],
+      });
 
-    setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
-        return {
-          ...s,
-          goodDeedsPoints: s.goodDeedsPoints + 25,
-          badges: [newBadge, ...s.badges]
-        };
-      }
-      return s;
-    }));
-
-    showToast(
-      'Badge Apresiasi Terkirim! 🌟',
-      `Badge "${badgeName}" berhasil disematkan ke profil siswa dan notifikasi terkirim ke orang tua.`
-    );
+      showToast(
+        'Badge Apresiasi Terkirim! 🌟',
+        `Badge "${badgeName}" berhasil disematkan ke profil siswa dan tercatat di database.`
+      );
+    } catch (e: any) {
+      showToast('Gagal Mengirim Badge', e?.message || 'Terjadi kesalahan sistem', 'warning');
+    }
   };
 
-  // Update BK Status
-  const handleUpdateBKStatus = (id: string, newStatus: BKStatus) => {
-    setViolations(prev => prev.map(v => {
-      if (v.id === id) {
-        return { ...v, bkStatus: newStatus };
-      }
-      return v;
-    }));
-
-    showToast('Status Pembinaan Diperbarui', `Status penanganan diubah menjadi: ${newStatus}`);
+  // Update BK Status (Persisted to Backend API)
+  const handleUpdateBKStatus = async (id: string, newStatus: BKStatus) => {
+    const backendStatus = newStatus === 'Konseling BK' ? 'PROSES' : newStatus === 'Selesai' ? 'SELESAI' : 'PENDING';
+    try {
+      await updateViolation({ id, data: { status: backendStatus } });
+      showToast('Status Pembinaan Diperbarui', `Status penanganan diubah menjadi: ${newStatus}`);
+    } catch (e: any) {
+      showToast('Gagal Memperbarui Status', e?.message || 'Terjadi kesalahan sistem', 'warning');
+    }
   };
 
-  // Add Incident
-  const handleAddViolation = (data: {
+  // Add Incident (Persisted to Backend API)
+  const handleAddViolation = async (data: {
     studentId: string;
     studentName: string;
     nis: string;
@@ -325,26 +329,23 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
     reporter: 'Wali Kelas';
     bkStatus: BKStatus;
   }) => {
-    const newRecord: ViolationRecord = {
-      id: `v-${Date.now()}`,
-      ...data,
-      date: '11 Ags 2026'
-    };
+    try {
+      await createViolation({
+        siswa_id: data.studentId,
+        jenis_pelanggaran: data.category,
+        poin: Number(data.points),
+        keterangan: data.description,
+        tanggal: new Date().toISOString().split('T')[0],
+        status: data.bkStatus === 'Konseling BK' ? 'PROSES' : data.bkStatus === 'Selesai' ? 'SELESAI' : 'PENDING',
+      });
 
-    setViolations(prev => [newRecord, ...prev]);
-
-    // Update student's violation points
-    setStudents(prev => prev.map(s => {
-      if (s.id === data.studentId) {
-        return { ...s, violationPoints: s.violationPoints + data.points };
-      }
-      return s;
-    }));
-
-    showToast('Catatan Disiplin Disimpan', `Catatan kejadian ${data.category} untuk ${data.studentName} tersimpan.`);
+      showToast('Catatan Disiplin Disimpan', `Catatan kejadian ${data.category} untuk ${data.studentName} berhasil tersimpan di sistem.`);
+    } catch (e: any) {
+      showToast('Gagal Menyimpan Kejadian', e?.message || 'Terjadi kesalahan sistem', 'warning');
+    }
   };
 
-  // Add Journal
+  // Add Journal (Persisted to Backend API)
   const handleAddJournal = async (data: {
     category: 'Rapat Ortu' | 'Kasus Teratasi' | 'Pembinaan Kelas' | 'Catatan Khusus' | 'Agenda Jam Walas' | 'Koordinasi BK';
     title: string;
@@ -361,27 +362,27 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
         isi: data.content,
         tags: data.tags,
       });
-      queryClient.invalidateQueries({ queryKey: ['walas-jurnal'] });
-    } catch (e) {
-      // Fallback handled
+      showToast('Jurnal Walas Ditambahkan', `Entri "${data.title}" berhasil disimpan di rekapitulasi.`);
+    } catch (e: any) {
+      showToast('Gagal Menyimpan Jurnal', e?.message || 'Terjadi kesalahan sistem', 'warning');
     }
-
-    showToast('Jurnal Walas Ditambahkan', `Entri "${data.title}" berhasil disimpan di rekapitulasi.`);
   };
 
-
-  // EWS Intervention
+  // EWS Intervention (Using real parent phone from student object)
   const handleTakeIntervention = (atRisk: AtRiskStudent) => {
+    const targetStudent = students.find(s => s.id === atRisk.studentId || s.name === atRisk.studentName);
+    const parentPhone = atRisk.parentPhone || targetStudent?.parentPhone || '';
+    const parentName = atRisk.parentName || targetStudent?.parentName || `Orang Tua dari ${atRisk.studentName}`;
+
     handleOpenWhatsApp(
-      `Orang Tua dari ${atRisk.studentName}`,
-      '081234567890',
+      parentName,
+      parentPhone,
       atRisk.studentName,
       `Undangan Diskusi Perkembangan Kehadiran & Pembinaan Wali Kelas`
     );
   };
 
   const pendingApprovalCount = leaveRequests.filter(r => r.status === 'Pending').length;
-  const starStudents = students.filter(s => s.isStarStudent || s.academicAverage >= 88);
 
   return (
     <div className="w-full">
@@ -432,6 +433,8 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
                 students={students}
                 atRiskStudents={atRiskStudents}
                 metrics={healthMetric}
+                rekapBulananData={rekapBulananKelas}
+                className={classInfo.className}
                 onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
                 onTakeIntervention={handleTakeIntervention}
                 isApiConnected={isApiConnected}

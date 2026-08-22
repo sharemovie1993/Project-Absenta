@@ -12,6 +12,7 @@ import {
   getSiswaWalasList,
 } from '../../api/kurikulum/waliKelas.api';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { getRekapKelasBulanan } from '../../api/attendance/rekap.api';
 import { resolveProfilePhotoUrl } from '../../lib/utils';
 import type { JournalEntry, LeaveRequest, AtRiskStudent, Student, ViolationRecord, AchievementRecord } from '../../components/dashboard/staff/walas/types';
 
@@ -26,8 +27,9 @@ function extractArrayData(res: any): any[] {
   return [];
 }
 
-export function useWaliKelasDashboard(kelasId?: string) {
+export function useWaliKelasDashboard(kelasId?: string, bulan?: string) {
   const queryClient = useQueryClient();
+  const currentMonth = bulan || new Date().toISOString().slice(0, 7);
 
   // 1. Fetch Jurnal Wali Kelas
   const journalQuery = useQuery({
@@ -104,11 +106,11 @@ export function useWaliKelasDashboard(kelasId?: string) {
       studentId: item.siswa_id,
       studentName: item.Siswa?.nama_siswa || 'Siswa',
       nis: item.Siswa?.nis || '-',
-      category: item.jenis_pelanggaran || 'Kedisiplinan',
+      category: item.jenis_pelanggaran || item.nama_pelanggaran || 'Kedisiplinan',
       points: item.poin || 10,
-      severity: item.poin >= 50 ? 'Berat' : item.poin >= 25 ? 'Sedang' : 'Ringan',
-      date: new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      reporter: 'Wali Kelas',
+      severity: (item.poin || 10) >= 50 ? 'Berat' : (item.poin || 10) >= 25 ? 'Sedang' : 'Ringan',
+      date: item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-',
+      reporter: item.pencatat || 'Wali Kelas',
       description: item.keterangan || '-',
       bkStatus: item.status === 'PROSES' ? 'Konseling BK' : item.status === 'SELESAI' ? 'Selesai' : 'Dalam Pemantauan',
       followUpNotes: item.keterangan
@@ -129,11 +131,11 @@ export function useWaliKelasDashboard(kelasId?: string) {
       studentId: item.siswa_id,
       studentName: item.Siswa?.nama_siswa || 'Siswa',
       nis: item.Siswa?.nis || '-',
-      avatar: item.Siswa?.foto ? resolveProfilePhotoUrl(item.Siswa.foto) : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatar: item.Siswa?.foto ? resolveProfilePhotoUrl(item.Siswa.foto) : undefined,
       title: item.nama_prestasi,
       category: item.kategori === 'AKADEMIK' ? 'Akademik' : item.kategori === 'KARAKTER' ? 'Karakter & Sosial' : 'Non-Akademik',
       level: item.tingkat === 'PROVINSI' ? 'Provinsi' : item.tingkat === 'KOTA' ? 'Kota/Kab' : 'Sekolah',
-      date: new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      date: item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-',
       points: item.poin || 20,
       description: item.keterangan || ''
     }));
@@ -149,7 +151,15 @@ export function useWaliKelasDashboard(kelasId?: string) {
 
   const rawAttendance = extractArrayData(attendanceQuery.data);
 
-  // 7. Fetch Siswa & Attendance Matrix
+  // 7. Fetch Rekap Bulanan Kelas (Real Backend Grid Matrix)
+  const rekapBulananQuery = useQuery({
+    queryKey: ['walas-rekap-bulanan', kelasId, currentMonth],
+    queryFn: () => getRekapKelasBulanan(kelasId!, currentMonth).catch(() => ({ success: true, data: null })),
+    enabled: Boolean(kelasId),
+    staleTime: 60 * 1000,
+  });
+
+  // 8. Fetch Siswa & Attendance Matrix
   const studentQuery = useQuery({
     queryKey: ['walas-siswa', kelasId],
     queryFn: () => getSiswaWalasList(kelasId),
@@ -158,7 +168,6 @@ export function useWaliKelasDashboard(kelasId?: string) {
 
   const rawStudents = extractArrayData(studentQuery.data);
   const students: Student[] = useMemo(() => {
-    // Bangun lookup map untuk presensi, pelanggaran, prestasi, dan EWS
     const attMap = new Map<string, any>();
     rawAttendance.forEach((a: any) => {
       const sId = a.siswa_id || a.id;
@@ -214,6 +223,11 @@ export function useWaliKelasDashboard(kelasId?: string) {
       const penalty = (alphaCount * 10) + (sakitCount * 2) + (izinCount * 1);
       const attendanceRate = Math.max(0, Math.min(100, 100 - penalty));
 
+      // Indeks Komposit Karakter & Performa Akademis (Dinamis dari Poin Reward & Disiplin)
+      const academicAverage = Math.max(65, Math.min(100, Math.round(
+        (attendanceRate * 0.5) + (Math.max(0, 100 - totalViolPoints * 2) * 0.3) + (Math.min(100, totalAchPoints * 5 + 75) * 0.2)
+      )));
+
       // Badges dari prestasi riil
       const badges = studentAchievements.map((ach, bIdx) => ({
         id: `badge-${ach.id || bIdx}`,
@@ -227,7 +241,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
         nis: item.nis || '-',
         name: item.nama_siswa,
         gender: item.jenis_kelamin === 'P' ? 'P' : 'L',
-        avatar: item.foto ? resolveProfilePhotoUrl(item.foto) : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        avatar: item.foto ? resolveProfilePhotoUrl(item.foto) : undefined,
         parentName: item.nama_ayah || item.nama_ibu || item.nama_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.nama || 'Orang Tua',
         parentPhone: item.no_hp_ortu || item.no_hp_ayah || item.no_hp_ibu || item.no_hp_wali || item.OrangTuaSiswa?.[0]?.OrangTua?.no_hp || item.no_hp || '',
         todayStatus,
@@ -237,7 +251,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
         izinCount,
         violationPoints: totalViolPoints,
         goodDeedsPoints: Math.max(10, totalAchPoints),
-        academicAverage: 85,
+        academicAverage,
         isStarStudent: false,
         starRank: undefined as number | undefined,
         badges,
@@ -268,6 +282,8 @@ export function useWaliKelasDashboard(kelasId?: string) {
       updatePermohonanIzinStatus(id, { status, catatan_penolakan: catatan }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['walas-permohonan-izin'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-presensi-harian'] });
     },
   });
 
@@ -286,6 +302,31 @@ export function useWaliKelasDashboard(kelasId?: string) {
     },
   });
 
+  const createViolationMutation = useMutation({
+    mutationFn: (payload: any) => kesiswaanApi.createPelanggaran(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['walas-pelanggaran'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-ews'] });
+    },
+  });
+
+  const updateViolationMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => kesiswaanApi.updatePelanggaran(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['walas-pelanggaran'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+    },
+  });
+
+  const createAchievementMutation = useMutation({
+    mutationFn: (payload: any) => kesiswaanApi.createPrestasiSiswa(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['walas-prestasi'] });
+      queryClient.invalidateQueries({ queryKey: ['walas-siswa'] });
+    },
+  });
+
   const isApiConnected = (journalQuery.isSuccess || leaveQuery.isSuccess || ewsQuery.isSuccess || violationQuery.isSuccess || achievementQuery.isSuccess || studentQuery.isSuccess) &&
     !journalQuery.isError && !leaveQuery.isError && !ewsQuery.isError;
 
@@ -296,6 +337,7 @@ export function useWaliKelasDashboard(kelasId?: string) {
     violations,
     achievements,
     students,
+    rekapBulananKelas: rekapBulananQuery.data,
     isApiConnected,
     isLoading: journalQuery.isLoading || leaveQuery.isLoading || ewsQuery.isLoading || violationQuery.isLoading || achievementQuery.isLoading || studentQuery.isLoading,
     refetchAll: () => {
@@ -305,9 +347,13 @@ export function useWaliKelasDashboard(kelasId?: string) {
       violationQuery.refetch();
       achievementQuery.refetch();
       studentQuery.refetch();
+      rekapBulananQuery.refetch();
     },
     updateLeaveStatus: updateLeaveMutation.mutateAsync,
     createJournal: createJournalMutation.mutateAsync,
     deleteJournal: deleteJournalMutation.mutateAsync,
+    createViolation: createViolationMutation.mutateAsync,
+    updateViolation: updateViolationMutation.mutateAsync,
+    createAchievement: createAchievementMutation.mutateAsync,
   };
 }
