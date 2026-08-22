@@ -586,8 +586,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck, badge: 'ADMIN' });
     }
 
-    // 1. Beranda Guru / Scan Gerbang (Hanya muncul jika BUKAN Admin murni)
-    if (!isAdminRole || isPendidik) {
+    // 1. Beranda Guru / Scan Gerbang (Hanya muncul jika Guru Pendidik Aktif atau Petugas Gerbang Murni)
+    if ((isPendidik || isPureGerbangStaff) && !isAdminRole) {
       list.push({ 
         id: 'ringkasan', 
         label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
