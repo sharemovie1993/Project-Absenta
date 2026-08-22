@@ -257,6 +257,30 @@ export default function LoginPage() {
     visible: { opacity: 1 }
   };
 
+  // ── FULL-WIDTH DESKTOP BENTO APP LAUNCHER MODE UNTUK DEMO ──
+  if (isDemoEnvironment && !showManualLogin) {
+    return (
+      <InfraErrorBoundary>
+        <main className="min-h-screen w-full bg-gradient-to-tr from-slate-50 via-slate-50/70 to-blue-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 font-sans selection:bg-amber-100 overflow-x-hidden relative">
+          <Navbar />
+
+          {/* Background Ambient Glows */}
+          <div className="absolute top-1/4 right-1/4 w-[36rem] h-[36rem] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-amber-600/5" />
+          <div className="absolute bottom-1/4 left-1/4 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-blue-600/5" />
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 relative z-10">
+            <DemoRoleSelector
+              onSelectRole={handleDemoRoleLogin}
+              isLoading={isLoading}
+              activeLoadingRoleId={activeLoadingRoleId}
+              onToggleManualLogin={() => setShowManualLogin(true)}
+            />
+          </div>
+        </main>
+      </InfraErrorBoundary>
+    );
+  }
+
   return (
     <InfraErrorBoundary>
       <main className="min-h-screen w-full flex flex-col md:flex-row bg-white dark:bg-slate-950 font-sans selection:bg-blue-100 overflow-x-hidden">

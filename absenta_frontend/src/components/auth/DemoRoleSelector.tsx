@@ -19,7 +19,9 @@ import {
   Loader2,
   KeyRound,
   Search,
-  LayoutGrid
+  CheckCircle2,
+  Compass,
+  School
 } from 'lucide-react';
 import { 
   DEMO_ROLE_PROFILES, 
@@ -61,7 +63,7 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Kelompokkan peran berdasarkan kategori (App Launcher Clusters)
+  // Kelompokkan peran berdasarkan kategori (Model Bento Klaster App Launcher)
   const clusteredProfiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     
@@ -94,176 +96,172 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
   }, [clusteredProfiles]);
 
   return (
-    <div className="w-full space-y-3.5 select-none">
-      {/* Header Demo Ringkas */}
-      <div className="text-left space-y-1">
-        <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-black uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>1-Click App Launcher Demo</span>
+    <div className="w-full space-y-6 select-none">
+      {/* ── Top Bar Kontrol: Filter Kategori & Search Bar (Modern Dashboard Header) ── */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Left: Branding & Status */}
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
+            <Compass className="w-6 h-6" />
           </div>
-          <span className="text-[11px] font-bold text-slate-400">
-            {totalCount} Peran Tersedia
-          </span>
-        </div>
-        <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-          Pilih Peran & Langsung Masuk
-        </h2>
-      </div>
-
-      {/* Search Bar & Kategori */}
-      <div className="space-y-2">
-        {/* Compact Search Input */}
-        <div className="relative flex items-center">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama peran, jabatan, atau nama pengguna..."
-            className="w-full pl-8 pr-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/40"
-          />
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                Pusat Peluncur Peran Demo
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                1-Click Access
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Pilih peran di bawah ini untuk langsung masuk dan menguji alur kerja secara instan.
+            </p>
+          </div>
         </div>
 
-        {/* Category Pills Switcher */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-nowrap -mx-1 px-1">
-          {DEMO_CATEGORIES.map(cat => {
-            const isActive = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border",
-                  isActive
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs scale-[1.02]"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-                )}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
+        {/* Right: Search & Actions */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="relative flex items-center min-w-[240px] sm:min-w-[280px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari peran, jabatan, atau pengguna..."
+              className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/40"
+            />
+          </div>
+
+          {onToggleManualLogin && (
+            <button
+              type="button"
+              onClick={onToggleManualLogin}
+              className="px-3.5 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Login Manual</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* App Launcher Clustered Container */}
-      <div className="space-y-4 max-h-[440px] sm:max-h-[480px] overflow-y-auto custom-scrollbar pr-1.5 -mr-1.5">
+      {/* Category Pills Switcher */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 flex-nowrap -mx-1 px-1">
+        {DEMO_CATEGORIES.map(cat => {
+          const isActive = selectedCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.id)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer shrink-0 border",
+                isActive
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm scale-[1.02]"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+              )}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── BENTO KLASTER WORKFLOW GRID (Dipisah Per Kartu Kontainer Besar ala Workspace Dashboard) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <AnimatePresence mode="popLayout">
-          {clusteredProfiles.map((group) => (
+          {clusteredProfiles.map((group, groupIdx) => (
             <motion.div
               key={group.id}
               layout
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              className="space-y-2"
+              transition={{ duration: 0.2, delay: groupIdx * 0.05 }}
+              className="p-5 sm:p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
             >
-              {/* Cluster Section Header */}
-              <div className="flex items-center justify-between px-1 py-0.5 border-b border-slate-100 dark:border-slate-800/80">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-slate-900 dark:text-white tracking-tight">
+              {/* Header Kartu Klaster */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
                     {group.label}
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
-                    {group.profiles.length}
-                  </span>
+                  </h3>
                 </div>
+
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  {group.profiles.length} Peran
+                </span>
               </div>
 
-              {/* Grid Cards inside Cluster (Model App Launcher) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Grid 4-Kolom Squircles App Icons (Apple / Web Portal Style) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-5 gap-x-2 sm:gap-x-3 pt-4 flex-1 items-start">
                 {group.profiles.map((profile) => {
                   const Icon = ICON_MAP[profile.iconName] || Crown;
                   const isThisLoading = isLoading && activeLoadingRoleId === profile.id;
 
                   return (
-                    <motion.div
+                    <button
                       key={profile.id}
-                      layout
-                      whileHover={{ scale: 1.015 }}
-                      whileTap={{ scale: 0.985 }}
-                      onClick={() => !isLoading && onSelectRole(profile)}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => onSelectRole(profile)}
                       className={cn(
-                        "group relative p-2.5 rounded-2xl border transition-all duration-200 flex flex-col justify-between gap-2 cursor-pointer select-none",
-                        "bg-white dark:bg-slate-900 shadow-2xs hover:shadow-md hover:border-amber-400 dark:hover:border-amber-500/80",
-                        isThisLoading
-                          ? "ring-2 ring-amber-500 border-amber-500 bg-amber-50/70 dark:bg-amber-950/40"
-                          : "border-slate-200/80 dark:border-slate-800 hover:bg-gradient-to-br hover:from-amber-50/20 hover:to-transparent"
+                        "group flex flex-col items-center text-center p-2 rounded-2xl transition-all duration-200 cursor-pointer relative",
+                        "hover:bg-slate-50 dark:hover:bg-slate-800/60 active:scale-95",
+                        isThisLoading && "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/40"
                       )}
                     >
-                      {/* Card Header: Icon + Badge */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className={cn(
-                          "w-9 h-9 rounded-xl flex items-center justify-center shadow-xs bg-gradient-to-br transition-transform group-hover:scale-105 shrink-0",
-                          profile.gradient
-                        )}>
-                          {isThisLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-white" />
-                          ) : (
-                            <Icon size={18} className="stroke-[2.2]" />
-                          )}
-                        </div>
+                      {/* Squircle App Tile Icon (Mewah & Berkelas) */}
+                      <div className={cn(
+                        "w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-[1.25rem] flex items-center justify-center shadow-md shadow-slate-200/50 dark:shadow-none bg-gradient-to-br transition-all duration-200 group-hover:scale-108 group-hover:shadow-lg shrink-0 mb-2 relative overflow-hidden border",
+                        profile.gradient,
+                        profile.border
+                      )}>
+                        {isThisLoading ? (
+                          <Loader2 className="w-6 h-6 sm:w-7 sm:h-7 animate-spin text-white" />
+                        ) : (
+                          <Icon size={26} className="stroke-[2.2] drop-shadow-xs" />
+                        )}
 
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight border truncate max-w-[140px]",
-                          profile.badgeColor
-                        )}>
-                          {profile.badge}
-                        </span>
+                        {/* Top-Right Mini Badge / Status Dot */}
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white/70 shadow-xs" />
                       </div>
 
-                      {/* Card Body: Title & Simulated Person Name */}
-                      <div className="space-y-0.5 min-w-0 flex-1 text-left">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
-                          {profile.title}
-                        </h4>
-                        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                          {profile.simulatedName}
-                        </p>
-                      </div>
+                      {/* Label Judul Jabatan (Tebal & Rapi) */}
+                      <span className="text-[11.5px] sm:text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 leading-tight max-w-[110px]">
+                        {profile.title}
+                      </span>
 
-                      {/* Card Footer: Quick Action Indicator */}
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[10px] font-bold text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                        <span className="flex items-center gap-1">
-                          <LayoutGrid className="w-3 h-3" />
-                          <span>1-Klik Masuk</span>
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    </motion.div>
+                      {/* Nama Simulasi Guru / Staf */}
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[100px] mt-0.5">
+                        {profile.simulatedName}
+                      </span>
+
+                      {/* Mini Role Badge */}
+                      <span className={cn(
+                        "mt-1.5 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-tight border truncate max-w-[95px]",
+                        profile.badgeColor
+                      )}>
+                        {profile.badge}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
-
-        {clusteredProfiles.length === 0 && (
-          <div className="py-8 text-center space-y-2">
-            <p className="text-xs font-bold text-slate-500">Tidak ada peran yang cocok dengan "{searchQuery}"</p>
-            <button
-              type="button"
-              onClick={() => { setSearchQuery(''); setSelectedCategory('ALL'); }}
-              className="text-xs font-bold text-amber-600 hover:underline cursor-pointer"
-            >
-              Reset Pencarian
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Footer Switcher back to Manual Login */}
-      {onToggleManualLogin && (
-        <div className="pt-1 text-center">
+      {clusteredProfiles.length === 0 && (
+        <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+          <p className="text-sm font-bold text-slate-500">Tidak ada peran yang cocok dengan kata kunci "{searchQuery}"</p>
           <button
             type="button"
-            onClick={onToggleManualLogin}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer py-1"
+            onClick={() => { setSearchQuery(''); setSelectedCategory('ALL'); }}
+            className="px-4 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs shadow-md hover:bg-amber-600 cursor-pointer"
           >
-            <KeyRound className="w-3 h-3" />
-            <span>Gunakan Login Manual (NIP / Password)</span>
+            Tampilkan Semua Peran
           </button>
         </div>
       )}
