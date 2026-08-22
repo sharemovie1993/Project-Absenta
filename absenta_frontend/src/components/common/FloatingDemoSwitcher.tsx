@@ -113,6 +113,18 @@ export const FloatingDemoSwitcher: React.FC = () => {
       // 1. Silent logout
       logout();
 
+      // Jika profil Orang Tua -> Gunakan Magic Token Access
+      if (profile.roleCode === 'ORANG_TUA' || profile.id === 'demo-ortu') {
+        const parentMagicToken = 'absenta-demo-parent-magic-token-2026';
+        localStorage.setItem('parent_access_token', parentMagicToken);
+        sessionStorage.setItem('is_demo_session', 'true');
+        sessionStorage.setItem('demo_active_role', profile.title);
+        sessionStorage.setItem('demo_active_name', profile.simulatedName);
+        toast.success(`Berhasil masuk ke Portal Orang Tua via Magic Token!`, { id: 'switch-demo' });
+        window.location.href = `/parent-app?token=${parentMagicToken}`;
+        return;
+      }
+
       // 2. Set new demo session data
       sessionStorage.setItem('is_demo_session', 'true');
       sessionStorage.setItem('demo_active_role', profile.title);

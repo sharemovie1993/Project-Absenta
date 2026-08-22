@@ -207,6 +207,15 @@ export default function LoginPage() {
       sessionStorage.setItem('demo_active_role', profile.title);
       sessionStorage.setItem('demo_active_name', profile.simulatedName);
 
+      // Jika profil Orang Tua -> Gunakan Magic Token Access
+      if (profile.roleCode === 'ORANG_TUA' || profile.id === 'demo-ortu') {
+        const parentMagicToken = 'absenta-demo-parent-magic-token-2026';
+        localStorage.setItem('parent_access_token', parentMagicToken);
+        toast.success(`Selamat datang, ${profile.simulatedName}!`, { id: 'demo-login' });
+        window.location.href = `/parent-app?token=${parentMagicToken}`;
+        return;
+      }
+
       toast.loading(`Masuk sebagai ${profile.title}...`, { id: 'demo-login' });
       await loginAction(profile.email, profile.password || 'password123', devTenantArg);
       toast.success(`Selamat datang, ${profile.simulatedName}!`, { id: 'demo-login' });
