@@ -81,6 +81,8 @@ const CooperativeDashboard = React.lazy(() => import('@/pages/cooperative/Dashbo
 const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
 // Admin Overview Tab — dirender di tab Admin untuk role ADMIN/SUPERADMIN
 import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
+// Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
+const KepalaSekolahDashboard = React.lazy(() => import('./KepalaSekolahDashboard').then(m => ({ default: m.KepalaSekolahDashboard })));
 // Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
 const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
 
@@ -941,20 +943,26 @@ export const UnifiedStaffDashboard: React.FC = () => {
         transition={{ duration: 0.12, ease: 'easeOut' }}
         className="w-full min-w-0"
       >
-        {/* 📌 TAB 1: BERANDA GURU / STAF */}
+        {/* 📌 TAB 1: OVERVIEW EKSEKUTIF (KEPSEK) ATAU BERANDA GURU / STAF */}
         {activeTab === 'ringkasan' && (
-          <StaffBerandaTab
-            guruId={guruId}
-            guruNama={guruProfile?.nama_guru || user?.full_name}
-            waliKelasNama={waliKelasNama}
-            waliKelasId={waliKelasId}
-            isWaliKelas={isWaliKelas}
-            hasGerbangDuty={hasGerbangDuty}
-            isPureGerbang={isPureGerbangStaff}
-            isPendidik={isPendidik}
-            timelineItems={timelineItems || []}
-            onNavigateTab={handleTabChange}
-          />
+          isKepsek ? (
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <KepalaSekolahDashboard />
+            </Suspense>
+          ) : (
+            <StaffBerandaTab
+              guruId={guruId}
+              guruNama={guruProfile?.nama_guru || user?.full_name}
+              waliKelasNama={waliKelasNama}
+              waliKelasId={waliKelasId}
+              isWaliKelas={isWaliKelas}
+              hasGerbangDuty={hasGerbangDuty}
+              isPureGerbang={isPureGerbangStaff}
+              isPendidik={isPendidik}
+              timelineItems={timelineItems || []}
+              onNavigateTab={handleTabChange}
+            />
+          )
         )}
 
         {/* 🗓️ TAB 2: KBM & ABSEN */}
