@@ -104,23 +104,19 @@ export function useCapabilities() {
     // LEVEL 4 & 5: MANAJEMEN MANAJERIAL & PIMPINAN EKSEKUTIF
     // ═══════════════════════════════════════════════════════════════════
     const isKurikulum =
-      userPositions.includes('KURIKULUM') ||
-      can('dashboard.view.kurikulum');
+      userPositions.includes('KURIKULUM');
 
     const isKesiswaan =
-      userPositions.includes('KESISWAAN') ||
-      can('dashboard.view.kesiswaan');
+      userPositions.includes('KESISWAAN');
 
     const isHubin =
-      userPositions.includes('HUBIN') ||
-      can('dashboard.view.hubin');
+      userPositions.includes('HUBIN');
 
     const isBkk =
       userPositions.includes('BKK');
 
     const isSarpras =
-      userPositions.includes('SARPRAS') ||
-      can('dashboard.view.sarpras');
+      userPositions.includes('SARPRAS');
 
     const isKepsek =
       userPositions.includes('KEPALA_SEKOLAH') ||
