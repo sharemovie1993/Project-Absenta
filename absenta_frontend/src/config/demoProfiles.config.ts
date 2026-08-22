@@ -379,7 +379,7 @@ export const DEMO_ROLE_PROFILES: DemoRoleProfile[] = [
     category: 'TEACHING',
     roleCode: 'GURU',
     title: 'Guru Mata Pelajaran',
-    simulatedName: 'Farhan Maulana, S.Pd',
+    simulatedName: 'Erwin Demo',
     email: 'guru@absenta.id',
     password: 'password123',
     badge: 'Pendidik KBM',
