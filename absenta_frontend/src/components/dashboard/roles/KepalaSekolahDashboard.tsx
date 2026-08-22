@@ -46,7 +46,7 @@ import { KepalaSekolahBkDashboardWidget } from '../widgets/KepalaSekolahBkDashbo
 
 const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'];
 
-export const KepalaSekolahDashboard: React.FC = () => {
+export const KepalaSekolahDashboard: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const currentMonth = useMemo(() => toLocalMonth(), []);
@@ -54,54 +54,70 @@ export const KepalaSekolahDashboard: React.FC = () => {
   // 5 Lensa Pengawasan Eksekutif
   const [executivePillar, setExecutivePillar] = useState<'kbm' | 'kesiswaan' | 'bk' | 'sarpras' | 'hubin'>('kbm');
 
-  // 1. Data Overview Makro
+  // 1. Data Overview Makro (Cache 1 menit)
   const { data: overviewData } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => getDashboardOverview(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // 2. Grafik Kehadiran Bulanan
+  // 2. Grafik Kehadiran Bulanan (Cache 5 menit)
   const { data: chartData } = useQuery({
     queryKey: ['attendance-chart', currentMonth],
     queryFn: () => getAttendanceChart(currentMonth),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // 3. Eskalasi Kasus
+  // 3. Eskalasi Kasus (Cache 1 menit)
   const { data: escalationsData } = useQuery({
     queryKey: ['kepsek-escalations'],
     queryFn: () => getKepsekEscalations(10),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // 4. Data Sarpras
+  // 4. Data Sarpras (Cache 5 menit)
   const { data: sarprasData } = useQuery({
     queryKey: ['kepsek-sarpras-stats'],
     queryFn: () => getSarprasStats(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // 5. Data Hubin & BKK
+  // 5. Data Hubin & BKK (Cache 5 menit)
   const { data: hubinData } = useQuery({
     queryKey: ['kepsek-hubin-stats'],
     queryFn: () => getHubinStats(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const { data: bkkData } = useQuery({
     queryKey: ['kepsek-bkk-stats'],
     queryFn: () => getBkkStats(),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // 6. Data Pelanggaran & Izin Kesiswaan
+  // 6. Data Pelanggaran & Izin Kesiswaan (Cache 2 menit)
   const { data: violationData } = useQuery({
     queryKey: ['kepsek-violations-stats'],
     queryFn: () => getViolationStats(),
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
   });
   const { data: pelanggaranData } = useQuery({
     queryKey: ['kepsek-pelanggaran-list'],
     queryFn: () => kesiswaanApi.getPelanggaran({ limit: 10 }),
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const stats = overviewData?.data;
-  const guruAttendance = stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0;
-  const siswaAttendance = stats?.total_siswa ? Math.round((stats.siswa_hadir / stats.total_siswa) * 100) : 0;
-  const escalations = escalationsData?.data || [];
+  const guruAttendance = useMemo(() => stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0, [stats?.total_guru, stats?.guru_hadir]);
+  const siswaAttendance = useMemo(() => stats?.total_siswa ? Math.round((stats.siswa_hadir / stats.total_siswa) * 100) : 0, [stats?.total_siswa, stats?.siswa_hadir]);
+  const escalations = useMemo(() => escalationsData?.data || [], [escalationsData?.data]);
 
   // Trend Data Bulanan
   const trendData = useMemo(() => {
@@ -124,25 +140,25 @@ export const KepalaSekolahDashboard: React.FC = () => {
     { name: 'Sakit', value: stats?.siswa_sakit || 0 },
     { name: 'Izin', value: stats?.siswa_izin || 0 },
     { name: 'Alpa', value: stats?.siswa_alpa || 0 },
-  ].filter(d => d.value > 0), [stats]);
+  ].filter(d => d.value > 0), [stats?.siswa_hadir, stats?.siswa_sakit, stats?.siswa_izin, stats?.siswa_alpa]);
 
   // Navigasi Strategis 1-Click
-  const quickActions: QuickAction[] = [
+  const quickActions: QuickAction[] = useMemo(() => [
     { label: 'Overview Presensi', icon: LayoutDashboard, onClick: () => navigate('/attendance/rekap'), color: 'blue' },
     { label: 'Kejadian Khusus', icon: ShieldCheck, onClick: () => navigate('/attendance/settings?tab=kejadian-khusus'), color: 'rose' },
     { label: 'Supervisi Akademik', icon: Award, onClick: () => navigate('/kurikulum/supervisi'), color: 'indigo' },
     { label: 'Pusat Laporan PDF', icon: FileText, onClick: () => navigate('/reports'), color: 'emerald' },
-  ];
+  ], [navigate]);
 
   // 6 Top-Level KPI Ribbon
-  const infoStrips: InfoStripItem[] = [
+  const infoStrips: InfoStripItem[] = useMemo(() => [
     { label: 'Hadir Siswa', value: `${siswaAttendance}%`, icon: Users, color: 'blue' },
     { label: 'Hadir Guru', value: `${guruAttendance}%`, icon: CheckCircle, color: 'emerald' },
     { label: 'Sesi KBM Live', value: `${stats?.total_sesi_aktif || 0} Kelas`, icon: PlayCircle, color: 'indigo' },
     { label: 'Eskalasi Kasus', value: `${escalations.length} Kasus`, icon: AlertTriangle, color: 'rose' },
     { label: 'Total Aset Sarpras', value: `${sarprasData?.data?.total_assets || sarprasData?.total_assets || 0}`, icon: Building, color: 'amber' },
     { label: 'Siswa PKL Aktif', value: `${hubinData?.data?.active_students || hubinData?.total_pkl || 0}`, icon: Briefcase, color: 'teal' },
-  ];
+  ], [siswaAttendance, guruAttendance, stats?.total_sesi_aktif, escalations.length, sarprasData, hubinData]);
 
   // Tab Pilar Pengawasan Eksekutif
   const pillarTabs = [
