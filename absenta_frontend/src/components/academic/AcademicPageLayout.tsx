@@ -69,7 +69,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 }) => {
   const { setInstructionData } = useInstruction();
   const { user } = useAuthStore();
-  const { isAdmin } = useCapabilities();
+  const { isAdmin, isKepsek } = useCapabilities();
   const { isTvMode } = useTvStore();
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
@@ -182,6 +182,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   const currentPath = location.pathname.toLowerCase().replace(/\/$/, "");
   
   const isModuleRootDashboard = useMemo(() => {
+    // Untuk Kepala Sekolah, halaman dashboard modul anak bukanlah root home, sehingga tombol kembali tetap aktif
+    if (isKepsek) return currentPath === '' || currentPath === '/' || currentPath === '/dashboard';
     return (
       currentPath === '' ||
       currentPath === '/' ||
@@ -197,12 +199,34 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       currentPath === '/correspondence/dashboard' ||
       currentPath === '/attendance/dashboard'
     );
-  }, [currentPath]);
+  }, [currentPath, isKepsek]);
 
   const isNotDashboard = !isModuleRootDashboard;
 
   const handleGoBack = useCallback(() => {
-    // Smart Parent Resolver: Kembali langsung ke Dashboard Modul Induk tanpa terjebak di loop history
+    // 1. Khusus Kepala Sekolah: Selalu utamakan kembali ke Executive Dashboard (/dashboard)
+    if (isKepsek) {
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate('/dashboard');
+      }
+      return;
+    }
+
+    // 2. Jika berada di root modul, kembali ke portal utama /dashboard
+    const isRoot = [
+      '/kurikulum/dashboard', '/kesiswaan/monitoring', '/sarpras/dashboard', 
+      '/bpbk/dashboard', '/hubin/dashboard', '/cooperative/dashboard', 
+      '/cbt/dashboard', '/rapor/dashboard', '/correspondence/dashboard', '/attendance/dashboard'
+    ].includes(currentPath);
+
+    if (isRoot) {
+      navigate('/dashboard');
+      return;
+    }
+
+    // 3. Smart Parent Resolver untuk staff spesialis modul
     if (currentPath.startsWith('/kurikulum')) {
       navigate('/kurikulum/dashboard');
       return;
@@ -253,7 +277,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     } else {
       navigate('/dashboard');
     }
-  }, [navigate, currentPath]);
+  }, [navigate, currentPath, isKepsek]);
 
   if (isLoading) {
     return (
