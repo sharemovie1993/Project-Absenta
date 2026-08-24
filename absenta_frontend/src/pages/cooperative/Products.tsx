@@ -215,6 +215,7 @@ const Products: React.FC = React.memo(() => {
                 categories={categories}
                 fetchProducts={fetchProducts}
                 fetchCategories={fetchCategories}
+                loading={loading}
               />
             )}
             

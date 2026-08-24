@@ -49,13 +49,15 @@ interface ProductCatalogTabProps {
   categories: ProductCategory[];
   fetchProducts: () => Promise<void>;
   fetchCategories: () => Promise<void>;
+  loading?: boolean;
 }
 
 export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   products,
   categories,
   fetchProducts,
-  fetchCategories
+  fetchCategories,
+  loading = false,
 }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -374,8 +376,30 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       <Table 
         columns={catalogColumns}
         data={paginatedProducts} 
-        loading={products.length === 0 && paginatedProducts.length === 0}
-        emptyMessage="Tidak ditemukan data produk."
+        loading={loading}
+        emptyMessage={
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/50 shadow-xs">
+              <Package size={28} />
+            </div>
+            <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 mb-1">
+              Belum Ada Produk di Katalog
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+              Koperasi Anda belum memiliki produk terdaftar. Silakan tambahkan produk baru secara manual atau impor melalui file Excel.
+            </p>
+            {canCreate && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button size="sm" onClick={() => handleOpenProductModal()} icon={<Plus size={14} />}>
+                  Tambah Produk Pertama
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={14} />}>
+                  Import Excel
+                </Button>
+              </div>
+            )}
+          </div>
+        }
         sortBy={sortKey}
         sortOrder={sortDirection}
         onSort={handleSort}

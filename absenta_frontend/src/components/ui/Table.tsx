@@ -171,11 +171,11 @@ export function Table({
         </div>
       )}
       {(toolbarLeft || toolbarRight) && (
-        <div className={cn("table-toolbar border-b border-gray-50 dark:border-gray-800/50 bg-gray-50/30 dark:bg-slate-950/30 flex justify-between items-center", compact ? "px-4 py-2" : "px-8 py-4")}>
-          <div className="flex items-center gap-3">
+        <div className={cn("table-toolbar border-b border-gray-50 dark:border-gray-800/50 bg-gray-50/30 dark:bg-slate-950/30 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 sm:gap-3", compact ? "px-4 py-2" : "px-4 sm:px-8 py-3 sm:py-4")}>
+          <div className="flex items-center gap-3 w-full sm:w-auto flex-1 min-w-0">
             {toolbarLeft}
           </div>
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-start sm:justify-end w-full sm:w-auto shrink-0">
             {toolbarRight}
           </div>
         </div>
