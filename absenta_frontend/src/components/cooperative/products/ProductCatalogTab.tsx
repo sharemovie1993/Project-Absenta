@@ -180,7 +180,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     stock: string;
     category: string;
   }) => {
-    await saveProductMutation.mutateAsync(formData);
+    saveProductMutation.mutate(formData);
   }, [saveProductMutation]);
 
   const handleProductDeleteClick = useCallback((id: string) => {
@@ -212,7 +212,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
 
   const handleProductDeleteConfirm = useCallback(async () => {
     if (!productIdToDelete) return;
-    await deleteProductMutation.mutateAsync(productIdToDelete);
+    deleteProductMutation.mutate(productIdToDelete);
   }, [productIdToDelete, deleteProductMutation]);
 
   const handleOpenOpnameModal = useCallback((product: Product) => {
@@ -250,7 +250,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       return;
     }
 
-    await adjustStockMutation.mutateAsync({
+    adjustStockMutation.mutate({
       productId: opnameProduct.id,
       newStockVal,
       reason

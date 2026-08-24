@@ -39,41 +39,44 @@ export default function PremiumFeatureGate({
     subscription?.plan?.features_json ||
     [];
 
+  const subStatus: string = (
+    (subscription as any)?.status ??
+    user?.subscription_status ??
+    ''
+  ).toUpperCase();
+  const expiredStatuses = ['EXPIRED', 'CANCELLED', 'CANCELED', 'SUSPENDED', 'INACTIVE'];
+  const isStatusExpired = expiredStatuses.includes(subStatus);
+  const isPastEndDate = Boolean(
+    (subscription as any)?.end_date && new Date((subscription as any).end_date) < new Date()
+  );
+
+  // Cek child subscriptions yang punya modul ini tapi expired
+  const subs: any[] =
+    (subscription as any)?.subscriptions ??
+    (user as any)?.subscriptions ??
+    [];
+  const hasExpiredChildSub = subs.some((s: any) => {
+    const planFeatures: string[] =
+      s?.Plan?.features_json ?? s?.plan?.features_json ?? [];
+    return (
+      planFeatures.includes(moduleName.toUpperCase()) &&
+      expiredStatuses.includes((s?.status ?? '').toUpperCase())
+    );
+  });
+
+  const isModuleAllowed = Array.isArray(features) && features.includes(moduleName.toUpperCase());
+
+  // isLocked jika modul tidak ada di paket ATAU status langganan sudah kedaluwarsa/tidak aktif
   const isLocked =
     propIsLocked !== undefined
       ? propIsLocked
-      : !Array.isArray(features) || !features.includes(moduleName.toUpperCase());
+      : !isModuleAllowed || isStatusExpired || isPastEndDate || hasExpiredChildSub;
 
-  // Detect EXPIRED (pernah berlangganan tapi habis) vs TRIAL (belum pernah)
+  // Detect EXPIRED (pernah berlangganan tapi habis / status expired) vs TRIAL (belum pernah)
   const isExpired = useMemo(() => {
     if (!isLocked) return false;
-
-    // Cek status utama langganan
-    const subStatus: string = (subscription as any)?.status ?? '';
-    const expiredStatuses = ['EXPIRED', 'CANCELLED', 'CANCELED', 'SUSPENDED'];
-    if (expiredStatuses.includes(subStatus)) return true;
-
-    // Cek child subscriptions yang punya modul ini tapi expired
-    const subs: any[] =
-      (subscription as any)?.subscriptions ??
-      (user as any)?.subscriptions ??
-      [];
-    const hasExpiredSub = subs.some((s: any) => {
-      const planFeatures: string[] =
-        s?.Plan?.features_json ?? s?.plan?.features_json ?? [];
-      return (
-        planFeatures.includes(moduleName.toUpperCase()) &&
-        expiredStatuses.includes(s?.status ?? '')
-      );
-    });
-    if (hasExpiredSub) return true;
-
-    // Cek end_date sudah lewat
-    const endDate: string | undefined = (subscription as any)?.end_date;
-    if (endDate && new Date(endDate) < new Date()) return true;
-
-    return false;
-  }, [isLocked, subscription, user, moduleName]);
+    return isStatusExpired || isPastEndDate || hasExpiredChildSub;
+  }, [isLocked, isStatusExpired, isPastEndDate, hasExpiredChildSub]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

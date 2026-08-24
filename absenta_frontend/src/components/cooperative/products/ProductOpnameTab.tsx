@@ -97,9 +97,9 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
 
   const createOpnameLoading = createOpnameMutation.isPending;
 
-  const handleCreateOpnameSession = async (e: React.FormEvent) => {
+  const handleCreateOpnameSession = (e: React.FormEvent) => {
     e.preventDefault();
-    await createOpnameMutation.mutateAsync({
+    createOpnameMutation.mutate({
       notes: newOpnameNotes.trim(),
       categoryFilter: newOpnameCategoryFilter
     });

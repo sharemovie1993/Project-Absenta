@@ -187,7 +187,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       }))
     };
 
-    await submitStockInMutation.mutateAsync(payload);
+    submitStockInMutation.mutate(payload);
   }, [selectedStockInItems, stockInSupplier, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation]);
 
   return (

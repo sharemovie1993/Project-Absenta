@@ -106,7 +106,7 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
       return;
     }
 
-    await saveCategoryMutation.mutateAsync({
+    saveCategoryMutation.mutate({
       name: categoryFormName,
       description: categoryFormDesc
     });
@@ -142,7 +142,7 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
 
   const handleCategoryDeleteConfirm = async () => {
     if (!categoryIdToDelete) return;
-    await deleteCategoryMutation.mutateAsync(categoryIdToDelete);
+    deleteCategoryMutation.mutate(categoryIdToDelete);
   };
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
