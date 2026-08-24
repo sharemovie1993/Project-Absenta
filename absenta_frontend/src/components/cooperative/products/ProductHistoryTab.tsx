@@ -38,7 +38,7 @@ interface StockIn {
 }
 
 interface ProductHistoryTabProps {
-  activeTab: 'catalog' | 'stock-in' | 'history' | 'categories' | 'opname';
+  activeTab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname';
 }
 
 export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab }) => {
