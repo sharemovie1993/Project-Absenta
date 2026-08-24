@@ -99,6 +99,7 @@ export const createProductSchema = z.object({
   costPrice: z.coerce.number().min(0, 'Harga modal tidak boleh negatif').optional(),
   stock: z.coerce.number().int().min(0, 'Stok tidak boleh negatif').optional(),
   category: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  imageUrl: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   unit: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });
@@ -111,6 +112,7 @@ export const updateProductSchema = z.object({
   costPrice: z.coerce.number().min(0, 'Harga modal tidak boleh negatif').optional(),
   stock: z.coerce.number().int().min(0, 'Stok tidak boleh negatif').optional(),
   category: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  imageUrl: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   unit: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });

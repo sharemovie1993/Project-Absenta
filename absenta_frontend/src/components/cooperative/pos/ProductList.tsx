@@ -95,9 +95,23 @@ export const ProductList = React.memo<ProductListProps>(({
                 onClick={hasCashierAccess && product.stock > 0 ? () => addToCart(product) : undefined}
                 className={`p-4 border rounded-lg transition-all flex flex-col justify-between ${hasCashierAccess && product.stock > 0 ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''} ${product.stock <= 0 ? 'opacity-50 bg-gray-100' : 'bg-white'}`}
               >
-                <div>
-                  <h3 className="font-semibold text-gray-800 line-clamp-2">{product.name}</h3>
-                  <p className="text-sm text-gray-500">{product.code}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden select-none">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      product.name.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-gray-800 dark:text-slate-100 line-clamp-1">{product.name}</h3>
+                    <p className="text-xs text-gray-500">{product.code}</p>
+                  </div>
                 </div>
                 <div className="mt-2 flex justify-between items-end">
                   <span className="font-bold text-blue-600">Rp {Number(product.price).toLocaleString('id-ID')}</span>

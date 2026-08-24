@@ -576,8 +576,17 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     <span className="text-sm font-black text-slate-800 dark:text-slate-100 w-3 font-mono">
                       {index + 1}
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-center shrink-0 select-none">
-                      {getInitials(item.name)}
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-center shrink-0 select-none overflow-hidden">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        getInitials(item.name)
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
@@ -801,9 +810,18 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     isOutOfStock && "opacity-40 pointer-events-none bg-slate-100 dark:bg-slate-900"
                   )}
                 >
-                  {/* Left Initial Avatar */}
-                  <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-sm flex items-center justify-center shrink-0 select-none">
-                    {getInitials(product.name)}
+                  {/* Left Photo Thumbnail or Initial Avatar */}
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-sm flex items-center justify-center shrink-0 select-none overflow-hidden">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      getInitials(product.name)
+                    )}
                   </div>
 
                   {/* Middle: Product Name & Price */}

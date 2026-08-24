@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal } from '../../../components/cooperative/ui/Modal';
 import { Input } from '../../../components/cooperative/ui/Input';
 import { Button } from '../../../components/cooperative/ui/Button';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
+import api from '../../../lib/axiosInstance';
+import toast from 'react-hot-toast';
 
 interface Product {
   id: string;
@@ -12,6 +15,7 @@ interface Product {
   costPrice: string;
   stock: number;
   category: string;
+  imageUrl?: string | null;
 }
 
 interface ProductFormModalProps {
@@ -25,6 +29,7 @@ interface ProductFormModalProps {
     costPrice: string;
     stock: string;
     category: string;
+    imageUrl?: string;
   }) => Promise<void>;
   isLoading: boolean;
   existingCategories: string[];
@@ -44,11 +49,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     price: '',
     costPrice: '',
     stock: '',
-    category: ''
+    category: '',
+    imageUrl: ''
   });
 
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingProduct) {
@@ -58,7 +66,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         price: editingProduct.price.toString(),
         costPrice: editingProduct.costPrice.toString(),
         stock: editingProduct.stock.toString(),
-        category: editingProduct.category || ''
+        category: editingProduct.category || '',
+        imageUrl: editingProduct.imageUrl || ''
       });
       // Check if current category is not in standard list to toggle custom input
       const isCustom = editingProduct.category && !existingCategories.includes(editingProduct.category);
@@ -70,12 +79,48 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         price: '',
         costPrice: '',
         stock: '',
-        category: ''
+        category: '',
+        imageUrl: ''
       });
       setIsCustomCategory(false);
     }
     setValidationErrors({});
   }, [editingProduct, isOpen, existingCategories]);
+
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya berkas gambar (PNG, JPG, WebP) yang diperbolehkan');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran foto maksimal 5MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+      const res = await api.post('/upload', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
+      if (fileUrl) {
+        setFormData(prev => ({ ...prev, imageUrl: fileUrl }));
+        toast.success('Foto produk berhasil diunggah ke storage engine');
+      }
+    } catch (err: any) {
+      console.error('Failed to upload product photo:', err);
+      toast.error(err.response?.data?.message || 'Gagal mengunggah foto produk');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }, []);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -316,6 +361,63 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 Pratinjau: Rp {Number(formData.costPrice).toLocaleString('id-ID')}
               </p>
             )}
+          </div>
+        </div>
+
+        {/* Foto Produk (Terintegrasi ke Storage Engine) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Foto Produk (Opsional)
+          </label>
+          <div className="flex items-center gap-3.5 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative">
+              {formData.imageUrl ? (
+                <img
+                  src={formData.imageUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                />
+              ) : (
+                <ImageIcon className="text-slate-400" size={24} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="text-xs flex items-center gap-1.5"
+                >
+                  {isUploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  <span>{formData.imageUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
+                </Button>
+                {formData.imageUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                    className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900"
+                  >
+                    Hapus
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Format PNG, JPG, WebP. Tersimpan otomatis ke storage engine.
+              </p>
+            </div>
           </div>
         </div>
 

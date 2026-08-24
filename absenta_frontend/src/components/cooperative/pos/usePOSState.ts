@@ -71,6 +71,7 @@ export interface Product {
   price: string;
   stock: number;
   category?: string;
+  imageUrl?: string | null;
 }
 
 export interface CartItem extends Product {

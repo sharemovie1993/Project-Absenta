@@ -25,6 +25,7 @@ interface Product {
   costPrice: string;
   stock: number;
   category: string;
+  imageUrl?: string | null;
 }
 
 interface ProductCategory {
@@ -281,7 +282,29 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   const catalogColumns: Column[] = useMemo(() => {
     const cols: Column[] = [
       { key: 'code', label: 'Kode', sortable: true },
-      { key: 'name', label: 'Nama Produk', className: 'font-medium', sortable: true },
+      { 
+        key: 'name', 
+        label: 'Nama Produk', 
+        className: 'font-medium', 
+        sortable: true,
+        render: (_value: unknown, row: Product) => (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0 overflow-hidden select-none">
+              {row.imageUrl ? (
+                <img
+                  src={row.imageUrl}
+                  alt={row.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                />
+              ) : (
+                row.name.slice(0, 2).toUpperCase()
+              )}
+            </div>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{row.name}</span>
+          </div>
+        )
+      },
       { key: 'category', label: 'Kategori', sortable: true },
       { 
         key: 'costPrice', 

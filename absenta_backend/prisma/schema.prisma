@@ -2682,6 +2682,7 @@ model Product {
   costPrice Decimal @default(0)
   stock     Int     @default(0)
   category  String?
+  imageUrl  String?
 
   tenantId String
 
