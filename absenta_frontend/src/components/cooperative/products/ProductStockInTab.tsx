@@ -22,7 +22,8 @@ import {
   Building2,
   Receipt,
   Truck,
-  CheckCircle2
+  CheckCircle2,
+  Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFormModal } from '../../../pages/cooperative/components/ProductFormModal';
@@ -85,6 +86,9 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
 }) => {
   const queryClient = useQueryClient();
 
+  // Mobile navigation step: 'SELECT' | 'SUMMARY' (Rincian Pembelian)
+  const [mobileStep, setMobileStep] = useState<'SELECT' | 'SUMMARY'>('SELECT');
+
   // Stock-In states
   const [stockInSupplier, setStockInSupplier] = useState('');
   const [stockInInvoiceNumber, setStockInInvoiceNumber] = useState('');
@@ -92,6 +96,19 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   const [stockInPaymentMethod, setStockInPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
   const [selectedStockInItems, setSelectedStockInItems] = useState<TempStockInItem[]>([]);
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
+
+  // Search, Filter & Sort states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [sortOption, setSortOption] = useState<'name_asc' | 'name_desc' | 'cost_asc' | 'cost_desc'>('name_asc');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // Modals & Navigation
+  const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
+  const [isAddFeeModalOpen, setIsAddFeeModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<TempStockInItem | null>(null);
 
   // Auto-select initial purchase product (e.g. from Detail Sisa Stok 'Beli Barang' button)
   useEffect(() => {
@@ -113,32 +130,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     }
   }, [initialSelectedProduct, onClearInitialProduct]);
 
-  // Search, Filter & Sort states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [sortOption, setSortOption] = useState<'name_asc' | 'name_desc' | 'cost_asc' | 'cost_desc'>('name_asc');
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  // Modals & Navigation
-  const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
-
   // Drafts LocalStorage
-  useEffect(() => {
-    const savedDraft = localStorage.getItem('absenta_coop_purchase_draft');
-    if (savedDraft) {
-      try {
-        const parsed = JSON.parse(savedDraft);
-        if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0 && selectedStockInItems.length === 0) {
-          // Keep draft accessible via button
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, [selectedStockInItems.length]);
-
   const handleSaveDraft = useCallback(() => {
     if (selectedStockInItems.length === 0) {
       toast.error('Pilih minimal satu barang untuk disimpan sebagai draft');
@@ -303,6 +295,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       setSelectedStockInItems([]);
       setStockInShippingFee(0);
       setIsCheckoutModalOpen(false);
+      setMobileStep('SELECT');
       localStorage.removeItem('absenta_coop_purchase_draft');
 
       queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
@@ -354,7 +347,6 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       toast.success('Produk baru berhasil dibuat');
       setIsCreateProductModalOpen(false);
       fetchProducts();
-      // Directly add to purchase cart
       if (newProd) {
         handleToggleProductInCart(newProd);
       }
@@ -367,236 +359,350 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   return (
     <div className="space-y-4">
       {/* ───────────────────────────────────────────────────────────────────────
-          MOBILE VIEW (1:1 Kasir Pintar Persona: Pembelian)
+          MOBILE VIEW (1:1 Kasir Pintar Persona: Pembelian & Rincian Pembelian)
           ─────────────────────────────────────────────────────────────────────── */}
-      <div className="block lg:hidden -mx-4 -mt-2 space-y-3 pb-28 bg-white dark:bg-slate-950 min-h-[90vh]">
+      <div className="block lg:hidden -mx-4 -mt-2 space-y-3 pb-48 bg-white dark:bg-slate-950 min-h-[90vh]">
         
-        {/* 1. Header App Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('catalog')}
-              className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
-              aria-label="Kembali"
-            >
-              <ArrowLeft size={22} />
-            </button>
-            <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
-              Pembelian
-            </h2>
-          </div>
+        {/* =====================================================================
+            MOBILE STEP 1: SELECT PRODUCTS
+            ===================================================================== */}
+        {mobileStep === 'SELECT' && (
+          <>
+            {/* 1. Header App Bar */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 sticky top-0 z-20">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('catalog')}
+                  className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
+                  aria-label="Kembali"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+                <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                  Pembelian
+                </h2>
+              </div>
 
-          <div className="flex items-center gap-2">
-            {/* Draft Pill Button */}
-            <button
-              type="button"
-              onClick={() => setIsDraftsModalOpen(true)}
-              className="px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-transform cursor-pointer"
-            >
-              <span>Draft</span>
-              <FilePlus size={14} />
-            </button>
+              <div className="flex items-center gap-2">
+                {/* Draft Pill Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsDraftsModalOpen(true)}
+                  className="px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-transform cursor-pointer"
+                >
+                  <span>Draft</span>
+                  <FilePlus size={14} />
+                </button>
 
-            {/* Overflow Options Menu */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('history')}
-              className="p-1 text-emerald-600 dark:text-emerald-400 active:scale-90 transition-transform cursor-pointer"
-              title="Riwayat Pembelian"
-            >
-              <MoreVertical size={20} />
-            </button>
-          </div>
-        </div>
+                {/* Overflow Options Menu */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('history')}
+                  className="p-1 text-emerald-600 dark:text-emerald-400 active:scale-90 transition-transform cursor-pointer"
+                  title="Riwayat Pembelian"
+                >
+                  <MoreVertical size={20} />
+                </button>
+              </div>
+            </div>
 
-        {/* 2. Search, Filter, Sort, & Barcode Scanners */}
-        <div className="px-4 flex items-center gap-2 pt-1">
-          {/* Filter Button */}
-          <button
-            type="button"
-            onClick={() => setIsFilterModalOpen(true)}
-            className={cn(
-              "p-2.5 rounded-xl border text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0",
-              selectedCategory !== 'ALL' ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-slate-800"
-            )}
-            title="Filter Kategori"
-          >
-            <Filter size={18} />
-          </button>
-
-          {/* Sort Button */}
-          <button
-            type="button"
-            onClick={handleCycleSort}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0"
-            title="Urutkan"
-          >
-            <ArrowUpDown size={18} />
-          </button>
-
-          {/* Search Pill Input with Barcode & Camera Scanner Icons */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-            <input
-              type="text"
-              placeholder="Cari nama atau kode barang"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-9 pr-16 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            {/* 2. Search, Filter, Sort, & Barcode Scanners */}
+            <div className="px-4 flex items-center gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => toast('Scanner Barcode siap')}
-                className="p-1 hover:text-emerald-700 active:scale-90"
-                title="Scan Barcode"
+                onClick={() => setIsFilterModalOpen(true)}
+                className={cn(
+                  "p-2.5 rounded-xl border text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0",
+                  selectedCategory !== 'ALL' ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-slate-800"
+                )}
+                title="Filter Kategori"
               >
-                <Barcode size={17} />
+                <Filter size={18} />
               </button>
+
               <button
                 type="button"
-                onClick={() => toast('Kamera Scanner siap')}
-                className="p-1 hover:text-emerald-700 active:scale-90"
-                title="Scan Kamera"
+                onClick={handleCycleSort}
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0"
+                title="Urutkan"
               >
-                <Scan size={17} />
+                <ArrowUpDown size={18} />
               </button>
+
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau kode barang"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-11 pl-9 pr-16 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <button
+                    type="button"
+                    onClick={() => toast('Scanner Barcode siap')}
+                    className="p-1 hover:text-emerald-700 active:scale-90"
+                    title="Scan Barcode"
+                  >
+                    <Barcode size={17} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toast('Kamera Scanner siap')}
+                    className="p-1 hover:text-emerald-700 active:scale-90"
+                    title="Scan Kamera"
+                  >
+                    <Scan size={17} />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* 3. Horizontal Category Filter Chips */}
-        <div className="px-4 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('ALL')}
-            className={cn(
-              "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
-              selectedCategory === 'ALL'
-                ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            )}
-          >
-            Semua item
-          </button>
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.name)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
-                selectedCategory.toLowerCase() === cat.name.toLowerCase()
-                  ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                  : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              )}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* 4. Products Selection List */}
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/80 pt-1">
-          
-          {/* Top Option: Buat barang baru */}
-          <div
-            onClick={() => setIsCreateProductModalOpen(true)}
-            className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center gap-3.5 select-none"
-          >
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
-              <Plus size={22} />
-            </div>
-            <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
-              Buat barang baru
-            </span>
-          </div>
-
-          {/* Product Items */}
-          {sortedProducts.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 text-xs">
-              <Package size={36} className="mx-auto mb-2 opacity-40 text-slate-400" />
-              Tidak ada produk ditemukan.
-            </div>
-          ) : (
-            sortedProducts.map(prod => {
-              const costPrice = Number(prod.costPrice || 0);
-              const sellPrice = Number(prod.price || 0);
-              const initials = getInitials(prod.name);
-              const inCart = selectedStockInItems.find(item => item.product.id === prod.id);
-
-              return (
-                <div
-                  key={prod.id}
-                  onClick={() => handleToggleProductInCart(prod)}
+            {/* 3. Horizontal Category Filter Chips */}
+            <div className="px-4 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('ALL')}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
+                  selectedCategory === 'ALL'
+                    ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                    : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                )}
+              >
+                Semua item
+              </button>
+              {categories.map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.name)}
                   className={cn(
-                    "px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center justify-between gap-3 select-none",
-                    inCart ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""
+                    "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
+                    selectedCategory.toLowerCase() === cat.name.toLowerCase()
+                      ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                      : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                   )}
                 >
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {/* Thumbnail / 2-Letter Initials */}
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden font-bold text-slate-400 dark:text-slate-500 text-sm">
-                      {prod.imageUrl ? (
-                        <img 
-                          src={prod.imageUrl} 
-                          alt={prod.name} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                        />
-                      ) : (
-                        <span>{initials}</span>
-                      )}
-                    </div>
-
-                    {/* Product Name & Pricing Breakdown (Rp Beli | Rp Jual) */}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                        {prod.name}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                        Rp {costPrice.toLocaleString('id-ID')} <span className="text-slate-300 dark:text-slate-700">|</span> Rp {sellPrice.toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Quantity Counter Badge if Selected */}
-                  {inCart && (
-                    <div className="shrink-0 flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
-                      <span>{inCart.quantity} {prod.unit || 'pcs'}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* 5. Bottom Sticky Floating Cart Action Bar (Elevated Above Double Bottom Nav) */}
-        <div className="fixed bottom-[calc(135px+env(safe-area-inset-bottom))] inset-x-4 z-[9999] pointer-events-auto animate-in slide-in-from-bottom-3 duration-200">
-          <div 
-            onClick={() => {
-              if (selectedStockInItems.length === 0) {
-                toast.error('Pilih minimal 1 barang untuk melanjutkan pembelian');
-                return;
-              }
-              setIsCheckoutModalOpen(true);
-            }}
-            className="w-full h-13 px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-between shadow-2xl cursor-pointer active:scale-98 transition-all border border-emerald-400/30 ring-4 ring-black/5 dark:ring-white/5"
-          >
-            <div className="flex items-center gap-2 font-bold text-sm">
-              <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">
-                {totalQuantity}
-              </span>
-              <span>Barang</span>
+                  {cat.name}
+                </button>
+              ))}
             </div>
 
-            <span className="font-black text-sm tracking-wider uppercase">
-              LANJUT
-            </span>
+            {/* 4. Products Selection List */}
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 pt-1">
+              {/* Top Option: Buat barang baru */}
+              <div
+                onClick={() => setIsCreateProductModalOpen(true)}
+                className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center gap-3.5 select-none"
+              >
+                <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+                  <Plus size={22} />
+                </div>
+                <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  Buat barang baru
+                </span>
+              </div>
+
+              {sortedProducts.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 text-xs">
+                  <Package size={36} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                  Tidak ada produk ditemukan.
+                </div>
+              ) : (
+                sortedProducts.map(prod => {
+                  const costPrice = Number(prod.costPrice || 0);
+                  const sellPrice = Number(prod.price || 0);
+                  const initials = getInitials(prod.name);
+                  const inCart = selectedStockInItems.find(item => item.product.id === prod.id);
+
+                  return (
+                    <div
+                      key={prod.id}
+                      onClick={() => handleToggleProductInCart(prod)}
+                      className={cn(
+                        "px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center justify-between gap-3 select-none",
+                        inCart ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""
+                      )}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden font-bold text-slate-400 dark:text-slate-500 text-sm">
+                          {prod.imageUrl ? (
+                            <img 
+                              src={prod.imageUrl} 
+                              alt={prod.name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <span>{initials}</span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                            {prod.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                            Rp {costPrice.toLocaleString('id-ID')} <span className="text-slate-300 dark:text-slate-700">|</span> Rp {sellPrice.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {inCart && (
+                        <div className="shrink-0 flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                          <span>{inCart.quantity} {prod.unit || 'pcs'}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 5. Bottom Sticky Floating Cart Action Bar */}
+            <div className="fixed bottom-[calc(135px+env(safe-area-inset-bottom))] inset-x-4 z-[9999] pointer-events-auto animate-in slide-in-from-bottom-3 duration-200">
+              <div 
+                onClick={() => {
+                  if (selectedStockInItems.length === 0) {
+                    toast.error('Pilih minimal 1 barang untuk melanjutkan pembelian');
+                    return;
+                  }
+                  setMobileStep('SUMMARY');
+                }}
+                className="w-full h-13 px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-between shadow-2xl cursor-pointer active:scale-98 transition-all border border-emerald-400/30 ring-4 ring-black/5 dark:ring-white/5"
+              >
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">
+                    {totalQuantity}
+                  </span>
+                  <span>Barang</span>
+                </div>
+
+                <span className="font-black text-sm tracking-wider uppercase">
+                  LANJUT
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* =====================================================================
+            MOBILE STEP 2: RINCIAN PEMBELIAN (1:1 Kasir Pintar Persona)
+            ===================================================================== */}
+        {mobileStep === 'SUMMARY' && (
+          <div className="space-y-3 animate-in slide-in-from-right-4 duration-200">
+            {/* 1. App Bar Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 sticky top-0 z-20">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileStep('SELECT')}
+                  className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
+                  aria-label="Kembali"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+                <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                  Pembelian
+                </h2>
+              </div>
+
+              <div className="font-bold text-base text-slate-900 dark:text-slate-100">
+                Rp {grandTotal.toLocaleString('id-ID')}
+              </div>
+            </div>
+
+            {/* 2. Subheader Info Strip */}
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+              Ubah harga jual bisa dilakukan setelah pembelian selesai
+            </div>
+
+            {/* 3. Action Chips: [ ↑= Nama ] & [ + Biaya ] */}
+            <div className="px-4 flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCycleSort}
+                className="px-3.5 py-1.5 rounded-full border border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/20 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
+              >
+                <ArrowUpDown size={14} />
+                <span>Nama</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAddFeeModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-full border border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-950/20 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Biaya {stockInShippingFee > 0 && `(Rp ${stockInShippingFee.toLocaleString('id-ID')})`}</span>
+              </button>
+            </div>
+
+            {/* 4. Purchased Items List */}
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 px-4 pt-1">
+              {selectedStockInItems.map((item, idx) => {
+                const initials = getInitials(item.product.name);
+                const subtotal = item.quantity * item.costPrice;
+
+                return (
+                  <div
+                    key={item.product.id}
+                    onClick={() => setEditingItem(item)}
+                    className="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 active:bg-slate-100 dark:active:bg-slate-900 transition-colors select-none"
+                  >
+                    {/* Item Number */}
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 w-4">
+                      {idx + 1}
+                    </span>
+
+                    {/* Circular Avatar Initials */}
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 font-bold text-slate-400 dark:text-slate-500 text-xs uppercase">
+                      {initials}
+                    </div>
+
+                    {/* Item Details & Cost Calculation */}
+                    <div className="flex-1 min-w-0 pr-1">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                        {item.product.name}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {item.quantity} x Rp {item.costPrice.toLocaleString('id-ID')} = Rp {subtotal.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+
+                    {/* Quantity Rounded Box Badge */}
+                    <div className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300 shrink-0">
+                      {item.quantity}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 5. Bottom Action Bar: [ BAYAR ] & [ 📋+ SIMPAN ] */}
+            <div className="fixed bottom-[calc(135px+env(safe-area-inset-bottom))] inset-x-4 z-[9999] pointer-events-auto flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-200">
+              <button
+                type="button"
+                onClick={() => setIsCheckoutModalOpen(true)}
+                className="flex-1 h-13 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider shadow-2xl flex items-center justify-center cursor-pointer active:scale-98 transition-transform border border-emerald-400/30 ring-4 ring-black/5 dark:ring-white/5"
+              >
+                BAYAR
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                className="h-13 px-6 rounded-full border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-transform cursor-pointer"
+              >
+                <FilePlus size={16} />
+                <span>SIMPAN</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
@@ -742,6 +848,125 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Edit Item Qty / Cost Price (Rincian Pembelian Mobile)
+          ─────────────────────────────────────────────────────────────────────── */}
+      {editingItem && (
+        <Modal
+          isOpen={Boolean(editingItem)}
+          onClose={() => setEditingItem(null)}
+          title={`Edit: ${editingItem.product.name}`}
+        >
+          <div className="space-y-4 py-2 text-xs">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Jumlah Kuantitas ({editingItem.product.unit || 'pcs'})
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateItemQty(editingItem.product.id, -1)}
+                  className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-base"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  value={editingItem.quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10) || 1;
+                    handleSetItemQty(editingItem.product.id, val);
+                    setEditingItem({ ...editingItem, quantity: val });
+                  }}
+                  className="flex-1 h-10 px-3 text-center border rounded-xl font-black text-sm bg-white dark:bg-slate-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleUpdateItemQty(editingItem.product.id, 1)}
+                  className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-base"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Harga Modal Beli Satuan (Rp)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={editingItem.costPrice}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  handleSetItemCostPrice(editingItem.product.id, val);
+                  setEditingItem({ ...editingItem, costPrice: val });
+                }}
+                className="w-full h-10 px-3 border rounded-xl font-bold bg-white dark:bg-slate-900"
+              />
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => {
+                  handleRemoveItem(editingItem.product.id);
+                  setEditingItem(null);
+                }}
+                className="flex-1 font-bold"
+              >
+                Hapus Item
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              >
+                Selesai
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Tambah Biaya Tambahan / Ongkir
+          ─────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={isAddFeeModalOpen}
+        onClose={() => setIsAddFeeModalOpen(false)}
+        title="Biaya Tambahan / Ongkir"
+      >
+        <div className="space-y-4 py-2 text-xs">
+          <div>
+            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Nominal Ongkos Kirim / Biaya Tambahan (Rp)
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={stockInShippingFee || ''}
+              onChange={(e) => setStockInShippingFee(parseFloat(e.target.value) || 0)}
+              className="w-full h-11 px-3 border rounded-xl font-black text-sm bg-white dark:bg-slate-900"
+            />
+          </div>
+
+          <div className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setIsAddFeeModalOpen(false)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              Simpan Biaya
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ───────────────────────────────────────────────────────────────────────
           MODAL: Checkout & Konfirmasi Pembelian (Mobile & Desktop)
           ─────────────────────────────────────────────────────────────────────── */}
       <Modal
@@ -793,56 +1018,6 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
             </div>
           </div>
 
-          {/* Items Summary in Modal */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Daftar Barang ({selectedStockInItems.length} Produk, {totalQuantity} Pcs)
-            </label>
-            <div className="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-slate-50 dark:bg-slate-900/50">
-              {selectedStockInItems.map(item => (
-                <div key={item.product.id} className="p-2 bg-white dark:bg-slate-900 rounded-lg border flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold truncate">{item.product.name}</p>
-                    <p className="text-[11px] text-slate-500">Rp {item.costPrice.toLocaleString('id-ID')} / {item.product.unit || 'pcs'}</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button 
-                      type="button" 
-                      onClick={() => handleUpdateItemQty(item.product.id, -1)}
-                      className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold"
-                    >
-                      -
-                    </button>
-                    <span className="font-black w-6 text-center">{item.quantity}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => handleUpdateItemQty(item.product.id, 1)}
-                      className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Shipping Fee */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Ongkos Kirim (Opsional)
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="0"
-              value={stockInShippingFee || ''}
-              onChange={(e) => setStockInShippingFee(parseFloat(e.target.value) || 0)}
-              className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-bold outline-none"
-            />
-          </div>
-
           {/* Grand Total Breakdown */}
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-500/30 flex items-center justify-between">
             <span className="font-bold text-slate-700 dark:text-slate-300">Total Pembayaran:</span>
@@ -866,7 +1041,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
               disabled={submitStockInMutation.isPending}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
             >
-              {submitStockInMutation.isPending ? 'Menyimpan...' : 'Simpan Pembelian'}
+              {submitStockInMutation.isPending ? 'Menyimpan...' : 'Selesaikan'}
             </Button>
           </div>
         </div>
