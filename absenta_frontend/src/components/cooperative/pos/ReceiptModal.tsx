@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Printer, Award } from 'lucide-react';
+import { Printer, Award, Share2 } from 'lucide-react';
 import type { CoopSettingsData } from '../../../utils/cooperative/coopDocUtils';
 import type { SaleRecord, SaleItem } from '../../../pages/cooperative/POS';
 
@@ -143,13 +143,44 @@ export const ReceiptModal = React.memo<ReceiptModalProps>(({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
-          <Button variant="outline" className="hover:scale-105 active:scale-95 transition-all text-xs" onClick={onClose}>
+        <div className="flex flex-wrap justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800 pt-4">
+          <Button variant="outline" className="text-xs" onClick={onClose}>
             Tutup
           </Button>
           <Button
+            variant="secondary"
+            className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+            icon={<Share2 size={15} />}
+            onClick={() => {
+              const storeName = coopSettings?.cooperative_name || 'Koperasi Sekolah';
+              const buyerName = selectedSale.member
+                ? (selectedSale.member.Siswa?.nama_siswa || selectedSale.member.Guru?.nama_guru || selectedSale.member.User?.full_name || 'Anggota')
+                : 'Umum';
+              
+              const itemsText = (selectedSale.items || []).map(it => 
+                `• ${it.product?.name || 'Produk'} (${it.quantity}x @ Rp ${Number(it.price).toLocaleString('id-ID')}) = Rp ${(it.quantity * Number(it.price)).toLocaleString('id-ID')}`
+              ).join('\n');
+
+              const text = `*STRUK BELANJA - ${storeName.toUpperCase()}*\n` +
+                `No. Struk: #${selectedSale.id.slice(0, 8)}\n` +
+                `Tanggal: ${new Date(selectedSale.date).toLocaleString('id-ID')}\n` +
+                `Pembeli: ${buyerName}\n` +
+                `--------------------------------\n` +
+                `${itemsText}\n` +
+                `--------------------------------\n` +
+                `*TOTAL: Rp ${Number(selectedSale.total).toLocaleString('id-ID')}*\n` +
+                `Metode Bayar: ${selectedSale.paymentMethod === 'SAVING' ? 'Saldo Tabungan' : 'Tunai'}\n\n` +
+                `Terima kasih telah berbelanja di ${storeName}! 🙏`;
+
+              const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+              window.open(url, '_blank');
+            }}
+          >
+            Kirim WhatsApp
+          </Button>
+          <Button
             variant="primary"
-            className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all text-xs shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs shadow-sm"
             icon={<Printer size={16} />}
             onClick={() => printReceipt(selectedSale)}
           >

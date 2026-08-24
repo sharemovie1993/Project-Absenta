@@ -23,9 +23,11 @@ import {
   Minus,
   CheckCircle2,
   RefreshCw,
-  Edit2
+  Edit2,
+  Printer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { printOpnameBeritaAcara, fetchCoopSettings } from '../../../utils/cooperative/coopDocUtils';
 
 interface Product {
   id: string;
@@ -126,6 +128,13 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
 
   const session = sessionQuery.data || null;
   const loading = sessionQuery.isLoading;
+
+  const settingsQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.settings,
+    queryFn: fetchCoopSettings,
+    staleTime: 10 * 60 * 1000,
+  });
+  const coopSettings = settingsQuery.data || null;
 
   useEffect(() => {
     if (session && session.items) {
@@ -654,10 +663,21 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
         {mobileTab === 'SUMMARY' && (
           <div className="space-y-3 pt-1">
             {/* Quick Summary Card */}
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 rounded-2xl p-4 space-y-2">
-              <h4 className="font-bold text-xs text-emerald-900 dark:text-emerald-300">
-                Ringkasan Selisih Fisik
-              </h4>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs text-emerald-900 dark:text-emerald-300">
+                  Ringkasan Selisih Fisik
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => printOpnameBeritaAcara(session, coopSettings)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-2xs active:scale-95 transition-all"
+                >
+                  <Printer size={13} />
+                  <span>Cetak Dokumen</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
                   <span className="text-[10px] text-slate-400 block">Item Berselisih</span>
@@ -797,35 +817,46 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
             </div>
           </div>
 
-          {isDraft && canUpdate && (
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="outline"
-                onClick={handleCancelSession}
-                isLoading={cancelling}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-              >
-                Batalkan Sesi
-              </Button>
-              <Button 
-                variant="secondary"
-                onClick={handleSaveDraft}
-                isLoading={saving}
-                disabled={!isDirty}
-                icon={<Save size={16} />}
-              >
-                Simpan Draft
-              </Button>
-              <Button 
-                onClick={handleFinalize}
-                isLoading={finalizing}
-                icon={<CheckCircle size={16} />}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                Finalisasi & Update Stok
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => printOpnameBeritaAcara(session, coopSettings)}
+              icon={<Printer size={16} />}
+              className="text-slate-700 dark:text-slate-200 hover:bg-slate-50 border-slate-300 dark:border-slate-700"
+            >
+              Cetak Berita Acara
+            </Button>
+
+            {isDraft && canUpdate && (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={handleCancelSession}
+                  isLoading={cancelling}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                >
+                  Batalkan Sesi
+                </Button>
+                <Button 
+                  variant="secondary"
+                  onClick={handleSaveDraft}
+                  isLoading={saving}
+                  disabled={!isDirty}
+                  icon={<Save size={16} />}
+                >
+                  Simpan Draft
+                </Button>
+                <Button 
+                  onClick={handleFinalize}
+                  isLoading={finalizing}
+                  icon={<CheckCircle size={16} />}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Finalisasi & Update Stok
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Stats Summary cards */}

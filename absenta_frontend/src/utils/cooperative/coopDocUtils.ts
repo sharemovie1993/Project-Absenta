@@ -382,3 +382,173 @@ export const printCoopReceipt = (
   printWindow.document.close();
 };
 
+/** Print official Berita Acara Stock Opname */
+export const printOpnameBeritaAcara = (session: any, coopSettings: CoopSettingsData | null) => {
+  const printWindow = window.open('', '_blank', 'width=850,height=900');
+  if (!printWindow) {
+    toast.error('Gagal membuka jendela cetak. Pastikan pop-up diizinkan.');
+    return;
+  }
+
+  const items = session.items || [];
+  const itemsWithDiff = items.filter((it: any) => it.difference !== 0);
+  const totalSurplus = itemsWithDiff.filter((it: any) => it.difference > 0).reduce((sum: number, it: any) => sum + (it.difference * Number(it.costPrice || 0)), 0);
+  const totalDeficit = itemsWithDiff.filter((it: any) => it.difference < 0).reduce((sum: number, it: any) => sum + (Math.abs(it.difference) * Number(it.costPrice || 0)), 0);
+
+  const dateFormatted = formatIndonesianDate(session.date);
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Berita Acara Stock Opname - ${session.opnameNumber}</title>
+      <style>
+        @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; line-height: 1.4; font-size: 12px; margin: 0; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; }
+        .header h1 { margin: 0; font-size: 16px; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; }
+        .header h2 { margin: 2px 0 0 0; font-size: 13px; font-weight: 600; color: #334155; }
+        .header p { margin: 2px 0 0 0; font-size: 10px; color: #64748b; }
+        .doc-title { text-align: center; margin: 15px 0; }
+        .doc-title h3 { margin: 0; font-size: 14px; text-decoration: underline; text-transform: uppercase; color: #047857; }
+        .doc-title span { font-size: 11px; color: #64748b; font-family: monospace; font-weight: bold; }
+        .meta-table { width: 100%; margin-bottom: 15px; font-size: 11px; }
+        .meta-table td { padding: 3px 0; }
+        .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 11px; }
+        .summary-item b { display: block; font-size: 13px; color: #0f172a; margin-top: 2px; }
+        table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+        table.data-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; font-weight: 700; }
+        table.data-table td { border: 1px solid #e2e8f0; padding: 5px 8px; }
+        table.data-table tr:nth-child(even) { background: #f8fafc; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-red { color: #dc2626; font-weight: bold; }
+        .text-green { color: #059669; font-weight: bold; }
+        .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 35px; text-align: center; font-size: 11px; page-break-inside: avoid; }
+        .sign-col { display: flex; flex-direction: column; justify-content: space-between; min-height: 90px; }
+        .sign-line { border-bottom: 1px solid #334155; margin: 60px 15px 4px 15px; }
+        @media print {
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>${coopSettings?.cooperative_name || 'KOPERASI SEKOLAH'}</h1>
+        <h2>UNIT TOKO, KANTIN & MINIMARKET</h2>
+        <p>${coopSettings?.cooperative_address || 'Alamat Koperasi Sekolah'} ${coopSettings?.cooperative_phone ? `| Telp: ${coopSettings.cooperative_phone}` : ''}</p>
+      </div>
+
+      <div class="doc-title">
+        <h3>BERITA ACARA AUDIT STOCK OPNAME</h3>
+        <span>Nomor: ${session.opnameNumber}</span>
+      </div>
+
+      <table class="meta-table">
+        <tr>
+          <td style="width: 15%;"><strong>Hari / Tanggal</strong></td>
+          <td style="width: 35%;">: ${dateFormatted}</td>
+          <td style="width: 15%;"><strong>Status Sesi</strong></td>
+          <td style="width: 35%;">: <strong>${session.status === 'COMPLETED' ? 'SELESAI / SUDAH DIBUKUKAN' : session.status}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Catatan Sesi</strong></td>
+          <td colspan="3">: ${session.notes || '-'}</td>
+        </tr>
+      </table>
+
+      <div class="summary-box">
+        <div class="summary-item">
+          <span>Total Item Dicek:</span>
+          <b>${items.length} SKU</b>
+        </div>
+        <div class="summary-item">
+          <span>Item Berselisih:</span>
+          <b>${itemsWithDiff.length} SKU</b>
+        </div>
+        <div class="summary-item">
+          <span>Selisih Surplus:</span>
+          <b class="text-green">+Rp ${totalSurplus.toLocaleString('id-ID')}</b>
+        </div>
+        <div class="summary-item">
+          <span>Selisih Defisit:</span>
+          <b class="text-red">-Rp ${totalDeficit.toLocaleString('id-ID')}</b>
+        </div>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 5%;">No</th>
+            <th style="width: 30%;">Nama Barang</th>
+            <th style="width: 15%;">Kode SKU</th>
+            <th class="text-center" style="width: 10%;">Sistem</th>
+            <th class="text-center" style="width: 10%;">Fisik</th>
+            <th class="text-center" style="width: 10%;">Selisih</th>
+            <th class="text-right" style="width: 20%;">Nilai Selisih</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(itemsWithDiff.length > 0 ? itemsWithDiff : items).map((it: any, idx: number) => {
+            const diff = it.difference;
+            const cost = Number(it.costPrice || 0);
+            const valDiff = diff * cost;
+            return `
+              <tr>
+                <td class="text-center">${idx + 1}</td>
+                <td><strong>${it.Product?.name || 'Produk'}</strong></td>
+                <td><code style="font-size: 10px;">${it.Product?.code || '-'}</code></td>
+                <td class="text-center">${it.systemStock}</td>
+                <td class="text-center"><strong>${it.physicalStock}</strong></td>
+                <td class="text-center ${diff < 0 ? 'text-red' : diff > 0 ? 'text-green' : ''}">
+                  ${diff > 0 ? `+${diff}` : diff}
+                </td>
+                <td class="text-right ${valDiff < 0 ? 'text-red' : valDiff > 0 ? 'text-green' : ''}">
+                  ${valDiff !== 0 ? (valDiff > 0 ? `+Rp ${valDiff.toLocaleString('id-ID')}` : `-Rp ${Math.abs(valDiff).toLocaleString('id-ID')}`) : 'Rp 0'}
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+
+      <p style="font-size: 10px; color: #64748b; font-style: italic; margin-bottom: 20px;">
+        * Berita acara ini sah dan dibuat sebagai bukti pencocokan fisik stok barang riil toko dengan data sistem komputer serta dasar penyesuaian buku persediaan dan jurnal akuntansi.
+      </p>
+
+      <div class="signatures">
+        <div class="sign-col">
+          <span>Petugas Pelaksana Opname</span>
+          <div>
+            <div class="sign-line"></div>
+            <span>( ........................................ )</span>
+          </div>
+        </div>
+        <div class="sign-col">
+          <span>Pengelola Toko / Kasir</span>
+          <div>
+            <div class="sign-line"></div>
+            <span>( ${coopSettings?.signatures?.bendahara || '........................................'} )</span>
+          </div>
+        </div>
+        <div class="sign-col">
+          <span>Ketua Koperasi</span>
+          <div>
+            <div class="sign-line"></div>
+            <span>( ${coopSettings?.signatures?.ketua || '........................................'} )</span>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
+
+
