@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
@@ -13,10 +13,10 @@ import {
   Barcode, 
   Package, 
   CheckCircle2,
-  AlertTriangle,
   ChevronRight,
   History,
-  FileText,
+  MoreVertical,
+  HelpCircle,
   Boxes
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -46,6 +46,7 @@ interface Product {
   imageUrl?: string | null;
   unit?: string | null;
   rackLocation?: string | null;
+  useStock?: boolean;
 }
 
 interface ProductInventoryTabProps {
@@ -82,8 +83,9 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
   const [sortOption, setSortOption] = useState<'name_asc' | 'name_desc' | 'stock_asc' | 'stock_desc' | 'cost_desc'>('name_asc');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // 1:1 Kasir Pintar Modals State
+  // 1:1 Kasir Pintar Navigation States
   const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
+  const [selectedProductForStockDetail, setSelectedProductForStockDetail] = useState<Product | null>(null);
   const [selectedProductForAdjust, setSelectedProductForAdjust] = useState<Product | null>(null);
   const [selectedProductForLog, setSelectedProductForLog] = useState<Product | null>(null);
 
@@ -463,7 +465,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
                   Rp {Number(selectedProductForAction.price || 0).toLocaleString('id-ID')}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  {selectedProductForAction.stock !== undefined ? `${selectedProductForAction.stock} ${selectedProductForAction.unit || 'pcs'}` : 'Unlimited'}
+                  {selectedProductForAction.useStock === false ? 'Unlimited' : `${selectedProductForAction.stock} ${selectedProductForAction.unit || 'pcs'}`}
                 </p>
               </div>
             </div>
@@ -475,7 +477,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
                 onClick={() => {
                   const prod = selectedProductForAction;
                   setSelectedProductForAction(null);
-                  setSelectedProductForAdjust(prod);
+                  setSelectedProductForStockDetail(prod);
                 }}
                 className="w-full h-12 px-4 rounded-full border border-emerald-500/70 hover:border-emerald-600 dark:border-emerald-500/50 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-100 active:scale-98 transition-all hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 cursor-pointer"
               >
@@ -505,6 +507,125 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
                 className="w-full h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs tracking-wider uppercase shadow-md flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          1:1 KASIR PINTAR "DETAIL SISA STOK" FULL VIEW (Mobile Persona)
+          ─────────────────────────────────────────────────────────────────────── */}
+      {selectedProductForStockDetail && (
+        <div className="fixed inset-0 z-[99999] bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col animate-in slide-in-from-right-5 duration-200">
+          
+          {/* 1. App Bar Header */}
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 shrink-0 pt-[calc(0.875rem+env(safe-area-inset-top))]">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForStockDetail(null)}
+                className="p-1 -ml-1 text-emerald-600 dark:text-emerald-400 active:scale-95 cursor-pointer"
+                aria-label="Kembali"
+              >
+                <ArrowLeft size={22} />
+              </button>
+              <h2 className="font-bold text-base text-emerald-700 dark:text-emerald-400">
+                Detail sisa stok
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedProductForAdjust(selectedProductForStockDetail)}
+              className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 active:scale-90 transition-transform cursor-pointer"
+              title="Opsi Lanjutan"
+            >
+              <MoreVertical size={20} />
+            </button>
+          </div>
+
+          {/* 2. Scrollable Body Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            
+            {/* Product Name & Code */}
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                {selectedProductForStockDetail.name}
+              </h3>
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                {selectedProductForStockDetail.code}
+              </p>
+            </div>
+
+            {/* Box 1: Harga Beli Terakhir Card (Outlined with Emerald Border) */}
+            <div className="p-4 rounded-2xl border border-emerald-500/80 dark:border-emerald-500/60 bg-emerald-50/20 dark:bg-emerald-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  Harga Beli Terakhir
+                </span>
+                <div className="flex items-center gap-1.5 font-bold text-sm text-slate-900 dark:text-slate-100">
+                  <span>Rp {Number(selectedProductForStockDetail.costPrice || 0).toLocaleString('id-ID')}</span>
+                  <HelpCircle size={16} className="text-emerald-600 dark:text-emerald-400 opacity-80" />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                *Harga ini diambil dari pembelian terakhir
+              </p>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success('Buka form input barang masuk untuk item ini');
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl border border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-bold active:scale-95 transition-all cursor-pointer"
+                >
+                  Beli Barang
+                </button>
+              </div>
+            </div>
+
+            {/* Box 2: Sisa Modal Card (Big Central Soft Card) */}
+            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 text-center space-y-1">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Sisa modal
+              </p>
+              <p className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                Rp {(Number(selectedProductForStockDetail.costPrice || 0) * Number(selectedProductForStockDetail.stock || 0)).toLocaleString('id-ID')}
+              </p>
+            </div>
+
+            {/* Bottom Two-Column Stats: Sisa stok & Harga Dasar */}
+            <div className="flex items-center justify-between pt-2 px-1">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Sisa stok
+                </p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  {selectedProductForStockDetail.useStock === false ? 'Unlimited' : `${selectedProductForStockDetail.stock} ${selectedProductForStockDetail.unit || 'pcs'}`}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Harga Dasar
+                </p>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  Rp {Number(selectedProductForStockDetail.costPrice || 0).toLocaleString('id-ID')}
+                </p>
+              </div>
+            </div>
+
+            {/* Action to adjust stock */}
+            <div className="pt-6">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForAdjust(selectedProductForStockDetail)}
+                className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+              >
+                Sesuaikan Stok Barang
               </button>
             </div>
           </div>
@@ -595,7 +716,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
       </Modal>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          MODAL: Sesuaikan Stok Produk (Edit / Lihat Stok)
+          MODAL: Sesuaikan Stok Produk
           ─────────────────────────────────────────────────────────────────────── */}
       {selectedProductForAdjust && (
         <OpnameFormModal
