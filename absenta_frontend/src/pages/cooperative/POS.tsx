@@ -3,11 +3,13 @@ import React, { lazy, Suspense } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
 import {
   usePOSState,
   ProductList,
   CartPanel,
+  MobilePOSView,
   SalesHistoryTable
 } from '../../components/cooperative/pos';
 
@@ -20,6 +22,7 @@ const QuickRegisterModal = lazy(() => import('../../components/cooperative/pos/Q
 export type { CoopMember, Voucher, SaleRecord, Product, CartItem, HeldCart, NonMemberCandidate, ProductCategory, SaleItem } from '../../components/cooperative/pos';
 
 const POS: React.FC = React.memo(() => {
+  const isMobile = useIsMobile(1024);
   const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
   const {
     loading,
@@ -149,45 +152,94 @@ const POS: React.FC = React.memo(() => {
           ]
         }}
       >
-        <SectionCard title={hasCashierAccess ? "Sistem Kasir" : "Katalog Barang"} fullWidth noPadding>
-          <div className="flex h-[calc(100vh-220px)] gap-0">
-            <ProductList
-              search={search}
-              setSearch={setSearch}
-              categories={categories}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              loading={loading}
-              filteredProducts={filteredProducts}
-              hasCashierAccess={hasCashierAccess}
-              addToCart={addToCart}
-            />
-
-            {hasCashierAccess && (
-              <CartPanel
-                cart={cart}
-                heldCarts={heldCarts}
-                setShowHeldCartsModal={setShowHeldCartsModal}
-                selectedMember={selectedMember}
-                setSelectedMember={setSelectedMember}
-                selectedMemberPoints={selectedMemberPoints}
-                memberSearch={memberSearch}
-                setMemberSearch={setMemberSearch}
-                showMemberDropdown={showMemberDropdown}
-                setShowMemberDropdown={setShowMemberDropdown}
-                loadingMembers={loadingMembers}
-                members={members}
-                handleOpenQuickRegister={handleOpenQuickRegister}
-                updateQty={updateQty}
-                removeFromCart={removeFromCart}
-                totalAmount={totalAmount}
-                handleHoldCart={handleHoldCart}
-                handleCheckout={handleCheckout}
-                processing={processing}
+        {isMobile && hasCashierAccess ? (
+          <MobilePOSView
+            loading={loading}
+            cart={cart}
+            search={search}
+            setSearch={setSearch}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            filteredProducts={filteredProducts}
+            addToCart={addToCart}
+            updateQty={updateQty}
+            removeFromCart={removeFromCart}
+            totalAmount={totalAmount}
+            discountedTotal={discountedTotal}
+            selectedMember={selectedMember}
+            setSelectedMember={setSelectedMember}
+            selectedMemberPoints={selectedMemberPoints}
+            members={members}
+            loadingMembers={loadingMembers}
+            memberSearch={memberSearch}
+            setMemberSearch={setMemberSearch}
+            showMemberDropdown={showMemberDropdown}
+            setShowMemberDropdown={setShowMemberDropdown}
+            handleOpenQuickRegister={handleOpenQuickRegister}
+            heldCarts={heldCarts}
+            setShowHeldCartsModal={setShowHeldCartsModal}
+            handleHoldCart={handleHoldCart}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
+            cashReceived={cashReceived}
+            setCashReceived={setCashReceived}
+            pin={pin}
+            setPin={setPin}
+            voucherCode={voucherCode}
+            setVoucherCode={setVoucherCode}
+            appliedVoucher={appliedVoucher}
+            handleApplyVoucher={handleApplyVoucher}
+            handleRemoveVoucher={handleRemoveVoucher}
+            checkingVoucher={checkingVoucher}
+            submitCheckout={submitCheckout}
+            processing={processing}
+            checkoutSuccess={checkoutSuccess}
+            setCheckoutSuccess={setCheckoutSuccess}
+            lastSaleRecord={lastSaleRecord}
+            printReceipt={printReceipt}
+          />
+        ) : (
+          <SectionCard title={hasCashierAccess ? "Sistem Kasir" : "Katalog Barang"} fullWidth noPadding>
+            <div className="flex h-[calc(100vh-220px)] gap-0">
+              <ProductList
+                search={search}
+                setSearch={setSearch}
+                categories={categories}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+                loading={loading}
+                filteredProducts={filteredProducts}
+                hasCashierAccess={hasCashierAccess}
+                addToCart={addToCart}
               />
-            )}
-          </div>
-        </SectionCard>
+
+              {hasCashierAccess && (
+                <CartPanel
+                  cart={cart}
+                  heldCarts={heldCarts}
+                  setShowHeldCartsModal={setShowHeldCartsModal}
+                  selectedMember={selectedMember}
+                  setSelectedMember={setSelectedMember}
+                  selectedMemberPoints={selectedMemberPoints}
+                  memberSearch={memberSearch}
+                  setMemberSearch={setMemberSearch}
+                  showMemberDropdown={showMemberDropdown}
+                  setShowMemberDropdown={setShowMemberDropdown}
+                  loadingMembers={loadingMembers}
+                  members={members}
+                  handleOpenQuickRegister={handleOpenQuickRegister}
+                  updateQty={updateQty}
+                  removeFromCart={removeFromCart}
+                  totalAmount={totalAmount}
+                  handleHoldCart={handleHoldCart}
+                  handleCheckout={handleCheckout}
+                  processing={processing}
+                />
+              )}
+            </div>
+          </SectionCard>
+        )}
 
         <SalesHistoryTable
           salesLoading={salesLoading}
