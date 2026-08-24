@@ -40,10 +40,13 @@ export class TokoService {
         const product = await prisma.product.create({
             data: {
                 tenantId,
-                ...data,
+                code:      data.code,
+                name:      data.name,
                 price:     Number(data.price),
                 costPrice: Number(data.costPrice || 0),
                 stock:     Number(data.stock || 0),
+                category:  data.category || null,
+                imageUrl:  data.imageUrl || null,
             },
         });
 
@@ -80,14 +83,18 @@ export class TokoService {
             await ProductCategoryService.ensureCategoryExists(product.tenantId, data.category);
         }
 
+        const updateData: any = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.code !== undefined) updateData.code = data.code;
+        if (data.price !== undefined) updateData.price = Number(data.price);
+        if (data.costPrice !== undefined) updateData.costPrice = Number(data.costPrice);
+        if (data.stock !== undefined) updateData.stock = Number(data.stock);
+        if (data.category !== undefined) updateData.category = data.category || null;
+        if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
+
         const updated = await prisma.product.update({
             where: { id },
-            data: {
-                ...data,
-                price:     data.price     ? Number(data.price)     : undefined,
-                costPrice: data.costPrice ? Number(data.costPrice) : undefined,
-                stock:     data.stock !== undefined ? Number(data.stock) : undefined,
-            },
+            data: updateData,
         });
 
         // Compile change history

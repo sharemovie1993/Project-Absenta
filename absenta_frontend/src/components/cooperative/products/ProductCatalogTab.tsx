@@ -166,8 +166,9 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     },
     onError: (error) => {
       const err = error as AxiosErrorLike;
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Gagal menyimpan produk');
+      console.error('Product save error:', err);
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Gagal menyimpan produk';
+      toast.error(msg);
     }
   });
 
