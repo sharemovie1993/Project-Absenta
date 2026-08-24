@@ -211,11 +211,11 @@ function MainLayoutContent() {
                   </Suspense>
                 </div>
 
-              {/* Floating Toggle Button for Instruction Panel (When Closed) */}
+              {/* Floating Toggle Button for Instruction Panel (When Closed) - Desktop & Tablet only */}
               {instructionData && !showInstruction && (
                 <button
                   onClick={() => setShowInstruction(true)}
-                  className="fixed right-0 top-32 z-40 bg-white dark:bg-slate-900 border-y border-l border-slate-200 dark:border-slate-800 p-2.5 rounded-l-xl shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group animate-in slide-in-from-right-full duration-500"
+                  className="hidden sm:block fixed right-0 top-32 z-40 bg-white dark:bg-slate-900 border-y border-l border-slate-200 dark:border-slate-800 p-2.5 rounded-l-xl shadow-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group animate-in slide-in-from-right-full duration-500"
                   title="Buka Panduan Modul"
                 >
                   <HelpCircle className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />

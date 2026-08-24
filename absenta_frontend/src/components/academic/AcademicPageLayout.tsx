@@ -350,11 +350,13 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
             <RelatedModuleNavPills className="hidden sm:flex" />
 
             {hardeningConfig && resolvedKey && (
-              <HardeningInspector 
-                pageName={hardeningConfig.displayName}
-                standards={hardeningConfig.standards}
-                moduleKey={resolvedKey}
-              />
+              <div className="hidden sm:block">
+                <HardeningInspector 
+                  pageName={hardeningConfig.displayName}
+                  standards={hardeningConfig.standards}
+                  moduleKey={resolvedKey}
+                />
+              </div>
             )}
           </div>
 
