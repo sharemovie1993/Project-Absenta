@@ -191,24 +191,9 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
           {/* ──────────────────────────────────────────────────────────────────
               MOBILE VIEW (1:1 Kasir Pintar Persona: Stock Opname List)
               ────────────────────────────────────────────────────────────────── */}
-          <div className="lg:hidden space-y-4">
-            {/* 1. Header with back button */}
-            <div className="flex items-center gap-3 px-1 py-1">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="p-2 -ml-2 text-emerald-600 dark:text-emerald-400 active:scale-95 transition-transform"
-                aria-label="Kembali"
-              >
-                <ArrowLeft size={22} className="stroke-[2.5]" />
-              </button>
-              <h2 className="font-bold text-lg text-emerald-600 dark:text-emerald-400">
-                Stock Opname
-              </h2>
-            </div>
-
-            {/* 2. Date Picker Selector (Kasir Pintar Style) */}
-            <div className="relative">
+          <div className="lg:hidden space-y-3.5">
+            {/* 1. Date Picker Selector (Kasir Pintar Style) */}
+            <div className="relative pt-1">
               <button
                 type="button"
                 onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
