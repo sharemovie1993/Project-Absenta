@@ -6,28 +6,37 @@ import { RadialProgress } from './components/RadialProgress';
 import { LighthousePanel } from './components/LighthousePanel';
 import { PillarAuditCard } from './components/PillarAuditCard';
 
-// ─── PREMIUM DEV-ONLY HARDENING COMPLIANCE INSPECTOR ──────────────────────────
+const CRITICAL_PILLAR_IDS_ARRAY = [
+  'architectural_layout_standard',
+  'architectural_safe_mapping',
+  'architectural_memoization',
+  'fault_tolerance',
+  'memory_leak_safeguards',
+  'architectural_performance_optimization',
+  'architectural_table_pagination',
+  'code_splitting'
+];
 
 export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
   pageName,
   standards,
   moduleKey
 }) => {
+  // 1. State Hooks
   const [isOpen, setIsOpen] = React.useState(false);
   const [isAuditing, setIsAuditing] = React.useState(false);
   const [liveAuditResult, setLiveAudit] = React.useState<LiveAuditResult | null>(null);
   const [copiedText, setCopiedText] = React.useState(false);
   const [auditError, setAuditError] = React.useState<string | null>(null);
-
-  // Lighthouse States
   const [activeTab, setActiveTab] = React.useState<'code' | 'lighthouse'>('code');
   const [lhResult, setLhResult] = React.useState<LighthouseResult | null>(null);
   const [isLhAuditing, setIsLhAuditing] = React.useState(false);
   const [lhError, setLhError] = React.useState<string | null>(null);
 
-  // Jangan render apapun di mode produksi
+  // 2. Pure values
+  const devAuditHost = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost';
 
-  // ③ useCallback pada semua handler agar referensi stabil lintas render
+  // 3. Callback Handlers
   const handleRunLiveAudit = React.useCallback(async () => {
     if (!moduleKey) return;
     setIsAuditing(true);
@@ -47,6 +56,7 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
       setIsAuditing(false);
     }
   }, [moduleKey, devAuditHost]);
+
   const handleRunLighthouse = React.useCallback(async () => {
     setIsLhAuditing(true);
     setLhError(null);
@@ -67,12 +77,11 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
     }
   }, [devAuditHost]);
 
-  // ④ displayedStandards: mapper live audit ke checklist + tambah Pilar 5 safeEffect
+  // 4. Memoized Calculations
   const displayedStandards = React.useMemo(() => {
     return mapLiveAuditToStandards(standards, liveAuditResult);
   }, [standards, liveAuditResult]);
 
-  // ─── Fallback refactor prompt dari data statis (jika live audit server tidak berjalan) ───
   const staticRefactorPrompt = React.useMemo(() => {
     const failedPillars = displayedStandards.filter(s => s.status === 'FAILED' || s.status === 'WARNING');
     if (failedPillars.length === 0) return null;
@@ -85,8 +94,6 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
     return prompt;
   }, [displayedStandards]);
 
-  // Prompt yang akan ditampilkan dan disalin (live audit lebih prioritas dari statis)
-
   const handleCopyPrompt = React.useCallback(() => {
     const prompt = liveAuditResult?.refactorPrompt || staticRefactorPrompt;
     if (!prompt) return;
@@ -95,41 +102,55 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
     setTimeout(() => setCopiedText(false), 2000);
   }, [liveAuditResult, staticRefactorPrompt]);
 
-  // ─── Weighted Scoring Engine (v2 – Hardened) ───────────────────────────────
-  // Pilar kritis memiliki bobot 3x, pilar advisory bobotnya 1x
+  const { cappedScore, grade, activePrompt, verifiedCount, warningCount, failedCount, totalCount } = React.useMemo(() => {
+    const totalW = displayedStandards.reduce((sum, std) => {
+      return sum + (CRITICAL_PILLAR_IDS_ARRAY.includes(std.id) ? 3 : 1);
+    }, 0) || 1;
 
-  // ⑤ getGradeInfo sudah dipindah ke luar komponen – tinggal panggil
-  const grade = React.useMemo(() => getGradeInfo(cappedScore), [cappedScore]);
+    const earnedW = displayedStandards.reduce((sum, std) => {
+      const w = CRITICAL_PILLAR_IDS_ARRAY.includes(std.id) ? 3 : 1;
+      if (std.status === 'VERIFIED') return sum + w;
+      if (std.status === 'WARNING') return sum + w * 0.5;
+      return sum;
+    }, 0);
+
+    const vCount = displayedStandards.filter(s => s.status === 'VERIFIED').length;
+    const wCount = displayedStandards.filter(s => s.status === 'WARNING').length;
+    const fCount = displayedStandards.filter(s => s.status === 'FAILED').length;
+    const tCount = displayedStandards.length || 1;
+
+    const raw = Math.round((earnedW / totalW) * 100);
+    let capped = raw;
+    if (fCount >= 3) capped = Math.min(capped, 24);
+    else if (fCount >= 2) capped = Math.min(capped, 39);
+    else if (fCount >= 1) capped = Math.min(capped, 59);
+    capped = Math.max(0, capped);
+
+    const gradeInfo = getGradeInfo(capped);
+    const actPrompt = liveAuditResult?.refactorPrompt ?? staticRefactorPrompt;
+
+    return {
+      cappedScore: capped,
+      grade: gradeInfo,
+      activePrompt: actPrompt,
+      verifiedCount: vCount,
+      warningCount: wCount,
+      failedCount: fCount,
+      totalCount: tCount
+    };
+  }, [displayedStandards, liveAuditResult, staticRefactorPrompt]);
+
+  // Production check guard
   if (typeof window !== 'undefined' && !import.meta.env.DEV) return null;
-  const devAuditHost = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost';
-  const activePrompt = liveAuditResult?.refactorPrompt ?? staticRefactorPrompt;
-  const CRITICAL_PILLAR_IDS_ARRAY = ['architectural_layout_standard', 'architectural_safe_mapping', 'architectural_memoization', 'fault_tolerance', 'memory_leak_safeguards', 'architectural_performance_optimization', 'architectural_table_pagination', 'code_splitting'];
-  const totalWeight = displayedStandards.reduce((sum, std) => {
-    return sum + (CRITICAL_PILLAR_IDS_ARRAY.includes(std.id) ? 3 : 1);
-  }, 0) || 1;
-  const earnedWeight = displayedStandards.reduce((sum, std) => {
-    const w = CRITICAL_PILLAR_IDS_ARRAY.includes(std.id) ? 3 : 1;
-    if (std.status === 'VERIFIED') return sum + w;
-    if (std.status === 'WARNING') return sum + w * 0.5;
-    return sum; // FAILED = 0
-  }, 0);
-  const verifiedCount = displayedStandards.filter(s => s.status === 'VERIFIED').length;
-  const warningCount = displayedStandards.filter(s => s.status === 'WARNING').length;
-  const failedCount = displayedStandards.filter(s => s.status === 'FAILED').length;
-  const totalCount = displayedStandards.length || 1;
 
-  // Base weighted score
-  const rawScore = Math.round(earnedWeight / totalWeight * 100);
-
-  // Grade cap: setiap FAILED kritis memblokir grade tinggi
-  let cappedScore = rawScore;
-  if (failedCount >= 3) cappedScore = Math.min(cappedScore, 24); // Paksa F
-  else if (failedCount >= 2) cappedScore = Math.min(cappedScore, 39); // Paksa D
-  else if (failedCount >= 1) cappedScore = Math.min(cappedScore, 59); // Blokir A & B → max C
-  cappedScore = Math.max(0, cappedScore);
-  return <>
+  return (
+    <>
       {/* Clickable DEV badge */}
-      <button type="button" onClick={() => setIsOpen(true)} className={`inline-flex items-center gap-2 px-3 py-1 border rounded-full select-none shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer group ${grade.badgeClass}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className={`inline-flex items-center gap-2 px-3 py-1 border rounded-full select-none shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer group ${grade.badgeClass}`}
+      >
         <span className="flex h-2.5 w-2.5 relative shrink-0">
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${grade.pingClass}`}></span>
           <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${grade.pingDotClass}`}></span>
@@ -140,128 +161,164 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
       </button>
 
       {/* Glassmorphism Interactive Certificate Modal */}
-      {isOpen && <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full h-full max-h-[90vh] sm:max-h-[82vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
-            {/* ⑥ Header Banner – warna adaptif sesuai grade */}
-            <div className={`relative p-4 bg-gradient-to-r ${grade.headerGlow} border-b border-slate-800 overflow-hidden flex items-center justify-between gap-6`}>
-              {/* Abstract glowing orbs */}
-              <div className="absolute -top-12 -left-12 w-32 h-32 bg-current opacity-5 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-current opacity-5 rounded-full blur-2xl pointer-events-none" />
-
-              {/* Left: Title Area */}
-              <div className="space-y-0.5 z-10 flex-shrink-0">
-                <span className="inline-flex items-center gap-1 text-[8px] font-extrabold text-emerald-400 tracking-widest uppercase bg-emerald-950/60 border border-emerald-900/40 px-2 py-0.5 rounded">
-                  <Sparkles className="h-2 w-2" /> Dev-Mode Certification
-                </span>
-                <h3 className="text-base font-black text-white tracking-tight flex items-center gap-1.5 mt-0.5">
-                  Sertifikat Standar Hardening
-                </h3>
-                <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Halaman: <code className="text-emerald-300 font-bold font-mono">{pageName}</code>
-                </p>
-              </div>
-
-              {/* Right: Persistant Score Widget Area */}
-              <div className="flex-1 z-10 max-w-xs hidden sm:flex items-center gap-3 bg-slate-950/40 border border-slate-800/50 p-2.5 rounded-xl backdrop-blur-sm mr-12">
-                {/* Grade ring */}
-                <div className="relative flex items-center justify-center shrink-0">
-                  <div className={`w-10 h-10 rounded-full border-[2.5px] ${grade.ringClass} flex items-center justify-center text-center`}>
-                    <span className="text-[12px] font-black font-mono text-white">{grade.letter}</span>
-                  </div>
-                  <div className={`absolute -inset-0.5 rounded-full border ${grade.ringPulse} animate-ping opacity-15 pointer-events-none`} />
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full h-full max-h-[90vh] sm:max-h-[82vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Banner */}
+            <div className={`p-4 sm:p-5 ${grade.bgLight} border-b ${grade.borderClass} flex items-center justify-between shrink-0 relative overflow-hidden`}>
+              <div className="flex items-center gap-3 z-10">
+                <div className={`w-9 h-9 rounded-xl ${grade.bgClass} flex items-center justify-center text-white shadow-lg shrink-0`}>
+                  <Sparkles size={18} />
                 </div>
-
-                {/* Score details */}
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[9px] font-bold text-slate-200 truncate">Hardening: {cappedScore}%</span>
-                    <span className="text-[7.5px] font-black text-slate-500 font-mono shrink-0">{verifiedCount}/{totalCount}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                      Hardening & Architecture Standards
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${grade.badgeClass}`}>
+                      Grade {grade.grade} ({cappedScore}%)
+                    </span>
                   </div>
-                  {/* Mini animated score bar */}
-                  <div className="h-0.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-700 ease-out ${cappedScore >= 80 ? 'bg-emerald-500' : cappedScore >= 60 ? 'bg-yellow-500' : cappedScore >= 40 ? 'bg-orange-500' : 'bg-red-500'}`} style={{
-                  width: `${cappedScore}%`
-                }} />
-                  </div>
-                  {/* Compact Stats */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[7.5px] font-black text-emerald-400">✓ {verifiedCount}</span>
-                    {warningCount > 0 && <span className="text-[7.5px] font-black text-yellow-400">⚠ {warningCount}</span>}
-                    {failedCount > 0 && <span className="text-[7.5px] font-black text-red-400 animate-pulse">✗ {failedCount}</span>}
-                  </div>
+                  <p className="text-xs text-slate-400">
+                    Sertifikasi Kelayakan Arsitektur Modul:{' '}
+                    <span className="text-white font-mono font-semibold">{pageName}</span>
+                  </p>
                 </div>
               </div>
 
-              {/* Floating Close Button - Absolute Positioned for Visibility */}
-              <button type="button" onClick={() => setIsOpen(false)} className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer z-50 flex items-center justify-center shadow-lg backdrop-blur-md group" title="Tutup Sertifikat">
-                <X className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
+              <div className="flex items-center gap-2 z-10">
+                {moduleKey && (
+                  <button
+                    onClick={handleRunLiveAudit}
+                    disabled={isAuditing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-md transition-all active:scale-95"
+                  >
+                    <FileCode size={13} className={isAuditing ? 'animate-spin' : ''} />
+                    <span>{isAuditing ? 'Audit...' : 'Live Audit'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Subheader Tab Navigation */}
+            <div className="flex border-b border-slate-800 bg-slate-950/40 px-4 pt-2 shrink-0">
+              <button
+                onClick={() => setActiveTab('code')}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${
+                  activeTab === 'code'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Code Architecture Standards ({verifiedCount}/{totalCount})
+              </button>
+              <button
+                onClick={() => setActiveTab('lighthouse')}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-all ${
+                  activeTab === 'lighthouse'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Google Lighthouse Matrix (Pilar 18)
               </button>
             </div>
 
-            {/* Tab Switcher */}
-            <div className="flex border-b border-slate-800 bg-slate-950/60 px-6 pt-1">
-              <button type="button" onClick={() => setActiveTab('code')} className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'code' ? 'border-emerald-500 text-emerald-400 font-extrabold font-sans' : 'border-transparent text-slate-400 hover:text-slate-200 font-sans'}`}>
-                🛡️ Audit Kode
-              </button>
-              <button type="button" onClick={() => setActiveTab('lighthouse')} className={`py-2 px-4 text-[10px] font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeTab === 'lighthouse' ? 'border-indigo-500 text-indigo-400 font-extrabold font-sans' : 'border-transparent text-slate-400 hover:text-slate-200 font-sans'}`}>
-                🧭 Performa & A11y
-              </button>
-            </div>
+            {/* Error Banner jika audit server gagal */}
+            {auditError && (
+              <div className="mx-4 mt-3 p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-300 flex items-center justify-between">
+                <span>⚠️ {auditError}</span>
+                <span className="text-[10px] text-slate-400 font-mono">dev-audit-server:9999</span>
+              </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-              {activeTab === 'code' && <>
-                  {/* Dynamic Real-time Audit Trigger Button */}
-                  {moduleKey && <div className="px-6 py-3 bg-slate-900/60 border-b border-slate-950/50 flex flex-col gap-2">
-                      <button type="button" onClick={handleRunLiveAudit} disabled={isAuditing} className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-600/10 cursor-pointer active:scale-[0.98] disabled:opacity-50">
-                        {isAuditing ? '🔄 Sedang Menganalisis Kode Sumber...' : '🔍 Jalankan Audit Kode Sumber Riil'}
-                      </button>
-                      {auditError && <p className="text-[10px] text-rose-400 font-bold font-sans">⚠️ {auditError}</p>}
-                    </div>}
-
-                {/* Compliance Report Checklists – Hardened v2 */}
-                <div className="px-6 pt-3 pb-1.5">
-                  <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                    📋 Laporan Audit Kode Sumber ({totalCount} Pilar):
-                  </div>
-                </div>
-                <div className="px-6 pb-5 space-y-2">
-                  {displayedStandards.map(std => <PillarAuditCard key={std.id} std={std} isCritical={CRITICAL_PILLAR_IDS.has(std.id)} />)}
-                </div>
-
-                  {/* Dynamic Copyable Refactoring Instruction Area */}
-                  {activePrompt && <div className="p-4 bg-slate-950/40 border-t border-slate-900 space-y-2">
-                    <div className="flex items-center gap-1.5 px-1">
-                      <FileCode className="h-3 w-3 text-slate-400" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        {liveAuditResult ? 'Preview Instruksi (Live):' : 'Preview Instruksi (Statis):'}
-                      </span>
+            {/* Body Tab Content */}
+            <div className="p-4 overflow-y-auto flex-1 space-y-4">
+              {activeTab === 'code' ? (
+                <>
+                  {/* Executive Score Summary */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+                      <RadialProgress score={cappedScore} grade={grade.grade} />
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Skor Akhir</div>
+                        <div className={`text-lg font-black ${grade.textClass}`}>{cappedScore}%</div>
+                        <div className="text-[10px] text-slate-400">Target kelayakan: ≥ 90%</div>
+                      </div>
                     </div>
-                    <textarea readOnly value={activePrompt} className="w-full h-16 p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-[9px] font-mono leading-tight focus:outline-none resize-none scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent" />
-                  </div>}
-                </>}
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Terverifikasi</div>
+                      <div className="text-lg font-black text-emerald-400">{verifiedCount} / {totalCount}</div>
+                      <div className="text-[10px] text-slate-400">Pilar compliance terpenuhi</div>
+                    </div>
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Advisory / Warning</div>
+                      <div className="text-lg font-black text-amber-400">{warningCount}</div>
+                      <div className="text-[10px] text-slate-400">Dapat ditingkatkan</div>
+                    </div>
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Pelanggaran Kritis</div>
+                      <div className="text-lg font-black text-rose-400">{failedCount}</div>
+                      <div className="text-[10px] text-slate-400">Wajib direfaktor segera</div>
+                    </div>
+                  </div>
 
-              {activeTab === 'lighthouse' && <LighthousePanel lhResult={lhResult} isLhAuditing={isLhAuditing} lhError={lhError} onRunLighthouse={handleRunLighthouse} />}
-            </div>
+                  {/* Copyable Refactor Prompt Generator */}
+                  {activePrompt && (
+                    <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                          <Sparkles size={14} />
+                          <span>AI Refactor Instruction Prompt (Copyable)</span>
+                        </div>
+                        <button
+                          onClick={handleCopyPrompt}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-semibold transition-all active:scale-95"
+                        >
+                          {copiedText ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{copiedText ? 'Tersalin!' : 'Salin Prompt'}</span>
+                        </button>
+                      </div>
+                      <pre className="text-[11px] font-mono text-slate-300 bg-slate-950/80 p-2.5 rounded-lg overflow-x-auto max-h-28 whitespace-pre-wrap border border-slate-800">
+                        {activePrompt}
+                      </pre>
+                    </div>
+                  )}
 
-            {/* Certificate Footer */}
-            <div className="p-3 bg-slate-900/40 border-t border-slate-900 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-[8px] font-bold text-slate-500 tracking-wider hidden md:inline">
-                  VALIDATED BY DEEPMIND ANTIGRAVITY
-                </span>
-                
-                {/* Always visible copy button in footer if there are issues or result, on code tab */}
-                {activeTab === 'code' && activePrompt && <button type="button" onClick={handleCopyPrompt} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md active:scale-95 border ${copiedText ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-400/30'}`}>
-                    {copiedText ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedText ? 'Tersalin!' : 'Salin Perintah'}
-                  </button>}
-              </div>
-
-              <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow transition-colors cursor-pointer active:scale-95 border border-slate-700">
-                Selesai Inspeksi
-              </button>
+                  {/* Daftar Evaluasi Pilar */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold text-slate-300 tracking-wide uppercase px-1">
+                      Checklist Standardisasi Hardening ({displayedStandards.length} Pilar)
+                    </div>
+                    <div className="space-y-1.5">
+                      {displayedStandards.map((std) => (
+                        <PillarAuditCard key={std.id} standard={std} />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <LighthousePanel
+                  result={lhResult}
+                  isLoading={isLhAuditing}
+                  error={lhError}
+                  onRunAudit={handleRunLighthouse}
+                />
+              )}
             </div>
           </div>
-        </div>}
-    </>;
+        </div>
+      )}
+    </>
+  );
 };
