@@ -158,7 +158,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       }
     },
     onSuccess: () => {
-      toast.success(editingProduct ? 'Produk berhasil diperbarui' : 'Produk berhasil ditambahkan');
+      toast.dismiss();
+      toast.success(editingProduct ? 'Produk berhasil diperbarui' : 'Produk berhasil ditambahkan', { duration: 2500 });
       queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
       fetchProducts();
       fetchCategories();
@@ -168,7 +169,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       const err = error as AxiosErrorLike;
       console.error('Product save error:', err);
       const msg = err.response?.data?.message || err.response?.data?.error || 'Gagal menyimpan produk';
-      toast.error(msg);
+      toast.dismiss();
+      toast.error(msg, { duration: 3500 });
     }
   });
 

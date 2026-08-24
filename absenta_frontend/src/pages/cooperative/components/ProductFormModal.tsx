@@ -92,16 +92,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Hanya berkas gambar (PNG, JPG, WebP) yang diperbolehkan');
+      toast.error('Hanya berkas gambar (PNG, JPG, WebP) yang diperbolehkan', { id: 'prod-photo-upload', duration: 2500 });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 5MB');
+      toast.error('Ukuran foto maksimal 5MB', { id: 'prod-photo-upload', duration: 2500 });
       return;
     }
 
     setIsUploadingImage(true);
+    toast.loading('Mengunggah foto produk...', { id: 'prod-photo-upload' });
+
     const data = new FormData();
     data.append('file', file);
 
@@ -112,13 +114,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
       const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
       if (fileUrl) {
         setFormData(prev => ({ ...prev, imageUrl: fileUrl }));
-        toast.success('Foto produk berhasil diunggah ke storage engine');
+        toast.success('Foto produk berhasil diunggah', { id: 'prod-photo-upload', duration: 2500 });
       }
     } catch (err: any) {
       console.error('Failed to upload product photo:', err);
-      toast.error(err.response?.data?.message || 'Gagal mengunggah foto produk');
+      toast.error(err.response?.data?.message || 'Gagal mengunggah foto produk', { id: 'prod-photo-upload', duration: 3000 });
     } finally {
       setIsUploadingImage(false);
+      // Reset input value so same file can be re-selected if needed
+      if (e.target) e.target.value = '';
     }
   }, []);
 
