@@ -2726,13 +2726,16 @@ model CoopStockIn {
   id            String   @id @default(uuid())
   tenantId      String
   date          DateTime @default(now())
-  supplier      String? // Nama vendor / supplier penyedia barang
+  supplier      String? // Nama vendor / supplier penyedia barang (teks bebas / fallback)
+  supplierId    String? // Relasi ke CoopSupplier (opsional)
+  invoiceNumber String? // Nomor faktur / nota dari supplier
   notes         String? // Catatan penjelas tambahan
   paymentMethod String   @default("CASH") // "CASH" | "CREDIT"
   operatorId    String? // User ID admin / operator yang menginput barang masuk
   shippingFee   Decimal  @default(0) // Ongkos kirim (dicatat sebagai beban operasional terpisah)
 
-  items CoopStockInItem[]
+  items        CoopStockInItem[]
+  CoopSupplier CoopSupplier? @relation(fields: [supplierId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2747,6 +2750,25 @@ model CoopStockInItem {
 
   StockIn CoopStockIn @relation(fields: [stockInId], references: [id], onDelete: Cascade)
   Product Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model CoopSupplier {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String  // Nama supplier / toko / agen
+  contact  String? // Nama kontak person
+  phone    String? // Nomor telepon / WhatsApp
+  email    String? // Email supplier
+  address  String? // Alamat lengkap
+  notes    String? // Catatan tambahan
+  isActive Boolean @default(true)
+
+  stockIns CoopStockIn[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
 }
 
 model CoopStockOpname {

@@ -16,6 +16,7 @@ import pointRoutes from './point/point.fastify';
 import announcementRoutes from './announcement/announcement.fastify';
 import dashboardRoutes from './dashboard/dashboard.fastify';
 import { shuRoutes } from './shu/shu.fastify';
+import supplierRoutes from './supplier/supplier.fastify';
 
 export interface CooperativePluginOptions {
     prefix?: string;
@@ -49,6 +50,7 @@ const cooperativePlugin: FastifyPluginAsync<CooperativePluginOptions> = async (f
     fastify.register(pointRoutes, { prefix: '/points' });
     fastify.register(announcementRoutes, { prefix: '/announcements' });
     fastify.register(dashboardRoutes, { prefix: '/dashboard' });
+    fastify.register(supplierRoutes, { prefix: '/suppliers' }); // Supplier management
     fastify.register(require('./settings/settings.fastify').default, { prefix: '/settings' });
 
     // Health Check for Plugin

@@ -693,14 +693,16 @@ export class TokoService {
         tenantId: string, 
         operatorId: string | null, 
         data: { 
-            supplier?: string; 
+            supplier?: string;
+            supplierId?: string;   // FK to CoopSupplier (optional)
+            invoiceNumber?: string; // Nomor faktur / nota
             notes?: string; 
             paymentMethod?: string; // "CASH" | "CREDIT"
             shippingFee?: number;   // Ongkos kirim — dicatat sebagai Beban Operasional (Metode 2)
             items: { productId: string; quantity: number; costPrice: number }[] 
         }
     ) {
-        const { supplier, notes, paymentMethod = "CASH", items, shippingFee: rawShippingFee } = data;
+        const { supplier, supplierId, invoiceNumber, notes, paymentMethod = "CASH", items, shippingFee: rawShippingFee } = data;
         const shippingFee = Math.max(0, Number(rawShippingFee || 0));
         
         if (!items || items.length === 0) throw new Error('Minimal satu produk harus diinput.');
@@ -758,6 +760,8 @@ export class TokoService {
                 data: {
                     tenantId,
                     supplier: supplier || null,
+                    supplierId: supplierId || null,
+                    invoiceNumber: invoiceNumber || null,
                     notes: notes || null,
                     paymentMethod,
                     operatorId: operatorId || null,

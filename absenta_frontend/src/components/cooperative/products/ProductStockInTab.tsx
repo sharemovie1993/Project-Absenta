@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -67,6 +67,15 @@ interface AxiosErrorLike {
   };
 }
 
+interface CoopSupplier {
+  id: string;
+  name: string;
+  contact?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  isActive: boolean;
+}
+
 interface ProductStockInTabProps {
   products: Product[];
   categories?: ProductCategory[];
@@ -91,11 +100,21 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
 
   // Stock-In states
   const [stockInSupplier, setStockInSupplier] = useState('');
+  const [stockInSupplierId, setStockInSupplierId] = useState<string>('');
   const [stockInInvoiceNumber, setStockInInvoiceNumber] = useState('');
   const [stockInNotes, setStockInNotes] = useState('');
   const [stockInPaymentMethod, setStockInPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
   const [selectedStockInItems, setSelectedStockInItems] = useState<TempStockInItem[]>([]);
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
+
+  // Fetch supplier list for checkout dropdown
+  const { data: supplierList = [] } = useQuery<CoopSupplier[]>({
+    queryKey: ['coop-suppliers'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/suppliers');
+      return res.data;
+    }
+  });
 
   // Search, Filter & Sort states
   const [searchQuery, setSearchQuery] = useState('');
@@ -289,6 +308,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     onSuccess: () => {
       toast.success('Penerimaan barang masuk berhasil disimpan');
       setStockInSupplier('');
+      setStockInSupplierId('');
       setStockInInvoiceNumber('');
       setStockInNotes('');
       setStockInPaymentMethod('CASH');
@@ -316,7 +336,10 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       return;
     }
     submitStockInMutation.mutate({
-      supplier: stockInSupplier.trim() || 'Supplier Umum',
+      supplier: stockInSupplierId
+        ? (supplierList.find(s => s.id === stockInSupplierId)?.name || stockInSupplier.trim() || 'Supplier Umum')
+        : (stockInSupplier.trim() || 'Supplier Umum'),
+      supplierId: stockInSupplierId || undefined,
       invoiceNumber: stockInInvoiceNumber.trim() || undefined,
       notes: stockInNotes.trim() || undefined,
       paymentMethod: stockInPaymentMethod,
@@ -327,7 +350,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
         costPrice: item.costPrice
       }))
     });
-  }, [selectedStockInItems, stockInSupplier, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation]);
+  }, [selectedStockInItems, stockInSupplier, stockInSupplierId, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation, supplierList]);
 
   // Create Product on the Fly
   const createProductMutation = useMutation({
@@ -976,18 +999,34 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       >
         <div className="space-y-4 py-1 text-xs">
           
-          {/* Supplier & Invoice Inputs */}
+          {/* Supplier Selection: Dropdown dari DB + fallback manual */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nama Supplier / Toko Asal *
+              Pilih Supplier *
             </label>
-            <input
-              type="text"
-              placeholder="Contoh: PT Sumber Rejeki, Agen Grosir..."
-              value={stockInSupplier}
-              onChange={(e) => setStockInSupplier(e.target.value)}
+            <select
+              value={stockInSupplierId}
+              onChange={(e) => {
+                setStockInSupplierId(e.target.value);
+                if (e.target.value) setStockInSupplier(''); // clear manual input if DB supplier chosen
+              }}
               className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            />
+            >
+              <option value="">-- Pilih dari daftar atau ketik manual --</option>
+              {supplierList.map(sup => (
+                <option key={sup.id} value={sup.id}>{sup.name}{sup.phone ? ` · ${sup.phone}` : ''}</option>
+              ))}
+            </select>
+            {/* Manual fallback jika belum ada di daftar */}
+            {!stockInSupplierId && (
+              <input
+                type="text"
+                placeholder="Atau ketik nama supplier baru..."
+                value={stockInSupplier}
+                onChange={(e) => setStockInSupplier(e.target.value)}
+                className="w-full h-10 px-3 mt-2 border rounded-xl bg-white dark:bg-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
