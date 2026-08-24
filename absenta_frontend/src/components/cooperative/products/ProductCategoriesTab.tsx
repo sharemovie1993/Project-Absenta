@@ -343,7 +343,7 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
           </div>
         </div>
 
-        {/* 4. Category Items List (Flat Minimalist) */}
+        {/* 4. Category Items List (Flat Minimalist 1:1 Kasir Pintar) */}
         <div className="divide-y divide-slate-100 dark:divide-slate-800/80 pt-1">
           {sortedCategories.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-xs">
@@ -357,7 +357,7 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
                 <div
                   key={cat.id}
                   onClick={() => handleOpenCategoryModal(cat)}
-                  className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors"
+                  className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors select-none"
                 >
                   {/* Top Line: Category Name & Red Trash Delete Icon */}
                   <div className="flex items-center justify-between gap-3">
@@ -369,17 +369,17 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
                       <button
                         type="button"
                         onClick={(e) => handleCategoryDeleteClick(cat.id, e)}
-                        className="p-1.5 text-rose-500 hover:text-rose-700 active:scale-90 transition-transform cursor-pointer shrink-0"
+                        className="p-1 text-rose-500 hover:text-rose-700 active:scale-90 transition-transform cursor-pointer shrink-0 -mr-1"
                         title="Hapus Kategori"
                         aria-label="Hapus Kategori"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} strokeWidth={2.2} />
                       </button>
                     )}
                   </div>
 
                   {/* Bottom Line: sisa : 0 (Left) and Modal : Rp 0 (Right) */}
-                  <div className="flex items-center justify-between mt-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                     <span>
                       sisa : {stats.totalStock}
                     </span>
@@ -393,13 +393,13 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
           )}
         </div>
 
-        {/* 5. Sticky Bottom Action Button (TAMBAH KATEGORI) */}
+        {/* 5. Sticky Bottom Action Button (TAMBAH KATEGORI - Elevated Above Bottom Nav) */}
         {canUpdate && (
-          <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] inset-x-4 z-40">
+          <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] inset-x-4 z-40 animate-in slide-in-from-bottom-2 duration-200">
             <button
               type="button"
               onClick={() => handleOpenCategoryModal()}
-              className="w-full h-13 rounded-2xl sm:rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm uppercase tracking-wider shadow-xl flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+              className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs tracking-wider uppercase shadow-xl flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
             >
               Tambah Kategori
             </button>
