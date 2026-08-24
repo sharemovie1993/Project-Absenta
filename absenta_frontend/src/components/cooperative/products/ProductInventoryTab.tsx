@@ -25,6 +25,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { OpnameFormModal } from '../../../pages/cooperative/components/OpnameFormModal';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx-js-style';
 
 interface ProductCategory {
   id: string;
@@ -215,6 +216,47 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
       monthYearStr: `${month} ${year}`
     };
   };
+
+  // Export Log Barang to Excel (.xlsx)
+  const handleExportLogs = useCallback(() => {
+    if (!selectedProductForLog) return;
+    try {
+      toast.loading('Menyiapkan file export log...', { id: 'export-log-toast' });
+      
+      const rows = (productLogs || []).map((l, idx) => ({
+        'No': idx + 1,
+        'Waktu': new Date(l.timestamp).toLocaleTimeString('id-ID'),
+        'Tanggal': new Date(l.timestamp).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }),
+        'Tipe Transaksi': l.type,
+        'Keterangan / Referensi': l.notes || l.reference || '-',
+        'Barang Masuk': l.masuk,
+        'Barang Keluar': l.keluar,
+        'Saldo Stok': l.stok,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 6 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 35 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 14 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Log Mutasi');
+      const safeCode = (selectedProductForLog.code || 'PROD').replace(/[^a-zA-Z0-9_-]/g, '_');
+      XLSX.writeFile(wb, `Log_Mutasi_${safeCode}_${new Date().toISOString().substring(0, 10)}.xlsx`);
+
+      toast.success('Log mutasi berhasil diexport ke Excel (.xlsx)', { id: 'export-log-toast', duration: 2500 });
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Gagal mengekspor log barang', { id: 'export-log-toast' });
+    }
+  }, [selectedProductForLog, productLogs]);
 
   // Desktop columns
   const inventoryColumns: Column[] = useMemo(() => [
@@ -701,9 +743,9 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
 
             <button
               type="button"
-              onClick={() => toast.success('Laporan log mutasi barang siap diexport')}
+              onClick={handleExportLogs}
               className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 active:scale-90 transition-transform cursor-pointer"
-              title="Export Log Laporan"
+              title="Export Log Laporan (.xlsx)"
             >
               <FileText size={20} />
             </button>
