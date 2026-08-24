@@ -12,6 +12,8 @@ import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraError
 import { LoginQrScannerModal } from '@/components/auth/LoginQrScannerModal';
 import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
 import { type DemoRoleProfile } from '@/config/demoProfiles.config';
+import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
+import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -26,10 +28,28 @@ export default function LoginPage() {
   const [devTenants, setDevTenants] = useState<Array<{ id: string; name: string; domain?: string | null }>>([]);
   const [devTenantsLoading, setDevTenantsLoading] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+
+  // Auto-open server configuration gateway if running on mobile and no server is configured yet
+  useEffect(() => {
+    if (isCapacitorApp() || (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.())) {
+      const saved = getSavedServerDomain();
+      if (!saved) {
+        setIsServerModalOpen(true);
+      }
+    }
+  }, []);
 
   // Demo Mode Detection: Active on demo.absenta.id, ?demo=1, VITE_DEMO_MODE=true, or local dev mode
   const isDemoEnvironment = useMemo(() => {
     if (typeof window === 'undefined') return false;
+
+    // In Capacitor mobile container, NEVER force demo mode by default unless explicitly configured to demo.absenta.id
+    if (isCapacitorApp() || (window as any).Capacitor?.isNativePlatform?.()) {
+      const savedDomain = getSavedServerDomain();
+      return Boolean(savedDomain && (savedDomain.includes('demo') || savedDomain.startsWith('demo.')));
+    }
+
     const hn = window.location.hostname.toLowerCase();
     const params = new URLSearchParams(window.location.search);
     const isExplicitDemoParam = params.get('demo') === '1' || params.get('demo') === 'true';
@@ -528,6 +548,22 @@ export default function LoginPage() {
                          Masuk Sekarang <ArrowRight className="w-5 h-5" />
                        </Button>
                      </motion.div>
+
+                     {/* Server Domain Switcher Badge */}
+                     <div className="pt-2 flex justify-center">
+                       <button
+                         type="button"
+                         onClick={() => setIsServerModalOpen(true)}
+                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-all cursor-pointer"
+                       >
+                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                         <span className="text-slate-400">Server:</span>
+                         <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                           {getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default')}
+                         </span>
+                         <span className="text-blue-500 font-bold ml-1 hover:underline">Ganti</span>
+                       </button>
+                     </div>
                  </form>
                </>
              )}
@@ -554,6 +590,12 @@ export default function LoginPage() {
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
           onScanSuccess={handleScanSuccess}
+        />
+
+        {/* Server Domain Gateway / Switcher Modal */}
+        <ServerDomainSetupModal
+          isOpen={isServerModalOpen}
+          onClose={() => setIsServerModalOpen(false)}
         />
       </main>
     </InfraErrorBoundary>
