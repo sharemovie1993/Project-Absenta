@@ -153,14 +153,30 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     onSubmit(formData);
   }, [formData, onSubmit, editingProduct]);
 
+  const DEFAULT_COOP_CATEGORIES = useMemo(() => [
+    'Makanan',
+    'Minuman',
+    'Kebutuhan Harian',
+    'Alat Tulis & Kantor',
+    'Kesehatan & Obat',
+    'Lain-lain'
+  ], []);
+
   const categoryOptions = useMemo(() => {
-    return (existingCategories ?? [])
-      .filter((cat) => cat && cat !== 'ALL')
-      ?.map((cat) => ({
-        label: cat,
-        value: cat
-      }));
-  }, [existingCategories]);
+    const rawList = (existingCategories && existingCategories.length > 0)
+      ? existingCategories
+      : DEFAULT_COOP_CATEGORIES;
+
+    const combined = Array.from(new Set([
+      ...rawList.filter((cat) => cat && cat !== 'ALL'),
+      ...DEFAULT_COOP_CATEGORIES
+    ]));
+
+    return combined.map((cat) => ({
+      label: cat,
+      value: cat
+    }));
+  }, [existingCategories, DEFAULT_COOP_CATEGORIES]);
 
   return (
     <Modal
