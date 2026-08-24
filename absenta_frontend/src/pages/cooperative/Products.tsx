@@ -246,6 +246,7 @@ const Products: React.FC = React.memo(() => {
             {activeTab === 'stock-in' && (
               <ProductStockInTab
                 products={products}
+                categories={categories}
                 fetchProducts={fetchProducts}
                 setActiveTab={setActiveTab}
               />

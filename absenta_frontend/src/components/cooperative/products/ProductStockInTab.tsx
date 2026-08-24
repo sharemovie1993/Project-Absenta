@@ -3,9 +3,39 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { Input } from '../ui/Input';
-import { Search, Plus, Trash2, Check } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { 
+  ArrowLeft, 
+  Filter, 
+  ArrowUpDown, 
+  Search, 
+  Barcode, 
+  Scan, 
+  Plus, 
+  FilePlus, 
+  MoreVertical, 
+  Trash2, 
+  Check, 
+  Package, 
+  X,
+  CreditCard,
+  Building2,
+  Receipt,
+  Truck,
+  CheckCircle2
+} from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ProductFormModal } from '../../../pages/cooperative/components/ProductFormModal';
+import { cn } from '@/lib/utils';
+
+interface ProductCategory {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  order: number;
+}
 
 interface Product {
   id: string;
@@ -14,7 +44,11 @@ interface Product {
   price: string;
   costPrice: string;
   stock: number;
+  minStock?: number;
   category: string;
+  imageUrl?: string | null;
+  unit?: string | null;
+  useStock?: boolean;
 }
 
 interface TempStockInItem {
@@ -34,108 +68,203 @@ interface AxiosErrorLike {
 
 interface ProductStockInTabProps {
   products: Product[];
+  categories?: ProductCategory[];
   fetchProducts: () => Promise<void>;
-  setActiveTab: (tab: 'catalog' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
+  setActiveTab: (tab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
 }
 
 export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
-  products,
+  products = [],
+  categories = [],
   fetchProducts,
   setActiveTab
 }) => {
   const queryClient = useQueryClient();
+
   // Stock-In states
   const [stockInSupplier, setStockInSupplier] = useState('');
+  const [stockInInvoiceNumber, setStockInInvoiceNumber] = useState('');
   const [stockInNotes, setStockInNotes] = useState('');
   const [stockInPaymentMethod, setStockInPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
   const [selectedStockInItems, setSelectedStockInItems] = useState<TempStockInItem[]>([]);
-  const [productSearchInput, setProductSearchInput] = useState('');
-  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
 
-  // Autocomplete products suggestion for Stock-In Tab
-  const productSuggestions = useMemo(() => {
-    if (!productSearchInput.trim()) return [];
-    return products.filter(p => 
-      p.name.toLowerCase().includes(productSearchInput.toLowerCase()) || 
-      p.code.toLowerCase().includes(productSearchInput.toLowerCase())
-    ).slice(0, 5);
-  }, [products, productSearchInput]);
+  // Search, Filter & Sort states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [sortOption, setSortOption] = useState<'name_asc' | 'name_desc' | 'cost_asc' | 'cost_desc'>('name_asc');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Sync suggestion click outside close
+  // Modals & Navigation
+  const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
+
+  // Drafts LocalStorage
   useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.suggestions-container') && !target.closest('.suggestions-input')) {
-        setShowProductSuggestions(false);
+    const savedDraft = localStorage.getItem('absenta_coop_purchase_draft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0 && selectedStockInItems.length === 0) {
+          // Keep draft accessible via button
+        }
+      } catch (e) {
+        console.error(e);
       }
-    };
-    if (showProductSuggestions) {
-      document.addEventListener('click', handleGlobalClick);
     }
-    return () => {
-      document.removeEventListener('click', handleGlobalClick);
-    };
-  }, [showProductSuggestions]);
+  }, [selectedStockInItems.length]);
 
-  const handleAddStockInItem = useCallback((product: Product) => {
-    const alreadyExists = selectedStockInItems.find(item => item.product.id === product.id);
-    if (alreadyExists) {
-      setSelectedStockInItems(prev => 
-        prev.map(item => 
-          item.product.id === product.id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
-        )
-      );
-      toast.success(`${product.name} ditambah (+1)`);
-    } else {
-      setSelectedStockInItems(prev => [
+  const handleSaveDraft = useCallback(() => {
+    if (selectedStockInItems.length === 0) {
+      toast.error('Pilih minimal satu barang untuk disimpan sebagai draft');
+      return;
+    }
+    const draftPayload = {
+      items: selectedStockInItems,
+      supplier: stockInSupplier,
+      invoiceNumber: stockInInvoiceNumber,
+      notes: stockInNotes,
+      paymentMethod: stockInPaymentMethod,
+      shippingFee: stockInShippingFee,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('absenta_coop_purchase_draft', JSON.stringify(draftPayload));
+    toast.success('Draft pembelian berhasil disimpan', { icon: '📋' });
+  }, [selectedStockInItems, stockInSupplier, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee]);
+
+  const handleLoadDraft = useCallback(() => {
+    const savedDraft = localStorage.getItem('absenta_coop_purchase_draft');
+    if (!savedDraft) {
+      toast.error('Tidak ada draft pembelian tersimpan');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(savedDraft);
+      setSelectedStockInItems(parsed.items || []);
+      setStockInSupplier(parsed.supplier || '');
+      setStockInInvoiceNumber(parsed.invoiceNumber || '');
+      setStockInNotes(parsed.notes || '');
+      setStockInPaymentMethod(parsed.paymentMethod || 'CASH');
+      setStockInShippingFee(parsed.shippingFee || 0);
+      setIsDraftsModalOpen(false);
+      toast.success('Draft pembelian berhasil dimuat');
+    } catch (e) {
+      console.error(e);
+      toast.error('Gagal membaca draft pembelian');
+    }
+  }, []);
+
+  // Filtered & Sorted Products
+  const filteredProducts = useMemo(() => {
+    return products.filter(prod => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch = prod.name.toLowerCase().includes(q) || prod.code.toLowerCase().includes(q);
+      const matchCat = selectedCategory === 'ALL' || (prod.category || '').toLowerCase() === selectedCategory.toLowerCase();
+      return matchSearch && matchCat;
+    });
+  }, [products, searchQuery, selectedCategory]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (sortOption === 'name_asc') return a.name.localeCompare(b.name);
+      if (sortOption === 'name_desc') return b.name.localeCompare(a.name);
+      if (sortOption === 'cost_asc') return Number(a.costPrice || 0) - Number(b.costPrice || 0);
+      if (sortOption === 'cost_desc') return Number(b.costPrice || 0) - Number(a.costPrice || 0);
+      return 0;
+    });
+  }, [filteredProducts, sortOption]);
+
+  const handleCycleSort = useCallback(() => {
+    setSortOption(prev => {
+      if (prev === 'name_asc') return 'name_desc';
+      if (prev === 'name_desc') return 'cost_asc';
+      if (prev === 'cost_asc') return 'cost_desc';
+      return 'name_asc';
+    });
+    toast(`Urutan: ${
+      sortOption === 'name_asc' ? 'Nama (Z ke A)' :
+      sortOption === 'name_desc' ? 'Harga Beli Terendah' :
+      sortOption === 'cost_asc' ? 'Harga Beli Tertinggi' : 'Nama (A ke Z)'
+    }`, { id: 'sort-toast', duration: 1500 });
+  }, [sortOption]);
+
+  // Cart operations
+  const handleToggleProductInCart = useCallback((product: Product) => {
+    setSelectedStockInItems(prev => {
+      const existing = prev.find(item => item.product.id === product.id);
+      if (existing) {
+        return prev.map(item => 
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
         ...prev,
         {
           product,
           quantity: 1,
           costPrice: Number(product.costPrice || 0)
         }
-      ]);
-    }
-    setProductSearchInput('');
-    setShowProductSuggestions(false);
-  }, [selectedStockInItems]);
+      ];
+    });
+  }, []);
 
-  const handleStockInSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (productSuggestions.length > 0) {
-        handleAddStockInItem(productSuggestions[0]);
+  const handleUpdateItemQty = useCallback((productId: string, delta: number) => {
+    setSelectedStockInItems(prev => {
+      return prev.map(item => {
+        if (item.product.id === productId) {
+          const newQty = item.quantity + delta;
+          return newQty > 0 ? { ...item, quantity: newQty } : null;
+        }
+        return item;
+      }).filter(Boolean) as TempStockInItem[];
+    });
+  }, []);
+
+  const handleSetItemQty = useCallback((productId: string, val: number) => {
+    setSelectedStockInItems(prev => {
+      if (val <= 0) {
+        return prev.filter(item => item.product.id !== productId);
       }
-    }
-  }, [productSuggestions, handleAddStockInItem]);
+      return prev.map(item => 
+        item.product.id === productId ? { ...item, quantity: val } : item
+      );
+    });
+  }, []);
 
-  const handleUpdateStockInItemQty = useCallback((productId: string, val: number) => {
+  const handleSetItemCostPrice = useCallback((productId: string, val: number) => {
     setSelectedStockInItems(prev => 
-      prev.map(item => item.product.id === productId ? { ...item, quantity: val } : item)
+      prev.map(item => 
+        item.product.id === productId ? { ...item, costPrice: val } : item
+      )
     );
   }, []);
 
-  const handleUpdateStockInItemPrice = useCallback((productId: string, val: number) => {
-    setSelectedStockInItems(prev => 
-      prev.map(item => item.product.id === productId ? { ...item, costPrice: val } : item)
-    );
-  }, []);
-
-  const handleRemoveStockInItem = useCallback((productId: string) => {
+  const handleRemoveItem = useCallback((productId: string) => {
     setSelectedStockInItems(prev => prev.filter(item => item.product.id !== productId));
   }, []);
 
-  const totalStockInCost = useMemo(() => {
+  const totalQuantity = useMemo(() => {
+    return selectedStockInItems.reduce((sum, item) => sum + item.quantity, 0);
+  }, [selectedStockInItems]);
+
+  const totalCost = useMemo(() => {
     return selectedStockInItems.reduce((sum, item) => sum + (item.quantity * item.costPrice), 0);
   }, [selectedStockInItems]);
 
-  const stockInGrandTotal = useMemo(() => {
-    return totalStockInCost + (stockInShippingFee || 0);
-  }, [totalStockInCost, stockInShippingFee]);
+  const grandTotal = useMemo(() => {
+    return totalCost + (stockInShippingFee || 0);
+  }, [totalCost, stockInShippingFee]);
 
+  // Helper 2-letter Initials
+  const getInitials = (name: string) => {
+    if (!name) return 'PR';
+    const words = name.trim().split(' ').filter(Boolean);
+    if (words.length === 1) return words[0].substring(0, 2);
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  // Submit Stock In
   const submitStockInMutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await api.post('/cooperative/toko/stock-in', payload);
@@ -144,295 +273,669 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     onSuccess: () => {
       toast.success('Penerimaan barang masuk berhasil disimpan');
       setStockInSupplier('');
+      setStockInInvoiceNumber('');
       setStockInNotes('');
       setStockInPaymentMethod('CASH');
       setSelectedStockInItems([]);
       setStockInShippingFee(0);
+      setIsCheckoutModalOpen(false);
+      localStorage.removeItem('absenta_coop_purchase_draft');
+
       queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-products'] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
       fetchProducts();
       setActiveTab('history');
     },
     onError: (error) => {
       const err = error as AxiosErrorLike;
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Gagal menyimpan transaksi barang masuk');
+      toast.error(err.response?.data?.message || 'Gagal menyimpan barang masuk');
     }
   });
 
-  const stockInSubmitLoading = submitStockInMutation.isPending;
-
-  const handleStockInSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinalizePurchase = useCallback(() => {
     if (selectedStockInItems.length === 0) {
-      toast.error('Pilih setidaknya 1 produk untuk diproses barang masuk');
+      toast.error('Pilih minimal satu barang untuk dibeli');
       return;
     }
-
-    const invalidItem = selectedStockInItems.find(item => item.quantity <= 0 || item.costPrice < 0);
-    if (invalidItem) {
-      toast.error(`Periksa kembali kuantitas dan harga beli produk "${invalidItem.product.name}"`);
-      return;
-    }
-
-    const payload = {
-      supplier: stockInSupplier.trim() || undefined,
+    submitStockInMutation.mutate({
+      supplier: stockInSupplier.trim() || 'Supplier Umum',
+      invoiceNumber: stockInInvoiceNumber.trim() || undefined,
       notes: stockInNotes.trim() || undefined,
       paymentMethod: stockInPaymentMethod,
-      shippingFee: stockInShippingFee > 0 ? stockInShippingFee : undefined,
+      shippingFee: stockInShippingFee,
       items: selectedStockInItems.map(item => ({
         productId: item.product.id,
         quantity: item.quantity,
         costPrice: item.costPrice
       }))
-    };
+    });
+  }, [selectedStockInItems, stockInSupplier, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation]);
 
-    submitStockInMutation.mutate(payload);
-  }, [selectedStockInItems, stockInSupplier, stockInNotes, stockInPaymentMethod, stockInShippingFee, submitStockInMutation]);
+  // Create Product on the Fly
+  const createProductMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await api.post('/cooperative/toko', {
+        ...data,
+        price: parseFloat(data.price),
+        costPrice: data.costPrice ? parseFloat(data.costPrice) : 0,
+        stock: data.stock ? parseInt(data.stock, 10) : 0,
+        minStock: data.minStock ? parseInt(data.minStock, 10) : 0,
+        weight: data.weight ? parseFloat(data.weight) : 0,
+        discount: data.discount ? parseFloat(data.discount) : 0,
+      });
+      return res.data;
+    },
+    onSuccess: (newProd) => {
+      toast.success('Produk baru berhasil dibuat');
+      setIsCreateProductModalOpen(false);
+      fetchProducts();
+      // Directly add to purchase cart
+      if (newProd) {
+        handleToggleProductInCart(newProd);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Gagal membuat produk');
+    }
+  });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      {/* Left Column: Form Autocomplete & Item List */}
-      <div className="lg:col-span-2 space-y-6">
-        <Card title="Pilih Produk Koperasi">
-          <div className="space-y-4">
-            <div className="relative suggestions-input">
-              <label htmlFor="stock-in-search" className="block text-sm font-medium text-gray-700 mb-1">
-                Cari Produk (Nama / Kode / Scan Barcode)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="stock-in-search"
-                  type="text"
-                  placeholder="Ketik nama produk atau scan barcode..."
-                  value={productSearchInput}
-                  onChange={(e) => {
-                    setProductSearchInput(e.target.value);
-                    setShowProductSuggestions(true);
-                  }}
-                  onKeyDown={handleStockInSearchKeyDown}
-                  onFocus={() => setShowProductSuggestions(true)}
-                  className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all bg-white"
-                  aria-label="Cari produk masuk"
-                />
-              </div>
+    <div className="space-y-4">
+      {/* ───────────────────────────────────────────────────────────────────────
+          MOBILE VIEW (1:1 Kasir Pintar Persona: Pembelian)
+          ─────────────────────────────────────────────────────────────────────── */}
+      <div className="block lg:hidden -mx-4 -mt-2 space-y-3 pb-28 bg-white dark:bg-slate-950 min-h-[90vh]">
+        
+        {/* 1. Header App Bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab('catalog')}
+              className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
+              aria-label="Kembali"
+            >
+              <ArrowLeft size={22} />
+            </button>
+            <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+              Pembelian
+            </h2>
+          </div>
 
-              {/* Suggestions Panel */}
-              {showProductSuggestions && productSuggestions.length > 0 && (
-                <div className="absolute z-30 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto suggestions-container">
-                  {(productSuggestions || []).map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleAddStockInItem(p)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <p className="font-bold text-gray-800 dark:text-slate-100 truncate">{p.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">Kode: {p.code} | Stok: {p.stock}</p>
-                      </div>
-                      <Plus size={16} className="text-blue-500 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
+          <div className="flex items-center gap-2">
+            {/* Draft Pill Button */}
+            <button
+              type="button"
+              onClick={() => setIsDraftsModalOpen(true)}
+              className="px-3 py-1 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-transform cursor-pointer"
+            >
+              <span>Draft</span>
+              <FilePlus size={14} />
+            </button>
+
+            {/* Overflow Options Menu */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className="p-1 text-emerald-600 dark:text-emerald-400 active:scale-90 transition-transform cursor-pointer"
+              title="Riwayat Pembelian"
+            >
+              <MoreVertical size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Search, Filter, Sort, & Barcode Scanners */}
+        <div className="px-4 flex items-center gap-2 pt-1">
+          {/* Filter Button */}
+          <button
+            type="button"
+            onClick={() => setIsFilterModalOpen(true)}
+            className={cn(
+              "p-2.5 rounded-xl border text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0",
+              selectedCategory !== 'ALL' ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-slate-800"
+            )}
+            title="Filter Kategori"
+          >
+            <Filter size={18} />
+          </button>
+
+          {/* Sort Button */}
+          <button
+            type="button"
+            onClick={handleCycleSort}
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 active:scale-95 transition-transform shrink-0"
+            title="Urutkan"
+          >
+            <ArrowUpDown size={18} />
+          </button>
+
+          {/* Search Pill Input with Barcode & Camera Scanner Icons */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <input
+              type="text"
+              placeholder="Cari nama atau kode barang"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-9 pr-16 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <button
+                type="button"
+                onClick={() => toast('Scanner Barcode siap')}
+                className="p-1 hover:text-emerald-700 active:scale-90"
+                title="Scan Barcode"
+              >
+                <Barcode size={17} />
+              </button>
+              <button
+                type="button"
+                onClick={() => toast('Kamera Scanner siap')}
+                className="p-1 hover:text-emerald-700 active:scale-90"
+                title="Scan Kamera"
+              >
+                <Scan size={17} />
+              </button>
             </div>
+          </div>
+        </div>
+
+        {/* 3. Horizontal Category Filter Chips */}
+        <div className="px-4 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('ALL')}
+            className={cn(
+              "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
+              selectedCategory === 'ALL'
+                ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+            )}
+          >
+            Semua item
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setSelectedCategory(cat.name)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer",
+                selectedCategory.toLowerCase() === cat.name.toLowerCase()
+                  ? "border border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                  : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+              )}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* 4. Products Selection List */}
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80 pt-1">
+          
+          {/* Top Option: Buat barang baru */}
+          <div
+            onClick={() => setIsCreateProductModalOpen(true)}
+            className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center gap-3.5 select-none"
+          >
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+              <Plus size={22} />
+            </div>
+            <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+              Buat barang baru
+            </span>
+          </div>
+
+          {/* Product Items */}
+          {sortedProducts.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-xs">
+              <Package size={36} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              Tidak ada produk ditemukan.
+            </div>
+          ) : (
+            sortedProducts.map(prod => {
+              const costPrice = Number(prod.costPrice || 0);
+              const sellPrice = Number(prod.price || 0);
+              const initials = getInitials(prod.name);
+              const inCart = selectedStockInItems.find(item => item.product.id === prod.id);
+
+              return (
+                <div
+                  key={prod.id}
+                  onClick={() => handleToggleProductInCart(prod)}
+                  className={cn(
+                    "px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-center justify-between gap-3 select-none",
+                    inCart ? "bg-emerald-50/30 dark:bg-emerald-950/20" : ""
+                  )}
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    {/* Thumbnail / 2-Letter Initials */}
+                    <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden font-bold text-slate-400 dark:text-slate-500 text-sm">
+                      {prod.imageUrl ? (
+                        <img 
+                          src={prod.imageUrl} 
+                          alt={prod.name} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span>{initials}</span>
+                      )}
+                    </div>
+
+                    {/* Product Name & Pricing Breakdown (Rp Beli | Rp Jual) */}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                        {prod.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        Rp {costPrice.toLocaleString('id-ID')} <span className="text-slate-300 dark:text-slate-700">|</span> Rp {sellPrice.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quantity Counter Badge if Selected */}
+                  {inCart && (
+                    <div className="shrink-0 flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                      <span>{inCart.quantity} {prod.unit || 'pcs'}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 5. Bottom Sticky Floating Cart Action Bar */}
+        <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] inset-x-4 z-40">
+          <div 
+            onClick={() => {
+              if (selectedStockInItems.length === 0) {
+                toast.error('Pilih minimal 1 barang untuk melanjutkan pembelian');
+                return;
+              }
+              setIsCheckoutModalOpen(true);
+            }}
+            className="w-full h-13 px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-between shadow-xl cursor-pointer active:scale-98 transition-all"
+          >
+            <div className="flex items-center gap-2 font-bold text-sm">
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">
+                {totalQuantity}
+              </span>
+              <span>Barang</span>
+            </div>
+
+            <span className="font-black text-sm tracking-wider uppercase">
+              LANJUT
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          DESKTOP VIEW (Classic Split Layout)
+          ─────────────────────────────────────────────────────────────────────── */}
+      <div className="hidden lg:grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 p-6 space-y-4">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+              Pilih Barang Pembelian (Kulakan)
+            </h3>
+            <Button
+              size="sm"
+              onClick={() => setIsCreateProductModalOpen(true)}
+              className="flex items-center gap-1 text-xs font-bold"
+            >
+              <Plus size={14} /> Buat Barang Baru
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Cari nama atau barcode barang..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm bg-white dark:bg-slate-900"
+              />
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="py-2 px-3 border rounded-lg text-xs bg-white dark:bg-slate-900"
+            >
+              <option value="ALL">Semua Kategori</option>
+              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto divide-y border rounded-xl">
+            {sortedProducts.map(prod => {
+              const inCart = selectedStockInItems.find(item => item.product.id === prod.id);
+              return (
+                <div 
+                  key={prod.id} 
+                  onClick={() => handleToggleProductInCart(prod)}
+                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <h4 className="font-bold text-sm">{prod.name}</h4>
+                    <p className="text-xs text-slate-500 font-mono">{prod.code} • Modal: Rp {Number(prod.costPrice || 0).toLocaleString('id-ID')}</p>
+                  </div>
+                  {inCart ? (
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 font-bold rounded-full text-xs">
+                      {inCart.quantity} dipilih
+                    </span>
+                  ) : (
+                    <Button size="sm" variant="secondary" className="text-xs font-bold">
+                      + Tambah
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
 
-        <Card title="Daftar Barang yang Diterima">
-          {selectedStockInItems.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
-              Belum ada produk yang ditambahkan. Gunakan kolom pencarian di atas.
+        {/* Desktop Cart Summary */}
+        <Card className="p-6 space-y-4 h-fit">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100">
+              Rincian Pembelian ({totalQuantity} Barang)
+            </h3>
+            <button 
+              type="button" 
+              onClick={handleSaveDraft}
+              className="text-xs font-bold text-amber-600 hover:underline cursor-pointer"
+            >
+              Simpan Draft
+            </button>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            {selectedStockInItems.length === 0 ? (
+              <p className="text-center py-8 text-xs text-slate-400">Keranjang pembelian kosong</p>
+            ) : (
+              selectedStockInItems.map(item => (
+                <div key={item.product.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border text-xs space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold">{item.product.name}</span>
+                    <button onClick={() => handleRemoveItem(item.product.id)} className="text-rose-500">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-500">Jumlah Qty</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleSetItemQty(item.product.id, parseInt(e.target.value, 10) || 1)}
+                        className="w-full p-1 border rounded text-xs bg-white dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500">Harga Beli Satuan</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.costPrice}
+                        onChange={(e) => handleSetItemCostPrice(item.product.id, parseFloat(e.target.value) || 0)}
+                        className="w-full p-1 border rounded text-xs bg-white dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="space-y-2 pt-2 border-t text-xs">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span className="font-bold">Rp {totalCost.toLocaleString('id-ID')}</span>
             </div>
-          ) : (
-            <div className="overflow-x-auto w-full min-w-0 max-w-full">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
-                <thead className="bg-slate-50 dark:bg-slate-800/60">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Barang</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-28">Kuantitas</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-40">Modal Beli</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-36">Subtotal</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-12"></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {(selectedStockInItems || []).map((item) => (
-                    <tr key={item.product.id}>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="text-sm font-semibold text-gray-800">{item.product.name}</p>
-                        <p className="text-xs text-gray-400">Kode: {item.product.code}</p>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <input
-                          id={`qty-${item.product.id}`}
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => handleUpdateStockInItemQty(item.product.id, Math.max(1, parseInt(e.target.value) || 0))}
-                          className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm bg-white"
-                          aria-label={`Jumlah ${item.product.name}`}
-                        />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="relative rounded-md shadow-sm">
-                          <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                            <span className="text-gray-400 text-xs">Rp</span>
-                          </div>
-                          <input
-                            id={`cost-${item.product.id}`}
-                            type="number"
-                            min="0"
-                            value={item.costPrice}
-                            onChange={(e) => handleUpdateStockInItemPrice(item.product.id, Math.max(0, parseFloat(e.target.value) || 0))}
-                            className="pl-7 pr-2 py-1 w-36 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm bg-white"
-                            aria-label={`Harga modal ${item.product.name}`}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-700">
-                        Rp {(item.quantity * item.costPrice).toLocaleString('id-ID')}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                          onClick={() => handleRemoveStockInItem(item.product.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors p-1"
-                          aria-label={`Hapus ${item.product.name} dari transaksi`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex justify-between font-bold text-sm text-emerald-600">
+              <span>Total Pembelian:</span>
+              <span>Rp {grandTotal.toLocaleString('id-ID')}</span>
             </div>
-          )}
+          </div>
+
+          <Button
+            onClick={() => setIsCheckoutModalOpen(true)}
+            disabled={selectedStockInItems.length === 0}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+          >
+            Lanjutkan Pembelian
+          </Button>
         </Card>
       </div>
 
-      {/* Right Column: Metadata vendor & payment */}
-      <div className="space-y-6">
-        <Card title="Ringkasan Transaksi">
-          <form onSubmit={handleStockInSubmit} className="space-y-4">
-            <Input
-              id="stock-in-supplier"
-              label="Supplier / Vendor"
-              placeholder="Masukkan nama supplier (opsional)..."
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Checkout & Konfirmasi Pembelian (Mobile & Desktop)
+          ─────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        title="Konfirmasi Pembelian & Masuk Stok"
+      >
+        <div className="space-y-4 py-1 text-xs">
+          
+          {/* Supplier & Invoice Inputs */}
+          <div>
+            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Nama Supplier / Toko Asal *
+            </label>
+            <input
+              type="text"
+              placeholder="Contoh: PT Sumber Rejeki, Agen Grosir..."
               value={stockInSupplier}
               onChange={(e) => setStockInSupplier(e.target.value)}
-              aria-label="Nama Supplier"
+              className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
-            
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label htmlFor="stock-in-notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Catatan Transaksi
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                No. Faktur / Nota
               </label>
-              <textarea
-                id="stock-in-notes"
-                rows={3}
-                placeholder="Info tambahan e.g. nomor faktur..."
-                value={stockInNotes}
-                onChange={(e) => setStockInNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all bg-white"
-                aria-label="Catatan Transaksi"
+              <input
+                type="text"
+                placeholder="Contoh: INV/2026/001"
+                value={stockInInvoiceNumber}
+                onChange={(e) => setStockInInvoiceNumber(e.target.value)}
+                className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-mono outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               />
             </div>
-
             <div>
-              <span className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Metode Pembayaran
-              </span>
-              <div className="flex gap-4">
-                <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 cursor-pointer">
-                  <input
-                    id="pm-cash"
-                    type="radio"
-                    name="paymentMethod"
-                    value="CASH"
-                    checked={stockInPaymentMethod === 'CASH'}
-                    onChange={() => setStockInPaymentMethod('CASH')}
-                    className="text-blue-600 focus:ring-blue-500 h-4 w-4 bg-white"
-                  />
-                  <span>Tunai (CASH)</span>
-                </label>
-                <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 cursor-pointer">
-                  <input
-                    id="pm-credit"
-                    type="radio"
-                    name="paymentMethod"
-                    value="CREDIT"
-                    checked={stockInPaymentMethod === 'CREDIT'}
-                    onChange={() => setStockInPaymentMethod('CREDIT')}
-                    className="text-blue-600 focus:ring-blue-500 h-4 w-4 bg-white"
-                  />
-                  <span>Kredit (CREDIT)</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 mt-4">
-              {/* Ongkos Kirim Input */}
-              <div className="mb-4">
-                <label htmlFor="stock-in-shipping-fee" className="block text-sm font-medium text-gray-700 mb-1">
-                  Ongkos Kirim / Biaya Tambahan
-                  <span className="ml-1 text-xs text-gray-400 font-normal">(opsional)</span>
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-400 text-xs font-semibold">Rp</span>
-                  </div>
-                  <input
-                    id="stock-in-shipping-fee"
-                    type="number"
-                    min="0"
-                    step="1000"
-                    value={stockInShippingFee || ''}
-                    onChange={(e) => setStockInShippingFee(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="0"
-                    className="pl-9 pr-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
-                    aria-label="Ongkos Kirim"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1">Dicatat sebagai Beban Operasional (akun 5020). Tidak menambah harga modal produk.</p>
-              </div>
-
-              {/* Cost Breakdown */}
-              <div className="space-y-1.5 mb-4 bg-slate-50 rounded-lg p-3 border border-gray-100">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Total Produk:</span>
-                  <span className="font-semibold text-gray-700">Rp {totalStockInCost.toLocaleString('id-ID')}</span>
-                </div>
-                {stockInShippingFee > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">Ongkos Kirim:</span>
-                    <span className="font-semibold text-orange-600">Rp {stockInShippingFee.toLocaleString('id-ID')}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
-                  <span className="text-sm font-bold text-gray-600">Total Pembayaran:</span>
-                  <span className="text-xl font-black text-green-600">
-                    Rp {stockInGrandTotal.toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </div>
-              
-              <Button
-                type="submit"
-                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-md transition-all flex items-center justify-center space-x-2"
-                isLoading={stockInSubmitLoading}
+              </label>
+              <select
+                value={stockInPaymentMethod}
+                onChange={(e) => setStockInPaymentMethod(e.target.value as any)}
+                className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-bold outline-none"
               >
-                <Check size={18} />
-                <span>Simpan Transaksi</span>
-              </Button>
+                <option value="CASH">Tunai (Cash)</option>
+                <option value="CREDIT">Tempo / Kredit</option>
+              </select>
             </div>
-          </form>
-        </Card>
-      </div>
+          </div>
+
+          {/* Items Summary in Modal */}
+          <div>
+            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Daftar Barang ({selectedStockInItems.length} Produk, {totalQuantity} Pcs)
+            </label>
+            <div className="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-slate-50 dark:bg-slate-900/50">
+              {selectedStockInItems.map(item => (
+                <div key={item.product.id} className="p-2 bg-white dark:bg-slate-900 rounded-lg border flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold truncate">{item.product.name}</p>
+                    <p className="text-[11px] text-slate-500">Rp {item.costPrice.toLocaleString('id-ID')} / {item.product.unit || 'pcs'}</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button" 
+                      onClick={() => handleUpdateItemQty(item.product.id, -1)}
+                      className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold"
+                    >
+                      -
+                    </button>
+                    <span className="font-black w-6 text-center">{item.quantity}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleUpdateItemQty(item.product.id, 1)}
+                      className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Shipping Fee */}
+          <div>
+            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Ongkos Kirim (Opsional)
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={stockInShippingFee || ''}
+              onChange={(e) => setStockInShippingFee(parseFloat(e.target.value) || 0)}
+              className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-bold outline-none"
+            />
+          </div>
+
+          {/* Grand Total Breakdown */}
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-500/30 flex items-center justify-between">
+            <span className="font-bold text-slate-700 dark:text-slate-300">Total Pembayaran:</span>
+            <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+              Rp {grandTotal.toLocaleString('id-ID')}
+            </span>
+          </div>
+
+          <div className="pt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsCheckoutModalOpen(false)}
+              className="flex-1 font-bold"
+            >
+              Kembali
+            </Button>
+            <Button
+              type="button"
+              onClick={handleFinalizePurchase}
+              disabled={submitStockInMutation.isPending}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {submitStockInMutation.isPending ? 'Menyimpan...' : 'Simpan Pembelian'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Drafts Manager
+          ─────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={isDraftsModalOpen}
+        onClose={() => setIsDraftsModalOpen(false)}
+        title="Draft Pembelian"
+      >
+        <div className="space-y-4 py-2 text-xs">
+          <p className="text-slate-500 dark:text-slate-400">
+            Simpan atau muat daftar pembelian yang sedang disusun agar tidak hilang saat berpindah halaman.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="p-4 rounded-2xl border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 font-bold flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            >
+              <FilePlus size={24} />
+              <span>Simpan Draft Saat Ini</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLoadDraft}
+              className="p-4 rounded-2xl border border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-bold flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            >
+              <CheckCircle2 size={24} />
+              <span>Muat Draft Tersimpan</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Filter Kategori
+          ─────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        title="Filter Kategori Pembelian"
+      >
+        <div className="space-y-2 py-1 max-h-64 overflow-y-auto text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => { setSelectedCategory('ALL'); setIsFilterModalOpen(false); }}
+            className={cn(
+              "w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between",
+              selectedCategory === 'ALL' ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600" : "hover:bg-slate-50"
+            )}
+          >
+            <span>Semua Kategori</span>
+            {selectedCategory === 'ALL' && <CheckCircle2 size={16} />}
+          </button>
+
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => { setSelectedCategory(cat.name); setIsFilterModalOpen(false); }}
+              className={cn(
+                "w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between",
+                selectedCategory.toLowerCase() === cat.name.toLowerCase() ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600" : "hover:bg-slate-50"
+              )}
+            >
+              <span>{cat.name}</span>
+              {selectedCategory.toLowerCase() === cat.name.toLowerCase() && <CheckCircle2 size={16} />}
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Buat Barang Baru On The Fly
+          ─────────────────────────────────────────────────────────────────────── */}
+      {isCreateProductModalOpen && (
+        <ProductFormModal
+          isOpen={isCreateProductModalOpen}
+          onClose={() => setIsCreateProductModalOpen(false)}
+          editingProduct={null}
+          categories={categories}
+          onSubmit={async (data) => {
+            createProductMutation.mutate(data);
+          }}
+          isLoading={createProductMutation.isPending}
+        />
+      )}
     </div>
   );
 });
