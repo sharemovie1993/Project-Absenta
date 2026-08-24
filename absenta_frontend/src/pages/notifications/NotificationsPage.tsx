@@ -3,6 +3,7 @@ import { Card, Button, Badge } from "../../components/ui";
 import { getUserNotifications } from "../../api/notifications.api";
 import type { NotificationStatsResponse } from "../../types/notification";
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
+import { formatDate } from "../../utils/layoutUtils";
 import { Bell, CheckCheck, Send, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -189,7 +190,10 @@ export default function NotificationsPage() {
                           )}>
                             {n.subject || n.type}
                           </h5>
-                          <Badge variant={status as any} className="text-[10px] font-black tracking-widest uppercase px-1.5 h-4">
+                          <Badge 
+                            variant={status === 'error' ? 'destructive' : status === 'warning' ? 'warning' : status === 'success' ? 'success' : 'default'} 
+                            className="text-[10px] font-black tracking-widest uppercase px-1.5 h-4"
+                          >
                             {n.status === 'FAILED' ? 'GAGAL' : isUnread ? 'BARU' : 'DIBACA'}
                           </Badge>
                         </div>
@@ -200,7 +204,7 @@ export default function NotificationsPage() {
                           {n.message}
                         </p>
                         <div className="flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-1">
-                          {new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                          {formatDate(n.created_at, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                       

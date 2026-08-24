@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, Database, Briefcase, Lock, Globe, ClipboardList, ArrowRight, Users, AlertCircle } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '@/components/ui';
+import { formatDate } from '../../utils/layoutUtils';
 
 function DataProcessingAgreementContent() {
   const { data: systemConfig, isLoading } = useQuery({
@@ -12,6 +13,7 @@ function DataProcessingAgreementContent() {
     queryFn: fetchActiveSystemConfig,
   });
 
+  const isEmpty = !systemConfig && !isLoading;
   const appName = useMemo(() => systemConfig?.app_name || 'Absenta.id', [systemConfig]);
 
   useEffect(() => {

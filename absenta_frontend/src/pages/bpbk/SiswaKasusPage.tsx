@@ -1,13 +1,16 @@
-import React, { useState, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SiswaKasusSection } from './components/SiswaKasusSection';
 import { Loader } from '../../components/ui/Loader';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { formatDate } from '../../utils/layoutUtils';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
 
 export default React.memo(function SiswaKasusPage() {
+  const queryClient = useQueryClient();
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
@@ -22,8 +25,14 @@ export default React.memo(function SiswaKasusPage() {
 
   const handleDetailSuccess = useCallback(() => {
     setIsDetailOpen(false);
-    window.location.reload();
-  }, []);
+    queryClient.invalidateQueries();
+  }, [queryClient]);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' },
+    { label: 'Data Kasus Siswa', path: '/bpbk/siswa' }
+  ], []);
 
   return (
     <PremiumFeatureGate
@@ -33,11 +42,7 @@ export default React.memo(function SiswaKasusPage() {
     >
       <AcademicPageLayout
         title="Data Kasus Siswa BP/BK"
-        breadcrumbs={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' },
-          { label: 'Data Kasus Siswa', path: '/bpbk/siswa' }
-        ]}
+        breadcrumbs={breadcrumbs}
         hardeningModuleKey="bpbk_siswa_kasus"
         instruction={{
           title: "Panduan Data Kasus Siswa",

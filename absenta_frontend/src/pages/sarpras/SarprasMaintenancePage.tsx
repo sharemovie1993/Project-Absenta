@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -417,7 +418,7 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
 
           {/* Filters */}
           <TabSwitcher
-            options={statusButtons.map(btn => ({
+            options={statusButtons?.map(btn => ({
               id: btn.value,
               label: btn.label,
               colorClass: 'text-orange-600 dark:text-orange-400'
@@ -438,6 +439,8 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
               onSort={handleSort}
               toolbarRight={
                 <Button
+                  variant="toolbarPrimary"
+                  size="toolbar"
                   onClick={handleOpenCreateModal}
                   className="bg-orange-500 hover:bg-orange-600 text-white border-none shadow-md shadow-orange-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
                 >
@@ -481,7 +484,7 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="repair-teknisi">Teknisi / Pihak Perbaikan</Label>
                       <Input

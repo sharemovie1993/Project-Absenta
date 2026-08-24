@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
@@ -11,10 +12,16 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
+import { formatDate } from '../../utils/layoutUtils';
 
 import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
+
+const announcementSchema = z.object({
+  title: z.string().min(1, 'Judul wajib diisi'),
+  content: z.string().min(1, 'Isi pengumuman wajib diisi'),
+});
 
 interface Announcement {
   id: string;
@@ -78,6 +85,11 @@ const Announcements: React.FC = React.memo(() => {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const parseResult = announcementSchema.safeParse({ title, content });
+    if (!parseResult.success) {
+      toast.error(parseResult.error.errors[0]?.message || 'Data pengumuman tidak valid');
+      return;
+    }
     await createAnnouncementMutation.mutateAsync({ title, content });
   }, [title, content, createAnnouncementMutation]);
 
@@ -135,7 +147,7 @@ const Announcements: React.FC = React.memo(() => {
       label: 'Tanggal',
       sortable: true,
       render: (_val: unknown, row: Announcement) => (
-        <span className="text-xs text-slate-500">{new Date(row.createdAt).toLocaleDateString('id-ID')}</span>
+        <span className="text-xs text-slate-500">{formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
       )
     },
     ...(canDelete ? [{
@@ -239,6 +251,7 @@ const Announcements: React.FC = React.memo(() => {
                   onPageChange: setCurrentPage,
                   totalItems: announcements.length,
                   itemsPerPage: pageLimit,
+                  onLimitChange: setPageLimit,
                   onItemsPerPageChange: setPageLimit
                 }}
               />

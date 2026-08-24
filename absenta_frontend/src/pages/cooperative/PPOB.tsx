@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
@@ -12,6 +13,12 @@ import useConfirm from '../../hooks/useConfirm';
 
 // Lazy load komponen berat
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
+
+const ppobPurchaseSchema = z.object({
+  productId: z.string().min(1, 'Produk wajib dipilih'),
+  customerNo: z.string().min(4, 'Nomor tujuan / ID pelanggan minimal 4 karakter').max(50),
+  amount: z.number().positive('Nominal pembayaran tidak valid'),
+});
 
 interface PPOBProduct {
   id: string;
@@ -34,7 +41,7 @@ interface CategoryButtonProps {
 const CategoryButton: React.FC<CategoryButtonProps> = ({ type, icon: Icon, label, colorClass, selectedType, onSelect }) => (
   <button
     onClick={() => onSelect(type)}
-    className={`p-4 rounded-xl flex flex-col items-center justify-center space-y-2 border transition-all w-full ${
+    className={`p-4 rounded-xl flex flex-col items-center justify-center space-y-2 border transition-all w-full min-w-0 ${
       selectedType === type
       ? `${colorClass} border-current ring-2 ring-offset-2 ring-current ring-opacity-50`
       : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-600'
@@ -42,7 +49,7 @@ const CategoryButton: React.FC<CategoryButtonProps> = ({ type, icon: Icon, label
     aria-label={`Pilih kategori ${label}`}
   >
     <Icon size={32} />
-    <span className="font-medium">{label}</span>
+    <span className="font-medium truncate max-w-full">{label}</span>
   </button>
 );
 
@@ -101,6 +108,16 @@ const PPOB: React.FC = React.memo(() => {
 
   const handlePurchase = useCallback(async () => {
     if (!selectedProduct || isLocked) return;
+    const parsed = ppobPurchaseSchema.safeParse({
+      productId: selectedProduct.id,
+      customerNo,
+      amount: selectedProduct.price
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data transaksi tidak valid');
+      return;
+    }
+
     const ok = await confirm({
       title: 'Konfirmasi Pembelian',
       description: `Beli ${selectedProduct.name} seharga Rp ${Number(selectedProduct.price).toLocaleString('id-ID')}?`,
@@ -110,9 +127,9 @@ const PPOB: React.FC = React.memo(() => {
     if (!ok) return;
 
     await purchaseMutation.mutateAsync({
-      productId: selectedProduct.id,
-      customerNo,
-      amount: selectedProduct.price
+      productId: parsed.data.productId,
+      customerNo: parsed.data.customerNo,
+      amount: parsed.data.amount
     });
   }, [selectedProduct, isLocked, confirm, customerNo, purchaseMutation]);
 
@@ -150,7 +167,7 @@ const PPOB: React.FC = React.memo(() => {
           <h2 className="text-2xl font-bold text-gray-800">PPOB & Pembayaran</h2>
 
           {/* Categories */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <CategoryButton type="PULSA" icon={Smartphone} label="Pulsa & Data" colorClass="bg-blue-50 text-blue-700 border-blue-500" selectedType={selectedType} onSelect={handleTypeSelect} />
             <CategoryButton type="PLN" icon={Zap} label="Token Listrik" colorClass="bg-yellow-50 text-yellow-700 border-yellow-500" selectedType={selectedType} onSelect={handleTypeSelect} />
             <CategoryButton type="DATA" icon={Wifi} label="Internet" colorClass="bg-green-50 text-green-700 border-green-500" selectedType={selectedType} onSelect={handleTypeSelect} />
@@ -166,7 +183,7 @@ const PPOB: React.FC = React.memo(() => {
                 ) : filteredProducts.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Tidak ada produk tersedia untuk kategori ini.</div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
                         {(filteredProducts ?? []).map(p => (
                             <button
                                 key={p.id}

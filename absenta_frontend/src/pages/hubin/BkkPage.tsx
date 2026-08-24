@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, lazy, Suspense } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SectionCard } from '../../components/ui';
+import { SectionCard, Loader } from '../../components/ui';
 import { Briefcase } from 'lucide-react';
-import { BkkSection } from './components/BkkSection';
+
+const BkkSection = lazy(() => import('@/components/hubin/bkk/BkkSection').then(m => ({ default: m.BkkSection })));
 
 export const BkkPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
@@ -44,12 +45,15 @@ export const BkkPage: React.FC = React.memo(() => {
         hardeningModuleKey="hubin_bkk"
         instruction={{
           title: "Panduan Bursa Kerja Khusus (BKK)",
+          description: "Panduan dan pengelolaan bursa kerja khusus dan lowongan pekerjaan alumni.",
           items: instructions
         }}
         breadcrumbs={breadcrumbs}
       >
-        <SectionCard icon={Briefcase} title="Bursa Kerja Khusus" fullWidth>
-          <BkkSection />
+        <SectionCard icon={Briefcase} title="Bursa Kerja Khusus" fullWidth className="flex flex-col w-full min-w-0">
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader size="lg" /></div>}>
+            <BkkSection />
+          </Suspense>
         </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
@@ -57,3 +61,4 @@ export const BkkPage: React.FC = React.memo(() => {
 });
 
 export default BkkPage;
+

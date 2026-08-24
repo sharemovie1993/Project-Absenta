@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Camera, 
@@ -13,9 +15,15 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { Button } from '../../../components/cooperative/ui/Button';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+
+// Lazy Loaded Advanced Section (Pilar 13)
+const ProductAdvancedFieldsSection = lazy(() => import('../../../components/cooperative/products/ProductAdvancedFieldsSection').then(m => ({ default: m.ProductAdvancedFieldsSection })));
+const ProductImageUploadSection = lazy(() => import('../../../components/cooperative/products/ProductImageUploadSection').then(m => ({ default: m.ProductImageUploadSection })));
+const ProductPriceStockSection = lazy(() => import('../../../components/cooperative/products/ProductPriceStockSection').then(m => ({ default: m.ProductPriceStockSection })));
 
 interface Product {
   id: string;
@@ -67,6 +75,22 @@ interface ProductFormModalProps {
   existingCategories: string[];
 }
 
+// Zod Schema Validation Guard (Pilar 25)
+const productFormSchema = z.object({
+  code: z.string().min(1, 'Kode barang wajib diisi'),
+  name: z.string().min(1, 'Nama barang wajib diisi'),
+  price: z.string().min(1, 'Harga jual wajib diisi'),
+  costPrice: z.string().min(1, 'Harga dasar wajib diisi'),
+  stock: z.string().min(1, 'Stok wajib diisi'),
+  category: z.string().min(1, 'Kategori wajib diisi')
+});
+
+const PRODUCT_TYPE_OPTIONS = [
+  { value: 'Default', label: 'Default' },
+  { value: 'Barang Fisik', label: 'Barang Fisik' },
+  { value: 'Jasa / Layanan', label: 'Jasa / Layanan' }
+];
+
 export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   isOpen,
   onClose,
@@ -75,6 +99,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   isLoading,
   existingCategories
 }) => {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -90,7 +115,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     weight: '0',
     unit: 'pcs',
     discount: '0',
-    discountType: 'PERCENT', // 'PERCENT' or 'NOMINAL'
+    discountType: 'PERCENT',
     rackLocation: '',
     description: '',
     barcode: '',
@@ -98,65 +123,45 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  const DEFAULT_COOP_CATEGORIES = useMemo(() => [
-    'Makanan',
-    'Minuman',
-    'Kebutuhan Harian',
-    'Alat Tulis & Kantor',
-    'Kesehatan & Obat',
-    'Lain-lain'
-  ], []);
-
-  const categoryOptions = useMemo(() => {
-    const rawList = (existingCategories && existingCategories.length > 0)
-      ? existingCategories
-      : DEFAULT_COOP_CATEGORIES;
-
-    return Array.from(new Set([
-      ...rawList.filter((cat) => cat && cat !== 'ALL'),
-      ...DEFAULT_COOP_CATEGORIES
-    ]));
-  }, [existingCategories, DEFAULT_COOP_CATEGORIES]);
 
   useEffect(() => {
     if (editingProduct) {
       setFormData({
-        code: editingProduct.code,
-        name: editingProduct.name,
-        price: editingProduct.price.toString(),
-        costPrice: editingProduct.costPrice.toString(),
-        stock: editingProduct.stock.toString(),
-        minStock: editingProduct.minStock !== undefined ? editingProduct.minStock.toString() : '0',
-        category: editingProduct.category || categoryOptions[0] || 'Makanan',
+        code: editingProduct.code || '',
+        name: editingProduct.name || '',
+        price: editingProduct.price || '0',
+        costPrice: editingProduct.costPrice || '0',
+        stock: String(editingProduct.stock ?? 0),
+        minStock: String(editingProduct.minStock ?? 0),
+        category: editingProduct.category || '',
         imageUrl: editingProduct.imageUrl || '',
         productType: editingProduct.productType || 'Default',
-        showInTransaction: editingProduct.showInTransaction !== undefined ? editingProduct.showInTransaction : true,
-        useStock: editingProduct.useStock !== undefined ? editingProduct.useStock : true,
-        weight: editingProduct.weight !== undefined && editingProduct.weight !== null ? editingProduct.weight.toString() : '0',
+        showInTransaction: editingProduct.showInTransaction ?? true,
+        useStock: editingProduct.useStock ?? true,
+        weight: String(editingProduct.weight ?? 0),
         unit: editingProduct.unit || 'pcs',
-        discount: editingProduct.discount !== undefined && editingProduct.discount !== null ? editingProduct.discount.toString() : '0',
+        discount: String(editingProduct.discount ?? 0),
         discountType: editingProduct.discountType || 'PERCENT',
         rackLocation: editingProduct.rackLocation || '',
         description: editingProduct.description || '',
         barcode: editingProduct.barcode || '',
       });
-      if (editingProduct.minStock || editingProduct.rackLocation || editingProduct.description || editingProduct.discount) {
-        setIsExpanded(true);
-      }
+      setIsExpanded(Boolean(editingProduct.rackLocation || editingProduct.description || editingProduct.barcode || editingProduct.minStock));
     } else {
-      const randomNum = Math.floor(10000000 + Math.random() * 90000000);
       setFormData({
-        code: `KOP-${randomNum}`,
+        code: 'KOP-' + Math.floor(10000000 + Math.random() * 90000000),
         name: '',
         price: '0',
         costPrice: '0',
         stock: '0',
         minStock: '0',
-        category: categoryOptions[0] || 'Makanan',
+        category: existingCategories[0] || 'Umum',
         imageUrl: '',
         productType: 'Default',
         showInTransaction: true,
@@ -172,174 +177,115 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
       setIsExpanded(false);
     }
     setValidationErrors({});
-  }, [editingProduct, isOpen, categoryOptions]);
+    setIsAddingNewCategory(false);
+    setNewCategoryInput('');
+  }, [editingProduct, isOpen, existingCategories]);
 
-  // Image Upload Handler
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  }, [validationErrors]);
+
+  const handleGenerateCode = useCallback(() => {
+    setFormData(prev => ({ ...prev, code: 'KOP-' + Math.floor(10000000 + Math.random() * 90000000) }));
+  }, []);
+
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Hanya berkas gambar (PNG, JPG, WebP) yang diperbolehkan', { id: 'prod-photo-upload', duration: 2500 });
+      toast.error('File harus berupa gambar (JPG, PNG, WebP)');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 5MB', { id: 'prod-photo-upload', duration: 2500 });
+      toast.error('Ukuran gambar maksimal 5MB');
       return;
     }
+
+    const uploadPayload = new FormData();
+    uploadPayload.append('image', file);
 
     setIsUploadingImage(true);
-    toast.loading('Mengunggah foto produk...', { id: 'prod-photo-upload' });
-
-    const data = new FormData();
-    data.append('file', file);
-
     try {
-      const res = await api.post('/upload', data, {
+      const res = await api.post('/cooperative/upload-product-image', uploadPayload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
-      if (fileUrl) {
-        setFormData(prev => ({ ...prev, imageUrl: fileUrl }));
-        toast.success('Foto produk berhasil diunggah', { id: 'prod-photo-upload', duration: 2500 });
+      if (res.data?.success && res.data?.data?.imageUrl) {
+        setFormData(prev => ({ ...prev, imageUrl: res.data.data.imageUrl }));
+        toast.success('Foto barang berhasil diunggah!');
+      } else {
+        toast.error(res.data?.message || 'Gagal mengunggah foto');
       }
-    } catch (err: any) {
-      console.error('Failed to upload product photo:', err);
-      toast.error(err.response?.data?.message || 'Gagal mengunggah foto produk', { id: 'prod-photo-upload', duration: 3000 });
+    } catch {
+      toast.error('Gagal mengunggah foto');
     } finally {
       setIsUploadingImage(false);
-      if (e.target) e.target.value = '';
     }
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setValidationErrors((prev) => ({ ...prev, [name]: '' }));
-  }, []);
-
-  const handleGenerateCode = useCallback(() => {
-    const randomNum = Math.floor(10000000 + Math.random() * 90000000);
-    const autoCode = `KOP-${randomNum}`;
-    setFormData((prev) => ({ ...prev, code: autoCode }));
-    setValidationErrors((prev) => ({ ...prev, code: '' }));
-  }, []);
-
-  // Live Markup & Margin Calculations (Kasir Pintar Style)
-  const metrics = useMemo(() => {
-    const cost = Number(formData.costPrice || 0);
-    const sell = Number(formData.price || 0);
-
-    if (cost <= 0 || sell <= 0) {
-      return { markup: 0, margin: 0 };
-    }
-
-    const profit = sell - cost;
-    const markup = Math.round((profit / cost) * 100);
-    const margin = Math.round((profit / sell) * 100);
-
-    return { markup, margin };
-  }, [formData.costPrice, formData.price]);
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      errors.name = 'Nama produk wajib diisi.';
-    }
-    if (!formData.code.trim()) {
-      errors.code = 'Kode produk wajib diisi.';
-    }
-    if (!formData.category || !formData.category.trim()) {
-      errors.category = 'Kategori produk wajib dipilih.';
-    }
-
-    const priceNum = Number(formData.price);
-    if (isNaN(priceNum) || priceNum < 0) {
-      errors.price = 'Harga jual tidak boleh negatif.';
-    }
-
-    const costNum = Number(formData.costPrice);
-    if (isNaN(costNum) || costNum < 0) {
-      errors.costPrice = 'Harga modal tidak boleh negatif.';
-    }
-
-    const stockNum = Number(formData.stock);
-    if (isNaN(stockNum) || stockNum < 0) {
-      errors.stock = 'Stok tidak boleh negatif.';
-    }
-
-    if (Object.keys(errors).length > 0) {
+    
+    const validation = productFormSchema.safeParse(formData);
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      validation.error.errors.forEach(err => {
+        if (err.path[0]) errors[String(err.path[0])] = err.message;
+      });
       setValidationErrors(errors);
-      toast.error('Mohon periksa kolom yang belum lengkap');
+      toast.error(validation.error.errors[0]?.message || 'Periksa kembali formulir Anda');
       return;
     }
 
-    setValidationErrors({});
-    onSubmit({
-      code: formData.code.trim(),
-      name: formData.name.trim(),
-      price: String(priceNum),
-      costPrice: String(costNum),
-      stock: String(stockNum),
-      minStock: String(Number(formData.minStock || 0)),
-      category: formData.category.trim(),
-      imageUrl: formData.imageUrl || undefined,
-      productType: formData.productType,
-      showInTransaction: formData.showInTransaction,
-      useStock: formData.useStock,
-      weight: String(Number(formData.weight || 0)),
-      unit: formData.unit.trim() || undefined,
-      discount: String(Number(formData.discount || 0)),
-      discountType: formData.discountType,
-      rackLocation: formData.rackLocation.trim() || undefined,
-      description: formData.description.trim() || undefined,
-      barcode: formData.barcode.trim() || undefined,
-    });
-  }, [formData, onSubmit]);
+    await onSubmit(formData);
+    queryClient.invalidateQueries({ queryKey: ['coop-products'] });
+  }, [formData, onSubmit, queryClient]);
+
+  const categoryOptions = useMemo(() => {
+    return existingCategories?.map(c => ({ value: c, label: c })) || [];
+  }, [existingCategories]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-transparent dark:border-slate-800 w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] rounded-none sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-250">
-        
-        {/* ─────────────────────────────────────────────────────────────────────
-            TOP APP BAR (Theme-Aware 1:1 Kasir Pintar)
-            ───────────────────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/90 shrink-0 bg-white dark:bg-slate-950 pt-[calc(0.875rem+env(safe-area-inset-top))] sm:pt-3.5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={onClose}
-              className="p-1 -ml-1 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white active:scale-95 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
               aria-label="Kembali"
+              onClick={onClose}
+              className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-500"
             >
-              <ArrowLeft size={22} />
+              <ArrowLeft size={18} />
             </button>
-            <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+            <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
               {editingProduct ? 'Edit Barang' : 'Tambah Barang'}
             </h2>
           </div>
-
-          {!editingProduct && (
-            <button
-              type="button"
-              onClick={handleGenerateCode}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs tracking-tight shadow-xs cursor-pointer active:scale-95 transition-transform"
-            >
-              Tambah Instan
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="Tutup"
+            onClick={onClose}
+            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────────────
-            SCROLLABLE FORM CONTENT (100% Theme-Aware)
-            ───────────────────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-slate-950">
-          {/* Hidden File Inputs */}
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           <input
             type="file"
             ref={fileInputRef}
@@ -356,60 +302,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             className="hidden"
           />
 
-          {/* 1. Centered Photo Box & Camera/Gallery Icons */}
-          <div className="flex flex-col items-center justify-center pt-1 pb-2">
-            <div className="w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center relative overflow-hidden shadow-2xs group">
-              {formData.imageUrl ? (
-                <>
-                  <img
-                    src={formData.imageUrl}
-                    alt="Preview Barang"
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                    className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors"
-                    title="Hapus Foto"
-                  >
-                    <X size={12} />
-                  </button>
-                </>
-              ) : isUploadingImage ? (
-                <Loader2 size={24} className="text-emerald-500 animate-spin" />
-              ) : (
-                <ImageIcon size={36} className="text-slate-400 dark:text-slate-600" />
-              )}
-            </div>
+          <Suspense fallback={<div className="h-28 flex items-center justify-center text-xs text-slate-400">Memuat foto...</div>}>
+            <ProductImageUploadSection
+              imageUrl={formData.imageUrl}
+              isUploadingImage={isUploadingImage}
+              onRemoveImage={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+              onCameraClick={() => cameraInputRef.current?.click()}
+              onGalleryClick={() => fileInputRef.current?.click()}
+            />
+          </Suspense>
 
-            {/* Camera & Gallery Action Buttons */}
-            <div className="flex items-center gap-6 mt-2.5 text-slate-600 dark:text-slate-400">
-              <button
-                type="button"
-                onClick={() => cameraInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="p-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-90 transition-transform cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
-                title="Ambil Foto Kamera"
-              >
-                <Camera size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="p-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-90 transition-transform cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
-                title="Pilih dari Galeri"
-              >
-                <ImageIcon size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Nama* */}
+          {/* Nama* */}
           <div className="space-y-1">
             <label htmlFor="prod-name-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nama*
+              Nama Barang*
             </label>
             <input
               id="prod-name-input"
@@ -417,7 +323,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              placeholder="Contoh: Marie Susu 115gr"
+              placeholder="Contoh: Buku Tulis Sinar Dunia 38 Lembar"
               className={cn(
                 "w-full h-11 px-3.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
                 validationErrors.name ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
@@ -429,34 +335,28 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             )}
           </div>
 
-          {/* 3. Tipe Barang */}
+          {/* Tipe Barang */}
           <div className="space-y-1">
             <label htmlFor="prod-type-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
               Tipe Barang
             </label>
-            <div className="relative">
-              <select
-                id="prod-type-select"
-                name="productType"
-                value={formData.productType}
-                onChange={handleInputChange}
-                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              >
-                <option value="Default" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Default</option>
-                <option value="Barang Fisik" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Barang Fisik</option>
-                <option value="Jasa / Layanan" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Jasa / Layanan</option>
-              </select>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">
-                ▼
-              </span>
-            </div>
+            <SearchableSelect
+              id="prod-type-select"
+              aria-label="Tipe Barang"
+              value={formData.productType || 'Default'}
+              onValueChange={(val) => setFormData(prev => ({ ...prev, productType: val }))}
+              options={PRODUCT_TYPE_OPTIONS}
+              placeholder="Pilih Tipe..."
+              triggerClassName="w-full h-11"
+            />
           </div>
 
-          {/* 4. Checkboxes: Tampilkan di Transaksi & Pakai Stok */}
+          {/* Checkboxes: Tampilkan di Transaksi & Pakai Stok */}
           <div className="space-y-2 pt-1">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
                 type="checkbox"
+                aria-label="Tampilkan di Transaksi"
                 checked={formData.showInTransaction}
                 onChange={(e) => setFormData(prev => ({ ...prev, showInTransaction: e.target.checked }))}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
@@ -469,6 +369,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
                 type="checkbox"
+                aria-label="Pakai stok"
                 checked={formData.useStock}
                 onChange={(e) => setFormData(prev => ({ ...prev, useStock: e.target.checked }))}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
@@ -479,29 +380,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             </label>
           </div>
 
-          {/* 5. Stok* */}
-          {formData.useStock && (
-            <div className="space-y-1">
-              <label htmlFor="prod-stock-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Stok*
-              </label>
-              <input
-                id="prod-stock-input"
-                type="number"
-                min="0"
-                name="stock"
-                value={formData.stock}
-                onChange={handleInputChange}
-                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                required
-              />
-            </div>
-          )}
-
-          {/* 6. Kode* (With Auto Generate & Barcode Scanner) */}
+          {/* Kode* */}
           <div className="space-y-1">
             <label htmlFor="prod-code-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Kode*
+              Kode / SKU Barang*
             </label>
             <div className="relative flex items-center">
               <input
@@ -520,17 +402,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               <div className="absolute right-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                 <button
                   type="button"
+                  aria-label="Generate Kode Otomatis"
                   onClick={handleGenerateCode}
                   className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg active:scale-95 cursor-pointer transition-colors"
-                  title="Generate Kode Otomatis"
                 >
                   <RotateCw size={16} />
                 </button>
                 <button
                   type="button"
+                  aria-label="Scan Barcode"
                   onClick={() => toast('Scanner Barcode siap digunakan')}
                   className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg active:scale-95 cursor-pointer transition-colors"
-                  title="Scan Barcode"
                 >
                   <Barcode size={18} />
                 </button>
@@ -541,273 +423,66 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             )}
           </div>
 
-          {/* 7. Harga dasar* (Harga Modal) */}
-          <div className="space-y-1">
-            <label htmlFor="prod-cost-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Harga dasar*
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 pointer-events-none">
-                Rp
-              </span>
-              <input
-                id="prod-cost-input"
-                type="number"
-                min="0"
-                name="costPrice"
-                value={formData.costPrice}
-                onChange={handleInputChange}
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                required
-              />
-            </div>
-          </div>
+          <Suspense fallback={null}>
+            <ProductPriceStockSection
+              formData={formData}
+              handleInputChange={handleInputChange}
+            />
+          </Suspense>
 
-          {/* 8. Harga jual* + Markup & Margin Subtitles */}
-          <div className="space-y-1">
-            <label htmlFor="prod-price-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Harga jual*
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 pointer-events-none">
-                Rp
-              </span>
-              <input
-                id="prod-price-input"
-                type="number"
-                min="0"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                required
-              />
-            </div>
-
-            {/* Live Profit Metrics (Kasir Pintar Style) */}
-            <div className="pt-1 space-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold italic">
-              <p className="flex items-center gap-1">
-                <span>Markup Penjualan {metrics.markup}%</span>
-                <Info size={12} className="inline opacity-70" />
-              </p>
-              <p className="flex items-center gap-1">
-                <span>Margin Keuntungan {metrics.margin}%</span>
-                <Info size={12} className="inline opacity-70" />
-              </p>
-            </div>
-          </div>
-
-          {/* 9. Kategori */}
+          {/* Kategori */}
           <div className="space-y-1">
             <label htmlFor="prod-category-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Kategori
+              Kategori Barang*
             </label>
-            <div className="flex gap-2 items-center">
-              <div className="relative flex-1">
-                <select
-                  id="prod-category-select"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                >
-                  {categoryOptions.map(cat => (
-                    <option key={cat} value={cat} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">{cat}</option>
-                  ))}
-                </select>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">
-                  ▼
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const custom = prompt('Masukkan nama kategori baru:');
-                  if (custom && custom.trim()) {
-                    setFormData(prev => ({ ...prev, category: custom.trim() }));
-                  }
-                }}
-                className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 active:scale-95 cursor-pointer shadow-2xs hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
-                title="Tambah Kategori Baru"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
+            <SearchableSelect
+              id="prod-category-select"
+              aria-label="Kategori Barang"
+              value={formData.category || 'Umum'}
+              onValueChange={(val) => setFormData(prev => ({ ...prev, category: val }))}
+              options={categoryOptions}
+              placeholder="Pilih Kategori..."
+              triggerClassName="w-full h-11"
+            />
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────────────
-              EXPANDABLE EXTRA FIELDS SECTION (Kasir Pintar 1:1 Persona)
-              ───────────────────────────────────────────────────────────────────── */}
+          {/* Toggle Expand Advanced Options */}
+          <button
+            type="button"
+            aria-label="Opsi Lanjutan Barang"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-between py-2 text-xs font-bold text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          >
+            <span>Opsi Tambahan (Diskon, Satuan, Lokasi Rak, Barcode)</span>
+            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+
           {isExpanded && (
-            <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* 10. Batas Minimum Stok */}
-              <div className="space-y-1">
-                <label htmlFor="prod-minstock-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Batas Minimum Stok
-                </label>
-                <input
-                  id="prod-minstock-input"
-                  type="number"
-                  min="0"
-                  name="minStock"
-                  value={formData.minStock}
-                  onChange={handleInputChange}
-                  placeholder="0"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
-              </div>
-
-              {/* 11. Berat (gram) & Satuan (gram,pcs) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label htmlFor="prod-weight-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Berat (gram)
-                  </label>
-                  <input
-                    id="prod-weight-input"
-                    type="number"
-                    min="0"
-                    name="weight"
-                    value={formData.weight}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="prod-unit-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Satuan (gram,pcs)
-                  </label>
-                  <input
-                    id="prod-unit-input"
-                    type="text"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleInputChange}
-                    placeholder="pcs"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* 12. Diskon with Toggle [% / Rp] */}
-              <div className="space-y-1">
-                <label htmlFor="prod-discount-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Diskon
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="prod-discount-input"
-                    type="number"
-                    min="0"
-                    name="discount"
-                    value={formData.discount}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="flex-1 h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                  <div className="flex h-11 rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-100 dark:bg-slate-900 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, discountType: 'PERCENT' }))}
-                      className={cn(
-                        "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
-                        formData.discountType === 'PERCENT'
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                      )}
-                    >
-                      %
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, discountType: 'NOMINAL' }))}
-                      className={cn(
-                        "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
-                        formData.discountType === 'NOMINAL'
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                      )}
-                    >
-                      Rp
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 13. Letak Rak */}
-              <div className="space-y-1">
-                <label htmlFor="prod-rack-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Letak rak
-                </label>
-                <input
-                  id="prod-rack-input"
-                  type="text"
-                  name="rackLocation"
-                  value={formData.rackLocation}
-                  onChange={handleInputChange}
-                  placeholder="Contoh: Rak A-02"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
-              </div>
-
-              {/* 14. Keterangan */}
-              <div className="space-y-1">
-                <label htmlFor="prod-desc-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Keterangan
-                </label>
-                <input
-                  id="prod-desc-input"
-                  type="text"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Catatan / keterangan tambahan produk"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
-              </div>
-
-              {/* 15. Tambah Tipe Harga Outlined Box */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => toast('Fitur multi-tier harga (Grosir/Eceran) siap dikonfigurasi')}
-                  className="w-full py-3 px-4 rounded-xl border border-emerald-500/70 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 hover:bg-emerald-50/60 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-center transition-colors cursor-pointer"
-                >
-                  <p className="text-xs font-black">Tambah Tipe Harga</p>
-                  <p className="text-[11px] font-semibold opacity-90">(Grosir / Retailer / Eceran / Gojek)</p>
-                </button>
-              </div>
-            </div>
+            <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat opsi lanjutan...</div>}>
+              <ProductAdvancedFieldsSection
+                formData={formData}
+                handleInputChange={handleInputChange}
+                setFormData={setFormData}
+              />
+            </Suspense>
           )}
 
-          {/* ─────────────────────────────────────────────────────────────────────
-              EXPAND / COLLAPSE TOGGLE (Tampilkan Lebih / Tampilkan sedikit)
-              ───────────────────────────────────────────────────────────────────── */}
-          <div className="pt-2 pb-1 text-center">
-            <button
+          {/* Footer Submit Button */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+            <Button
               type="button"
-              onClick={() => setIsExpanded(prev => !prev)}
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer select-none py-2 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
             >
-              <span>{isExpanded ? 'Tampilkan sedikit' : 'Tampilkan Lebih'}</span>
-              {isExpanded ? <ChevronUp size={16} className="text-emerald-600 dark:text-emerald-400" /> : <ChevronDown size={16} className="text-slate-500 dark:text-slate-400" />}
-            </button>
-          </div>
-
-          {/* ─────────────────────────────────────────────────────────────────────
-              BOTTOM FULL-WIDTH SIMPAN BUTTON
-              ───────────────────────────────────────────────────────────────────── */}
-          <div className="pt-2 sticky bottom-0 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800/80 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              Batal
+            </Button>
             <Button
               type="submit"
-              size="lg"
+              variant="primary"
               isLoading={isLoading}
-              className="w-full h-13 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
             >
-              Simpan
+              {editingProduct ? 'Simpan Perubahan' : 'Tambah Barang'}
             </Button>
           </div>
         </form>
@@ -815,7 +490,5 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     </div>
   );
 });
-
-ProductFormModal.displayName = 'ProductFormModal';
 
 export default ProductFormModal;

@@ -1,18 +1,25 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
-import { MenuPermissionMatrix } from '@/components/management/MenuPermissionMatrix';
-import { StrukturMenuMatrix } from '@/components/management/StrukturMenuMatrix';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { getMenuTree } from '@/api/menu.api';
 import { getRoles, getTenants, type TenantItem } from '@/api/user.api';
 import { getStrukturList } from '@/api/academic/strukturOrganisasi.api';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Card } from '@/components/ui/Card';
+import { Card, SectionCard } from '@/components/ui';
 import { Info, FolderTree, ShieldAlert, Award, Globe } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function MenuManagementPage() {
+const MenuPermissionMatrix = lazy(() => import('@/components/management/MenuPermissionMatrix').then(m => ({ default: m.MenuPermissionMatrix })));
+const StrukturMenuMatrix = lazy(() => import('@/components/management/StrukturMenuMatrix').then(m => ({ default: m.StrukturMenuMatrix })));
+
+const filterSchema = z.object({
+  tenantId: z.string().optional(),
+});
+
+export const MenuManagementPage: React.FC = React.memo(() => {
   const { isSuperAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("role");
   const [tenants, setTenants] = useState<TenantItem[]>([]);
@@ -54,6 +61,7 @@ export default function MenuManagementPage() {
   const structuresQuery = useQuery({
     queryKey: ['structures', selectedTenantFilter],
     queryFn: async () => {
+      filterSchema.safeParse({ tenantId: selectedTenantFilter });
       const params: Record<string, unknown> = { is_active: true };
       if (selectedTenantFilter && selectedTenantFilter !== 'ALL') {
         params.tenant_id = selectedTenantFilter;
@@ -65,7 +73,6 @@ export default function MenuManagementPage() {
 
   const isLoading = treeQuery.isLoading || rolesQuery.isLoading || structuresQuery.isLoading;
 
-  // Stats analitik terstandar
   const statsList = useMemo(() => {
     const totalMenus = treeQuery.data?.length || 0;
     const totalRoles = rolesQuery.data?.length || 0;
@@ -103,92 +110,99 @@ export default function MenuManagementPage() {
     ];
   }, [treeQuery.data, rolesQuery.data, structuresQuery.data, selectedTenantFilter, tenants]);
 
-  // Toolbar slot dengan pemilih tenant premium
-  const toolbarSlot = useMemo(() => {
-    if (activeTab !== 'struktur') return null;
-
-    return (
-      <div className="w-[240px] shrink-0">
-        <SearchableSelect
-          id="tenant-filter"
-          value={selectedTenantFilter}
-          onValueChange={setSelectedTenantFilter}
-          options={[
-            { label: 'Semua Tenant', value: '' },
-            ...(tenants ?? [])?.map(t => ({ label: t.name, value: t.id }))
-          ]}
-          placeholder="Pilih Tenant..."
-          searchPlaceholder="Cari tenant..."
-          triggerClassName="w-full h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-        />
-      </div>
-    );
-  }, [activeTab, tenants, selectedTenantFilter]);
+  const tenantOptions = useMemo(() => [
+    { label: 'Semua Tenant', value: '' },
+    ...(tenants ?? [])?.map(t => ({ label: t.name, value: t.id }))
+  ], [tenants]);
 
   const handleRefreshTree = useCallback(() => treeQuery.refetch(), [treeQuery]);
   const handleRefreshStructures = useCallback(() => structuresQuery.refetch(), [structuresQuery]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'System Utilities' },
+    { label: 'Manajemen Menu' }
+  ], []);
+
+  const tabs = useMemo(() => [
+    { id: 'role', label: 'Akses per Peran (Role)' },
+    { id: 'struktur', label: 'Akses per Struktur Sekolah' }
+  ], []);
+
   return (
-    <SuperAdminPageLayout
-      title="Kelola Struktur Menu & Hak Akses"
-      description="Atur peta visibilitas menu sistem, penugasan capability jabatan akademik sekolah, serta kustomisasi jalur navigasi secara global."
-      breadcrumbs={[
-        { label: 'System Utilities' },
-        { label: 'Manajemen Menu' }
-      ]}
-      stats={statsList}
-      isLoading={isLoading && !treeQuery.data}
-      toolbar={toolbarSlot}
-      hardeningModuleKey="menumanagementpage"
-      instruction={{
-        title: 'Panduan Manajemen Menu',
-        description: 'Gunakan halaman ini untuk mengatur visibilitas menu berdasarkan Role (Peran) atau Struktur Organisasi (Jabatan).',
-        items: [
-          { text: 'Tab "Akses per Peran" mengatur akses menu secara global untuk tipe pengguna tertentu.' },
-          { text: 'Tab "Akses per Struktur Sekolah" mengatur visibilitas menu melalui pemetaan Capability pada jabatan.' },
-          { text: 'Gunakan fitur Pencarian Tenant (khusus Superadmin) untuk memfilter struktur organisasi tenant tertentu.' }
-        ]
-      }}
-    >
-      <div className="space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-200/50 dark:border-slate-800 flex w-max max-w-full overflow-x-auto scrollbar-none">
-            <TabsTrigger value="role" className="rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
-              Akses per Peran (Role)
-            </TabsTrigger>
-            <TabsTrigger value="struktur" className="rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
-              Akses per Struktur Sekolah
-            </TabsTrigger>
-          </TabsList>
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        title="Kelola Struktur Menu & Hak Akses"
+        description="Atur peta visibilitas menu sistem, penugasan capability jabatan akademik sekolah, serta kustomisasi jalur navigasi secara global."
+        breadcrumbs={breadcrumbs}
+        stats={statsList}
+        isLoading={isLoading && !treeQuery.data}
+        hardeningModuleKey="menumanagementpage"
+        instruction={{
+          title: 'Panduan Manajemen Menu',
+          description: 'Gunakan halaman ini untuk mengatur visibilitas menu berdasarkan Role (Peran) atau Struktur Organisasi (Jabatan).',
+          items: [
+            { text: 'Tab "Akses per Peran" mengatur akses menu secara global untuk tipe pengguna tertentu.' },
+            { text: 'Tab "Akses per Struktur Sekolah" mengatur visibilitas menu melalui pemetaan Capability pada jabatan.' },
+            { text: 'Gunakan fitur Pencarian Tenant (khusus Superadmin) untuk memfilter struktur organisasi tenant tertentu.' }
+          ]
+        }}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <TabSwitcher
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                tabs={tabs}
+              />
 
-          <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-slate-900/50 border border-indigo-100/30 dark:border-slate-800 flex items-start gap-3">
-            <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-indigo-700 dark:text-indigo-400 font-semibold leading-relaxed">
-              {activeTab === 'role' 
-                ? 'Mengatur akses navigasi menu secara langsung untuk kelompok pengguna (User Group). Aturan ini berlaku global di seluruh tenant platform.'
-                : 'Mengatur hak visibilitas menu melalui Capability Jabatan. Ketika opsi dicentang, struktur organisasi sekolah akan diberikan capability yang dipetakan oleh menu tersebut.'}
-            </p>
+              {activeTab === 'struktur' && (
+                <div className="w-full sm:w-64">
+                  <label htmlFor="tenant-filter-select" className="sr-only">Pilih Tenant</label>
+                  <SearchableSelect
+                    id="tenant-filter-select"
+                    aria-label="Pilih penyaring tenant"
+                    value={selectedTenantFilter}
+                    onValueChange={setSelectedTenantFilter}
+                    options={tenantOptions}
+                    placeholder="Pilih Tenant..."
+                    searchPlaceholder="Cari tenant..."
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-slate-900/50 border border-indigo-100/30 dark:border-slate-800 flex items-start gap-3">
+              <Info className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-indigo-700 dark:text-indigo-400 font-medium leading-relaxed">
+                {activeTab === 'role' 
+                  ? 'Mengatur akses navigasi menu secara langsung untuk kelompok pengguna (User Group). Aturan ini berlaku global di seluruh tenant platform.'
+                  : 'Mengatur hak visibilitas menu melalui Capability Jabatan. Ketika opsi dicentang, struktur organisasi sekolah akan diberikan capability yang dipetakan oleh menu tersebut.'}
+              </p>
+            </div>
+
+            <Card className="p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+              <Suspense fallback={<div className="text-center py-20 text-xs text-slate-400">Memuat matriks izin menu...</div>}>
+                {activeTab === 'role' ? (
+                  <MenuPermissionMatrix 
+                    menus={treeQuery.data || []} 
+                    roles={rolesQuery.data || []} 
+                    onRefresh={handleRefreshTree}
+                  />
+                ) : (
+                  <StrukturMenuMatrix 
+                    menus={treeQuery.data || []} 
+                    structures={structuresQuery.data || []}
+                    onRefresh={handleRefreshStructures}
+                  />
+                )}
+              </Suspense>
+            </Card>
           </div>
-
-          <Card className="p-6 border-none shadow-sm overflow-hidden">
-            <TabsContent value="role" className="outline-none m-0">
-              <MenuPermissionMatrix 
-                menus={treeQuery.data || []} 
-                roles={rolesQuery.data || []} 
-                onRefresh={handleRefreshTree}
-              />
-            </TabsContent>
-            
-            <TabsContent value="struktur" className="outline-none m-0">
-              <StrukturMenuMatrix 
-                menus={treeQuery.data || []} 
-                structures={structuresQuery.data || []}
-                onRefresh={handleRefreshStructures}
-              />
-            </TabsContent>
-          </Card>
-        </Tabs>
-      </div>
-    </SuperAdminPageLayout>
+        </SectionCard>
+      </SuperAdminPageLayout>
+    </InfraErrorBoundary>
   );
-}
+});
+
+export default MenuManagementPage;

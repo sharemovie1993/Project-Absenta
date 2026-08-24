@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { hubinApi, type HubinLamaran, type HubinLamaranLog } from '../../../../api/hubin.api';
-import { Card } from '../../../../components/ui/Card';
-import { Button } from '../../../../components/ui/Button';
-import { Input } from '../../../../components/ui/Input';
-import { Loader } from '../../../../components/ui/Loader';
-import { Badge } from '../../../../components/ui/Badge';
+import { hubinApi, type HubinLamaran, type HubinLamaranLog } from '@/api/hubin.api';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Loader } from '@/components/ui/Loader';
+import { Badge } from '@/components/ui/Badge';
+import { formatDate } from '@/utils/layoutUtils';
 import {
   Calendar,
   X,
@@ -23,6 +24,18 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+const interviewSchema = z.object({
+  tanggal_interview: z.string().min(1, 'Tanggal & waktu interview wajib diisi'),
+  lokasi: z.string().max(255).optional(),
+  link_interview: z.string().url('Format URL tidak valid').or(z.literal('')).optional(),
+  pesan_pelamar: z.string().max(1000).optional(),
+  kontak_narahubung: z.string().max(100).optional(),
+});
+
+const rejectSchema = z.object({
+  catatan: z.string().min(1, 'Mohon pilih atau tulis alasan penolakan').max(500),
+});
 
 // ─── Status Config ───
 export const STATUS_CONFIG: Record<
@@ -79,16 +92,20 @@ export const InterviewModal: React.FC<{
   const [pesan, setPesan] = useState('');
   const [narahubung, setNarahubung] = useState('');
 
-  // Memoize empty check to satisfy usesMemo & useCallback scanner check (Pillar 3 & 20)
-  const noopCallback = useCallback(() => {}, []);
-  const noopMemo = useMemo(() => noopCallback, [noopCallback]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tanggal) { toast.error('Tanggal & waktu interview wajib diisi'); return; }
-    if (noopMemo) {
-      onConfirm({ tanggal_interview: tanggal, lokasi: lokasi || undefined, link_interview: link || undefined, pesan_pelamar: pesan || undefined, kontak_narahubung: narahubung || undefined });
+    const parsed = interviewSchema.safeParse({
+      tanggal_interview: tanggal,
+      lokasi: lokasi || undefined,
+      link_interview: link || undefined,
+      pesan_pelamar: pesan || undefined,
+      kontak_narahubung: narahubung || undefined,
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data interview tidak valid');
+      return;
     }
+    onConfirm(parsed.data);
   };
 
   if (!isOpen) return null;
@@ -213,9 +230,13 @@ export const RejectModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const catatan = custom || alasan;
-    if (!catatan.trim()) { toast.error('Mohon pilih atau tulis alasan penolakan'); return; }
-    onSubmit(catatan);
+    const catatanVal = custom || alasan;
+    const parsed = rejectSchema.safeParse({ catatan: catatanVal });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Mohon pilih atau tulis alasan penolakan');
+      return;
+    }
+    onConfirm(parsed.data.catatan);
   };
 
   return (
@@ -226,7 +247,6 @@ export const RejectModal: React.FC<{
             <div className="p-1.5 bg-white/20 rounded-lg"><XCircle size={16} className="text-white" /></div>
             <div>
               <h3 className="text-sm font-black text-white">Tolak Lamaran</h3>
-              <p className="text-[10px] text-rose-200">{lamaran.Siswa?.nama_siswa}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors" aria-label="Tutup"><X size={18} /></button>

@@ -19,6 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
+import { formatDate } from '../../utils/layoutUtils';
 import { TahunPelajaranSelect } from '../../components/common';
 import { useKospBuilderState } from '../../hooks/kurikulum/useKospBuilderState';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -121,7 +122,7 @@ export const KospBuilderPage: React.FC = React.memo(() => {
                 value={selectedTahunId}
                 onValueChange={setSelectedTahunId}
                 placeholder="Pilih Tahun..."
-                className="bg-transparent border-none text-xs font-black focus:ring-0 cursor-pointer min-w-[145px] [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
+                className="bg-transparent border-none text-xs font-black focus:ring-0 cursor-pointer min-w-[145px] max-w-full [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
               />
             </div>
 
@@ -223,7 +224,7 @@ export const KospBuilderPage: React.FC = React.memo(() => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {compiledPages.map((page, idx) => (
+            {compiledPages?.map((page, idx) => (
               <div 
                 key={page.label || `kosp-page-${idx}`}
                 onClick={() => handleOpenEditorAtPage(idx)}

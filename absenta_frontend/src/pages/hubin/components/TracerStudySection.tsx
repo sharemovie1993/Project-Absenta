@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { formatDate } from '../../../utils/layoutUtils';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { TracerFormSubfields } from './tracer/TracerFormSubfields';
@@ -324,7 +325,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
                           )}
                         </td>
                         <td className="py-3 px-3 text-right text-slate-400">
-                           {new Date(study.created_at || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                           {formatDate(study.created_at || '', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
                       </tr>
                     ))}

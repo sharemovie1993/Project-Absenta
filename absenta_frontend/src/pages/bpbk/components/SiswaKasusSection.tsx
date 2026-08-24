@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 import { getSiswaList, type Siswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
 import { getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
 import { Card } from '../../../components/ui/Card';
@@ -12,6 +13,13 @@ import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Search, Info, Plus } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { formatDate } from '../../../utils/layoutUtils';
+
+const siswaKasusFilterSchema = z.object({
+  search: z.string().optional(),
+  selectedKelas: z.string().optional(),
+  selectedStatus: z.string().optional()
+});
 
 interface SiswaKasusSectionProps {
   onViewSiswaDetail?: (siswaId: string) => void;
@@ -47,7 +55,10 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
   // ── useQuery: Siswa Roster List ──────────────────────────────────────────
   const { data: siswaRes, isLoading: loading } = useQuery({
     queryKey: siswaQueryKeys.list({ page, limit, search: debouncedSearch, kelas_id: selectedKelas, status: selectedStatus }),
-    queryFn: () => getSiswaList(page, limit, debouncedSearch, selectedKelas, selectedStatus),
+    queryFn: () => {
+      siswaKasusFilterSchema.safeParse({ search: debouncedSearch, selectedKelas, selectedStatus });
+      return getSiswaList(page, limit, debouncedSearch, selectedKelas, selectedStatus);
+    },
     staleTime: 5 * 60 * 1000,
   });
 
@@ -59,50 +70,63 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
       key: 'nama',
       label: 'Profil Siswa',
       sortable: true,
-      render: (_, item: any) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-400">
-            {item.nama_siswa?.charAt(0)}
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-400">
+              {row.nama_siswa?.charAt(0)}
+            </div>
+            <div>
+              <div className="font-bold text-slate-800 dark:text-white text-xs">{row.nama_siswa}</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{row.nis}</div>
+            </div>
           </div>
-          <div>
-            <div className="font-bold text-slate-800 dark:text-white text-xs">{item.nama_siswa}</div>
-            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.nis}</div>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'kelas',
       label: 'Kelas',
-      render: (_, item: any) => (
-        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-          {item.Kelas?.nama_kelas || '-'}
-        </span>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        return (
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+            {row.Kelas?.nama_kelas || '-'}
+          </span>
+        );
+      }
     },
     {
       key: 'poin_pelanggaran',
       label: 'Pelanggaran',
-      render: (_, item: any) => (
-        <span className="text-xs font-black text-rose-500">
-          +{item.poin_pelanggaran || 0} Poin
-        </span>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        return (
+          <span className="text-xs font-black text-rose-500">
+            +{row.poin_pelanggaran || 0} Poin
+          </span>
+        );
+      }
     },
     {
       key: 'poin_prestasi',
       label: 'Prestasi',
-      render: (_, item: any) => (
-        <span className="text-xs font-black text-emerald-500">
-          -{item.poin_prestasi || 0} Poin
-        </span>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        return (
+          <span className="text-xs font-black text-emerald-500">
+            -{row.poin_prestasi || 0} Poin
+          </span>
+        );
+      }
     },
     {
       key: 'net_poin',
       label: 'Net Poin',
-      render: (_, item: any) => {
-        const net = (item.poin_pelanggaran || 0) - (item.poin_prestasi || 0);
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        const net = (row.poin_pelanggaran || 0) - (row.poin_prestasi || 0);
         return (
           <Badge variant={net > 75 ? "error" : net > 30 ? "warning" : "success"} className="text-[10px] font-black uppercase">
             {net} Poin
@@ -113,19 +137,22 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
     {
       key: 'actions',
       label: 'Tindakan',
-      render: (_, item: any) => (
-        <div className="flex gap-2 justify-end">
-          <Button
-            variant="toolbarOutline"
-            size="toolbar"
-            onClick={() => onViewSiswaDetail?.(item.id)}
-            className="text-[10px] h-8 font-bold"
-          >
-            <Info className="w-3.5 h-3.5 mr-1" />
-            Detail & Linimasa
-          </Button>
-        </div>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as Siswa;
+        return (
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => onViewSiswaDetail?.(row.id)}
+              className="text-[10px] h-8 font-bold"
+            >
+              <Info className="w-3.5 h-3.5 mr-1" />
+              Detail & Linimasa
+            </Button>
+          </div>
+        );
+      }
     }
   ], [onViewSiswaDetail]);
 

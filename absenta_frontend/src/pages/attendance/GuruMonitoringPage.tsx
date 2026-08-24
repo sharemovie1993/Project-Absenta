@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 import { 
   SectionCard, 
   Badge, 
@@ -8,13 +9,14 @@ import {
   Button, 
   Alert, 
   AlertDescription,
-  Loader,
+  Loader, 
   Label 
 } from '../../components/ui';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
 import { kelasApi, guruApi } from '../../api/academic.api';
 import { toLocalDate } from '../../utils/attendance/time';
+import { formatDate } from '../../utils/layoutUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useSocket } from '../../hooks/useSocket';
 import { 
@@ -29,6 +31,12 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+
+const guruMonitoringFilterSchema = z.object({
+  tanggal: z.string().optional(),
+  selectedKelasId: z.string().optional(),
+  selectedGuruId: z.string().optional()
+});
 
 interface SessionSummary {
   HADIR?: number;
@@ -93,10 +101,8 @@ export default React.memo(function GuruMonitoringPage() {
       const rawData = res.data;
       const items = Array.isArray(rawData)
         ? rawData
-        : Array.isArray((rawData as any)?.data)
-        ? (rawData as any).data
-        : Array.isArray((res as any)?.items)
-        ? (res as any).items
+        : Array.isArray((rawData as { data?: SesiMonitoringData[] })?.data)
+        ? (rawData as { data: SesiMonitoringData[] }).data
         : [];
       return items as SesiMonitoringData[];
     },
@@ -106,15 +112,14 @@ export default React.memo(function GuruMonitoringPage() {
 
   const sessions = Array.isArray(sessionsQuery.data)
     ? sessionsQuery.data
-    : Array.isArray((sessionsQuery.data as any)?.data)
-    ? (sessionsQuery.data as any).data
     : [];
 
   const loading = sessionsQuery.isLoading;
 
   const fetchSessions = useCallback(async () => {
+    guruMonitoringFilterSchema.safeParse({ tanggal, selectedKelasId, selectedGuruId });
     await sessionsQuery.refetch();
-  }, [sessionsQuery]);
+  }, [sessionsQuery, tanggal, selectedKelasId, selectedGuruId]);
 
   useEffect(() => {
     if (!isConnected || isLocked) return;
@@ -183,7 +188,7 @@ export default React.memo(function GuruMonitoringPage() {
       title: "Update Status",
       value: "Live",
       icon: <Activity size={14} />,
-      gradient: "from-emerald-55 to-teal-600",
+      gradient: "from-emerald-500 to-teal-600",
       subtitle: isConnected ? "Terhubung ke Socket" : "Offline Reconnecting"
     }
   ], [sessions, isConnected]);
@@ -312,7 +317,7 @@ export default React.memo(function GuruMonitoringPage() {
             onValueChange={setSelectedKelasId}
             options={[{ value: '', label: 'Semua Kelas' }, ...kelasOptions]}
             placeholder="Cari Kelas..."
-            triggerClassName="h-12 rounded-xl font-bold bg-slate-50 dark:bg-slate-955 border-slate-100 dark:border-slate-800"
+            triggerClassName="h-12 rounded-xl font-bold bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
           />
         </div>
         <div className="flex gap-2">
@@ -328,7 +333,7 @@ export default React.memo(function GuruMonitoringPage() {
       </div>
 
       <SectionCard title="Live Monitoring Sesi" icon={Activity} fullWidth noPadding>
-        <div className="bg-white dark:bg-slate-955 overflow-hidden">
+        <div className="bg-white dark:bg-slate-950 overflow-hidden">
           <Table 
             columns={columns} 
             data={pagedSessions} 

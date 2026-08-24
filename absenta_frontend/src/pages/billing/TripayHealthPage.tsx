@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -96,22 +97,23 @@ const TripayHealthPage: React.FC = () => {
   // Toolbar slot dengan tombol refresh
   const toolbarSlot = useMemo(() => (
     <Button
-      variant="outline"
-      size="sm"
-      className="rounded-xl shrink-0 h-10 px-4 font-bold text-xs tracking-wider flex items-center gap-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-950"
+      variant="toolbarOutline"
+      size="toolbar"
+      className="rounded-xl shrink-0 font-bold text-xs tracking-wider flex items-center gap-2"
       onClick={refresh}
       disabled={loading}
     >
       <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
       Pengecekan Ulang
     </Button>
-  ), [loading]);
+  ), [loading, refresh]);
 
   return (
-    <SuperAdminPageLayout
-      title="Kesehatan Sistem Tripay (Tripay Health)"
-      description="Pantau latensi respon, validasi integritas saluran pembayaran merchant, serta daftarkan status integrasi API Tripay di Absenta.id."
-      hardeningModuleKey="tripay_health"
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        title="Kesehatan Sistem Tripay (Tripay Health)"
+        description="Pantau latensi respon, validasi integritas saluran pembayaran merchant, serta daftarkan status integrasi API Tripay di Absenta.id."
+        hardeningModuleKey="tripay_health"
       breadcrumbs={[
         { label: 'System Utilities' },
         { label: 'Kesehatan Tripay' }
@@ -243,7 +245,8 @@ const TripayHealthPage: React.FC = () => {
         )}
       </div>
     </SuperAdminPageLayout>
-  );
+  </InfraErrorBoundary>
+);
 };
 
 export default TripayHealthPage;

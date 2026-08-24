@@ -8,9 +8,9 @@ interface CaseFormModalProps {
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
   selectedId: string | null;
-  selectedSiswa: any;
-  setSelectedSiswa: (s: any) => void;
-  formData: any;
+  selectedSiswa: unknown;
+  setSelectedSiswa: (s: unknown) => void;
+  formData: unknown;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -44,7 +44,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
               <SmartStudentPicker
                 onSelect={(s) => {
                   setSelectedSiswa(s);
-                  setFormData((prev: any) => ({ ...prev, siswa_id: s.id }));
+                  setFormData((prev: unknown) => ({ ...prev, siswa_id: s.id }));
                 }}
                 mode="siswa"
                 placeholder="Ketik nama atau NIS siswa..."
@@ -58,7 +58,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
           <Input
             placeholder="Contoh: Sering Membolos di Jam Ke-5 atau Gangguan Kecemasan Belajar"
             value={formData.judul}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, judul: e.target.value }))}
+            onChange={(e) => setFormData((prev: unknown) => ({ ...prev, judul: e.target.value }))}
             className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
           />
         </div>
@@ -74,7 +74,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
                 { value: 'SOSIAL', label: 'Sosial' }
               ]}
               value={formData.kategori}
-              onValueChange={(val) => setFormData((prev: any) => ({ ...prev, kategori: val }))}
+              onValueChange={(val) => setFormData((prev: unknown) => ({ ...prev, kategori: val }))}
               className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
             />
           </div>
@@ -87,7 +87,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
                 { value: 'TINGGI', label: 'Tinggi (Darurat)' }
               ]}
               value={formData.prioritas}
-              onValueChange={(val) => setFormData((prev: any) => ({ ...prev, prioritas: val }))}
+              onValueChange={(val) => setFormData((prev: unknown) => ({ ...prev, prioritas: val }))}
               className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
             />
           </div>
@@ -104,7 +104,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
                 { value: 'SELESAI', label: 'Selesai' }
               ]}
               value={formData.status}
-              onValueChange={(val) => setFormData((prev: any) => ({ ...prev, status: val }))}
+              onValueChange={(val) => setFormData((prev: unknown) => ({ ...prev, status: val }))}
               className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
             />
           </div>
@@ -117,7 +117,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
                 { value: 'PUBLIC', label: 'Publik (Seluruh Guru)' }
               ]}
               value={formData.visibility}
-              onValueChange={(val) => setFormData((prev: any) => ({ ...prev, visibility: val }))}
+              onValueChange={(val) => setFormData((prev: unknown) => ({ ...prev, visibility: val }))}
               className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
             />
           </div>
@@ -126,7 +126,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
             <Input
               type="date"
               value={formData.tanggal_kasus}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, tanggal_kasus: e.target.value }))}
+              onChange={(e) => setFormData((prev: unknown) => ({ ...prev, tanggal_kasus: e.target.value }))}
               className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
             />
           </div>
@@ -139,7 +139,7 @@ export const CaseFormModal: React.FC<CaseFormModalProps> = React.memo(({
             rows={3}
             placeholder="Tuliskan latar belakang masalah, perilaku menyimpang yang diamati, atau aduan awal..."
             value={formData.keterangan}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, keterangan: e.target.value }))}
+            onChange={(e) => setFormData((prev: unknown) => ({ ...prev, keterangan: e.target.value }))}
             className="w-full text-xs p-3 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-400"
           />
         </div>

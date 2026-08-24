@@ -70,9 +70,9 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
   }, []);
 
   const tabOptions = useMemo(() => [
-    { id: 'general', label: 'Pengaturan Umum', icon: Sliders, colorClass: 'text-indigo-650 dark:text-indigo-400' },
-    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-650 dark:text-purple-400' },
-    { id: 'classes', label: 'Jadwal Kelas (Shift)', icon: Clock, colorClass: 'text-emerald-650 dark:text-emerald-400' }
+    { id: 'general', label: 'Pengaturan Umum', icon: Sliders, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-600 dark:text-purple-400' },
+    { id: 'classes', label: 'Jadwal Kelas (Shift)', icon: Clock, colorClass: 'text-emerald-600 dark:text-emerald-400' }
   ], []);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];

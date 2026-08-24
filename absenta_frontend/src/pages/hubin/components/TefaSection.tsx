@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { formatDate } from '../../../utils/layoutUtils';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { 
@@ -278,8 +279,8 @@ export const TefaSection: React.FC = React.memo(() => {
                     <td className="py-3.5 px-3 text-slate-500 text-[10px]">
                       {order.tanggal_mulai ? (
                         <span>
-                          {new Date(order.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          {order.tanggal_target ? ` - ${new Date(order.tanggal_target).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}
+                          {formatDate(order.tanggal_mulai, { day: '2-digit', month: 'short' })}
+                          {order.tanggal_target ? ` - ${formatDate(order.tanggal_target, { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
                         </span>
                       ) : (
                         <span className="text-slate-400">-</span>

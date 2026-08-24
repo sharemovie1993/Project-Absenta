@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
+import { formatDate } from '../../utils/layoutUtils';
 import { 
   Search, 
   MapPin, 
@@ -16,6 +18,11 @@ import {
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'react-hot-toast';
+
+const monitoringFilterSchema = z.object({
+  searchTerm: z.string().max(100).optional(),
+  filterClass: z.string().max(50).optional(),
+});
 
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -320,7 +327,12 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
               <Input
                 placeholder="Cari siswa atau nama perusahaan..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const parsed = monitoringFilterSchema.safeParse({ searchTerm: e.target.value });
+                  if (parsed.success) {
+                    setSearchTerm(e.target.value);
+                  }
+                }}
                 aria-label="Cari siswa atau nama perusahaan"
                 className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
               />
@@ -332,7 +344,12 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
                 <SearchableSelect
                   id="filterClassHideLayout"
                   value={filterClass}
-                  onValueChange={(val) => setFilterClass(val)}
+                  onValueChange={(val) => {
+                    const parsed = monitoringFilterSchema.safeParse({ filterClass: val });
+                    if (parsed.success) {
+                      setFilterClass(val);
+                    }
+                  }}
                   options={classOptions}
                   placeholder="Semua Kelas"
                   className="w-full md:w-44"

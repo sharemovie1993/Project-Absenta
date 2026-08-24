@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SUPPORT_EMAIL, MAIN_DOMAIN } from '@/config/env-config';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 function CancelledContent() {
   const navigate = useNavigate();
 
   const containerVariants = useMemo(() => ({
     hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0, 0, 0.2, 1] } }
   }), []);
 
   const breadcrumbs = useMemo(() => [

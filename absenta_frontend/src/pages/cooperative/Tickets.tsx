@@ -1,19 +1,26 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
-import { Button } from '../../components/cooperative/ui/Button';
-import { Input } from '../../components/cooperative/ui/Input';
-import { Select } from '../../components/cooperative/ui/Select';
-import { Plus, MessageSquare } from 'lucide-react';
+import { Button, Input, SearchableSelect, Table, SectionCard, Card } from '@/components/ui';
+import type { Column } from '@/components/ui/Table';
+import { Plus, MessageSquare, Eye } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '@/utils/layoutUtils';
 
-import { Table } from '../../components/ui/Table';
-import type { Column } from '../../components/ui/Table';
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
+
+// Zod Schema Validation Guard (Pilar 25)
+const ticketFormSchema = z.object({
+  subject: z.string().min(3, 'Subjek minimal 3 karakter'),
+  priority: z.string(),
+  message: z.string().min(5, 'Pesan tiket minimal 5 karakter'),
+});
 
 interface Ticket {
   id: string;
@@ -26,7 +33,7 @@ interface Ticket {
   _count: { messages: number };
 }
 
-const Tickets: React.FC = React.memo(() => {
+export const Tickets: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const location = useLocation();
@@ -40,7 +47,11 @@ const Tickets: React.FC = React.memo(() => {
     message: ''
   });
 
-  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
+  const features = useMemo(() => {
+    const sub = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
+    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
+  }, [subscription]);
+
   const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
   const ticketsQuery = useQuery({
@@ -56,10 +67,6 @@ const Tickets: React.FC = React.memo(() => {
   const tickets = ticketsQuery.data || [];
   const loading = ticketsQuery.isLoading;
 
-  const fetchTickets = useCallback(async () => {
-    await ticketsQuery.refetch();
-  }, [ticketsQuery]);
-
   const createTicketMutation = useMutation({
     mutationFn: async (payload: { subject: string; priority: string; message: string }) => {
       const res = await api.post('/cooperative/tickets', payload);
@@ -71,17 +78,19 @@ const Tickets: React.FC = React.memo(() => {
       setFormData({ subject: '', priority: 'MEDIUM', message: '' });
       queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
     },
-    onError: (error) => {
-      console.error('Failed to create ticket', error);
+    onError: () => {
       toast.error('Gagal membuat tiket');
     }
   });
 
-  const submitLoading = createTicketMutation.isPending;
-
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     if (isLocked) return;
     e.preventDefault();
+    const parsed = ticketFormSchema.safeParse(formData);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data tiket belum lengkap');
+      return;
+    }
     await createTicketMutation.mutateAsync(formData);
   }, [isLocked, formData, createTicketMutation]);
 
@@ -106,7 +115,7 @@ const Tickets: React.FC = React.memo(() => {
       label: 'Pengirim',
       sortable: true,
       render: (_val: unknown, row: Ticket) => (
-        <span className="text-xs text-slate-600 dark:text-slate-400">{row.member?.name ?? 'Unknown'}</span>
+        <span className="text-xs text-slate-600 dark:text-slate-400">{row.member?.name ?? 'Anggota'}</span>
       )
     },
     {
@@ -115,8 +124,8 @@ const Tickets: React.FC = React.memo(() => {
       sortable: true,
       render: (_val: unknown, row: Ticket) => (
         <span className={`text-xs font-bold ${
-          row.priority === 'HIGH' ? 'text-red-600' :
-          row.priority === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
+          row.priority === 'HIGH' ? 'text-rose-600' :
+          row.priority === 'MEDIUM' ? 'text-amber-600' : 'text-emerald-600'
         }`}>
           {row.priority}
         </span>
@@ -128,8 +137,8 @@ const Tickets: React.FC = React.memo(() => {
       sortable: true,
       render: (_val: unknown, row: Ticket) => (
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-          row.status === 'OPEN' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
-          row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+          row.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' :
+          row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
         }`}>
           {row.status.replace('_', ' ')}
         </span>
@@ -140,7 +149,9 @@ const Tickets: React.FC = React.memo(() => {
       label: 'Dibuat',
       sortable: true,
       render: (_val: unknown, row: Ticket) => (
-        <span className="text-xs text-slate-500">{new Date(row.createdAt).toLocaleDateString('id-ID')}</span>
+        <span className="text-xs text-slate-500">
+          {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
+        </span>
       )
     },
     {
@@ -148,127 +159,147 @@ const Tickets: React.FC = React.memo(() => {
       label: 'Aksi',
       render: (_val: unknown, row: Ticket) => (
         <Link to={`/cooperative/tickets/${row.id}`}>
-          <Button size="sm" variant="outline">Lihat Detail</Button>
+          <Button size="xs" variant="outline" className="flex items-center gap-1">
+            <Eye size={12} />
+            Lihat
+          </Button>
         </Link>
       )
     }
   ], []);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Koperasi', href: '/cooperative' },
-    { label: isManageRoute ? 'Kelola Tiket' : 'Tiket Bantuan' }
-  ], [isManageRoute]);
+    { label: 'Koperasi', path: '/cooperative/dashboard' },
+    { label: 'Tiket Bantuan' }
+  ], []);
 
   return (
     <PremiumFeatureGate
-      isLocked={isLocked}
       moduleName="KOPERASI"
-      featureName="Layanan Bantuan (Tiket)"
+      featureName="Layanan Bantuan & Tiket Koperasi"
+      description="Ajukan pertanyaan, klarifikasi transaksi simpan pinjam, dan kendala operasional koperasi secara terpadu."
     >
-      <AcademicPageLayout
-        title={isManageRoute ? "Kelola Keluhan Koperasi" : "Aduan & Keluhan Anggota"}
-        description={isManageRoute ? "Kelola tiket aduan dan pertanyaan dari anggota koperasi" : "Sampaikan keluhan dan pertanyaan Anda kepada pengurus koperasi"}
-        hardeningModuleKey="coop_tickets"
-        breadcrumbs={breadcrumbs}
-        instruction={{
-          title: 'Panduan Sistem Tiket',
-          description: 'Sistem tiket digunakan untuk menangani pengaduan dan pertanyaan anggota koperasi secara terstruktur.',
-          items: [
-            { text: 'Klik "Buat Tiket Baru" untuk mengajukan aduan atau pertanyaan kepada pengurus.' },
-            { text: 'Atur prioritas tiket: LOW untuk tidak mendesak, MEDIUM untuk biasa, HIGH untuk sangat mendesak.' },
-            { text: 'Pantau status tiket: OPEN (menunggu), IN_PROGRESS (diproses), CLOSED (selesai).' }
-          ]
-        }}
-      >
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                <MessageSquare className="mr-2" /> {isManageRoute ? "Kelola Tiket Bantuan" : "Aduan & Keluhan"}
-            </h2>
-            {!isManageRoute && (
-              <Button onClick={() => setShowModal(true)} icon={<Plus size={18} />}>
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Tiket Bantuan Koperasi"
+          description="Pusat layanan komunikasi keluhan, klarifikasi simpanan, dan pengajuan bantuan anggota."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="coop_tickets"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
                 Buat Tiket Baru
               </Button>
-            )}
-          </div>
+            </div>
+          }
+          instruction={{
+            title: "Panduan Tiket Bantuan",
+            description: "Gunakan modul ini untuk menyampaikan pertanyaan atau keluhan terkait operasional koperasi.",
+            items: [
+              { text: "Klik tombol Buat Tiket Baru untuk memulai pertanyaan atau permintaan bantuan." },
+              { text: "Pantau status tiket mulai dari OPEN, IN_PROGRESS, hingga CLOSED." },
+              { text: "Klik tombol Lihat pada baris untuk membuka riwayat obrolan lengkap." }
+            ]
+          }}
+        >
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <Table
+                columns={columns}
+                data={paginatedTickets}
+                isLoading={loading}
+                emptyMessage="Belum ada tiket bantuan yang diajukan."
+                pagination={{
+                  currentPage,
+                  totalPages,
+                  totalItems: tickets.length,
+                  itemsPerPage: pageLimit,
+                  onPageChange: setCurrentPage,
+                  onLimitChange: (limit) => {
+                    setPageLimit(limit);
+                    setCurrentPage(1);
+                  },
+                }}
+              />
+            </div>
+          </SectionCard>
+        </AcademicPageLayout>
 
-          <Table
-            data={paginatedTickets}
-            columns={columns}
-            loading={loading}
-            emptyMessage="Belum ada tiket bantuan."
-            pagination={{
-              currentPage,
-              totalPages,
-              onPageChange: setCurrentPage,
-              totalItems: tickets.length,
-              itemsPerPage: pageLimit,
-              onItemsPerPageChange: setPageLimit
-            }}
-          />
-
-          <Suspense fallback={null}>
+        {/* Create Ticket Modal */}
+        <Suspense fallback={null}>
+          {showModal && (
             <Modal
               isOpen={showModal}
               onClose={() => setShowModal(false)}
               title="Buat Tiket Bantuan Baru"
             >
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  label="Subjek / Judul Masalah"
-                  id="ticket-subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                  required
-                  placeholder="Contoh: Tidak bisa login"
-                />
-
-                <Select
-                  label="Prioritas"
-                  id="ticket-priority"
-                  value={formData.priority}
-                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                  options={[
-                      { value: 'LOW', label: 'Low - Tidak Mendesak' },
-                      { value: 'MEDIUM', label: 'Medium - Biasa' },
-                      { value: 'HIGH', label: 'High - Sangat Mendesak' },
-                  ]}
-                />
-
+              <form onSubmit={handleSubmit} className="space-y-4 py-2 text-xs">
                 <div>
-                  <label htmlFor="ticket-message" className="block text-sm font-medium text-gray-700 mb-1">Pesan / Detail Masalah</label>
-                  <textarea
-                    id="ticket-message"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    rows={4}
-                    value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                  <label htmlFor="ticket-subject" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Subjek Tiket <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    id="ticket-subject"
+                    aria-label="Subjek tiket"
+                    placeholder="Contoh: Klarifikasi pemotongan saldo simpanan"
+                    value={formData.subject}
+                    onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                    className="rounded-xl"
                     required
-                    placeholder="Jelaskan masalah anda secara detail..."
-                    aria-label="Detail masalah pada tiket"
-                  ></textarea>
+                  />
                 </div>
 
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowModal(false)}
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="submit"
-                    isLoading={submitLoading}
-                  >
-                    Kirim Tiket
+                <div>
+                  <label htmlFor="ticket-priority" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Tingkat Prioritas
+                  </label>
+                  <SearchableSelect
+                    id="ticket-priority"
+                    aria-label="Pilih prioritas tiket"
+                    value={formData.priority}
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, priority: val }))}
+                    options={[
+                      { value: 'LOW', label: 'Rendah (Low)' },
+                      { value: 'MEDIUM', label: 'Sedang (Medium)' },
+                      { value: 'HIGH', label: 'Tinggi (High)' },
+                    ]}
+                    placeholder="Pilih Prioritas"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="ticket-message" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Rincian Pesan / Keluhan <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    id="ticket-message"
+                    aria-label="Rincian pesan atau keluhan"
+                    placeholder="Jelaskan detail permasalahan Anda secara lengkap..."
+                    value={formData.message}
+                    onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                    rows={4}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs resize-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Batal</Button>
+                  <Button type="submit" variant="primary" disabled={createTicketMutation.isPending}>
+                    {createTicketMutation.isPending ? 'Mengirim...' : 'Kirim Tiket'}
                   </Button>
                 </div>
               </form>
             </Modal>
-          </Suspense>
-        </div>
-      </AcademicPageLayout>
+          )}
+        </Suspense>
+      </InfraErrorBoundary>
     </PremiumFeatureGate>
   );
 });

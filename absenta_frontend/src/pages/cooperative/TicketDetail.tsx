@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Send, ArrowLeft, User } from 'lucide-react';
-import { Button } from '../../components/cooperative/ui/Button';
-import { Card } from '../../components/cooperative/ui/Card';
-import { Select } from '../../components/cooperative/ui/Select';
+import { Button, Card, SearchableSelect, Input, SectionCard } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '@/utils/layoutUtils';
+
+const replySchema = z.object({
+  reply: z.string().min(1, 'Pesan balasan tidak boleh kosong'),
+});
 
 interface Message {
   id: string;
@@ -29,14 +34,18 @@ interface TicketDetailData {
   createdAt: string;
 }
 
-const TicketDetail: React.FC = React.memo(() => {
+export const TicketDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { subscription, user } = useAuthStore();
+  const { subscription } = useAuthStore();
   const { id } = useParams<{ id: string }>();
-
-  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
   const navigate = useNavigate();
+
+  const features = useMemo(() => {
+    const sub = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
+    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
+  }, [subscription]);
+
+  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
   const { isKoperasi, isAdmin, can } = useCapabilities();
   const hasListPermission = useMemo(() => isAdmin || isKoperasi || can('cooperative.tickets.view.list'), [isAdmin, isKoperasi, can]);
   const [reply, setReply] = useState('');
@@ -47,16 +56,12 @@ const TicketDetail: React.FC = React.memo(() => {
       const response = await api.get(`/cooperative/tickets/${id}`);
       return (response.data.data ?? null) as TicketDetailData;
     },
-    enabled: !!id,
+    enabled: !isLocked && !!id,
     staleTime: 5 * 60 * 1000,
   });
 
   const ticket = ticketQuery.data || null;
   const loading = ticketQuery.isLoading;
-
-  const fetchTicket = useCallback(async () => {
-    await ticketQuery.refetch();
-  }, [ticketQuery]);
 
   const replyMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -71,21 +76,12 @@ const TicketDetail: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
     },
-    onError: (error) => {
-      console.error('Failed to send reply', error);
+    onError: () => {
       toast.error('Gagal mengirim balasan');
     }
   });
 
-  const sending = replyMutation.isPending;
-
-  const handleReply = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reply.trim()) return;
-    await replyMutation.mutateAsync(reply);
-  }, [reply, replyMutation]);
-
-  const updateStatusMutation = useMutation({
+  const changeTicketStatusMutation = useMutation({
     mutationFn: async (status: string) => {
       const res = await api.patch(`/cooperative/tickets/${id}/status`, { status });
       return res.data;
@@ -95,136 +91,176 @@ const TicketDetail: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
     },
-    onError: (error) => {
-      console.error('Failed to update status', error);
+    onError: () => {
       toast.error('Gagal memperbarui status');
     }
   });
 
-  const handleStatusChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const status = e.target.value;
-    await updateStatusMutation.mutateAsync(status);
-  }, [updateStatusMutation]);
+  const handleReply = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = replySchema.safeParse({ reply });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Pesan balasan belum valid');
+      return;
+    }
+    await replyMutation.mutateAsync(reply);
+  }, [reply, replyMutation]);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Koperasi', href: '/cooperative' },
-    { label: 'Tiket Bantuan', href: '/cooperative/tickets' },
-    { label: ticket?.subject ?? 'Detail Tiket' }
+    { label: 'Koperasi', path: '/cooperative/dashboard' },
+    { label: 'Tiket Bantuan', path: '/cooperative/tickets' },
+    { label: ticket?.subject || 'Detail Tiket' }
   ], [ticket?.subject]);
 
-  const messages = useMemo(() => ticket?.messages ?? [], [ticket?.messages]);
+  const messages = useMemo(() => ticket?.messages || [], [ticket?.messages]);
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
-  if (!ticket) return <div className="p-8 text-center text-gray-500">Ticket not found</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent mb-2" />
+        <p className="text-xs text-slate-400">Memuat rincian tiket...</p>
+      </div>
+    );
+  }
+
+  if (!ticket) {
+    return (
+      <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+        Tiket tidak ditemukan atau telah dihapus.
+      </div>
+    );
+  }
 
   return (
     <PremiumFeatureGate
-      isLocked={isLocked}
       moduleName="KOPERASI"
       featureName="Detail Tiket Bantuan"
+      description="Percakapan dan status tiket layanan bantuan anggota koperasi sekolah."
     >
-      <AcademicPageLayout
-        title="Detail Tiket Bantuan"
-        description="Percakapan dan status tiket"
-        hardeningModuleKey="coop_ticket_detail"
-        breadcrumbs={breadcrumbs}
-        instruction={{
-          title: 'Panduan Detail Tiket',
-          description: 'Halaman ini menampilkan percakapan dan pengelolaan status tiket bantuan.',
-          items: [
-            { text: 'Ketik balasan di kolom bawah dan klik "Kirim" untuk membalas tiket.' },
-            { text: 'Admin dapat mengubah status tiket menjadi In Progress atau Closed setelah masalah terselesaikan.' },
-            { text: 'Tiket yang sudah Closed tidak dapat dibalas kembali.' }
-          ]
-        }}
-      >
-        <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col space-y-4">
-          <Card className="flex-none">
-            <div className="flex justify-between items-start">
-                <div className="flex items-center">
-                <Button variant="secondary" size="sm" onClick={() => navigate(-1)} className="mr-4 rounded-full w-10 h-10 p-0 flex items-center justify-center">
-                    <ArrowLeft size={20} />
-                </Button>
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800">{ticket.subject}</h2>
-                    <div className="flex items-center text-sm text-gray-500 mt-1">
-                        <User size={14} className="mr-1" />
-                        <span className="font-medium mr-2">{ticket.member?.name ?? 'Unknown'}</span>
-                        <span>• {new Date(ticket.createdAt).toLocaleString('id-ID')}</span>
-                    </div>
-                </div>
-                </div>
-                <div className="w-48">
-                    <Select
-                        label="Status"
-                        id="ticket-status-select"
-                        value={ticket.status}
-                        onChange={handleStatusChange}
-                        disabled={!hasListPermission}
-                        options={[
-                            { value: 'OPEN', label: 'Status: Open' },
-                            { value: 'IN_PROGRESS', label: 'Status: In Progress' },
-                            { value: 'CLOSED', label: 'Status: Closed' },
-                        ]}
-                    />
-                </div>
-            </div>
-          </Card>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-xl border border-gray-200">
-            {messages.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">Belum ada percakapan.</p>
-            ) : (
-                messages.map((msg) => (
-                <div
-                    key={msg.id}
-                    className={`flex ${msg.isStaff ? 'justify-end' : 'justify-start'}`}
-                >
-                    <div
-                    className={`max-w-[80%] rounded-xl px-4 py-3 shadow-sm ${
-                        msg.isStaff
-                        ? 'bg-blue-600 text-white rounded-tr-none'
-                        : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
-                    }`}
-                    >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    <p className={`text-[10px] mt-1 text-right ${msg.isStaff ? 'text-blue-200' : 'text-gray-400'}`}>
-                        {new Date(msg.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    </div>
-                </div>
-                ))
-            )}
-          </div>
-
-          <div className="flex-none bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <form onSubmit={handleReply} className="flex gap-2">
-              <label htmlFor="ticket-reply" className="sr-only">Tulis balasan tiket</label>
-              <input
-                id="ticket-reply"
-                type="text"
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Tulis balasan..."
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                disabled={ticket.status === 'CLOSED'}
-                aria-label="Kolom balasan tiket"
-              />
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Detail Tiket Bantuan Koperasi"
+          description="Pantau diskusi, klarifikasi keluhan, dan kelola status penyelesaian tiket anggota."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="coop_ticket_detail"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
               <Button
-                type="submit"
-                disabled={!reply.trim() || ticket.status === 'CLOSED' || sending}
-                isLoading={sending}
-                icon={<Send size={18} />}
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => navigate('/cooperative/tickets')}
+                className="flex items-center gap-1.5 font-bold rounded-xl"
               >
-                Kirim
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Kembali ke Daftar
               </Button>
-            </form>
-            {ticket.status === 'CLOSED' && (
-                <p className="text-center text-xs text-gray-500 mt-2">Tiket ini telah ditutup. Anda tidak dapat membalas lagi.</p>
-            )}
-          </div>
-        </div>
-      </AcademicPageLayout>
+            </div>
+          }
+          instruction={{
+            title: "Panduan Detail Tiket",
+            description: "Halaman ini menampilkan percakapan dan pengelolaan status tiket bantuan.",
+            items: [
+              { text: "Ketik balasan di kolom bawah dan klik Kirim untuk membalas percakapan." },
+              { text: "Ubah status tiket menjadi Selesai setelah masalah berhasil diselesaikan." },
+              { text: "Tiket dengan status Ditutup tidak dapat dibalas kembali." }
+            ]
+          }}
+        >
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="max-w-4xl mx-auto w-full space-y-4">
+              {/* Ticket Subject Card */}
+              <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {ticket.subject}
+                    </h3>
+                    <div className="flex items-center text-xs text-slate-400 gap-2 mt-1">
+                      <User size={14} className="text-slate-400" />
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{ticket.member?.name || 'Anggota'}</span>
+                      <span>• {formatDate(ticket.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+
+                  {hasListPermission && (
+                    <div className="w-48">
+                      <SearchableSelect
+                        id="ticket-status-select"
+                        aria-label="Pilih status tiket"
+                        value={ticket.status}
+                        onValueChange={(val) => changeTicketStatusMutation.mutate(val)}
+                        options={[
+                          { value: 'OPEN', label: 'Status: Open' },
+                          { value: 'IN_PROGRESS', label: 'Status: In Progress' },
+                          { value: 'CLOSED', label: 'Status: Closed' },
+                        ]}
+                        placeholder="Status Tiket"
+                      />
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Messages Discussion Box */}
+              <div className="min-h-[360px] max-h-[460px] overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+                {messages.length === 0 ? (
+                  <p className="text-center text-slate-400 text-xs py-12">Belum ada percakapan pada tiket ini.</p>
+                ) : (
+                  messages?.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.isStaff ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm text-xs ${
+                          msg.isStaff
+                            ? 'bg-emerald-600 text-white rounded-tr-none'
+                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                        <p className={`text-[10px] mt-1 text-right font-medium ${msg.isStaff ? 'text-emerald-100' : 'text-slate-400'}`}>
+                          {formatDate(msg.createdAt, { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Reply Box */}
+              <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+                <form onSubmit={handleReply} className="flex gap-2">
+                  <Input
+                    id="ticket-reply-input"
+                    aria-label="Tulis pesan balasan tiket"
+                    type="text"
+                    placeholder="Tulis pesan balasan..."
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    disabled={ticket.status === 'CLOSED'}
+                    className="flex-1 text-xs rounded-xl"
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={!reply.trim() || ticket.status === 'CLOSED' || replyMutation.isPending}
+                    className="flex items-center gap-1.5 font-bold rounded-xl"
+                  >
+                    <Send size={14} />
+                    {replyMutation.isPending ? 'Mengirim...' : 'Kirim'}
+                  </Button>
+                </form>
+                {ticket.status === 'CLOSED' && (
+                  <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+                    Tiket ini telah ditutup. Anda tidak dapat membalas lagi.
+                  </p>
+                )}
+              </Card>
+            </div>
+          </SectionCard>
+        </AcademicPageLayout>
+      </InfraErrorBoundary>
     </PremiumFeatureGate>
   );
 });

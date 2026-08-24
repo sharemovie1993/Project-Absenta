@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { z } from 'zod';
+import toast from 'react-hot-toast';
 import { Modal } from '../../../components/cooperative/ui/Modal';
 import { Input } from '../../../components/cooperative/ui/Input';
 import { Button } from '../../../components/cooperative/ui/Button';
+
+const opnameSchema = z.object({
+  newStock: z.number({ invalid_type_error: 'Jumlah stok harus berupa angka' }).min(0, 'Stok tidak boleh bernilai negatif'),
+  reason: z.string().max(255, 'Alasan maksimal 255 karakter').optional(),
+});
 
 interface Product {
   id: string;
@@ -51,7 +58,12 @@ export const OpnameFormModal: React.FC<OpnameFormModalProps> = React.memo(({
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const stockVal = Number(newStock);
-    onSubmit(stockVal, reason);
+    const parsed = opnameSchema.safeParse({ newStock: stockVal, reason });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Input stok tidak valid');
+      return;
+    }
+    onSubmit(parsed.data.newStock, parsed.data.reason || '');
   }, [newStock, reason, onSubmit]);
 
   return (

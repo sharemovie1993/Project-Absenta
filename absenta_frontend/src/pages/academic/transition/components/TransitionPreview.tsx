@@ -35,7 +35,7 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
   }, [data]);
 
   const handleStatusChange = (siswaId: string, newStatus: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS') => {
-    setItems(prev => prev.map(item => 
+    setItems(prev => prev?.map(item => 
       item.siswaId === siswaId ? { ...item, status: newStatus } : item
     ));
   };
@@ -47,7 +47,7 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
         const original = data.items.find(d => d.siswaId === item.siswaId);
         return original && original.status !== item.status;
       })
-      .map(item => ({ siswaId: item.siswaId, status: item.status }));
+      ?.map(item => ({ siswaId: item.siswaId, status: item.status }));
     
     onNext(overrides);
   };
@@ -81,7 +81,7 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
           { label: 'Tinggal Kelas', val: data.byStatus.TINGGAL, icon: History, color: 'rose' },
           { label: 'Pindah', val: data.byStatus.PINDAH, icon: UserMinus, color: 'amber' },
           { label: 'Lulus', val: data.byStatus.LULUS, icon: GraduationCap, color: 'indigo' },
-        ].map((stat, i) => (
+        ]?.map((stat, i) => (
           <SectionCard 
             key={i} 
             fullWidth
@@ -128,7 +128,7 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {items.map((item) => (
+              {items?.map((item) => (
                 <tr key={item.siswaId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                   <td className="py-4 px-6">
                     <div className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">{item.namaSiswa}</div>
@@ -150,8 +150,7 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
                     )}
                   </td>
                   <td className="py-4 px-6">
-                    <SearchableSelect
-                      value={item.status}
+                    <SearchableSelect aria-label="Pilih opsi transisi" value={item.status}
                       onValueChange={(val: any) => handleStatusChange(item.siswaId, val)}
                       options={[
                         { label: 'Naik Kelas', value: 'NAIK' },

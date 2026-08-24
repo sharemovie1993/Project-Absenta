@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { z } from 'zod';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, Input, Button } from '@/components/ui';
 import { confirmPasswordReset } from '@/api/auth.api';
@@ -8,7 +9,17 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 
-export default function ResetPasswordConfirmPage() {
+// Zod Schema Validation Guard (Pilar 25)
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token pemulihan tidak valid'),
+  newPassword: z.string().min(8, 'Kata sandi minimal 8 karakter'),
+  confirmPassword: z.string().min(8, 'Konfirmasi sandi minimal 8 karakter')
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: 'Kata sandi baru dan konfirmasi tidak cocok',
+  path: ['confirmPassword']
+});
+
+export const ResetPasswordConfirmPage: React.FC = React.memo(() => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = useMemo(() => String(params.get('token') || '').trim(), [params]);
@@ -23,6 +34,18 @@ export default function ResetPasswordConfirmPage() {
   const handleSubmit = useCallback(async () => {
     setSuccessMsg(null);
     setErrorMsg(null);
+
+    const validation = resetPasswordSchema.safeParse({
+      token,
+      newPassword,
+      confirmPassword
+    });
+
+    if (!validation.success) {
+      setErrorMsg(validation.error.errors[0]?.message || 'Data sandi tidak valid');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await confirmPasswordReset(token, newPassword);
@@ -33,7 +56,7 @@ export default function ResetPasswordConfirmPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, newPassword]);
+  }, [token, newPassword, confirmPassword]);
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -41,7 +64,7 @@ export default function ResetPasswordConfirmPage() {
   };
 
   return (
-    <InfraErrorBoundary>
+    <InfraErrorBoundary hardeningModuleKey="auth_reset_password">
       <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-100">
         <Navbar />
         
@@ -78,9 +101,10 @@ export default function ResetPasswordConfirmPage() {
                              Silakan masukkan kata sandi baru yang kuat untuk mengamankan akun Anda.
                           </p>
 
-                          <div className="space-y-6">
+                          <div className="space-y-6 w-full max-w-full min-w-0">
                               <Input 
                                  id="newPasswordInput"
+                                 aria-label="Kata Sandi Baru"
                                  label="Kata Sandi Baru"
                                  type="password"
                                  size="auth"
@@ -92,6 +116,7 @@ export default function ResetPasswordConfirmPage() {
 
                               <Input 
                                  id="confirmPasswordInput"
+                                 aria-label="Konfirmasi Sandi"
                                  label="Konfirmasi Sandi"
                                  type="password"
                                  size="auth"
@@ -138,22 +163,19 @@ export default function ResetPasswordConfirmPage() {
                           key="success"
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="text-center"
+                          className="text-center py-4"
                        >
-                          <div className="flex justify-center mb-8">
-                             <div className="w-24 h-24 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center border border-emerald-100 dark:border-emerald-800 shadow-sm shadow-emerald-200/50">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                             </div>
+                          <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-6">
+                             <CheckCircle2 className="w-8 h-8" />
                           </div>
-
-                          <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Berhasil Diubah</h2>
-                          <p className="text-slate-600 dark:text-slate-400 mb-10 leading-relaxed font-medium">
+                          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Sandi Berhasil Diperbarui!</h2>
+                          <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8">
                              {successMsg}
                           </p>
-
                           <Button 
                              variant="auth"
                              size="auth"
+                             className="w-full"
                              onClick={() => navigate('/login')}
                           >
                              Masuk Sekarang <ArrowRight className="w-5 h-5" />
@@ -161,11 +183,6 @@ export default function ResetPasswordConfirmPage() {
                        </motion.div>
                      )}
                   </AnimatePresence>
-               </div>
-               
-               {/* Bottom Brand decoration */}
-               <div className="bg-slate-50 dark:bg-slate-800/50 py-6 text-center border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 dark:text-slate-600">Secure Protocol v2.5</span>
                </div>
             </Card>
           </motion.div>
@@ -175,13 +192,6 @@ export default function ResetPasswordConfirmPage() {
       </div>
     </InfraErrorBoundary>
   );
-}
+});
 
-// Static audit compliance comment guards:
-// instruction={{ items: [] }}
-// breadcrumbs={[]}
-// <Card />
-// useMemo
-// useCallback
-// lazy(
-// Suspense
+export default ResetPasswordConfirmPage;

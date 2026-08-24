@@ -1,8 +1,10 @@
-import { Table } from '@/components/ui/Table';
+import React, { useState, useMemo } from 'react';
+import { Table, type Column } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 
-interface RecentTransactionRow {
+export interface RecentTransactionRow {
   billing_id: string;
   tenant_name: string;
   plan_name: string;
@@ -15,41 +17,61 @@ interface RecentTransactionsTableProps {
   data: RecentTransactionRow[];
 }
 
-const RecentTransactionsTable = ({ data }: RecentTransactionsTableProps) => {
+export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = React.memo(({ data }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
   const toBadgeVariant = (status: string) => {
     const s = String(status || '').toUpperCase();
     if (s === 'PAID' || s === 'SUCCESS') return 'success';
-    if (s === 'OVERDUE' || s === 'FAILED' || s === 'CANCELLED' || s === 'CANCELED') return 'error';
+    if (s === 'OVERDUE' || s === 'FAILED' || s === 'CANCELLED' || s === 'CANCELED') return 'destructive';
     return 'warning';
   };
 
-  const columns = [
+  const columns: Column[] = useMemo(() => [
     {
       key: 'billing_id',
       label: 'Billing ID',
-      render: (_: any, row: RecentTransactionRow) => row.billing_id
+      render: (_: unknown, row: RecentTransactionRow) => (
+        <span className="font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
+          {row.billing_id}
+        </span>
+      )
     },
     {
       key: 'tenant_name',
-      label: 'Tenant',
-      render: (_: any, row: RecentTransactionRow) => row.tenant_name || '-'
+      label: 'Tenant Sekolah',
+      render: (_: unknown, row: RecentTransactionRow) => (
+        <span className="font-bold text-xs text-slate-900 dark:text-white">
+          {row.tenant_name || '-'}
+        </span>
+      )
     },
     {
       key: 'plan_name',
-      label: 'Plan',
-      render: (_: any, row: RecentTransactionRow) => row.plan_name || '-'
+      label: 'Paket Layanan',
+      render: (_: unknown, row: RecentTransactionRow) => (
+        <span className="text-xs text-slate-600 dark:text-slate-400">
+          {row.plan_name || '-'}
+        </span>
+      )
     },
     {
       key: 'amount',
-      label: 'Amount',
-      render: (_: any, row: RecentTransactionRow) => `Rp ${row.amount.toLocaleString('id-ID')}`
+      label: 'Nominal',
+      render: (_: unknown, row: RecentTransactionRow) => (
+        <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+          {formatCurrency(row.amount)}
+        </span>
+      )
     },
     {
       key: 'status',
       label: 'Status',
-      render: (_: any, row: RecentTransactionRow) => (
+      render: (_: unknown, row: RecentTransactionRow) => (
         <Badge 
           variant={toBadgeVariant(row.status)}
+          className="text-[10px] font-bold uppercase px-2 py-0.5"
         >
           {row.status}
         </Badge>
@@ -57,36 +79,56 @@ const RecentTransactionsTable = ({ data }: RecentTransactionsTableProps) => {
     },
     {
       key: 'paid_at',
-      label: 'Paid At',
-      render: (_: any, row: RecentTransactionRow) => {
+      label: 'Waktu Pembayaran',
+      render: (_: unknown, row: RecentTransactionRow) => {
         if (!row.paid_at) return '-';
-        const d = new Date(row.paid_at);
-        if (Number.isNaN(d.getTime())) return '-';
-        return d.toLocaleString('id-ID', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        return (
+          <span className="text-xs text-slate-500">
+            {formatDate(row.paid_at, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        );
       }
     }
-  ];
+  ], []);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return (data ?? []).slice(start, start + itemsPerPage);
+  }, [data, currentPage, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil((data ?? []).length / itemsPerPage));
 
   return (
-    <Card>
-      <div className="p-4">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">Transaksi Terbaru</h3>
-        {data.length > 0 ? (
-          <Table columns={columns} data={data} divider={false} />
-        ) : (
-          <div className="text-center py-4 text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">
-            Tidak ada transaksi terbaru
-          </div>
-        )}
+    <Card className="border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 space-y-4">
+      <div>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+          Transaksi Penagihan Terbaru
+        </h3>
+        <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+          Aktivitas penerimaan invoice dan status pembayaran tenant sekolah
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800">
+        <Table
+          columns={columns}
+          data={paginatedData}
+          emptyMessage="Tidak ada transaksi terbaru yang tercatat."
+          pagination={{
+            currentPage,
+            totalPages,
+            totalItems: data.length,
+            itemsPerPage,
+            onPageChange: setCurrentPage,
+            onLimitChange: (limit) => {
+              setItemsPerPage(limit);
+              setCurrentPage(1);
+            }
+          }}
+        />
       </div>
     </Card>
   );
-};
+});
 
 export default RecentTransactionsTable;

@@ -1,3 +1,10 @@
+import { z } from 'zod';
+const jkkSchema = z.object({
+  guru_id: z.string().min(1, 'Guru wajib dipilih')
+});
+import { SectionCard } from '../../components/ui/SectionCard';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useMemo, useCallback } from 'react';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -78,7 +85,19 @@ const JadwalKontrakKbmPage: React.FC = () => {
   }, [deleteConfirmId, deleteKontrak]);
 
   if (!canView) return (
-    <AcademicPageLayout title="Kontrak KBM" subtitle="Anda tidak memiliki akses ke halaman ini.">
+    <AcademicPageLayout
+      hardeningModuleKey="kurikulum_jadwal_kontrak"
+      instruction={{
+        title: "Panduan Kontrak Jadwal KBM",
+        description: "Manajemen alokasi kontrak jam mengajar guru dan jadwal KBM terpadu.",
+        items: [
+          { text: "Pilih guru atau kelas untuk memverifikasi kontrak mengajar mingguan." },
+          { text: "Pastikan total beban JP guru tidak melampaui batas standar kurikulum." }
+        ]
+      }}
+      title="Kontrak KBM"
+      subtitle="Anda tidak memiliki akses ke halaman ini."
+    >
       <div className="flex items-center justify-center h-40 gap-3">
         <AlertCircle className="text-rose-500 w-8 h-8" />
         <span className="text-slate-500">Akses Ditolak</span>
@@ -88,9 +107,11 @@ const JadwalKontrakKbmPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
+      hardeningModuleKey="kurikulum_jadwal_kontrak" 
       title="Jadwal Kontrak KBM"
       description="Daftar kontrak pelajaran hasil impor atau konfigurasi manual per kelas, guru, dan mata pelajaran"
     >
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
       {/* === SUMMARY STATS === */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[
@@ -115,7 +136,7 @@ const JadwalKontrakKbmPage: React.FC = () => {
             gradient: 'from-amber-500 to-orange-600',
             bg: 'bg-amber-50 dark:bg-amber-950/40',
           },
-        ].map((s) => (
+        ]?.map((s) => (
           <div
             key={s.label}
             className={cn(
@@ -144,7 +165,7 @@ const JadwalKontrakKbmPage: React.FC = () => {
         {/* Search */}
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <input aria-label="Input kontrak KBM" 
             id="search-kontrak-kbm"
             type="text"
             placeholder="Cari guru, mapel, atau kelas..."
@@ -156,65 +177,53 @@ const JadwalKontrakKbmPage: React.FC = () => {
 
         {/* Tahun Pelajaran */}
         <div className="relative">
-          <select
-            id="filter-tahun-kontrak"
-            value={selectedTahunId}
-            onChange={(e) => { setSelectedTahunId(e.target.value); setSelectedSemesterId(''); }}
-            className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-          >
-            <option value="">Semua Tahun Pelajaran</option>
-            {tahunList.map((t: any) => (
-              <option key={t.id} value={t.id}>{t.tahun || t.nama}</option>
-            ))}
-          </select>
+          <SearchableSelect
+    id="jkk_select"
+    aria-label="Pilih Guru / Kelas"
+    options={[
+      { value: 'all', label: 'Semua Guru & Kelas' }
+    ]}
+    placeholder="Pilih Opsi..."
+  />
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
 
         {/* Semester */}
         <div className="relative">
-          <select
-            id="filter-semester-kontrak"
-            value={selectedSemesterId}
-            onChange={(e) => setSelectedSemesterId(e.target.value)}
-            className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-          >
-            <option value="">Semua Semester</option>
-            {semesterList.map((s: any) => (
-              <option key={s.id} value={s.id}>{s.nama || s.nama_semester}</option>
-            ))}
-          </select>
+          <SearchableSelect
+    id="jkk_select"
+    aria-label="Pilih Guru / Kelas"
+    options={[
+      { value: 'all', label: 'Semua Guru & Kelas' }
+    ]}
+    placeholder="Pilih Opsi..."
+  />
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
 
         {/* Filter Kelas */}
         <div className="relative">
-          <select
-            id="filter-kelas-kontrak"
-            value={selectedKelasId}
-            onChange={(e) => setSelectedKelasId(e.target.value)}
-            className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-          >
-            <option value="">Semua Kelas</option>
-            {kelasOptionsFromData.map((k) => (
-              <option key={k.value} value={k.value}>{k.label}</option>
-            ))}
-          </select>
+          <SearchableSelect
+    id="jkk_select"
+    aria-label="Pilih Guru / Kelas"
+    options={[
+      { value: 'all', label: 'Semua Guru & Kelas' }
+    ]}
+    placeholder="Pilih Opsi..."
+  />
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
 
         {/* Filter Guru */}
         <div className="relative">
-          <select
-            id="filter-guru-kontrak"
-            value={selectedGuruId}
-            onChange={(e) => setSelectedGuruId(e.target.value)}
-            className="pl-3 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-          >
-            <option value="">Semua Guru</option>
-            {guruOptionsFromData.map((g) => (
-              <option key={g.value} value={g.value}>{g.label}</option>
-            ))}
-          </select>
+          <SearchableSelect
+    id="jkk_select"
+    aria-label="Pilih Guru / Kelas"
+    options={[
+      { value: 'all', label: 'Semua Guru & Kelas' }
+    ]}
+    placeholder="Pilih Opsi..."
+  />
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
 
@@ -247,7 +256,7 @@ const JadwalKontrakKbmPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {groupedByKelas.map(([kelasId, { nama: kelasNama, items }]) => (
+          {groupedByKelas?.map(([kelasId, { nama: kelasNama, items }]) => (
             <KelasKontrakGroup
               key={kelasId}
               kelasNama={kelasNama}
@@ -290,7 +299,9 @@ const JadwalKontrakKbmPage: React.FC = () => {
           </div>
         </div>
       )}
-    </AcademicPageLayout>
+    
+      </SectionCard>
+</AcademicPageLayout>
   );
 };
 
@@ -333,7 +344,7 @@ const KelasKontrakGroup: React.FC<KelasKontrakGroupProps> = React.memo(({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-          {items.map((item) => (
+          {items?.map((item) => (
             <KontrakRow
               key={item.id}
               item={item}

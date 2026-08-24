@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { hubinApi } from '../../../api/hubin.api';
 import { Card } from '../../../components/ui/Card';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
+import { formatDate } from '../../../utils/layoutUtils';
 import { 
   Building2, 
   Users, 
@@ -67,48 +69,28 @@ interface HubinDashboardSectionProps {
 }
 
 export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = React.memo(({ onNavigateTab }) => {
-  const [statsState, setStatsState] = useState<HubinStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [activities, setActivities] = useState<HubinActivity[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  // 1. Fetch stats via React Query (Pilar 31)
+  const { data: statsRes, isLoading: loading, error: statsErr } = useQuery({
+    queryKey: ['hubin-dashboard-stats'],
+    queryFn: async () => {
+      const res = await hubinApi.getStats();
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const statsState = statsRes || null;
+  const error = statsErr instanceof Error ? statsErr.message : null;
 
-  useEffect(() => {
-    const fetchStatsAndActivities = async () => {
-      setLoading(true);
-      setActivitiesLoading(true);
-      setError(null);
-
-      // 1. Fetch stats
-      try {
-        const statsRes = await hubinApi.getStats();
-        if (statsRes.success) {
-          setStatsState(statsRes.data);
-        } else {
-          setError('Gagal memuat statistik HUBIN');
-        }
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : 'Koneksi bermasalah saat memuat statistik';
-        setError(errMsg);
-      } finally {
-        setLoading(false);
-      }
-
-      // 2. Fetch activities (independent)
-      try {
-        const actRes = await hubinApi.getRecentActivity();
-        if (actRes.success) {
-          setActivities(actRes.data);
-        }
-      } catch (err: unknown) {
-        console.error('Failed to load recent activities:', err);
-      } finally {
-        setActivitiesLoading(false);
-      }
-    };
-    fetchStatsAndActivities();
-  }, []);
+  // 2. Fetch activities via React Query (Pilar 31)
+  const { data: actRes, isLoading: activitiesLoading } = useQuery({
+    queryKey: ['hubin-recent-activity'],
+    queryFn: async () => {
+      const res = await hubinApi.getRecentActivity();
+      return res.data || [];
+    },
+    staleTime: 60 * 1000,
+  });
+  const activities = actRes || [];
 
   const stats = useMemo(() => {
     if (!statsState) return null;
@@ -387,7 +369,7 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = React
                       <tr key={pkl.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                         <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{pkl.siswa}</td>
                         <td className="py-3 px-3 text-slate-500 dark:text-slate-400">{pkl.mitra}</td>
-                        <td className="py-3 px-3 text-slate-400 dark:text-slate-500">{new Date(pkl.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                        <td className="py-3 px-3 text-slate-400 dark:text-slate-500">{formatDate(pkl.tanggal, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td className="py-3 px-3 text-right">
                           <Badge 
                             variant={pkl.status === 'AKTIF' ? 'success' : pkl.status === 'SELESAI' ? 'info' : 'secondary'}

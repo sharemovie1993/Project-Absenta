@@ -102,7 +102,7 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = React.memo(({
               </div>
               {selectedCase.KonselingSiswa && selectedCase.KonselingSiswa.length > 0 ? (
                 <div className="space-y-2 max-h-36 overflow-y-auto">
-                  {selectedCase.KonselingSiswa.map((c: KonselingSiswa) => (
+                  {selectedCase.KonselingSiswa?.map((c: KonselingSiswa) => (
                     <div key={c.id} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl text-[11px]">
                       <div className="flex justify-between font-bold text-slate-500 mb-0.5">
                         <span>{new Date(c.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
@@ -125,7 +125,7 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = React.memo(({
               </div>
               {selectedCase.PemanggilanOrangTua && selectedCase.PemanggilanOrangTua.length > 0 ? (
                 <div className="space-y-2 max-h-36 overflow-y-auto">
-                  {selectedCase.PemanggilanOrangTua.map((p: PemanggilanOrangTua) => (
+                  {selectedCase.PemanggilanOrangTua?.map((p: PemanggilanOrangTua) => (
                     <div key={p.id} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl text-[11px]">
                       <div className="flex justify-between font-bold text-slate-500 mb-0.5">
                         <span>{new Date(p.tanggal_pemanggilan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
@@ -148,7 +148,7 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = React.memo(({
               </div>
               {selectedCase.HomeVisit && selectedCase.HomeVisit.length > 0 ? (
                 <div className="space-y-2 max-h-36 overflow-y-auto">
-                  {selectedCase.HomeVisit.map((hv: HomeVisit) => (
+                  {selectedCase.HomeVisit?.map((hv: HomeVisit) => (
                     <div key={hv.id} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl text-[11px]">
                       <div className="font-bold text-slate-500 mb-0.5">
                         {new Date(hv.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}

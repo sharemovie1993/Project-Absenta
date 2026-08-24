@@ -1,3 +1,7 @@
+import { Card } from '../components/ui/Card';
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
 import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -9,13 +13,14 @@ import { ServerDomainSetupModal } from '../components/auth/ServerDomainSetupModa
 import { getSavedServerDomain } from '../services/serverConfig';
 import toast from 'react-hot-toast';
 
+const hardeningModuleKey = "auth_login";
+
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
   const [localError, setLocalError] = useState('');
-  const [tenantName, setTenantName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
@@ -24,24 +29,19 @@ const Login: React.FC = () => {
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
   const location = useLocation();
 
-  const handleScanSuccess = (scannedCode: string) => {
-    setCredentials(prev => ({
-      ...prev,
-      email: scannedCode,
-    }));
-  };
+  const savedDomain = useMemo(() => getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default'), []);
+
+  const handleScanSuccess = useCallback((scannedCode: string) => {
+    setCredentials(prev => ({ ...prev, email: scannedCode })); }, []);
   
-  useEffect(() => {
-    const fetchTenantInfo = async () => {
-      try {
-        const res = await axiosInstance.get('/auth/tenant-info');
-        if (res.data?.success) {
-          setTenantName(res.data.data?.name || '');
-        }
-      } catch {}
-    };
-    fetchTenantInfo();
-  }, []);
+  const { data: tenantInfoData } = useQuery({
+    queryKey: ['auth-tenant-info'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/auth/tenant-info');
+      return res.data?.data?.name || '';
+    },
+    staleTime: 10 * 60 * 1000
+  });
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -51,18 +51,18 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError('');
-
-    if (!credentials.email || !credentials.password) {
+    const val = loginSchema.safeParse({ username: credentials.email, password: credentials.password });
+    if (!val.success) {
       setLocalError('Email/NISN dan password harus diisi');
       return;
     }
+    setLocalError('');
 
     try {
       await loginAction(credentials.email, credentials.password);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || error || 'Login gagal. Periksa kembali NISN/Email dan Password Anda.';
-      setLocalError(errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = (err as Record<string, unknown>)?.response ? ((err as Record<string, unknown>).response as Record<string, unknown>)?.data?.message : error || 'Login gagal. Periksa kembali NISN/Email dan Password Anda.';
+      setLocalError(String(errorMessage || 'Login gagal'));
     }
   };
 
@@ -83,7 +83,7 @@ const Login: React.FC = () => {
         
         <div className="max-w-md w-full relative z-10">
           {/* Glass Card */}
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-8 shadow-[0_20px_50px_rgba(8,_112,_184,_0.07)] dark:shadow-[0_20px_50px_rgba(0,_0,_0,_0.3)]">
+          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-8 shadow-[0_20px_50px_rgba(8,_112,_184,_0.07)] dark:shadow-[0_20px_50px_rgba(0,_0,_0,_0.3)]">
             
             {/* Header / Brand */}
             <div className="flex flex-col items-center mb-8">
@@ -215,7 +215,7 @@ const Login: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
 
         {/* Camera QR/Barcode Scanner Modal */}

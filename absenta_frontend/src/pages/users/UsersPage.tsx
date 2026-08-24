@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, UserPlus, Shield, Building2, UserCheck } from 'lucide-react';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -9,6 +10,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import UserList from '../../components/management/UserList';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const UserForm = lazy(() => import('../../components/management/UserForm'));
@@ -66,106 +68,94 @@ const UserPage: React.FC = () => {
     return isSystemSuperAdmin(role, tenantId);
   }, [user]);
 
+  const role = user?.role?.name || user?.role;
+  const tenantId = user?.tenant_id;
+  const isSuperAdmin = isSystemSuperAdmin(role, tenantId);
+
+  // 1. Fetch Tenant Name via React Query
+  const { data: tenantData } = useQuery({
+    queryKey: ['tenant-info', tenantId],
+    queryFn: () => getTenantById(tenantId as string),
+    enabled: !isSuperAdmin && !!tenantId,
+  });
+
   useEffect(() => {
-    const role = user?.role?.name || user?.role;
-    const tenantId = user?.tenant_id;
-    if (!isSystemSuperAdmin(role, tenantId) && tenantId) {
-      getTenantById(tenantId)
-        .then((res) => {
-          const name = res?.data?.name;
-          if (typeof name === 'string' && name.trim() !== '') {
-            setTenantLabel(name);
-          } else {
-            setTenantLabel(tenantId);
-          }
-        })
-        .catch(() => {
-          setTenantLabel(tenantId || 'Tenant Anda');
-        });
-    } else {
+    if (isSuperAdmin) {
       setTenantLabel('Semua Tenant');
+    } else if (tenantData?.data?.name) {
+      setTenantLabel(tenantData.data.name);
+    } else if (tenantId) {
+      setTenantLabel(tenantId);
     }
-  }, [user]);
+  }, [isSuperAdmin, tenantData, tenantId]);
 
   const [roleList, setRoleList] = useState<RoleItem[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [permissionsInput, setPermissionsInput] = useState<string>('');
   const [savingPerms, setSavingPerms] = useState(false);
 
-  useEffect(() => {
-    const toRoleArray = (input: unknown): RoleItem[] => {
-      const wrapper = input as { data?: unknown };
-      const src = Array.isArray(wrapper.data)
-        ? wrapper.data
-        : Array.isArray(input)
-          ? input
-          : [];
-      return (src as unknown[])
-        ?.map((r) => {
-          const obj = r as Record<string, unknown>;
-          const id = obj.id;
-          const name = obj.name;
-          const description = obj.description;
-          return {
-            id: typeof id === 'string' ? id : String(id ?? ''),
-            name: typeof name === 'string' ? name : String(name ?? ''),
-            description: description === null || typeof description === 'string' ? (description as string | null) : undefined,
-          };
-        })
-        .filter((x) => x.id !== '' && x.name !== '');
-    };
-
-    const loadRoles = async () => {
-      try {
-        const res = await axiosInstance.get('/users/roles');
-        const normalized = toRoleArray(res.data);
-        setRoleList(normalized);
-      } catch {
-        toast.error('Gagal memuat role');
-      }
-    };
-    loadRoles();
+  // 2. Fetch Roles via React Query
+  const toRoleArray = useCallback((input: unknown): RoleItem[] => {
+    const wrapper = input as { data?: unknown };
+    const src = Array.isArray(wrapper.data)
+      ? wrapper.data
+      : Array.isArray(input)
+        ? input
+        : [];
+    return (src as unknown[])
+      ?.map((r) => {
+        const obj = r as Record<string, unknown>;
+        const id = obj.id;
+        const name = obj.name;
+        const description = obj.description;
+        return {
+          id: typeof id === 'string' ? id : String(id ?? ''),
+          name: typeof name === 'string' ? name : String(name ?? ''),
+          description: description === null || typeof description === 'string' ? (description as string | null) : undefined,
+        };
+      })
+      .filter((x) => x.id !== '' && x.name !== '');
   }, []);
 
-  // Load statistics
+  const { data: rolesResponse } = useQuery({
+    queryKey: ['user-roles'],
+    queryFn: () => axiosInstance.get('/users/roles'),
+  });
+
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setLoadingStats(true);
+    if (rolesResponse?.data) {
+      setRoleList(toRoleArray(rolesResponse.data));
+    }
+  }, [rolesResponse, toRoleArray]);
 
-        // Determine tenant ID based on user role (SUPERADMIN global across tenants)
-        const role = user?.role?.name || user?.role;
-        const tenantId = isSystemSuperAdmin(role, user?.tenant_id) ? undefined : user?.tenant_id;
-        const options = { skipTenantHeader: isSystemSuperAdmin(role, user?.tenant_id) };
+  // 3. Fetch User Statistics via React Query
+  const statsTenantId = isSuperAdmin ? undefined : user?.tenant_id;
+  const statsOptions = useMemo(() => ({ skipTenantHeader: isSuperAdmin }), [isSuperAdmin]);
 
-        // Fetch counts in parallel using pagination.total
-        // We use limit=1 because we only care about the total count, not the data
-        const [totalRes, activeRes, inactiveRes] = await Promise.all([
-          getUsers(1, 1, '', tenantId, options),
-          getUsers(1, 1, '', tenantId, options, { status: 'ACTIVE' }),
-          getUsers(1, 1, '', tenantId, options, { status: 'INACTIVE' })
-        ]);
+  const { data: statsQueryData, isLoading: isStatsQueryLoading } = useQuery({
+    queryKey: ['user-stats', statsTenantId, refreshTrigger],
+    queryFn: async () => {
+      const [totalRes, activeRes, inactiveRes] = await Promise.all([
+        getUsers(1, 1, '', statsTenantId, statsOptions),
+        getUsers(1, 1, '', statsTenantId, statsOptions, { status: 'ACTIVE' }),
+        getUsers(1, 1, '', statsTenantId, statsOptions, { status: 'INACTIVE' })
+      ]);
+      return {
+        total: totalRes.success ? totalRes.pagination.total : 0,
+        active: activeRes.success ? activeRes.pagination.total : 0,
+        inactive: inactiveRes.success ? inactiveRes.pagination.total : 0,
+        byRole: {}
+      };
+    },
+    enabled: !!user,
+  });
 
-        const newStats: UserStats = {
-          total: totalRes.success ? totalRes.pagination.total : 0,
-          active: activeRes.success ? activeRes.pagination.total : 0,
-          inactive: inactiveRes.success ? inactiveRes.pagination.total : 0,
-          byRole: {}
-        };
-
-        // Note: byRole stats are temporarily disabled to improve performance 
-        // as they required fetching all users. If needed, a dedicated backend endpoint should be used.
-
-        setStats(newStats);
-      } catch (error) {
-        console.error('Error loading stats:', error);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    loadStats();
-  }, [user, refreshTrigger]);
+  useEffect(() => {
+    if (statsQueryData) {
+      setStats(statsQueryData);
+      setLoadingStats(false);
+    }
+  }, [statsQueryData]);
 
   const handleAddUser = useCallback(() => {
     if (!canManage) {

@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { cn } from '@/lib/utils';
+import { formatDate } from '../../../utils/layoutUtils';
 import { type DeviceInfo, type LoanRecord, type RepairRecord } from './SarprasDashboardComponents';
 import { type AssetStats } from '../SarprasDashboard';
 
@@ -197,7 +198,7 @@ export const SarprasTvModeLayout: React.FC<SarprasTvModeLayoutProps> = React.mem
                             </div>
                             <div className="min-w-0">
                               <h4 className="font-bold text-slate-800 dark:text-white text-xs truncate">{loan.Asset?.nama}</h4>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Peminjam: {loan.Peminjam?.full_name} <span className="mx-1">•</span> Batas: {new Date(loan.tanggal_kembali_plan).toLocaleDateString('id-ID')}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Peminjam: {loan.Peminjam?.full_name} <span className="mx-1">•</span> Batas: {formatDate(loan.tanggal_kembali_plan, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                             </div>
                           </div>
                           <Badge variant="destructive">OUT</Badge>

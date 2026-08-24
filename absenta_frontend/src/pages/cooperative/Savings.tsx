@@ -1,3 +1,6 @@
+import { SectionCard } from '../../components/ui/SectionCard';
+import { generateImportTemplate } from '@/utils/export.utils';
+import { formatDate } from '@/utils/date.utils';
 import React, { useMemo, useCallback, Suspense, lazy } from 'react';
 import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp } from 'lucide-react';
 import Button from '../../components/ui/Button';
@@ -106,13 +109,13 @@ const Savings: React.FC = React.memo(() => {
 
   const handleSingleExport = useCallback(() => {
     if (selectedSaving) {
-      handleExportSingleSavingPdf(selectedSaving);
+      try { handleExportSingleSavingPdf(selectedSaving); toast.success("Ekspor PDF berhasil"); } catch (e) { toast.error("Gagal mengekspor PDF"); }
     }
   }, [selectedSaving, handleExportSingleSavingPdf]);
 
   const handleAllExport = useCallback(() => {
     if (selectedSaving) {
-      handleExportAllSavingsPdf(selectedSaving);
+      try { handleExportAllSavingsPdf(selectedSaving); toast.success("Ekspor PDF berhasil"); } catch (e) { toast.error("Gagal mengekspor PDF"); }
     }
   }, [selectedSaving, handleExportAllSavingsPdf]);
 
@@ -125,7 +128,7 @@ const Savings: React.FC = React.memo(() => {
           breadcrumbs={breadcrumbs}
         >
           <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
           </div>
         </AcademicPageLayout>
       </PremiumFeatureGate>
@@ -180,7 +183,8 @@ const Savings: React.FC = React.memo(() => {
           ]
         }}
       >
-        <div className="space-y-6">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
+<div className="space-y-6">
           {!loading && <SavingStatsBanner savings={savings} />}
 
           {isStudent ? (
@@ -242,7 +246,7 @@ const Savings: React.FC = React.memo(() => {
                         const txs = saving.transactions;
                         const lastTx = txs && txs.length > 0 ? txs[0] : null;
                         const recentTxs = txs ? txs.slice(0, 3) : [];
-                        const catColor = saving.category?.color || '#6366f1';
+                        const catColor = saving.category?.color || 'currentColor';
                         const catName = saving.category?.name || saving.type || 'Simpanan';
                         const isDeposit = lastTx?.type === 'DEPOSIT' || lastTx?.type === 'INTEREST';
 
@@ -439,7 +443,8 @@ const Savings: React.FC = React.memo(() => {
             formatTerbilang={formatTerbilangIndonesian}
           />
         </Suspense>
-      </AcademicPageLayout>
+      </SectionCard>
+</AcademicPageLayout>
     </PremiumFeatureGate>
   );
 });

@@ -5,7 +5,9 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { formatDate } from '@/utils/layoutUtils';
 import { cn } from '@/lib/utils';
 import { type HubinStats, type HubinActivity } from './HubinDashboardComponents';
 
@@ -49,28 +51,15 @@ export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = React.memo(({
   }, [stats]);
 
   const getActionLabel = React.useCallback((action: string) => {
-    switch (action) {
-      case 'HUBIN_MITRA_CREATE': return 'Menambahkan Mitra Industri';
-      case 'HUBIN_MITRA_UPDATE': return 'Memperbarui Mitra Industri';
-      case 'HUBIN_MITRA_DELETE': return 'Menghapus Mitra Industri';
-      case 'HUBIN_MOU_CREATE': return 'Membuat MoU Kerja Sama';
-      case 'HUBIN_MOU_UPDATE': return 'Memperbarui MoU Kerja Sama';
-      case 'HUBIN_MOU_DELETE': return 'Menghapus MoU Kerja Sama';
-      case 'HUBIN_MOU_RENEW': return 'Memperpanjang MoU Kerja Sama';
-      case 'HUBIN_PKL_PLACE': return 'Menempatkan Siswa PKL';
-      case 'HUBIN_PKL_REMOVE': return 'Menarik Siswa PKL';
-      case 'HUBIN_LOWONGAN_CREATE': return 'Membuka Lowongan Kerja BKK';
-      case 'HUBIN_LOWONGAN_UPDATE': return 'Memperbarui Lowongan Kerja';
-      case 'HUBIN_LOWONGAN_DELETE': return 'Menutup Lowongan Kerja';
-      case 'HUBIN_LAMARAN_CREATE': return 'Mengajukan Lamaran BKK';
-      case 'HUBIN_LAMARAN_STATUS': return 'Memperbarui Status Lamaran BKK';
-      case 'HUBIN_LAMARAN_DELETE': return 'Membatalkan Lamaran BKK';
-      case 'HUBIN_TRACER_SUBMIT': return 'Mengisi Tracer Study';
-      case 'HUBIN_TEFA_CREATE': return 'Membuat Proyek TEFA';
-      case 'HUBIN_TEFA_UPDATE': return 'Memperbarui Proyek TEFA';
-      case 'HUBIN_TEFA_DELETE': return 'Menghapus Proyek TEFA';
-      default: return action;
-    }
+    const map: Record<string, string> = {
+      HUBIN_MITRA_CREATE: 'Menambahkan Mitra Industri', HUBIN_MITRA_UPDATE: 'Memperbarui Mitra Industri', HUBIN_MITRA_DELETE: 'Menghapus Mitra Industri',
+      HUBIN_MOU_CREATE: 'Membuat MoU Kerja Sama', HUBIN_MOU_UPDATE: 'Memperbarui MoU Kerja Sama', HUBIN_MOU_DELETE: 'Menghapus MoU Kerja Sama', HUBIN_MOU_RENEW: 'Memperpanjang MoU Kerja Sama',
+      HUBIN_PKL_PLACE: 'Menempatkan Siswa PKL', HUBIN_PKL_REMOVE: 'Menarik Siswa PKL',
+      HUBIN_LOWONGAN_CREATE: 'Membuka Lowongan BKK', HUBIN_LOWONGAN_UPDATE: 'Memperbarui Lowongan', HUBIN_LOWONGAN_DELETE: 'Menutup Lowongan',
+      HUBIN_LAMARAN_CREATE: 'Mengajukan Lamaran', HUBIN_LAMARAN_STATUS: 'Memperbarui Status Lamaran', HUBIN_LAMARAN_DELETE: 'Membatalkan Lamaran',
+      HUBIN_TRACER_SUBMIT: 'Mengisi Tracer Study', HUBIN_TEFA_CREATE: 'Membuat Proyek TEFA', HUBIN_TEFA_UPDATE: 'Memperbarui Proyek TEFA', HUBIN_TEFA_DELETE: 'Menghapus Proyek TEFA'
+    };
+    return map[action] || action;
   }, []);
 
   const getActionBadgeColor = React.useCallback((action: string) => {
@@ -152,21 +141,20 @@ export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = React.memo(({
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
                   {statCards?.map((s, idx) => (
-                    <Card key={idx} className="p-5 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 text-slate-800 dark:text-white shadow-lg flex items-center justify-between min-h-[96px]">
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{s.label}</p>
-                        <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">{s.value}</p>
-                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-tight">{s.desc}</p>
-                      </div>
-                      <div className={cn(
-                        "p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-indigo-500 dark:text-indigo-400",
-                        s.color === 'emerald' ? "text-emerald-500 dark:text-emerald-400" :
-                        s.color === 'amber' ? "text-amber-500 dark:text-amber-400" :
-                        s.color === 'sky' ? "text-sky-500 dark:text-sky-400" : ""
-                      )}>
-                        <s.icon size={24} />
-                      </div>
-                    </Card>
+                    <AnalyticsCard
+                      key={idx}
+                      title={s.label}
+                      value={s.value}
+                      subtitle={s.desc}
+                      icon={<s.icon size={20} className="text-white" />}
+                      gradient={
+                        s.color === 'emerald' ? "bg-gradient-to-br from-emerald-500 to-teal-700" :
+                        s.color === 'amber' ? "bg-gradient-to-br from-amber-500 to-orange-700" :
+                        s.color === 'sky' ? "bg-gradient-to-br from-sky-500 to-blue-700" :
+                        "bg-gradient-to-br from-indigo-500 to-violet-700"
+                      }
+                      variant="compact-premium"
+                    />
                   ))}
                 </div>
 
@@ -305,7 +293,7 @@ export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = React.memo(({
                         <div key={pkl.id} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between shadow-sm">
                           <div className="min-w-0">
                             <h4 className="font-bold text-slate-800 dark:text-white text-xs truncate">{pkl.siswa}</h4>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">Mitra: {pkl.mitra} <span className="mx-1">•</span> Tanggal: {pkl.tanggal ? new Date(pkl.tanggal).toLocaleDateString('id-ID') : '—'}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">Mitra: {pkl.mitra} <span className="mx-1">•</span> Tanggal: {pkl.tanggal ? formatDate(pkl.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
                           </div>
                           <Badge variant={pkl.status === 'AKTIF' ? 'success' : pkl.status === 'SELESAI' ? 'info' : 'secondary'}>
                             {pkl.status}

@@ -2,52 +2,21 @@ import React from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { Card } from '@/components/ui/Card';
+import { formatDate } from '@/utils/layoutUtils';
 import { 
   Building2, Users, ClipboardList, Briefcase, GraduationCap, 
   Activity, AlertTriangle, ArrowRight, ChevronRight, TrendingUp, Clock, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface HubinActivity {
-  id: string;
-  action: string;
-  actor: string;
-  metadata?: {
-    nama?: string;
-    siswa_nama?: string;
-    posisi?: string;
-    nama_proyek?: string;
-    mou_nomor?: string;
-  };
-  created_at: string;
-}
-
+export interface HubinActivity { id: string; action: string; actor: string; metadata?: { nama?: string; siswa_nama?: string; posisi?: string; nama_proyek?: string; mou_nomor?: string; }; created_at: string; }
 export interface HubinStats {
-  totalMitra: number;
-  totalSiswaPkl: number;
-  pklAktif: number;
-  pendingReports: number;
-  mouExpiringCount: number;
-  totalLowonganAktif: number;
-  totalAlumniTraced: number;
-  tracerStats: {
-    BEKERJA: number;
-    KULIAH: number;
-    WIRAUSAHA: number;
-    MENCARI_KERJA: number;
-  };
-  recentPkl: Array<{
-    id: string;
-    siswa: string;
-    mitra: string;
-    status: string;
-    tanggal: string;
-  }>;
-  tracerCoverage: number;
-  employmentRate: number;
+  totalMitra: number; totalSiswaPkl: number; pklAktif: number; pendingReports: number; mouExpiringCount: number;
+  totalLowonganAktif: number; totalAlumniTraced: number; tracerCoverage: number; employmentRate: number; totalRecruitmentSuccess: number;
+  tracerStats: { BEKERJA: number; KULIAH: number; WIRAUSAHA: number; MENCARI_KERJA: number; };
+  recentPkl: Array<{ id: string; siswa: string; mitra: string; status: string; tanggal: string; }>;
   topMitra: Array<{ id: string; nama: string; count: number }>;
   topJurusanTerserap: Array<{ nama: string; count: number }>;
-  totalRecruitmentSuccess: number;
 }
 
 // Divider Sekat Visual
@@ -201,7 +170,7 @@ export const RecentPklTable: React.FC<RecentPklTableProps> = React.memo(({ stats
                 <tr key={pkl.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{pkl.siswa}</td>
                   <td className="py-3 px-3 text-slate-500 dark:text-slate-400">{pkl.mitra}</td>
-                  <td className="py-3 px-3 text-slate-400 dark:text-slate-500">{new Date(pkl.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="py-3 px-3 text-slate-400 dark:text-slate-500">{formatDate(pkl.tanggal, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   <td className="py-3 px-3 text-right">
                     <Badge 
                       variant={pkl.status === 'AKTIF' ? 'success' : pkl.status === 'SELESAI' ? 'info' : 'secondary'}
@@ -268,28 +237,15 @@ interface ActivityLogTimelineProps {
 
 export const ActivityLogTimeline: React.FC<ActivityLogTimelineProps> = React.memo(({ activities, activitiesLoading }) => {
   const getActionLabel = React.useCallback((action: string) => {
-    switch (action) {
-      case 'HUBIN_MITRA_CREATE': return 'Menambahkan Mitra Industri';
-      case 'HUBIN_MITRA_UPDATE': return 'Memperbarui Mitra Industri';
-      case 'HUBIN_MITRA_DELETE': return 'Menghapus Mitra Industri';
-      case 'HUBIN_MOU_CREATE': return 'Membuat MoU Kerja Sama';
-      case 'HUBIN_MOU_UPDATE': return 'Memperbarui MoU Kerja Sama';
-      case 'HUBIN_MOU_DELETE': return 'Menghapus MoU Kerja Sama';
-      case 'HUBIN_MOU_RENEW': return 'Memperpanjang MoU Kerja Sama';
-      case 'HUBIN_PKL_PLACE': return 'Menempatkan Siswa PKL';
-      case 'HUBIN_PKL_REMOVE': return 'Menarik Siswa PKL';
-      case 'HUBIN_LOWONGAN_CREATE': return 'Membuka Lowongan Kerja BKK';
-      case 'HUBIN_LOWONGAN_UPDATE': return 'Memperbarui Lowongan Kerja';
-      case 'HUBIN_LOWONGAN_DELETE': return 'Menutup Lowongan Kerja';
-      case 'HUBIN_LAMARAN_CREATE': return 'Mengajukan Lamaran BKK';
-      case 'HUBIN_LAMARAN_STATUS': return 'Memperbarui Status Lamaran BKK';
-      case 'HUBIN_LAMARAN_DELETE': return 'Membatalkan Lamaran BKK';
-      case 'HUBIN_TRACER_SUBMIT': return 'Mengisi Tracer Study';
-      case 'HUBIN_TEFA_CREATE': return 'Membuat Proyek TEFA';
-      case 'HUBIN_TEFA_UPDATE': return 'Memperbarui Proyek TEFA';
-      case 'HUBIN_TEFA_DELETE': return 'Menghapus Proyek TEFA';
-      default: return action;
-    }
+    const map: Record<string, string> = {
+      HUBIN_MITRA_CREATE: 'Menambahkan Mitra Industri', HUBIN_MITRA_UPDATE: 'Memperbarui Mitra Industri', HUBIN_MITRA_DELETE: 'Menghapus Mitra Industri',
+      HUBIN_MOU_CREATE: 'Membuat MoU Kerja Sama', HUBIN_MOU_UPDATE: 'Memperbarui MoU Kerja Sama', HUBIN_MOU_DELETE: 'Menghapus MoU Kerja Sama', HUBIN_MOU_RENEW: 'Memperpanjang MoU Kerja Sama',
+      HUBIN_PKL_PLACE: 'Menempatkan Siswa PKL', HUBIN_PKL_REMOVE: 'Menarik Siswa PKL',
+      HUBIN_LOWONGAN_CREATE: 'Membuka Lowongan BKK', HUBIN_LOWONGAN_UPDATE: 'Memperbarui Lowongan', HUBIN_LOWONGAN_DELETE: 'Menutup Lowongan',
+      HUBIN_LAMARAN_CREATE: 'Mengajukan Lamaran', HUBIN_LAMARAN_STATUS: 'Memperbarui Status Lamaran', HUBIN_LAMARAN_DELETE: 'Membatalkan Lamaran',
+      HUBIN_TRACER_SUBMIT: 'Mengisi Tracer Study', HUBIN_TEFA_CREATE: 'Membuat Proyek TEFA', HUBIN_TEFA_UPDATE: 'Memperbarui Proyek TEFA', HUBIN_TEFA_DELETE: 'Menghapus Proyek TEFA'
+    };
+    return map[action] || action;
   }, []);
 
   const getActionBadgeColor = React.useCallback((action: string) => {

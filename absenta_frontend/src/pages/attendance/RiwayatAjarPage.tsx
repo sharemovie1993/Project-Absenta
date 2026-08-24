@@ -20,6 +20,7 @@ import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { toLocalDate, formatLocalTimeFromISO } from '../../utils/attendance/time';
+import { formatDate } from '../../utils/layoutUtils';
 
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -90,11 +91,11 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNFILLED' | 'FILLED'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const parts = toLocalDate().split('-').map(Number);
+    const parts = (toLocalDate().split('-') ?? [])?.map(Number);
     return parts[1] - 1;
   });
   const [selectedYear, setSelectedYear] = useState(() => {
-    const parts = toLocalDate().split('-').map(Number);
+    const parts = (toLocalDate().split('-') ?? [])?.map(Number);
     return parts[0];
   });
   
@@ -118,13 +119,13 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   }>({});
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleOpenBahanAjar = useCallback((sesi: any) => {
+  const handleOpenBahanAjar = useCallback((sesi: SesiAjar & { perangkat_ajar_id?: string; mapel_id?: string; kelas_nama?: string; fase?: string }) => {
     setReaderContext({
-      perangkatId: sesi.perangkat_ajar_id || sesi.Mapel?.id || sesi.mapel_id,
-      mapelId: sesi.Mapel?.id || sesi.mapel_id,
+      perangkatId: sesi.perangkat_ajar_id || sesi.Mapel?.kode_mapel || sesi.mapel_id,
+      mapelId: sesi.mapel_id,
       mapelNama: sesi.Mapel?.nama_mapel || sesi.jenis_kegiatan,
       kelasNama: sesi.Kelas?.nama_kelas || sesi.kelas_nama,
-      tingkat: sesi.Kelas?.tingkat,
+      tingkat: undefined,
       fase: sesi.fase
     });
     setReaderModalOpen(true);
@@ -137,15 +138,15 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     enabled: isManager,
     staleTime: 600000,
   });
-  const guruOptions = (guruOptionsData?.data || []).map(g => ({ id: g.id, nama_guru: g.nama_guru }));
+  const guruOptions = (guruOptionsData?.data ?? [])?.map(g => ({ id: g.id, nama_guru: g.nama_guru }));
 
   const { data: kelasOptionsData } = useQuery({
     queryKey: ['kelas-list-options', tenantId],
-    queryFn: () => kelasApi.getAll({ limit: 200, is_active: true } as any),
+    queryFn: () => kelasApi.getAll({ limit: 200 }),
     enabled: true,
     staleTime: 600000,
   });
-  const kelasOptions = (kelasOptionsData?.data || []).map(k => ({ id: k.id, nama_kelas: k.nama_kelas }));
+  const kelasOptions = (kelasOptionsData?.data ?? [])?.map(k => ({ id: k.id, nama_kelas: k.nama_kelas }));
 
   // 2. Get Guru Profile if user is a Teacher
   const { data: guruData } = useQuery({
@@ -175,10 +176,10 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
 
   // Helper to safely extract session array
   const rawList = useMemo((): SesiAjar[] => {
-    const raw = (sesiData as any)?.data?.data || (sesiData as any)?.data || sesiData || [];
+    const raw = (sesiData as { data?: { data?: SesiAjar[]; items?: SesiAjar[] } | SesiAjar[] })?.data ?? sesiData ?? [];
     if (Array.isArray(raw)) return raw as SesiAjar[];
-    if (Array.isArray((raw as any)?.data)) return (raw as any).data as SesiAjar[];
-    if (Array.isArray((raw as any)?.items)) return (raw as any).items as SesiAjar[];
+    if (Array.isArray((raw as { data?: SesiAjar[] })?.data)) return (raw as { data: SesiAjar[] }).data;
+    if (Array.isArray((raw as { items?: SesiAjar[] })?.items)) return (raw as { items: SesiAjar[] }).items;
     return [];
   }, [sesiData]);
 
@@ -241,7 +242,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     });
     const totalSesi = allSesi.length;
     const totalHadir = allSesi.reduce((acc, curr) => acc + (curr.summary?.HADIR || 0), 0);
-    const totalSiswa = allSesi.reduce((acc, curr) => acc + (curr.summary?.TOTAL || (curr.summary as any)?.total || 0), 0);
+    const totalSiswa = allSesi.reduce((acc, curr) => acc + (curr.summary?.TOTAL || curr.summary?.total || 0), 0);
     const avgKehadiran = totalSiswa > 0 ? Math.round((totalHadir / totalSiswa) * 100) : 0;
     const jurnalTerisi = allSesi.filter(s => Boolean(s.ProgresMateri?.judul_materi || s.ProgresMateri?.deskripsi)).length;
     const kepatuhanJurnal = totalSesi > 0 ? Math.round((jurnalTerisi / totalSesi) * 100) : 0;
@@ -286,8 +287,8 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
         ? ['No', 'Hari/Tanggal', 'Waktu/Jam', 'Guru Pengajar', 'Kelas', 'Mata Pelajaran', 'Kehadiran Siswa', 'Materi Pokok & Capaian', 'Kendala/Catatan']
         : ['No', 'Hari/Tanggal', 'Waktu/Jam', 'Kelas', 'Mata Pelajaran', 'Kehadiran Siswa', 'Materi Pokok & Capaian', 'Kendala/Catatan'];
 
-      const rows = filteredSessions.map((s, idx) => {
-        const d = s.tanggal ? format(new Date(s.tanggal), 'dd/MM/yyyy') : '-';
+      const rows = (filteredSessions ?? [])?.map((s, idx) => {
+        const d = s.tanggal ? formatDate(s.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
         const jamMulai = s.jam_mulai || formatLocalTimeFromISO(s.waktu_mulai) || '--:--';
         const jamSelesai = s.jam_selesai || formatLocalTimeFromISO(s.waktu_selesai) || '--:--';
         const sum = s.summary || {};
@@ -314,7 +315,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
 
       const csvContent = [
         headers.join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ...(rows ?? [])?.map(row => (row ?? [])?.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -327,7 +328,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       toast.success('Buku Jurnal Mengajar berhasil diekspor!', { icon: '📄' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gagal mengekspor data');
     } finally {
       setIsExporting(false);
@@ -365,7 +366,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
       {viewMode === 'table' ? (
         <Suspense fallback={<div className="h-64 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-2xl" />}>
           <BukuJurnalTable
-            sessions={filteredSessions as any}
+            sessions={filteredSessions}
             isLoading={isLoading}
             isManager={isManager}
             onOpenJournal={(sesiId, initialData) => {
@@ -381,13 +382,13 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
           <div className="space-y-12">
             {isLoading ? (
               <div className="flex justify-center py-20"><Loader size="lg" /></div>
-            ) : riwayatGrouped.length > 0 ? (
-              riwayatGrouped.map((group) => (
+            ) : (riwayatGrouped ?? []).length > 0 ? (
+              (riwayatGrouped ?? [])?.map((group) => (
                 <div key={group.date} className="relative">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="px-4 py-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 rounded-xl">
                       <h2 className="text-xs font-black text-blue-900 dark:text-blue-200 flex items-center gap-2">
-                        <span>{format(parseISO(group.date), 'dd MMMM yyyy', { locale: id })}</span>
+                        <span>{formatDate(group.date, { day: '2-digit', month: 'long', year: 'numeric' })}</span>
                         <span className="text-slate-400">•</span>
                         <span className="uppercase text-[10px] text-blue-600 dark:text-blue-400">
                           {format(parseISO(group.date), 'EEEE', { locale: id })}
@@ -399,7 +400,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                     <Suspense fallback={<div className="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-2xl" />}>
-                      {group.sessions.map((sesi) => (
+                      {(group.sessions ?? [])?.map((sesi) => (
                         <SesiAjarCard
                           key={sesi.id}
                           sesi={sesi}
@@ -447,7 +448,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
              <Suspense fallback={<div className="py-20 text-center"><Loader /></div>}>
                <SesiAttendanceList 
                  records={detailAttendance?.data || []} 
-                 sesi={(selectedSesiForDetail || undefined) as any} 
+                 sesi={selectedSesiForDetail || undefined} 
                />
              </Suspense>
            )}

@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
+const emailSchema = z.object({ token: z.string().min(1) });
+import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '@/lib/axiosInstance';
 import { Button, SectionCard, Loader } from '@/components/ui';
@@ -53,7 +56,7 @@ const EmailVerificationContent: React.FC = () => {
         setLoginUrl(data?.loginUrl || '');
         if (active) setStatus(st || '');
       } catch (e: unknown) {
-        const err = e as any;
+        const err = e as Record<string, unknown>;
         const msg = err?.response?.data?.message || err?.message || 'Gagal memuat status verifikasi';
         setError(msg);
         const st = String(err?.response?.data?.status || '').toUpperCase() as VerifyStatus;
@@ -105,7 +108,7 @@ const EmailVerificationContent: React.FC = () => {
       const st = String(data?.status || '').toUpperCase() as VerifyStatus;
       setStatus(st || 'VERIFIED');
     } catch (e: unknown) {
-      const err = e as any;
+      const err = e as Record<string, unknown>;
       const msg = err?.response?.data?.message || err?.message || 'Gagal mengonfirmasi verifikasi';
       setError(msg);
     } finally {
@@ -131,7 +134,7 @@ const EmailVerificationContent: React.FC = () => {
         else setError('Tautan baru telah dikirim via WhatsApp.');
       }
     } catch (e: unknown) {
-      const err = e as any;
+      const err = e as Record<string, unknown>;
       const msg = err?.response?.data?.message || err?.message || `Gagal mengirim ulang verifikasi via ${channel}`;
       setError(msg);
     } finally {
@@ -146,7 +149,7 @@ const EmailVerificationContent: React.FC = () => {
 
   const containerVariants = {
     hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: "easeOut" as any } },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: "easeOut" as Record<string, unknown> } },
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   };
 
@@ -189,7 +192,7 @@ const EmailVerificationContent: React.FC = () => {
                     { v: String(hh).padStart(2,'0'), l: "Jam" },
                     { v: String(mm).padStart(2,'0'), l: "Menit" },
                     { v: String(ss).padStart(2,'0'), l: "Detik" }
-                  ].map((x, i) => (
+                  ]?.map((x, i) => (
                     <div key={i} className="flex flex-col items-center">
                       <div className="text-2xl font-black text-slate-800 dark:text-white">{x.v}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase">{x.l}</div>
@@ -212,8 +215,7 @@ const EmailVerificationContent: React.FC = () => {
               <div className="group">
                 <label htmlFor="email-input" className="text-xs font-bold text-slate-500 mb-1.5 block">Kirim ulang ke Email</label>
                 <div className="relative">
-                  <input 
-                    id="email-input"
+                  <input id="email-input"
                     type="email" 
                     placeholder="nama@sekolah.com"
                     value={email}
@@ -234,8 +236,7 @@ const EmailVerificationContent: React.FC = () => {
               <div className="group">
                 <label htmlFor="whatsapp-input" className="text-xs font-bold text-slate-500 mb-1.5 block">Nomor WhatsApp</label>
                 <div className="relative">
-                  <input 
-                    id="whatsapp-input"
+                  <input id="whatsapp-input"
                     type="text" 
                     placeholder="Nomor WhatsApp (62...)"
                     value={phone}
@@ -286,7 +287,7 @@ const EmailVerificationContent: React.FC = () => {
         <main className="flex-grow flex items-center justify-center py-16 px-4 relative overflow-hidden">
           {/* Decorative Background Elements */}
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-30 dark:opacity-20 translate-y-[-10%]">
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl opacity-50" />
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-full h-[600px] bg-mesh rounded-full blur-3xl opacity-50" />
           </div>
 
           <AnimatePresence mode="wait">
@@ -302,7 +303,7 @@ const EmailVerificationContent: React.FC = () => {
                    <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
                    <motion.div 
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" as any }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" as Record<string, unknown> }}
                       className="absolute inset-0 rounded-full border-4 border-t-blue-600 border-r-transparent"
                    />
                    <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-blue-600 animate-pulse" />

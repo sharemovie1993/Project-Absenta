@@ -1,8 +1,10 @@
-import React, { useMemo, lazy, Suspense } from 'react';
+import React, { useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, AlertDescription, AlertTitle, SectionCard, Loader } from '@/components/ui';
 import { superadminIntelligenceApi } from '@/api/superadmin-intelligence.api';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '../../utils/layoutUtils';
 import { Users, UserCheck, CreditCard, AlertTriangle } from 'lucide-react';
 
 // Lazy load complex sections
@@ -118,46 +120,50 @@ export default function PlatformIntelligencePage() {
     );
   }
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Intelligence Center' }
+  ], []);
+
   return (
-    <SuperAdminPageLayout
-      title="Platform Intelligence & Analytics"
-      description="Dashboard analisis prediktif, pemantauan risiko infrastruktur, dan metrik kesehatan ekosistem Absenta."
-      stats={statsList}
-      hardeningModuleKey="platformintelligencepage"
-      instruction={instruction}
-      breadcrumbs={[
-        { label: 'Intelligence Center' }
-      ]}
-    >
-      <div className="space-y-8 animate-in fade-in duration-500 pb-12">
-        {/* Tabel Risiko Tenant */}
-        <Suspense fallback={<Loader />}>
-          <IntelligenceRiskTable data={topRiskQuery.data || []} loading={topRiskQuery.isLoading} />
-        </Suspense>
-
-        {/* Grafik Notifikasi & Transaksi */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        title="Platform Intelligence & Analytics"
+        description="Dashboard analisis prediktif, pemantauan risiko infrastruktur, dan metrik kesehatan ekosistem Absenta."
+        stats={statsList}
+        hardeningModuleKey="platformintelligencepage"
+        instruction={instruction}
+        breadcrumbs={breadcrumbs}
+      >
+        <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+          {/* Tabel Risiko Tenant */}
           <Suspense fallback={<Loader />}>
-            <IntelligenceEmailChart data={emailQuery.data} />
+            <IntelligenceRiskTable data={topRiskQuery.data || []} loading={topRiskQuery.isLoading} />
           </Suspense>
-          <Suspense fallback={<Loader />}>
-            <IntelligencePaymentChart data={paymentQuery.data} />
-          </Suspense>
-        </div>
 
-        {/* Performa Presensi Global */}
-        <SectionCard
-          title="Performa Presensi Global (Absensi)"
-          icon={UserCheck}
-          fullWidth
-        >
-          <div className="w-full">
+          {/* Grafik Notifikasi & Transaksi */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Suspense fallback={<Loader />}>
-              <AttendancePerformanceSection topRiskTenants={topRiskQuery.data || []} />
+              <IntelligenceEmailChart data={emailQuery.data} />
+            </Suspense>
+            <Suspense fallback={<Loader />}>
+              <IntelligencePaymentChart data={paymentQuery.data} />
             </Suspense>
           </div>
-        </SectionCard>
-      </div>
-    </SuperAdminPageLayout>
+
+          {/* Performa Presensi Global */}
+          <SectionCard
+            title="Performa Presensi Global (Absensi)"
+            icon={UserCheck}
+            fullWidth
+          >
+            <div className="w-full">
+              <Suspense fallback={<Loader />}>
+                <AttendancePerformanceSection topRiskTenants={topRiskQuery.data || []} />
+              </Suspense>
+            </div>
+          </SectionCard>
+        </div>
+      </SuperAdminPageLayout>
+    </InfraErrorBoundary>
   );
 }

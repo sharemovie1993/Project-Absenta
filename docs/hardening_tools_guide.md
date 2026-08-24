@@ -38,37 +38,36 @@ Berikut adalah berkas-berkas yang menyusun sistem hardening:
 
 ---
 
-## 🧱 DAFTAR PILAR HARDENING (28 PILAR AKTIF)
+## 🧱 DAFTAR PILAR HARDENING (32 PILAR AKTIF)
 
-Berikut adalah seluruh pilar yang saat ini terdaftar dan dideteksi oleh kedua engine (udit-pages.cjs dan dev-audit-server.cjs):
+Berikut adalah seluruh pilar yang saat ini terdaftar dan dideteksi oleh kedua engine (audit-pages.cjs dan dev-audit-server.cjs):
 
 | No | Nama Pilar | Key JSON Response | Deskripsi Singkat |
 |---|---|---|---|
 | 1 | Standardisasi Layout Utama | usesLayout | Wajib menggunakan AcademicPageLayout (Manajemen dengan Sidebar) atau OperationalPageLayout (POS Mode TANPA Sidebar & terdaftar di FULL-PAGE ROUTES App.tsx) |
 | 2 | Keamanan Data & Defensive Programming | safeMapping | Peta data wajib menggunakan optional chaining (?.map) |
 | 3 | Optimasi DOM Churn (Memoization) | usesMemo | Wajib useMemo + useCallback pada halaman yang memuat list |
-| 4 | Keamanan Tipe TypeScript (No Any) | 
-oAnyType | Dilarang menggunakan : any atau s any |
+| 4 | Keamanan Tipe TypeScript (No Any) | noAnyType | Dilarang menggunakan : any atau as any |
 | 5 | Pencegahan Kebocoran Memori | safeEffect | Wajib return cleanup di useEffect jika ada listener/timer |
 | 6 | Konsistensi Pewarnaan Ketat | strictColors | Dilarang warna hardcode (hex/rgb inline, arbitrary Tailwind) |
-| 7 | Kepatuhan Sorting Tabel | 	ableSorting | Komponen <Table> wajib memiliki implementasi sorting |
+| 7 | Kepatuhan Sorting Tabel | tableSorting | Komponen <Table> wajib memiliki implementasi sorting |
 | 8 | Penanganan State Kosong | emptyState | Wajib menangani kondisi data kosong (EmptyState, !data.length) |
 | 9 | Indikator Loading / Skeleton Guard | loadingGuard | Wajib ada loading state saat fetch data |
-| 10 | Aksesibilitas Form | ormA11y | Elemen form wajib memiliki ria-label atau htmlFor |
+| 10 | Aksesibilitas Form | formA11y | Elemen form wajib memiliki aria-label atau htmlFor |
 | 11 | Optimasi Pemuatan (Lazy Loading) | performanceOptimization | Komponen berat wajib dimuat dengan lazy() + Suspense |
 | 12 | Sistem Panduan Pengguna | userGuidance | Layout wajib memiliki properti instruction |
-| 13 | Standarisasi Pagination Tabel | 	ablePagination | <Table> wajib memiliki pagination, onPageChange, onLimitChange |
-| 14 | Standarisasi Toolbar Aksi Halaman | standardToolbar | Aksi utama wajib di 	oolbarLeft/	oolbarRight pada Table |
-| 15 | Sistem Feedback & Dialog Terstandar | standardFeedback | Dilarang  lert()/confirm() browser, wajib useToast/useConfirm |
+| 13 | Standarisasi Pagination Tabel | tablePagination | <Table> wajib memiliki pagination, onPageChange, onLimitChange |
+| 14 | Standarisasi Toolbar Aksi Halaman | standardToolbar | Aksi utama wajib di toolbarLeft/toolbarRight pada Table |
+| 15 | Sistem Feedback & Dialog Terstandar | standardFeedback | Dilarang alert()/confirm() browser, wajib useToast/useConfirm |
 | 16 | Konsistensi Kontainer UI | standardContainer | Layout wajib dibungkus SectionCard atau Card |
-| 17 | Komponen Seleksi Canggih |  dvancedSelect | Elemen <select> wajib diganti <SearchableSelect> |
-| 18 | Standarisasi Toolbar Kontekstual Tabel | 	ableToolbar | Aksi operasional tabel wajib di slot 	oolbarLeft/Right |
+| 17 | Komponen Seleksi Canggih | advancedSelect | Elemen <select> wajib diganti <SearchableSelect> |
+| 18 | Standarisasi Toolbar Kontekstual Tabel | tableToolbar | Aksi operasional tabel wajib di slot toolbarLeft/Right |
 | 19 | Standarisasi Navigasi Portal & Tombol Kembali Capsule | `breadcrumbNavigation` / `navigationStandard` | Layout wajib menyediakan navigasi portal terpusat dan tombol kembali Glass Capsule |
 | 20 | Shared UI Components | usesUiComponents | Wajib mengimpor komponen dari components/ui |
 | 21 | Proteksi Fitur Berbayar | premiumFeatureGate | Modul berbayar wajib menggunakan <PremiumFeatureGate> |
 | 21B | Pencegahan God File | godFileGuard | Halaman < 800 baris, subkomponen < 500 baris (Terintegrasi AST Import Tracer untuk melacak ukuran seluruh sub-komponen anak secara akumulatif) |
 | 22 | Desentralisasi Konfigurasi (Anti-Hardcoded) | hardcodedConfig | Dilarang data mock/dummy lokal atau URL API hardcode |
-| 23 | Standarisasi Kartu Analitik/Statistik |  nalyticsCardGuard | Wajib menggunakan <AnalyticsCard> atau MemoizedAnalyticsCard |
+| 23 | Standarisasi Kartu Analitik/Statistik | analyticsCardGuard | Wajib menggunakan <AnalyticsCard> atau MemoizedAnalyticsCard |
 | 24 | Standarisasi Impor & Ekspor Data | importExportGuard | Ekspor/impor wajib: loading guard, try-catch, generateImportTemplate |
 | 25 | Sistem Ekspor PDF Terstandar | standardPdfPrint | Dilarang pakai jsPDF langsung, wajib via utils/print/ |
 | 26 | Validasi Skema Zod untuk Form | zodValidationGuard | Form wajib dilindungi z.object(...) / zodResolver / .safeParse() |
@@ -76,6 +75,8 @@ oAnyType | Dilarang menggunakan : any atau s any |
 | 28 | Konsistensi Aliran Tata Letak | layoutFlowConsistency | Filter & stats card wajib tampil di atas tabel data master |
 | 29 | Kesiapan Whitelabel & Dynamic Branding | whitelabelBrandingGuard | Dilarang hardcode nama platform statis 'Absenta.id'; wajib variabel dinamis tenantName/systemConfig |
 | 30 | Adaptabilitas Responsif Multi-Perangkat | responsiveLayoutAdaptationGuard | Wajib teradaptasi di 3 tingkatan layar (Desktop, Tablet, Mobile), zero-clipping, Touch-Scroll TabSwitcher, & AnalyticsCard Mobile-Mini (52px) |
+| 31 | Optimasi Data Fetching (Anti-useEffect) | dataFetchingOptimizationGuard | Dilarang raw useEffect data fetching; wajib React Query (useQuery/useMutation) atau custom options hook |
+| 32 | Standarisasi Cache Invalidation & Sinkronisasi Mutasi | cacheInvalidationGuard | Mutasi data wajib memanggil queryClient.invalidateQueries, dilarang keras window.location.reload() |
 
 ---
 

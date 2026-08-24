@@ -41,6 +41,8 @@ import { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
 import { TahunPelajaranSelect } from '../../components/common/TahunPelajaranSelect';
 import { SemesterSelect } from '../../components/common/SemesterSelect';
 
+import { formatDate } from '../../utils/layoutUtils';
+
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -66,6 +68,12 @@ interface Student {
   no_rfid?: string;
 }
 
+type GuruProfileType = {
+  wali_kelas_di?: { id?: string; nama_kelas?: string } | string;
+  kelas_id?: string;
+  id?: string;
+};
+
 // Skema validasi Zod untuk form data (Pilar 25)
 const pelanggaranSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
@@ -76,8 +84,9 @@ const pelanggaranSchema = z.object({
   status: z.string().min(1, 'Status wajib dipilih')
 });
 
-export default function PelanggaranPage() {
+export default React.memo(function PelanggaranPage() {
   const { user } = useAuthStore();
+  const guruProfile = (user as { guru_profile?: GuruProfileType } | null)?.guru_profile;
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,32 +99,32 @@ export default function PelanggaranPage() {
 
   // Resolusi nama & ID rombel binaan Wali Kelas menggunakan profile & useWaliKelasOptions hook
   const effectiveWaliKelasId = useMemo(() => {
-    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
-    const directId = typeof directObj === 'object' ? directObj?.id : directObj || (user as any)?.guru_profile?.kelas_id;
+    const directObj = guruProfile?.wali_kelas_di;
+    const directId = typeof directObj === 'object' ? directObj?.id : directObj || guruProfile?.kelas_id;
     if (directId) return directId;
 
     if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
       const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
       );
       if (found?.kelas_id) return found.kelas_id;
       if (found?.Kelas?.id) return found.Kelas.id;
     }
     return null;
-  }, [user, waliKelasAssignments]);
+  }, [user, guruProfile, waliKelasAssignments]);
 
   const waliKelasNama = useMemo(() => {
-    const directObj = (user as any)?.guru_profile?.wali_kelas_di;
+    const directObj = guruProfile?.wali_kelas_di;
     if (typeof directObj === 'object' && directObj?.nama_kelas) return directObj.nama_kelas;
 
     if (waliKelasAssignments && waliKelasAssignments.length > 0 && user?.id) {
       const found = waliKelasAssignments.find(
-        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === (user as any)?.guru_profile?.id
+        (item) => item.user_id === user.id || item.Guru?.user_id === user.id || item.Guru?.id === guruProfile?.id
       );
       if (found?.Kelas?.nama_kelas) return found.Kelas.nama_kelas;
     }
     return '';
-  }, [user, waliKelasAssignments]);
+  }, [user, guruProfile, waliKelasAssignments]);
 
   const isWaliKelasRole = useMemo(() => {
     const pos = user?.position_codes || [];
@@ -173,7 +182,7 @@ export default function PelanggaranPage() {
 
   // ── useQuery: Fetch pelanggaran list ─────────────────────────────────────
   const queryParams = useMemo(() => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       page: currentPage,
       limit: itemsPerPage,
       search: debouncedSearch,
@@ -322,7 +331,7 @@ export default function PelanggaranPage() {
       sortable: true,
       render: (value: string) => (
         <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-           {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+           {value ? formatDate(value, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
         </span>
       )
     },
@@ -520,17 +529,19 @@ export default function PelanggaranPage() {
     </div>
   ), [isDualRoleUser, isWaliKelas, waliKelasNama, handleContextSwitch, selectedTahunPelajaranId, selectedSemesterId, searchTerm, resetForm]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: isWaliKelas ? 'Wali Kelas' : 'Kesiswaan', path: isWaliKelas ? '/academic/siswa' : '/kesiswaan' },
+    { label: 'Kasus Pelanggaran', path: '/kesiswaan/pelanggaran' }
+  ], [isWaliKelas]);
+
   return (
     <AcademicPageLayout
       title={isWaliKelas ? `Kasus Pelanggaran Siswa ${waliKelasNama ? `(${waliKelasNama})` : ''}` : "Manajemen Kasus Pelanggaran Siswa"}
       description={isWaliKelas 
         ? `Pantauan khusus catatan kedisiplinan dan pembinaan karakter siswa kelas ${waliKelasNama || 'bimbingan Anda'}.`
         : "Pusat pemantauan & penanganan kedisiplinan siswa seluruh sekolah."}
-      breadcrumbs={[
-        { label: 'Dashboard', path: '/dashboard' },
-        { label: isWaliKelas ? 'Wali Kelas' : 'Kesiswaan', path: isWaliKelas ? '/academic/siswa' : '/kesiswaan' },
-        { label: 'Kasus Pelanggaran', path: '/kesiswaan/pelanggaran' }
-      ]}
+      breadcrumbs={breadcrumbs}
       stats={pageStats}
       hardeningModuleKey="kesiswaan_pelanggaran"
       instruction={{
@@ -636,7 +647,7 @@ export default function PelanggaranPage() {
                 searchPlaceholder="Cari kategori..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="poin-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bobot Poin</Label>
                 <Input
@@ -696,4 +707,4 @@ export default function PelanggaranPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

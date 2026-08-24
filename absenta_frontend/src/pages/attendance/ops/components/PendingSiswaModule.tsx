@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../../../components/ui/Button';
 import Switch from '../../../../components/ui/Switch';
@@ -21,6 +22,12 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
+
+const markStatusSchema = z.object({
+  siswaId: z.string().min(1, 'ID siswa wajib diisi'),
+  status: z.enum(['HADIR', 'SAKIT', 'IZIN', 'ALPA', 'DISPEN']),
+  catatan: z.string().max(255).optional(),
+});
 
 interface PendingStudent {
   id: string;
@@ -90,10 +97,15 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   }, [selectedKelasId, kelasOptions, setSelectedKelasId]);
 
   const handleMarkStatus = useCallback(async (siswaId: string, status: string, catatan?: string) => {
+    const parsed = markStatusSchema.safeParse({ siswaId, status, catatan });
+    if (!parsed.success) {
+      toast.error('Parameter status absensi tidak valid');
+      return;
+    }
     try {
-      await markGateAbsence({ siswa_id: siswaId, status: status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN', catatan });
-      toast.success(`Status ${status} direkam`);
-      logAttendanceMetric('GERBANG_MANUAL_STATUS', { role: userRole, kelasId: inferredKelasId || null, siswaId, status });
+      await markGateAbsence({ siswa_id: parsed.data.siswaId, status: parsed.data.status, catatan: parsed.data.catatan });
+      toast.success(`Status ${parsed.data.status} direkam`);
+      logAttendanceMetric('GERBANG_MANUAL_STATUS', { role: userRole, kelasId: inferredKelasId || null, siswaId: parsed.data.siswaId, status: parsed.data.status });
       await refreshData();
     } catch (e: unknown) {
       const errObj = e as { response?: { status?: number; data?: { message?: string } }; message?: string };

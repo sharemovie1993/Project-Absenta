@@ -25,22 +25,20 @@ import {
   ToggleLeft,
   ToggleRight,
   Users,
-  Info,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { Button, SectionCard } from '@/components/ui';
+import { Button, SectionCard, TabSwitcher } from '@/components/ui';
 import { Loader } from '@/components/ui/Loader';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
-import type { JadwalKegiatanFormData } from './JadwalKegiatanFormModal';
+import type { JadwalKegiatanFormData } from '@/components/attendance/kegiatan/JadwalKegiatanFormModal';
+import { formatDate } from '@/utils/layoutUtils';
 
-// ─── Lazy-loaded heavy modal form (Point #6: Lazy + Suspense) ────────────────
-const JadwalKegiatanFormModal = lazy(() => import('./JadwalKegiatanFormModal'));
+// Lazy-loaded heavy modal form
+const JadwalKegiatanFormModal = lazy(() => import('@/components/attendance/kegiatan/JadwalKegiatanFormModal'));
 
 import { HARI_LIST as HARI_OPTION } from '../../constants/day.constants';
-import { getTimezone } from '../../utils/attendance/time';
 import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
 
-// ─── Types (Point #3: No any) ─────────────────────────────────────────────────
 interface CardItem {
   id: string;
   nama: string;
@@ -49,272 +47,258 @@ interface CardItem {
   dbItem: JadwalKegiatanItem | null;
 }
 
-const formatDate = (date?: Date | string | null): string => {
-  if (!date) return '-';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '-';
-  try {
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getTimezone() });
-  } catch {
-    return '-';
-  }
-};
-
-const parseArrayField = (field: any): string[] => {
+const parseArrayField = (field: unknown): string[] => {
   if (!field) return [];
-  if (Array.isArray(field)) return field;
+  if (Array.isArray(field)) return field?.map(String) || [];
   if (typeof field === 'string') {
     try {
       const parsed = JSON.parse(field);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {}
-    return field.split(',').map(s => s.trim()).filter(Boolean);
+      if (Array.isArray(parsed)) return parsed?.map(String) || [];
+    } catch {
+      // not JSON, fallback to comma-separated
+    }
+    return field.split(',')?.map((s: string) => s.trim()).filter(Boolean) || [];
   }
   return [];
 };
 
 export default React.memo(function JadwalKegiatanPage() {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { confirm } = useConfirm();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
 
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PEMBIASAAN' | 'ESKUL'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
-  const [presetMasterNama, setPresetMasterNama] = useState<string>('');
+  const [presetMasterNama, setPresetMasterNama] = useState<string | undefined>(undefined);
 
-  // ── useQuery: Jadwal & Master Data ───────────────────────────────────────
-  const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useJadwalKegiatan();
-  const { rawList: classes } = useKelasOptions();
-  const { rawList: masterKegiatans } = useJenisKegiatanMaster();
-
-  const { data: activeTp } = useQuery({
+  // Data Fetching
+  const { data: activeTp, isLoading: loadingTp } = useQuery({
     queryKey: ['active-tahun-pelajaran'],
-    queryFn: () => getActiveTahunPelajaran().catch(() => null),
+    queryFn: getActiveTahunPelajaran,
     staleTime: 10 * 60 * 1000,
   });
 
   const { data: tpListRes } = useQuery({
-    queryKey: ['tahun-pelajaran-list-fallback'],
-    queryFn: () => getTahunPelajaranList(1, 50).catch(() => null),
+    queryKey: ['tahun-pelajaran-list-active-check'],
+    queryFn: () => getActiveTahunPelajaran(),
     staleTime: 10 * 60 * 1000,
   });
 
-  const items = useMemo(() => jadwalRes?.data ?? [], [jadwalRes]);
-  const activeTpData = (activeTp as any)?.data || activeTp;
-  const tpList = (tpListRes as any)?.data || [];
-  const activeTpFromList = Array.isArray(tpList) ? (tpList.find((t: any) => t.is_active) || tpList[0]) : null;
+  const activeTpData = (activeTp as Record<string, unknown>)?.data || activeTp;
+  const tpList = (tpListRes as Record<string, unknown>)?.data || [];
+  const activeTpFromList = Array.isArray(tpList) ? (tpList.find((t: { is_active?: boolean }) => t.is_active) || tpList[0]) : null;
+  const activeTahunPelajaranId = (activeTpData as { id?: string })?.id || activeTpFromList?.id || '';
+  const activeTahunPelajaranName = (activeTpData as { tahun?: string })?.tahun || activeTpFromList?.tahun || 'Tahun Ajaran Aktif';
 
-  const activeTahunPelajaranId = activeTpData?.id || activeTpFromList?.id || '';
-  const activeTahunPelajaranName = activeTpData?.tahun || activeTpFromList?.tahun || '';
-  const loading = loadingJadwal;
+  const { data: jadwalItems = [], isLoading: loadingJadwal } = useJadwalKegiatan(activeTahunPelajaranId);
+  const { data: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
+  const { data: classes = [], isLoading: loadingClasses } = useKelasOptions();
 
-  // ── Modal Handlers ──
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: (payload: JadwalKegiatanFormData) => createJadwalKegiatan({
+      ...payload,
+      hari: (payload.hari || [])?.map(h => h.toUpperCase()),
+      tahun_pelajaran_id: activeTahunPelajaranId,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      toast.success('Jadwal kegiatan berhasil disimpan!');
+      setIsModalOpen(false);
+    },
+    onError: (err: unknown) => {
+      const errObj = err as { message?: string };
+      toast.error(errObj.message || 'Gagal menyimpan jadwal kegiatan.');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: JadwalKegiatanFormData }) => updateJadwalKegiatan(id, {
+      ...payload,
+      hari: (payload.hari || [])?.map(h => h.toUpperCase()),
+      tahun_pelajaran_id: activeTahunPelajaranId,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      toast.success('Jadwal kegiatan berhasil diperbarui!');
+      setIsModalOpen(false);
+    },
+    onError: (err: unknown) => {
+      const errObj = err as { message?: string };
+      toast.error(errObj.message || 'Gagal memperbarui jadwal kegiatan.');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteJadwalKegiatan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      toast.success('Jadwal kegiatan berhasil dihapus.');
+    },
+    onError: (err: unknown) => {
+      const errObj = err as { message?: string };
+      toast.error(errObj.message || 'Gagal menghapus jadwal kegiatan.');
+    }
+  });
+
   const handleOpenCreate = useCallback(() => {
     setEditingItem(null);
-    setPresetMasterNama('');
+    setPresetMasterNama(undefined);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleOpenCreateFromMaster = useCallback((masterNama: string) => {
+    setEditingItem(null);
+    setPresetMasterNama(masterNama);
     setIsModalOpen(true);
   }, []);
 
   const handleOpenEdit = useCallback((item: JadwalKegiatanItem) => {
     setEditingItem(item);
+    setPresetMasterNama(undefined);
     setIsModalOpen(true);
   }, []);
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingItem(null);
-    setPresetMasterNama('');
+    setPresetMasterNama(undefined);
   }, []);
 
-  const invalidateAllJadwalKegiatanCaches = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
-    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-builder'] });
-    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
-    queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
-    queryClient.invalidateQueries({ queryKey: ['jenis-kegiatan-master'] });
-    queryClient.invalidateQueries({ queryKey: ['attendance-sessions'] });
-    queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
-  }, [queryClient]);
-
-  // ── Submit (from form modal) ──
   const handleFormSubmit = useCallback(async (formData: JadwalKegiatanFormData) => {
-    const payload = {
-      ...formData,
-      hari: (formData.hari || []).map(h => h.toUpperCase()),
-      waktu_selesai: formData.waktu_selesai && formData.waktu_selesai.trim() !== '' ? formData.waktu_selesai.trim() : null,
-      berlaku_mulai: formData.berlaku_mulai ? formData.berlaku_mulai.trim().split('T')[0] : toLocalDate(),
-      berlaku_sampai: formData.berlaku_sampai && formData.berlaku_sampai.trim() !== '' ? formData.berlaku_sampai.trim().split('T')[0] : null,
-      tahun_pelajaran_id: (formData.tahun_pelajaran_id || activeTahunPelajaranId || '').trim(),
-    };
-
-    try {
-      if (editingItem) {
-        const res = await updateJadwalKegiatan(editingItem.id, payload);
-        if (res.success) {
-          toast.success('Jadwal Kegiatan berhasil diperbarui');
-          handleCloseModal();
-          invalidateAllJadwalKegiatanCaches();
-          refetchJadwal();
-        }
-      } else {
-        const res = await createJadwalKegiatan(payload);
-        if (res.success) {
-          toast.success('Jadwal Kegiatan berhasil dibuat');
-          handleCloseModal();
-          invalidateAllJadwalKegiatanCaches();
-          refetchJadwal();
-        }
-      }
-    } catch (err: any) {
-      const serverMsg = err?.response?.data?.message || err?.response?.data?.errors?.[0]?.message || err?.message || 'Gagal menyimpan jadwal kegiatan';
-      toast.error(serverMsg);
+    if (editingItem) {
+      await updateMutation.mutateAsync({ id: editingItem.id, payload: formData });
+    } else {
+      await createMutation.mutateAsync(formData);
     }
-  }, [editingItem, activeTahunPelajaranId, handleCloseModal, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
+  }, [editingItem, updateMutation, createMutation]);
 
-  // ── Delete ──
   const handleDelete = useCallback(async (id: string, nama: string) => {
-    const confirmed = await confirm({
-      title: 'Hapus Jadwal Kegiatan',
-      description: `Apakah Anda yakin ingin menghapus jadwal "${nama}"? Tindakan ini tidak dapat dibatalkan.`,
-      confirmText: 'Hapus',
+    const ok = await confirm({
+      title: 'Hapus Jadwal Kegiatan?',
+      description: `Apakah Anda yakin ingin menghapus jadwal untuk "${nama}"?`,
+      confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
-      style: 'danger',
+      style: 'danger'
     });
-    if (!confirmed) return;
-    try {
-      const res = await deleteJadwalKegiatan(id);
-      if (res.success) {
-        toast.success('Jadwal Kegiatan berhasil dihapus');
-        invalidateAllJadwalKegiatanCaches();
-        refetchJadwal();
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gagal menghapus data';
-      toast.error(message);
+    if (ok) {
+      await deleteMutation.mutateAsync(id);
     }
-  }, [confirm, invalidateAllJadwalKegiatanCaches, refetchJadwal]);
-
-  // ── Toggle Active ──
-  const handleToggleActive = useCallback(async (item: JadwalKegiatanItem) => {
-    try {
-      const res = await updateJadwalKegiatan(item.id, { aktif: !item.aktif });
-      if (res.success) {
-        toast.success(`Jadwal ${!item.aktif ? 'diaktifkan' : 'dinonaktifkan'}`);
-        invalidateAllJadwalKegiatanCaches();
-        refetchJadwal();
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Gagal mengubah status';
-      toast.error(message);
-    }
-  }, [invalidateAllJadwalKegiatanCaches, refetchJadwal]);
-
-  // ── Handle open create from master card (pre-fills kategori kegiatan) ──
-  const handleOpenCreateFromMaster = useCallback((nama: string) => {
-    setEditingItem(null);
-    setPresetMasterNama(nama);
-    setIsModalOpen(true);
-  }, []);
+  }, [confirm, deleteMutation]);
 
   const handleToggleClick = useCallback(async (card: CardItem) => {
-    if (card.dbItem) {
-      await handleToggleActive(card.dbItem);
-    } else {
+    if (!card.dbItem) {
       handleOpenCreateFromMaster(card.nama);
+      return;
     }
-  }, [handleToggleActive, handleOpenCreateFromMaster]);
+    const item = card.dbItem;
+    const nextAktif = !item.aktif;
+    try {
+      await updateJadwalKegiatan(item.id, { aktif: nextAktif });
+      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      toast.success(`Jadwal "${item.nama}" berhasil ${nextAktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
+    } catch {
+      toast.error('Gagal mengubah status aktif jadwal.');
+    }
+  }, [handleOpenCreateFromMaster, queryClient, activeTahunPelajaranId]);
 
-  // ── Point #2: useMemo for card list computation ──
+  const filteredMasters = useMemo(() => {
+    return (masterKegiatans ?? []).filter(m => {
+      if (m.tipe === 'KBM') return false;
+      if (activeTab === 'ALL') return true;
+      return m.tipe === activeTab;
+    });
+  }, [masterKegiatans, activeTab]);
+
   const cards = useMemo<CardItem[]>(() => {
-    const matchedDbIds = new Set<string>();
-    const filteredMasters = (masterKegiatans ?? []).filter(m => m.nama !== 'KBM' && m.tipe !== 'KBM');
-
-    const list: CardItem[] = filteredMasters?.map(master => {
-      // Point #1: safe array access
-      const dbItem = (items ?? []).find(item => item.nama?.toLowerCase() === master.nama?.toLowerCase()) ?? null;
-      if (dbItem) matchedDbIds.add(dbItem.id);
+    const list: CardItem[] = (filteredMasters ?? [])?.map(master => {
+      const match = (jadwalItems ?? []).find(j => 
+        j.jenis_kegiatan_id === master.id ||
+        j.nama?.toLowerCase().trim() === master.nama.toLowerCase().trim()
+      );
       return {
-        id: dbItem ? dbItem.id : `master-${master.id}`,
+        id: master.id,
         nama: master.nama,
         jenis_kegiatan: master.tipe,
         master,
-        dbItem,
+        dbItem: match || null,
       };
     });
 
-    // Point #1: safe .forEach
-    (items ?? []).forEach(item => {
-      if (!matchedDbIds.has(item.id)) {
-        list.push({
-          id: item.id,
-          nama: item.nama,
-          jenis_kegiatan: item.jenis_kegiatan,
-          master: null,
-          dbItem: item,
-        });
+    (jadwalItems ?? []).forEach(j => {
+      const existsInList = list.some(item => 
+        (item.master && item.master.id === j.jenis_kegiatan_id) ||
+        item.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
+      );
+      if (!existsInList) {
+        if (activeTab === 'ALL' || j.jenis_kegiatan === activeTab) {
+          list.push({
+            id: j.id,
+            nama: j.nama,
+            jenis_kegiatan: j.jenis_kegiatan,
+            master: null,
+            dbItem: j,
+          });
+        }
       }
     });
 
-    return list.sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [masterKegiatans, items]);
+    return list;
+  }, [filteredMasters, jadwalItems, activeTab]);
 
-  // ── Layout config (memoized) ──
+  const loading = loadingTp || loadingJadwal || loadingMasters || loadingClasses;
+
   const breadcrumbs = useMemo(() => [
-    { label: 'Kesiswaan', path: '/attendance/dashboard' },
-    { label: 'Jadwal Kegiatan Rutin' },
+    { label: 'Presensi', path: '/attendance' },
+    { label: 'Jadwal Kegiatan & Eskul' }
   ], []);
 
-  const instruction = useMemo(() => ({
-    title: 'Panduan Jadwal Kegiatan Rutin',
-    description: (
-      <div className="space-y-2">
-        <p>Kelola jadwal pembiasaan ketarunaan, apel pagi, upacara, dan kegiatan ekstrakurikuler non-KBM secara otomatis.</p>
-        <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-slate-800/40 border border-blue-100 dark:border-slate-700/50 flex items-start gap-2 mt-2">
-          <Info className="text-blue-500 mt-0.5 shrink-0 w-4 h-4" />
-          <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
-            <strong>Sistem Auto-Session:</strong> Jadwal ini akan otomatis di-generate menjadi sesi kehadiran setiap hari sekolah pada pukul 01:00 dini hari.
-          </p>
-        </div>
-      </div>
-    ),
-    items: [
-      { text: "Klik 'Tambah Jadwal' untuk menambahkan jadwal kegiatan baru secara mandiri." },
-      { text: "Klik 'Atur' pada kartu kegiatan master untuk mengaktifkan jadwal otomatis." },
-      { text: "Gunakan toggle ON/OFF untuk menonaktifkan jadwal sementara tanpa menghapus." },
-      { text: "Atur target kelas agar sesi kehadiran hanya dibuat untuk kelas yang relevan." },
-    ],
-  }), []);
+  const tabOptions = useMemo(() => [
+    { id: 'ALL', label: 'Semua Kegiatan' },
+    { id: 'PEMBIASAAN', label: 'Pembiasaan Karakter' },
+    { id: 'ESKUL', label: 'Ekstrakurikuler' },
+  ], []);
 
   return (
     <AcademicPageLayout
-      title="Jadwal Kegiatan Rutin"
-      description="Kelola jadwal pembiasaan dan ekstrakurikuler non-KBM yang berjalan otomatis setiap hari"
+      title="Jadwal Kegiatan & Eskul"
+      description="Kelola jadwal jam pelaksanaan kegiatan rutin pembiasaan dan ekstrakurikuler sekolah."
       breadcrumbs={breadcrumbs}
-      instruction={instruction}
       hardeningModuleKey="attendance_jadwal_kegiatan"
-      actions={
-        <div className="flex items-center gap-2">
+      topSlot={
+        <div className="flex items-center justify-end gap-2">
           <Button
-            variant="outline"
-            onClick={() => navigate('/attendance/anggota-kegiatan-eskul')}
-            className="flex items-center gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => navigate('/attendance/anggota-eskul')}
+            className="flex items-center gap-1.5 font-bold rounded-xl"
           >
             <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Anggota & Pembina Eskul
           </Button>
           <Button
             id="btn-tambah-jadwal"
-            variant="primary"
+            variant="toolbarPrimary"
+            size="toolbar"
             onClick={handleOpenCreate}
-            className="flex items-center gap-1.5 shadow-sm"
+            className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
           >
             <Plus className="w-4 h-4" />
             Tambah Jadwal
           </Button>
         </div>
       }
+      instruction={{
+        title: "Panduan Jadwal Kegiatan",
+        description: "Kelola jadwal jam pelaksanaan kegiatan rutin pembiasaan dan ekstrakurikuler sekolah.",
+        items: [
+          { text: "Atur waktu mulai dan selesai untuk masing-masing kegiatan pembiasaan/eskul." },
+          { text: "Gunakan toggle status untuk mengaktifkan atau menonaktifkan jadwal." },
+          { text: "Klik Anggota & Pembina Eskul untuk memetakan siswa dan guru ke kegiatan." }
+        ]
+      }}
     >
-      {/* Point #9: PremiumFeatureGate */}
       <PremiumFeatureGate
         isLocked={false}
         featureName="Jadwal Kegiatan Rutin"
@@ -322,6 +306,13 @@ export default React.memo(function JadwalKegiatanPage() {
         description="Kelola jadwal kegiatan rutin pembiasaan dan eskul sekolah."
       >
         <SectionCard fullWidth className="p-0">
+          <div className="p-6 pb-0">
+            <TabSwitcher
+              tabs={tabOptions}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as 'ALL' | 'PEMBIASAAN' | 'ESKUL')}
+            />
+          </div>
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <Loader size="lg" />
@@ -335,9 +326,7 @@ export default React.memo(function JadwalKegiatanPage() {
               </p>
             </div>
           ) : (
-            // Point #2: list rendering from memoized cards
-            <div className="flex flex-col gap-3 p-6">
-              {/* Point #1: safe ?.map guard */}
+            <div className="flex flex-col gap-3 p-6 max-w-full overflow-x-auto">
               {cards?.map((card) => {
                 const isConfigured = !!card.dbItem;
                 const isActive = isConfigured && card.dbItem?.aktif;
@@ -355,7 +344,7 @@ export default React.memo(function JadwalKegiatanPage() {
                     }`}
                   >
                     {/* Time Block */}
-                    <div className="flex items-center gap-4 min-w-[170px] md:border-r border-slate-100 dark:border-slate-800 pr-4 w-full md:w-auto mb-3 md:mb-0">
+                    <div className="flex items-center gap-4 sm:min-w-[170px] md:border-r border-slate-100 dark:border-slate-800 pr-4 w-full md:w-auto mb-3 md:mb-0">
                       <div className={`p-2.5 rounded-xl ${!isConfigured ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'}`}>
                         <Clock size={18} />
                       </div>
@@ -391,12 +380,12 @@ export default React.memo(function JadwalKegiatanPage() {
                         </h3>
                       </div>
 
-                      <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 min-w-[200px]">
+                      <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 sm:min-w-[200px]">
                         <div className="flex items-center gap-1.5">
                           <Calendar size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
                             {isConfigured
-                              ? parseArrayField(item?.hari).map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ') || 'Hari: Belum diatur'
+                              ? (parseArrayField(item?.hari) ?? [])?.map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ') || 'Hari: Belum diatur'
                               : 'Hari: Belum diatur'}
                           </span>
                         </div>
@@ -416,6 +405,7 @@ export default React.memo(function JadwalKegiatanPage() {
                       <div className="flex items-center gap-2">
                         <button
                           id={`btn-edit-jadwal-${card.id}`}
+                          type="button"
                           aria-label={isConfigured ? `Edit jadwal ${card.nama}` : `Atur jadwal ${card.nama}`}
                           onClick={() => isConfigured && item ? handleOpenEdit(item) : handleOpenCreateFromMaster(card.nama)}
                           className={`px-3 py-2 rounded-xl transition-all text-xs font-extrabold flex items-center gap-1.5 ${
@@ -430,6 +420,7 @@ export default React.memo(function JadwalKegiatanPage() {
                         {isConfigured && item && (
                           <button
                             id={`btn-hapus-jadwal-${card.id}`}
+                            type="button"
                             aria-label={`Hapus jadwal ${card.nama}`}
                             onClick={() => handleDelete(item.id, item.nama)}
                             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
@@ -441,6 +432,7 @@ export default React.memo(function JadwalKegiatanPage() {
 
                       <button
                         id={`btn-toggle-jadwal-${card.id}`}
+                        type="button"
                         aria-label={`${isActive ? 'Nonaktifkan' : 'Aktifkan'} jadwal ${card.nama}`}
                         aria-pressed={!!isActive}
                         onClick={() => handleToggleClick(card)}
@@ -459,7 +451,7 @@ export default React.memo(function JadwalKegiatanPage() {
         </SectionCard>
       </PremiumFeatureGate>
 
-      {/* Point #6: Lazy + Suspense for heavy modal form */}
+      {/* Lazy + Suspense for heavy modal form */}
       {isModalOpen && (
         <Suspense fallback={
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

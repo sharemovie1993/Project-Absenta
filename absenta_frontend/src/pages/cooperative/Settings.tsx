@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
-import { Button, SectionCard } from '../../components/ui'; // Explicit import to satisfy audit standard UI rule #1
+import { Button, SectionCard } from '../../components/ui';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -318,6 +320,11 @@ const Settings: React.FC = React.memo(() => {
     );
   }
 
+  const tabOptions = useMemo((): TabOption[] => [
+    ...(canEditProfile ? [{ id: 'profile', label: 'Profil & Kop Surat' }] : []),
+    ...(canEditCategories ? [{ id: 'categories', label: 'Kategori Simpanan' }] : [])
+  ], [canEditProfile, canEditCategories]);
+
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Pengaturan Koperasi">
       <AcademicPageLayout
@@ -327,84 +334,67 @@ const Settings: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         instruction={instruction}
       >
-        {/* Dynamic Tab Switcher */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 space-x-6">
-          {canEditProfile && (
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${
-                activeTab === 'profile'
-                  ? 'border-indigo-600 text-indigo-650 dark:text-indigo-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'
-              }`}
-            >
-              Profil & Kop Surat
-            </button>
-          )}
-          {canEditCategories && (
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${
-                activeTab === 'categories'
-                  ? 'border-indigo-600 text-indigo-650 dark:text-indigo-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'
-              }`}
-            >
-              Kategori Simpanan
-            </button>
-          )}
-        </div>
-
-        <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[200px]">
-            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
-          </div>
-        }>
-          {activeTab === 'profile' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7">
-                <CooperativeProfileForm
-                  formData={formData}
-                  saving={saving}
-                  onInputChange={handleInputChange}
-                  onSubmit={handleSubmit}
-                  effectiveLogoUrl={effectiveLogoUrl}
-                  canEditProfile={canEditProfile}
-                />
-              </div>
-              <div className="lg:col-span-5">
-                <KopSuratPreview
-                  cooperativeName={formData.cooperative_name}
-                  cooperativeLegalNo={formData.cooperative_legal_no}
-                  effectiveLogoUrl={effectiveLogoUrl}
-                />
-              </div>
-            </div>
-          ) : (
-            <CategoriesTable
-              categories={categories}
-              loadingCategories={loadingCategories}
-              onToggleActive={handleToggleCatActive}
-              onEdit={handleOpenEditModal}
-              onDelete={handleDeleteCategory}
-              onOpenCreate={handleOpenCreateModal}
-              canEditCategories={canEditCategories}
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+          {/* Dynamic Tab Switcher */}
+          <div className="mb-6">
+            <TabSwitcher
+              options={tabOptions}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as 'profile' | 'categories')}
             />
-          )}
+          </div>
 
-          <CategoryModal
-            isOpen={showCatModal}
-            onClose={() => setShowCatModal(false)}
-            editingCategory={editingCategory}
-            catFormData={catFormData}
-            onInputChange={handleCatInputChange}
-            onPresetColorSelect={handlePresetColorSelect}
-            onWithdrawRuleChange={handleWithdrawRuleChange}
-            onSubmit={handleCatFormSubmit}
-            savingCat={savingCat}
-            presetColors={PRESET_COLORS}
-          />
-        </Suspense>
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[200px]">
+              <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+            </div>
+          }>
+            {activeTab === 'profile' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-7">
+                  <CooperativeProfileForm
+                    formData={formData}
+                    saving={saving}
+                    onInputChange={handleInputChange}
+                    onSubmit={handleSubmit}
+                    effectiveLogoUrl={effectiveLogoUrl}
+                    canEditProfile={canEditProfile}
+                  />
+                </div>
+                <div className="lg:col-span-5">
+                  <KopSuratPreview
+                    cooperativeName={formData.cooperative_name}
+                    cooperativeLegalNo={formData.cooperative_legal_no}
+                    effectiveLogoUrl={effectiveLogoUrl}
+                  />
+                </div>
+              </div>
+            ) : (
+              <CategoriesTable
+                categories={categories}
+                loadingCategories={loadingCategories}
+                onToggleActive={handleToggleCatActive}
+                onEdit={handleOpenEditModal}
+                onDelete={handleDeleteCategory}
+                onOpenCreate={handleOpenCreateModal}
+                canEditCategories={canEditCategories}
+              />
+            )}
+
+            <CategoryModal
+              isOpen={showCatModal}
+              onClose={() => setShowCatModal(false)}
+              editingCategory={editingCategory}
+              catFormData={catFormData}
+              onInputChange={handleCatInputChange}
+              onPresetColorSelect={handlePresetColorSelect}
+              onWithdrawRuleChange={handleWithdrawRuleChange}
+              onSubmit={handleCatFormSubmit}
+              savingCat={savingCat}
+              presetColors={PRESET_COLORS}
+            />
+          </Suspense>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { z } from 'zod';
 import { Button, Input, Card } from '@/components/ui';
 import { useNavigate } from 'react-router-dom';
 import { requestPasswordReset } from '@/api/auth.api';
@@ -8,7 +9,12 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 
-export default function ForgotPasswordPage() {
+// Zod Schema Validation Guard (Pilar 25)
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Format email tidak valid').min(1, 'Email wajib diisi')
+});
+
+export const ForgotPasswordPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,6 +24,13 @@ export default function ForgotPasswordPage() {
   const handleSubmit = useCallback(async () => {
     setSuccessMsg(null);
     setErrorMsg(null);
+
+    const validation = forgotPasswordSchema.safeParse({ email });
+    if (!validation.success) {
+      setErrorMsg(validation.error.errors[0]?.message || 'Email tidak valid');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await requestPasswordReset(email);
@@ -36,7 +49,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <InfraErrorBoundary>
+    <InfraErrorBoundary hardeningModuleKey="auth_forgot_password">
       <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-100">
         <Navbar />
         
@@ -73,9 +86,10 @@ export default function ForgotPasswordPage() {
                              Jangan khawatir, masukkan email Anda dan kami akan mengirimkan instruksi pemulihan.
                           </p>
 
-                          <div className="space-y-6">
+                          <div className="space-y-6 w-full max-w-full min-w-0">
                               <Input 
                                  id="forgotEmail"
+                                 aria-label="Email Terdaftar"
                                  label="Email Terdaftar"
                                  type="email"
                                  size="auth"
@@ -121,39 +135,25 @@ export default function ForgotPasswordPage() {
                           key="success"
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="text-center"
+                          className="text-center py-4"
                        >
-                          <div className="flex justify-center mb-8">
-                             <div className="w-24 h-24 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center border border-emerald-100 dark:border-emerald-800 shadow-sm shadow-emerald-200/50">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                             </div>
+                          <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-6">
+                             <CheckCircle2 className="w-8 h-8" />
                           </div>
-
-                          <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Tautan Terkirim</h2>
-                          <p className="text-slate-600 dark:text-slate-400 mb-10 leading-relaxed font-medium">
+                          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Tautan Terkirim!</h2>
+                          <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8">
                              {successMsg}
                           </p>
-
-                          <div className="space-y-4">
-                             <Button 
-                                variant="auth" 
-                                size="auth" 
-                                onClick={() => navigate('/login')}
-                             >
-                                Selesai, ke Login <ArrowRight className="w-5 h-5" />
-                             </Button>
-                             <p className="text-xs text-slate-400 font-bold">
-                                Tidak menerima email? <button onClick={() => setSuccessMsg(null)} className="text-blue-600 font-black hover:underline px-1">Coba lagi</button>
-                             </p>
-                          </div>
+                          <Button 
+                             variant="outline" 
+                             className="w-full"
+                             onClick={() => navigate('/login')}
+                          >
+                             Kembali ke Login
+                          </Button>
                        </motion.div>
                      )}
                   </AnimatePresence>
-               </div>
-               
-               {/* Bottom Brand decoration */}
-               <div className="bg-slate-50 dark:bg-slate-800/50 py-6 text-center border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 dark:text-slate-600">Secure Identity Recovery</span>
                </div>
             </Card>
           </motion.div>
@@ -163,13 +163,6 @@ export default function ForgotPasswordPage() {
       </div>
     </InfraErrorBoundary>
   );
-}
+});
 
-// Static audit compliance comment guards:
-// instruction={{ items: [] }}
-// breadcrumbs={[]}
-// <Card />
-// useMemo
-// useCallback
-// lazy(
-// Suspense
+export default ForgotPasswordPage;

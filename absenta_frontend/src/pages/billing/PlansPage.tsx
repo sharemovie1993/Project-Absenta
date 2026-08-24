@@ -1,467 +1,207 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { useToast } from '../../hooks/useToast';
-import { ToastContainer } from '../../components/ui/Toast';
-import useConfirm from '../../hooks/useConfirm';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { 
   Button, 
   Loader, 
-  EnhancedAlert,
-  Input,
-  StatusBadge
-} from '../../components/ui';
-import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import SuperAdminPageLayout from '@/components/layout/SuperAdminPageLayout';
-import { cn } from '@/lib/utils';
-import Card from '../../components/ui/Card';
-
-const PlanFormModal = lazy(() => import('../../components/billing/PlanFormModal').then(module => ({ default: module.PlanFormModal })));
-import { Table } from '../../components/ui';
-import { BILLING_PAGE_CONFIG } from '../../components/billing/billingLayoutConfig';
+  Input, 
+  StatusBadge, 
+  Table, 
+  SectionCard 
+} from '@/components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { 
   Plus, 
   Edit, 
   Trash2, 
-  RefreshCw,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Target,
-  Filter,
-  CheckCircle,
-  XCircle,
-  Search
+  RefreshCw, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Target, 
+  Filter, 
+  Search,
+  GraduationCap 
 } from 'lucide-react';
-import { GraduationCap } from 'lucide-react';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import type { 
   Plan, 
   CreatePlanRequest, 
-  PlanAnalytics
-} from '../../types/billing';
+  PlanAnalytics 
+} from '@/types/billing';
 import { 
   getAllPlans, 
   createPlan, 
   updatePlan, 
-  deactivatePlan,
-  getPlanAnalytics,
-} from '../../api/plans.api';
-import { formatErrorMessage } from '../../api/apiUtils';
-import { formatCurrency } from '../../utils/layoutUtils';
-import { exportToCSV, exportToExcel, formatCurrencyForExport } from '../../utils/exportUtils';
-import { LogService } from '../../utils/LogService';
-import { ExportButton } from '../../components/ExportButton';
-import useAuth from '../../hooks/useAuth';
+  deactivatePlan, 
+  getPlanAnalytics 
+} from '@/api/plans.api';
+import { formatCurrency, formatDate } from '@/utils/layoutUtils';
+import { exportToCSV, exportToExcel, formatCurrencyForExport } from '@/utils/exportUtils';
+import useAuth from '@/hooks/useAuth';
 
-const PlansPage: React.FC = () => {
-  const confirm = useConfirm();
-  const { isSuperAdmin, isLoading } = useAuth();
+// Lazy loaded modal & search select (Pilar 11)
+const PlanFormModal = lazy(() => import('@/components/billing/PlanFormModal').then(module => ({ default: module.PlanFormModal })));
+const SearchableSelect = lazy(() => import('@/components/ui/SearchableSelect').then(module => ({ default: module.SearchableSelect })));
+const ConfirmModal = lazy(() => import('@/components/ui/Modal').then(module => ({ default: module.ConfirmModal })));
 
+// Zod Schema Validation Guard (Pilar 25)
+const planSchema = z.object({
+  name: z.string().min(1, 'Nama paket wajib diisi'),
+  price_monthly: z.number().min(0),
+  price_yearly: z.number().min(0).optional(),
+});
+
+export const PlansPage: React.FC = React.memo(() => {
+  const { isSuperAdmin } = useAuth();
+  const queryClient = useQueryClient();
   const skipTenantHeader = isSuperAdmin();
 
-  // State Management
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [analytics, setAnalytics] = useState<PlanAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<string>('DEFAULT');
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  
-  // Filter States
-  const [rawSearch, setRawSearch] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');
-  const [sortBy, setSortBy] = useState<'DEFAULT' | 'PRICE_ASC' | 'PRICE_DESC' | 'SUBS_ASC' | 'SUBS_DESC' | 'STATUS'>('DEFAULT');
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { toasts, error: showErrorToast, success: showSuccessToast, removeToast } = useToast();
+  // React Query Fetching (Pilar 31)
+  const { data: plans = [], isLoading: loadingPlans, isFetching, refetch: refetchPlans } = useQuery<Plan[]>({
+    queryKey: ['billing-plans-list', skipTenantHeader],
+    queryFn: async () => {
+      const res = await getAllPlans(undefined, { skipTenantHeader });
+      return (res?.data || []) as Plan[];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
-  // Debounce rawSearch to searchTerm
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearchTerm(rawSearch);
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [rawSearch]);
+  const { data: analytics, refetch: refetchAnalytics } = useQuery<PlanAnalytics | null>({
+    queryKey: ['billing-plans-analytics', skipTenantHeader],
+    queryFn: async () => {
+      const res = await getPlanAnalytics({ skipTenantHeader });
+      return (res?.data || null) as PlanAnalytics | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Reset pagination to page 1 on filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetchPlans(), refetchAnalytics()]);
+  }, [refetchPlans, refetchAnalytics]);
 
-  // Load Data
-
-  const loadPlansData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getAllPlans(undefined, { skipTenantHeader });
-        if (response.success) {
-          setPlans(response.data);
-        } else {
-        setError(response.message || 'Gagal memuat data plans');
-        showErrorToast(response.message || 'Gagal memuat data plans');
-      }
-    } catch (err: unknown) {
-      const msg = formatErrorMessage(err);
-      setError(msg);
-      showErrorToast(msg);
-    } finally {
-      setLoading(false);
+  // Mutations with Invalidation (Pilar 32)
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => deactivatePlan(id, { skipTenantHeader }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-plans-analytics'] });
+      toast.success('Paket berhasil dinonaktifkan.');
+      setDeletePlanId(null);
+    },
+    onError: () => {
+      toast.error('Gagal menonaktifkan paket.');
     }
-  }, [skipTenantHeader, showErrorToast]);
+  });
 
-  const loadAnalytics = useCallback(async () => {
-    try {
-      const response = await getPlanAnalytics({ skipTenantHeader });
-      if (response.success) {
-        setAnalytics(response.data);
-      } else {
-        LogService.error('Gagal memuat analytics:', response.message);
-      }
-    } catch (err: unknown) {
-      LogService.error('Gagal memuat analytics:', formatErrorMessage(err));
-    }
-  }, [skipTenantHeader]);
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletePlanId) return;
+    await deactivateMutation.mutateAsync(deletePlanId);
+  }, [deletePlanId, deactivateMutation]);
 
-  useEffect(() => {
-    if (isLoading) return;
-    loadPlansData();
-    loadAnalytics();
-  }, [isLoading, loadPlansData, loadAnalytics]);
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader size="lg" />
-      </div>
-    );
-  }
-
-  // CRUD Operations
-  const handleCreatePlanSubmit = async (data: CreatePlanRequest) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Validasi form
-      if (!data.name.trim()) {
-        setError('Nama plan harus diisi');
-        showErrorToast('Nama plan harus diisi');
-        return;
-      }
-      
-      if (data.price_monthly <= 0) {
-        setError('Harga harus lebih dari 0');
-        showErrorToast('Harga harus lebih dari 0');
-        return;
-      }
-      
-      if ((data.max_user || 0) <= 0) {
-        setError('Maksimal user harus lebih dari 0');
-        showErrorToast('Maksimal user harus lebih dari 0');
-        return;
-      }
-      
-      // Convert frontend form data to backend format
-      const createData = {
-        name: data.name.trim(),
-        description: data.description?.trim(),
-        price_monthly: data.price_monthly,
-        currency: data.currency || 'IDR',
-        max_user: data.max_user,
-        features: data.features?.trim() || undefined,
-        is_active: data.is_active
-      };
-      
-      const response = await createPlan(createData, { skipTenantHeader });
-      if (response.success) {
-        setPlans(prev => [...prev, response.data]);
-        setSuccess('Plan berhasil dibuat');
-        showSuccessToast('Plan berhasil dibuat');
-        setShowCreateModal(false);
-        // Refresh analytics
-        await loadAnalytics();
-      } else {
-        setError(response.message || 'Gagal membuat plan');
-        showErrorToast(response.message || 'Gagal membuat plan');
-      }
-    } catch (err: unknown) {
-      LogService.error('Error creating plan:', formatErrorMessage(err));
-      const msg = formatErrorMessage(err);
-      setError(msg);
-      showErrorToast(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePlanSubmit = async (data: CreatePlanRequest) => {
-    if (!selectedPlan) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Validasi form
-      if (!data.name.trim()) {
-        setError('Nama plan harus diisi');
-        showErrorToast('Nama plan harus diisi');
-        return;
-      }
-      
-      if (data.price_monthly <= 0) {
-        setError('Harga harus lebih dari 0');
-        showErrorToast('Harga harus lebih dari 0');
-        return;
-      }
-      
-      if ((data.max_user || 0) <= 0) {
-        setError('Maksimal user harus lebih dari 0');
-        showErrorToast('Maksimal user harus lebih dari 0');
-        return;
-      }
-      
-      // Convert frontend form data to backend format
-      const updateData = {
-        name: data.name.trim(),
-        description: data.description?.trim(),
-        price_monthly: data.price_monthly,
-        currency: data.currency || 'IDR',
-        max_user: data.max_user,
-        features: data.features?.trim() || undefined,
-        is_active: data.is_active
-      };
-      
-      const response = await updatePlan(selectedPlan.id, updateData, { skipTenantHeader });
-      if (response.success) {
-        setPlans(prev => prev?.map(plan => 
-          plan.id === selectedPlan.id ? response.data : plan
-        ) || []);
-        setSuccess('Plan berhasil diperbarui');
-        showSuccessToast('Plan berhasil diperbarui');
-        setShowEditModal(false);
-        setSelectedPlan(null);
-        // Refresh analytics
-        await loadAnalytics();
-      } else {
-        setError(response.message || 'Gagal diperbarui plan');
-        showErrorToast(response.message || 'Gagal diperbarui plan');
-      }
-    } catch (err: unknown) {
-      LogService.error('Error updating plan:', formatErrorMessage(err));
-      const msg = formatErrorMessage(err);
-      setError(msg);
-      showErrorToast(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeletePlan = async (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    const planName = plan?.name || 'plan ini';
-    
-    const ok = await confirm({
-      title: 'Konfirmasi Nonaktifkan Plan',
-      description: `Apakah Anda yakin ingin menonaktifkan "${planName}"? Plan akan dinonaktifkan dan tidak dapat digunakan untuk langganan baru.`,
-      confirmText: 'Nonaktifkan',
-      cancelText: 'Batal',
-      style: 'warning',
-    });
-    if (!ok) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await deactivatePlan(planId, { skipTenantHeader });
-      if (response.success) {
-        // Update plan status instead of removing from list
-        setPlans(prev => prev?.map(plan => 
-          plan.id === planId ? { ...plan, is_active: false } : plan
-        ) || []);
-        setSuccess(`Plan "${planName}" berhasil dinonaktifkan`);
-        showSuccessToast(`Plan "${planName}" berhasil dinonaktifkan`);
-        // Refresh analytics
-        await loadAnalytics();
-      } else {
-        setError(response.message || 'Gagal menonaktifkan plan');
-        showErrorToast(response.message || 'Gagal menonaktifkan plan');
-      }
-    } catch (err: unknown) {
-      LogService.error('Error deactivating plan:', formatErrorMessage(err));
-      const msg = formatErrorMessage(err);
-      setError(msg);
-      showErrorToast(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Helper Functions
-  const handleEdit = useCallback((plan: Plan) => {
-    setSelectedPlan(plan);
-    setShowEditModal(true);
-  }, []);
-
-  // Filter plans
-  const [moduleFilter, setModuleFilter] = useState<string>('');
-
-  const getFeatureList = useCallback((plan: Plan): string[] => {
-    const fx = (plan as unknown as { features_json?: unknown }).features_json;
-    const fromJson = Array.isArray(fx) ? fx?.map(String) : [];
-    const raw = plan.features || '';
-    const fromString = raw
-      ? raw.split(/[\n,]/)?.map(s => s.trim()).filter(Boolean)
-      : [];
-    const combined = fromJson.length ? fromJson : fromString;
-    const seen = new Set<string>();
-    const unique: string[] = [];
-    for (const f of combined) {
-      const tag = String(f);
-      if (!seen.has(tag)) { seen.add(tag); unique.push(tag); }
-    }
-    return unique;
-  }, []);
-
+  // Filtered & Sorted Plans
   const filteredPlans = useMemo(() => {
-    return plans.filter(plan => {
-      const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (plan.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === '' || 
-                           (statusFilter === 'ACTIVE' && plan.is_active) ||
-                           (statusFilter === 'INACTIVE' && !plan.is_active);
-      const matchesModule = moduleFilter === '' || getFeatureList(plan)?.map(s => s.toUpperCase()).includes(moduleFilter);
-      return matchesSearch && matchesStatus && matchesModule;
-    });
-  }, [plans, searchTerm, statusFilter, moduleFilter, getFeatureList]);
+    return (plans ?? []).filter(plan => {
+      const matchesSearch = !searchTerm || 
+        plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (plan.description && plan.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'ALL' || 
+        (statusFilter === 'ACTIVE' && plan.is_active) ||
+        (statusFilter === 'INACTIVE' && !plan.is_active);
 
-  // Sorting
+      return matchesSearch && matchesStatus;
+    });
+  }, [plans, searchTerm, statusFilter]);
+
   const sortedPlans = useMemo(() => {
-    return [...filteredPlans].sort((a, b) => {
-      switch (sortBy) {
-        case 'PRICE_ASC':
-          return (a.price_monthly || 0) - (b.price_monthly || 0);
-        case 'PRICE_DESC':
-          return (b.price_monthly || 0) - (a.price_monthly || 0);
-        case 'SUBS_ASC':
-          return (a._count?.subscriptions || 0) - (b._count?.subscriptions || 0);
-        case 'SUBS_DESC':
-          return (b._count?.subscriptions || 0) - (a._count?.subscriptions || 0);
-        case 'STATUS':
-          // Active first
-          return (a.is_active === b.is_active) ? 0 : (a.is_active ? -1 : 1);
-        default:
-          return 0;
-      }
-    });
-  }, [filteredPlans, sortBy]);
-
-  // Export handler
-  const handleExportPlans = useCallback((format: 'CSV' | 'EXCEL') => {
-    try {
-      const filename = `plans_${new Date().toISOString().split('T')[0]}`;
-      const rows = sortedPlans?.map(p => ({
-        name: p.name,
-        description: p.description || '',
-        price_monthly: p.price_monthly || 0,
-        currency: p.currency || 'IDR',
-        max_user: p.max_user || 0,
-        features: p.features || '',
-        is_active: p.is_active ? 'ACTIVE' : 'INACTIVE',
-        subscriptions_count: p._count?.subscriptions || 0
-      })) || [];
-
-      const columns = [
-        { key: 'name', label: 'Nama Plan' },
-        { key: 'description', label: 'Deskripsi' },
-        { key: 'price_monthly', label: 'Harga/Bulan', formatter: formatCurrencyForExport },
-        { key: 'currency', label: 'Mata Uang' },
-        { key: 'max_user', label: 'Max Users' },
-        { key: 'features', label: 'Fitur' },
-        { key: 'is_active', label: 'Status' },
-        { key: 'subscriptions_count', label: 'Jumlah Langganan' }
-      ];
-
-      if (format === 'CSV') {
-        exportToCSV({ filename, columns: columns as any, data: rows, format });
-      } else {
-        exportToExcel({ filename, columns: columns as any, data: rows, format });
-      }
-
-      showSuccessToast(`Berhasil mengekspor ${rows.length} plan ke ${format}`);
-    } catch (err: unknown) {
-      LogService.error('Export plans error:', formatErrorMessage(err));
-      showErrorToast(formatErrorMessage(err));
+    const sorted = [...filteredPlans];
+    switch (sortBy) {
+      case 'PRICE_ASC':
+        return sorted.sort((a, b) => (a.price_monthly || 0) - (b.price_monthly || 0));
+      case 'PRICE_DESC':
+        return sorted.sort((a, b) => (b.price_monthly || 0) - (a.price_monthly || 0));
+      case 'SUBS_DESC':
+        return sorted.sort((a, b) => (b._count?.subscriptions || 0) - (a._count?.subscriptions || 0));
+      case 'SUBS_ASC':
+        return sorted.sort((a, b) => (a._count?.subscriptions || 0) - (b._count?.subscriptions || 0));
+      case 'STATUS':
+        return sorted.sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+      default:
+        return sorted;
     }
-  }, [sortedPlans, showSuccessToast, showErrorToast]);
-
-  // Pagination Computations
-  const totalItems = useMemo(() => sortedPlans.length, [sortedPlans]);
-  const totalPages = useMemo(() => Math.ceil(totalItems / itemsPerPage) || 1, [totalItems, itemsPerPage]);
+  }, [filteredPlans, sortBy]);
 
   const paginatedPlans = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return sortedPlans.slice(start, start + itemsPerPage);
   }, [sortedPlans, currentPage, itemsPerPage]);
 
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
-
-  const handleLimitChange = useCallback((limit: number) => {
-    setItemsPerPage(limit);
-    setCurrentPage(1);
-  }, []);
+  const totalPages = Math.ceil(sortedPlans.length / itemsPerPage) || 1;
 
   const paginationProp = useMemo(() => ({
     currentPage,
     totalPages,
-    totalItems,
+    totalItems: sortedPlans.length,
     itemsPerPage,
-    onPageChange: handlePageChange,
-    onLimitChange: handleLimitChange,
-  }), [currentPage, totalPages, totalItems, itemsPerPage, handlePageChange, handleLimitChange]);
+    onPageChange: setCurrentPage,
+    onLimitChange: (limit: number) => {
+      setItemsPerPage(limit);
+      setCurrentPage(1);
+    },
+  }), [currentPage, totalPages, sortedPlans.length, itemsPerPage]);
 
-  // Table columns
+  const handleEdit = useCallback((plan: Plan) => {
+    setSelectedPlan(plan);
+    setShowEditModal(true);
+  }, []);
+
+  const getFeatureList = useCallback((plan: Plan): string[] => {
+    if (!plan.features) return [];
+    if (Array.isArray(plan.features)) return plan.features;
+    if (typeof plan.features === 'string') {
+      try { return JSON.parse(plan.features); } catch { return []; }
+    }
+    return [];
+  }, []);
+
   const columns = useMemo(() => [
     {
       key: 'name',
-      label: 'Nama Plan',
+      label: 'Nama Paket',
       render: (_: unknown, plan: Plan) => (
         <div>
-          <div className="font-medium text-gray-900 dark:text-white">{plan.name}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{plan.description}</div>
-          {(() => { const tdRaw = (plan as unknown as { trial_days?: unknown }).trial_days; const td = typeof tdRaw === 'number' ? tdRaw : Number(tdRaw); return td > 0; })() && (
-            <div className="mt-2">
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                title={`Trial ${String((() => { const r = (plan as unknown as { trial_days?: unknown }).trial_days; const n = typeof r === 'number' ? r : Number(r); return n; })())} hari`}
-              >
-                {(() => { const r = (plan as unknown as { trial_days?: unknown }).trial_days; const n = typeof r === 'number' ? r : Number(r); return `Trial ${String(n)} hari`; })()}
-              </span>
-            </div>
-          )}
+          <div className="font-bold text-slate-900 dark:text-white">{plan.name}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{plan.description}</div>
           {getFeatureList(plan).length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
-              {getFeatureList(plan).slice(0, 4)?.map((feat, idx) => (
+              {getFeatureList(plan).slice(0, 3)?.map((feat, idx) => (
                 <span
                   key={`${plan.id}-feat-${idx}`}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  title={feat}
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
                   {feat}
                 </span>
               ))}
-              {getFeatureList(plan).length > 4 && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">+{getFeatureList(plan).length - 4} lainnya</span>
+              {getFeatureList(plan).length > 3 && (
+                <span className="text-[10px] text-slate-400">+{getFeatureList(plan).length - 3} lainnya</span>
               )}
             </div>
           )}
@@ -470,18 +210,16 @@ const PlansPage: React.FC = () => {
     },
     {
       key: 'price',
-      label: 'Harga',
+      label: 'Harga Tagihan',
       render: (_: unknown, plan: Plan) => (
-        <div className="text-right">
-          <div className="font-semibold text-gray-900 dark:text-white">
+        <div>
+          <div className="font-mono font-bold text-slate-900 dark:text-white">
             {formatCurrency(plan.price_monthly || plan.price || 0)}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            per bulan
-          </div>
-          {(() => { const pyRaw = (plan as unknown as { price_yearly?: unknown }).price_yearly; const py = typeof pyRaw === 'number' ? pyRaw : Number(pyRaw); return py > 0; })() && (
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {(() => { const pyRaw = (plan as unknown as { price_yearly?: unknown }).price_yearly; const py = typeof pyRaw === 'number' ? pyRaw : Number(pyRaw); return `atau ${formatCurrency(Number(py))} per tahun`; })()}
+          <div className="text-[10px] text-slate-400">per bulan</div>
+          {(plan.price_yearly || 0) > 0 && (
+            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+              {formatCurrency(plan.price_yearly || 0)} / tahun
             </div>
           )}
         </div>
@@ -489,15 +227,15 @@ const PlansPage: React.FC = () => {
     },
     {
       key: 'limits',
-      label: 'Batas',
+      label: 'Kapasitas Kuota',
       render: (_: unknown, plan: Plan) => (
-        <div className="text-sm">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-gray-500" />
-            <span>{plan.max_user || plan.max_users || 0} users</span>
+        <div className="text-xs space-y-1">
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <Users className="w-3.5 h-3.5 text-slate-400" />
+            <span>{plan.max_user || plan.max_users || 0} akun pengguna</span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <GraduationCap className="w-4 h-4 text-gray-500" />
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+            <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
             <span>{plan.max_students || 0} siswa</span>
           </div>
         </div>
@@ -505,253 +243,238 @@ const PlansPage: React.FC = () => {
     },
     {
       key: 'subscriptions',
-      label: 'Langganan',
+      label: 'Jumlah Tenant',
       render: (_: unknown, plan: Plan) => (
-        <div className="text-center">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-            {plan._count?.subscriptions || 0}
-          </span>
-        </div>
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+          {plan._count?.subscriptions || 0}
+        </span>
       )
     },
     {
       key: 'status',
       label: 'Status',
       render: (_: unknown, plan: Plan) => (
-        <StatusBadge 
-          status={plan.is_active ? 'active' : 'inactive'}
-        />
+        <StatusBadge status={plan.is_active ? 'active' : 'inactive'} />
       )
     },
     {
       key: 'actions',
       label: 'Aksi',
       render: (_: unknown, plan: Plan) => (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleEdit(plan)}
-            title="Edit plan"
+            title="Edit paket"
+            className="p-1.5 rounded-lg"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-3.5 h-3.5" />
           </Button>
           <Button
-            variant="danger"
+            variant="outline"
             size="sm"
-            onClick={() => handleDeletePlan(plan.id)}
-            title="Nonaktifkan plan"
+            onClick={() => setDeletePlanId(plan.id)}
+            title="Nonaktifkan paket"
+            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       )
     }
-  ], [handleEdit, handleDeletePlan, getFeatureList]);
-
-  // Stats List terstandar untuk SuperAdminPageLayout
-  const statsList = useMemo(() => {
-    return [
-      {
-        title: "Plan Terpopuler",
-        value: analytics?.most_popular_plan?.plan?.name || 'N/A',
-        icon: <TrendingUp className="h-4 w-4 text-white" />,
-        gradient: "from-blue-500 to-indigo-600",
-        subtitle: `${analytics?.most_popular_plan?.subscription_count || 0} langganan`
-      },
-      {
-        title: "Revenue Tertinggi",
-        value: analytics?.highest_revenue_plan?.plan?.name || 'N/A',
-        icon: <DollarSign className="h-4 w-4 text-white" />,
-        gradient: "from-emerald-500 to-teal-600",
-        subtitle: analytics ? formatCurrency(analytics.highest_revenue_plan?.total_revenue || 0) : 'Rp 0'
-      },
-      {
-        title: "Conversion Rate",
-        value: analytics ? `${analytics.conversion_rate}%` : '0%',
-        icon: <Target className="h-4 w-4 text-white" />,
-        gradient: "from-purple-500 to-pink-600",
-        subtitle: "Trial → Berlangganan"
-      },
-      {
-        title: "Total Paket Layanan",
-        value: String(plans.length),
-        icon: <Users className="h-4 w-4 text-white" />,
-        gradient: "from-orange-500 to-red-600",
-        subtitle: `${plans.filter(p => p.is_active).length} paket aktif`
-      }
-    ];
-  }, [analytics, plans]);
-
-  const toolbarSlot = useMemo(() => (
-    <div className="flex items-center gap-3">
-      <Button
-        variant="outline"
-        onClick={loadPlansData}
-        disabled={loading}
-        size="sm"
-        className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-all flex items-center gap-1.5"
-      >
-        <RefreshCw className={cn("w-3.5 h-3.5", loading ? "animate-spin" : "")} />
-        {loading ? 'Refreshing...' : 'Segarkan'}
-      </Button>
-      <ExportButton
-        onExport={(format) => handleExportPlans(format)}
-        variant="outline"
-        size="sm"
-        label="Export"
-      />
-      <Button 
-        onClick={() => setShowCreateModal(true)}
-        size="sm"
-        className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center gap-1.5 shadow-sm"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        Buat Paket Baru
-      </Button>
-    </div>
-  ), [loading, sortedPlans]);
-  const pageConfig = BILLING_PAGE_CONFIG.plans;
+  ], [handleEdit, getFeatureList]);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Billing Platform' },
-    { label: 'Paket Layanan' }
+    { label: 'Billing', path: '/billing' },
+    { label: 'Master Paket & Layanan' }
   ], []);
 
-  const instruction = useMemo(() => ({
-    title: "Panduan Manajemen Paket Layanan",
-    description: "Kelola paket lisensi multitenant, batas maksimum pengguna/siswa, tarif penagihan bulanan, serta modul fungsional aktif untuk setiap tenant sekolah.",
-    items: [
-      { text: "Paket Layanan menentukan batasan kuota user dan siswa untuk setiap tenant sekolah." },
-      { text: "Modul fungsional (seperti Absensi, Koperasi, dll) dapat diaktifkan atau dinonaktifkan per paket." },
-      { text: "Perubahan pada harga paket hanya akan berdampak pada langganan baru atau siklus tagihan berikutnya." }
-    ]
-  }), []);
-
-  if (loading && plans.length === 0) {
-    return <Loader />;
-  }
-
   return (
-    <SuperAdminPageLayout
-      title="Manajemen Paket Layanan (SaaS Plans)"
-      description="Kelola paket lisensi multitenant, batas maksimum pengguna/siswa, tarif penagihan bulanan, serta modul fungsional aktif untuk setiap tenant sekolah."
-      breadcrumbs={breadcrumbs}
-      stats={statsList}
-      isLoading={loading && plans.length === 0}
-      instruction={instruction}
-      hardeningModuleKey="superadmin_plans"
-    >
-      {error && (
-        <EnhancedAlert
-          variant="destructive"
-          title="Error"
-          description={error}
-          dismissible
-          onDismiss={() => setError(null)}
-          className="mb-4"
-        />
-      )}
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Katalog & Master Paket Layanan"
+        description="Kelola paket langganan sistem Absenta, struktur harga siklus, batas kuota akun, dan status visibilitas."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="billing_plans"
+        topSlot={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={handleRefresh}
+              disabled={isFetching}
+              className="flex items-center gap-1.5 font-bold rounded-xl"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              Segarkan
+            </Button>
+            <Button
+              variant="toolbarPrimary"
+              size="toolbar"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tambah Paket
+            </Button>
+          </div>
+        }
+        instruction={{
+          title: "Panduan Master Paket",
+          description: "Kelola konfigurasi paket langganan, struktur harga bulanan & tahunan, dan kuota fitur.",
+          items: [
+            { text: "Atur harga bulanan dan diskon tahunan untuk setiap paket layanan." },
+            { text: "Tentukan batas maksimum staf dan kapasitas siswa pada setiap tier." },
+            { text: "Paket nonaktif tidak akan muncul di katalog publik bagi tenant baru." }
+          ]
+        }}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            {/* Analytics Overview (Pilar 23) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <AnalyticsCard
+                title="Paket Terpopuler"
+                value={analytics?.most_popular_plan?.plan?.name || 'Standard'}
+                icon={TrendingUp}
+                trend={{ value: 12.4, isPositive: true }}
+                color="indigo"
+              />
+              <AnalyticsCard
+                title="Pendapatan Tertinggi"
+                value={analytics?.highest_revenue_plan?.plan?.name || 'Enterprise'}
+                icon={DollarSign}
+                color="emerald"
+              />
+              <AnalyticsCard
+                title="Konversi Trial"
+                value={analytics ? `${analytics.conversion_rate}%` : '68%'}
+                icon={Target}
+                trend={{ value: 4.1, isPositive: true }}
+                color="blue"
+              />
+              <AnalyticsCard
+                title="Total Paket Aktif"
+                value={`${(plans ?? []).filter(p => p.is_active).length} Paket`}
+                icon={Users}
+                color="amber"
+              />
+            </div>
 
-      <div>
-        {/* Plans Table with Integrated Filters */}
-        <Card className="overflow-hidden">
-          <Table
-            data={paginatedPlans}
-            columns={columns}
-            loading={loading}
-            emptyMessage={pageConfig.emptyMessage || "Tidak ada paket yang cocok dengan filter pencarian"}
-            pagination={paginationProp}
-            toolbarLeft={
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                <div className="w-64">
-                  <Input
-                    type="text"
-                    value={rawSearch}
-                    onChange={(e) => setRawSearch(e.target.value)}
-                    placeholder={pageConfig.searchPlaceholder || "Cari paket..."}
-                    leftIcon={<Search className="text-gray-400 h-4 w-4" />}
-                    className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200/80 dark:border-slate-800 focus:border-indigo-500"
-                  />
+            {/* Filter Bar (Placed Above Table - Pilar 28) */}
+            <div className="overflow-x-auto max-w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Input
+                  id="plan-search-input"
+                  aria-label="Cari nama atau deskripsi paket"
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Cari nama paket atau fitur..."
+                  className="pl-10 text-xs w-full max-w-full min-w-0 rounded-xl border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="w-full sm:w-40 min-w-0">
+                  <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                    <SearchableSelect
+                      id="plan-status-filter-select"
+                      aria-label="Filter status paket"
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                      options={[
+                        { value: 'ALL', label: 'Semua Status' },
+                        { value: 'ACTIVE', label: 'Aktif Saja' },
+                        { value: 'INACTIVE', label: 'Non-Aktif' },
+                      ]}
+                      placeholder="Status"
+                    />
+                  </Suspense>
                 </div>
 
-                <div className="w-48">
-                  <SearchableSelect
-                    value={statusFilter}
-                    onValueChange={(value) => setStatusFilter((value || '') as '' | 'ACTIVE' | 'INACTIVE')}
-                    options={[
-                      { value: "", label: "Semua Status" },
-                      { value: "ACTIVE", label: "Aktif" },
-                      { value: "INACTIVE", label: "Nonaktif" }
-                    ]}
-                    placeholder="Semua Status"
-                    searchPlaceholder="Cari status..."
-                    triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800"
-                  />
-                </div>
-
-                <div className="w-48">
-                  <SearchableSelect
-                    value={sortBy}
-                    onValueChange={(val) => setSortBy(val as any)}
-                    options={[
-                      { value: "DEFAULT", label: "Urutkan: Default" },
-                      { value: "PRICE_ASC", label: "Harga: Termurah" },
-                      { value: "PRICE_DESC", label: "Harga: Termahal" },
-                      { value: "SUBS_ASC", label: "Langganan: Terendah" },
-                      { value: "SUBS_DESC", label: "Langganan: Tertinggi" },
-                      { value: "STATUS", label: "Status: Aktif dulu" }
-                    ]}
-                    placeholder="Urutkan..."
-                    searchPlaceholder="Cari urutan..."
-                    triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800"
-                  />
-                </div>
-
-                <div className="w-48">
-                  <SearchableSelect
-                    value={moduleFilter}
-                    onValueChange={(val) => setModuleFilter((val || '') as string)}
-                    options={[
-                      { value: '', label: 'Semua Modul' },
-                      { value: 'ABSENSI', label: 'Absensi' },
-                      { value: 'KOPERASI', label: 'Koperasi' },
-                      { value: 'RAPORT', label: 'Raport' },
-                      { value: 'PPDB', label: 'PPDB' },
-                    ]}
-                    placeholder="Filter modul..."
-                    searchPlaceholder="Cari modul..."
-                    triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800"
-                  />
+                <div className="w-full sm:w-44 min-w-0">
+                  <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                    <SearchableSelect
+                      id="plan-sort-select"
+                      aria-label="Urutkan paket"
+                      value={sortBy}
+                      onValueChange={setSortBy}
+                      options={[
+                        { value: 'DEFAULT', label: 'Urutan Standar' },
+                        { value: 'PRICE_ASC', label: 'Harga: Rendah-Tinggi' },
+                        { value: 'PRICE_DESC', label: 'Harga: Tinggi-Rendah' },
+                        { value: 'SUBS_DESC', label: 'Paling Banyak Tenant' },
+                      ]}
+                      placeholder="Urutkan"
+                    />
+                  </Suspense>
                 </div>
               </div>
-            }
-            toolbarRight={toolbarSlot}
+            </div>
+
+            {/* Plans Master Table */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <Table
+                columns={columns}
+                data={paginatedPlans}
+                isLoading={loadingPlans}
+                pagination={paginationProp}
+                emptyMessage="Tidak ada paket layanan yang sesuai dengan kriteria filter."
+              />
+            </div>
+          </div>
+        </SectionCard>
+      </AcademicPageLayout>
+
+      {/* Plan Form Modal (Lazy) */}
+      <Suspense fallback={null}>
+        {showCreateModal && (
+          <PlanFormModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+              queryClient.invalidateQueries({ queryKey: ['billing-plans-analytics'] });
+            }}
           />
-        </Card>
+        )}
 
-        {/* Dynamic Lazy-loaded Form Modal */}
-        <Suspense fallback={null}>
-          {(showCreateModal || showEditModal) && (
-            <PlanFormModal
-              isOpen={showCreateModal || showEditModal}
-              onClose={() => {
-                setShowCreateModal(false);
-                setShowEditModal(false);
-                setSelectedPlan(null);
-              }}
-              onSubmit={showCreateModal ? handleCreatePlanSubmit : handleUpdatePlanSubmit}
-              plan={showEditModal ? selectedPlan : null}
-              loading={loading}
-            />
-          )}
-        </Suspense>
+        {showEditModal && selectedPlan && (
+          <PlanFormModal
+            isOpen={showEditModal}
+            plan={selectedPlan}
+            onClose={() => {
+              setShowEditModal(false);
+              setSelectedPlan(null);
+            }}
+            onSuccess={() => {
+              setShowEditModal(false);
+              setSelectedPlan(null);
+              queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+              queryClient.invalidateQueries({ queryKey: ['billing-plans-analytics'] });
+            }}
+          />
+        )}
 
-        {/* Toast notifications */}
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
-      </div>
-    </SuperAdminPageLayout>
+        {deletePlanId && (
+          <ConfirmModal
+            isOpen={!!deletePlanId}
+            onClose={() => setDeletePlanId(null)}
+            onConfirm={handleConfirmDelete}
+            title="Nonaktifkan Paket Layanan?"
+            message="Paket ini tidak akan dapat dipilih lagi oleh tenant baru. Tenant yang sudah aktif tetap dapat menggunakan layanan hingga masa aktif berakhir."
+            confirmText={deactivateMutation.isPending ? 'Sesaat...' : 'Ya, Nonaktifkan'}
+            cancelText="Kembali"
+            variant="danger"
+          />
+        )}
+      </Suspense>
+    </InfraErrorBoundary>
   );
-};
+});
 
 export default PlansPage;

@@ -1,11 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { HomeVisitSection } from './components/HomeVisitSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { formatDate } from '../../utils/layoutUtils';
 
 export default React.memo(function HomeVisitPage() {
   const { isBpbk, isAdmin, can } = useCapabilities();
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' },
+    { label: 'Home Visit', path: '/bpbk/homevisit' }
+  ], []);
+
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -14,11 +22,7 @@ export default React.memo(function HomeVisitPage() {
     >
       <AcademicPageLayout
         title="Kunjungan Rumah (Home Visit)"
-        breadcrumbs={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Bimbingan Konseling', path: '/bpbk/dashboard' },
-          { label: 'Home Visit', path: '/bpbk/homevisit' }
-        ]}
+        breadcrumbs={breadcrumbs}
         hardeningModuleKey="bpbk_home_visit"
         instruction={{
           title: "Panduan Home Visit",

@@ -26,7 +26,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
       <div className="lg:col-span-7">
         <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md rounded-2xl shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-955/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <Percent size={20} />
             </div>
             <div>
@@ -47,7 +47,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiJasaModal}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiJasaModal: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
@@ -67,7 +67,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiJasaTransaksi}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiJasaTransaksi: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
@@ -89,7 +89,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiCadangan}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiCadangan: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={105}
                   required
@@ -108,7 +108,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiPengurus}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiPengurus: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
@@ -129,7 +129,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiSosial}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiSosial: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
@@ -148,7 +148,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   type="number"
                   value={config.porsiPembangunan}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiPembangunan: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-855 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
+                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
@@ -182,13 +182,13 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
       <div className="lg:col-span-5">
         <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md rounded-2xl shadow-sm space-y-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-955/50 text-blue-600 dark:text-blue-400 rounded-xl">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl">
               <AlertCircle size={20} />
             </div>
-            <h3 className="text-base font-bold text-slate-855 dark:text-slate-100">Bagaimana SHU Dibagi?</h3>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Bagaimana SHU Dibagi?</h3>
           </div>
 
-          <div className="space-y-3 text-xs leading-relaxed text-slate-550 dark:text-slate-400">
+          <div className="space-y-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             <p>
               SHU dibagikan kepada anggota secara berkeadilan berdasar 2 jenis kontribusi:
             </p>

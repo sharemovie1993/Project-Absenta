@@ -61,10 +61,9 @@ const TransitionForm: React.FC<Props> = React.memo(({
             <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
                Tahun Pelajaran Lama <span className="text-rose-500">*</span>
             </Label>
-            <SearchableSelect
-              value={selectedTahunLamaId}
+            <SearchableSelect aria-label="Pilih opsi transisi" value={selectedTahunLamaId}
               onValueChange={onTahunLamaChange}
-              options={tahunAktif.map(tp => ({
+              options={tahunAktif?.map(tp => ({
                 value: tp.id,
                 label: `${tp.tahun} — AKTIF`
               }))}
@@ -98,10 +97,9 @@ const TransitionForm: React.FC<Props> = React.memo(({
             <Label className="text-[10px] uppercase font-black text-blue-400 tracking-widest flex items-center gap-2">
                Tahun Pelajaran Baru <span className="text-rose-500">*</span>
             </Label>
-            <SearchableSelect
-              value={selectedTahunBaruId}
+            <SearchableSelect aria-label="Pilih opsi transisi" value={selectedTahunBaruId}
               onValueChange={onTahunBaruChange}
-              options={tahunBelumAktif.map(tp => ({
+              options={tahunBelumAktif?.map(tp => ({
                 value: tp.id,
                 label: `${tp.tahun} — PERSIAPAN`
               }))}

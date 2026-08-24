@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Shield, Lock, Eye, ArrowRight, BookOpen, AlertCircle } from 'lucide-react';
 import { SectionCard } from '@/components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 function PrivacyPolicyContent() {
   const { data: systemConfig, isLoading } = useQuery({
@@ -12,6 +13,7 @@ function PrivacyPolicyContent() {
     queryFn: fetchActiveSystemConfig,
   });
 
+  const isEmpty = !systemConfig && !isLoading;
   const appName = useMemo(() => systemConfig?.app_name || 'Absenta.id', [systemConfig]);
 
   useEffect(() => {
@@ -108,8 +110,6 @@ function PrivacyPolicyContent() {
       breadcrumbs={breadcrumbs}
     >
       <div className="max-w-5xl mx-auto pb-24">
-        {/* Immersive Header - Replaced by Layout header, but keeping internal styling if needed */}
-        
         {/* Executive Summary Cards */}
         <motion.div 
           variants={containerVariants}
@@ -172,7 +172,7 @@ function PrivacyPolicyContent() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-955/20 border border-amber-100 dark:border-amber-900/30 flex gap-4 items-start">
+                <div className="mt-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex gap-4 items-start">
                   <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-amber-800 dark:text-amber-400 italic m-0 font-medium">
                     Catatan: {appName} tidak mengumpulkan data pribadi sensitif kecuali eksplisit diaktifkan oleh institusi (seperti biometrik) yang diproses dengan pengamanan enkripsi ganda.

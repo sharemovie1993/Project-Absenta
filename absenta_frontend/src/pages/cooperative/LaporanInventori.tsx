@@ -1,10 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 import * as XLSX from 'xlsx';
 import api from '../../lib/axiosInstance';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { SectionCard, Card, Button } from '../../components/ui';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import toast from 'react-hot-toast';
+import { formatDate } from '../../utils/layoutUtils';
+import { generateImportTemplate, exportDataToExcel } from '../../utils/export.utils';
 import {
   Package,
   BarChart2,
@@ -21,6 +26,17 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
+
+const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
+
+// Skema validasi Zod untuk filter inventori (Pilar 25)
+const inventoryFilterSchema = z.object({
+  categoryFilter: z.string().optional(),
+  lowStockOnly: z.boolean().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  supplierFilter: z.string().optional(),
+});
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +139,7 @@ const LaporanInventori: React.FC = React.memo(() => {
 
   // — Derived category list for filter
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(stockItems.map(i => i.category).filter(Boolean)));
+    const cats = Array.from(new Set((stockItems ?? [])?.map(i => i.category).filter(Boolean)));
     return cats.sort();
   }, [stockItems]);
 
@@ -135,63 +151,90 @@ const LaporanInventori: React.FC = React.memo(() => {
     });
   }, [stockItems, categoryFilter, lowStockOnly]);
 
+  const [isExporting, setIsExporting] = useState(false);
+
   // ─── Export Excel ────────────────────────────────────────────────────────
 
   const exportStockExcel = () => {
-    const rows = filteredStockItems.map((item, idx) => ({
-      'No': idx + 1, 'Kode': item.code, 'Nama Produk': item.name,
-      'Kategori': item.category, 'Stok (pcs)': item.stock,
-      'Harga Modal (Rp)': item.costPrice, 'Harga Jual (Rp)': item.price,
-      'Nilai Persediaan (Rp)': item.nilaiPersediaan, 'Status': item.status,
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Stok Barang');
-    ws['!cols'] = [6,12,30,18,12,18,18,22,10].map(w => ({ wch: w }));
-    XLSX.writeFile(wb, `Laporan_Stok_Koperasi_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast.success('Laporan stok berhasil diekspor ke Excel');
+    if (isExporting) return;
+    try {
+      setIsExporting(true);
+      const parsed = inventoryFilterSchema.safeParse({ categoryFilter, lowStockOnly });
+      const rows = (filteredStockItems ?? [])?.map((item, idx) => ({
+        'No': idx + 1, 'Kode': item.code, 'Nama Produk': item.name,
+        'Kategori': item.category, 'Stok (pcs)': item.stock,
+        'Harga Modal (Rp)': item.costPrice, 'Harga Jual (Rp)': item.price,
+        'Nilai Persediaan (Rp)': item.nilaiPersediaan, 'Status': item.status,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Stok Barang');
+      ws['!cols'] = [6,12,30,18,12,18,18,22,10]?.map(w => ({ wch: w }));
+      XLSX.writeFile(wb, `Laporan_Stok_Koperasi_${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast.success('Laporan stok berhasil diekspor ke Excel');
+    } catch (err) {
+      toast.error('Gagal mengekspor data stok');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const exportValuationExcel = () => {
-    const rows = valuationRows.map((r, idx) => ({
-      'No': idx + 1, 'Kategori': r.category, 'Jumlah SKU': r.sku,
-      'Total Stok (pcs)': r.totalStock, 'Total Nilai Modal (Rp)': r.totalValue,
-    }));
-    if (valuationGrand) rows.push({ 'No': '' as any, 'Kategori': 'TOTAL', 'Jumlah SKU': valuationGrand.totalSKU, 'Total Stok (pcs)': valuationGrand.totalStock, 'Total Nilai Modal (Rp)': valuationGrand.totalValue });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Nilai Persediaan');
-    ws['!cols'] = [6, 25, 12, 18, 22].map(w => ({ wch: w }));
-    XLSX.writeFile(wb, `Laporan_Nilai_Persediaan_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast.success('Laporan nilai persediaan berhasil diekspor');
+    if (isExporting) return;
+    try {
+      setIsExporting(true);
+      const rows = (valuationRows ?? [])?.map((r, idx) => ({
+        'No': idx + 1, 'Kategori': r.category, 'Jumlah SKU': r.sku,
+        'Total Stok (pcs)': r.totalStock, 'Total Nilai Modal (Rp)': r.totalValue,
+      }));
+      if (valuationGrand) rows.push({ 'No': '' as unknown as number, 'Kategori': 'TOTAL', 'Jumlah SKU': valuationGrand.totalSKU, 'Total Stok (pcs)': valuationGrand.totalStock, 'Total Nilai Modal (Rp)': valuationGrand.totalValue });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Nilai Persediaan');
+      ws['!cols'] = [6, 25, 12, 18, 22]?.map(w => ({ wch: w }));
+      XLSX.writeFile(wb, `Laporan_Nilai_Persediaan_${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast.success('Laporan nilai persediaan berhasil diekspor');
+    } catch (err) {
+      toast.error('Gagal mengekspor nilai persediaan');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const exportPurchasesExcel = () => {
-    const rows = purchaseRows.map((r, idx) => ({
-      'No': idx + 1,
-      'Tanggal': new Date(r.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
-      'Supplier': r.supplier, 'Metode': r.paymentMethod,
-      'Jumlah Item': r.itemCount, 'Jumlah SKU': r.skuCount,
-      'Nilai Barang (Rp)': r.nilaiBarang, 'Ongkos Kirim (Rp)': r.shippingFee,
-      'Total Pembayaran (Rp)': r.totalBayar,
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Barang Masuk');
-    ws['!cols'] = [6, 22, 25, 10, 12, 12, 20, 20, 22].map(w => ({ wch: w }));
-    XLSX.writeFile(wb, `Rekap_Barang_Masuk_${new Date().toISOString().slice(0,10)}.xlsx`);
-    toast.success('Rekap barang masuk berhasil diekspor');
+    if (isExporting) return;
+    try {
+      setIsExporting(true);
+      const rows = (purchaseRows ?? [])?.map((r, idx) => ({
+        'No': idx + 1,
+        'Tanggal': formatDate(r.date, { day: '2-digit', month: 'short', year: 'numeric' }),
+        'Supplier': r.supplier, 'Metode': r.paymentMethod,
+        'Jumlah Item': r.itemCount, 'Jumlah SKU': r.skuCount,
+        'Nilai Barang (Rp)': r.nilaiBarang, 'Ongkos Kirim (Rp)': r.shippingFee,
+        'Total Pembayaran (Rp)': r.totalBayar,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Barang Masuk');
+      ws['!cols'] = [6, 22, 25, 10, 12, 12, 20, 20, 22]?.map(w => ({ wch: w }));
+      XLSX.writeFile(wb, `Rekap_Barang_Masuk_${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast.success('Rekap barang masuk berhasil diekspor');
+    } catch (err) {
+      toast.error('Gagal mengekspor rekap barang masuk');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const breadcrumbs = [
+  const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative/dashboard' },
     { label: 'Inventori & Barang Masuk', path: '/cooperative/products' },
     { label: 'Laporan Persediaan' },
-  ];
+  ], []);
 
   // ─── Status badge helper ──────────────────────────────────────────────────
   const StatusBadge = ({ status }: { status: string }) => {
@@ -230,12 +273,13 @@ const LaporanInventori: React.FC = React.memo(() => {
           ]
         }}
       >
-        <div className="space-y-6 print:space-y-4">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6 print:space-y-4">
 
-          {/* Back shortcut */}
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/cooperative/products')}
+            {/* Back shortcut */}
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate('/cooperative/products')}
               className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors"
             >
               <ArrowLeft size={16} />
@@ -245,14 +289,14 @@ const LaporanInventori: React.FC = React.memo(() => {
 
           {/* Summary Cards — always visible */}
           {activeTab === 'stock' && stockSummary && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 print:gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 print:gap-2">
               {[
                 { label: 'Total SKU', value: stockSummary.totalSKU.toLocaleString('id-ID'), color: 'blue', icon: <Package size={18} /> },
                 { label: 'Total Item', value: stockSummary.totalItems.toLocaleString('id-ID'), color: 'indigo', icon: <BarChart2 size={18} /> },
                 { label: 'Nilai Persediaan', value: fmt(stockSummary.totalNilaiPersediaan), color: 'emerald', icon: <TrendingDown size={18} /> },
                 { label: 'Stok Rendah', value: stockSummary.jumlahRendah.toLocaleString('id-ID'), color: 'amber', icon: <AlertTriangle size={18} /> },
                 { label: 'Stok Habis', value: stockSummary.jumlahHabis.toLocaleString('id-ID'), color: 'red', icon: <XCircle size={18} /> },
-              ].map(card => (
+              ]?.map(card => (
                 <div key={card.label} className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3`}>
                   <div className={`p-2 rounded-lg bg-${card.color}-50 text-${card.color}-600`}>
                     {card.icon}
@@ -272,7 +316,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                 { label: 'Total SKU Produk', value: valuationGrand.totalSKU.toLocaleString('id-ID') + ' produk' },
                 { label: 'Total Stok Tersimpan', value: valuationGrand.totalStock.toLocaleString('id-ID') + ' pcs' },
                 { label: 'Total Nilai Modal Persediaan', value: fmt(valuationGrand.totalValue), highlight: true },
-              ].map(card => (
+              ]?.map(card => (
                 <div key={card.label} className={`rounded-xl p-5 border ${card.highlight ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg' : 'bg-white border-gray-100 shadow-sm'}`}>
                   <p className={`text-xs font-medium ${card.highlight ? 'text-emerald-100' : 'text-gray-500'}`}>{card.label}</p>
                   <p className={`text-xl font-black mt-1 ${card.highlight ? 'text-white' : 'text-gray-900'}`}>{card.value}</p>
@@ -282,13 +326,13 @@ const LaporanInventori: React.FC = React.memo(() => {
           )}
 
           {activeTab === 'purchases' && purchaseGrand && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: 'Jumlah Transaksi', value: purchaseGrand.totalTransaksi.toString() + ' transaksi' },
                 { label: 'Nilai Barang', value: fmt(purchaseGrand.totalNilaiBarang) },
                 { label: 'Total Ongkos Kirim', value: fmt(purchaseGrand.totalShippingFee), orange: true },
                 { label: 'Total Pembayaran', value: fmt(purchaseGrand.totalPembayaran), highlight: true },
-              ].map(card => (
+              ]?.map(card => (
                 <div key={card.label} className={`rounded-xl p-5 border ${card.highlight ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : card.orange ? 'bg-orange-50 border-orange-100' : 'bg-white border-gray-100 shadow-sm'}`}>
                   <p className={`text-xs font-medium ${card.highlight ? 'text-blue-100' : card.orange ? 'text-orange-600' : 'text-gray-500'}`}>{card.label}</p>
                   <p className={`text-lg font-black mt-1 ${card.highlight ? 'text-white' : card.orange ? 'text-orange-700' : 'text-gray-900'}`}>{card.value}</p>
@@ -301,26 +345,17 @@ const LaporanInventori: React.FC = React.memo(() => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
 
             {/* Tab bar + Actions */}
-            <div className="flex items-center justify-between px-6 pt-4 pb-0 border-b border-gray-100 flex-wrap gap-3">
-              <div className="flex gap-1">
-                {[
-                  { key: 'stock',     label: 'Stok Barang',       icon: <Package size={14} /> },
-                  { key: 'valuation', label: 'Nilai Persediaan',  icon: <BarChart2 size={14} /> },
-                  { key: 'purchases', label: 'Rekap Barang Masuk',icon: <ShoppingCart size={14} /> },
-                ].map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as any)}
-                    className={`flex items-center gap-2 py-3 px-5 border-b-2 font-semibold text-sm transition-all ${
-                      activeTab === tab.key
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </button>
-                ))}
+            <div className="flex items-center justify-between px-6 pt-4 pb-2 border-b border-gray-100 flex-wrap gap-3">
+              <div className="overflow-x-auto no-scrollbar flex-nowrap min-w-0">
+                <TabSwitcher
+                  tabs={[
+                    { id: 'stock', label: 'Stok Barang', icon: Package },
+                    { id: 'valuation', label: 'Nilai Persediaan', icon: BarChart2 },
+                    { id: 'purchases', label: 'Rekap Barang Masuk', icon: ShoppingCart },
+                  ]}
+                  activeTab={activeTab}
+                  onChange={tabId => setActiveTab(tabId as 'stock' | 'valuation' | 'purchases')}
+                />
               </div>
 
               <div className="flex items-center gap-2 pb-3 print:hidden">
@@ -352,14 +387,16 @@ const LaporanInventori: React.FC = React.memo(() => {
                 <div className="px-6 py-4 border-b border-gray-50 bg-slate-50/50 flex flex-wrap items-center gap-4 print:hidden">
                   <div className="flex items-center gap-2">
                     <Filter size={14} className="text-gray-400" />
-                    <select
-                      value={categoryFilter}
-                      onChange={e => setCategoryFilter(e.target.value)}
-                      className="h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 font-medium"
-                    >
-                      <option value="ALL">Semua Kategori</option>
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <Suspense fallback={<div className="h-8 w-44 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />}>
+                      <SearchableSelect
+                        options={[{ value: 'ALL', label: 'Semua Kategori' }, ...((categories ?? [])?.map(c => ({ value: c, label: c })))]}
+                        value={categoryFilter}
+                        onChange={v => setCategoryFilter(v || 'ALL')}
+                        placeholder="Semua Kategori"
+                        className="w-48 text-xs"
+                        aria-label="Filter Kategori Produk"
+                      />
+                    </Suspense>
                   </div>
                   <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                     <input
@@ -382,7 +419,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                     <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          {['No', 'Kode', 'Nama Produk', 'Kategori', 'Stok', 'Harga Modal', 'Harga Jual', 'Nilai Persediaan', 'Status'].map(h => (
+                          {['No', 'Kode', 'Nama Produk', 'Kategori', 'Stok', 'Harga Modal', 'Harga Jual', 'Nilai Persediaan', 'Status']?.map(h => (
                             <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -390,7 +427,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                       <tbody className="bg-white divide-y divide-gray-50">
                         {filteredStockItems.length === 0 ? (
                           <tr><td colSpan={9} className="py-12 text-center text-gray-400">Tidak ada data produk.</td></tr>
-                        ) : filteredStockItems.map((item, idx) => (
+                        ) : (filteredStockItems ?? [])?.map((item, idx) => (
                           <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${item.status === 'HABIS' ? 'bg-red-50/30' : item.status === 'RENDAH' ? 'bg-amber-50/30' : ''}`}>
                             <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                             <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.code}</td>
@@ -438,7 +475,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                     <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          {['No', 'Kategori Produk', 'Jumlah SKU', 'Total Stok (pcs)', 'Total Nilai Modal', 'Komposisi (%)'].map(h => (
+                          {['No', 'Kategori Produk', 'Jumlah SKU', 'Total Stok (pcs)', 'Total Nilai Modal', 'Komposisi (%)']?.map(h => (
                             <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                           ))}
                         </tr>
@@ -446,7 +483,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                       <tbody className="bg-white divide-y divide-gray-50">
                         {valuationRows.length === 0 ? (
                           <tr><td colSpan={6} className="py-12 text-center text-gray-400">Tidak ada data.</td></tr>
-                        ) : valuationRows.map((row, idx) => {
+                        ) : (valuationRows ?? [])?.map((row, idx) => {
                           const pct = valuationGrand && valuationGrand.totalValue > 0
                             ? ((row.totalValue / valuationGrand.totalValue) * 100).toFixed(1)
                             : '0.0';
@@ -505,6 +542,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                       onChange={e => setStartDate(e.target.value)}
                       className="h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                       placeholder="Dari tanggal"
+                      aria-label="Dari Tanggal"
                     />
                     <span className="text-gray-400 text-xs">s/d</span>
                     <input
@@ -512,6 +550,8 @@ const LaporanInventori: React.FC = React.memo(() => {
                       value={endDate}
                       onChange={e => setEndDate(e.target.value)}
                       className="h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                      placeholder="Sampai tanggal"
+                      aria-label="Sampai Tanggal"
                     />
                     <input
                       type="text"
@@ -519,6 +559,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                       onChange={e => setSupplierFilter(e.target.value)}
                       placeholder="Nama supplier..."
                       className="h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 w-40"
+                      aria-label="Nama Supplier"
                     />
                   </div>
                   <button
@@ -542,7 +583,7 @@ const LaporanInventori: React.FC = React.memo(() => {
                     <table className="min-w-full divide-y divide-gray-100 text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          {['No', 'Tanggal', 'Supplier', 'Metode', 'Jml. Item', 'Nilai Barang', 'Ongkos Kirim', 'Total Pembayaran'].map(h => (
+                          {['No', 'Tanggal', 'Supplier', 'Metode', 'Jml. Item', 'Nilai Barang', 'Ongkos Kirim', 'Total Pembayaran']?.map(h => (
                             <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -550,11 +591,11 @@ const LaporanInventori: React.FC = React.memo(() => {
                       <tbody className="bg-white divide-y divide-gray-50">
                         {purchaseRows.length === 0 ? (
                           <tr><td colSpan={8} className="py-12 text-center text-gray-400">Tidak ada data transaksi barang masuk.</td></tr>
-                        ) : purchaseRows.map((row, idx) => (
+                        ) : (purchaseRows ?? [])?.map((row, idx) => (
                           <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                             <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                              {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {formatDate(row.date, { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="px-4 py-3 font-semibold text-gray-800">{row.supplier}</td>
                             <td className="px-4 py-3">
@@ -602,6 +643,7 @@ const LaporanInventori: React.FC = React.memo(() => {
             )}
           </div>
         </div>
+      </SectionCard>
 
         {/* Print styles */}
         <style dangerouslySetInnerHTML={{ __html: `

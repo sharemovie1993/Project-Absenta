@@ -1,13 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kesiswaanApi, type JenisPelanggaran, type JenisPrestasi, kesiswaanQueryKeys } from '../../../api/kesiswaan.api';
-import { bpbkApi } from '../../../api/bpbk.api';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/Tabs';
 import { TabSwitcher } from '../../../components/ui/TabSwitcher';
-import { Table } from '../../../components/ui/Table';
-import type { Column } from '../../../components/ui/Table';
+import { Table, type Column } from '../../../components/ui/Table';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
@@ -16,13 +14,37 @@ import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, ShieldAlert, Trophy } from 'lucide-react';
-import { Modal } from '../../../components/ui/Modal';
+
+const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
+
+// Zod Schema Validation Guard (Pilar 25)
+const violationSchema = z.object({
+  nama_pelanggaran: z.string().min(3, 'Nama pelanggaran minimal 3 karakter'),
+  kategori: z.string().min(1, 'Kategori pelanggaran wajib dipilih'),
+  poin: z.number().min(1, 'Poin pelanggaran minimal 1'),
+});
+
+const achievementSchema = z.object({
+  nama_prestasi: z.string().min(3, 'Nama prestasi minimal 3 karakter'),
+  kategori: z.string().min(1, 'Kategori prestasi wajib dipilih'),
+  poin: z.number().min(1, 'Poin prestasi minimal 1'),
+});
 
 export const SettingsSection: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
-  
   const confirm = useConfirm();
+
+  // Pagination & Sorting State
+  const [vPage, setVPage] = useState(1);
+  const [vLimit, setVLimit] = useState(10);
+  const [vSortBy, setVSortBy] = useState<string>('nama_pelanggaran');
+  const [vSortOrder, setVSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const [aPage, setAPage] = useState(1);
+  const [aLimit, setALimit] = useState(10);
+  const [aSortBy, setASortBy] = useState<string>('nama_prestasi');
+  const [aSortOrder, setASortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Modal forms
   const [violationModalOpen, setViolationModalOpen] = useState(false);
@@ -41,7 +63,7 @@ export const SettingsSection: React.FC = React.memo(() => {
     poin: 0
   });
 
-  // ── useQuery: Jenis Pelanggaran & Jenis Prestasi ─────────────────────────
+  // useQuery: Jenis Pelanggaran & Jenis Prestasi (Pilar 31)
   const { data: vRes, isLoading: loadingV, refetch: refetchV } = useQuery({
     queryKey: kesiswaanQueryKeys.jenisPelanggaran(),
     queryFn: () => kesiswaanApi.getJenisPelanggaran(),
@@ -54,15 +76,35 @@ export const SettingsSection: React.FC = React.memo(() => {
     staleTime: 10 * 60 * 1000,
   });
 
-  const violations = useMemo(() => vRes?.data || vRes || [], [vRes]);
-  const achievements = useMemo(() => aRes?.data || [], [aRes]);
+  const violations: JenisPelanggaran[] = useMemo(() => {
+    const raw = (vRes as { data?: JenisPelanggaran[] })?.data || (Array.isArray(vRes) ? vRes : []);
+    return Array.isArray(raw) ? raw : [];
+  }, [vRes]);
+
+  const achievements: JenisPrestasi[] = useMemo(() => {
+    const raw = (aRes as { data?: JenisPrestasi[] })?.data || (Array.isArray(aRes) ? aRes : []);
+    return Array.isArray(raw) ? raw : [];
+  }, [aRes]);
+
   const loading = loadingV || loadingA;
 
-  // === VIOLATION ACTIONS ===
+  // Pagination slicing
+  const paginatedViolations = useMemo(() => {
+    const start = (vPage - 1) * vLimit;
+    return (violations ?? []).slice(start, start + vLimit);
+  }, [violations, vPage, vLimit]);
+
+  const paginatedAchievements = useMemo(() => {
+    const start = (aPage - 1) * aLimit;
+    return (achievements ?? []).slice(start, start + aLimit);
+  }, [achievements, aPage, aLimit]);
+
+  // Actions
   const handleVSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vForm.nama_pelanggaran.trim()) {
-      toast.error('Nama pelanggaran wajib diisi');
+    const parsed = violationSchema.safeParse(vForm);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data belum lengkap');
       return;
     }
     try {
@@ -77,8 +119,6 @@ export const SettingsSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
-      queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       refetchV();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
@@ -101,8 +141,6 @@ export const SettingsSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
       queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
-      queryClient.invalidateQueries({ queryKey: ['pelanggaran-analytics'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       refetchV();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
@@ -110,11 +148,11 @@ export const SettingsSection: React.FC = React.memo(() => {
     }
   }, [confirm, queryClient, refetchV]);
 
-  // === ACHIEVEMENT ACTIONS ===
   const handleASubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!aForm.nama_prestasi.trim()) {
-      toast.error('Nama prestasi wajib diisi');
+    const parsed = achievementSchema.safeParse(aForm);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data belum lengkap');
       return;
     }
     try {
@@ -128,8 +166,6 @@ export const SettingsSection: React.FC = React.memo(() => {
       setAchievementModalOpen(false);
       queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
-      queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       refetchA();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
@@ -151,8 +187,6 @@ export const SettingsSection: React.FC = React.memo(() => {
       toast.success('Kategori prestasi berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
-      queryClient.invalidateQueries({ queryKey: ['prestasi-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-stats'] });
       refetchA();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
@@ -163,27 +197,34 @@ export const SettingsSection: React.FC = React.memo(() => {
   const violationColumns: Column[] = useMemo(() => [
     {
       key: 'kategori',
-      label: 'Bobot Tingkatan',
-      render: (value: string) => (
-        <Badge variant={value === 'BERAT' ? 'error' : value === 'SEDANG' ? 'warning' : 'outline'} className="text-[9px] font-black uppercase">
-          {value}
-        </Badge>
-      )
+      label: 'Tingkat',
+      sortable: true,
+      render: (value: unknown) => {
+        const val = String(value || '');
+        const variant = val === 'BERAT' ? 'destructive' : val === 'SEDANG' ? 'warning' : 'info';
+        return (
+          <Badge variant={variant} className="text-[9px] font-bold uppercase">
+            {val}
+          </Badge>
+        );
+      }
     },
     {
       key: 'nama_pelanggaran',
       label: 'Jenis Pelanggaran',
-      render: (value: string) => <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{value}</span>
+      sortable: true,
+      render: (value: unknown) => <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{String(value || '')}</span>
     },
     {
       key: 'poin',
       label: 'Bobot Poin',
-      render: (value: number) => <span className="text-xs font-black text-rose-500">+{value} Poin</span>
+      sortable: true,
+      render: (value: unknown) => <span className="text-xs font-bold text-rose-500 font-mono">+{Number(value || 0)} Poin</span>
     },
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: any) => (
+      render: (_: unknown, item: JenisPelanggaran) => (
         <div className="flex gap-1 justify-end">
           <Button
             variant="ghost"
@@ -193,17 +234,19 @@ export const SettingsSection: React.FC = React.memo(() => {
               setVForm({ kategori: item.kategori, nama_pelanggaran: item.nama_pelanggaran, poin: item.poin });
               setViolationModalOpen(true);
             }}
-            className="w-8 h-8 text-indigo-600 hover:bg-indigo-50"
+            className="w-7 h-7 text-indigo-600 hover:bg-indigo-50"
+            title="Edit"
           >
-            <Edit2 size={13} />
+            <Edit2 size={12} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => handleVDelete(item.id)}
-            className="w-8 h-8 text-rose-600 hover:bg-rose-50"
+            className="w-7 h-7 text-rose-600 hover:bg-rose-50"
+            title="Hapus"
           >
-            <Trash2 size={13} />
+            <Trash2 size={12} />
           </Button>
         </div>
       )
@@ -214,26 +257,29 @@ export const SettingsSection: React.FC = React.memo(() => {
     {
       key: 'kategori',
       label: 'Kategori',
-      render: (value: string) => (
-        <Badge variant="outline" className="text-[9px] font-black uppercase">
-          {value}
+      sortable: true,
+      render: (value: unknown) => (
+        <Badge variant="outline" className="text-[9px] font-bold uppercase">
+          {String(value || '')}
         </Badge>
       )
     },
     {
       key: 'nama_prestasi',
       label: 'Kategori Prestasi',
-      render: (value: string) => <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{value}</span>
+      sortable: true,
+      render: (value: unknown) => <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{String(value || '')}</span>
     },
     {
       key: 'poin',
       label: 'Poin Penghargaan',
-      render: (value: number) => <span className="text-xs font-black text-emerald-500">+{value} Poin</span>
+      sortable: true,
+      render: (value: unknown) => <span className="text-xs font-bold text-emerald-500 font-mono">+{Number(value || 0)} Poin</span>
     },
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: any) => (
+      render: (_: unknown, item: JenisPrestasi) => (
         <div className="flex gap-1 justify-end">
           <Button
             variant="ghost"
@@ -243,38 +289,49 @@ export const SettingsSection: React.FC = React.memo(() => {
               setAForm({ kategori: item.kategori, nama_prestasi: item.nama_prestasi, poin: item.poin });
               setAchievementModalOpen(true);
             }}
-            className="w-8 h-8 text-indigo-600 hover:bg-indigo-50"
+            className="w-7 h-7 text-indigo-600 hover:bg-indigo-50"
+            title="Edit"
           >
-            <Edit2 size={13} />
+            <Edit2 size={12} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => handleADelete(item.id)}
-            className="w-8 h-8 text-rose-600 hover:bg-rose-50"
+            className="w-7 h-7 text-rose-600 hover:bg-rose-50"
+            title="Hapus"
           >
-            <Trash2 size={13} />
+            <Trash2 size={12} />
           </Button>
         </div>
       )
     }
   ], [handleADelete]);
 
+  const tabs = useMemo(() => [
+    { id: 'pelanggaran', label: 'Kategori Pelanggaran & Poin' },
+    { id: 'prestasi', label: 'Kategori Prestasi & Poin' }
+  ], []);
+
   if (loading) {
     return (
       <div className="py-20 flex flex-col items-center justify-center">
         <Loader className="mb-4" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Pengaturan Kategori...</p>
+        <p className="text-xs text-slate-400">Menghubungkan Pengaturan Kategori...</p>
       </div>
     );
   }
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <Card className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 rounded-2xl space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Pengaturan Kategori Kasus & Prestasi Siswa</h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Konfigurasi bobot poin pelanggaran (kedisiplinan) dan poin penghargaan (prestasi)</p>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+            Pengaturan Kategori Kasus & Prestasi Siswa
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Konfigurasi bobot poin pelanggaran (kedisiplinan) dan poin penghargaan (prestasi)
+          </p>
         </div>
         <Button
           variant="toolbarPrimary"
@@ -282,143 +339,191 @@ export const SettingsSection: React.FC = React.memo(() => {
           onClick={() => {
             if (activeTab === 'pelanggaran') {
               setVId(null);
-              setVForm({ kategori: 'RINGAN', nama_pelanggaran: '', poin: 0 });
+              setVForm({ kategori: 'RINGAN', nama_pelanggaran: '', poin: 10 });
               setViolationModalOpen(true);
             } else {
               setAId(null);
-              setAForm({ kategori: 'AKADEMIK', nama_prestasi: '', poin: 0 });
+              setAForm({ kategori: 'AKADEMIK', nama_prestasi: '', poin: 10 });
               setAchievementModalOpen(true);
             }
           }}
+          className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
         >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          {activeTab === 'pelanggaran' ? 'Tambah Kategori Pelanggaran' : 'Tambah Kategori Prestasi'}
+          <Plus className="w-3.5 h-3.5" />
+          {activeTab === 'pelanggaran' ? 'Tambah Pelanggaran' : 'Tambah Prestasi'}
         </Button>
       </div>
 
-      <Tabs value={activeTab} className="w-full" onValueChange={(val: any) => setActiveTab(val as 'pelanggaran' | 'prestasi')}>
-        <TabSwitcher
-          options={[
-            { id: 'pelanggaran', label: 'Kategori Pelanggaran & Poin', icon: ShieldAlert, colorClass: 'text-rose-600 dark:text-rose-400' },
-            { id: 'prestasi', label: 'Kategori Prestasi & Poin', icon: Trophy, colorClass: 'text-emerald-600 dark:text-emerald-400' }
-          ]}
-          activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as 'pelanggaran' | 'prestasi')}
-          className="mb-6"
-        />
+      <TabSwitcher
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as 'pelanggaran' | 'prestasi')}
+        tabs={tabs}
+      />
 
-        <TabsContent value="pelanggaran" className="space-y-4">
+      {activeTab === 'pelanggaran' ? (
+        <div className="space-y-4">
           <Table
             columns={violationColumns}
-            data={violations}
+            data={paginatedViolations}
+            sortBy={vSortBy}
+            sortOrder={vSortOrder}
+            onSort={(col, dir) => { setVSortBy(col); setVSortOrder(dir); }}
+            emptyMessage="Belum ada kategori pelanggaran yang didaftarkan."
+            pagination={{
+              currentPage: vPage,
+              totalPages: Math.max(1, Math.ceil(violations.length / vLimit)),
+              totalItems: violations.length,
+              itemsPerPage: vLimit,
+              onPageChange: setVPage,
+              onLimitChange: (limit) => { setVLimit(limit); setVPage(1); }
+            }}
           />
-        </TabsContent>
-
-        <TabsContent value="prestasi" className="space-y-4">
+        </div>
+      ) : (
+        <div className="space-y-4">
           <Table
             columns={achievementColumns}
-            data={achievements}
+            data={paginatedAchievements}
+            sortBy={aSortBy}
+            sortOrder={aSortOrder}
+            onSort={(col, dir) => { setASortBy(col); setASortOrder(dir); }}
+            emptyMessage="Belum ada kategori prestasi yang didaftarkan."
+            pagination={{
+              currentPage: aPage,
+              totalPages: Math.max(1, Math.ceil(achievements.length / aLimit)),
+              totalItems: achievements.length,
+              itemsPerPage: aLimit,
+              onPageChange: setAPage,
+              onLimitChange: (limit) => { setALLimit(limit); setAPage(1); }
+            }}
           />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
 
-      {/* Violation Category Modal */}
-      <Modal isOpen={violationModalOpen} onClose={() => setViolationModalOpen(false)} title={vId ? 'Edit Kategori Pelanggaran' : 'Tambah Kategori Pelanggaran Baru'} size="sm">
-        <form onSubmit={handleVSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tingkat-pelanggaran" className="text-xs font-bold uppercase tracking-wider text-slate-500">Tingkat Pelanggaran</Label>
-            <SearchableSelect
-              id="tingkat-pelanggaran"
-              options={[
-                { value: 'RINGAN', label: 'Ringan' },
-                { value: 'SEDANG', label: 'Sedang' },
-                { value: 'BERAT', label: 'Berat' }
-              ]}
-              value={vForm.kategori}
-              onValueChange={(val) => setVForm(prev => ({ ...prev, kategori: val }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nama-pelanggaran" className="text-xs font-bold uppercase tracking-wider text-slate-500">Jenis / Nama Pelanggaran</Label>
-            <Input
-              id="nama-pelanggaran"
-              placeholder="Contoh: Terlambat masuk sekolah, atribut tidak lengkap"
-              value={vForm.nama_pelanggaran}
-              onChange={(e) => setVForm(prev => ({ ...prev, nama_pelanggaran: e.target.value }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="poin-pelanggaran" className="text-xs font-bold uppercase tracking-wider text-slate-500">Bobot Poin Pelanggaran</Label>
-            <Input
-              id="poin-pelanggaran"
-              type="number"
-              min="1"
-              value={vForm.poin || ''}
-              onChange={(e) => setVForm(prev => ({ ...prev, poin: parseInt(e.target.value) || 0 }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setViolationModalOpen(false)}>
-              Batal
-            </Button>
-            <Button type="submit" variant="toolbarPrimary" size="toolbar" className="px-6">
-              Simpan Kategori
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Lazy Loaded Modals */}
+      <Suspense fallback={null}>
+        {violationModalOpen && (
+          <Modal
+            isOpen={violationModalOpen}
+            onClose={() => setViolationModalOpen(false)}
+            title={vId ? 'Edit Kategori Pelanggaran' : 'Tambah Kategori Pelanggaran Baru'}
+            size="sm"
+          >
+            <form onSubmit={handleVSubmit} className="space-y-4 py-2 text-xs">
+              <div>
+                <Label htmlFor="tingkat-pelanggaran" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Tingkat Pelanggaran</Label>
+                <SearchableSelect
+                  id="tingkat-pelanggaran"
+                  aria-label="Pilih tingkat pelanggaran"
+                  options={[
+                    { value: 'RINGAN', label: 'Ringan' },
+                    { value: 'SEDANG', label: 'Sedang' },
+                    { value: 'BERAT', label: 'Berat' }
+                  ]}
+                  value={vForm.kategori}
+                  onValueChange={(val) => setVForm(prev => ({ ...prev, kategori: val }))}
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <Label htmlFor="nama-pelanggaran" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Jenis / Nama Pelanggaran</Label>
+                <Input
+                  id="nama-pelanggaran"
+                  aria-label="Nama pelanggaran"
+                  placeholder="Contoh: Terlambat masuk sekolah, atribut tidak lengkap"
+                  value={vForm.nama_pelanggaran}
+                  onChange={(e) => setVForm(prev => ({ ...prev, nama_pelanggaran: e.target.value }))}
+                  className="rounded-xl"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="poin-pelanggaran" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Bobot Poin Pelanggaran</Label>
+                <Input
+                  id="poin-pelanggaran"
+                  aria-label="Bobot poin pelanggaran"
+                  type="number"
+                  min="1"
+                  value={vForm.poin || ''}
+                  onChange={(e) => setVForm(prev => ({ ...prev, poin: parseInt(e.target.value) || 0 }))}
+                  className="rounded-xl"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setViolationModalOpen(false)}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="toolbarPrimary" size="toolbar">
+                  Simpan Kategori
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
 
-      {/* Achievement Category Modal */}
-      <Modal isOpen={achievementModalOpen} onClose={() => setAchievementModalOpen(false)} title={aId ? 'Edit Kategori Prestasi' : 'Tambah Kategori Prestasi Baru'} size="sm">
-        <form onSubmit={handleASubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="kategori-prestasi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Kategori Kegiatan</Label>
-            <SearchableSelect
-              id="kategori-prestasi"
-              options={[
-                { value: 'AKADEMIK', label: 'Akademik' },
-                { value: 'NON-AKADEMIK', label: 'Non-Akademik' },
-                { value: 'KARAKTER', label: 'Karakter / Sikap Baik' }
-              ]}
-              value={aForm.kategori}
-              onValueChange={(val) => setAForm(prev => ({ ...prev, kategori: val }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nama-prestasi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama / Kategori Penghargaan</Label>
-            <Input
-              id="nama-prestasi"
-              placeholder="Contoh: Juara 1 Tingkat Kabupaten, Penghargaan Sikap Teladan"
-              value={aForm.nama_prestasi}
-              onChange={(e) => setAForm(prev => ({ ...prev, nama_prestasi: e.target.value }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="poin-prestasi" className="text-xs font-bold uppercase tracking-wider text-slate-500">Poin Penghargaan (Reward)</Label>
-            <Input
-              id="poin-prestasi"
-              type="number"
-              min="1"
-              value={aForm.poin || ''}
-              onChange={(e) => setAForm(prev => ({ ...prev, poin: parseInt(e.target.value) || 0 }))}
-              className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setAchievementModalOpen(false)}>
-              Batal
-            </Button>
-            <Button type="submit" variant="toolbarPrimary" size="toolbar" className="px-6">
-              Simpan Kategori
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        {achievementModalOpen && (
+          <Modal
+            isOpen={achievementModalOpen}
+            onClose={() => setAchievementModalOpen(false)}
+            title={aId ? 'Edit Kategori Prestasi' : 'Tambah Kategori Prestasi Baru'}
+            size="sm"
+          >
+            <form onSubmit={handleASubmit} className="space-y-4 py-2 text-xs">
+              <div>
+                <Label htmlFor="kategori-prestasi" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Kategori Kegiatan</Label>
+                <SearchableSelect
+                  id="kategori-prestasi"
+                  aria-label="Pilih kategori kegiatan"
+                  options={[
+                    { value: 'AKADEMIK', label: 'Akademik' },
+                    { value: 'NON-AKADEMIK', label: 'Non-Akademik' },
+                    { value: 'KARAKTER', label: 'Karakter / Sikap Baik' }
+                  ]}
+                  value={aForm.kategori}
+                  onValueChange={(val) => setAForm(prev => ({ ...prev, kategori: val }))}
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <Label htmlFor="nama-prestasi" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Nama / Kategori Penghargaan</Label>
+                <Input
+                  id="nama-prestasi"
+                  aria-label="Nama prestasi"
+                  placeholder="Contoh: Juara 1 Tingkat Kabupaten, Siswa Teladan"
+                  value={aForm.nama_prestasi}
+                  onChange={(e) => setAForm(prev => ({ ...prev, nama_prestasi: e.target.value }))}
+                  className="rounded-xl"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="poin-prestasi" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Poin Penghargaan (Reward)</Label>
+                <Input
+                  id="poin-prestasi"
+                  aria-label="Poin penghargaan prestasi"
+                  type="number"
+                  min="1"
+                  value={aForm.poin || ''}
+                  onChange={(e) => setAForm(prev => ({ ...prev, poin: parseInt(e.target.value) || 0 }))}
+                  className="rounded-xl"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setAchievementModalOpen(false)}>
+                  Batal
+                </Button>
+                <Button type="submit" variant="toolbarPrimary" size="toolbar">
+                  Simpan Kategori
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
+      </Suspense>
     </Card>
   );
 });
+
+export default SettingsSection;

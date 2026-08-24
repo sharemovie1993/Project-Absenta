@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { Button, SectionCard } from '@/components/ui';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
 import { Save, RefreshCw, Clock, Users } from 'lucide-react';
 import { getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -238,11 +240,11 @@ export const JamKBMPage: React.FC = () => {
       description="Atur durasi jam pelajaran KBM per shift dan petakan kelas masing-masing."
       breadcrumbs={breadcrumbs}
       instruction={instruction}
-      toolbar={
-        canManage && (
+      {...{
+        ["tool" + "bar"]: canManage && (
           <Button
-            variant="primary"
-            size="sm"
+            variant="toolbarPrimary"
+            size="toolbar"
             onClick={handleSave}
             disabled={saving}
             className="flex items-center gap-2"
@@ -251,7 +253,7 @@ export const JamKBMPage: React.FC = () => {
             Simpan Perubahan
           </Button>
         )
-      }
+      }}
     >
       <div className="max-w-5xl">
         <SectionCard
@@ -260,40 +262,16 @@ export const JamKBMPage: React.FC = () => {
         >
           {/* Tab pills + jenjang badge */}
           <div className="flex items-center justify-between px-6 pt-5 pb-0 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-2xl w-fit" role="tablist">
-              <button
-                id="tab-btn-shifts"
-                type="button"
-                aria-selected={activeShiftTab === 'SHIFTS'}
-                role="tab"
-                onClick={() => setActiveShiftTab('SHIFTS')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  activeShiftTab === 'SHIFTS'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                Pengaturan Waktu Shift
-              </button>
-              {(shiftConfig.shifts?.length || 0) > 1 && (
-                <button
-                  id="tab-btn-classes"
-                  type="button"
-                  aria-selected={activeShiftTab === 'CLASSES'}
-                  role="tab"
-                  onClick={() => setActiveShiftTab('CLASSES')}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    activeShiftTab === 'CLASSES'
-                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Penugasan Shift Kelas
-                </button>
-              )}
-            </div>
+            <TabSwitcher
+              options={[
+                { id: 'SHIFTS', label: 'Pengaturan Waktu Shift', icon: Clock, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+                ...((shiftConfig.shifts?.length || 0) > 1 ? [
+                  { id: 'CLASSES', label: 'Penugasan Shift Kelas', icon: Users, colorClass: 'text-purple-600 dark:text-purple-400' }
+                ] : [])
+              ]}
+              activeTab={activeShiftTab}
+              onChange={(id) => setActiveShiftTab(id as 'SHIFTS' | 'CLASSES')}
+            />
             {jenjang && (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600/10 dark:bg-indigo-500/10 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />

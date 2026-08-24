@@ -12,6 +12,8 @@ import {
 } from '@/api/superadmin-revenue.api';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '../../../utils/layoutUtils';
 import { TrendingUp, Award, Activity, Percent } from 'lucide-react';
 
 // Aliasing Tabs List items to avoid regex matches on misplaced layout toolbars
@@ -364,10 +366,11 @@ export default function RevenueDashboardPage() {
   }
 
   return (
-    <SuperAdminPageLayout
-      title="Ringkasan Kinerja Bulanan"
-      description="Gambaran singkat kinerja pendapatan bulan ini, tanpa proyeksi masa depan."
-      hardeningModuleKey="superadmin_revenue_dashboard"
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        title="Ringkasan Kinerja Bulanan"
+        description="Gambaran singkat kinerja pendapatan bulan ini, tanpa proyeksi masa depan."
+        hardeningModuleKey="superadmin_revenue_dashboard"
       breadcrumbs={breadcrumbs}
       instruction={instruction}
       stats={statsCards}
@@ -480,5 +483,6 @@ export default function RevenueDashboardPage() {
         </SectionCard>
       </div>
     </SuperAdminPageLayout>
-  );
+  </InfraErrorBoundary>
+);
 }

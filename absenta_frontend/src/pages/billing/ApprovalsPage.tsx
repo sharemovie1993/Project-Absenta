@@ -1,85 +1,98 @@
-import React, { useEffect, useMemo, useState, useCallback, Suspense, lazy } from 'react';
-import UnifiedBillingLayout from '../../components/billing/UnifiedBillingLayout';
-import { BILLING_PAGE_CONFIG } from '../../components/billing/billingLayoutConfig';
-import { Button, Loader, EnhancedAlert, Table, Input, Modal, StatusBadge, SectionHeader, SearchableSelect } from '../../components/ui';
-import { ModalFooter } from '../../components/ui/Modal';
-import { getApprovals, approveApprovalRequest, rejectApprovalRequest } from '../../api/approvals.api';
-import type { ApprovalRequest, ApprovalStatus } from '../../types/approvals';
+import React, { useMemo, useState, useCallback, Suspense, lazy } from 'react';
+import { z } from 'zod';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import UnifiedBillingLayout from '@/components/billing/UnifiedBillingLayout';
+import { Button, Loader, EnhancedAlert, Table, Input, StatusBadge, SectionHeader, SectionCard, Card } from '@/components/ui';
+import { ModalFooter } from '@/components/ui/Modal';
+import { getApprovals, approveApprovalRequest, rejectApprovalRequest } from '@/api/approvals.api';
+import type { ApprovalRequest, ApprovalStatus } from '@/types/approvals';
 import { CheckCircle, XCircle, RefreshCw, Search } from 'lucide-react';
-import { LogService } from '../../utils/LogService';
-import useConfirm from '../../hooks/useConfirm';
-import { PageLayout } from '../../components/common/PageLayout';
+import useConfirm from '@/hooks/useConfirm';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { toast } from 'react-hot-toast';
+import { formatDate } from '@/utils/layoutUtils';
 
-const ApprovalsPage: React.FC = () => {
+// Lazy loaded heavy components (Pilar 11)
+const Modal = lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.Modal })));
+const SearchableSelect = lazy(() => import('@/components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
+
+// Zod Schema Validation Guard (Pilar 25)
+const rejectApprovalSchema = z.object({
+  reason: z.string().min(1, 'Alasan penolakan wajib diisi'),
+});
+
+const ApprovalsPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | 'ALL'>('PENDING');
   const [searchTerm, setSearchTerm] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
   const [rejectModal, setRejectModal] = useState<{ open: boolean; id?: string; reason: string }>({ open: false, id: undefined, reason: '' });
 
-  // Sorting and pagination states to satisfy table audit
+  // Sorting and pagination states
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const loadApprovals = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getApprovals({ status: statusFilter === 'ALL' ? undefined : statusFilter, limit: 50 });
-      setApprovals(res.data.approvals);
-    } catch (err) {
-      const errorObj = err as { message?: string };
-      LogService.error('Failed to load approvals', err, 'ApprovalsPage');
-      setError(errorObj?.message || 'Gagal memuat data approvals');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+  // React Query Data Fetching (Pilar 31)
+  const { data: approvalsData = [], isLoading: loading, isFetching: refreshing, refetch } = useQuery<ApprovalRequest[]>({
+    queryKey: ['billing-approvals-list', statusFilter],
+    queryFn: async () => {
+      const res = await getApprovals({ status: statusFilter === 'ALL' ? undefined : statusFilter, limit: 100 });
+      return res?.data?.approvals ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    loadApprovals();
-  }, [loadApprovals]);
+  // Mutations with Cache Invalidation (Pilar 32)
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveApprovalRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-approvals-list'] });
+      toast.success('Permintaan berhasil disetujui (Approved)');
+    },
+    onError: (err: unknown) => {
+      const errorObj = err as { message?: string };
+      toast.error(errorObj?.message || 'Gagal menyetujui request');
+    }
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectApprovalRequest(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-approvals-list'] });
+      toast.success('Permintaan berhasil ditolak (Rejected)');
+      setRejectModal({ open: false, id: undefined, reason: '' });
+    },
+    onError: (err: unknown) => {
+      const errorObj = err as { message?: string };
+      toast.error(errorObj?.message || 'Gagal menolak request');
+    }
+  });
 
   const filteredApprovals = useMemo(() => {
-    if (!searchTerm) return approvals;
+    if (!searchTerm) return approvalsData;
     const term = searchTerm.toLowerCase();
-    return approvals.filter((a) =>
-      a.action_type.toLowerCase().includes(term) ||
-      a.target_id.toLowerCase().includes(term) ||
+    return (approvalsData ?? []).filter((a) =>
+      a.action_type?.toLowerCase().includes(term) ||
+      a.target_id?.toLowerCase().includes(term) ||
       (a.requested_by_name || '').toLowerCase().includes(term) ||
       (a.reason || '').toLowerCase().includes(term)
     );
-  }, [approvals, searchTerm]);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadApprovals();
-    setRefreshing(false);
-  }, [loadApprovals]);
+  }, [approvalsData, searchTerm]);
 
   const handleApprove = useCallback(async (id: string) => {
     const ok = await confirm({
       title: 'Approve Request?',
-      description: 'Apakah Anda yakin ingin menyetujui permintaan (approval request) ini? Tindakan ini akan langsung diterapkan pada sistem.',
+      description: 'Apakah Anda yakin ingin menyetujui permintaan ini? Tindakan ini akan langsung diterapkan pada sistem.',
       confirmText: 'Ya, Approve',
       cancelText: 'Batal',
       style: 'primary'
     });
     if (!ok) return;
 
-    try {
-      const res = await approveApprovalRequest(id);
-      setApprovals((prev) => prev?.map((a) => (a.id === id ? res.data : a)));
-    } catch (err) {
-      const errorObj = err as { message?: string };
-      setError(errorObj?.message || 'Gagal menyetujui request');
-    }
-  }, [confirm]);
+    await approveMutation.mutateAsync(id);
+  }, [confirm, approveMutation]);
 
   const handleOpenReject = useCallback((id: string) => {
     setRejectModal({ open: true, id, reason: '' });
@@ -87,15 +100,13 @@ const ApprovalsPage: React.FC = () => {
 
   const handleConfirmReject = useCallback(async () => {
     if (!rejectModal.id) return;
-    try {
-      const res = await rejectApprovalRequest(rejectModal.id, rejectModal.reason);
-      setApprovals((prev) => prev?.map((a) => (a.id === rejectModal.id ? res.data : a)));
-      setRejectModal({ open: false, id: undefined, reason: '' });
-    } catch (err) {
-      const errorObj = err as { message?: string };
-      setError(errorObj?.message || 'Gagal menolak request');
+    const parsed = rejectApprovalSchema.safeParse({ reason: rejectModal.reason });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Alasan penolakan wajib diisi');
+      return;
     }
-  }, [rejectModal]);
+    await rejectMutation.mutateAsync({ id: rejectModal.id, reason: rejectModal.reason });
+  }, [rejectModal, rejectMutation]);
 
   const handleSort = useCallback((key: string) => {
     setSortBy(key);
@@ -130,11 +141,18 @@ const ApprovalsPage: React.FC = () => {
       ),
     },
     {
+      key: 'created_at',
+      label: 'Tanggal Request',
+      render: (value: unknown) => (
+        <span className="text-xs text-slate-500">{formatDate(String(value || ''))}</span>
+      ),
+    },
+    {
       key: 'reason',
       label: 'Alasan',
       className: 'text-sm',
       render: (value: unknown) => (
-        <span className="text-sm text-gray-700">{String(value || '-')}</span>
+        <span className="text-sm text-gray-700 dark:text-slate-300">{String(value || '-')}</span>
       ),
     },
     {
@@ -156,15 +174,25 @@ const ApprovalsPage: React.FC = () => {
       render: (_: unknown, row: ApprovalRequest) => (
         row.status === 'PENDING' ? (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="primary" className="gap-2" onClick={() => handleApprove(row.id)}>
-              <CheckCircle className="w-4 h-4" /> Approve
-            </Button>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => handleOpenReject(row.id)}>
-              <XCircle className="w-4 h-4" /> Reject
-            </Button>
+            <button
+              type="button"
+              aria-label={`Setujui request ${row.id}`}
+              onClick={() => handleApprove(row.id)}
+              className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+            >
+              <CheckCircle className="w-3.5 h-3.5" /> Setujui
+            </button>
+            <button
+              type="button"
+              aria-label={`Tolak request ${row.id}`}
+              onClick={() => handleOpenReject(row.id)}
+              className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1 border border-rose-200 dark:border-rose-800 transition-all"
+            >
+              <XCircle className="w-3.5 h-3.5" /> Tolak
+            </button>
           </div>
         ) : (
-          <span className="text-gray-500 text-sm">-</span>
+          <span className="text-gray-400 text-xs font-mono">-</span>
         )
       ),
     },
@@ -172,126 +200,145 @@ const ApprovalsPage: React.FC = () => {
 
   const totalPages = Math.ceil(filteredApprovals.length / itemsPerPage);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Billing', path: '/billing' },
+    { label: 'Persetujuan Aksi' }
+  ], []);
+
   return (
-    <PageLayout
+    <AcademicPageLayout
+      title="Persetujuan Aksi (Approvals)"
+      description="Tinjau dan proses permintaan persetujuan perubahan data serta transaksi dari tenant client."
+      breadcrumbs={breadcrumbs}
       hardeningModuleKey="billing_approvals"
-      breadcrumbs={[
-        { label: 'Billing', path: '/billing' },
-        { label: 'Approvals', path: '/billing/approvals' }
-      ]}
+      topSlot={
+        <div className="flex items-center justify-end gap-2">
+          <Button 
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => refetch()} 
+            disabled={refreshing} 
+            className="flex items-center gap-1.5 font-bold rounded-xl"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Memuat...' : 'Muat Ulang'}
+          </Button>
+        </div>
+      }
       instruction={{
-        title: 'Persetujuan Aksi (Approvals)',
+        title: 'Panduan Persetujuan Aksi',
+        description: 'Pusat kendali persetujuan untuk transaksi kritis dan perubahan akun tenant.',
         items: [
-          { text: 'Tinjau request perubahan and persetujuan dari tenant-tenant client.' },
-          { text: 'Anda dapat menyetujui (Approve) atau menolak (Reject) request yang masuk.' }
+          { text: 'Tinjau rincian permintaan (approval request) sebelum mengambil tindakan.' },
+          { text: 'Gunakan tombol Setujui untuk mengesahkan atau Tolak dengan menyertakan alasan.' },
+          { text: 'Gunakan filter status di atas tabel untuk menyaring riwayat persetujuan.' }
         ]
       }}
     >
-      <UnifiedBillingLayout pageKey="payments" title="✅ Approval Requests" subtitle="Tinjau dan proses permintaan persetujuan" showOverview={false}>
-        <div className="space-y-6">
-          {error && (
-            <EnhancedAlert
-              variant="destructive"
-              title="Error"
-              description={error}
-              dismissible
-              onDismiss={() => setError(null)}
-            />
-          )}
-
-          <div className="flex justify-between items-center">
-            <SectionHeader title="Daftar Approval" subtitle="Permintaan persetujuan terbaru" />
-            <Button onClick={handleRefresh} disabled={refreshing} className="flex items-center gap-2">
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader />
+      <UnifiedBillingLayout pageKey="payments" title="Persetujuan Aksi" subtitle="Tinjau dan proses permintaan persetujuan" showOverview={false}>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <SectionHeader title="Daftar Permintaan Persetujuan" subtitle="Daftar tiket approval yang membutuhkan respon" />
             </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-              <Table
-                columns={columns}
-                data={filteredApprovals}
-                emptyMessage="Tidak ada request untuk ditampilkan"
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={handleSort}
-                pagination={{
-                  currentPage,
-                  totalPages,
-                  totalItems: filteredApprovals.length,
-                  itemsPerPage,
-                  onPageChange: setCurrentPage,
-                  onLimitChange: setItemsPerPage
-                }}
-                toolbarLeft={
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Cari berdasarkan aksi, target, atau pemohon..."
-                        className="pl-10 w-80"
-                      />
-                    </div>
-                    <div className="relative w-48">
-                      <SearchableSelect
-                        value={statusFilter}
-                        onValueChange={(val) => setStatusFilter(val as ApprovalStatus | 'ALL')}
-                        options={[
-                          { value: "ALL", label: "Semua Status" },
-                          { value: "PENDING", label: "Menunggu" },
-                          { value: "APPROVED", label: "Disetujui" },
-                          { value: "REJECTED", label: "Ditolak" }
-                        ]}
-                        placeholder="Semua Status"
-                        searchPlaceholder="Cari status..."
-                        triggerClassName="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                      />
-                    </div>
+
+            {/* Filter Bar placed ABOVE Table */}
+            <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                <Input
+                  id="search-approval-input"
+                  aria-label="Cari tiket approval"
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Cari aksi, target, atau pemohon..."
+                  className="pl-10 text-xs"
+                />
+              </div>
+              <div className="relative w-52">
+                <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />}>
+                  <SearchableSelect
+                    id="filter-approval-status"
+                    aria-label="Filter status persetujuan"
+                    value={statusFilter}
+                    onValueChange={(val) => setStatusFilter(val as ApprovalStatus | 'ALL')}
+                    options={[
+                      { value: "ALL", label: "Semua Status" },
+                      { value: "PENDING", label: "Menunggu (Pending)" },
+                      { value: "APPROVED", label: "Disetujui (Approved)" },
+                      { value: "REJECTED", label: "Ditolak (Rejected)" }
+                    ]}
+                    placeholder="Semua Status"
+                  />
+                </Suspense>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader size="lg" />
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto max-w-full">
+                <Table
+                  columns={columns}
+                  data={filteredApprovals}
+                  emptyMessage="Tidak ada request untuk ditampilkan"
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                  pagination={{
+                    currentPage,
+                    totalPages,
+                    totalItems: filteredApprovals.length,
+                    itemsPerPage,
+                    onPageChange: setCurrentPage,
+                    onLimitChange: setItemsPerPage
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Reject Modal */}
+            <Suspense fallback={null}>
+              {rejectModal.open && (
+                <Modal
+                  isOpen={rejectModal.open}
+                  onClose={() => setRejectModal({ open: false, id: undefined, reason: '' })}
+                  title="Tolak Permintaan Persetujuan"
+                  className="max-w-md"
+                >
+                  <div className="space-y-4 pt-2">
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Masukkan alasan penolakan permintaan ini secara jelas agar pemohon dapat mengetahuinya:
+                    </p>
+                    <Input
+                      id="reject-reason-input"
+                      aria-label="Alasan penolakan tiket"
+                      type="text"
+                      value={rejectModal.reason}
+                      onChange={(e) => setRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
+                      placeholder="Contoh: Dokumen lampiran belum lengkap"
+                      className="text-xs"
+                    />
+                    <ModalFooter className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <Button variant="outline" size="sm" onClick={() => setRejectModal({ open: false, id: undefined, reason: '' })}>
+                        Batal
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={handleConfirmReject} disabled={rejectMutation.isPending}>
+                        {rejectMutation.isPending ? 'Memproses...' : 'Konfirmasi Tolak'}
+                      </Button>
+                    </ModalFooter>
                   </div>
-                }
-              />
-            </div>
-          )}
-
-          {/* Reject Modal */}
-          <Modal
-            isOpen={rejectModal.open}
-            onClose={() => setRejectModal({ open: false, id: undefined, reason: '' })}
-            title="Tolak Request"
-          >
-            <p className="text-sm text-gray-700 mb-3">Tambahkan alasan penolakan (opsional)</p>
-            <Input
-              type="text"
-              value={rejectModal.reason}
-              onChange={(e) => setRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
-              placeholder="Alasan penolakan"
-            />
-            <ModalFooter>
-              <Button variant="outline" onClick={() => setRejectModal({ open: false, id: undefined, reason: '' })}>
-                Batal
-              </Button>
-              <Button variant="danger" className="ml-2" onClick={handleConfirmReject}>
-                Konfirmasi Tolak
-              </Button>
-            </ModalFooter>
-          </Modal>
-        </div>
+                </Modal>
+              )}
+            </Suspense>
+          </div>
+        </SectionCard>
       </UnifiedBillingLayout>
-    </PageLayout>
+    </AcademicPageLayout>
   );
-};
+});
 
 export default ApprovalsPage;
-
-// Static audit compliance comment guards:
-// <Card />
-// lazy(
-// Suspense

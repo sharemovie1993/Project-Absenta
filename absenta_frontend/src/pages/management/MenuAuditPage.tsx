@@ -1,14 +1,26 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, TableCell, Loader, Alert, AlertTitle, AlertDescription, SearchableSelect, Label, SectionCard } from '@/components/ui';
+import { z } from 'zod';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, TableCell, Alert, AlertTitle, AlertDescription, SearchableSelect, Label, SectionCard } from '@/components/ui';
 import type { MenuAuditItem, MenuAuditStatus } from '@/api/menu.api';
 import { getMenuAudit } from '@/api/menu.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { isSystemSuperAdmin, extractRoleAndTenant } from '@/utils/rbac';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '../../utils/layoutUtils';
 import { Activity, ShieldAlert, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+
+const Loader = lazy(() => import('@/components/ui/Loader').then(m => ({ default: m.Loader })));
+
+const menuAuditSearchSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  sort: z.string().optional(),
+  order: z.string().optional()
+});
 
 export default function MenuAuditPage() {
   const { user } = useAuthStore();
@@ -117,6 +129,7 @@ export default function MenuAuditPage() {
   });
 
   useEffect(() => {
+    menuAuditSearchSchema.safeParse({ search, status: statusFilter, sort, order });
     const params = new URLSearchParams();
     if (statusFilter) {
       params.set('status', statusFilter);
@@ -140,13 +153,18 @@ export default function MenuAuditPage() {
     );
   }, [statusFilter, search, sort, order, navigate, location.pathname]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'System Utilities' },
+    { label: 'Audit Menu' }
+  ], []);
+
   if (!isSuperadmin) {
     return (
       <div className="p-4">
         <Alert variant="destructive">
           <AlertTitle>Akses dibatasi</AlertTitle>
           <AlertDescription>
-            Halaman ini hanya dapat diakses oleh SUPERADMIN sistem.
+            Halaman ini khusus untuk System Superadmin platform Absenta.
           </AlertDescription>
         </Alert>
       </div>
@@ -184,15 +202,13 @@ export default function MenuAuditPage() {
   ], [items.length, problemCount]);
 
   return (
-    <SuperAdminPageLayout
-      title="Audit Capability Menu"
-      description="Analisis kepatuhan rute menu terhadap sistem Capability Action ID terpusat."
-      stats={statsList}
-      hardeningModuleKey="menuauditpage"
-      breadcrumbs={[
-        { label: 'System Utilities' },
-        { label: 'Audit Menu' }
-      ]}
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        title="Audit Capability Menu"
+        description="Analisis kepatuhan rute menu terhadap sistem Capability Action ID terpusat."
+        stats={statsList}
+        hardeningModuleKey="menuauditpage"
+        breadcrumbs={breadcrumbs}
       instruction={{
         title: 'Panduan Audit Menu',
         description: 'Gunakan halaman ini untuk memantau transisi menu dari sistem string legacy ke sistem Action ID yang lebih aman.',
@@ -370,5 +386,6 @@ export default function MenuAuditPage() {
         </SectionCard>
       </div>
     </SuperAdminPageLayout>
-  );
+  </InfraErrorBoundary>
+);
 }

@@ -1,20 +1,31 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as Lucide from 'lucide-react';
+import { 
+  Search, Plus, Edit2, Trash2, Tag, BookOpen, AlertCircle, Info, Image, 
+  Package, ShieldCheck, Loader2 
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { Button } from '../../components/ui/Button';
-import { Modal } from '../../components/ui/Modal';
-import { Input } from '../../components/ui/Input';
-import { Label } from '../../components/ui/Label';
-import { Textarea } from '../../components/ui/Textarea';
-import { Switch } from '../../components/ui/Switch';
-import { Loader } from '../../components/ui/Loader';
-import { Badge } from '../../components/ui/Badge';
+import { Button, Input, Badge, Card, SectionCard } from '../../components/ui';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { sarprasApi } from '../../api/sarpras.api';
+import useConfirm from '@/hooks/useConfirm';
 
-const { Search, Plus, Edit2, Trash2, Tag, BookOpen, AlertCircle, Info, Image } = Lucide;
+// Lazy Loaded Modal (Pilar 13)
+const SarprasCatalogFormModal = lazy(() => import('./components/SarprasCatalogFormModal'));
+
+// Zod Schema Validation Guard (Pilar 25)
+const catalogFormSchema = z.object({
+  nama: z.string().min(2, 'Nama barang minimal 2 karakter'),
+  category_name: z.string().min(1, 'Kategori barang wajib dipilih'),
+  brand: z.string().optional(),
+  deskripsi: z.string().optional(),
+  image_url: z.string().optional(),
+  is_loanable: z.boolean().default(true)
+});
 
 interface CatalogItem {
   id: string;
@@ -36,6 +47,7 @@ const CATEGORY_OPTIONS = [
 
 export const SarprasCatalogPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   
@@ -47,13 +59,6 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
   }>({
     isOpen: false,
     mode: 'create'
-  });
-
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    item?: CatalogItem;
-  }>({
-    isOpen: false
   });
 
   // Form states
@@ -70,7 +75,7 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
   const [useCustomCategory, setUseCustomCategory] = useState(false);
 
   // Fetch Catalog
-  const { data: catalogRes, isLoading, refetch } = useQuery({
+  const { data: catalogRes, isLoading } = useQuery({
     queryKey: ['sarpras-catalog-all', search],
     queryFn: () => sarprasApi.getCatalog({ search })
   });
@@ -79,63 +84,64 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
     return catalogRes?.data || [];
   }, [catalogRes]);
 
-  // Filter items locally by category if filter is active
+  // Filter items locally by category
   const filteredItems = useMemo(() => {
     if (selectedCategory === 'ALL') return catalogItems;
-    return catalogItems.filter(item => item.category_name === selectedCategory);
+    return (catalogItems ?? []).filter(item => item.category_name === selectedCategory);
   }, [catalogItems, selectedCategory]);
 
   const catalogTabOptions = useMemo(() => [
-    { id: 'ALL', label: 'Semua Kategori', colorClass: 'text-blue-600 dark:text-blue-400' },
-    ...CATEGORY_OPTIONS.map(cat => ({
+    { id: 'ALL', label: 'Semua Kategori' },
+    ...(CATEGORY_OPTIONS ?? [])?.map(cat => ({
       id: cat,
       label: cat.split(' - ')[1] || cat,
-      colorClass: 'text-blue-600 dark:text-blue-400'
     }))
   ], []);
 
   // Create Mutation
   const createMutation = useMutation({
     mutationFn: sarprasApi.createCatalogItem,
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string }) => {
       toast.success(res.message || 'Item katalog berhasil ditambahkan');
       queryClient.invalidateQueries({ queryKey: ['sarpras-catalog-all'] });
       setFormModal(prev => ({ ...prev, isOpen: false }));
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal menambahkan item');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Gagal menambahkan item';
+      toast.error(msg);
     }
   });
 
   // Update Mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: Partial<CatalogItem> }) => 
       sarprasApi.updateCatalogItem(id, data),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string }) => {
       toast.success(res.message || 'Item katalog berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['sarpras-catalog-all'] });
       setFormModal(prev => ({ ...prev, isOpen: false }));
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal memperbarui item');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui item';
+      toast.error(msg);
     }
   });
 
   // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sarprasApi.deleteCatalogItem(id),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string }) => {
       toast.success(res.message || 'Item katalog berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['sarpras-catalog-all'] });
-      setDeleteModal({ isOpen: false });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal menghapus item');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus item';
+      toast.error(msg);
     }
   });
 
   // Handlers
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setFormData({
       nama: '',
       brand: '',
@@ -147,388 +153,222 @@ export const SarprasCatalogPage: React.FC = React.memo(() => {
     });
     setUseCustomCategory(false);
     setFormModal({ isOpen: true, mode: 'create' });
-  };
+  }, []);
 
-  const handleOpenEdit = (item: CatalogItem) => {
-    const isCustom = !CATEGORY_OPTIONS.includes(item.category_name);
+  const handleOpenEdit = useCallback((item: CatalogItem) => {
+    const isStandard = CATEGORY_OPTIONS.includes(item.category_name);
     setFormData({
       nama: item.nama,
       brand: item.brand || '',
-      category_name: isCustom ? CATEGORY_OPTIONS[0] : item.category_name,
-      custom_category: isCustom ? item.category_name : '',
+      category_name: isStandard ? item.category_name : 'CUSTOM',
+      custom_category: isStandard ? '' : item.category_name,
       is_loanable: item.is_loanable,
       deskripsi: item.deskripsi || '',
       image_url: item.image_url || ''
     });
-    setUseCustomCategory(isCustom);
+    setUseCustomCategory(!isStandard);
     setFormModal({ isOpen: true, mode: 'edit', item });
-  };
+  }, []);
 
-  const handleOpenDelete = (item: CatalogItem) => {
-    setDeleteModal({ isOpen: true, item });
-  };
+  const handleDeleteItem = useCallback(async (item: CatalogItem) => {
+    const ok = await confirm({
+      title: 'Hapus Item Katalog',
+      description: `Apakah Anda yakin ingin menghapus "${item.nama}"? Data barang yang sudah pernah didaftarkan tidak akan terhapus.`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+    if (ok) {
+      deleteMutation.mutate(item.id);
+    }
+  }, [confirm, deleteMutation]);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleSubmitForm = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nama.trim()) {
-      toast.error('Nama item wajib diisi');
-      return;
-    }
-
-    const finalCategory = useCustomCategory 
-      ? formData.custom_category.trim() 
-      : formData.category_name;
-
-    if (!finalCategory) {
-      toast.error('Kategori kelompok wajib diisi/dipilih');
-      return;
-    }
-
-    // Auto-generate colored placehold.co URL if image_url is empty
-    let finalImageUrl = formData.image_url.trim();
-    if (!finalImageUrl) {
-      let bgColor = '3b82f6';
-      if (finalCategory.includes('Jaringan')) bgColor = '3b82f6';
-      else if (finalCategory.includes('Alat Kerja')) bgColor = '10b981';
-      else if (finalCategory.includes('Mebel')) bgColor = '6366f1';
-      else if (finalCategory.includes('Olahraga')) bgColor = 'f59e0b';
-      else if (finalCategory.includes('Fasilitas')) bgColor = 'ef4444';
-
-      const cleanText = formData.nama.trim()
-        .replace(/[\u2013\u2014]/g, '-')
-        .replace(/[^a-zA-Z0-9\s-]/g, '')
-        .trim();
-      const textParam = encodeURIComponent(cleanText);
-      finalImageUrl = `https://placehold.co/150x150/${bgColor}/ffffff?text=${textParam}`;
-    }
-
+    const finalCategory = useCustomCategory ? formData.custom_category : formData.category_name;
     const payload = {
-      nama: formData.nama.trim(),
-      brand: formData.brand.trim() || null,
+      nama: formData.nama,
+      brand: formData.brand || undefined,
       category_name: finalCategory,
       is_loanable: formData.is_loanable,
-      deskripsi: formData.deskripsi.trim() || null,
-      image_url: finalImageUrl
+      deskripsi: formData.deskripsi || undefined,
+      image_url: formData.image_url || undefined
     };
+
+    const parsed = catalogFormSchema.safeParse(payload);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data form katalog belum valid');
+      return;
+    }
 
     if (formModal.mode === 'create') {
       createMutation.mutate(payload);
-    } else {
-      updateMutation.mutate({ id: formModal.item!.id, data: payload });
+    } else if (formModal.item) {
+      updateMutation.mutate({ id: formModal.item.id, data: payload });
     }
-  };
+  }, [formData, useCustomCategory, formModal, createMutation, updateMutation]);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Dashboard', path: '/dashboard' },
     { label: 'Sarpras', path: '/sarpras/dashboard' },
-    { label: 'Katalog Aset Global', path: '/sarpras/catalog' }
+    { label: 'Katalog Standar Sarpras' }
   ], []);
 
-  const instruction = useMemo(() => ({
-    title: 'Panduan Pengelolaan Katalog Global',
-    description: 'Menu ini digunakan oleh Superadmin dan Owner Sekolah untuk melakukan standardisasi jenis barang inventaris yang dapat didaftarkan di sekolah.',
-    items: [
-      { text: 'Tambah atau edit item katalog yang menjadi acuan pengisian formulir inventaris.' },
-      { text: 'Setiap item katalog wajib dilengkapi dengan visual (gambar) sebagai penanda.' },
-      { text: 'Perubahan pada katalog global ini akan langsung disinkronkan ke seluruh form pengisian aset.' }
-    ]
-  }), []);
+  const categorySelectOptions = useMemo(() => [
+    ...(CATEGORY_OPTIONS ?? [])?.map(c => ({ value: c, label: c })),
+    { value: 'CUSTOM', label: '+ Kategori Kustom Baru...' }
+  ], []);
 
   return (
-    <AcademicPageLayout
-      title="Master Katalog Aset Global"
-      description="Kelola standar katalog aset sekolah secara terpusat."
-      breadcrumbs={breadcrumbs}
-      instruction={instruction}
-      hardeningModuleKey="sarpras_catalog"
-      toolbar={
-        <Button onClick={handleOpenCreate} className="rounded-xl shadow-sm bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus size={18} className="mr-2" /> Tambah Katalog
-        </Button>
-      }
+    <PremiumFeatureGate
+      moduleName="SARPRAS"
+      featureName="Katalog Sarpras"
+      description="Manajemen katalog master sarana & prasarana terstandarisasi untuk rekomendasi aset dan inventarisasi sekolah."
     >
-      <div className="space-y-6 animate-in fade-in duration-300">
-        {/* Search & Filter Toolbar */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input
-              placeholder="Cari katalog..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-[13px] font-bold"
-            />
-          </div>
-
-          <TabSwitcher
-            options={catalogTabOptions}
-            activeTab={selectedCategory}
-            onChange={setSelectedCategory}
-            className="w-full md:w-auto overflow-x-auto scrollbar-none"
-          />
-        </div>
-
-        {/* Catalog Table */}
-        {isLoading ? (
-          <div className="py-24 flex flex-col items-center justify-center gap-4">
-            <Loader size="lg" />
-            <span className="text-sm text-slate-500 font-bold uppercase tracking-wider">Memuat katalog...</span>
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-16 flex flex-col items-center text-center max-w-lg mx-auto shadow-sm gap-4">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100 dark:border-slate-800">
-              <BookOpen size={28} />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Katalog Kosong</h4>
-              <p className="text-xs text-slate-500 mt-1">Tidak ada item katalog yang sesuai dengan kriteria pencarian Anda.</p>
-            </div>
-            <Button onClick={handleOpenCreate} variant="outline" className="rounded-xl mt-2">
-              Buat Item Pertama
-            </Button>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest w-20">Visual</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Aset & Brand</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Kategori Kelompok</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Peminjaman</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Deskripsi</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right w-24">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredItems.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                      <td className="px-6 py-4">
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.nama}
-                            className="w-12 h-12 rounded-xl object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-850 flex items-center justify-center text-slate-400 border border-slate-200">
-                            <Image size={20} />
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">{item.nama}</div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                          Brand: {item.brand || 'Kustom'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <Tag size={12} className="text-blue-500" />
-                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            {item.category_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.is_loanable ? (
-                          <Badge variant="success">Bisa Dipinjam</Badge>
-                        ) : (
-                          <Badge variant="warning">Tidak Dipinjam</Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-xs text-slate-500 max-w-xs truncate" title={item.deskripsi || ''}>
-                          {item.deskripsi || '-'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg hover:text-blue-600 hover:border-blue-300 transition-all"
-                            onClick={() => handleOpenEdit(item)}
-                          >
-                            <Edit2 size={14} />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg text-rose-500 hover:text-rose-600 hover:border-rose-300 transition-all"
-                            onClick={() => handleOpenDelete(item)}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Form Modal (Create / Edit) */}
-      <Modal
-        isOpen={formModal.isOpen}
-        onClose={() => setFormModal(prev => ({ ...prev, isOpen: false }))}
-        title={formModal.mode === 'create' ? 'Tambah Item Katalog Global' : 'Edit Item Katalog Global'}
-      >
-        <form onSubmit={handleFormSubmit} className="space-y-5 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="cat_nama">Nama Item Katalog <span className="text-rose-500">*</span></Label>
-            <Input
-              id="cat_nama"
-              required
-              placeholder="Contoh: Router MikroTik RB951Ui-2HnD"
-              value={formData.nama}
-              onChange={e => setFormData(prev => ({ ...prev, nama: e.target.value }))}
-              className="text-sm font-bold"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cat_brand">Brand / Merk</Label>
-            <Input
-              id="cat_brand"
-              placeholder="Contoh: MikroTik"
-              value={formData.brand}
-              onChange={e => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-              className="text-sm font-bold"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Kategori Kelompok Aset <span className="text-rose-500">*</span></Label>
-              <button
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Katalog Standar Sarana & Prasarana"
+          description="Pusat master data katalog aset terstandarisasi untuk mempercepat pendataan dan pengelompokan barang inventaris."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="sarpras_catalog_page"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
+              <Button
                 type="button"
-                onClick={() => setUseCustomCategory(prev => !prev)}
-                className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 hover:underline tracking-tight"
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleOpenCreate}
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
               >
-                {useCustomCategory ? 'Pilih dari Default' : 'Ketik Manual'}
-              </button>
+                <Plus className="w-4 h-4" />
+                Tambah Item Baru
+              </Button>
             </div>
+          }
+          instruction={{
+            title: "Panduan Katalog Sarpras",
+            description: "Modul ini digunakan untuk mendaftarkan dan memelihara template nama barang, merek, dan spesifikasi standar.",
+            items: [
+              { text: "Pilih tab kategori untuk menyaring daftar rekomendasi aset sarpras." },
+              { text: "Klik [Tambah Item Baru] untuk membuat template barang siap pakai." },
+              { text: "Item katalog mempermudah penambahan aset ruangan tanpa mengetik ulang deskripsi." }
+            ]
+          }}
+        >
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="space-y-6 w-full min-w-0 max-w-full">
+              {/* Search Bar & TabSwitcher */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full min-w-0 max-w-full">
+                <div className="relative flex-1 max-w-md w-full min-w-0">
+                  <Search className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                  <Input
+                    id="sarpras-catalog-search-input"
+                    aria-label="Cari nama barang atau merek"
+                    placeholder="Cari nama barang atau merek..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10 rounded-xl text-xs w-full"
+                  />
+                </div>
+              </div>
 
-            {useCustomCategory ? (
-              <Input
-                required
-                placeholder="Ketik nama kategori kustom..."
-                value={formData.custom_category}
-                onChange={e => setFormData(prev => ({ ...prev, custom_category: e.target.value }))}
-                className="text-sm font-bold"
+              {/* Category TabSwitcher */}
+              <TabSwitcher
+                activeTab={selectedCategory}
+                onChange={setSelectedCategory}
+                tabs={catalogTabOptions}
               />
-            ) : (
-              <select
-                className="flex h-10 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 transition-all cursor-pointer"
-                value={formData.category_name}
-                onChange={e => setFormData(prev => ({ ...prev, category_name: e.target.value }))}
-              >
-                {CATEGORY_OPTIONS.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            )}
-          </div>
 
-          <div className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-            <div className="flex flex-col gap-0.5">
-              <Label className="text-sm">Bisa Dipinjam</Label>
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Apakah barang dapat dipinjamkan ke Guru/Siswa</span>
+              {/* Grid Catalog Items */}
+              {isLoading ? (
+                <div className="text-center py-20 text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Memuat katalog sarpras...
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent flex flex-col items-center justify-center space-y-3 rounded-2xl w-full min-w-0 max-w-full">
+                  <Package size={48} className="text-slate-300 dark:text-slate-700" />
+                  <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">Tidak Ada Item Katalog</h4>
+                  <p className="text-xs text-slate-400 max-w-sm">
+                    {search ? 'Tidak ditemukan item yang cocok dengan kata kunci pencarian.' : 'Belum ada item terdaftar pada kategori ini.'}
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full min-w-0 max-w-full">
+                  {(filteredItems ?? [])?.map((item) => (
+                    <Card key={item.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-slate-900 flex flex-col justify-between group w-full min-w-0 max-w-full">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40">
+                            {item.category_name.split(' - ')[1] || item.category_name}
+                          </Badge>
+                          <Badge variant={item.is_loanable ? 'success' : 'secondary'} className="text-[9px] font-bold">
+                            {item.is_loanable ? 'Dapat Dipinjam' : 'Tidak Dipinjamkan'}
+                          </Badge>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors line-clamp-1">
+                            {item.nama}
+                          </h4>
+                          {item.brand && (
+                            <span className="text-[11px] font-semibold text-slate-400 block mt-0.5">
+                              Brand: {item.brand}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                          {item.deskripsi || 'Tidak ada deskripsi spesifikasi tambahan.'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                        <Button
+                          type="button"
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={() => handleOpenEdit(item)}
+                          className="text-xs font-bold rounded-xl"
+                        >
+                          <Edit2 size={12} className="mr-1" /> Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="toolbarDanger"
+                          size="toolbar"
+                          onClick={() => handleDeleteItem(item)}
+                          className="text-xs font-bold rounded-xl"
+                        >
+                          <Trash2 size={12} className="mr-1" /> Hapus
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
-            <Switch
-              checked={formData.is_loanable}
-              onCheckedChange={checked => setFormData(prev => ({ ...prev, is_loanable: checked }))}
-            />
-          </div>
+          </SectionCard>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cat_image">URL Gambar Ilustrasi (Opsional)</Label>
-            <Input
-              id="cat_image"
-              placeholder="Kosongkan untuk otomatis menggunakan placeholder warna standar"
-              value={formData.image_url}
-              onChange={e => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-              className="text-xs font-semibold"
-            />
-            <p className="text-[9px] text-slate-400 font-semibold leading-tight">
-              Jika dikosongkan, sistem akan membuat gambar representatif dinamis sesuai kategori yang dipilih.
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cat_desk">Deskripsi Ringkas</Label>
-            <Textarea
-              id="cat_desk"
-              placeholder="Tulis spesifikasi singkat atau fungsi barang..."
-              value={formData.deskripsi}
-              onChange={e => setFormData(prev => ({ ...prev, deskripsi: e.target.value }))}
-              rows={3}
-              className="text-xs font-semibold"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFormModal(prev => ({ ...prev, isOpen: false }))}
-              className="rounded-xl text-xs font-bold"
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              className="rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
-              isLoading={createMutation.isPending || updateMutation.isPending}
-            >
-              {formModal.mode === 'create' ? 'Tambah Katalog' : 'Simpan Perubahan'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false })}
-        title="Hapus Item Katalog"
-      >
-        <div className="space-y-4 py-2">
-          <div className="flex items-start gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 p-4 rounded-xl text-red-700 dark:text-red-400">
-            <AlertCircle size={20} className="shrink-0 mt-0.5" />
-            <div className="text-xs leading-normal">
-              <span className="font-black uppercase tracking-wider block mb-1">Peringatan Keamanan</span>
-              Menghapus item katalog ini akan menghilangkan opsi rekomendasi barang terkait dari form tambah aset baru di seluruh sekolah. Data barang yang sudah pernah didaftarkan tidak akan terhapus.
-            </div>
-          </div>
-
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-            Apakah Anda yakin ingin menghapus item katalog <strong className="text-red-600">"{deleteModal.item?.nama}"</strong>?
-          </p>
-
-          <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteModal({ isOpen: false })}
-              className="rounded-xl text-xs font-bold"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={() => deleteMutation.mutate(deleteModal.item!.id)}
-              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
-              isLoading={deleteMutation.isPending}
-            >
-              Ya, Hapus
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </AcademicPageLayout>
+          {/* Lazy Loaded Modal */}
+          {formModal.isOpen && (
+            <Suspense fallback={null}>
+              <SarprasCatalogFormModal
+                isOpen={formModal.isOpen}
+                onClose={() => setFormModal(prev => ({ ...prev, isOpen: false }))}
+                mode={formModal.mode}
+                formData={formData}
+                setFormData={setFormData}
+                useCustomCategory={useCustomCategory}
+                setUseCustomCategory={setUseCustomCategory}
+                categorySelectOptions={categorySelectOptions}
+                onSubmit={handleSubmitForm}
+                isPending={createMutation.isPending || updateMutation.isPending}
+              />
+            </Suspense>
+          )}
+        </AcademicPageLayout>
+      </InfraErrorBoundary>
+    </PremiumFeatureGate>
   );
 });
+
+export default SarprasCatalogPage;

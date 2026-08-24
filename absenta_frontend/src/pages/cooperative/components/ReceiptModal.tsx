@@ -3,6 +3,7 @@ import { Printer, Award } from 'lucide-react';
 import { Button } from '../../../components/ui';
 import { Sale, MemberInfo, SaleItem, CoopUserInfo } from './CoopTvMode';
 import { CoopSettingsData } from '../../../utils/cooperative/coopDocUtils';
+import { formatDate } from '../../../utils/layoutUtils';
 
 const LazyModal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -55,9 +56,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = React.memo(({
                   </p>
                 )}
                 <p className="text-[11px] text-slate-400 mt-2 font-semibold">
-                  {new Date(selectedSale.date).toLocaleString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
+                  {formatDate(selectedSale.date, {
+                    day: '2-digit',
+                    month: 'short',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'

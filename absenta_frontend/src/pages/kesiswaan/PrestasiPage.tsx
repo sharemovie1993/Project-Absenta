@@ -1,9 +1,16 @@
-import React from 'react';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
+import React, { lazy, Suspense } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { PrestasiSection } from './components/PrestasiSection';
-import { Card } from '../../components/ui/Card';
+import { SectionCard } from '../../components/ui/SectionCard';
 
-// Standard Container Requirement: <Card> is used inside PrestasiSection
+const PrestasiSection = lazy(() => import('./components/PrestasiSection').then(m => ({ default: m.PrestasiSection })));
+
+const prestasiSchema = z.object({
+  nama_prestasi: z.string().min(1, 'Nama prestasi wajib diisi'),
+  tingkat: z.string().min(1, 'Tingkat kejuaraan wajib diisi'),
+  juara: z.string().min(1, 'Juara/Peringkat wajib diisi')
+});
 
 export default function PrestasiPage() {
   return (
@@ -25,8 +32,11 @@ export default function PrestasiPage() {
         ]
       }}
     >
-      <PrestasiSection />
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
+        <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat data prestasi siswa...</div>}>
+          <PrestasiSection />
+        </Suspense>
+      </SectionCard>
     </AcademicPageLayout>
   );
 }
-

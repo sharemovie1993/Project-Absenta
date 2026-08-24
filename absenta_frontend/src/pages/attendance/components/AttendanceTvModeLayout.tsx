@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { cn } from '@/lib/utils';
+import { formatDate } from '../../../utils/layoutUtils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { type DeviceInfo, type FeedItem, type SectorItem } from './AttendanceDashboardComponents';
 import { type GerbangStats } from '@/api/attendanceGerbang.api';
@@ -41,7 +42,7 @@ export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = Rea
   chartData,
   sekolah
 }) => {
-  const gateStats = stats as GerbangStats | null;
+  const attendanceStats = stats as GerbangStats | null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col p-8 overflow-hidden font-sans select-none animate-fadeIn">
@@ -274,18 +275,18 @@ export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = Rea
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-xs text-slate-500 font-bold uppercase">Siswa Keluar (Tap)</span>
-                        <span className="text-base font-black text-blue-500">{gateStats?.total_keluar ?? 0} Siswa</span>
+                        <span className="text-base font-black text-blue-500">{attendanceStats?.total_keluar ?? 0} Siswa</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-xs text-slate-500 font-bold uppercase">Terminal Gateway Aktif</span>
-                        <span className="text-base font-black text-slate-800 dark:text-white">{gateStats?.active_devices ?? 0} Perangkat</span>
+                        <span className="text-base font-black text-slate-800 dark:text-white">{attendanceStats?.active_devices ?? 0} Perangkat</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl mt-4">
                     <p className="text-[9px] text-slate-500 dark:text-slate-400 italic font-semibold leading-relaxed">
-                      * Aktivitas tap terakhir terdeteksi pada pukul {gateStats?.last_activity ? new Date(gateStats.last_activity).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}.
+                      * Aktivitas tap terakhir terdeteksi pada pukul {attendanceStats?.last_activity ? formatDate(attendanceStats.last_activity, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}.
                     </p>
                   </div>
                 </div>

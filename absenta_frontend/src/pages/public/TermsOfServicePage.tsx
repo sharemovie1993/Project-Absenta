@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Scale, FileCheck, Users, CreditCard, Ban, Gavel, ArrowRight, Info } from 'lucide-react';
 import { SectionCard } from '@/components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 function TermsOfServiceContent() {
   const { data: systemConfig, isLoading } = useQuery({
@@ -12,6 +13,7 @@ function TermsOfServiceContent() {
     queryFn: fetchActiveSystemConfig,
   });
 
+  const isEmpty = !systemConfig && !isLoading;
   const appName = useMemo(() => systemConfig?.app_name || 'Absenta.id', [systemConfig]);
 
   useEffect(() => {
@@ -151,7 +153,7 @@ function TermsOfServiceContent() {
             className="lg:col-span-3 prose prose-slate dark:prose-invert max-w-none"
           >
             <motion.div variants={itemVariants} className="mb-12">
-              <div className="p-6 rounded-2xl bg-blue-50 dark:bg-blue-955/20 border border-blue-100 dark:border-blue-900/30">
+              <div className="p-6 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
                 <p className="text-slate-700 dark:text-slate-300 m-0 leading-relaxed font-medium">
                   Penting: Dengan mengakses {appName}, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh Ketentuan Layanan ini. Dokumen ini merupakan perjanjian hukum yang sah antara Anda (atau institusi Anda) dengan pengelola platform.
                 </p>

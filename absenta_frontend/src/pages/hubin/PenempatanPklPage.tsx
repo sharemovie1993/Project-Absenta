@@ -30,6 +30,8 @@ import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button, Input, Loader } from '../../components/ui';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
@@ -314,7 +316,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     tanggal_mulai: string;
     tanggal_selesai: string | null;
   }) => {
-    const payload: CreatePenempatanPayload[] = data.siswa_ids.map(siswa_id => ({
+    const payload: CreatePenempatanPayload[] = (data.siswa_ids ?? [])?.map(siswa_id => ({
       siswa_id,
       mitra_id: data.mitra_id,
       pembimbing_id: data.pembimbing_id,
@@ -372,7 +374,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     kunjunganMutation.mutate({ id: selectedPkl.id, data });
   }, [selectedPkl, kunjunganMutation]);
 
-  const rawGuru = useMemo(() => guruOptions.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
+  const rawGuru = useMemo(() => (guruOptions ?? [])?.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
 
   const activeGuruId = useMemo(() => {
     if (user?.guru_profile?.id) return user.guru_profile.id;
@@ -545,6 +547,19 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     return collectiveStudents[0] || null;
   }, [collectiveStudents]);
 
+  const tabOptions = useMemo((): TabOption[] => [
+    ...(isGuru 
+      ? [
+          { id: 'MY_GUIDANCE', label: 'Bimbingan Saya', icon: User },
+          { id: 'ALL', label: 'Semua Penempatan', icon: ClipboardList }
+        ]
+      : [
+          { id: 'ALL', label: 'Semua Penempatan', icon: ClipboardList },
+          { id: 'MY_GUIDANCE', label: 'Bimbingan Saya', icon: User }
+        ]
+    )
+  ], [isGuru]);
+
   const content = (
     <>
       <SectionCard title="Data Penempatan PKL Siswa" icon={ClipboardList} fullWidth noPadding>
@@ -552,63 +567,11 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
         <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center w-full justify-between">
           {/* Tab Filters */}
           {showTabs && (
-            <div className="flex bg-slate-100/85 dark:bg-slate-950/45 p-1 rounded-xl shrink-0 border border-slate-200/50 dark:border-slate-800/40 w-full md:w-auto">
-              {isGuru ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('MY_GUIDANCE')}
-                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                      activeTab === 'MY_GUIDANCE'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                    }`}
-                  >
-                    <User size={14} />
-                    Bimbingan Saya
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('ALL')}
-                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                      activeTab === 'ALL'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                    }`}
-                  >
-                    <ClipboardList size={14} />
-                    Semua Penempatan
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('ALL')}
-                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                      activeTab === 'ALL'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                    }`}
-                  >
-                    <ClipboardList size={14} />
-                    Semua Penempatan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('MY_GUIDANCE')}
-                    className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                      activeTab === 'MY_GUIDANCE'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-                    }`}
-                  >
-                    <User size={14} />
-                    Bimbingan Saya
-                  </button>
-                </>
-              )}
-            </div>
+            <TabSwitcher
+              options={tabOptions}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as 'ALL' | 'MY_GUIDANCE')}
+            />
           )}
 
           <div className="flex-1 relative w-full">

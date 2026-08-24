@@ -247,9 +247,9 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
       ] : undefined}
       toolbar={!hideHeader && (
         <Button 
-          variant="outline" 
+          variant="toolbarOutline" 
           onClick={() => navigate('/attendance/rekap')} 
-          size="sm"
+          size="toolbar"
           className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Kembali ke Rekap
@@ -360,12 +360,12 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
                 </Badge>
                 {/* Catatan: ambil dari entri gerbang utama atau entri pertama yang memiliki keterangan */}
                 {(() => {
-                  const kegiatanList = Array.isArray(result?.kegiatan) ? result.kegiatan : [];
-                  const catatanEntry = kegiatanList.find(
+                  const kegiatanArr = Array.isArray(result?.kegiatan) ? result.kegiatan : [];
+                  const catatanEntry = kegiatanArr.find(
                     k => k?.keterangan && k.keterangan.trim() &&
                          k.keterangan.toUpperCase() !== 'LOG TRANSAKSI' &&
                          String(k?.status || '').toUpperCase() === (result?.status || '').toUpperCase()
-                  ) || kegiatanList.find(
+                  ) || kegiatanArr.find(
                     k => k?.keterangan && k.keterangan.trim() &&
                          k.keterangan.toUpperCase() !== 'LOG TRANSAKSI'
                   );

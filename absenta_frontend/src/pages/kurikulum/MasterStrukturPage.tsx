@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { 
   Plus, 
@@ -22,6 +23,7 @@ import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import { useMasterStrukturState } from '../../hooks/kurikulum/useMasterStrukturState';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
+import { formatDate } from '../../utils/layoutUtils';
 import type { Mapel } from '../../types/academic';
 
 const CloneStrukturModal = lazy(() => import('../../components/kurikulum/CloneStrukturModal'));
@@ -37,6 +39,7 @@ const masterStrukturFilterSchema = z.object({
 });
 
 const MasterStrukturPage: React.FC = () => {
+    const queryClient = useQueryClient();
     const { isKurikulum, isAdmin, can } = useCapabilities();
     const canManage = isAdmin || isKurikulum || can('academic.manage.academic');
     const [isCloneModalOpen, setIsCloneModalOpen] = React.useState(false);
@@ -208,18 +211,24 @@ const MasterStrukturPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl no-print">
                         <TahunPelajaranSelect 
                             value={selectedTahunId}
-                            onValueChange={setSelectedTahunId}
+                            onValueChange={(val) => {
+                                setSelectedTahunId(val);
+                                queryClient.invalidateQueries({ queryKey: ['master-struktur-kurikulum'] });
+                            }}
                             placeholder="Pilih Tahun..."
-                            className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[155px] [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
+                            className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[155px] max-w-full [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
                         />
                         {isSmkOrMak && (
                             <>
                                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
                                 <JurusanSelect 
                                     value={selectedJurusanId || ''}
-                                    onValueChange={setSelectedJurusanId}
+                                    onValueChange={(val) => {
+                                        setSelectedJurusanId(val);
+                                        queryClient.invalidateQueries({ queryKey: ['master-struktur-kurikulum'] });
+                                    }}
                                     placeholder="Pilih Jurusan..."
-                                    className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[200px] [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
+                                    className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[200px] max-w-full [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
                                 />
                             </>
                         )}

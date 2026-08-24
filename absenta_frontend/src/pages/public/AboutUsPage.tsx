@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button, SectionCard, Loader } from '@/components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 // Lazy loading heavy components
 const Navbar = lazy(() => import('@/components/layout/Navbar').then(m => ({ default: m.Navbar })));
@@ -171,7 +172,7 @@ const AboutUsContent: React.FC = () => {
                    {(statsItems ?? [])?.map((stat, i) => (
                       <div key={i} className="space-y-3">
                          <div className="inline-flex p-3 rounded-xl bg-white/10 mb-2">
-                            {React.isValidElement(stat.icon) && React.cloneElement(stat.icon as any, { size: 24, className: "text-blue-400" })}
+                             {React.isValidElement(stat.icon) && React.cloneElement(stat.icon as React.ReactElement<{ size?: number; className?: string }>, { size: 24, className: "text-blue-400" })}
                          </div>
                          <div className="text-4xl font-black">{stat.val}</div>
                          <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">{stat.label}</div>

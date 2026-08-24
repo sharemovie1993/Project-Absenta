@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
-import { Button, SectionCard, Table, Badge, SearchableSelect } from '../../components/ui';
+import { Button, SectionCard, Table, Badge, SearchableSelect, Input } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
 import { Plus, Eye, Clock, Ban } from 'lucide-react';
 import { LoanStatsBanner } from '../../components/cooperative/loans/LoanStatsBanner';
@@ -16,6 +17,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { cn } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
 import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
+import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -25,7 +27,11 @@ const PaymentInstructionsModal = lazy(() =>
   import('../../components/cooperative/loans/PaymentInstructionsModal').then(module => ({ default: module.PaymentInstructionsModal }))
 );
 
-// Shared interfaces are now imported from types.ts
+// Zod Schema Validation Guard (Pilar 25)
+const loanFilterSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+});
 
 const Loans: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -47,7 +53,6 @@ const Loans: React.FC = React.memo(() => {
   const isStudent = !isOperatorMode;
 
   const [isPaymentInstructionsOpen, setIsPaymentInstructionsOpen] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [defaultInterestRate, setDefaultInterestRate] = useState<string>('1.5');
   const [formData, setFormData] = useState({
@@ -65,10 +70,10 @@ const Loans: React.FC = React.memo(() => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   // Gating Logic
-  const subWithFeatures = subscription as any;
-  const features = subWithFeatures?.features || 
-                   subWithFeatures?.Plan?.features_json || 
-                   subWithFeatures?.plan?.features_json || [];
+  const subFeatures = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
+  const features = subFeatures?.features || 
+                   subFeatures?.Plan?.features_json || 
+                   subFeatures?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
   // Member Status query
@@ -98,197 +103,92 @@ const Loans: React.FC = React.memo(() => {
   // Load cooperative settings to fetch default interest rate
   useEffect(() => {
     let cancelled = false;
-    const fetchDefaultInterestRate = async () => {
+    async function loadSettings() {
       try {
         const settings = await fetchCoopSettings();
-        if (!cancelled && settings.cooperative_default_interest_rate) {
-          const rate = String(settings.cooperative_default_interest_rate);
-          setDefaultInterestRate(rate);
-          setFormData(prev => ({ ...prev, interestRate: rate }));
+        if (!cancelled && settings && settings.default_interest_rate) {
+          const interestString = String(settings.default_interest_rate);
+          setDefaultInterestRate(interestString);
+          setFormData(prev => ({ ...prev, interestRate: interestString }));
         }
       } catch (err) {
-        console.error('Error fetching cooperative default interest rate:', err);
+        console.warn('Failed to load default interest rate from settings:', err);
       }
-    };
-    fetchDefaultInterestRate();
+    }
+    loadSettings();
     return () => { cancelled = true; };
   }, []);
 
-  // Loans Query
-  const loansQuery = useQuery({
-    queryKey: ['koperasi-loans-list', isStudent],
-    queryFn: async () => {
-      const url = isStudent ? '/cooperative/loans/me' : '/cooperative/loans';
-      const response = await api.get(url);
-      return (response.data || []) as Loan[];
-    },
-    enabled: !isLocked && subscription !== undefined && (isOperatorMode || memberStatus === 'member'),
-    staleTime: 5 * 60 * 1000,
-  });
-  const loans = loansQuery.data || [];
-  const loading = loansQuery.isLoading;
-  const fetchLoans = useCallback(async () => {
-    await loansQuery.refetch();
-  }, [loansQuery]);
+  // Reset pagination when search query or filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter]);
 
-  // Members Query
-  const membersQuery = useQuery({
-    queryKey: ['koperasi-members-list'],
+  // 1. Fetch Loans Data (React Query - Pilar 31)
+  const loansQuery = useQuery({
+    queryKey: ['cooperative-loans', isOperatorMode, page, limit, searchQuery, statusFilter],
     queryFn: async () => {
-      const res = await api.get('/cooperative/members');
-      return (res.data || []) as Member[];
+      const endpoint = isOperatorMode ? '/cooperative/loans/manage' : '/cooperative/loans';
+      const res = await api.get(endpoint, {
+        params: {
+          page,
+          limit,
+          search: searchQuery || undefined,
+          status: statusFilter === 'ALL' ? undefined : statusFilter
+        }
+      });
+      return res.data;
     },
-    enabled: !isLocked && !isStudent && subscription !== undefined,
+    enabled: !isLocked,
+    staleTime: 60 * 1000,
+  });
+
+  const loans: Loan[] = useMemo(() => {
+    const raw = loansQuery.data?.data?.loans || loansQuery.data?.data;
+    return Array.isArray(raw) ? raw : [];
+  }, [loansQuery.data]);
+
+  const totalPages = loansQuery.data?.data?.pagination?.totalPages || 1;
+  const totalItems = loansQuery.data?.data?.pagination?.total || loans.length;
+
+  // 2. Fetch Metrics (Student / Operator)
+  const studentMetricsQuery = useQuery<StudentMetrics>({
+    queryKey: ['cooperative-student-metrics'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/loans/student-metrics');
+      return res.data?.data;
+    },
+    enabled: !isLocked && isStudent,
+    staleTime: 60 * 1000,
+  });
+  const studentMetrics = studentMetricsQuery.data;
+
+  const operatorMetricsQuery = useQuery<OperatorMetrics>({
+    queryKey: ['cooperative-operator-metrics'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/loans/operator-metrics');
+      return res.data?.data;
+    },
+    enabled: !isLocked && isOperatorMode,
+    staleTime: 60 * 1000,
+  });
+  const operatorMetrics = operatorMetricsQuery.data;
+
+  // 3. Fetch Members for selection
+  const membersQuery = useQuery<Member[]>({
+    queryKey: ['cooperative-members-active-list'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/members?limit=1000&status=ACTIVE');
+      return res.data?.data?.members || [];
+    },
+    enabled: !isLocked && isModalOpen && isOperatorMode,
     staleTime: 5 * 60 * 1000,
   });
   const members = membersQuery.data || [];
-  const fetchMembers = useCallback(async () => {
-    await membersQuery.refetch();
-  }, [membersQuery]);
 
-  const simulation = useMemo(() => {
-    const amountVal = parseFloat(formData.amount);
-    const rateVal = parseFloat(formData.interestRate);
-    const durationVal = parseInt(formData.duration);
-
-    if (isNaN(amountVal) || amountVal <= 0) {
-      return { interest: 0, total: 0, monthly: 0 };
-    }
-
-    const interest = Math.round(amountVal * (rateVal / 100));
-    const total = amountVal + interest;
-    const monthly = durationVal > 0 ? Math.round(total / durationVal) : 0;
-
-    return { interest, total, monthly };
-  }, [formData.amount, formData.interestRate, formData.duration]);
-
-  // Metrics calculation
-  const metrics = useMemo<StudentMetrics | OperatorMetrics>(() => {
-    const activeList = loans || [];
-    
-    if (isStudent) {
-      const approvedLoans = activeList.filter(l => l.status === 'APPROVED');
-      const approvedAndPaidLoans = activeList.filter(l => l.status === 'APPROVED' || l.status === 'PAID');
-      const totalAmount = approvedAndPaidLoans.reduce((sum, l) => sum + parseFloat(l.amount), 0);
-      
-      let remainingBalance = 0;
-      let monthlyDue = 0;
-      let nearestDueDate: string | null = null;
-      let earliestDateMs = Infinity;
-      let totalRepayable = 0;
-      let totalPaid = 0;
-      let totalPaidInstallments = 0;
-      let totalInstallmentsCount = 0;
-
-      approvedLoans.forEach(l => {
-        const unpaidInstallments = l.installments?.filter(ins => ins.status === 'UNPAID') || [];
-        remainingBalance += unpaidInstallments.reduce((sum, ins) => sum + parseFloat(ins.amount), 0);
-        if (unpaidInstallments.length > 0) {
-          monthlyDue += parseFloat(unpaidInstallments[0].amount);
-        }
-
-        if (l.installments) {
-          totalInstallmentsCount += l.installments.length;
-          l.installments.forEach(ins => {
-            const insAmount = parseFloat(ins.amount);
-            totalRepayable += insAmount;
-            if (ins.status === 'PAID') {
-              totalPaid += insAmount;
-              totalPaidInstallments++;
-            } else if (ins.dueDate) {
-              const ms = new Date(ins.dueDate).getTime();
-              if (ms < earliestDateMs) {
-                earliestDateMs = ms;
-                nearestDueDate = ins.dueDate;
-              }
-            }
-          });
-        }
-      });
-
-      const percentPaid = totalRepayable > 0 ? Math.round((totalPaid / totalRepayable) * 100) : 0;
-      
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      let isOverdue = false;
-      let isApproaching = false;
-
-      if (nearestDueDate) {
-        const dueDate = new Date(nearestDueDate);
-        dueDate.setHours(0,0,0,0);
-        const diffMs = dueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) {
-          isOverdue = true;
-        } else if (diffDays <= 3) {
-          isApproaching = true;
-        }
-      }
-
-      const card3Sub = nearestDueDate 
-        ? `Jatuh tempo: ${new Date(nearestDueDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}` 
-        : 'Tidak ada tagihan aktif';
-
-      return {
-        card1Title: 'Total Pinjaman',
-        card1Val: `Rp ${Math.round(totalAmount).toLocaleString('id-ID')}`,
-        card1Sub: approvedAndPaidLoans.length > 0 ? `${approvedAndPaidLoans.length} Berkas Pinjaman` : 'Tidak ada pinjaman',
-        card2Title: 'Sisa Saldo Tagihan',
-        card2Val: `Rp ${Math.round(remainingBalance).toLocaleString('id-ID')}`,
-        card2Sub: approvedLoans.length > 0 
-          ? `${percentPaid}% Terbayar (${totalPaidInstallments}/${totalInstallmentsCount} Cicilan)` 
-          : (approvedAndPaidLoans.length > 0 ? 'Semua pinjaman telah lunas' : 'Belum ada pembayaran'),
-        card3Title: 'Angsuran Bulan Ini',
-        card3Val: `Rp ${Math.round(monthlyDue).toLocaleString('id-ID')}`,
-        card3Sub: card3Sub,
-        isOverdue,
-        isApproaching,
-        hasApprovedLoans: approvedLoans.length > 0,
-        hasActiveLoan: activeList.some(l => l.status === 'APPROVED'),
-        hasPendingLoan: activeList.some(l => l.status === 'PENDING'),
-      } as StudentMetrics;
-    } else {
-      const pendingLoans = activeList.filter(l => l.status === 'PENDING');
-      const approvedLoans = activeList.filter(l => l.status === 'APPROVED');
-      const paidLoans = activeList.filter(l => l.status === 'PAID');
-
-      const pendingCount = pendingLoans.length;
-      const activeTotal = approvedLoans.reduce((sum, l) => sum + parseFloat(l.amount), 0);
-      const paidCount = paidLoans.length;
-
-      return {
-        card1Title: 'Pengajuan Pending',
-        card1Val: `${pendingCount} Berkas`,
-        card2Title: 'Penyaluran Aktif',
-        card2Val: `Rp ${Math.round(activeTotal).toLocaleString('id-ID')}`,
-        card3Title: 'Pinjaman Lunas',
-        card3Val: `${paidCount} Berkas`,
-      } as OperatorMetrics;
-    }
-  }, [loans, isStudent]);
-
-  const studentMetrics = isStudent ? (metrics as StudentMetrics) : null;
-  const operatorMetrics = !isStudent ? (metrics as OperatorMetrics) : null;
-
-  const handleOpenModal = () => {
-    if (isLocked) return;
-
-    if (isStudent && studentMetrics) {
-      if (studentMetrics.hasActiveLoan) {
-        toast.error('Anda masih memiliki pinjaman aktif yang berjalan. Lunasi seluruh cicilan terlebih dahulu sebelum mengajukan pinjaman baru.', { duration: 5000 });
-        return;
-      }
-      if (studentMetrics.hasPendingLoan) {
-        toast.error('Pengajuan pinjaman Anda sebelumnya masih menunggu keputusan pengurus koperasi. Harap tunggu hingga pengajuan tersebut diputuskan.', { duration: 5000 });
-        return;
-      }
-    }
-
-    setIsModalOpen(true);
-  };
-
+  // Mutation: Create Loan
   const createLoanMutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: typeof formData) => {
       const res = await api.post('/cooperative/loans', payload);
       return res.data;
     },
@@ -296,101 +196,79 @@ const Loans: React.FC = React.memo(() => {
       toast.success('Pengajuan pinjaman berhasil dibuat!');
       setIsModalOpen(false);
       setFormData({
-        memberId: isStudent ? myMemberId : '',
+        memberId: isStudent && myMemberId ? myMemberId : '',
         amount: '',
         interestRate: defaultInterestRate,
         duration: '12',
         notes: ''
       });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-student-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
     },
-    onError: (err) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Gagal membuat pengajuan.');
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengajukan pinjaman';
+      toast.error(errorMsg);
     }
   });
 
-  const submitLoading = createLoanMutation.isPending;
+  // Mutation: Change Loan Status
+  const changeLoanStatusMutation = useMutation({
+    mutationFn: async ({ loanId, status }: { loanId: string; status: 'APPROVED' | 'REJECTED' }) => {
+      const res = await api.patch(`/cooperative/loans/${loanId}/status`, { status });
+      return res.data;
+    },
+    onSuccess: (_, variables) => {
+      const actionText = variables.status === 'APPROVED' ? 'disetujui' : 'ditolak';
+      toast.success(`Pengajuan pinjaman berhasil ${actionText}`);
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengubah status pinjaman';
+      toast.error(errorMsg);
+    }
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    if (isLocked) return;
-    e.preventDefault();
+  const handleChangeLoanStatus = useCallback(async (loanId: string, status: 'APPROVED' | 'REJECTED') => {
+    const isApproved = status === 'APPROVED';
+    const isConfirmed = await confirm({
+      title: isApproved ? 'Setujui Pinjaman?' : 'Tolak Pinjaman?',
+      message: isApproved 
+        ? 'Apakah Anda yakin ingin menyetujui pengajuan pinjaman ini? Jadwal cicilan akan otomatis dibuat di sistem.' 
+        : 'Apakah Anda yakin ingin menolak pengajuan pinjaman ini?',
+      confirmText: isApproved ? 'Ya, Setujui' : 'Ya, Tolak',
+      variant: isApproved ? 'primary' : 'danger'
+    });
 
-    const targetMemberId = isStudent ? myMemberId : formData.memberId;
-    if (!targetMemberId) {
-      toast.error('Pilih anggota terlebih dahulu.');
+    if (isConfirmed) {
+      changeLoanStatusMutation.mutate({ loanId, status });
+    }
+  }, [confirm, changeLoanStatusMutation]);
+
+  const handleOpenModal = useCallback(() => {
+    if (isStudent && memberStatus !== 'member') {
+      toast.error('Anda belum terdaftar sebagai anggota koperasi.');
       return;
     }
-
-    await createLoanMutation.mutateAsync({
-      ...formData,
-      memberId: targetMemberId,
-      amount: Number(formData.amount),
-      interestRate: Number(formData.interestRate),
-      duration: Number(formData.duration)
-    });
-  };
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ loanId, status }: { loanId: string; status: 'APPROVED' | 'REJECTED' }) => {
-      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status });
-      return { data: res.data, status };
-    },
-    onSuccess: ({ status }) => {
-      toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
-    },
-    onError: (err) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Gagal mengubah status pengajuan.');
-    }
-  });
-
-  const handleUpdateStatus = async (loanId: string, status: 'APPROVED' | 'REJECTED') => {
-    const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
-    const isConfirmed = await confirm({
-      title: status === 'APPROVED' ? 'Setujui Pengajuan' : 'Tolak Pengajuan',
-      description: `Apakah Anda yakin ingin ${actionLabel} pengajuan pinjaman ini?`,
-      confirmText: status === 'APPROVED' ? 'Setujui' : 'Tolak',
-      cancelText: 'Batal',
-      style: status === 'APPROVED' ? 'success' : 'danger'
-    });
-    if (!isConfirmed) return;
-
-    await updateStatusMutation.mutateAsync({ loanId, status });
-  };
-
-  const filteredLoans = useMemo(() => {
-    return loans.filter(l => {
-      const matchSearch = isStudent 
-        ? true 
-        : l.member.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-          l.member.memberNo.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchStatus = statusFilter === 'ALL' || l.status === statusFilter;
-
-      return matchSearch && matchStatus;
-    });
-  }, [loans, searchQuery, statusFilter, isStudent]);
-
-  // Paginated data for the Table component
-  const paginatedLoans = useMemo(() => {
-    const start = (page - 1) * limit;
-    return filteredLoans.slice(start, start + limit);
-  }, [filteredLoans, page, limit]);
+    setIsModalOpen(true);
+  }, [isStudent, memberStatus]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
       {
         key: 'amount',
-        label: 'Nilai Pinjaman',
+        label: 'Nominal Pinjaman',
         sortable: true,
         render: (_, row: Loan) => (
-          <span className="font-extrabold text-slate-800 dark:text-slate-100">
-            Rp {Math.round(parseFloat(row.amount)).toLocaleString('id-ID')}
-          </span>
+          <div>
+            <p className="font-mono font-bold text-slate-800 dark:text-slate-100 text-xs">
+              {formatCurrency(Number(row.amount))}
+            </p>
+            <p className="text-[10px] text-slate-400 font-mono">
+              Total: {formatCurrency(Number(row.totalAmount))}
+            </p>
+          </div>
         )
       },
       {
@@ -428,7 +306,7 @@ const Loans: React.FC = React.memo(() => {
                 <span>{paidIns}/{totalIns} Cicilan</span>
                 <span>{percent}%</span>
               </div>
-              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-850 rounded-full overflow-hidden border border-slate-200/20">
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/20">
                 <div 
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" 
                   style={{ width: `${percent}%` }}
@@ -463,8 +341,8 @@ const Loans: React.FC = React.memo(() => {
         label: 'Tanggal Pengajuan',
         sortable: true,
         render: (_, row: Loan) => (
-          <span className="text-slate-450 font-bold text-[11px]">
-            {new Date(row.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+          <span className="text-slate-500 font-bold text-[11px]">
+            {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
         )
       },
@@ -486,7 +364,7 @@ const Loans: React.FC = React.memo(() => {
                     size="xs" 
                     variant="success" 
                     className="font-bold text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-2"
-                    onClick={() => handleUpdateStatus(row.id, 'APPROVED')}
+                    onClick={() => handleChangeLoanStatus(row.id, 'APPROVED')}
                   >
                     Setuju
                   </Button>
@@ -495,7 +373,7 @@ const Loans: React.FC = React.memo(() => {
                   <Button 
                     size="xs" 
                     className="font-bold text-[10px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-2"
-                    onClick={() => handleUpdateStatus(row.id, 'REJECTED')}
+                    onClick={() => handleChangeLoanStatus(row.id, 'REJECTED')}
                   >
                     Tolak
                   </Button>
@@ -522,7 +400,7 @@ const Loans: React.FC = React.memo(() => {
     }
 
     return baseCols;
-  }, [isStudent, canApprove, canReject]);
+  }, [isStudent, canApprove, canReject, handleChangeLoanStatus]);
 
   const breadcrumbs = useMemo(() => {
     return [
@@ -531,232 +409,149 @@ const Loans: React.FC = React.memo(() => {
     ];
   }, [isStudent]);
 
-  // Operational Table Toolbars (slots on Table component)
-  const TableToolbarLeft = useMemo(() => (
-    <div className="flex flex-col">
-      <h3 className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-100">
-        {isStudent ? 'Riwayat Pinjaman Saya' : 'Daftar Berkas Kredit & Pinjaman'}
-      </h3>
-      <p className="text-[10px] text-slate-400">
-        {isStudent ? 'Daftar pengajuan pinjaman dan status aktif Anda' : 'Kelola keputusan persetujuan berkas kredit anggota'}
-      </p>
-    </div>
-  ), [isStudent]);
-
-  const TableToolbarRight = useMemo(() => {
-    const isRestricted = isStudent && studentMetrics && (studentMetrics.hasActiveLoan || studentMetrics.hasPendingLoan);
-    const titleText = isRestricted 
-      ? (studentMetrics?.hasActiveLoan ? 'Lunasi pinjaman aktif terlebih dahulu' : 'Tunggu keputusan pengajuan yang sedang di-review') 
-      : 'Ajukan pinjaman baru';
-
-    return (
-      <div className="flex flex-wrap gap-2.5 items-center w-full md:w-auto justify-end">
-        {/* Search query (Operator only) */}
-        {isOperatorMode && (
-          <input
-            id="loans-search-input"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Cari anggota / no. anggota..."
-            aria-label="Cari anggota atau nomor anggota"
-            className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium w-48 sm:w-60 text-slate-800 dark:text-slate-200"
-          />
-        )}
-
-        {/* Status Filter */}
-        <SearchableSelect
-          id="loans-status-select"
-          value={statusFilter}
-          onValueChange={(val) => {
-            setStatusFilter(val);
-            setPage(1);
-          }}
-          options={[
-            { label: 'Semua Status', value: 'ALL' },
-            { label: 'PENDING', value: 'PENDING' },
-            { label: 'APPROVED', value: 'APPROVED' },
-            { label: 'PAID', value: 'PAID' },
-            { label: 'REJECTED', value: 'REJECTED' }
-          ]}
-          placeholder="Filter status..."
-          className="w-40"
-          triggerClassName="h-9 font-bold text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl cursor-pointer"
-        />
-
-        {/* Apply Loan Button (Any active member or Coop Staff) */}
-        {canApply && (isStudent || isOperatorMode) && (
-          <Button 
-            onClick={handleOpenModal}
-            size="sm"
-            disabled={!isOperatorMode && !!isRestricted}
-            title={isOperatorMode ? 'Input pengajuan pinjaman anggota' : titleText}
-            className={cn(
-              "font-bold flex items-center gap-1.5 rounded-xl text-xs h-9 transition-all duration-200",
-              (!isOperatorMode && isRestricted)
-                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60 shadow-none"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10"
-            )}
-          >
-            {(!isOperatorMode && isRestricted) ? <Ban size={14} /> : <Plus size={14} />}
-            {isOperatorMode ? 'Input Pengajuan Baru' : (isRestricted ? 'Pinjaman Tidak Tersedia' : 'Ajukan Pinjaman Baru')}
-          </Button>
-        )}
-      </div>
-    );
-  }, [isOperatorMode, isStudent, searchQuery, statusFilter, studentMetrics, handleOpenModal, canApply]);
-
-  if (isStudent && memberStatus === 'loading') {
-    return (
-      <PremiumFeatureGate moduleName="KOPERASI" featureName="Pinjaman Koperasi">
-        <AcademicPageLayout
-          title="Pinjaman Koperasi"
-          description="Akses pengajuan pinjaman dan histori angsuran"
-          instruction={{
-            title: "Memuat Data",
-            description: "Harap tunggu, sistem sedang memuat status keanggotaan dan riwayat pengajuan pinjaman koperasi sekolah Anda.",
-            items: [
-              { text: 'Status keanggotaan sedang diverifikasi.' },
-              { text: 'Riwayat pinjaman sedang diambil dari server.' }
-            ]
-          }}
-          breadcrumbs={breadcrumbs}
-        >
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
-          </div>
-        </AcademicPageLayout>
-      </PremiumFeatureGate>
-    );
-  }
-
-  if (isStudent && memberStatus === 'non-member') {
-    return (
-      <PremiumFeatureGate moduleName="KOPERASI" featureName="Pinjaman Koperasi">
-        <AcademicPageLayout
-          title="Pinjaman Koperasi"
-          description="Akses pengajuan pinjaman dan histori angsuran"
-          instruction={{
-            title: "Pendaftaran Koperasi",
-            description: "Anda belum terdaftar sebagai anggota aktif koperasi sekolah. Hubungi Bendahara Koperasi untuk melakukan pendaftaran agar dapat mengakses layanan pinjaman.",
-            items: [
-              { text: 'Hubungi Bendahara Koperasi untuk mendaftarkan diri sebagai anggota.' },
-              { text: 'Setelah aktif, Anda dapat mengajukan pinjaman dan melihat riwayat angsuran.' }
-            ]
-          }}
-          breadcrumbs={breadcrumbs}
-        >
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-6 shadow-lg shadow-indigo-500/20">
-            <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5 pointer-events-none" />
-            <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-inner">
-                <Clock className="w-7 h-7 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-lg leading-tight">
-                  Anda Belum Terdaftar sebagai Anggota Koperasi
-                </h3>
-                <p className="text-indigo-100 text-sm mt-1 leading-relaxed">
-                  Layanan pengajuan pinjaman koperasi hanya tersedia bagi anggota aktif koperasi sekolah. Silakan hubungi pengurus atau Bendahara Koperasi sekolah untuk pendaftaran.
-                </p>
-              </div>
-            </div>
-          </div>
-        </AcademicPageLayout>
-      </PremiumFeatureGate>
-    );
-  }
-
   return (
-    <PremiumFeatureGate 
-      moduleName="KOPERASI" 
-      featureName="Pinjaman Koperasi"
+    <PremiumFeatureGate
+      moduleName="KOPERASI"
+      featureName="Layanan Pinjaman & Pembiayaan Anggota"
+      description="Ajukan pinjaman koperasi sekolah dengan bunga bersaing, kalkulasi cicilan otomatis, dan pelacakan pembayaran transparan."
     >
       <AcademicPageLayout
-        title={isStudent ? 'Pinjaman Saya' : 'Manajemen Kredit & Pinjaman'}
-        description="Kelola pengajuan pinjaman serta data angsuran anggota koperasi"
+        title={isStudent ? 'Pinjaman Anggota Koperasi' : 'Manajemen Kredit & Pinjaman Anggota'}
+        description={isStudent 
+          ? 'Kelola pengajuan pinjaman, pantau histori pencairan dan status pembayaran cicilan Anda.' 
+          : 'Kelola verifikasi, persetujuan pinjaman, dan pemantauan portofolio piutang koperasi sekolah.'}
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="coop_loans"
+        topSlot={
+          canApply && (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleOpenModal}
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Ajukan Pinjaman
+              </Button>
+            </div>
+          )
+        }
         instruction={{
-          title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Kredit",
-          description: isStudent 
-            ? "Halaman ini digunakan untuk melihat histori pengajuan pinjaman Anda, melacak progres pelunasan angsuran bulanan, dan melakukan pengajuan pinjaman koperasi sekolah yang baru dengan simulasi bunga transparan."
-            : "Halaman ini digunakan oleh pengurus dan staf koperasi untuk mengelola, meninjau kelayakan berkas, dan memutasi persetujuan status kredit pengajuan pinjaman anggota koperasi sekolah.",
+          title: "Panduan Layanan Pinjaman",
+          description: "Gunakan modul ini untuk mengajukan pembiayaan koperasi atau mengelola persetujuan berkas kredit.",
           items: [
-            isStudent
-              ? { text: 'Ajukan pinjaman baru melalui tombol "Ajukan Pinjaman Baru" di kanan atas.' }
-              : { text: 'Gunakan tombol Setuju/Tolak di kolom Tindakan untuk memproses pengajuan PENDING.' },
-            isStudent
-              ? { text: 'Pantau progres pelunasan angsuran pada kolom "Progres Pelunasan".' }
-              : { text: 'Klik Detail untuk meninjau analisis kelayakan dan rekonsiliasi angsuran anggota.' }
+            { text: "Pastikan status keanggotaan aktif sebelum membuat pengajuan pinjaman baru." },
+            { text: "Jadwal cicilan dan penghitungan bunga otomatis disimulasikan sesuai tenor yang dipilih." },
+            { text: "Klik tombol Detail pada baris untuk melihat riwayat cicilan atau pelunasan." }
           ]
         }}
-        hardeningModuleKey="coop_loans"
-        breadcrumbs={breadcrumbs}
       >
-        <div className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* Metrics Panel */}
-          <LoanStatsBanner
-            isStudent={isStudent}
-            studentMetrics={studentMetrics}
-            operatorMetrics={operatorMetrics}
-            onPaymentInstructionsOpen={() => setIsPaymentInstructionsOpen(true)}
-          />
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            {/* Top Banner Stats */}
+            <LoanStatsBanner
+              isStudent={isStudent}
+              studentMetrics={studentMetrics}
+              operatorMetrics={operatorMetrics}
+            />
 
-          {/* Table Container */}
-          <SectionCard fullWidth className="p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm space-y-6">
-
-            {/* === KSP Restriction Alert banners === */}
+            {/* Restrictions Banner */}
             <LoanRestrictionsAlerts
               isStudent={isStudent}
               studentMetrics={studentMetrics}
+              memberStatus={memberStatus}
             />
 
-            <Table 
-              data={paginatedLoans} 
-              columns={columns} 
-              rowKey="id" 
-              loading={loading}
-              emptyMessage={isStudent ? 'Anda belum memiliki riwayat pengajuan pinjaman.' : 'Belum ada data pinjaman terdaftar.'}
-              toolbarLeft={TableToolbarLeft}
-              toolbarRight={TableToolbarRight}
-              pagination={{
-                currentPage: page,
-                itemsPerPage: limit,
-                totalItems: filteredLoans.length,
-                totalPages: Math.ceil(filteredLoans.length / limit),
-                onPageChange: (newPage) => setPage(newPage),
-                onLimitChange: (newLimit) => {
-                  setLimit(newLimit);
-                  setPage(1);
-                }
-              }}
-            />
-          </SectionCard>
-        </div>
+            {/* Filter Bar (Placed Above Table) */}
+            <div className="overflow-x-auto max-w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+                <Input
+                  id="loans-search-input"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const parsed = loanFilterSchema.safeParse({ search: e.target.value });
+                    if (parsed.success) {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }
+                  }}
+                  placeholder="Cari nama atau no. anggota..."
+                  aria-label="Cari anggota atau nomor anggota"
+                  className="w-full max-w-full min-w-0 text-xs rounded-xl"
+                />
+              </div>
 
-        {/* Heavy components wrapped in React Suspense to guarantee clean bundle splitting */}
-        <Suspense fallback={null}>
+              <div className="w-full sm:w-44 min-w-0">
+                <SearchableSelect
+                  id="loans-status-select"
+                  aria-label="Filter status pinjaman"
+                  value={statusFilter}
+                  onValueChange={(val) => {
+                    setStatusFilter(val);
+                    setPage(1);
+                  }}
+                  options={[
+                    { label: 'Semua Status', value: 'ALL' },
+                    { label: 'PENDING', value: 'PENDING' },
+                    { label: 'APPROVED', value: 'APPROVED' },
+                    { label: 'PAID', value: 'PAID' },
+                    { label: 'REJECTED', value: 'REJECTED' }
+                  ]}
+                  placeholder="Status Pinjaman"
+                />
+              </div>
+            </div>
+
+            {/* Loans Table Master */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <Table
+                columns={columns}
+                data={loans}
+                isLoading={loansQuery.isLoading}
+                emptyMessage="Belum ada data pinjaman yang tercatat."
+                pagination={{
+                  currentPage: page,
+                  totalPages,
+                  totalItems,
+                  itemsPerPage: limit,
+                  onPageChange: setPage,
+                  onLimitChange: setLimit,
+                }}
+              />
+            </div>
+          </div>
+        </SectionCard>
+      </AcademicPageLayout>
+
+      {/* Lazy Loaded Modals */}
+      <Suspense fallback={null}>
+        {isModalOpen && (
           <CreateLoanModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
-            onSubmit={handleSubmit}
-            isStudent={isStudent || !canInputOnBehalf}
-            members={members}
             formData={formData}
-            onFormDataChange={setFormData}
-            simulation={simulation}
-            submitLoading={submitLoading}
+            setFormData={setFormData}
+            onSubmit={(e) => {
+              e.preventDefault();
+              createLoanMutation.mutate(formData);
+            }}
+            loading={createLoanMutation.isPending}
+            isStudent={isStudent}
+            isOperatorMode={isOperatorMode}
+            members={members}
+            studentMetrics={studentMetrics}
           />
+        )}
+
+        {isPaymentInstructionsOpen && (
           <PaymentInstructionsModal
             isOpen={isPaymentInstructionsOpen}
             onClose={() => setIsPaymentInstructionsOpen(false)}
           />
-        </Suspense>
-      </AcademicPageLayout>
+        )}
+      </Suspense>
     </PremiumFeatureGate>
   );
 });

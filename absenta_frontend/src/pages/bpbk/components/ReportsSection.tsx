@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { bpbkApi, bpbkQueryKeys } from '../../../api/bpbk.api';
-import { Card, CardContent } from '../../../components/ui/Card';
+import { Card } from '../../../components/ui/Card';
 import { Loader } from '../../../components/ui/Loader';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
+import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
 import { cn } from '../../../lib/utils';
+import { formatDate } from '../../../utils/layoutUtils';
 import {
   BarChart,
   Bar,
@@ -30,16 +33,9 @@ import {
   AlertTriangle,
   Clock,
   ArrowRightLeft,
-  ChevronRight,
   ShieldAlert,
-  Home,
-  MailOpen,
   Calendar
 } from 'lucide-react';
-
-interface StudentBasic {
-  nama_siswa: string;
-}
 
 interface JurusanStat {
   id: string;
@@ -88,13 +84,16 @@ interface RiskTrendData {
   events: RiskTrendEvent[];
 }
 
+const searchSchema = z.object({
+  search: z.string().optional(),
+});
+
 export const ReportsSection: React.FC = React.memo(() => {
-  // Student trend selection states
   const [selectedStudent, setSelectedStudent] = useState<AtRiskStudent | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
 
   // ── useQuery: Reports Data ────────────────────────────────────────────────
-  const { data, isLoading: loading, error } = useQuery({
+  const { data, isLoading: loading } = useQuery({
     queryKey: bpbkQueryKeys.reports(),
     queryFn: async () => {
       const res = await bpbkApi.getReports();
@@ -119,7 +118,7 @@ export const ReportsSection: React.FC = React.memo(() => {
 
   const trendError = trendQueryError ? (trendQueryError instanceof Error ? trendQueryError.message : 'Terjadi kesalahan') : null;
 
-  const handleSelectStudent = (student: any) => {
+  const handleSelectStudent = (student: AtRiskStudent) => {
     setSelectedStudent(student);
     setTimeout(() => {
       const element = document.getElementById('student-trend-section');
@@ -129,73 +128,59 @@ export const ReportsSection: React.FC = React.memo(() => {
     }, 100);
   };
 
-  if (loading) {
-    return (
-      <div className="py-20 flex flex-col items-center justify-center">
-        <Loader className="mb-4" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Analitik & Laporan BK...</p>
-      </div>
-    );
-  }
+  const statistikKasus = useMemo(() => data?.statistikKasus || { active: 0, completed: 0, reopened: 0 }, [data]);
+  const statistikPenyelesaian = useMemo(() => data?.statistikPenyelesaian || { completionRate: 0, meanResolutionTimeDays: 0 }, [data]);
+  const statistikReopen = useMemo(() => data?.statistikReopen || { totalReopened: 0 }, [data]);
+  const statistikRisiko = useMemo(() => data?.statistikRisiko || { levelDistribution: {}, topRiskStudents: [] }, [data]);
+  const statistikJurusan = useMemo(() => (data?.statistikJurusan || []) as JurusanStat[], [data]);
+  const statistikKelas = useMemo(() => data?.statistikKelas || { atRisk: [] }, [data]);
 
-  if (error || !data) {
-    return (
-      <div className="p-6 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold">
-        {error || 'Gagal memuat data laporan analitik'}
-      </div>
-    );
-  }
+  const kasusKategoriData = useMemo(() => {
+    const raw = data?.statistikKategori || {};
+    return Object.keys(raw)?.map(key => ({
+      name: key,
+      value: raw[key] || 0
+    }));
+  }, [data]);
 
-  // Pre-process data for charts
-  const { statistikKasus, statistikRisiko, statistikJurusan, statistikKelas, statistikPenyelesaian, statistikReopen } = data;
+  const riskDistributionData = useMemo(() => {
+    const dist = statistikRisiko.levelDistribution || {};
+    return [
+      { name: 'Kritis (High)', value: dist.HIGH || 0, color: '#ef4444' },
+      { name: 'Waspada (Med)', value: dist.MEDIUM || 0, color: '#f59e0b' },
+      { name: 'Aman (Low)', value: dist.LOW || 0, color: '#10b981' }
+    ];
+  }, [statistikRisiko]);
 
-  const kasusKategoriData = Object.entries(statistikKasus.kategori || {}).map(([key, value]) => ({
-    name: key,
-    value: value
-  }));
-
-  const riskDistributionData = Object.entries(statistikRisiko.distribution || {}).map(([key, value]) => ({
-    name: key === 'HIGH' ? 'Tinggi' : key === 'MEDIUM' ? 'Sedang' : 'Rendah',
-    value: value as number,
-    color: key === 'HIGH' ? '#ef4444' : key === 'MEDIUM' ? '#f59e0b' : '#10b981'
-  }));
-
-  // Reopen statistics
-  const reopenPerKategoriData = (statistikReopen?.perKategori || [])?.map((item: { name: string; count: number }) => ({
-    name: item.name,
-    count: item.count
-  }));
-
-  // Event Overlay Customized Dot
-  const CustomizedDot = (props: { cx?: number; cy?: number; payload?: { date: string; hasEvent: boolean } }) => {
+  const CustomizedDot = (props: { cx?: number; cy?: number; payload?: RiskTrendSnapshot & { hasEvent?: boolean } }) => {
     const { cx, cy, payload } = props;
-    if (payload && payload.hasEvent) {
+    if (payload && payload.hasEvent && cx !== undefined && cy !== undefined) {
       return (
-        <g key={payload.date}>
-          <circle cx={cx} cy={cy} r={7} fill="#ef4444" className="animate-ping" opacity={0.3} />
-          <circle cx={cx} cy={cy} r={4.5} fill="#ef4444" stroke="#fff" strokeWidth={1} />
-        </g>
+        <svg x={cx - 6} y={cy - 6} width={12} height={12} fill="red" viewBox="0 0 1024 1024">
+          <circle cx="512" cy="512" r="400" fill="#ef4444" stroke="#ffffff" strokeWidth="150" />
+        </svg>
       );
     }
-    return <circle cx={cx} cy={cy} r={3.5} fill="#3b82f6" stroke="#fff" strokeWidth={1} />;
+    return null;
   };
 
-  // Custom Tooltip for Line Chart
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: RiskTrendSnapshot & { events?: RiskTrendEvent[] } }> }) => {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xl max-w-sm">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-            {new Date(d.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-          <div className="space-y-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
-            <div className="flex justify-between items-center gap-6">
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Total Risk Score:</span>
-              <Badge variant={d.risk_level === 'HIGH' ? 'error' : d.risk_level === 'MEDIUM' ? 'warning' : 'success'} className="px-1.5 py-0 text-[10px] font-black">
-                {d.risk_score} ({d.risk_level})
-              </Badge>
-            </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl max-w-xs z-50">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5 mb-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+              {formatDate(d.date, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+            <Badge 
+              variant={d.risk_level === 'HIGH' ? 'error' : d.risk_level === 'MEDIUM' ? 'warning' : 'success'}
+              className="text-[8px] font-black uppercase px-1.5 py-0"
+            >
+              {d.risk_level} ({d.risk_score})
+            </Badge>
+          </div>
+          <div className="space-y-1">
             <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold">
               <span>Poin Pelanggaran (1.5x):</span>
               <span className="text-rose-500">+{d.violations_score}</span>
@@ -217,7 +202,7 @@ export const ReportsSection: React.FC = React.memo(() => {
             <div className="mt-2.5 space-y-2">
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Kejadian Linimasa:</span>
               {d.events?.map((e: RiskTrendEvent, idx: number) => (
-                <div key={idx} className="p-2 bg-slate-50 dark:bg-slate-955/40 rounded-lg border border-slate-100 dark:border-slate-800/60 text-left">
+                <div key={idx} className="p-2 bg-slate-50 dark:bg-slate-950/40 rounded-lg border border-slate-100 dark:border-slate-800/60 text-left">
                   <div className="text-[10px] font-black text-slate-800 dark:text-white flex items-center gap-1.5">
                     <span className={cn(
                       "w-1.5 h-1.5 rounded-full shrink-0",
@@ -242,88 +227,70 @@ export const ReportsSection: React.FC = React.memo(() => {
   };
 
   // Filter top at-risk students for table search
-  const filteredStudents = (statistikRisiko.topRiskStudents || []).filter((s: AtRiskStudent) =>
-    s.nama_siswa.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    s.nis.includes(studentSearch) ||
-    s.kelas.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  const filteredStudents = useMemo(() => {
+    return (statistikRisiko.topRiskStudents || []).filter((s: AtRiskStudent) =>
+      s.nama_siswa.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.nis.includes(studentSearch) ||
+      s.kelas.toLowerCase().includes(studentSearch.toLowerCase())
+    );
+  }, [statistikRisiko.topRiskStudents, studentSearch]);
 
   // Prepare line chart trend data
-  const chartData = trendData
-    ? trendData.snapshots?.map((s: RiskTrendSnapshot) => {
-        const dayEvents = trendData.events.filter((e: RiskTrendEvent) => e.date === s.date);
-        return {
-          ...s,
-          events: dayEvents,
-          hasEvent: dayEvents.length > 0,
-          displayDate: new Date(s.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-        };
-      })
-    : [];
+  const chartData = useMemo(() => {
+    return trendData
+      ? (trendData.snapshots || [])?.map((s: RiskTrendSnapshot) => {
+          const dayEvents = (trendData.events || []).filter((e: RiskTrendEvent) => e.date === s.date);
+          return {
+            ...s,
+            events: dayEvents,
+            hasEvent: dayEvents.length > 0,
+            displayDate: formatDate(s.date, { day: '2-digit', month: 'short' })
+          };
+        })
+      : [];
+  }, [trendData]);
+
+  if (loading) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center">
+        <Loader className="mb-4" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Analitik & Laporan BK...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-5 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Kasus Terbuka</span>
-              <span className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">{statistikKasus.active}</span>
-            </div>
-            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl">
-              <ShieldAlert size={18} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">Kasus berstatus Terbuka/Proses</span>
-        </Card>
-
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-5 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Penyelesaian Kasus</span>
-              <span className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">{statistikKasus.completed}</span>
-            </div>
-            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 rounded-xl">
-              <UserCheck size={18} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">Tingkat Penutupan: {statistikPenyelesaian.completionRate}%</span>
-        </Card>
-
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-5 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Rata-rata Waktu Resolusi</span>
-              <span className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
-                {statistikPenyelesaian.meanResolutionTimeDays} <span className="text-xs font-bold text-slate-400">Hari</span>
-              </span>
-            </div>
-            <div className="p-2.5 bg-sky-50 dark:bg-sky-950/20 text-sky-500 rounded-xl">
-              <Clock size={18} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">Mean Resolution Time (KPI BK)</span>
-        </Card>
-
-        <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/40 p-5 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Kasus BK Reopened</span>
-              <span className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">{statistikKasus.reopened}</span>
-            </div>
-            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/20 text-amber-500 rounded-xl">
-              <ArrowRightLeft size={18} />
-            </div>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 block mt-2">Total Reopen Count: {statistikReopen?.totalReopened || 0}x</span>
-        </Card>
+      {/* KPI Analytics Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <AnalyticsCard
+          title="Total Kasus Terbuka"
+          value={String(statistikKasus.active)}
+          icon={ShieldAlert}
+          color="rose"
+        />
+        <AnalyticsCard
+          title="Penyelesaian Kasus"
+          value={`${statistikKasus.completed} (${statistikPenyelesaian.completionRate}%)`}
+          icon={UserCheck}
+          color="emerald"
+        />
+        <AnalyticsCard
+          title="Rata-rata Waktu Resolusi"
+          value={`${statistikPenyelesaian.meanResolutionTimeDays} Hari`}
+          icon={Clock}
+          color="blue"
+        />
+        <AnalyticsCard
+          title="Kasus BK Reopened"
+          value={`${statistikKasus.reopened}x`}
+          icon={ArrowRightLeft}
+          color="amber"
+        />
       </div>
 
       {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
         {/* Case Category Breakdown */}
         <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
           <div className="flex items-center gap-2 mb-6">
@@ -338,7 +305,7 @@ export const ReportsSection: React.FC = React.memo(() => {
                 <YAxis tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} name="Jumlah Kasus">
-                  {kasusKategoriData?.map((entry, index) => {
+                  {kasusKategoriData?.map((_, index) => {
                     const colors = ['#6366f1', '#f59e0b', '#3b82f6', '#10b981'];
                     return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
                   })}
@@ -379,10 +346,10 @@ export const ReportsSection: React.FC = React.memo(() => {
               {riskDistributionData?.map((entry, index) => (
                 <div key={index} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/60 rounded-xl">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></span>
+                    <span className="w-3 h-3 rounded-full bg-slate-400" />
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Risiko {entry.name}</span>
                   </div>
-                  <span className="text-xs font-black text-slate-950 dark:text-white">{entry.value} Siswa</span>
+                  <span className="text-xs font-black text-slate-900 dark:text-white">{entry.value} Siswa</span>
                 </div>
               ))}
             </div>
@@ -392,7 +359,6 @@ export const ReportsSection: React.FC = React.memo(() => {
 
       {/* Top 20 At-Risk Students & Vocation/Class statistics */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
         {/* Top 20 At-Risk Students (2 cols) */}
         <div className="xl:col-span-2">
           <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl h-full">
@@ -404,11 +370,17 @@ export const ReportsSection: React.FC = React.memo(() => {
               <div className="relative w-full md:w-64 shrink-0">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="reports-student-search"
                   type="text"
                   aria-label="Cari siswa, NIS, kelas"
                   placeholder="Cari siswa, NIS, kelas..."
                   value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
+                  onChange={(e) => {
+                    const parsed = searchSchema.safeParse({ search: e.target.value });
+                    if (parsed.success) {
+                      setStudentSearch(e.target.value);
+                    }
+                  }}
                   className="w-full pl-9 pr-3 py-1.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                 />
               </div>
@@ -474,7 +446,6 @@ export const ReportsSection: React.FC = React.memo(() => {
 
         {/* Vocation & Class Performance (1 col) */}
         <div className="space-y-6">
-          
           {/* Jurusan stats */}
           <Card className="border border-slate-200/40 bg-white/50 dark:bg-slate-900/50 p-5 rounded-2xl">
             <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-white mb-4 flex items-center gap-2">
@@ -496,7 +467,7 @@ export const ReportsSection: React.FC = React.memo(() => {
                         Avg EWS: {j.averageRiskScore}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-850 text-[10px]">
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px]">
                       <div className="font-medium text-slate-500">
                         Kasus: <span className="font-extrabold text-slate-800 dark:text-white">{j.jumlahKasus}</span>
                       </div>
@@ -572,12 +543,11 @@ export const ReportsSection: React.FC = React.memo(() => {
             </div>
           ) : (
             <div className="space-y-6">
-              
               {/* Event Overlay Legend Banner */}
               <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/60 dark:border-indigo-900/30 rounded-xl text-[10px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-3">
                 <AlertTriangle className="shrink-0 w-4 h-4 text-indigo-500 animate-pulse" />
                 <div>
-                  <span className="font-extrabold">Petunjuk Event Overlay:</span> Titik merah berbayang (<span className="text-rose-600 font-extrabold">●</span>) pada grafik di bawah menandakan tanggal terjadinya kejadian penting. Arahkan kursor Anda ke titik tersebut untuk melihat daftar detail kejadian seperti Pelanggaran, Asesmen, Rujukan, Konseling, Pemanggilan Ortu, dan Home Visit.
+                  <span className="font-extrabold">Petunjuk Event Overlay:</span> Titik merah berbayang (<span className="text-rose-600 font-extrabold">●</span>) pada grafik di bawah menandakan tanggal terjadinya kejadian penting. Arahkan kursor Anda ke titik tersebut untuk melihat daftar detail kejadian.
                 </div>
               </div>
 
@@ -641,7 +611,7 @@ export const ReportsSection: React.FC = React.memo(() => {
                         )}></span>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                            {new Date(e.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {formatDate(e.date, { day: '2-digit', month: 'short', year: 'numeric' })}
                           </span>
                           <span className="text-xs font-black text-slate-800 dark:text-white">{e.title}</span>
                           <Badge variant="outline" className="text-[8px] font-black px-1.5 py-0 leading-none">
@@ -658,9 +628,6 @@ export const ReportsSection: React.FC = React.memo(() => {
           )}
         </Card>
       </div>
-
     </div>
   );
 });
-
-

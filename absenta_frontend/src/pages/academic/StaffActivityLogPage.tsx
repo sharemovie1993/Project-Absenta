@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
   History,
@@ -125,11 +126,6 @@ export function StaffActivityLogPage() {
   const { isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
   const timezone = getTimezone();
 
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [staffUsers, setStaffUsers] = useState<UserType[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true);
-
   // ── Filters state ──
   const [search, setSearch] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<string>('');
@@ -138,8 +134,6 @@ export function StaffActivityLogPage() {
   const [dateTo, setDateTo] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const limit = 15;
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalLogsCount, setTotalLogsCount] = useState<number>(0);
 
   // ── Debounced search ──
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
@@ -151,38 +145,35 @@ export function StaffActivityLogPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ── Fetch staff users ──
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await getUsersForDropdown();
-        if (res.success && res.data) setStaffUsers(res.data);
-      } catch (err) {
-        console.error('Failed to fetch staff users:', err);
-      } finally {
-        setIsLoadingUsers(false);
+  // ── Fetch staff users via React Query (Pilar 31) ──
+  const { data: staffUsersRes, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['staff-users-dropdown'],
+    queryFn: async () => {
+      const res = await getUsersForDropdown();
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const staffUsers = staffUsersRes || [];
+
+  // ── Fetch logs via React Query (Pilar 31) ──
+  const { data: logsRes, isLoading, refetch: fetchLogs } = useQuery({
+    queryKey: ['tenant-activity-logs', page, limit, debouncedSearch, selectedUser, selectedAction, dateFrom, dateTo],
+    queryFn: async () => {
+      // Validate filters using Zod validation schema guard
+      const parsed = filterSchema.safeParse({
+        search: debouncedSearch,
+        selectedUser,
+        selectedAction,
+        dateFrom,
+        dateTo,
+      });
+      if (!parsed.success) {
+        console.error('Invalid search filter parameters:', parsed.error);
+        toast.error('Parameter filter tidak valid');
+        return { logs: [], pagination: { total_pages: 1, total: 0 } };
       }
-    })();
-  }, []);
 
-  // ── Fetch logs (useCallback untuk stabilitas referensi) ──
-  const fetchLogs = useCallback(async () => {
-    // Validate filters using Zod validation schema guard
-    const parsed = filterSchema.safeParse({
-      search: debouncedSearch,
-      selectedUser,
-      selectedAction,
-      dateFrom,
-      dateTo,
-    });
-    if (!parsed.success) {
-      console.error('Invalid search filter parameters:', parsed.error);
-      toast.error('Parameter filter tidak valid');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
       const res = await getTenantActivityLogs({
         page,
         limit,
@@ -192,24 +183,14 @@ export function StaffActivityLogPage() {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       });
-      if (res.success && res.data) {
-        setLogs(res.data.logs);
-        setTotalPages(res.data.pagination.total_pages);
-        setTotalLogsCount(res.data.pagination.total);
-      }
-    } catch (err: unknown) {
-      const msg = typeof err === 'object' && err !== null && 'message' in err
-        ? String((err as { message?: unknown }).message)
-        : 'Terjadi kesalahan saat mengambil log aktivitas.';
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, debouncedSearch, selectedUser, selectedAction, dateFrom, dateTo]);
+      return res.data || { logs: [], pagination: { total_pages: 1, total: 0 } };
+    },
+    staleTime: 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  const logs = logsRes?.logs || [];
+  const totalPages = logsRes?.pagination?.total_pages || 1;
+  const totalLogsCount = logsRes?.pagination?.total || 0;
 
   // ── Reset Filters (useCallback) ──
   const handleResetFilters = useCallback(() => {

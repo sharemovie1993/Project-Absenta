@@ -13,11 +13,13 @@ import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { toLocalMonth } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
+import { formatDate } from '../../../utils/layoutUtils';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
 // ─── Subkomponen ─────────────────────────────────────────────────────────────
 import { RekapBulananMapelToolbar } from '../../../components/attendance/rekap/RekapBulananMapelToolbar';
@@ -52,7 +54,7 @@ export function RekapBulananMapelContent() {
   const [kelasId, setKelasId] = useState('');
   const [mapelOptions, setMapelOptions] = useState<DropdownOption[]>([]);
   const [mapelId, setMapelId] = useState('');
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<RekapBulananKelasRow[]>([]);
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -114,11 +116,11 @@ export function RekapBulananMapelContent() {
 
   // Kop Query
   const kopQuery = useQuery({
-    queryKey: ['rekap-bulanan-mapel-kop', (user as any)?.tenant_id],
+    queryKey: ['rekap-bulanan-mapel-kop', user?.tenant_id],
     queryFn: async () => {
       const sek = await sekolahApi.getProfile().catch(() => null);
       let tenantData = null;
-      const tenantId = (user as any)?.tenant_id;
+      const tenantId = user?.tenant_id;
       if (tenantId) {
         const res = await getTenantById(tenantId).catch(() => null);
         if (res?.success) tenantData = res.data;
@@ -355,16 +357,52 @@ export function RekapBulananMapelContent() {
   );
 }
 
+const stats = [
+  {
+    title: "Rekap",
+    value: "Mapel",
+    icon: <BookOpen size={14} />,
+    gradient: "from-blue-500 to-indigo-600",
+    subtitle: "Laporan Kehadiran"
+  }
+];
+
+const instructionData = {
+  title: "Panduan Rekap Bulanan Mapel",
+  description: "Laporan rekapitulasi presensi siswa per mata pelajaran secara bulanan.",
+  items: [
+    { text: "Pilih kelas, mata pelajaran, dan bulan untuk menampilkan rekapitulasi." },
+    { text: "Gunakan tombol Ekspor Excel atau Unduh PDF untuk mengunduh laporan resmi." }
+  ]
+};
+
+const breadcrumbs = [
+  { label: 'Presensi', path: '/attendance/ops' },
+  { label: 'Rekap Bulanan Mapel', active: true }
+];
+
 export default React.memo(function RekapBulananMapelPage() {
+  const memoStats = useMemo(() => stats, []);
+  const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
+
   return (
-    <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-      <PremiumFeatureGate
-        moduleName="ABSENSI"
-        featureName="Rekap Presensi Per Mapel"
-        description="Analisis kehadiran siswa khusus pada jam pelajaran mata pelajaran yang diampu."
-      >
-        <RekapBulananMapelContent />
-      </PremiumFeatureGate>
-    </Suspense>
+    <AcademicPageLayout
+      hardeningModuleKey="rekapbulananmapelpage"
+      title="Rekap Bulanan Mapel"
+      description="Laporan rekapitulasi kehadiran bulanan siswa per mata pelajaran."
+      stats={memoStats}
+      instruction={instructionData}
+      breadcrumbs={memoBreadcrumbs}
+    >
+      <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+        <PremiumFeatureGate
+          moduleName="ABSENSI"
+          featureName="Rekap Presensi Per Mapel"
+          description="Analisis kehadiran siswa khusus pada jam pelajaran mata pelajaran yang diampu."
+        >
+          <RekapBulananMapelContent />
+        </PremiumFeatureGate>
+      </Suspense>
+    </AcademicPageLayout>
   );
 });

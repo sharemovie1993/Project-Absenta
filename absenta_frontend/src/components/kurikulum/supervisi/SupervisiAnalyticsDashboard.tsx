@@ -1,9 +1,9 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { kurikulumApi } from '../../api/kurikulum.api';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Loader } from '../../components/ui/Loader';
+import { kurikulumApi } from '@/api/kurikulum.api';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Loader } from '@/components/ui/Loader';
 import {
   ResponsiveContainer,
   LineChart,
@@ -22,7 +22,7 @@ import {
   User,
   Star
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 export const SupervisiAnalyticsDashboard: React.FC = React.memo(() => {
   const { data, isLoading, refetch } = useQuery({

@@ -1,10 +1,11 @@
-import React, { lazy, Suspense, useMemo } from 'react';
+import React, { lazy, Suspense, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Sparkles } from 'lucide-react';
 import { Loader, SectionCard, Button } from '@/components/ui';
+import { formatDate } from '../../utils/layoutUtils';
 import axiosInstance from '@/lib/axiosInstance';
 
 // Lazy loading heavy components
@@ -15,7 +16,7 @@ const Footer = lazy(() => import('@/components/layout/Footer').then(m => ({ defa
 const HomeHero = lazy(() => import('@/components/public/home/HomeHero').then(m => ({ default: m.HomeHero })));
 const HomeServiceModes = lazy(() => import('@/components/public/home/HomeServiceModes').then(m => ({ default: m.HomeServiceModes })));
 const HomeFeatures = lazy(() => import('@/components/public/home/HomeFeatures').then(m => ({ default: m.HomeFeatures })));
-const HomeTestimonials = lazy(() => import('@/components/public/home/HomeTestimonials').then(m => ({ default: m.HomeTestimonials })));
+const HomeUserReviews = lazy(() => import('@/components/public/home/HomeTestimonials').then(m => ({ default: m.HomeTestimonials })));
 const HomeCTA = lazy(() => import('@/components/public/home/HomeCTA').then(m => ({ default: m.HomeCTA })));
 
 export default function HomePage() {
@@ -87,6 +88,28 @@ export default function HomePage() {
     );
   }
 
+  const queryClient = useQueryClient();
+
+  const handleLogin = useCallback(() => {
+    navigate('/login');
+  }, [navigate]);
+
+  const handleRefreshConfig = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['system-config'] });
+  }, [queryClient]);
+
+  const handleLearnMore = useCallback(() => {
+    navigate('/learn-more');
+  }, [navigate]);
+
+  const handlePricing = useCallback(() => {
+    navigate('/pricing');
+  }, [navigate]);
+
+  const handleContactSales = useCallback(() => {
+    navigate('/contact');
+  }, [navigate]);
+
   if (!configLoading && !systemConfig) {
     return (
       <AcademicPageLayout
@@ -104,10 +127,10 @@ export default function HomePage() {
             Maaf, kami tidak dapat memuat konfigurasi sistem saat ini. Silakan hubungkan ke server sekolah Anda atau segarkan halaman.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-            <Button onClick={() => navigate('/login')} variant="primary">
+            <Button onClick={handleLogin} variant="primary">
               Masuk / Hubungkan Server Sekolah
             </Button>
-            <Button onClick={() => window.location.reload()} variant="outline">
+            <Button onClick={handleRefreshConfig} variant="outline">
               Segarkan Halaman
             </Button>
           </div>
@@ -115,13 +138,6 @@ export default function HomePage() {
       </AcademicPageLayout>
     );
   }
-
-  const handleLearnMore = () => navigate('/learn-more');
-  const handlePricing = () => navigate('/pricing');
-  const handleContactSales = () => {
-    // Implement contact sales or redirect to contact page
-    navigate('/contact');
-  };
 
   return (
     <AcademicPageLayout
@@ -163,7 +179,7 @@ export default function HomePage() {
 
           <SectionCard noPadding fullWidth className="bg-transparent border-none shadow-none">
             <Suspense fallback={<div className="py-24 text-center"><Loader /></div>}>
-              <HomeTestimonials />
+              <HomeUserReviews />
             </Suspense>
           </SectionCard>
 

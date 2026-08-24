@@ -1,16 +1,20 @@
 import React, { useState, useCallback, Suspense, lazy } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { DashboardSection } from './components/DashboardSection';
 import { Loader } from '../../components/ui/Loader';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { formatDate } from '../../utils/layoutUtils';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(m => ({ default: m.SiswaForm })));
 
 export default React.memo(function DashboardPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isBpbk, isAdmin, can } = useCapabilities();
   const [selectedSiswaId, setSelectedSiswaId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -26,8 +30,9 @@ export default React.memo(function DashboardPage() {
 
   const handleDetailSuccess = useCallback(() => {
     setIsDetailOpen(false);
-    window.location.reload();
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['bpbk-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['bpbk-dashboard'] });
+  }, [queryClient]);
 
   return (
     <PremiumFeatureGate
@@ -53,7 +58,7 @@ export default React.memo(function DashboardPage() {
         }}
       >
         <div className="w-full min-w-0">
-          <DashboardSection onViewSiswaDetail={viewSiswaDetail} onViewSiswa={() => window.location.href = '/bpbk/siswa'} />
+          <DashboardSection onViewSiswaDetail={viewSiswaDetail} onViewSiswa={() => navigate('/bpbk/siswa')} />
         </div>
 
         <Suspense fallback={null}>

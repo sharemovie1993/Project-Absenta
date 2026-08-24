@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { FileText, Calendar, Clock, MapPin, User, GraduationCap, Building2, Download } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { FileText, Calendar, Clock, MapPin, User, GraduationCap, Building2, Download, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Loader } from '@/components/ui';
+import { Button, Badge, Card, CardHeader, CardTitle, CardContent, SectionCard } from '@/components/ui';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import axiosInstance from '@/lib/axiosInstance';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { formatDate } from '@/utils/layoutUtils';
 
 interface PublicViewData {
   id: string;
@@ -28,42 +32,39 @@ interface PublicViewData {
     waktu: string;
     tempat: string;
   } | null;
-  sekolah: any;
-  tenantInfo: any;
-  strukturList: any[];
+  sekolah: {
+    name?: string;
+    logo_url?: string;
+    [key: string]: unknown;
+  } | null;
+  tenantInfo: {
+    name?: string;
+    logo_url?: string;
+    [key: string]: unknown;
+  } | null;
+  strukturList: unknown[];
 }
 
-export const SuratKeluarPublicViewPage: React.FC = () => {
+export const SuratKeluarPublicViewPage: React.FC = React.memo(() => {
   const { token } = useParams<{ token: string }>();
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<PublicViewData | null>(null);
 
-  useEffect(() => {
-    fetchDetail();
-  }, [token]);
-
-  const fetchDetail = async () => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
+  // Fetch Public View Data via React Query (Pilar 31)
+  const { data, isLoading, error } = useQuery<PublicViewData>({
+    queryKey: ['surat-keluar-public', token],
+    queryFn: async () => {
+      if (!token) throw new Error('Token tidak ditemukan');
       const res = await axiosInstance.get(`/correspondence/surat-keluar/public-view/${encodeURIComponent(token)}/detail`);
-      if (res.data.success) {
-        setData(res.data.data);
-      } else {
-        setError(res.data.message || 'Gagal memuat detail surat panggilan');
+      if (res.data?.success) {
+        return res.data.data;
       }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Tautan akses tidak valid atau sudah kedaluwarsa');
-    } finally {
-      setLoading(false);
-    }
-  };
+      throw new Error(res.data?.message || 'Gagal memuat detail surat panggilan');
+    },
+    enabled: Boolean(token),
+    retry: 1
+  });
 
-  const getBase64 = async (url: string): Promise<string | null> => {
+  const getBase64 = useCallback(async (url: string): Promise<string | null> => {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
@@ -73,16 +74,14 @@ export const SuratKeluarPublicViewPage: React.FC = () => {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-    } catch (e) {
-      console.error('Failed to convert logo to base64:', e);
+    } catch {
       return null;
     }
-  };
+  }, []);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = useCallback(async () => {
     if (!data) return;
     setDownloading(true);
-    const toastId = toast.loading('Menyusun berkas PDF resmi...');
     try {
       const logoDaerahUrl = data.sekolah?.logo_url || data.tenantInfo?.logo_url;
       const logoSekolahUrl = data.tenantInfo?.logo_url;
@@ -103,7 +102,7 @@ export const SuratKeluarPublicViewPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo: true,
         selectedStudentId: data.siswa?.id || undefined,
-        isSigned: true, // it must be signed since it is approved
+        isSigned: true,
         eventDetails: {
           nomorSurat: data.nomor_surat,
           tanggalPertemuan: data.pemanggilan?.tanggal ? String(data.pemanggilan.tanggal) : new Date().toISOString(),
@@ -125,26 +124,30 @@ export const SuratKeluarPublicViewPage: React.FC = () => {
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `Surat_Panggilan_${data.siswa?.nama.replace(/\s+/g, '_')}.pdf`;
+      link.download = `Surat_Panggilan_${(data.siswa?.nama || 'Siswa').replace(/\s+/g, '_')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
 
-      toast.success('Berkas PDF berhasil diunduh!', { id: toastId });
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Gagal mengunduh berkas PDF resmi.', { id: toastId });
+      toast.success('Berkas PDF resmi berhasil diunduh!');
+    } catch {
+      toast.error('Gagal mengunduh berkas PDF resmi.');
     } finally {
       setDownloading(false);
     }
-  };
+  }, [data, getBase64]);
 
-  if (loading) {
+  const breadcrumbs = useMemo(() => [
+    { label: 'Platform Absenta' },
+    { label: 'Dokumen Surat Resmi' }
+  ], []);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <Loader className="h-8 w-8 text-indigo-600 animate-spin" />
-        <p className="mt-3 text-sm text-slate-500 font-medium">Memuat berkas surat panggilan...</p>
+        <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+        <p className="mt-3 text-sm text-slate-500 font-medium">Memuat berkas surat panggilan resmi...</p>
       </div>
     );
   }
@@ -162,7 +165,7 @@ export const SuratKeluarPublicViewPage: React.FC = () => {
           </div>
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Akses Surat Tidak Valid</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            {error || 'Tautan akses surat tidak valid, sudah digunakan, atau telah kedaluwarsa.'}
+            {error instanceof Error ? error.message : 'Tautan akses surat tidak valid, sudah digunakan, atau telah kedaluwarsa.'}
           </p>
         </motion.div>
       </div>
@@ -170,149 +173,169 @@ export const SuratKeluarPublicViewPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
-      {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {data.sekolah?.logo_url ? (
-              <img src={data.sekolah.logo_url} alt="Logo" className="h-8 w-8 object-contain rounded-md" />
-            ) : (
-              <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg text-indigo-600 dark:text-indigo-400">
-                <Building2 className="h-5 w-5" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Surat Panggilan Orang Tua</h1>
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate max-w-[200px] sm:max-w-xs">
-                {data.sekolah?.name || 'Sekolah'}
-              </p>
-            </div>
-          </div>
-          <Badge variant="success" className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5">
-            Terkirim & Sah
-          </Badge>
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
-        {/* Agenda details */}
-        <Card className="shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-5 text-white">
-            <h3 className="text-sm font-bold opacity-80 uppercase tracking-wider">Perihal Dokumen</h3>
-            <h2 className="text-lg font-black mt-1 leading-snug">{data.judul}</h2>
-            <p className="text-xs opacity-75 mt-1">Nomor: {data.nomor_surat}</p>
-          </div>
-          <CardContent className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Tanggal Dibuat</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">
-                  {new Date(data.tanggal_surat).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Guru BK / Pengirim</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">{data.created_by || 'Guru Bimbingan Konseling'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Student Profile */}
-        <Card className="shadow-sm border border-slate-100 dark:border-slate-800">
-          <CardHeader className="py-4 border-b border-slate-50 dark:border-slate-800 flex flex-row items-center gap-2.5">
-            <GraduationCap className="h-4.5 w-4.5 text-indigo-500" />
-            <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              Siswa Yang Bersangkutan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3.5">
-              <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-slate-500">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{data.siswa?.nama}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Kelas: <strong className="text-slate-700 dark:text-slate-300">{data.siswa?.kelas}</strong> • NIS: {data.siswa?.nis}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Agenda details */}
-        <Card className="shadow-sm border border-slate-100 dark:border-slate-800">
-          <CardHeader className="py-4 border-b border-slate-50 dark:border-slate-800 flex flex-row items-center gap-2.5">
-            <Calendar className="h-4.5 w-4.5 text-indigo-500" />
-            <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              Agenda Pertemuan Wali Murid
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 space-y-4">
-            <div className="space-y-3.5">
-              <div className="flex items-start gap-3 text-xs">
-                <Calendar className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-slate-400 font-bold block text-[9px] uppercase tracking-wider">Tanggal Pertemuan</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    {data.pemanggilan?.tanggal ? new Date(data.pemanggilan.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 text-xs">
-                <Clock className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-slate-400 font-bold block text-[9px] uppercase tracking-wider">Waktu Pertemuan</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{data.pemanggilan?.waktu || '-'} WIB</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 text-xs">
-                <MapPin className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-slate-400 font-bold block text-[9px] uppercase tracking-wider">Tempat Ruangan</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{data.pemanggilan?.tempat || '-'}</span>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-50 dark:border-slate-800/80 pt-3.5 flex items-start gap-3 text-xs">
-                <FileText className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-slate-400 font-bold block text-[9px] uppercase tracking-wider">Alasan Pemanggilan</span>
-                  <p className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed text-sm bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-3 rounded-lg max-w-lg">
-                    {data.pemanggilan?.alasan}
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Surat Panggilan Orang Tua Resmi"
+        description="Verifikasi dan lembar digital surat panggilan wali murid terenkripsi resmi sekolah."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="surat_keluar_public_view"
+        instruction={{
+          title: 'Panduan Akses Surat Panggilan Wali Murid',
+          description: 'Halaman publik resmi untuk melihat rincian agenda pertemuan dan mengunduh berkas PDF bertanda tangan digital.',
+          items: [
+            { text: 'Periksa jadwal, waktu, dan ruangan pertemuan yang telah ditentukan oleh pihak sekolah.' },
+            { text: 'Klik tombol [Unduh Surat Panggilan Resmi (PDF)] untuk mencetak dokumen resmi bertanda tangan.' },
+            { text: 'Tunjukkan berkas ini kepada petugas piket saat menghadiri agenda di sekolah.' }
+          ]
+        }}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="max-w-2xl mx-auto space-y-6 w-full min-w-0 max-w-full">
+            {/* Header info */}
+            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-sm w-full min-w-0 max-w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                {data.sekolah?.logo_url ? (
+                  <img src={data.sekolah.logo_url} alt="Logo" className="h-10 w-10 object-contain rounded-lg shrink-0" />
+                ) : (
+                  <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Surat Panggilan Orang Tua</h3>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                    {data.sekolah?.name || 'Sekolah'}
                   </p>
                 </div>
               </div>
+              <Badge variant="success" className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 shrink-0">
+                ✓ Sah &amp; Terdaftar
+              </Badge>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Download PDF button */}
-        <div className="pt-2">
-          <Button
-            onClick={handleDownloadPdf}
-            disabled={downloading}
-            className="w-full py-3 h-12 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center justify-center gap-2 transition-all duration-150 transform active:scale-[0.99]"
-          >
-            {downloading ? (
-              <>
-                <Loader className="h-5 w-5 animate-spin mr-1 text-white" />
-                Menyusun PDF...
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5" />
-                Unduh Surat Panggilan Resmi (PDF)
-              </>
-            )}
-          </Button>
-        </div>
-      </main>
-    </div>
+            {/* Agenda details */}
+            <Card className="shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden rounded-2xl w-full min-w-0 max-w-full">
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-6 text-white">
+                <h4 className="text-xs font-bold opacity-80 uppercase tracking-wider">Perihal Dokumen Resmi</h4>
+                <h2 className="text-xl font-black mt-1 leading-snug">{data.judul}</h2>
+                <p className="text-xs opacity-75 mt-1 font-mono">No. Surat: {data.nomor_surat}</p>
+              </div>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider mb-0.5">Tanggal Diterbitkan</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                      {formatDate(data.tanggal_surat)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider mb-0.5">Petugas Pengirim</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{data.created_by || 'Guru Bimbingan Konseling'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Student Profile */}
+            <Card className="shadow-sm border border-slate-100 dark:border-slate-800 rounded-2xl w-full min-w-0 max-w-full">
+              <CardHeader className="py-4 px-6 border-b border-slate-50 dark:border-slate-800 flex flex-row items-center gap-2.5">
+                <GraduationCap className="h-5 w-5 text-indigo-500" />
+                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Identitas Siswa
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3.5">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-500">
+                    <User className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{data.siswa?.nama}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Kelas: <strong className="text-slate-700 dark:text-slate-300">{data.siswa?.kelas}</strong> • NIS: {data.siswa?.nis}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Agenda Meeting Details */}
+            <Card className="shadow-sm border border-slate-100 dark:border-slate-800 rounded-2xl w-full min-w-0 max-w-full">
+              <CardHeader className="py-4 px-6 border-b border-slate-50 dark:border-slate-800 flex flex-row items-center gap-2.5">
+                <Calendar className="h-5 w-5 text-indigo-500" />
+                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Agenda &amp; Jadwal Pertemuan
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="space-y-4 text-xs">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider mb-0.5">Hari / Tanggal Pertemuan</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {data.pemanggilan?.tanggal ? formatDate(data.pemanggilan.tanggal) : '-'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider mb-0.5">Waktu Pertemuan</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{data.pemanggilan?.waktu || '-'} WIB</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider mb-0.5">Lokasi / Ruangan</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{data.pemanggilan?.tempat || '-'}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex items-start gap-3">
+                    <FileText className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" />
+                    <div className="w-full">
+                      <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider mb-1">Materi / Alasan Pemanggilan</span>
+                      <p className="font-medium text-slate-700 dark:text-slate-300 leading-relaxed text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-4 rounded-xl">
+                        {data.pemanggilan?.alasan}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Download PDF button */}
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="w-full py-4 text-xs font-bold text-white rounded-2xl shadow-xl flex items-center justify-center gap-2 h-auto"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1 text-white" />
+                    Menyusun PDF Resmi...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-1" />
+                    Unduh Surat Panggilan Resmi (PDF)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </SectionCard>
+      </AcademicPageLayout>
+    </InfraErrorBoundary>
   );
-};
+});
+
 export default SuratKeluarPublicViewPage;

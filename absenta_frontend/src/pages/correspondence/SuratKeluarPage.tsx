@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -23,6 +25,13 @@ import { Search, Plus, Edit2, Trash2, Send, CheckSquare, Clock, Award, ShieldAle
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
+const suratKeluarSchema = z.object({
+  nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
+  perihal: z.string().min(1, 'Perihal surat wajib diisi'),
+  tujuan: z.string().min(1, 'Tujuan surat wajib diisi'),
+  kategori_surat: z.string().min(1, 'Kategori surat wajib diisi')
+});
+
 export default function SuratKeluarPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -37,7 +46,7 @@ export default function SuratKeluarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Record<string, unknown>>(null);
 
   const confirm = useConfirm();
 
@@ -99,7 +108,7 @@ export default function SuratKeluarPage() {
       toast.success('Surat keluar berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['surat-keluar-list'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(err.message || 'Gagal menghapus surat keluar');
     }
   });
@@ -116,7 +125,7 @@ export default function SuratKeluarPage() {
     await deleteSuratKeluarMutation.mutateAsync(id);
   }, [confirm, deleteSuratKeluarMutation]);
 
-  const handleEdit = useCallback((item: any) => {
+  const handleEdit = useCallback((item: unknown) => {
     setSelectedId(item.id);
     setFormData({
       nomor_surat: item.nomor_surat || '',
@@ -130,15 +139,16 @@ export default function SuratKeluarPage() {
     setModalOpen(true);
   }, []);
 
-  const handleOpenSign = useCallback((item: any) => {
+  const handleOpenSign = useCallback((item: unknown) => {
     setSelectedId(item.id);
     setSignModalOpen(true);
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.judul.trim()) {
-      toast.error('Perihal / Judul Surat wajib diisi');
+    const validation = suratKeluarSchema.safeParse(formData);
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Periksa kembali formulir Anda');
       return;
     }
 
@@ -152,11 +162,11 @@ export default function SuratKeluarPage() {
       }
       setModalOpen(false);
       resetForm();
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan surat keluar');
+      queryClient.invalidateQueries({ queryKey: ['surat-keluar-list'] });
+    } catch {
+      toast.error('Gagal menyimpan surat keluar');
     }
-  }, [selectedId, formData, fetchData, resetForm]);
+  }, [selectedId, formData, resetForm, queryClient]);
 
   const handleSignAction = useCallback(async (status: 'DIKIRIM' | 'DITOLAK') => {
     if (!selectedId) return;
@@ -166,7 +176,7 @@ export default function SuratKeluarPage() {
       setSignModalOpen(false);
       setSelectedId(null);
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || 'Gagal memproses persetujuan');
     }
   }, [selectedId, fetchData]);
@@ -241,7 +251,7 @@ export default function SuratKeluarPage() {
       const blob = await generateGenericPdf({
         module: targetModule,
         printType: targetPrintType,
-        selectedClassId: (item.Siswa?.Kelas as any)?.id || '',
+        selectedClassId: (item.Siswa?.Kelas as Record<string, unknown>)?.id || '',
         sekolah,
         tenantInfo,
         strukturList: structuresList || [],
@@ -442,28 +452,36 @@ export default function SuratKeluarPage() {
                 className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="h-10 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 rounded-xl min-w-[150px] font-semibold text-slate-600 dark:text-slate-300"
-            >
-              <option value="">Semua Status</option>
-              <option value="DRAFT">Draft</option>
-              <option value="MENUNGGU_TTD">Menunggu TTD</option>
-              <option value="DIKIRIM">Dikirim</option>
-              <option value="DITOLAK">Ditolak</option>
-            </select>
-            <select
-              value={kategoriFilter}
-              onChange={(e) => { setKategoriFilter(e.target.value); setPage(1); }}
-              className="h-10 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 rounded-xl min-w-[150px] font-semibold text-slate-600 dark:text-slate-300"
-            >
-              <option value="">Semua Kategori</option>
-              <option value="Dinas">Dinas</option>
-              <option value="Undangan">Undangan</option>
-              <option value="Panggilan">Panggilan Orang Tua</option>
-              <option value="Keterangan">Keterangan</option>
-            </select>
+            <SearchableSelect
+      id="status_filter"
+      aria-label="Filter Status"
+      value={statusFilter}
+      onValueChange={setStatusFilter}
+      options={[
+        { value: 'all', label: 'Semua Status' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'pending', label: 'Menunggu Persetujuan' },
+        { value: 'approved', label: 'Disetujui' },
+        { value: 'rejected', label: 'Ditolak' }
+      ]}
+      placeholder="Pilih Status..."
+      triggerClassName="w-44 h-9"
+    />
+            <SearchableSelect
+      id="kategori_filter"
+      aria-label="Filter Kategori"
+      value={kategoriFilter}
+      onValueChange={setKategoriFilter}
+      options={[
+        { value: 'all', label: 'Semua Kategori' },
+        { value: 'Undangan', label: 'Undangan' },
+        { value: 'Pemberitahuan', label: 'Pemberitahuan' },
+        { value: 'Tugas', label: 'Surat Tugas' },
+        { value: 'Keputusan', label: 'Surat Keputusan' }
+      ]}
+      placeholder="Pilih Kategori..."
+      triggerClassName="w-44 h-9"
+    />
           </div>
           <Button
             variant="toolbarPrimary"
@@ -502,32 +520,35 @@ export default function SuratKeluarPage() {
       <Suspense fallback={null}>
         <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={selectedId ? 'Edit Surat Keluar' : 'Buat Draft Surat Keluar Baru'} size="lg">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Surat (Otomatis)</Label>
                 <Input
                   placeholder="Kosongkan untuk otomatisasi nomor"
                   value={formData.nomor_surat}
                   onChange={(e) => setFormData(prev => ({ ...prev, nomor_surat: e.target.value }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-850"
+                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Kategori Surat</Label>
-                <select
-                  value={formData.kategori_surat}
-                  onChange={(e) => setFormData(prev => ({ ...prev, kategori_surat: e.target.value }))}
-                  className="w-full h-10 px-3 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                >
-                  <option value="Dinas">Dinas</option>
-                  <option value="Undangan">Undangan</option>
-                  <option value="Panggilan">Panggilan Orang Tua</option>
-                  <option value="Keterangan">Keterangan</option>
-                </select>
+                <SearchableSelect
+      id="form_kategori_surat"
+      aria-label="Kategori Surat"
+      value={formData.kategori_surat}
+      onValueChange={(val) => setFormData(prev => ({ ...prev, kategori_surat: val }))}
+      options={[
+        { value: 'Undangan', label: 'Undangan' },
+        { value: 'Pemberitahuan', label: 'Pemberitahuan' },
+        { value: 'Tugas', label: 'Surat Tugas' },
+        { value: 'Keputusan', label: 'Surat Keputusan' }
+      ]}
+      placeholder="Pilih Kategori..."
+    />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tujuan Surat / Penerima</Label>
                 <Input
@@ -592,8 +613,7 @@ export default function SuratKeluarPage() {
 
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Ringkasan / Isi Surat (Opsional)</Label>
-              <textarea
-                value={formData.isi_ringkas}
+              <textarea aria-label="Catatan surat" value={formData.isi_ringkas}
                 onChange={(e) => setFormData(prev => ({ ...prev, isi_ringkas: e.target.value }))}
                 className="w-full p-3 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 rows={3}
@@ -618,7 +638,7 @@ export default function SuratKeluarPage() {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-850 border border-slate-200/50 rounded-xl text-center space-y-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl text-center space-y-4">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preview E-Signature</div>
               <div className="inline-block border-2 border-dashed border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900 rounded-xl">
                 <div className="w-32 h-32 flex flex-col items-center justify-center border border-indigo-500/20 rounded bg-indigo-50/10">

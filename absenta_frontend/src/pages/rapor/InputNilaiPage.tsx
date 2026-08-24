@@ -122,8 +122,8 @@ export default React.memo(function InputNilaiPage() {
     },
   });
 
-  const classes: ClassItem[] = useMemo(() => (classList as any) || [], [classList]);
-  const subjects: SubjectItem[] = useMemo(() => (mapelList as any) || [], [mapelList]);
+  const classes: ClassItem[] = useMemo(() => (classList as unknown as ClassItem[]) || [], [classList]);
+  const subjects: SubjectItem[] = useMemo(() => (mapelList as unknown as SubjectItem[]) || [], [mapelList]);
   const progressInfo = useMemo(() => teacherProgressData?.data, [teacherProgressData]);
 
   // Persistent KKM Threshold Sync per selected mapel
@@ -589,38 +589,56 @@ export default React.memo(function InputNilaiPage() {
     }
   }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Rapor', path: '/rapor/dashboard' },
+    { label: 'Input Nilai' }
+  ], []);
+
   return (
     <AcademicPageLayout
       title="Lembar Input Nilai e-Rapor"
       description="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
+      breadcrumbs={breadcrumbs}
+      instruction={{
+        title: 'Panduan Lembar Input Nilai e-Rapor',
+        description: 'Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara terintegrasi.',
+        items: [
+          { text: 'Pilih Kelas dan Mata Pelajaran untuk membuka lembar pengisian.' },
+          { text: 'Gunakan mode Sumatif atau Kategori sesuai format kurikulum sekolah.' },
+          { text: 'Fitur Copy CP dan Paste Excel memudahkan pengisian nilai massal.' },
+          { text: 'Simpan nilai secara berkala atau unduh berkas format e-Rapor Kemendikbud.' }
+        ]
+      }}
       hardeningModuleKey="InputNilaiPage"
-      toolbar={
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs">
-            <Calculator className="w-3.5 h-3.5 mr-1" />
-            {activeYear?.nama || 'TP...'} — {activeSemester?.nama || 'Semester...'}
-          </Badge>
+      topSlot={
+        <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs">
+              <Calculator className="w-3.5 h-3.5 mr-1" />
+              {activeYear?.nama || 'TP...'} — {activeSemester?.nama || 'Semester...'}
+            </Badge>
 
-          {/* Quick Navigation Shortcuts */}
-          <button
-            type="button"
-            onClick={() => navigate('/rapor/cetak')}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-            title="Buka Preview & Cetak Rapor Siswa"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Preview & Cetak Rapor</span>
-          </button>
+            {/* Quick Navigation Shortcuts */}
+            <button
+              type="button"
+              onClick={() => navigate('/rapor/cetak')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              title="Buka Preview & Cetak Rapor Siswa"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Preview & Cetak Rapor</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/kurikulum/wali-kelas')}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all"
-            title="Buka Hub Manajemen Wali Kelas"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="hidden sm:inline">Hub Wali Kelas</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => navigate('/kurikulum/wali-kelas')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+              title="Buka Hub Manajemen Wali Kelas"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden sm:inline">Hub Wali Kelas</span>
+            </button>
+          </div>
 
           {/* Mode Switcher Pills */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">

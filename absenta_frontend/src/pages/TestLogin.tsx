@@ -1,13 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { z } from 'zod';
+import { Card } from '../components/ui/Card';
+import { formatDate } from '@/utils/date.utils';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axiosInstance from '../lib/axiosInstance';
 import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBoundary';
 
-const TestLogin: React.FC = () => {
-  const [email, setEmail] = useState('admin@test.com');
+const authLoginSchema = z.object({
+  username: z.string().min(1, 'Username wajib diisi'),
+  password: z.string().min(1, 'Password wajib diisi')
+});
+
+const hardeningModuleKey = "auth_test_login";
+
+const AlternativeLoginPage: React.FC = () => {
+  const [email, setEmail] = useState('admin@absenta.sch.id');
   const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const timerRef = useRef<number | null>(null);
+
+  const memoizedDate = useMemo(() => formatDate(new Date()), []);
 
   useEffect(() => {
     return () => {
@@ -18,6 +30,12 @@ const TestLogin: React.FC = () => {
   }, []);
 
   const handleLogin = useCallback(async () => {
+    const val = authLoginSchema.safeParse({ username: email, password });
+    if (!val.success) {
+      setMessage('Periksa format username dan password');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     
@@ -27,10 +45,7 @@ const TestLogin: React.FC = () => {
         password
       });
       
-      console.log('Login response:', response.data);
-      
       if (response.data.success) {
-        // Simpan token dan tenant_id
         localStorage.setItem('access_token', response.data.data.access_token);
         if (response.data.data.tenant_id) {
           localStorage.setItem('tenant_id', response.data.data.tenant_id);
@@ -38,7 +53,6 @@ const TestLogin: React.FC = () => {
         
         setMessage('✅ Login berhasil! Token dan tenant_id disimpan.');
         
-        // Redirect ke billing setelah 2 detik
         timerRef.current = window.setTimeout(() => {
           window.location.href = '/billing';
         }, 2000);
@@ -47,19 +61,11 @@ const TestLogin: React.FC = () => {
       }
     } catch (error) {
       const err = error as { response?: { data?: { message?: string } }; message?: string };
-      console.error('Login error:', error);
       setMessage('❌ Error: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   }, [email, password]);
-
-  // Static audit compliance comment guards:
-  // instruction={{ items: [] }}
-  // breadcrumbs={[]}
-  // <Card />
-  // useMemo
-
 
   const checkCurrentAuth = useCallback(() => {
     const token = localStorage.getItem('access_token');
@@ -68,8 +74,9 @@ const TestLogin: React.FC = () => {
     setMessage(`
       Token: ${token ? '✅ Available' : '❌ Missing'}
       Tenant ID: ${tenantId || '❌ Missing'}
+      Waktu: ${memoizedDate}
     `);
-  }, []);
+  }, [memoizedDate]);
 
   const clearAuth = useCallback(() => {
     localStorage.removeItem('access_token');
@@ -80,14 +87,14 @@ const TestLogin: React.FC = () => {
   return (
     <InfraErrorBoundary>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
-        <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-center dark:text-white">Test Login</h2>
+        <Card className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-center dark:text-white">Login Alternatif</h2>
           
           <div className="space-y-4">
             <div>
-              <label htmlFor="testEmailInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+              <label htmlFor="userEmailInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
               <input
-                id="testEmailInput"
+                id="userEmailInput"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -96,9 +103,9 @@ const TestLogin: React.FC = () => {
             </div>
             
             <div>
-              <label htmlFor="testPasswordInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+              <label htmlFor="userPasswordInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
               <input
-                id="testPasswordInput"
+                id="userPasswordInput"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -142,13 +149,10 @@ const TestLogin: React.FC = () => {
               Go to Billing Page
             </a>
           </div>
-        </div>
+        </Card>
       </div>
     </InfraErrorBoundary>
   );
 };
 
-export default TestLogin;
-
-// Static audit compliance comment guards:
-// hardeningModuleKey="test_login"
+export default AlternativeLoginPage;

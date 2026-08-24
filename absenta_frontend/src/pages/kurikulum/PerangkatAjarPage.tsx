@@ -1,3 +1,5 @@
+import { usePerangkatAjarMutations } from '../../components/kurikulum/perangkat-ajar/usePerangkatAjarMutations';
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -54,43 +56,7 @@ const ModulAjarStudioModal = lazy(() => import('../../components/kurikulum/bahan
 
 const hardeningModuleKey = 'perangkat_ajar_page';
 
-export interface Subject {
-  id: string;
-  nama_mapel: string;
-  kode_mapel?: string;
-}
-
-export interface Teacher {
-  id: string;
-  nama_guru: string;
-  nip?: string;
-  user_id?: string;
-}
-
-export interface PerangkatAjar {
-  id: string;
-  judul: string;
-  jenis: string;
-  status: string;
-  file_url: string;
-  catatan_reviewer?: string;
-  Guru?: Teacher;
-  Mapel?: Subject;
-  TahunPelajaran?: { id: string; tahun: string };
-  Semester?: { id: string; nama_semester: string };
-  Reviewer?: { full_name: string };
-}
-
-const JENIS_LABELS: Record<string, string> = {
-  MODUL_AJAR: 'Modul Ajar',
-  ATP: 'ATP (Alur Tujuan Pembelajaran)',
-  MODUL_PROJEK: 'Modul Projek (P5)',
-  PROTA: 'Program Tahunan (PROTA)',
-  PROMES: 'Program Semester (PROMES)',
-  KKTP: 'KKTP',
-  RPP: 'RPP / Modul Ajar (K13 Legacy)',
-  SILABUS: 'Silabus (K13 Legacy)',
-};
+import { Subject, Teacher, JENIS_LABELS } from '../../components/kurikulum/perangkat-ajar/perangkatAjarTypes';
 
 export default function PerangkatAjarPage() {
   const queryClient = useQueryClient();
@@ -223,7 +189,7 @@ export default function PerangkatAjarPage() {
 
   const teacherMapelIds = useMemo(() => {
     const list = teacherAssignedMapels?.data || [];
-    return list.map((m: { id: string; mapel_id?: string; Mapel?: { id: string } }) => m.mapel_id || m.Mapel?.id || m.id);
+    return list?.map((m: { id: string; mapel_id?: string; Mapel?: { id: string } }) => m.mapel_id || m.Mapel?.id || m.id);
   }, [teacherAssignedMapels]);
 
   const filterStatus = useMemo(() => {
@@ -313,161 +279,16 @@ export default function PerangkatAjarPage() {
     };
   }, [allPerangkatForStats]);
 
-  // Mutations
-  const uploadMutation = useMutation({
-    mutationFn: (formData: FormData) => kurikulumApi.uploadPerangkatAjar(formData),
-    onSuccess: () => {
-      toast.success('Perangkat ajar berhasil diunggah');
-      setIsUploadModalOpen(false);
-      setUploadForm({ judul: '', jenis: '', mapel_id: '', guru_id: '', file: null });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
-      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas';
-      toast.error(msg);
-    }
+  const {
+    uploadMutation, reviewMutation, deleteMutation, bulkDeleteMutation,
+    claimMutation, generateAIMutation, saveAIMutation
+  } = usePerangkatAjarMutations({
+    queryClient, setIsUploadModalOpen, setUploadForm, setIsReviewModalOpen,
+    setSelectedPerangkatId, setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
+    setGeneratedAIContent, JENIS_LABELS, aiForm, isWizardModalOpen, setIsWizardModalOpen,
+    setSelectedWordEditItem, currentGuru, activeYear, activeSemester, setIsWordEditorOpen,
+    setIsAIModalOpen, setActiveTab, setFilterJenis, setFilterMapel, setPage
   });
-
-  const reviewMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { status: 'APPROVED' | 'REJECTED'; catatan_reviewer?: string } }) =>
-      kurikulumApi.reviewPerangkatAjar(id, data),
-    onSuccess: () => {
-      toast.success('Status verifikasi perangkat ajar berhasil diperbarui');
-      setIsReviewModalOpen(false);
-      setSelectedPerangkatId(null);
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
-      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal memperbarui status verifikasi';
-      toast.error(msg);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => kurikulumApi.deletePerangkatAjar(id),
-    onSuccess: () => {
-      toast.success('Dokumen perangkat ajar berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
-      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen';
-      toast.error(msg);
-    }
-  });
-
-  const bulkDeleteMutation = useMutation({
-    mutationFn: (ids: string[]) => kurikulumApi.bulkDeletePerangkatAjar(ids),
-    onSuccess: (res: { message?: string }) => {
-      toast.success(res?.message || 'Dokumen perangkat ajar terpilih berhasil dihapus');
-      setSelectedRowKeys(new Set());
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
-      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen terpilih';
-      toast.error(msg);
-    }
-  });
-
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedRowKeys.size === 0) return;
-    const ok = await confirm({
-      title: 'Hapus Masal Perangkat Ajar',
-      message: `Apakah Anda yakin ingin menghapus ${selectedRowKeys.size} dokumen terpilih? Tindakan ini tidak dapat dibatalkan.`,
-      confirmText: `Hapus ${selectedRowKeys.size} Dokumen`,
-      style: 'danger'
-    });
-    if (ok) {
-      bulkDeleteMutation.mutate(Array.from(selectedRowKeys));
-    }
-  }, [selectedRowKeys, confirm, bulkDeleteMutation]);
-
-  const claimMutation = useMutation({
-    mutationFn: (payload: { library_id: string; mapel_id: string; tahun_pelajaran_id: string; semester_id: string; guru_id: string }) =>
-      kurikulumApi.claimLibraryTemplate(payload),
-    onMutate: (vars) => setClaimingId(vars.library_id),
-    onSuccess: () => {
-      toast.success('Template nasional berhasil diklaim dan diadopsi!');
-      setIsLibraryModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-      queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
-      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal mengklaim template';
-      toast.error(msg);
-    },
-    onSettled: () => setClaimingId(null)
-  });
-
-  const generateAIMutation = useMutation({
-    mutationFn: (params: { jenis: string; mapel_name: string; kelas: string; topik: string; alokasi_waktu?: string }) =>
-      kurikulumApi.generatePerangkatAjarAI(params),
-    onSuccess: (res) => {
-      if (res?.data?.content) {
-        setGeneratedAIContent(res.data.content);
-        toast.success(`Matriks ${JENIS_LABELS[aiForm.jenis] || aiForm.jenis} berhasil disusun!`);
-
-        // Jika dipicu dari Wizard Modal, langsung buka Word Editor Modal
-        if (isWizardModalOpen) {
-          setIsWizardModalOpen(false);
-          setSelectedWordEditItem({
-            judul: `${JENIS_LABELS[aiForm.jenis] || aiForm.jenis} - ${aiForm.topik}`,
-            jenis: aiForm.jenis,
-            mapel_id: aiForm.mapel_id,
-            guru_id: currentGuru?.id,
-            tahun_pelajaran_id: activeYear?.id || '',
-            semester_id: activeSemester?.id || '',
-            html_content: res.data.content,
-            status: 'PENDING'
-          });
-          setIsWordEditorOpen(true);
-        }
-      }
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal menyusun perangkat dengan AI';
-      toast.error(msg);
-    }
-  });
-
-  const saveAIMutation = useMutation({
-    mutationFn: (params: any) =>
-      kurikulumApi.savePerangkatAjarEditor(params),
-    onSuccess: () => {
-      toast.success('Perangkat ajar AI berhasil disimpan ke repositori!');
-      setIsAIModalOpen(false);
-      setGeneratedAIContent('');
-      setActiveTab('ALL');
-      setFilterJenis('');
-      setFilterMapel('');
-      setPage(1);
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Gagal menyimpan berkas editor';
-      toast.error(msg);
-    }
-  });
-
 
   // Select Options
   const filterJenisOptions = useMemo(() => [
@@ -523,8 +344,8 @@ export default function PerangkatAjarPage() {
       status: 'DRAFT',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      Mapel: { id: teacherMapelIds[0] || '', nama_mapel: mapelOptions[0]?.label || 'Mata Pelajaran' } as any
-    } as any);
+      Mapel: { id: teacherMapelIds[0] || '', nama_mapel: mapelOptions[0]?.label || 'Mata Pelajaran' } as Record<string, unknown>
+    } as Record<string, unknown>);
     setIsStudioModalOpen(true);
   }, [teacherMapelIds, mapelOptions, currentGuru]);
 
@@ -644,144 +465,11 @@ export default function PerangkatAjarPage() {
     { id: 'REJECTED', label: 'Perlu Revisi', icon: XCircle, colorClass: 'text-rose-600 dark:text-rose-400' },
   ], []);
 
-  // Table Columns Definition
-  const tableColumns: Column[] = useMemo(() => [
-    {
-      key: 'no',
-      label: 'NO',
-      className: 'w-12 text-center text-xs font-bold text-slate-500',
-      render: (_: unknown, __: unknown, index: number) => (
-        <span className="text-xs font-bold text-slate-500">{(page - 1) * limit + index + 1}</span>
-      )
-    },
-    {
-      key: 'judul',
-      label: 'DOKUMEN & MAPEL',
-      render: (_: unknown, item: PerangkatAjar) => (
-        <div className="space-y-1 py-1">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200/50 text-[10px]">
-              {JENIS_LABELS[item.jenis] || item.jenis}
-            </Badge>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs line-clamp-1">{item.judul}</span>
-          </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Mapel: <span className="font-bold text-slate-700 dark:text-slate-300">{item.Mapel?.nama_mapel || '-'}</span> ({item.Mapel?.kode_mapel || '-'})
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'guru',
-      label: 'GURU PENGAJAR',
-      render: (_: unknown, item: PerangkatAjar) => (
-        <div className="text-xs">
-          <div className="font-bold text-slate-800 dark:text-slate-200">{item.Guru?.nama_guru || '-'}</div>
-          <div className="text-[10px] text-slate-400 font-medium">NIP. {item.Guru?.nip || '-'}</div>
-        </div>
-      )
-    },
-    {
-      key: 'periode',
-      label: 'PERIODE',
-      render: (_: unknown, item: PerangkatAjar) => (
-        <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
-          {item.TahunPelajaran?.tahun || '-'} ({item.Semester?.nama_semester || '-'})
-        </div>
-      )
-    },
-    {
-      key: 'status',
-      label: 'STATUS',
-      render: (_: unknown, item: PerangkatAjar) => (
-        <div className="space-y-1">
-          {item.status === 'APPROVED' && <Badge className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 border-emerald-200 text-[10px] font-black"><Check size={11} className="mr-1" /> APPROVED</Badge>}
-          {item.status === 'REJECTED' && <Badge className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 border-rose-200 text-[10px] font-black"><XCircle size={11} className="mr-1" /> REJECTED</Badge>}
-          {item.status === 'PENDING' && <Badge className="bg-amber-50 text-amber-600 dark:bg-amber-950/20 border-amber-200 text-[10px] font-black"><Clock size={11} className="mr-1" /> PENDING</Badge>}
-          {item.catatan_reviewer && (
-            <div className="text-[10px] text-slate-400 italic line-clamp-1">"{item.catatan_reviewer}"</div>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'aksi',
-      label: 'AKSI',
-      className: 'text-right',
-      render: (_: unknown, item: PerangkatAjar) => {
-        const isOwner = Boolean(currentGuru && item.Guru?.id === currentGuru.id);
-        const canUserDelete = isKurikulumOrAdmin || isOwner;
-        const canUserEdit = isKurikulumOrAdmin || isOwner;
-
-        return (
-          <div className="flex items-center justify-end gap-1.5">
-            <Button
-              type="button"
-              onClick={() => handleOpenStudio(item)}
-              size="sm"
-              className="text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-indigo-500/20 cursor-pointer"
-              title="Buka Studio Penyusunan Modul Ajar (Per-Pertemuan)"
-            >
-              <Sparkles size={13} />
-              <span>Susun</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => handleOpenReader(item)}
-              size="sm"
-              variant="outline"
-              className="text-xs font-black border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 cursor-pointer"
-              title="Buka Mode Baca Digital & Panduan KBM"
-            >
-              <BookOpen size={13} />
-              <span>Baca</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={() => handleOpenWordEditor(item)}
-              variant="outline"
-              size="sm"
-              className="text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm"
-              title="Sunting Dokumen via Word Editor"
-            >
-              <Edit3 size={13} />
-              Edit
-            </Button>
-
-            {isKurikulumOrAdmin && (
-              <Button
-                type="button"
-                onClick={() => {
-                  setSelectedPerangkatId(item.id);
-                  setIsReviewModalOpen(true);
-                }}
-                variant="outline"
-                size="sm"
-                className="text-xs font-bold border-slate-200 dark:border-slate-800 px-2 py-1 h-8"
-              >
-                Verifikasi
-              </Button>
-            )}
-
-            {canUserDelete && (
-              <Button
-                type="button"
-                onClick={() => handleDelete(item.id)}
-                variant="ghost"
-                size="sm"
-                className="text-xs font-bold text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 p-1.5 h-8 w-8"
-                title="Hapus Dokumen"
-              >
-                <Trash2 size={14} />
-              </Button>
-            )}
-          </div>
-        );
-      }
-    }
-  ], [page, limit, currentGuru, isKurikulumOrAdmin, handleDelete, handleOpenWordEditor, handleOpenReader]);
+  const tableColumns = useMemo(() => getPerangkatAjarTableColumns({
+    page, limit, JENIS_LABELS, currentGuru, isKurikulumOrAdmin,
+    handleOpenStudio, handleOpenReader, handleOpenWordEditor,
+    setSelectedPerangkatId, setIsReviewModalOpen, handleDelete
+  }), [page, limit, currentGuru, isKurikulumOrAdmin, handleOpenStudio, handleOpenReader, handleOpenWordEditor, setSelectedPerangkatId, setIsReviewModalOpen, handleDelete]);
 
   return (
     <AcademicPageLayout
@@ -811,141 +499,34 @@ export default function PerangkatAjarPage() {
         />
 
         <SectionCard fullWidth noPadding>
-          <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                onClick={() => setIsLibraryModalOpen(true)}
-                size="toolbar"
-                className="rounded-xl shrink-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 shadow-md shadow-emerald-500/20 font-bold"
-              >
-                <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-300 fill-amber-300" />
-                KATALOG PLATFORM (SIAP KLAIM)
-              </Button>
-
-              <Button
-                type="button"
-                onClick={handleCreateNewStudio}
-                size="toolbar"
-                className="rounded-xl shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-blue-500/20 font-bold"
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                ✏️ SUSUN MODUL (STUDIO)
-              </Button>
-
-              <Button
-                type="button"
-                onClick={handleOpenUploadModal}
-                variant="toolbarPrimary"
-                size="toolbar"
-                className="rounded-xl shrink-0"
-              >
-                <Upload className="w-3.5 h-3.5 mr-1.5" />
-                UNGGAH BERKAS
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => {
-                  setAiForm((prev) => ({ ...prev, jenis: 'MODUL_AJAR' }));
-                  setIsAIModalOpen(true);
-                }}
-                size="toolbar"
-                className="rounded-xl shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-violet-500/20 font-bold"
-              >
-                <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                ⚡ MODUL AJAR (AI)
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => {
-                  setAiForm((prev) => ({ ...prev, jenis: 'ATP' }));
-                  setIsWizardModalOpen(true);
-                }}
-                size="toolbar"
-                className="rounded-xl shrink-0 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0 shadow-md shadow-amber-500/20 font-bold"
-              >
-                <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                🧙‍♂️ WIZARD ATP / PROTA / PROMES
-              </Button>
-
-              {selectedRowKeys.size > 0 && (
-                <Button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={bulkDeleteMutation.isPending}
-                  size="toolbar"
-                  className="rounded-xl shrink-0 bg-rose-600 hover:bg-rose-700 text-white border-0 shadow-md shadow-rose-500/20 font-bold animate-in fade-in zoom-in duration-300"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  {bulkDeleteMutation.isPending
-                    ? 'MENGHAPUS...'
-                    : `HAPUS (${selectedRowKeys.size}) TERPILIH`}
-                </Button>
-              )}
-
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 shrink-0 mx-1" />
-
-              <Suspense fallback={<div className="h-9 w-56 bg-slate-50 dark:bg-slate-800 rounded-xl animate-pulse" />}>
-                <div className="w-full sm:w-56">
-                  <SearchableSelect
-                    id="filter-jenis-select"
-                    value={filterJenis}
-                    onValueChange={(val) => {
-                      setFilterJenis(val);
-                      setPage(1);
-                    }}
-                    options={filterJenisOptions}
-                    placeholder="Semua Jenis Berkas"
-                  />
-                </div>
-              </Suspense>
-
-              <Suspense fallback={<div className="h-9 w-56 bg-slate-50 dark:bg-slate-800 rounded-xl animate-pulse" />}>
-                <div className="w-full sm:w-56">
-                  <SearchableSelect
-                    id="filter-mapel-select"
-                    value={filterMapel}
-                    onValueChange={(val) => {
-                      setFilterMapel(val);
-                      setPage(1);
-                    }}
-                    options={filterMapelOptions}
-                    placeholder="Semua Mata Pelajaran"
-                  />
-                </div>
-              </Suspense>
-            </div>
-
-            <div className="flex items-center bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'table'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <List size={14} />
-                Tabel
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <LayoutGrid size={14} />
-                Kartu
-              </button>
-            </div>
-          </div>
-
+          <PerangkatAjarFilterBar
+            setIsLibraryModalOpen={setIsLibraryModalOpen}
+            handleCreateNewStudio={handleCreateNewStudio}
+            handleOpenUploadModal={handleOpenUploadModal}
+            setAiForm={setAiForm}
+            setIsAIModalOpen={setIsAIModalOpen}
+            setIsWizardModalOpen={setIsWizardModalOpen}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            search={search}
+            setSearch={setSearch}
+            filterJenis={filterJenis}
+            setFilterJenis={setFilterJenis}
+            filterJenisOptions={filterJenisOptions}
+            selectedMapel={filterMapel}
+            setSelectedMapel={setFilterMapel}
+            mapelOptions={filterMapelOptions}
+            selectedTahun={selectedTahun}
+            setSelectedTahun={setSelectedTahun}
+            tahunOptions={tahunOptions}
+            selectedSemester={selectedSemester}
+            setSelectedSemester={setSelectedSemester}
+            semesterOptions={semesterOptions}
+            selectedGuru={selectedGuru}
+            setSelectedGuru={setSelectedGuru}
+            teacherOptions={teacherOptions}
+            isKurikulumOrAdmin={isKurikulumOrAdmin}
+          />
           <div className={viewMode === 'table' ? 'p-0' : 'p-6'}>
             {isLoading ? (
               <div className="text-center py-20 text-slate-400 text-xs italic">Memuat berkas perangkat ajar...</div>
@@ -1000,148 +581,68 @@ export default function PerangkatAjarPage() {
           </div>
         </SectionCard>
 
-        {/* Subcomponents Loaded via Lazy & Suspense */}
         <Suspense fallback={null}>
-          {isUploadModalOpen && (
-            <PerangkatAjarUploadModal
-              isOpen={isUploadModalOpen}
-              onClose={() => setIsUploadModalOpen(false)}
-              uploadForm={uploadForm}
-              setUploadForm={setUploadForm}
-              filterJenisOptions={filterJenisOptions}
-              mapelOptions={mapelOptions}
-              teacherOptions={teacherOptions}
-              isSubmitting={uploadMutation.isPending}
-              onSubmit={handleUploadSubmit}
-            />
-          )}
-
-          {isReviewModalOpen && (
-            <PerangkatAjarReviewModal
-              isOpen={isReviewModalOpen}
-              onClose={() => setIsReviewModalOpen(false)}
-              reviewForm={reviewForm}
-              setReviewForm={setReviewForm}
-              isSubmitting={reviewMutation.isPending}
-              onSubmit={handleReviewSubmit}
-            />
-          )}
-
-          {isLibraryModalOpen && (
-            <PerangkatAjarLibraryModal
-              isOpen={isLibraryModalOpen}
-              onClose={() => setIsLibraryModalOpen(false)}
-              librarySearch={librarySearch}
-              setLibrarySearch={setLibrarySearch}
-              libraryJenisFilter={libraryJenisFilter}
-              setLibraryJenisFilter={setLibraryJenisFilter}
-              claimMapelId={claimMapelId}
-              setClaimMapelId={setClaimMapelId}
-              claimingId={claimingId}
-              libraryTemplates={libraryTemplatesData?.data ?? []}
-              myPerangkatList={listPerangkat?.data ?? []}
-              onEditExistingPerangkat={(item: any) => {
-                setIsLibraryModalOpen(false);
-                handleOpenWordEditor(item);
-              }}
-              isLoadingLibrary={isLoadingLibrary}
-              filterJenisOptions={filterJenisOptions}
-              mapelOptions={mapelOptions}
-              teacherAssignedMapels={teacherAssignedMapels?.data}
-              activeYear={activeYear}
-              activeSemester={activeSemester}
-              currentGuru={currentGuru}
-              jenisLabels={JENIS_LABELS}
-              onClaim={(payload) => claimMutation.mutate(payload)}
-            />
-          )}
-
-          {isAIModalOpen && (
-            <PerangkatAjarAIModal
-              isOpen={isAIModalOpen}
-              onClose={() => setIsAIModalOpen(false)}
-              aiForm={aiForm}
-              setAiForm={setAiForm}
-              filterJenisOptions={filterJenisOptions}
-              mapelOptions={mapelOptions}
-              aiTopikPresets={aiPresetsData?.data}
-              libraryTemplates={libraryTemplatesData?.data ?? []}
-              myPerangkatList={listPerangkat?.data ?? []}
-              onOpenLibraryCatalog={() => {
-                setIsAIModalOpen(false);
-                setIsLibraryModalOpen(true);
-              }}
-              onEditExistingPerangkat={(item: any) => {
-                setIsAIModalOpen(false);
-                handleOpenWordEditor(item);
-              }}
-              isGeneratingAI={generateAIMutation.isPending}
-              isSavingAI={saveAIMutation.isPending}
-              generatedAIContent={generatedAIContent}
-              setGeneratedAIContent={setGeneratedAIContent}
-              onSubmitAI={handleAISubmit}
-              onSaveAI={handleAISave}
-            />
-          )}
-
-          {isWizardModalOpen && (
-            <PerangkatAjarWizardModal
-              isOpen={isWizardModalOpen}
-              onClose={() => setIsWizardModalOpen(false)}
-              aiForm={aiForm}
-              setAiForm={setAiForm}
-              mapelOptions={mapelOptions}
-              aiTopikPresets={aiPresetsData?.data}
-              libraryTemplates={libraryTemplatesData?.data ?? []}
-              myPerangkatList={listPerangkat?.data ?? []}
-              onOpenLibraryCatalog={() => {
-                setIsWizardModalOpen(false);
-                setIsLibraryModalOpen(true);
-              }}
-              onEditExistingPerangkat={(item: any) => {
-                setIsWizardModalOpen(false);
-                handleOpenWordEditor(item);
-              }}
-              isGeneratingAI={generateAIMutation.isPending}
-              onSubmitAI={handleAISubmit}
-            />
-          )}
-
-          {isWordEditorOpen && (
-            <PerangkatAjarWordEditorModal
-              isOpen={isWordEditorOpen}
-              onClose={() => {
-                setIsWordEditorOpen(false);
-                setSelectedWordEditItem(null);
-              }}
-              itemData={selectedWordEditItem}
-              onSaveSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
-              }}
-            />
-          )}
-
-          {isReaderModalOpen && (
-            <BahanAjarReaderModal
-              isOpen={isReaderModalOpen}
-              onClose={() => setIsReaderModalOpen(false)}
-              perangkatId={readerPerangkatId}
-            />
-          )}
-
-          {isStudioModalOpen && studioPerangkat && (
-            <ModulAjarStudioModal
-              isOpen={isStudioModalOpen}
-              onClose={() => {
-                setIsStudioModalOpen(false);
-                setStudioPerangkat(null);
-              }}
-              perangkatId={studioPerangkat.id}
-              perangkatJudul={studioPerangkat.judul}
-              mapelNama={studioPerangkat.Mapel?.nama_mapel}
-            />
-          )}
-
+          <PerangkatAjarModals
+            isUploadModalOpen={isUploadModalOpen}
+            setIsUploadModalOpen={setIsUploadModalOpen}
+            uploadForm={uploadForm}
+            setUploadForm={setUploadForm}
+            filterJenisOptions={filterJenisOptions}
+            mapelOptions={mapelOptions}
+            teacherOptions={teacherOptions}
+            uploadMutation={uploadMutation}
+            handleUploadSubmit={handleUploadSubmit}
+            isReviewModalOpen={isReviewModalOpen}
+            setIsReviewModalOpen={setIsReviewModalOpen}
+            reviewForm={reviewForm}
+            setReviewForm={setReviewForm}
+            reviewMutation={reviewMutation}
+            handleReviewSubmit={handleReviewSubmit}
+            isLibraryModalOpen={isLibraryModalOpen}
+            setIsLibraryModalOpen={setIsLibraryModalOpen}
+            librarySearch={librarySearch}
+            setLibrarySearch={setLibrarySearch}
+            libraryJenisFilter={libraryJenisFilter}
+            setLibraryJenisFilter={setLibraryJenisFilter}
+            claimMapelId={claimMapelId}
+            setClaimMapelId={setClaimMapelId}
+            claimingId={claimingId}
+            libraryTemplatesData={libraryTemplatesData}
+            listPerangkat={listPerangkat}
+            handleOpenWordEditor={handleOpenWordEditor}
+            isLoadingLibrary={isLoadingLibrary}
+            teacherAssignedMapels={teacherAssignedMapels}
+            activeYear={activeYear}
+            activeSemester={activeSemester}
+            currentGuru={currentGuru}
+            JENIS_LABELS={JENIS_LABELS}
+            claimMutation={claimMutation}
+            isAIModalOpen={isAIModalOpen}
+            setIsAIModalOpen={setIsAIModalOpen}
+            aiForm={aiForm}
+            setAiForm={setAiForm}
+            aiPresetsData={aiPresetsData}
+            generateAIMutation={generateAIMutation}
+            saveAIMutation={saveAIMutation}
+            generatedAIContent={generatedAIContent}
+            setGeneratedAIContent={setGeneratedAIContent}
+            handleAISubmit={handleAISubmit}
+            handleAISave={handleAISave}
+            isWizardModalOpen={isWizardModalOpen}
+            setIsWizardModalOpen={setIsWizardModalOpen}
+            isWordEditorOpen={isWordEditorOpen}
+            setIsWordEditorOpen={setIsWordEditorOpen}
+            selectedWordEditItem={selectedWordEditItem}
+            setSelectedWordEditItem={setSelectedWordEditItem}
+            queryClient={queryClient}
+            isReaderModalOpen={isReaderModalOpen}
+            setIsReaderModalOpen={setIsReaderModalOpen}
+            readerPerangkatId={readerPerangkatId}
+            isStudioModalOpen={isStudioModalOpen}
+            setIsStudioModalOpen={setIsStudioModalOpen}
+            studioPerangkat={studioPerangkat}
+            setStudioPerangkat={setStudioPerangkat}
+          />
         </Suspense>
       </div>
     </AcademicPageLayout>

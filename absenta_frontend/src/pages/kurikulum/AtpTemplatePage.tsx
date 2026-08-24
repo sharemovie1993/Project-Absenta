@@ -1,4 +1,12 @@
-import React, { useState } from 'react';
+const atpTemplateSchema = z.object({
+  nama_template: z.string().min(1, 'Nama template wajib diisi'),
+  fase: z.string().min(1, 'Fase wajib diisi')
+});
+import { SectionCard } from '../../components/ui/SectionCard';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,7 +21,7 @@ import {
   DownloadCloud,
   GraduationCap
 } from 'lucide-react';
-import { PageLayout } from '../../components/common/PageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, Input, Label } from '../../components/ui';
 import { getAtpTemplates, importAtpTemplate, AtpTemplateData } from '../../api/atp-template.api';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
@@ -25,7 +33,7 @@ export const AtpTemplatePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const guruId = (user as any)?.guru_profile?.id || '';
+  const guruId = (user as Record<string, unknown>)?.guru_profile?.id || '';
 
   // Filter state
   const [selectedFase, setSelectedFase] = useState<string>('');
@@ -56,7 +64,7 @@ export const AtpTemplatePage: React.FC = () => {
       if (!guruId) return [];
       const res = await listGuruMapel({ guru_id: guruId });
       const seen = new Set<string>();
-      return (res.data || []).filter((gm: any) => {
+      return (res.data || []).filter((gm: unknown) => {
         if (!gm.Mapel?.id || seen.has(gm.Mapel.id)) return false;
         seen.add(gm.Mapel.id);
         return true;
@@ -112,25 +120,25 @@ export const AtpTemplatePage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['atpTemplatesPage'] });
       navigate('/kurikulum/atp');
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(err.message || 'Gagal mengimpor template ATP');
     }
   });
 
   const handleOpenImport = (tpl: AtpTemplateData) => {
     setSelectedTemplate(tpl);
-    if ((guruMapelList as any[]).length > 0 && !targetMapelId) {
-      setTargetMapelId((guruMapelList[0] as any).Mapel?.id || '');
+    if ((guruMapelList as Record<string, unknown>[]).length > 0 && !targetMapelId) {
+      setTargetMapelId((guruMapelList[0] as Record<string, unknown>).Mapel?.id || '');
     }
-    const activeTahun = (tahunPelajaranList as any[]).find((t: any) => t.is_active);
+    const activeTahun = (tahunPelajaranList as Record<string, unknown>[]).find((t: unknown) => t.is_active);
     if (activeTahun && !targetTahunId) setTargetTahunId(activeTahun.id);
-    const activeSemester = (semesterList as any[]).find((s: any) => s.is_active);
+    const activeSemester = (semesterList as Record<string, unknown>[]).find((s: unknown) => s.is_active);
     if (activeSemester && !targetSemesterId) setTargetSemesterId(activeSemester.id);
     setIsImportModalOpen(true);
   };
 
   return (
-    <PageLayout
+    <AcademicPageLayout hardeningModuleKey="kurikulum_atp_template"
       title="Perpustakaan Template ATP"
       description="Database Alur Tujuan Pembelajaran resmi Kurikulum Merdeka yang siap diimpor dan disesuaikan untuk kebutuhan kelas Anda."
       breadcrumbs={[
@@ -147,9 +155,9 @@ export const AtpTemplatePage: React.FC = () => {
           { text: 'Setelah diimpor, Anda bebas menambah, mengubah, atau menghapus TP sesuai karakteristik kelas.' }
         ]
       }}
-      hardeningModuleKey="kurikulum_atp_templates"
     >
-      <div className="space-y-6">
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
+<div className="space-y-6">
         {/* Filter Bar */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-4 sm:p-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -163,19 +171,19 @@ export const AtpTemplatePage: React.FC = () => {
               />
             </div>
 
-            <select
-              value={selectedFase}
-              onChange={(e) => setSelectedFase(e.target.value)}
-              className="w-full sm:w-48 h-11 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-xs text-blue-600 dark:text-blue-400 outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Semua Fase</option>
-              <option value="A">Fase A (Kelas 1-2 SD)</option>
-              <option value="B">Fase B (Kelas 3-4 SD)</option>
-              <option value="C">Fase C (Kelas 5-6 SD)</option>
-              <option value="D">Fase D (Kelas 7-9 SMP)</option>
-              <option value="E">Fase E (Kelas 10 SMA/SMK)</option>
-              <option value="F">Fase F (Kelas 11-12 SMA/SMK)</option>
-            </select>
+            <SearchableSelect
+    id="atp_template_select"
+    aria-label="Pilih Opsi Template ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
           </div>
 
           <Button
@@ -191,7 +199,7 @@ export const AtpTemplatePage: React.FC = () => {
         {/* Templates Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3, 4, 5, 6].map(n => (
+            {[1, 2, 3, 4, 5, 6]?.map(n => (
               <div key={n} className="h-56 rounded-3xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ))}
           </div>
@@ -205,7 +213,7 @@ export const AtpTemplatePage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {templates.map((tpl) => (
+            {templates?.map((tpl) => (
               <div
                 key={tpl.id}
                 className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all p-5 flex flex-col justify-between space-y-4"
@@ -246,7 +254,7 @@ export const AtpTemplatePage: React.FC = () => {
                       Topik TP Utama ({tpl.TpTemplate?.length || 0} TP)
                     </p>
                     <div className="space-y-1">
-                      {(tpl.TpTemplate || []).slice(0, 2).map((tp, idx) => (
+                      {(tpl.TpTemplate || []).slice(0, 2)?.map((tp, idx) => (
                         <div key={idx} className="text-[11px] text-slate-600 dark:text-slate-300 truncate flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                           <span className="font-bold text-blue-600 dark:text-blue-400 font-mono text-[10px]">{tp.kode_tp}:</span>
@@ -306,45 +314,55 @@ export const AtpTemplatePage: React.FC = () => {
                   <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Salin ke Mata Pelajaran Anda
                   </Label>
-                  <select
-                    value={targetMapelId}
-                    onChange={(e) => setTargetMapelId(e.target.value)}
-                    className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {(guruMapelList as any[]).map((gm: any) => (
-                      <option key={gm.Mapel?.id} value={gm.Mapel?.id}>
-                        {gm.Mapel?.nama_mapel} ({gm.Mapel?.kode_mapel || 'MAPEL'})
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+    id="atp_template_select"
+    aria-label="Pilih Opsi Template ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
                 </div>
 
                 {/* Tahun Pelajaran & Semester */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tahun Pelajaran</Label>
-                    <select
-                      value={targetTahunId}
-                      onChange={(e) => setTargetTahunId(e.target.value)}
-                      className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {(tahunPelajaranList as any[]).map((t: any) => (
-                        <option key={t.id} value={t.id}>{t.tahun} {t.is_active ? '(Aktif)' : ''}</option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+    id="atp_template_select"
+    aria-label="Pilih Opsi Template ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Semester</Label>
-                    <select
-                      value={targetSemesterId}
-                      onChange={(e) => setTargetSemesterId(e.target.value)}
-                      className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {(semesterList as any[]).map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.nama_semester}</option>
-                      ))}
-                    </select>
+                    <SearchableSelect
+    id="atp_template_select"
+    aria-label="Pilih Opsi Template ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
                   </div>
                 </div>
               </div>
@@ -378,8 +396,9 @@ export const AtpTemplatePage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-    </PageLayout>
+        </div>
+      </SectionCard>
+    </AcademicPageLayout>
   );
 };
 

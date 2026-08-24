@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { bpbkApi, type HomeVisit, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
 import { Card } from '../../../components/ui/Card';
@@ -11,10 +12,18 @@ import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
+import { formatDate } from '../../../utils/layoutUtils';
 import { Plus, Edit2, Trash2, Home, Paperclip } from 'lucide-react';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+
+const homeVisitSchema = z.object({
+  siswa_id: z.string().min(1, 'Harap pilih siswa terlebih dahulu'),
+  tanggal: z.string().min(1, 'Tanggal wajib diisi'),
+  alasan: z.string().min(1, 'Harap isi alasan kunjungan'),
+  hasil: z.string().optional()
+});
 
 export const HomeVisitSection: React.FC = React.memo(() => {
   const [page, setPage] = useState(1);
@@ -33,7 +42,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
   // Form states
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [selectedSiswa, setSelectedSiswa] = useState<{ id: string; nama_siswa?: string; nis?: string; Kelas?: { nama_kelas?: string } } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     siswa_id: '',
@@ -107,12 +116,9 @@ export const HomeVisitSection: React.FC = React.memo(() => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.siswa_id) {
-      toast.error('Harap pilih siswa terlebih dahulu');
-      return;
-    }
-    if (!formData.alasan.trim()) {
-      toast.error('Harap isi alasan kunjungan');
+    const parseResult = homeVisitSchema.safeParse(formData);
+    if (!parseResult.success) {
+      toast.error(parseResult.error.errors[0]?.message || 'Data tidak valid');
       return;
     }
 
@@ -122,13 +128,13 @@ export const HomeVisitSection: React.FC = React.memo(() => {
 
       // 1. Upload scan file if chosen
       if (formData.file) {
-        const uploadRes = (await uploadSiswaDocument(
+        const uploadRes = await uploadSiswaDocument(
           formData.siswa_id,
           formData.file,
           `Foto/Laporan Home Visit - ${selectedSiswa?.nama_siswa || 'Siswa'}`,
           'LAPORAN_BK'
-        )) as any;
-        docId = uploadRes.data?.id;
+        );
+        docId = (uploadRes as { data?: { id?: string } })?.data?.id;
       }
 
       const payload = {
@@ -164,45 +170,49 @@ export const HomeVisitSection: React.FC = React.memo(() => {
       key: 'tanggal',
       label: 'Tanggal Kunjungan',
       sortable: true,
-      render: (value: string) => (
+      render: (value: unknown) => (
         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {value ? formatDate(String(value), { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
         </span>
       )
     },
     {
       key: 'siswa',
       label: 'Profil Siswa',
-      render: (_, item: any) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
-          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
-        </div>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as HomeVisit;
+        return (
+          <div>
+            <div className="font-bold text-slate-800 dark:text-white text-xs">{row.Siswa?.nama_siswa}</div>
+            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{row.Siswa?.Kelas?.nama_kelas || '-'}</div>
+          </div>
+        );
+      }
     },
     {
       key: 'alasan',
       label: 'Alasan Kunjungan',
-      render: (value: string) => (
-        <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-xs">{value}</p>
+      render: (value: unknown) => (
+        <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-xs">{String(value || '-')}</p>
       )
     },
     {
       key: 'hasil',
       label: 'Hasil / Kesepakatan',
-      render: (value: string) => (
-        <p className="text-xs font-medium text-slate-500 line-clamp-1 max-w-xs">{value || '-'}</p>
+      render: (value: unknown) => (
+        <p className="text-xs font-medium text-slate-500 line-clamp-1 max-w-xs">{String(value || '-')}</p>
       )
     },
     {
       key: 'attachments',
       label: 'Lampiran',
-      render: (_, item: any) => {
-        if (!item.Dokumen) return <span className="text-slate-400 text-[10px] font-bold uppercase">-</span>;
+      render: (_: unknown, item: unknown) => {
+        const row = item as HomeVisit & { Dokumen?: { file_original_name?: string } };
+        if (!row.Dokumen) return <span className="text-slate-400 text-[10px] font-bold uppercase">-</span>;
         return (
           <span className="flex items-center text-[10px] font-bold text-blue-600">
             <Paperclip className="w-3 h-3 mr-1" />
-            {item.Dokumen.file_original_name}
+            {row.Dokumen.file_original_name}
           </span>
         );
       }
@@ -210,26 +220,29 @@ export const HomeVisitSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: any) => (
-        <div className="flex gap-1 justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleEdit(item)}
-            className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-          >
-            <Edit2 size={13} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(item.id)}
-            className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-          >
-            <Trash2 size={13} />
-          </Button>
-        </div>
-      )
+      render: (_: unknown, item: unknown) => {
+        const row = item as HomeVisit;
+        return (
+          <div className="flex gap-1 justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEdit(row)}
+              className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            >
+              <Edit2 size={13} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.id)}
+              className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            >
+              <Trash2 size={13} />
+            </Button>
+          </div>
+        );
+      }
     }
   ], [handleEdit, handleDelete]);
 

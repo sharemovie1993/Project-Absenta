@@ -11,6 +11,7 @@ import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.a
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '@/components/ui/Loader';
 import { Card } from '../../components/ui/Card';
+import { formatDate } from '../../utils/layoutUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 
 // Impor tipe data resmi untuk standardisasi Type Safety
@@ -159,8 +160,8 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
     includeSchoolLogo,
     checklistData
   }: PdfGeneratorProps) => {
-    let jadwalList: any[] = [];
-    let jenisKegiatanList: any[] = [];
+    let jadwalList: unknown[] = [];
+    let jenisKegiatanList: unknown[] = [];
     
     if (['roster', 'roster_teacher'].includes(selectedPrintType)) {
       const kelasId = selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId);
@@ -180,15 +181,15 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
           jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 }).catch(() => null)
         ]);
 
-        const rawKbm: any[] = Array.isArray(kbmRes)
+        const rawKbm: unknown[] = Array.isArray(kbmRes)
           ? kbmRes
-          : (Array.isArray((kbmRes as any)?.data) ? (kbmRes as any).data : []);
+          : (Array.isArray((kbmRes as { data?: unknown[] })?.data) ? ((kbmRes as { data?: unknown[] }).data || []) : []);
 
-        const rawKegiatan: any[] = Array.isArray(kegiatanRes)
+        const rawKegiatan: unknown[] = Array.isArray(kegiatanRes)
           ? kegiatanRes
-          : (Array.isArray((kegiatanRes as any)?.data) ? (kegiatanRes as any).data : []);
+          : (Array.isArray((kegiatanRes as { data?: unknown[] })?.data) ? ((kegiatanRes as { data?: unknown[] }).data || []) : []);
 
-        const pembiasaanFiltered = rawKegiatan.filter(isRoutineKesiswaanActivity);
+        const pembiasaanFiltered = (rawKegiatan as Parameters<typeof isRoutineKesiswaanActivity>[0][]).filter(isRoutineKesiswaanActivity);
         const pembiasaanItems = buildPembiasaanJadwalItems(
           pembiasaanFiltered,
           classes,
@@ -199,7 +200,9 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
         );
 
         jadwalList = [...rawKbm, ...pembiasaanItems];
-        jenisKegiatanList = Array.isArray((jenisData as any)?.data) ? (jenisData as any).data : (Array.isArray(jenisData) ? jenisData : []);
+        jenisKegiatanList = Array.isArray((jenisData as { data?: unknown[] })?.data)
+          ? ((jenisData as { data?: unknown[] }).data || [])
+          : (Array.isArray(jenisData) ? jenisData : []);
       } catch (e) {
         console.error('Gagal mengambil data untuk PDF:', e);
       }

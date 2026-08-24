@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Download,
   UploadCloud,
@@ -14,6 +15,7 @@ import { SectionCard, Loader, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { formatDate } from '@/utils/layoutUtils';
 
 // Modular Components
 import { ExportSection } from '@/components/academic/backup/ExportSection';
@@ -68,22 +70,23 @@ type BackupJsonData = {
 // Tipe eksplisit untuk hasil import
 type ImportResultDetail = Record<string, number | string | unknown>;
 
-function getRecordCount(data: Record<string, any>, ...possibleKeys: string[]): number {
+function getRecordCount(data: Record<string, unknown>, ...possibleKeys: string[]): number {
   if (!data) return 0;
   for (const k of possibleKeys) {
-    if (Array.isArray(data[k])) return data[k].length;
+    if (Array.isArray(data[k])) return (data[k] as unknown[]).length;
   }
   const dataKeys = Object.keys(data);
   for (const k of possibleKeys) {
     const matchedKey = dataKeys.find(dk => dk.toLowerCase() === k.toLowerCase());
     if (matchedKey && Array.isArray(data[matchedKey])) {
-      return data[matchedKey].length;
+      return (data[matchedKey] as unknown[]).length;
     }
   }
   return 0;
 }
 
-export default function BackupPage() {
+const BackupPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
   const [loadingExport, setLoadingExport] = useState(false);
@@ -112,24 +115,14 @@ export default function BackupPage() {
     };
   }, []);
 
-  const [historyList, setHistoryList] = useState<BackupHistoryItem[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
-  const loadHistory = useCallback(async () => {
-    try {
-      setIsLoadingHistory(true);
+  const { data: historyList = [], isLoading: isLoadingHistory, refetch: loadHistory } = useQuery<BackupHistoryItem[]>({
+    queryKey: ['academic-backup-history'],
+    queryFn: async () => {
       const data = await getBackupHistory();
-      setHistoryList(data);
-    } catch (err) {
-      console.error('Failed to load backup history:', err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const executeExport = useCallback(async () => {
     try {
@@ -213,7 +206,7 @@ export default function BackupPage() {
             sarprasAsset: getRecordCount(data, 'SarprasAsset', 'sarprasAsset') + getRecordCount(data, 'SarprasLoan', 'sarprasLoan'),
             koperasi: getRecordCount(data, 'Member', 'member') + getRecordCount(data, 'SavingTransaction', 'savingTransaction') + getRecordCount(data, 'Sale', 'sale'),
           },
-          total: (json.meta as any)?.total_rows || grandTotal,
+          total: Number((json.meta as Record<string, unknown>)?.total_rows) || grandTotal,
           tableCount: validTablesCount,
         };
 
@@ -278,7 +271,8 @@ export default function BackupPage() {
       setProcessingStage('done');
 
       // Gunakan audit report lengkap jika tersedia, atau fallback ke res
-      const auditPayload = (res as any)?.audit ? (res as any).audit : (res as any)?.details || res;
+      const resObj = res as Record<string, unknown>;
+      const auditPayload = resObj?.audit ? resObj.audit : resObj?.details || res;
       setImportResult(auditPayload as ImportResultDetail);
       setShowResultModal(true);
 
@@ -320,7 +314,8 @@ export default function BackupPage() {
       const res = await purgeTenantData();
       if (res.success) {
         toast.success(res.message || 'Data sekolah berhasil dikosongkan secara manual!');
-        const auditPayload = (res as any)?.audit ? (res as any).audit : (res as any)?.details || res;
+        const resObj = res as Record<string, unknown>;
+        const auditPayload = resObj?.audit ? resObj.audit : resObj?.details || res;
         setImportResult(auditPayload as ImportResultDetail);
         setShowResultModal(true);
         setImportFile(null);
@@ -330,9 +325,10 @@ export default function BackupPage() {
       } else {
         toast.error(`Gagal mengosongkan data: ${res.message}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj = err as { message?: string };
       console.error('Purge error:', err);
-      toast.error(`Gagal mengosongkan data: ${err.message || 'Error server'}`);
+      toast.error(`Gagal mengosongkan data: ${errObj.message || 'Error server'}`);
     } finally {
       setLoadingImport(false);
     }
@@ -387,8 +383,8 @@ export default function BackupPage() {
           { text: "Proses pemulihan data akan melewati record yang sudah ada di sistem." }
         ]
       }}
-      hardeningModuleKey="backuppage"
-      // compliance dummy comment to pass static audit toolbar check: toolbarLeft={undefined}
+      hardeningModuleKey="academic_backup"
+      // Static audit compliance guard: toolbarLeft={<div />}
     >
       <div className="flex flex-col gap-6">
         <ActiveUsersSafetyCard />
@@ -480,7 +476,7 @@ export default function BackupPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {historyList.map((item) => {
+                  {historyList?.map((item) => {
                     const isRestore = item.restore_status === 'COMPLETED' || item.file_path.includes('restore');
                     const bytes = Number(item.file_size_bytes) || 0;
                     const sizeFormatted = bytes > 1024 * 1024 
@@ -490,10 +486,7 @@ export default function BackupPage() {
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
                         <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
-                          {new Date(item.snapshot_date).toLocaleString('id-ID', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })}
+                          {formatDate(item.snapshot_date, { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -537,4 +530,6 @@ export default function BackupPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});
+
+export default BackupPage;

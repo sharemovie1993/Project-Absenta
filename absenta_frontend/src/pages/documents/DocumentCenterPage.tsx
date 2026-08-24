@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatDate } from '@/utils/layoutUtils';
 import {
   Button,
   Loader,
@@ -100,7 +102,7 @@ const editMetadataSchema = z.object({
   description: z.string().optional(),
 });
 
-export default function DocumentCenterPage() {
+export default React.memo(function DocumentCenterPage() {
   const confirm = useConfirm();
 
   const location = useLocation();
@@ -131,12 +133,8 @@ export default function DocumentCenterPage() {
     return (match ?? fallback) as DocumentCategory | 'ALL';
   }, [categoryOptions, location.state, searchParams]);
 
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | 'ALL'>(initialSelectedCategory);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 500);
@@ -181,50 +179,31 @@ export default function DocumentCenterPage() {
   const formFile = watch('file') as File | undefined;
   const editMetadataCategory = watchEditMetadata('category') as DocumentCategory;
 
-  const fetchDocuments = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        setLoadError(null);
-        const res = await listDocuments({
-          page,
-          limit: itemsPerPage,
-          category: selectedCategory === 'ALL' ? undefined : selectedCategory,
-          search: debouncedSearch,
-          is_active: true,
-        });
+  const { data: docData, isLoading: loading, error: docError, refetch } = useQuery({
+    queryKey: ['documents-list', currentPage, itemsPerPage, selectedCategory, debouncedSearch],
+    queryFn: () => listDocuments({
+      page: currentPage,
+      limit: itemsPerPage,
+      category: selectedCategory === 'ALL' ? undefined : selectedCategory,
+      search: debouncedSearch,
+      is_active: true,
+    }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-        if (!res.success) {
-          const msg = res.message || 'Gagal memuat dokumen';
-          setLoadError(msg);
-          toast.error(msg);
-          return;
-        }
+  const documents = useMemo(() => docData?.data || [], [docData]);
+  const totalPages = docData?.pagination?.totalPages || 1;
+  const totalItems = docData?.pagination?.total || 0;
+  const loadError = docError ? (docError instanceof Error ? docError.message : String(docError)) : null;
 
-        setDocuments(res.data || []);
-        setCurrentPage(res.pagination.page);
-        setTotalPages(res.pagination.totalPages);
-        setTotalItems(res.pagination.total);
-      } catch (e: unknown) {
-        const msg = (e instanceof Error ? e.message : String(e)) || 'Gagal memuat dokumen';
-        setLoadError(msg);
-        toast.error(msg);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [selectedCategory, itemsPerPage, debouncedSearch]
-  );
-
-  useEffect(() => {
-    fetchDocuments(1);
-    setCurrentPage(1);
-  }, [fetchDocuments]);
+  const fetchDocuments = useCallback((_page?: number) => {
+    queryClient.invalidateQueries({ queryKey: ['documents-list'] });
+    refetch();
+  }, [queryClient, refetch]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    fetchDocuments(page);
-  }, [fetchDocuments]);
+  }, []);
 
   const handleDownload = useCallback(async (doc: DocumentItem) => {
     try {
@@ -414,13 +393,18 @@ export default function DocumentCenterPage() {
     </div>
   ), [loading, currentPage, fetchDocuments, canDelete, selectedIds.size, bulkProcessing, handleBulkDelete, canUpload]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'System' },
+    { label: 'Dokumen Legalitas' }
+  ], []);
+
   return (
     <AcademicPageLayout
       title="Dokumen Legalitas Sekolah"
       description="Kelola dokumen administrasi, legal, manual, dan MoU secara terpusat dengan dukungan riwayat versi."
       stats={statsList}
       hardeningModuleKey="document_center"
-      breadcrumbs={[{ label: 'System' }, { label: 'Dokumen Legalitas' }]}
+      breadcrumbs={breadcrumbs}
       instruction={{
         title: 'Panduan Dokumen Legalitas Sekolah',
         description: 'Pusat pengelolaan file digital institusi Anda.',
@@ -445,7 +429,7 @@ export default function DocumentCenterPage() {
               className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
             />
           </div>
-          <div className="w-full md:w-[240px]">
+          <div className="w-full md:w-60 max-w-full min-w-0">
             <SearchableSelect
               id="category-filter"
               aria-label="Pilih Kategori Filter"
@@ -556,4 +540,4 @@ export default function DocumentCenterPage() {
       </Suspense>
     </AcademicPageLayout>
   );
-}
+});

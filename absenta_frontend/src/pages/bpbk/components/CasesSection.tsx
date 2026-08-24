@@ -14,9 +14,9 @@ import { Search, Plus } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 // Extracted Components
-import { CaseTable } from './cases/CaseTable';
-import { CaseFormModal } from './cases/CaseFormModal';
-import { CaseDetailModal } from './cases/CaseDetailModal';
+const CaseTable = lazy(() => import('./cases/CaseTable').then(m => ({ default: m.CaseTable })));
+const CaseFormModal = lazy(() => import('./cases/CaseFormModal').then(m => ({ default: m.CaseFormModal })));
+const CaseDetailModal = lazy(() => import('./cases/CaseDetailModal').then(m => ({ default: m.CaseDetailModal })));
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 

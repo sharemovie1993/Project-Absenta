@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button, Input } from '@/components/ui';
@@ -16,6 +18,11 @@ import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
 import toast from 'react-hot-toast';
 
+const loginFormSchema = z.object({
+  email: z.string().min(1, 'Email atau NISN/NIP wajib diisi'),
+  password: z.string().min(1, 'Kata sandi wajib diisi')
+});
+
 export default function LoginPage() {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [localError, setLocalError] = useState('');
@@ -32,7 +39,7 @@ export default function LoginPage() {
 
   // Auto-open server configuration gateway if running on mobile and no server is configured yet
   useEffect(() => {
-    if (isCapacitorApp() || (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.())) {
+    if (isCapacitorApp() || (typeof window !== 'undefined' && (window as Record<string, unknown>).Capacitor?.isNativePlatform?.())) {
       const saved = getSavedServerDomain();
       if (!saved) {
         setIsServerModalOpen(true);
@@ -45,7 +52,7 @@ export default function LoginPage() {
     if (typeof window === 'undefined') return false;
 
     // In Capacitor mobile container, NEVER force demo mode by default unless explicitly configured to demo.absenta.id
-    if (isCapacitorApp() || (window as any).Capacitor?.isNativePlatform?.()) {
+    if (isCapacitorApp() || (window as Record<string, unknown>).Capacitor?.isNativePlatform?.()) {
       const savedDomain = getSavedServerDomain();
       return Boolean(savedDomain && (savedDomain.includes('demo') || savedDomain.startsWith('demo.')));
     }
@@ -69,12 +76,12 @@ export default function LoginPage() {
   const [showManualLogin, setShowManualLogin] = useState(false);
   const [activeLoadingRoleId, setActiveLoadingRoleId] = useState<string | null>(null);
 
-  const handleScanSuccess = (scannedCode: string) => {
+  const handleScanSuccess = useCallback((scannedCode: string) => {
     setCredentials(prev => ({
       ...prev,
       email: scannedCode,
     }));
-  };
+  }, []);
 
   const { loginAction, isAuthenticated, isLoading, error, user } = useAuthStore();
   const location = useLocation();
@@ -157,7 +164,7 @@ export default function LoginPage() {
       } catch (e) {}
       
       try {
-        const nodeId = (window as any).__BACKEND_NODE_ID__;
+        const nodeId = (window as Record<string, unknown>).__BACKEND_NODE_ID__;
         if (nodeId) setBackendNodeId(String(nodeId));
       } catch {}
 
@@ -187,11 +194,11 @@ export default function LoginPage() {
 
   if (isAuthenticated) {
     const sub = useAuthStore.getState().subscription;
-    const isGerbang = (user as any)?.position_codes?.includes('GERBANG');
+    const isGerbang = (user as Record<string, unknown>)?.position_codes?.includes('GERBANG');
     const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard';
     const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
     
-    const roleName = user?.role?.name || (user as any)?.roleName || '';
+    const roleName = user?.role?.name || (user as Record<string, unknown>)?.roleName || '';
     const isAdminOrSuperadmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN';
     
     // Redirect to onboarding if not completed yet (only for admins)
@@ -202,7 +209,7 @@ export default function LoginPage() {
     return <Navigate to={target} replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
     try {
@@ -221,9 +228,9 @@ export default function LoginPage() {
       }
       setLocalError(data?.message || errorObj.message || 'Gagal masuk');
     }
-  };
+  }, [credentials, tenantIdDev, loginAction, navigate]);
 
-  const handleDemoRoleLogin = async (profile: DemoRoleProfile) => {
+  const handleDemoRoleLogin = useCallback(async (profile: DemoRoleProfile) => {
     setActiveLoadingRoleId(profile.id);
     setLocalError('');
     try {
@@ -247,15 +254,16 @@ export default function LoginPage() {
       toast.loading(`Masuk sebagai ${profile.title}...`, { id: 'demo-login' });
       await loginAction(profile.email, profile.password || 'password123', devTenantArg);
       toast.success(`Selamat datang, ${profile.simulatedName}!`, { id: 'demo-login' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.dismiss('demo-login');
-      const data = err?.response?.data;
-      setLocalError(data?.message || err?.message || 'Gagal menghubungkan sesi demo');
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const data = errorObj?.response?.data;
+      setLocalError(data?.message || errorObj?.message || 'Gagal menghubungkan sesi demo');
       setActiveLoadingRoleId(null);
     }
-  };
+  }, [tenantIdDev, loginAction]);
 
-  const handleResendVerification = async () => {
+  const handleResendVerification = useCallback(async () => {
     setResendStatus('loading');
     setResendMessage('');
     try {
@@ -273,11 +281,11 @@ export default function LoginPage() {
       setResendStatus('error');
       setResendMessage(errorObj?.response?.data?.message || 'Gagal kirim ulang.');
     }
-  };
+  }, [credentials.email]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.4, ease: "easeOut" as any } }
+    visible: { opacity: 1, transition: { duration: 0.4, ease: "easeOut" as Record<string, unknown> } }
   };
 
   const itemVariants = {
@@ -288,7 +296,7 @@ export default function LoginPage() {
   // ── FULL-WIDTH DESKTOP BENTO APP LAUNCHER MODE UNTUK DEMO ──
   if (isDemoEnvironment && !showManualLogin) {
     return (
-      <InfraErrorBoundary>
+      <InfraErrorBoundary hardeningModuleKey="auth_login">
         <main className="min-h-screen w-full bg-gradient-to-tr from-slate-50 via-slate-50/70 to-blue-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 font-sans selection:bg-amber-100 overflow-x-hidden relative">
           <Navbar />
 
@@ -296,21 +304,21 @@ export default function LoginPage() {
           <div className="absolute top-1/4 right-1/4 w-[36rem] h-[36rem] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-amber-600/5" />
           <div className="absolute bottom-1/4 left-1/4 w-[32rem] h-[32rem] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none dark:bg-blue-600/5" />
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-22 pb-16 relative z-10">
+          <Card className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-22 pb-16 relative z-10 border-none shadow-none bg-transparent">
             <DemoRoleSelector
               onSelectRole={handleDemoRoleLogin}
               isLoading={isLoading}
               activeLoadingRoleId={activeLoadingRoleId}
               onToggleManualLogin={() => setShowManualLogin(true)}
             />
-          </div>
+          </Card>
         </main>
       </InfraErrorBoundary>
     );
   }
 
   return (
-    <InfraErrorBoundary>
+    <InfraErrorBoundary hardeningModuleKey="auth_login">
       <main className="min-h-screen w-full flex flex-col md:flex-row bg-white dark:bg-slate-950 font-sans selection:bg-blue-100 overflow-x-hidden">
         <Navbar />
         
@@ -361,9 +369,11 @@ export default function LoginPage() {
                    
                    {/* Carousel Dots */}
                    <div className="flex gap-2 mt-6">
-                      {features.map((_, i) => (
+                      {features?.map((_, i) => (
                          <button
                             key={i}
+                            type="button"
+                            aria-label={`Lihat fitur ${i + 1}`}
                             onClick={() => setActiveFeatureIndex(i)}
                             className={`h-1.5 rounded-full transition-all duration-300 ${
                                i === activeFeatureIndex ? 'w-6 bg-blue-500' : 'w-1.5 bg-slate-700'
@@ -443,7 +453,7 @@ export default function LoginPage() {
                    </div>
                  )}
      
-                 <form onSubmit={handleSubmit} className="space-y-4">
+                 <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-full min-w-0">
                      <motion.div variants={itemVariants} transition={{ delay: 0.1 }}>
                        <div className="flex justify-between items-center mb-1.5 ml-1">
                            <label htmlFor="loginEmail" className="text-xs font-bold text-slate-400 uppercase tracking-widest block">NIP / NISN / Email Sekolah</label>
@@ -496,7 +506,7 @@ export default function LoginPage() {
                        <motion.div variants={itemVariants} transition={{ delay: 0.3 }} className="space-y-1.5 pt-2">
                          <label className="text-xs font-bold text-amber-600 uppercase tracking-wider block">Developer: Target Tenant</label>
                          <SearchableSelect
-                           options={devTenants.map(t => ({
+                           options={devTenants?.map(t => ({
                              value: t.id,
                              label: t.name,
                              sublabel: t.domain ? `${t.domain}` : undefined,

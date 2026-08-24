@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { AuditSection } from './components/AuditSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { SectionCard } from '@/components/ui';
+
+const AuditSection = lazy(() => import('./components/AuditSection').then(m => ({ default: m.AuditSection })));
 
 export default React.memo(function AuditPage() {
   const { isBpbk, isAdmin, can } = useCapabilities();
@@ -29,9 +31,11 @@ export default React.memo(function AuditPage() {
           ]
         }}
       >
-        <div className="w-full min-w-0">
-          <AuditSection />
-        </div>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <Suspense fallback={<div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />}>
+            <AuditSection />
+          </Suspense>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

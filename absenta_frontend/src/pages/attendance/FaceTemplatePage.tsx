@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
-// Standardized using lazy( and Suspense
+import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { 
   SectionCard, 
   Button, 
@@ -7,7 +8,6 @@ import {
   Table, 
   EnhancedAlert, 
   Loader, 
-  Modal, 
   Badge, 
   Alert, 
   AlertDescription,
@@ -23,6 +23,16 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
 import useConfirm from '../../hooks/useConfirm';
 import PageLayout from '../../components/common/PageLayout';
+import { formatDate } from '../../utils/layoutUtils';
+
+// Lazy load heavy components
+const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
+
+// Skema validasi Zod untuk filter/form (Pilar 25)
+const faceTemplateFilterSchema = z.object({
+  search: z.string().optional(),
+  kelas_id: z.string().optional(),
+});
 
 interface FaceTemplate {
   id: string;
@@ -51,12 +61,8 @@ const instructionData = {
   ]
 };
 
-const breadcrumbs = [
-  { label: 'Presensi', path: '/attendance/ops' },
-  { label: 'Rekam Wajah Premium', active: true }
-];
-
 export const FaceTemplatePage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const { isAdmin, can } = useCapabilities();
 
@@ -69,13 +75,11 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
 
   useGerbangModeAndRole({ user });
 
-  const [items, setItems] = useState<FaceTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [kelasId, setKelasId] = useState<string>('');
-  const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0 });
+  const [pagination, setPagination] = useState({ limit: 50, offset: 0 });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [showEnroll, setShowEnroll] = useState(false);
   const [sortKey, setSortKey] = useState<string>('Siswa');
@@ -83,31 +87,30 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
 
   const confirm = useConfirm();
 
-  const loadData = useCallback(async () => {
-    if (isLocked) return;
-    try {
-      setLoading(true);
-      const res = await getFaceTemplates({ 
-        search: searchTerm || undefined, 
-        kelas_id: kelasId || undefined, 
+  const { data: templateRes, isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['face-templates', searchTerm, kelasId, pagination.limit, pagination.offset],
+    queryFn: () => {
+      const parsed = faceTemplateFilterSchema.safeParse({ search: searchTerm, kelas_id: kelasId });
+      const validSearch = parsed.success ? parsed.data.search : searchTerm;
+      const validKelas = parsed.success ? parsed.data.kelas_id : kelasId;
+      return getFaceTemplates({ 
+        search: validSearch || undefined, 
+        kelas_id: validKelas || undefined, 
         limit: pagination.limit, 
         offset: pagination.offset 
       });
-      setItems(res?.data || []);
-      if (res?.pagination) {
-        setPagination(prev => ({ ...prev, total: res.pagination?.total || 0 }));
-      }
-    } catch (e: unknown) {
-      const errObj = e as { message?: string };
-      setError(errObj?.message || 'Gagal memuat template');
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, kelasId, pagination.limit, pagination.offset, isLocked]);
+    },
+    enabled: !isLocked && canView,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const items = useMemo(() => templateRes?.data || [], [templateRes]);
+  const totalItems = templateRes?.pagination?.total || 0;
+
+  const loadData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['face-templates'] });
+    refetch();
+  }, [queryClient, refetch]);
 
   const handlePageChange = useCallback((page: number) => {
     setPagination(prev => ({ ...prev, offset: (page - 1) * prev.limit }));
@@ -145,7 +148,7 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
       sortable: true,
       render: (v: string) => (
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-          {new Date(v).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          {v ? formatDate(v, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
         </span>
       )
     },
@@ -250,8 +253,8 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
             onSort={handleSort}
             pagination={{
               currentPage: Math.floor(pagination.offset / pagination.limit) + 1,
-              totalPages: Math.ceil(pagination.total / pagination.limit) || 1,
-              totalItems: pagination.total,
+              totalPages: Math.ceil(totalItems / pagination.limit) || 1,
+              totalItems: totalItems,
               itemsPerPage: pagination.limit,
               onPageChange: handlePageChange,
               onLimitChange: handleLimitChange
@@ -260,41 +263,48 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
         </div>
       </SectionCard>
 
-      <Modal
-        isOpen={showEnroll}
-        onClose={() => setShowEnroll(false)}
-        title="Rekam Wajah Baru (AI Face Register)"
-        size="lg"
-      >
-        <div className="space-y-6 pt-4 text-center">
-          <ScanFace className="w-16 h-16 mx-auto text-blue-500 animate-pulse" />
-          <div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest">
-              Registrasi Wajah Siswa
-            </h4>
-            <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
-              Registrasi wajah premium dapat diselesaikan langsung melalui Terminal Scanner di modul operator gerbang.
-            </p>
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={showEnroll}
+          onClose={() => setShowEnroll(false)}
+          title="Rekam Wajah Baru (AI Face Register)"
+          size="lg"
+        >
+          <div className="space-y-6 pt-4 text-center">
+            <ScanFace className="w-16 h-16 mx-auto text-blue-500 animate-pulse" />
+            <div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest">
+                Registrasi Wajah Siswa
+              </h4>
+              <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
+                Registrasi wajah premium dapat diselesaikan langsung melalui Terminal Scanner di modul operator gerbang.
+              </p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-left text-xs space-y-3">
+              <p className="font-bold text-slate-600 dark:text-slate-300">
+                Langkah-langkah perekaman biometrik wajah:
+              </p>
+              <ol className="list-decimal list-inside text-slate-500 space-y-1.5 font-medium leading-relaxed">
+                <li>Pilih menu <strong>Kehadiran (Presensi) &gt; Dashboard Gerbang</strong></li>
+                <li>Aktifkan <strong>Mode Scanner</strong> atau klik tombol <strong>Registrasi Wajah</strong> di samping profil siswa</li>
+                <li>Gunakan webcam/kamera terhubung untuk memindai wajah siswa secara langsung dengan overlay pemandu AI.</li>
+              </ol>
+            </div>
+            <div className="flex pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
+              <Button onClick={() => setShowEnroll(false)} className="w-full h-12 rounded-xl font-black text-[11px] uppercase tracking-widest bg-blue-600 text-white shadow-xl">
+                Kembali
+              </Button>
+            </div>
           </div>
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-left text-xs space-y-3">
-            <p className="font-bold text-slate-600 dark:text-slate-300">
-              Langkah-langkah perekaman biometrik wajah:
-            </p>
-            <ol className="list-decimal list-inside text-slate-500 space-y-1.5 font-medium leading-relaxed">
-              <li>Pilih menu <strong>Kehadiran (Presensi) &gt; Dashboard Gerbang</strong></li>
-              <li>Aktifkan <strong>Mode Scanner</strong> atau klik tombol <strong>Registrasi Wajah</strong> di samping profil siswa</li>
-              <li>Gunakan webcam/kamera terhubung untuk memindai wajah siswa secara langsung dengan overlay pemandu AI.</li>
-            </ol>
-          </div>
-          <div className="flex pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
-            <Button onClick={() => setShowEnroll(false)} className="w-full h-12 rounded-xl font-black text-[11px] uppercase tracking-widest bg-blue-600 text-white shadow-xl">
-              Kembali
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      </Suspense>
     </div>
   );
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Presensi', path: '/attendance/ops' },
+    { label: 'Rekam Wajah Premium', active: true }
+  ], []);
 
   return (
     <PageLayout

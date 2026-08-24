@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
-import { hubinApi, type HubinLowongan, type HubinLamaran } from '../../../api/hubin.api';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
-import { Loader } from '../../../components/ui/Loader';
-import { Badge } from '../../../components/ui/Badge';
-import { useAuthStore } from '../../../store/authStore';
-import { useCapabilities } from '../../../hooks/useCapabilities';
-import { TabSwitcher } from '../../../components/ui/TabSwitcher';
+import { hubinApi, type HubinLowongan, type HubinLamaran } from '@/api/hubin.api';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Loader } from '@/components/ui/Loader';
+import { Badge } from '@/components/ui/Badge';
+import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import {
   Briefcase,
   Plus,
@@ -25,13 +25,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import useConfirm from '../../../hooks/useConfirm';
+import useConfirm from '@/hooks/useConfirm';
 
 // Import extracted BKK components & modals (Pillar 21 & 22)
-import { InterviewModal, RejectModal, STATUS_CONFIG } from './bkk/BkkModals';
-import { JobCard } from './bkk/JobCard';
-import { BkkPelamarTab } from './bkk/BkkPelamarTab';
-import { useBkkLowonganOptions } from '../../../hooks/useBkkLowonganOptions';
+import { InterviewModal, RejectModal, STATUS_CONFIG } from './BkkModals';
+import { JobCard } from './JobCard';
+import { BkkPelamarTab } from './BkkPelamarTab';
+import { useBkkLowonganOptions } from '@/hooks/useBkkLowonganOptions';
 
 // ─── Zod Schema Validation Guards (Pillar 25) ───
 const lowonganFormSchema = z.object({
@@ -42,20 +42,8 @@ const lowonganFormSchema = z.object({
   persyaratan: z.string().min(1, 'Kualifikasi & persyaratan wajib diisi'),
   deskripsi: z.string().optional(),
 });
-
-const applyJobFormSchema = z.object({
-  lowongan_id: z.string().min(1),
-  cv_url: z.string().url('Tautan CV Digital / Portofolio harus berupa URL valid'),
-  catatan: z.string().optional(),
-});
-
-const scheduleInterviewFormSchema = z.object({
-  tanggal: z.string().min(1, 'Tanggal & waktu interview wajib diisi'),
-  lokasi: z.string().optional(),
-  link: z.string().optional(),
-  pesan: z.string().optional(),
-  narahubung: z.string().optional(),
-});
+const applyJobFormSchema = z.object({ lowongan_id: z.string().min(1), cv_url: z.string().url('Tautan CV Digital / Portofolio harus berupa URL valid'), catatan: z.string().optional() });
+const scheduleInterviewFormSchema = z.object({ tanggal: z.string().min(1, 'Tanggal & waktu interview wajib diisi'), lokasi: z.string().optional(), link: z.string().optional(), pesan: z.string().optional(), narahubung: z.string().optional() });
 
 export const BkkSection: React.FC = React.memo(() => {
   const { user } = useAuthStore();

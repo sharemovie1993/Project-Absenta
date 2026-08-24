@@ -6,6 +6,7 @@ import { kurikulumApi } from '../../../api/kurikulum.api';
 import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
 import { usePiketGateStore } from '../../../hooks/usePiketGateStore';
 import { calculatePiketAnalytics, getPermitGateStage, getPermitStatusBadge } from '../../../utils/piketStatusHelper';
+import { formatDate } from '../../../utils/layoutUtils';
 
 interface PelanggaranItem {
   id: string;
@@ -86,7 +87,7 @@ export const PiketAgendaPanel = React.memo(function PiketAgendaPanel() {
   const upcomingEvents = Array.isArray(rawEvents) 
     ? rawEvents.slice(0, 3)?.map((e) => ({
         event: e.nama_kegiatan || e.title || e.event || 'Kegiatan Sekolah',
-        tanggal: e.tanggal ? new Date(e.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (e.tanggal_str || 'Hari ini'),
+        tanggal: e.tanggal ? formatDate(e.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }) : (e.tanggal_str || 'Hari ini'),
         desc: e.keterangan || e.deskripsi || 'Agenda kesiswaan & akademik sekolah.'
       }))
     : [];
@@ -158,9 +159,9 @@ export const PiketAgendaPanel = React.memo(function PiketAgendaPanel() {
                 {isLoadingPermits ? (
                   <div className="text-xs text-slate-400 font-medium py-2">Memuat data izin siswa...</div>
                 ) : dailyPermits.length > 0 ? (
-                  dailyPermits.slice(0, 3).map((p) => {
-                    const namaSiswa = p.SiswaAkademik?.siswa?.nama_siswa || (p as any).Siswa?.nama_siswa || (p as any).siswa?.nama_siswa || (p as any).nama_siswa || 'Siswa';
-                    const namaKelas = p.SiswaAkademik?.kelas?.nama_kelas || (p as any).Siswa?.Kelas?.nama_kelas || (p as any).kelas?.nama_kelas || (p as any).nama_kelas || '-';
+                  dailyPermits.slice(0, 3)?.map((p) => {
+                    const namaSiswa = p.SiswaAkademik?.siswa?.nama_siswa || p.Siswa?.nama_siswa || 'Siswa';
+                    const namaKelas = p.SiswaAkademik?.kelas?.nama_kelas || p.Siswa?.Kelas?.nama_kelas || '-';
                     const stage = getPermitGateStage(p, exitedGateIds);
                     const badgeConfig = getPermitStatusBadge(stage);
 

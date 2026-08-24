@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
 import type { MitraIndustri } from '../../api/hubin.api';
 import { guruApi, jurusanApi } from '../../api/academic.api';
+import { formatDate } from '../../utils/layoutUtils';
 import { 
   Plus, 
   Search, 
@@ -20,6 +22,10 @@ import {
   Eye
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+const mitraSearchSchema = z.object({
+  searchTerm: z.string().max(100).optional(),
+});
 
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -449,7 +455,12 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
         aria-label="Cari nama mitra atau bidang industri"
         placeholder="Cari nama mitra atau bidang..."
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={(e) => {
+          const parsed = mitraSearchSchema.safeParse({ searchTerm: e.target.value });
+          if (parsed.success) {
+            setSearchTerm(e.target.value);
+          }
+        }}
         className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
       />
     </div>

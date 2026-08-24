@@ -28,6 +28,7 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 const LoanRequestForm = lazy(() => import('../../components/sarpras/LoanRequestForm'));
 const LoanStatusActions = lazy(() => import('../../components/sarpras/LoanStatusActions'));
@@ -245,7 +246,7 @@ const SarprasLoansPage: React.FC = React.memo(() => {
         render: (val: unknown) => (
           <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
             <Calendar size={12} />
-            {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+            {val ? formatDate(val as string, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
           </div>
         )
       },
@@ -255,7 +256,7 @@ const SarprasLoansPage: React.FC = React.memo(() => {
         sortable: true,
         render: (val: unknown) => (
           <span className="text-sm text-slate-500">
-            {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+            {val ? formatDate(val as string, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
           </span>
         )
       },
@@ -401,7 +402,7 @@ const SarprasLoansPage: React.FC = React.memo(() => {
 
           {/* Filters */}
           <TabSwitcher
-            options={statusButtons.map(btn => ({
+            options={(statusButtons ?? [])?.map(btn => ({
               id: btn.value,
               label: btn.label,
               colorClass: 'text-indigo-600 dark:text-indigo-400'

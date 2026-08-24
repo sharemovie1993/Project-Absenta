@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
+import { formatDate } from '../../utils/layoutUtils';
 import useConfirm from '../../hooks/useConfirm';
 
 import { PrintLoanCard } from '../../components/cooperative/loans/PrintLoanCard';
@@ -32,8 +33,8 @@ const LoanDetail: React.FC = React.memo(() => {
   const installmentLimit = 12;
 
   // Gating Logic
-  const subData = subscription as any;
-  const features = (subData?.features as string[]) || (subData?.Plan as any)?.features_json as string[] || (subData?.plan as any)?.features_json as string[] || [];
+  const subData = subscription as unknown as Record<string, unknown>;
+  const features = (subData?.features as string[]) || (subData?.Plan as Record<string, unknown>)?.features_json as string[] || (subData?.plan as Record<string, unknown>)?.features_json as string[] || [];
   const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
   // Capability checks
@@ -67,7 +68,7 @@ const LoanDetail: React.FC = React.memo(() => {
     await loanDetailQuery.refetch();
   }, [loanDetailQuery]);
 
-  const updateStatusMutation = useMutation({
+  const changeStatusMutation = useMutation({
     mutationFn: async (status: 'APPROVED' | 'REJECTED') => {
       const res = await api.put(`/cooperative/loans/${id}/status`, { status });
       return { data: res.data, status };
@@ -84,7 +85,7 @@ const LoanDetail: React.FC = React.memo(() => {
     }
   });
 
-  const handleUpdateStatus = async (status: 'APPROVED' | 'REJECTED') => {
+  const handleChangeStatus = async (status: 'APPROVED' | 'REJECTED') => {
     const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
     const isConfirmed = await confirm({
       title: status === 'APPROVED' ? 'Setujui Pengajuan' : 'Tolak Pengajuan',
@@ -94,7 +95,7 @@ const LoanDetail: React.FC = React.memo(() => {
       style: status === 'APPROVED' ? 'success' : 'danger'
     });
     if (!isConfirmed) return;
-    await updateStatusMutation.mutateAsync(status);
+    await changeStatusMutation.mutateAsync(status);
   };
 
   const payInstallmentMutation = useMutation({
@@ -148,7 +149,7 @@ const LoanDetail: React.FC = React.memo(() => {
         render: (_, row: Installment) => (
           <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
             <Calendar size={13} className="text-slate-400" />
-            {new Date(row.dueDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+            {formatDate(row.dueDate, { day: '2-digit', month: 'short', year: 'numeric' })}
           </div>
         )
       },
@@ -179,10 +180,10 @@ const LoanDetail: React.FC = React.memo(() => {
         key: 'paidDate', 
         label: 'Tanggal Bayar', 
         render: (_, row: Installment) => row.paidDate ? (
-          <span className="text-slate-450 text-[11px] font-bold">
-            {new Date(row.paidDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          <span className="text-slate-400 text-[11px] font-bold">
+            {formatDate(row.paidDate, { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
-        ) : <span className="text-slate-350 dark:text-slate-700">-</span>
+        ) : <span className="text-slate-300 dark:text-slate-700">-</span>
       }
     ];
 
@@ -209,7 +210,7 @@ const LoanDetail: React.FC = React.memo(() => {
               <Button 
                 size="xs" 
                 variant="outline"
-                className="text-indigo-650 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-800 font-bold rounded-lg text-[9px] px-2.5 py-1 flex items-center gap-1 shadow-sm h-6 inline-flex"
+                className="text-indigo-600 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-800 font-bold rounded-lg text-[9px] px-2.5 py-1 flex items-center gap-1 shadow-sm h-6 inline-flex"
                 onClick={() => {
                   setSelectedRepayment({ installment: row, index: index + 1 });
                   setPrintTarget('REPAYMENT');
@@ -255,7 +256,7 @@ const LoanDetail: React.FC = React.memo(() => {
           breadcrumbs={breadcrumbs}
         >
           <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-650 rounded-full animate-spin"></div>
           </div>
         </AcademicPageLayout>
       </PremiumFeatureGate>
@@ -280,7 +281,7 @@ const LoanDetail: React.FC = React.memo(() => {
           }}
           breadcrumbs={breadcrumbs}
         >
-          <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-150 dark:border-slate-800 rounded-2xl">
+          <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-800 rounded-2xl">
             Berkas pinjaman tidak ditemukan atau Anda tidak memiliki hak akses.
           </div>
         </AcademicPageLayout>
@@ -324,7 +325,7 @@ const LoanDetail: React.FC = React.memo(() => {
                 variant="outline"
                 size="sm"
                 onClick={() => setPrintTarget('CARD')}
-                className="text-indigo-600 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-850 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
+                className="text-indigo-600 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
               >
                 <Printer size={14} /> Cetak Kartu Kendali
               </Button>
@@ -334,7 +335,7 @@ const LoanDetail: React.FC = React.memo(() => {
                     variant="outline"
                     size="sm"
                     onClick={() => setPrintTarget('AGREEMENT')}
-                    className="text-slate-700 hover:bg-slate-50 border-slate-200 dark:text-slate-350 dark:hover:bg-slate-850 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
+                    className="text-slate-700 hover:bg-slate-50 border-slate-200 dark:text-slate-300 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
                   >
                     <FileText size={14} /> Cetak Akad Pinjaman
                   </Button>
@@ -342,7 +343,7 @@ const LoanDetail: React.FC = React.memo(() => {
                     variant="outline"
                     size="sm"
                     onClick={() => setPrintTarget('RECEIPT')}
-                    className="text-emerald-650 hover:bg-emerald-50/20 border-emerald-200 dark:text-emerald-400 dark:hover:bg-slate-850 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
+                    className="text-emerald-600 hover:bg-emerald-50/20 border-emerald-200 dark:text-emerald-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-sm"
                   >
                     <Receipt size={14} /> Cetak Kuitansi
                   </Button>
@@ -376,7 +377,7 @@ const LoanDetail: React.FC = React.memo(() => {
                     loan.status === 'PAID' 
                       ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20' 
                       : loan.status === 'APPROVED' 
-                      ? 'bg-blue-50 text-blue-650 border-blue-500/20' 
+                      ? 'bg-blue-50 text-blue-600 border-blue-500/20' 
                       : loan.status === 'PENDING' 
                       ? 'bg-amber-50 text-amber-600 border-amber-500/20' 
                       : 'bg-slate-50 text-slate-500 border-slate-200'
@@ -390,7 +391,7 @@ const LoanDetail: React.FC = React.memo(() => {
               <SectionCard className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between">
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Nilai Pinjaman</p>
-                  <h3 className="text-xl font-extrabold text-slate-850 dark:text-slate-100 mt-1">
+                  <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">
                     Rp {Math.round(parseFloat(loan.amount)).toLocaleString('id-ID')}
                   </h3>
                 </div>
@@ -414,7 +415,7 @@ const LoanDetail: React.FC = React.memo(() => {
               <SectionCard className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between">
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tenor / Jangka Waktu</p>
-                  <h3 className="text-xl font-extrabold text-indigo-650 dark:text-indigo-400 mt-1">
+                  <h3 className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">
                     {loan.duration} Bulan
                   </h3>
                 </div>
@@ -431,20 +432,20 @@ const LoanDetail: React.FC = React.memo(() => {
                 <SectionCard className="lg:col-span-2 p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl space-y-4 shadow-sm">
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <Award size={16} className="text-indigo-650" /> Analisis Kelayakan & Simpanan Anggota
+                      <Award size={16} className="text-indigo-600" /> Analisis Kelayakan & Simpanan Anggota
                     </h3>
                     <p className="text-[10px] text-slate-400 mt-0.5">Penilaian jaminan saldo simpanan internal koperasi untuk meminimalkan risiko kredit</p>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total Simpanan</p>
                       <h4 className="text-base font-black text-slate-800 dark:text-slate-100 mt-1">
                         Rp {Math.round(loan.member.totalSavings || 0).toLocaleString('id-ID')}
                       </h4>
                     </div>
 
-                    <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Rasio Simpanan vs Pinjaman</p>
                       {(() => {
                         const amountVal = parseFloat(loan.amount);
@@ -465,9 +466,9 @@ const LoanDetail: React.FC = React.memo(() => {
                       })()}
                     </div>
 
-                    <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-800/30">
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Riwayat Pinjaman Lain</p>
-                      <div className="text-base font-black text-slate-850 dark:text-slate-100 mt-1">
+                      <div className="text-base font-black text-slate-800 dark:text-slate-100 mt-1">
                         {loan.member.loanHistory?.length || 0} Kali
                       </div>
                     </div>
@@ -479,12 +480,8 @@ const LoanDetail: React.FC = React.memo(() => {
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Rincian Saldo Simpanan</p>
                       <div className="flex flex-wrap gap-2">
                         {loan.member.savingsBreakdown?.map((s, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] rounded-lg border font-bold"
-                            style={s.color ? { color: s.color, borderColor: `${s.color}40`, backgroundColor: `${s.color}10` } : {
-                              color: '#475569', borderColor: '#e2e8f0', backgroundColor: '#f8fafc'
-                            }}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full" style={s.color ? { backgroundColor: s.color } : { backgroundColor: '#475569' }}></span>
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                             {s.categoryName}: Rp {Math.round(s.amount).toLocaleString('id-ID')}
                           </span>
                         ))}
@@ -512,7 +509,7 @@ const LoanDetail: React.FC = React.memo(() => {
                         <Button
                           variant="success"
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-1.5 shadow-sm"
-                          onClick={() => handleUpdateStatus('APPROVED')}
+                          onClick={() => handleChangeStatus('APPROVED')}
                         >
                           Setujui Pengajuan
                         </Button>
@@ -520,16 +517,16 @@ const LoanDetail: React.FC = React.memo(() => {
                       {canReject && (
                         <Button
                           className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-1.5 shadow-sm"
-                          onClick={() => handleUpdateStatus('REJECTED')}
+                          onClick={() => handleChangeStatus('REJECTED')}
                         >
                           Tolak Pengajuan
                         </Button>
                       )}
                     </div>
                   ) : (
-                    <div className="mt-6 p-3 bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 rounded-xl text-center">
+                    <div className="mt-6 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-center">
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Keputusan</p>
-                      <p className="text-xs font-black text-slate-850 dark:text-slate-100 mt-1 uppercase">
+                      <p className="text-xs font-black text-slate-800 dark:text-slate-100 mt-1 uppercase">
                         {loan.status === 'APPROVED' ? 'DISETUJUI' : loan.status === 'REJECTED' ? 'DITOLAK' : 'LUNAS'}
                       </p>
                     </div>
@@ -545,7 +542,7 @@ const LoanDetail: React.FC = React.memo(() => {
                         </Button>
                       </Link>
                       <Link to={`/cooperative/members?id=${loan.memberId}`} className="flex-1">
-                        <Button variant="outline" size="xs" className="w-full text-[10px] font-bold py-1.5 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-55">
+                        <Button variant="outline" size="xs" className="w-full text-[10px] font-bold py-1.5 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50">
                           Profil Anggota
                         </Button>
                       </Link>

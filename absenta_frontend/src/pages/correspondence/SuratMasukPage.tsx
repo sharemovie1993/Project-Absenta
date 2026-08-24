@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -19,8 +21,16 @@ import { Search, Plus, Edit2, Trash2, Mail, FileText, CheckSquare, Clock } from 
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 
+const suratMasukSchema = z.object({
+  nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
+  pengirim: z.string().min(1, 'Pengirim wajib diisi'),
+  perihal: z.string().min(1, 'Perihal surat wajib diisi')
+});
+
 export default function SuratMasukPage() {
   const queryClient = useQueryClient();
+  const [sortBy, setSortBy] = useState('tanggal_masuk');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
 
@@ -103,7 +113,7 @@ export default function SuratMasukPage() {
       toast.success('Surat masuk berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['surat-masuk-list'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(err.message || 'Gagal menghapus surat masuk');
     }
   });
@@ -161,7 +171,7 @@ export default function SuratMasukPage() {
       setModalOpen(false);
       resetForm();
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || 'Gagal menyimpan surat masuk');
     }
   }, [selectedId, formData, fetchData, resetForm]);
@@ -180,7 +190,7 @@ export default function SuratMasukPage() {
       setDispoModalOpen(false);
       setSelectedId(null);
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || 'Gagal meneruskan disposisi');
     }
   }, [selectedId, dispoData, fetchData]);
@@ -240,7 +250,7 @@ export default function SuratMasukPage() {
           {item.PenerimaDisposisi ? (
             <div>
               <div className="font-semibold text-indigo-600 dark:text-indigo-400 text-[10px]">{item.PenerimaDisposisi.full_name}</div>
-              <div className="text-[9px] text-slate-400 max-w-[150px] truncate">{item.disposisi_instruksi}</div>
+              <div className="text-[9px] text-slate-400 w-36 max-w-full truncate">{item.disposisi_instruksi}</div>
             </div>
           ) : (
             <span className="text-[10px] text-slate-400 italic">Belum Ada</span>
@@ -350,10 +360,10 @@ export default function SuratMasukPage() {
                 className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
               />
             </div>
-            <select
+            <select aria-label="Pilih status/kategori surat masuk" 
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="h-10 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 rounded-xl min-w-[150px] font-semibold text-slate-600 dark:text-slate-300"
+              className="h-10 text-xs border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 rounded-xl w-36 max-w-full font-semibold text-slate-600 dark:text-slate-300"
             >
               <option value="">Semua Status</option>
               <option value="BARU">Baru</option>
@@ -379,6 +389,9 @@ export default function SuratMasukPage() {
           </div>
         ) : (
           <Table
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={(k, o) => { setSortBy(k); setSortOrder(o); }}
             columns={columns}
             data={data}
             pagination={{
@@ -399,7 +412,7 @@ export default function SuratMasukPage() {
       <Suspense fallback={null}>
         <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={selectedId ? 'Edit Surat Masuk' : 'Registrasi Surat Masuk Baru'} size="lg">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Surat Asal</Label>
                 <Input
@@ -430,7 +443,7 @@ export default function SuratMasukPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Surat Asal</Label>
                 <Input

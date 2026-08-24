@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Input, Badge, Loader, SectionCard } from '../../components/ui';
@@ -17,7 +18,7 @@ import { z } from 'zod';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { SupervisiSelfAssessmentModal } from '../../components/kurikulum/SupervisiSelfAssessmentModal';
-import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
+import { SupervisiAnalyticsDashboard } from '@/components/kurikulum/supervisi/SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../../components/kurikulum/SupervisiFormModal';
 import { useGuruOptions, useKelasOptions, useMapelOptions } from '../../components/common';
 
@@ -131,8 +132,8 @@ export default function SupervisiPage() {
     [recommendations, selectedRecId],
   );
 
-  const kelasOptions = useMemo(() => (kelasItems ?? []).map(k => ({ label: k.nama_kelas, value: k.nama_kelas })), [kelasItems]);
-  const mapelOptions = useMemo(() => (mapelItems ?? []).map(m => ({ label: m.nama_mapel, value: m.nama_mapel })), [mapelItems]);
+  const kelasOptions = useMemo(() => (kelasItems ?? [])?.map(k => ({ label: k.nama_kelas, value: k.nama_kelas })), [kelasItems]);
+  const mapelOptions = useMemo(() => (mapelItems ?? [])?.map(m => ({ label: m.nama_mapel, value: m.nama_mapel })), [mapelItems]);
 
   // Pilar 2 – safe mapping with optional chaining (?.)
   const filteredSupervisorOptions = useMemo(() => {
@@ -166,7 +167,7 @@ export default function SupervisiPage() {
     }
     setLoadingRecs(true);
     try {
-      const res: any = await queryClient.fetchQuery({
+      const res: unknown = await queryClient.fetchQuery({
         queryKey: ['supervisi-recommendations', formData.guru_id, formData.tanggal],
         queryFn: () => kurikulumApi.getSupervisiRecommendations(formData.guru_id, formData.tanggal).catch(() => null),
         staleTime: 10 * 60 * 1000,
@@ -180,7 +181,7 @@ export default function SupervisiPage() {
         toast.success(`Ditemukan ${slots.length} slot jadwal mengajar.`);
       }
     } catch {
-      const cached = queryClient.getQueryData(['supervisi-recommendations', formData.guru_id, formData.tanggal]) as any;
+      const cached = queryClient.getQueryData(['supervisi-recommendations', formData.guru_id, formData.tanggal]) as Record<string, unknown>;
       if (cached?.data) {
         setRecommendations(cached.data);
       }
@@ -482,13 +483,13 @@ export default function SupervisiPage() {
                     {/* Observasi details */}
                     <div className="space-y-4">
                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detail Observasi</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[
                           { icon: <BookOpen size={10} />, label: 'Mapel', value: selectedSupervisi.mapel || '-' },
                           { icon: <User size={10} />,     label: 'Kelas', value: selectedSupervisi.kelas || '-' },
                           { icon: <Calendar size={10} />, label: 'Tanggal', value: new Date(selectedSupervisi.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) },
                           { icon: <Clock size={10} />,    label: 'Jam Ke-', value: selectedSupervisi.jam_ke || '-' },
-                        ].map(item => (
+                        ]?.map(item => (
                           <div key={item.label} className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
                             <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">{item.icon} {item.label}</span>
                             <p className="text-xs font-black text-slate-800 dark:text-slate-200">{item.value}</p>
@@ -534,7 +535,7 @@ export default function SupervisiPage() {
                       )}
                     </div>
 
-                    {/* Self-assessment summary (fully typed – no more `as any`) */}
+                    {/* Self-assessment summary (fully typed – no more `as Record<string, unknown>`) */}
                     {(selectedSupervisi.is_self_evaluated || selectedSupervisi.target_pembelajaran) && (
                       <div className="space-y-2 border-t border-slate-50 dark:border-slate-800 pt-4">
                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
@@ -576,7 +577,7 @@ export default function SupervisiPage() {
                   <div className="my-auto text-center space-y-3">
                     <ClipboardList size={40} className="mx-auto text-slate-200" />
                     <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest">Pilih Jadwal Supervisi</p>
-                    <p className="text-[10px] text-slate-400 max-w-[200px] mx-auto">Klik salah satu baris jadwal supervisi di tabel untuk melihat detail observasi, nilai kinerja, dan rekomendasi tindak lanjut.</p>
+                    <p className="text-[10px] text-slate-400 max-w-xs mx-auto">Klik salah satu baris jadwal supervisi di tabel untuk melihat detail observasi, nilai kinerja, dan rekomendasi tindak lanjut.</p>
                   </div>
                 )}
 

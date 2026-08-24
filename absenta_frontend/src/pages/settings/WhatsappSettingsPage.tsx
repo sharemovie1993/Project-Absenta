@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button, Loader, Alert, AlertTitle, AlertDescription,
   Tabs, TabsList, TabsTrigger, TabsContent, SectionCard,
@@ -21,6 +22,7 @@ import {
   Save, Send, ShieldCheck, FileText, Info,
   CheckCircle2, History, ArrowRight, Users,
 } from 'lucide-react';
+import { formatDate } from '../../utils/layoutUtils';
 import {
   getWhatsappConfig,
   saveWhatsappConfig,
@@ -110,7 +112,7 @@ const WhatsappSettingsPage: React.FC = () => {
     try {
       setLocalStatus('connecting');
       console.log('[WA-UI:Connect] Triggering connectLocalWhatsapp...');
-      const response = (await connectLocalWhatsapp()) as any;
+      const response = (await connectLocalWhatsapp()) as WaApiResponse;
       console.log('[WA-UI:Connect] connectLocalWhatsapp response:', response);
       if (response.success) {
         if (response.qr) {
@@ -140,25 +142,19 @@ const WhatsappSettingsPage: React.FC = () => {
     }
   }, []);
 
-  // ── Fetch config dari API ─────────────────────────────────────────────────
-  const fetchConfig = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = (await getWhatsappConfig()) as WaApiResponse;
-      if (response.success && response.data) {
-        setConfig(response.data);
-        setDbProviderName(response.data.provider_name);
-      }
-    } catch (err: unknown) {
-      toast.error(extractWaError(err, 'Gagal memuat konfigurasi WhatsApp'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // ── Fetch config via TanStack Query ───────────────────────────────────────
+  const { data: configResponse, isLoading: isQueryLoading } = useQuery({
+    queryKey: ['whatsapp-config'],
+    queryFn: getWhatsappConfig,
+  });
 
   useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
+    if (configResponse && configResponse.success && configResponse.data) {
+      setConfig(configResponse.data);
+      setDbProviderName(configResponse.data.provider_name);
+      setLoading(false);
+    }
+  }, [configResponse]);
 
   // Poll local status
   useEffect(() => {

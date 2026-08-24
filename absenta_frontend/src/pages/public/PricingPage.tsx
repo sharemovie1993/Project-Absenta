@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Calculator, 
   ChevronDown,
@@ -11,6 +12,7 @@ import {
 import { Button, Loader, SectionCard } from '@/components/ui';
 import { fetchActiveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 import { formatCurrency } from '@/api/plans.api';
 
 // Lazy load components
@@ -20,9 +22,14 @@ const PricingSimulationModal = lazy(() => import('@/components/public/pricing/Pr
 type SystemConfig = { app_name?: string | null; primary_color?: string };
 
 function PricingPageContent() {
-  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const { data: systemConfig, isLoading: loading } = useQuery({
+    queryKey: ['system-config', 'active', 'pricing'],
+    queryFn: fetchActiveSystemConfig,
+  });
+
+  const isEmpty = !systemConfig && !loading;
 
   // Simulation State
   const [simOpen, setSimOpen] = useState(false);
@@ -51,21 +58,14 @@ function PricingPageContent() {
   }, [simModel, simStudents]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    if (systemConfig) {
       try {
-        const configData = await fetchActiveSystemConfig();
-        setSystemConfig(configData);
-        if (configData) {
-          applyBrandingFromConfig(configData);
-        }
+        applyBrandingFromConfig(systemConfig);
       } catch (err: unknown) {
-        console.error('Error fetching system config:', err);
-      } finally {
-        setLoading(false);
+        console.error('Error applying branding:', err);
       }
-    };
-    fetchData();
-  }, []);
+    }
+  }, [systemConfig]);
 
   const handleContactSales = useCallback(() => {
     window.open('https://wa.me/6281222333444?text=Halo%20Tim%20Absenta,%20saya%20tertarik%20dengan%20paket%20Enterprise.', '_blank');

@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/date.utils';
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -20,8 +21,10 @@ import { useTvStore } from '../../store/tvStore';
 import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
-import { CoopTvMode, type CriticalStockItem, type Announcement, type Sale, type SaleItem, type CoopUserInfo } from './components/CoopTvMode';
-import { ReceiptModal } from './components/ReceiptModal';
+import type { CriticalStockItem, Announcement, Sale, SaleItem, CoopUserInfo } from '@/components/cooperative/types';
+
+const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
+const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
 
 const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
   const [copied, setCopied] = useState(false);
@@ -217,6 +220,11 @@ const Dashboard: React.FC = React.memo(() => {
     );
   }
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative' },
+    { label: 'Dashboard', path: '/cooperative/dashboard' },
+  ], []);
+
   return (
     <PremiumFeatureGate 
       moduleName="KOPERASI" 
@@ -226,11 +234,15 @@ const Dashboard: React.FC = React.memo(() => {
         title="Dashboard Koperasi"
         description="Ringkasan aktivitas dan performa koperasi hari ini"
         hardeningModuleKey="coop_dashboard"
-        breadcrumbs={[
-          { label: 'Koperasi', path: '/cooperative' },
-          { label: 'Dashboard', path: '/cooperative/dashboard' },
-        ]}
-        topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
+        breadcrumbs={breadcrumbs}
+        topSlot={
+          <div className="space-y-3">
+            <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />
+            <div className="flex justify-end">
+              <TvModeToggle />
+            </div>
+          </div>
+        }
         instruction={{
           title: 'Panduan Dashboard Koperasi',
           description: 'Pantau statistik anggota, simpanan, pinjaman, dan aktivitas belanja dalam satu layar.',
@@ -241,7 +253,6 @@ const Dashboard: React.FC = React.memo(() => {
             { text: 'Riwayat belanja Anda tersedia di bagian bawah jika Anda adalah anggota aktif.' },
           ],
         }}
-        toolbar={<TvModeToggle />}
       >
         <div className="space-y-8">
 

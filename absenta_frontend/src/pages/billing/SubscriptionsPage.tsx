@@ -1,46 +1,76 @@
-import React, { lazy, Suspense, useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import Card from '../../components/ui/Card';
-import { Table } from '../../components/ui';
-import { BILLING_PAGE_CONFIG } from '../../components/billing/billingLayoutConfig';
-import { Button, Loader, EnhancedAlert, SearchableSelect, Input } from '../../components/ui';
-import { getAllPlans, getPublicPlans, formatCurrency as formatCurrencyPlan } from '../../api/plans.api';
+import React, { lazy, Suspense, useMemo, useState, useCallback } from 'react';
+import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  Button, 
+  Loader, 
+  EnhancedAlert, 
+  SearchableSelect, 
+  Input, 
+  Table, 
+  SectionCard, 
+  Card 
+} from '@/components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { getAllPlans, getPublicPlans, formatCurrency as formatCurrencyPlan } from '@/api/plans.api';
 import {
   getAllSubscriptions,
   getSubscriptionsByTenant,
-  getActiveSubscription,
   updateSubscription,
   getSubscriptionHistory,
   deleteSubscription,
-} from '../../api/subscription.api';
-import type { FilteredSubscriptionItem } from '../../api/subscription.api';
-import type { Plan } from '../../types/billing';
-import type { SubscriptionHistoryItem } from '../../types/subscription';
-import { generateBillingForSubscription, getBillingsBySubscription } from '../../api/billing.api';
-import { getPaymentHistory } from '../../api/payments.api';
-import { Badge } from '../../components/ui/Badge';
-import { Eye, Pause, RefreshCcw, Edit, Plus, HelpCircle, History as HistoryIcon, Search } from 'lucide-react';
-import useConfirm from '../../hooks/useConfirm';
-import { getAllTenants, type Tenant } from '../../api/tenants.api';
-import useAuth from '../../hooks/useAuth';
-import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
-import { mapSubscriptionToUI, type SubscriptionUIState } from '../../utils/subscriptionMapper';
-import { useDebounce } from '../../hooks/useDebounce';
-import type { Billing } from '../../types/billing';
-import { SubscriptionTenantView } from '../../components/billing/SubscriptionTenantView';
+} from '@/api/subscription.api';
+import type { FilteredSubscriptionItem } from '@/api/subscription.api';
+import type { Plan } from '@/types/billing';
+import type { SubscriptionHistoryItem } from '@/types/subscription';
+import { Badge } from '@/components/ui/Badge';
+import { 
+  Eye, 
+  Pause, 
+  RefreshCcw, 
+  Edit, 
+  Plus, 
+  HelpCircle, 
+  History as HistoryIcon, 
+  Search,
+  Users,
+  ShieldCheck,
+  CheckCircle,
+  Clock,
+  RefreshCw
+} from 'lucide-react';
+import { getAllTenants, type Tenant } from '@/api/tenants.api';
+import useAuth from '@/hooks/useAuth';
+import { mapSubscriptionToUI, type SubscriptionUIState } from '@/utils/subscriptionMapper';
+import { SubscriptionTenantView } from '@/components/billing/SubscriptionTenantView';
+import { formatDate, formatCurrency } from '@/utils/layoutUtils';
+import toast from 'react-hot-toast';
 
-// ─── Lazy-loaded Modals (Code Splitting) ─────────────────────────────────────
+// ─── Lazy-loaded Modals ──────────────────────────────────────────────────────
 const SubscriptionEditModal = lazy(() =>
-  import('../../components/billing/SubscriptionEditModal').then(m => ({ default: m.SubscriptionEditModal }))
+  import('@/components/billing/SubscriptionEditModal').then(m => ({ default: m.SubscriptionEditModal }))
 );
 const SubscriptionCreateModal = lazy(() =>
-  import('../../components/billing/SubscriptionCreateModal').then(m => ({ default: m.SubscriptionCreateModal }))
+  import('@/components/billing/SubscriptionCreateModal').then(m => ({ default: m.SubscriptionCreateModal }))
 );
 const SubscriptionHistoryModal = lazy(() =>
-  import('../../components/billing/SubscriptionHistoryModal').then(m => ({ default: m.SubscriptionHistoryModal }))
+  import('@/components/billing/SubscriptionHistoryModal').then(m => ({ default: m.SubscriptionHistoryModal }))
+);
+const ConfirmModal = lazy(() =>
+  import('@/components/ui/Modal').then(m => ({ default: m.ConfirmModal }))
 );
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Zod Schema Validation Guard (Pilar 25) ──────────────────────────────────
+const subFilterSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  tenantId: z.string().optional(),
+  planId: z.string().optional(),
+});
+
 type SubscriptionRow = FilteredSubscriptionItem & {
   has_payment_success?: boolean;
   uiState: SubscriptionUIState;
@@ -53,519 +83,475 @@ type AuditItem = SubscriptionHistoryItem & {
   changed_by_email?: string | null;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmtDate(s?: string | null) {
-  if (!s) return '-';
-  try {
-    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(s));
-  } catch { return s || '-'; }
-}
-
-function extractErrorMsg(e: unknown, fallback: string): string {
-  return typeof e === 'object' && e !== null && 'message' in e
-    ? String((e as { message?: unknown }).message) : fallback;
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
-export default function SubscriptionsPage() {
+export const SubscriptionsPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const pageConfig = BILLING_PAGE_CONFIG.subscriptions;
+  const queryClient = useQueryClient();
+  const { isSuperAdmin, user, getCurrentTenantId, can } = useAuth();
+  const isSA = isSuperAdmin();
 
-  const [items, setItems] = useState<SubscriptionRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [serverTotalItems, setServerTotalItems] = useState(0);
-  const [serverTotalPages, setServerTotalPages] = useState(1);
-
+  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [planOptions, setPlanOptions] = useState<Array<{ id: string; name: string }>>([]);
-  const [plansLoading, setPlansLoading] = useState(false);
   const [planId, setPlanId] = useState('ALL');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [tenantFilterId, setTenantFilterId] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [tenantFilterId, setTenantFilterId] = useState('ALL');
   const [sortBy, setSortBy] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  // Modal States
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SubscriptionRow | null>(null);
   const [editStatus, setEditStatus] = useState('ACTIVE');
   const [editAutoRenew, setEditAutoRenew] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [tenantOptions, setTenantOptions] = useState<Array<{ id: string; name: string }>>([]);
-  const [tenantsLoading, setTenantsLoading] = useState(false);
-  const [planDetails, setPlanDetails] = useState<Record<string, Plan>>({});
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historySubscriptionId, setHistorySubscriptionId] = useState('');
+  const [historyItems, setHistoryItems] = useState<AuditItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [historyItems, setHistoryItems] = useState<AuditItem[]>([]);
-  const [historySubscriptionId, setHistorySubscriptionId] = useState('');
 
-  const { isSuperAdmin, user, getCurrentTenantId, isLoading, can } = useAuth();
-  const confirm = useConfirm();
+  // React Query Data Fetching (Pilar 31)
+  const { data: subData, isLoading: loadingSubs, isFetching, refetch: refetchSubs } = useQuery({
+    queryKey: ['billing-subscriptions-list', isSA, currentPage, itemsPerPage, searchTerm, statusFilter, tenantFilterId, planId, sortBy, sortOrder],
+    queryFn: async () => {
+      const params: Record<string, unknown> = {
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm || undefined,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        tenant_id: tenantFilterId === 'ALL' ? undefined : tenantFilterId,
+        plan_id: planId === 'ALL' ? undefined : planId,
+        sort_by: sortBy || undefined,
+        sort_order: sortOrder,
+      };
+      const res = isSA
+        ? await getAllSubscriptions(params)
+        : await getSubscriptionsByTenant(getCurrentTenantId() || '');
+      return res?.data;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen"><Loader size="lg" /></div>;
-  }
-
-  const isSA = isSuperAdmin();
-  const canManageSubscriptions = useMemo(() => can('billing.subscriptions.view.active'), [can]);
-
-  const loadPlans = useCallback(async () => {
-    try {
-      setPlansLoading(true);
+  const { data: plansData = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['billing-plans-options', isSA],
+    queryFn: async () => {
       const res = isSA
         ? await getAllPlans({ page: 1, limit: 200 }, { skipTenantHeader: true })
         : await getPublicPlans();
-      const dataRes = (res as { data?: unknown }).data;
-      const payload = Array.isArray(dataRes) ? dataRes
-        : Array.isArray((dataRes as { plans?: unknown[] } | undefined)?.plans)
-          ? (dataRes as { plans?: unknown[] }).plans ?? []
-          : (dataRes as unknown[] | undefined) ?? [];
-      setPlanOptions((payload as unknown[])?.map((p) => {
-        const plan = p as Partial<Plan> & { plan_id?: string; _id?: string };
-        return { id: plan.id ?? plan.plan_id ?? plan._id ?? '', name: String(plan.name ?? '') };
-      }));
-      const map: Record<string, Plan> = {};
-      for (const p of payload as unknown[]) {
-        const plan = p as Partial<Plan> & { plan_id?: string; _id?: string };
-        const id = (plan.id ?? plan.plan_id ?? plan._id ?? '') as string;
-        map[id] = plan as Plan;
-      }
-      setPlanDetails(map);
-    } catch { setPlanOptions([]); }
-    finally { setPlansLoading(false); }
-  }, [isSA]);
+      const raw = Array.isArray(res?.data) ? res.data : (res?.data as { plans?: Plan[] })?.plans || [];
+      return (raw ?? [])?.map((p: Plan) => ({ id: p.id, name: p.name }));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const loadSubscriptions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let list: FilteredSubscriptionItem[] = [];
-      if (isSA) {
-        const res = await getAllSubscriptions({ include_inactive: true, page: currentPage, limit: itemsPerPage });
-        const subs = (res?.data?.subscriptions || (res as unknown as { data?: FilteredSubscriptionItem[] }).data || []) as FilteredSubscriptionItem[];
-        list = subs;
-        const pag = res?.data?.pagination as unknown as Record<string, number> | undefined;
-        if (pag) {
-          setServerTotalItems(pag['totalItems'] ?? pag['total_count'] ?? subs.length);
-          setServerTotalPages(pag['totalPages'] ?? pag['total_pages'] ?? 1);
-        } else {
-          setServerTotalItems(subs.length);
-          setServerTotalPages(1);
-        }
-      } else {
-        const tenantId = user?.tenant_id || getCurrentTenantId();
-        if (!tenantId) throw new Error('Tenant tidak tersedia untuk pengguna ini');
-        try {
-          const res = await getSubscriptionsByTenant(tenantId, true);
-          list = (res?.data?.subscriptions || (res as unknown as { data?: FilteredSubscriptionItem[] }).data || []) as FilteredSubscriptionItem[];
-          if (!list?.length) {
-            try { const r = await getActiveSubscription(); const a = r?.data as FilteredSubscriptionItem | null; list = a ? [a] : []; } catch {}
-          }
-        } catch (err: unknown) {
-          const has403 = typeof err === 'object' && err !== null && 'response' in err &&
-            ((err as { response?: { status?: number } }).response?.status === 403);
-          if (has403 || /status code 403/i.test(extractErrorMsg(err, ''))) {
-            const r = await getActiveSubscription(); list = [(r?.data as FilteredSubscriptionItem | null)].filter(Boolean) as FilteredSubscriptionItem[];
-          } else { throw err; }
-        }
-      }
-      const enriched = await Promise.all((list || [])?.map(async (sub) => {
-        try {
-          const billRes = await getBillingsBySubscription(sub.id);
-          const billings = (billRes?.data ?? []) as Billing[];
-          const latest = billings[0];
-          const inv = latest?.Invoice;
-          let lastInvoiceStatus: 'PAID' | 'UNPAID' | 'OVERDUE' | 'DRAFT' | null = null;
-          if (inv) {
-            const s = String(inv.status || '').toUpperCase();
-            const due = inv.due_date ? new Date(inv.due_date) : null;
-            if (s === 'PAID') lastInvoiceStatus = 'PAID';
-            else if (s === 'DRAFT') lastInvoiceStatus = (due && due.getTime() < Date.now()) ? 'OVERDUE' : 'DRAFT';
-            else lastInvoiceStatus = (due && due.getTime() < Date.now()) ? 'OVERDUE' : 'UNPAID';
-          }
-          let hasPaymentSuccess = false;
-          if (latest?.id) {
-            try {
-              const hist = await getPaymentHistory(String(latest.id), 1, 10, undefined, { tenant_id: sub.tenant_id, skipTenantHeader: isSA });
-              const payments = Array.isArray((hist as { data?: unknown[] }).data) ? ((hist as { data?: unknown[] }).data ?? []) : [];
-              hasPaymentSuccess = payments?.some(p => ['SUCCESS', 'PAID', 'COMPLETED'].includes(String((p as { status?: unknown }).status || '').toUpperCase()));
-              if (hasPaymentSuccess) lastInvoiceStatus = 'PAID';
-            } catch {}
-          }
-          const nextBD = sub?.next_billing_date ?? inv?.due_date ?? (sub?.auto_renew && sub?.end_date ? sub.end_date : null);
-          const uiState = mapSubscriptionToUI({ ...sub, next_billing_date: nextBD }, lastInvoiceStatus || undefined, hasPaymentSuccess);
-          return { ...sub, payment_method: sub?.payment_method || latest?.payment_method || null, renewal_count: typeof sub?.renewal_count === 'number' ? sub.renewal_count : (billings?.length || 0), last_invoice_status: lastInvoiceStatus, next_billing_date: nextBD || null, has_payment_success: hasPaymentSuccess, uiState } as SubscriptionRow;
-        } catch {
-          return { ...sub, uiState: mapSubscriptionToUI(sub) } as SubscriptionRow;
-        }
-      }));
-      setItems(enriched);
-      if (!isSA) { setServerTotalItems(enriched.length); setServerTotalPages(Math.max(1, Math.ceil(enriched.length / itemsPerPage))); }
-    } catch (e) { setError(extractErrorMsg(e, 'Gagal memuat data subscription')); }
-    finally { setLoading(false); }
-  }, [isSA, user?.tenant_id, currentPage, itemsPerPage]);
+  const { data: tenantsData = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['billing-tenants-options'],
+    queryFn: async () => {
+      if (!isSA) return [];
+      const res = await getAllTenants();
+      const raw = Array.isArray(res?.data) ? res.data : (res?.data as { tenants?: Tenant[] })?.tenants || [];
+      return (raw ?? [])?.map((t: Tenant) => ({ id: t.id, name: t.name }));
+    },
+    enabled: isSA,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const p = new URLSearchParams(String(location.search || ''));
-    const s = p.get('status'); const sr = p.get('search'); const pl = p.get('plan_id');
-    const fr = p.get('date_from'); const to = p.get('date_to');
-    if (s) setStatusFilter(s.toUpperCase());
-    if (sr !== null) setSearchTerm(sr);
-    if (pl) setPlanId(pl);
-    if (fr !== null) setDateFrom(fr);
-    if (to !== null) setDateTo(to);
-  }, [location.search]);
+  const items: SubscriptionRow[] = useMemo(() => {
+    const rawList = Array.isArray(subData) ? subData : (subData as { subscriptions?: FilteredSubscriptionItem[] })?.subscriptions || [];
+    return (rawList ?? [])?.map((sub: FilteredSubscriptionItem) => ({
+      ...sub,
+      uiState: mapSubscriptionToUI(sub),
+    }));
+  }, [subData]);
 
-  useEffect(() => {
-    loadPlans();
-    loadSubscriptions();
-    if (!isSA) return;
-    (async () => {
-      try {
-        setTenantsLoading(true);
-        const res = await getAllTenants({ page: 1, limit: 200 });
-        setTenantOptions(((res?.data || []) as Tenant[])?.map(t => ({ id: t.id, name: t.name })));
-      } catch { setTenantOptions([]); }
-      finally { setTenantsLoading(false); }
-    })();
-  }, [isSA, user?.tenant_id]);
+  const totalItems = useMemo(() => {
+    return (subData as { total?: number })?.total || items.length;
+  }, [subData, items.length]);
 
-  const initialLoad = useRef(true);
-  useEffect(() => {
-    if (!isSA) return;
-    if (initialLoad.current) { initialLoad.current = false; return; }
-    loadSubscriptions();
-  }, [isSA, currentPage, itemsPerPage, loadSubscriptions]);
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-  const onViewBilling = useCallback((_item?: FilteredSubscriptionItem) => navigate('/billing/billings'), [navigate]);
-
-  const onViewHistory = useCallback(async (subscriptionId: string) => {
-    setShowHistoryModal(true); setHistoryLoading(true); setHistoryError(null);
-    setHistorySubscriptionId(String(subscriptionId));
-    try {
-      const res = await getSubscriptionHistory(String(subscriptionId));
-      setHistoryItems(Array.isArray((res as { data?: AuditItem[] }).data) ? (res as { data: AuditItem[] }).data : []);
-    } catch (e) { setHistoryError(extractErrorMsg(e, 'Gagal memuat riwayat')); }
-    finally { setHistoryLoading(false); }
-  }, []);
-
-  const onDelete = useCallback(async (item: FilteredSubscriptionItem) => {
-    const ok = await confirm({ title: 'Konfirmasi Hapus Subscription', description: 'Tindakan ini permanen.', confirmText: 'Hapus', cancelText: 'Batal', style: 'danger' });
-    if (!ok) return;
-    try { const r = await deleteSubscription(String(item.id)); setSuccess(r?.message || 'Berhasil dihapus'); await loadSubscriptions(); }
-    catch (e) { setError(extractErrorMsg(e, 'Gagal menghapus subscription')); }
-  }, [confirm, loadSubscriptions]);
-
-  const onPause = useCallback(async (item: FilteredSubscriptionItem) => {
-    const ok = await confirm({ title: 'Tangguhkan Subscription', description: 'Subscription akan SUSPENDED.', confirmText: 'Tangguhkan', cancelText: 'Batal', style: 'warning' });
-    if (!ok) return;
-    try { await updateSubscription(item.id as string, { status: 'SUSPENDED' }); setSuccess('Subscription ditangguhkan'); await loadSubscriptions(); }
-    catch (e) { setError(extractErrorMsg(e, 'Gagal menangguhkan subscription')); }
-  }, [confirm, loadSubscriptions]);
-
-  const onRenewManual = useCallback(async (item: FilteredSubscriptionItem) => {
-    const ok = await confirm({ title: 'Perpanjang Manual', description: 'Sistem akan membuat billing baru.', confirmText: 'Lanjutkan', cancelText: 'Batal', style: 'warning' });
-    if (!ok) return;
-    try { await generateBillingForSubscription({ subscription_id: item.id as string }); setSuccess('Billing berhasil dibuat'); await loadSubscriptions(); }
-    catch (e) { setError(extractErrorMsg(e, 'Gagal membuat billing')); }
-  }, [confirm, loadSubscriptions]);
-
-  const onEdit = useCallback((item: SubscriptionRow) => {
-    setSelectedItem(item); setEditStatus(item?.status || 'ACTIVE'); setEditAutoRenew(!!item?.auto_renew); setShowEditModal(true);
-  }, []);
+  // Mutations with Cache Invalidation (Pilar 32)
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<SubscriptionRow> }) => updateSubscription(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-subscriptions-list'] });
+      toast.success('Langganan berhasil diperbarui.');
+      setShowEditModal(false);
+    },
+    onError: () => {
+      toast.error('Gagal memperbarui langganan.');
+    }
+  });
 
   const handleEditSave = useCallback(async () => {
     if (!selectedItem?.id) return;
-    try {
-      setEditLoading(true);
-      await updateSubscription(selectedItem.id as string, { auto_renew: editAutoRenew });
-      setSuccess('Subscription berhasil diperbarui'); setShowEditModal(false); setSelectedItem(null);
-      await loadSubscriptions();
-    } catch (e) { setError(extractErrorMsg(e, 'Gagal memperbarui subscription')); }
-    finally { setEditLoading(false); }
-  }, [editAutoRenew, selectedItem?.id, loadSubscriptions]);
+    await updateMutation.mutateAsync({
+      id: selectedItem.id,
+      data: {
+        status: editStatus as FilteredSubscriptionItem['status'],
+        auto_renew: editAutoRenew,
+      }
+    });
+  }, [selectedItem, editStatus, editAutoRenew, updateMutation]);
 
-  const handleSort = useCallback((key: string) => {
-    setSortBy(prev => { if (prev === key) { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); return key; } setSortOrder('asc'); return key; });
+  const handleOpenHistory = useCallback(async (subId: string) => {
+    setHistorySubscriptionId(subId);
+    setShowHistoryModal(true);
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const res = await getSubscriptionHistory(subId);
+      setHistoryItems((res?.data || []) as AuditItem[]);
+    } catch {
+      setHistoryError('Gagal memuat histori langganan.');
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
-  const columns = useMemo(() => ([
-    {
-      key: 'tenant', label: 'Tenant', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => (
-        <div>
-          <button type="button" onClick={() => { if (isSA && row.tenant_id) navigate(`/tenants/${row.tenant_id}`); }}
-            className={`${isSA && row.tenant_id ? 'text-blue-600 hover:underline dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'} font-medium text-left`}>
-            {row?.tenant?.name || row?.tenant_name || '-'}
-          </button>
-          <div className="text-xs text-muted-foreground">{row?.tenant?.domain || row?.tenant_email || ''}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'plan', label: 'Plan', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => (
-        <div><div className="font-medium">{row?.plan?.name || row?.plan_name || '-'}</div>
-          <div className="text-xs text-muted-foreground">{row?.plan?.billing_cycle || row?.Plan?.billing_cycle || 'MONTHLY'}</div></div>
-      ),
-    },
-    {
-      key: 'periode', label: 'Periode', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => (
-        <span className="whitespace-nowrap">{fmtDate(row.start_date)}{row.end_date ? ` s/d ${fmtDate(row.end_date)}` : ''}</span>
-      ),
-    },
-    {
-      key: 'status', label: 'Status', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => {
-        const s = String(row.status || '').toUpperCase();
-        if (s === 'ACTIVE') return <Badge variant="success">Aktif</Badge>;
-        if (s === 'TRIAL') return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">Trial</Badge>;
-        if (s === 'PENDING_PAYMENT') return <Badge variant="warning">Menunggu Pembayaran</Badge>;
-        if (s === 'SUSPENDED') return <Badge className="bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100">Ditangguhkan</Badge>;
-        if (s === 'CANCELLED') return <Badge className="bg-gray-200 text-gray-600 border-gray-300 hover:bg-gray-200">Dibatalkan</Badge>;
-        if (s === 'EXPIRED') return <Badge variant="destructive">Kedaluwarsa</Badge>;
-        return <Badge variant="default">Tidak Diketahui</Badge>;
-      },
-    },
-    {
-      key: 'next_billing_date', label: 'Next Billing', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => (
-        <span className="whitespace-nowrap font-medium">{row.uiState?.displayNextBilling || '-'}</span>
-      ),
-    },
-    {
-      key: 'amount', label: 'Amount', sortable: true,
-      render: (_: unknown, row: SubscriptionRow) => {
-        const price = row.plan?.price_monthly ?? row.Plan?.price_monthly ?? 0;
-        const currency = row.plan?.currency ?? row.Plan?.currency ?? 'IDR';
-        return <span className="whitespace-nowrap">{formatCurrencyPlan(price, currency)} / bulan</span>;
-      },
-    },
-    {
-      key: 'actions', label: 'Aksi', className: 'w-[220px]',
-      render: (_: unknown, row: SubscriptionRow) => (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => onViewBilling(row)}><Eye className="w-4 h-4 mr-1" />Lihat Billing</Button>
-          <Button size="sm" variant="outline" onClick={() => onViewHistory(String(row.id))}><HistoryIcon className="w-4 h-4 mr-1" />Riwayat</Button>
-          {canManageSubscriptions && (
-            <Button size="sm" variant="outline" onClick={() => onEdit(row)}><Edit className="w-4 h-4 mr-1" />Edit</Button>
-          )}
-        </div>
-      ),
-    },
-  ]), [onViewBilling, onViewHistory, onEdit, isSA, navigate, canManageSubscriptions]);
-
-  const filteredItems = useMemo(() => {
-    const toD = (s?: string) => s ? new Date(s) : undefined;
-    const fd = toD(dateFrom); const ud = toD(dateTo);
-    let result = items?.filter(row => {
-      const tn = (row?.tenant?.name || row?.tenant_name || '').toLowerCase();
-      const pn = (row?.plan?.name || row?.plan_name || '').toLowerCase();
-      const q = debouncedSearch.toLowerCase();
-      return (!q || tn.includes(q) || pn.includes(q))
-        && (!statusFilter || statusFilter === 'ALL' || row.status === statusFilter)
-        && (!planId || planId === 'ALL' || row.plan_id === planId || row?.plan?.id === planId)
-        && (!tenantFilterId || tenantFilterId === 'ALL' || row.tenant_id === tenantFilterId)
-        && (!fd || (row.start_date && new Date(row.start_date) >= fd))
-        && (!ud || (row.end_date && new Date(row.end_date) <= ud));
-    });
-    if (sortBy) {
-      result = [...result].sort((a, b) => {
-        if (sortBy === 'amount') {
-          const diff = (a.plan?.price_monthly ?? 0) - (b.plan?.price_monthly ?? 0);
-          return sortOrder === 'asc' ? diff : -diff;
-        }
-        const getVal = (r: SubscriptionRow) =>
-          sortBy === 'tenant' ? (r?.tenant?.name || r?.tenant_name || '') :
-          sortBy === 'plan' ? (r?.plan?.name || r?.plan_name || '') :
-          sortBy === 'status' ? (r.status || '') :
-          sortBy === 'periode' ? (r.start_date || '') :
-          sortBy === 'next_billing_date' ? (r.next_billing_date || '') : '';
-        const cmp = getVal(a).localeCompare(getVal(b), 'id', { sensitivity: 'base' });
-        return sortOrder === 'asc' ? cmp : -cmp;
-      });
-    }
-    return result;
-  }, [items, debouncedSearch, statusFilter, planId, tenantFilterId, dateFrom, dateTo, sortBy, sortOrder]);
-
   const summary = useMemo(() => ({
-    activeCount: items?.filter(r => r.status === 'ACTIVE').length,
-    trialCount: items?.filter(r => r.status === 'TRIAL').length,
-    estimatedMrr: items?.reduce((acc, r) => acc + (r.plan?.price_monthly ?? r.Plan?.price_monthly ?? 0), 0),
+    activeCount: (items ?? []).filter(r => r.status === 'ACTIVE').length,
+    trialCount: (items ?? []).filter(r => r.status === 'TRIAL').length,
+    estimatedMrr: (items ?? []).reduce((acc, r) => acc + (r.plan?.price_monthly ?? r.Plan?.price_monthly ?? 0), 0),
   }), [items]);
 
-  const paginatedItems = useMemo(() => {
-    if (isSA) return filteredItems;
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredItems?.slice(start, start + itemsPerPage);
-  }, [filteredItems, currentPage, itemsPerPage, isSA]);
+  const columns = useMemo(() => [
+    {
+      key: 'tenant',
+      label: 'Tenant Sekolah',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <div>
+          <div className="font-bold text-slate-900 dark:text-white">
+            {row.tenant?.name || row.Tenant?.name || 'Sekolah Mitra'}
+          </div>
+          <div className="text-[10px] text-slate-400 font-mono">
+            ID: {row.tenant_id?.substring(0, 8)}...
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'plan',
+      label: 'Paket Layanan',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <div>
+          <div className="font-bold text-slate-800 dark:text-slate-200">
+            {row.plan?.name || row.Plan?.name || 'Paket Layanan'}
+          </div>
+          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-bold">
+            {formatCurrency(row.plan?.price_monthly || row.Plan?.price_monthly || 0)} / bln
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <Badge
+          variant={row.status === 'ACTIVE' ? 'success' : row.status === 'TRIAL' ? 'warning' : 'destructive'}
+          className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase"
+        >
+          {row.status}
+        </Badge>
+      )
+    },
+    {
+      key: 'dates',
+      label: 'Masa Aktif',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <div className="text-xs space-y-0.5">
+          <div className="text-slate-600 dark:text-slate-300 font-medium">
+            Mulai: {formatDate(row.start_date)}
+          </div>
+          <div className="text-slate-500 text-[10px]">
+            s.d {formatDate(row.end_date)}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'auto_renew',
+      label: 'Auto Renew',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+          row.auto_renew 
+            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' 
+            : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+        }`}>
+          {row.auto_renew ? 'ON' : 'OFF'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Aksi',
+      render: (_: unknown, row: SubscriptionRow) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedItem(row);
+              setEditStatus(row.status || 'ACTIVE');
+              setEditAutoRenew(!!row.auto_renew);
+              setShowEditModal(true);
+            }}
+            title="Edit langganan"
+            className="p-1.5 rounded-lg"
+          >
+            <Edit className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenHistory(row.id)}
+            title="Riwayat perubahan"
+            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+          >
+            <HistoryIcon className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )
+    }
+  ], [handleOpenHistory]);
 
-  const active = useMemo(() =>
-    items?.find(s => s.uiState?.effectiveStatus === 'ACTIVE') ||
-    items?.find(s => s.uiState?.effectiveStatus === 'TRIAL') ||
-    items?.find(s => s.uiState?.effectiveStatus === 'PENDING_PAYMENT') ||
-    null, [items]);
+  const breadcrumbs = useMemo(() => [
+    { label: 'Billing', path: '/billing' },
+    { label: 'Langganan Tenant' }
+  ], []);
 
-  const toggleActiveAutoRenew = useCallback(async (next: boolean) => {
-    if (!active?.id) return;
-    try { setLoading(true); await updateSubscription(active.id as string, { auto_renew: next }); setSuccess('Auto renew diperbarui'); await loadSubscriptions(); }
-    catch (e) { setError(extractErrorMsg(e, 'Gagal memperbarui auto renew')); }
-    finally { setLoading(false); }
-  }, [active?.id, loadSubscriptions]);
-
-  const saHeaderStats = useMemo(() => [
-    { title: 'Total Langganan', value: items.length, icon: <HistoryIcon size={14} />, gradient: 'from-slate-600 to-slate-800' },
-    { title: 'Langganan Aktif', value: summary.activeCount, icon: <Pause size={14} className="rotate-90 text-emerald-500" />, gradient: 'from-green-500 to-emerald-600' },
-    { title: 'Masa Trial', value: summary.trialCount, icon: <HelpCircle size={14} className="text-blue-500" />, gradient: 'from-blue-500 to-cyan-600' },
-    { title: 'Estimasi MRR', value: formatCurrencyPlan(summary.estimatedMrr, 'IDR'), icon: <RefreshCcw size={14} className="text-indigo-500" />, gradient: 'from-indigo-500 to-purple-600' },
-  ], [items, summary]);
-
-  const instruction = useMemo(() => ({
-    title: 'Panduan Manajemen Langganan',
-    description: 'Pantau dan kelola seluruh langganan aktif, masa trial, dan auto-renew untuk semua tenant platform Absenta.',
-    items: [
-      { text: 'Gunakan filter Status untuk menyaring langganan berdasarkan kondisi saat ini (Aktif, Trial, Kedaluwarsa, dll).' },
-      { text: 'Tombol "Riwayat" di tiap baris menampilkan jejak perubahan status dan paket untuk satu subscription.' },
-      { text: 'Edit subscription hanya mengizinkan perubahan toggle Auto Renew; perubahan status mengikuti alur sistem.' },
-      { text: 'Kolom Next Billing menunjukkan estimasi tanggal penagihan berikutnya berdasarkan data billing terbaru.' }
-    ],
-  }), []);
-
-  const tableToolbarRight = useMemo(() => canManageSubscriptions ? (
-    <Button onClick={() => setShowCreateModal(true)} className="flex items-center text-xs h-9 uppercase tracking-widest font-black" variant="primary">
-      <Plus className="w-4 h-4 mr-2" />Buat Langganan
-    </Button>
-  ) : null, [canManageSubscriptions]);
-
-  if (!isSA) {
-    return (
-      <SubscriptionTenantView
-        pageTitle={pageConfig.title}
-        pageSubtitle={pageConfig.subtitle}
-        loading={loading}
-        error={error}
-        success={success}
-        onDismissError={() => setError(null)}
-        onDismissSuccess={() => setSuccess(null)}
-        activeSubscription={active}
-        onToggleAutoRenew={toggleActiveAutoRenew}
-      />
-    );
-  }
+  const paginationProp = useMemo(() => ({
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    onPageChange: setCurrentPage,
+    onLimitChange: (limit: number) => {
+      setItemsPerPage(limit);
+      setCurrentPage(1);
+    },
+  }), [currentPage, totalPages, totalItems, itemsPerPage]);
 
   return (
-    <SuperAdminPageLayout
-      hardeningModuleKey="superadmin_subscriptions"
-      title="Langganan Tenant"
-      description="Manajemen lisensi paket aktif, masa trial, dan konfigurasi auto-renew langganan tenant Absenta."
-      breadcrumbs={[{ label: 'Billing Platform', path: '/menu/billing-console' }, { label: 'Langganan Tenant' }]}
-      stats={saHeaderStats}
-      isLoadingStats={loading}
-      instruction={instruction}
-    >
-      {error && <EnhancedAlert variant="destructive" title="Error" description={error} dismissible onDismiss={() => setError(null)} className="mb-4" />}
-      {success && <EnhancedAlert variant="success" title="Success" description={success} dismissible onDismiss={() => setSuccess(null)} className="mb-4" />}
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Manajemen Langganan Tenant"
+        description="Pantau lisensi paket aktif, masa trial, dan konfigurasi auto-renew seluruh tenant sekolah Absenta."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="billing_subscriptions"
+        topSlot={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => refetchSubs()}
+              disabled={isFetching}
+              className="flex items-center gap-1.5 font-bold rounded-xl"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              Segarkan
+            </Button>
+            <Button
+              variant="toolbarPrimary"
+              size="toolbar"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Buat Langganan
+            </Button>
+          </div>
+        }
+        instruction={{
+          title: "Panduan Manajemen Langganan",
+          description: "Pantau dan kelola seluruh langganan aktif, masa trial, dan status auto-renew tenant Absenta.",
+          items: [
+            { text: "Gunakan filter Status untuk menyaring langganan berdasarkan kondisi (Aktif, Trial, Kedaluwarsa)." },
+            { text: "Klik tombol Riwayat di tiap baris untuk melihat jejak audit perubahan lisensi." },
+            { text: "Gunakan toolbar atas untuk membuat subscription baru secara manual bagi tenant." }
+          ]
+        }}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            {/* Analytics Stats Overview (Pilar 23) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <AnalyticsCard
+                title="Total Langganan"
+                value={String(totalItems)}
+                icon={Users}
+                color="indigo"
+              />
+              <AnalyticsCard
+                title="Langganan Aktif"
+                value={String(summary.activeCount)}
+                icon={CheckCircle}
+                color="emerald"
+              />
+              <AnalyticsCard
+                title="Masa Trial"
+                value={String(summary.trialCount)}
+                icon={Clock}
+                color="blue"
+              />
+              <AnalyticsCard
+                title="Estimasi MRR"
+                value={formatCurrency(summary.estimatedMrr)}
+                icon={RefreshCcw}
+                color="amber"
+              />
+            </div>
 
-      <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-400/60 dark:bg-amber-900/30 dark:text-amber-100">
-        Perubahan di halaman ini berdampak langsung ke akses layanan dan penagihan semua tenant. Pastikan setiap update sudah disepakati dengan pemilik sekolah.
-      </div>
+            {/* Filter Bar (Placed Above Table - Pilar 28) */}
+            <div className="overflow-x-auto max-w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Input
+                  id="sub-search-input"
+                  aria-label="Cari nama tenant atau paket"
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    const parsed = subFilterSchema.safeParse({ search: e.target.value });
+                    if (parsed.success) {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }
+                  }}
+                  placeholder="Cari nama tenant sekolah..."
+                  className="pl-10 text-xs w-full max-w-full min-w-0 rounded-xl border-slate-200 dark:border-slate-800"
+                />
+              </div>
 
-      <Card className="overflow-hidden">
-        <Table
-          data={paginatedItems}
-          columns={columns}
-          loading={loading}
-          emptyMessage={filteredItems.length === 0 && !loading ? 'Tidak ada langganan yang cocok dengan filter pencarian' : undefined}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          pagination={{
-            currentPage, totalPages: serverTotalPages, totalItems: serverTotalItems, itemsPerPage,
-            onPageChange: (page) => setCurrentPage(page),
-            onLimitChange: (limit) => { setItemsPerPage(limit); setCurrentPage(1); },
-          }}
-          toolbarRight={tableToolbarRight}
-          toolbarLeft={
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              <div className="w-64">
-                <Input type="text" value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  placeholder={pageConfig.searchPlaceholder || 'Cari tenant...'}
-                  leftIcon={<Search className="text-gray-400 h-4 w-4" />}
-                  aria-label="Cari subscription berdasarkan tenant atau plan"
-                  className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200/80 dark:border-slate-800" />
-              </div>
-              <div className="w-48">
-                <SearchableSelect value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
-                  options={[{ value: 'ALL', label: 'Semua Status' }, ...((pageConfig.statusOptions || [])?.map(o => ({ value: o.value, label: o.label })))]}
-                  placeholder="Semua Status" searchPlaceholder="Cari status..."
-                  triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800" />
-              </div>
-              <div className="relative w-64">
-                <SearchableSelect value={tenantFilterId} onValueChange={(v) => { setTenantFilterId(v); setCurrentPage(1); }}
-                  options={[{ value: 'ALL', label: 'Semua Tenant' }, ...tenantOptions?.map(t => ({ value: t.id, label: t.name }))]}
-                  placeholder={tenantsLoading ? 'Memuat tenant...' : 'Semua Tenant'} searchPlaceholder="Cari tenant..."
-                  triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800" />
-              </div>
-              <div className="relative w-48">
-                <SearchableSelect value={planId} onValueChange={(v) => { setPlanId(v); setCurrentPage(1); }}
-                  options={[{ value: 'ALL', label: 'Semua Plan' }, ...planOptions?.map(p => ({ value: p.id, label: p.name }))]}
-                  placeholder="Semua Plan" searchPlaceholder="Cari plan..."
-                  triggerClassName="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800" />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 font-medium">Periode:</span>
-                <div className="w-36">
-                  <Input type="date" value={dateFrom}
-                    onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
-                    aria-label="Filter tanggal mulai"
-                    className="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800 py-1" />
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="w-full sm:w-36 min-w-0">
+                  <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                    <SearchableSelect
+                      id="sub-status-filter-select"
+                      aria-label="Filter status langganan"
+                      value={statusFilter}
+                      onValueChange={(val) => {
+                        setStatusFilter(val);
+                        setCurrentPage(1);
+                      }}
+                      options={[
+                        { value: 'ALL', label: 'Semua Status' },
+                        { value: 'ACTIVE', label: 'Aktif' },
+                        { value: 'TRIAL', label: 'Masa Trial' },
+                        { value: 'EXPIRED', label: 'Kedaluwarsa' },
+                        { value: 'SUSPENDED', label: 'Ditangguhkan' },
+                      ]}
+                      placeholder="Status"
+                    />
+                  </Suspense>
                 </div>
-                <span className="text-xs text-gray-500 font-medium">-</span>
-                <div className="w-36">
-                  <Input type="date" value={dateTo}
-                    onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
-                    aria-label="Filter tanggal berakhir"
-                    className="bg-white/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800 py-1" />
+
+                <div className="w-full sm:w-44 min-w-0">
+                  <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                    <SearchableSelect
+                      id="sub-plan-filter-select"
+                      aria-label="Filter paket langganan"
+                      value={planId}
+                      onValueChange={(val) => {
+                        setPlanId(val);
+                        setCurrentPage(1);
+                      }}
+                      options={[
+                        { value: 'ALL', label: 'Semua Paket' },
+                        ...(plansData ?? [])?.map(p => ({ value: p.id, label: p.name }))
+                      ]}
+                      placeholder="Pilih Paket"
+                    />
+                  </Suspense>
                 </div>
+
+                {isSA && (
+                  <div className="w-full sm:w-48 min-w-0">
+                    <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                      <SearchableSelect
+                        id="sub-tenant-filter-select"
+                        aria-label="Filter tenant sekolah"
+                        value={tenantFilterId}
+                        onValueChange={(val) => {
+                          setTenantFilterId(val);
+                          setCurrentPage(1);
+                        }}
+                        options={[
+                          { value: 'ALL', label: 'Semua Tenant' },
+                          ...(tenantsData ?? [])?.map(t => ({ value: t.id, label: t.name }))
+                        ]}
+                        placeholder="Pilih Tenant"
+                      />
+                    </Suspense>
+                  </div>
+                )}
               </div>
             </div>
-          }
-        />
-      </Card>
 
-      <Suspense fallback={<div className="flex justify-center py-4"><Loader size="sm" /></div>}>
+            {/* Subscriptions Table */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <Table
+                columns={columns}
+                data={items}
+                isLoading={loadingSubs}
+                pagination={paginationProp}
+                emptyMessage="Tidak ada data langganan yang sesuai dengan filter."
+              />
+            </div>
+          </div>
+        </SectionCard>
+      </AcademicPageLayout>
+
+      {/* Lazy Loaded Modals */}
+      <Suspense fallback={null}>
         {showEditModal && (
-          <SubscriptionEditModal isOpen={showEditModal} onClose={() => setShowEditModal(false)}
-            editStatus={editStatus} editAutoRenew={editAutoRenew} onAutoRenewChange={setEditAutoRenew}
-            onSave={handleEditSave} loading={editLoading} />
+          <SubscriptionEditModal
+            isOpen={showEditModal}
+            onClose={() => setShowEditModal(false)}
+            editStatus={editStatus}
+            editAutoRenew={editAutoRenew}
+            onAutoRenewChange={setEditAutoRenew}
+            onSave={handleEditSave}
+            loading={updateMutation.isPending}
+          />
         )}
+
         {showCreateModal && (
-          <SubscriptionCreateModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)}
-            isSA={isSA} userId={user?.id} userTenantId={user?.tenant_id || getCurrentTenantId() || undefined}
-            planOptions={planOptions} planDetails={planDetails} tenantOptions={tenantOptions}
-            plansLoading={plansLoading} tenantsLoading={tenantsLoading}
-            getCurrentTenantId={getCurrentTenantId} isSuperAdmin={isSuperAdmin}
-            loadSubscriptions={loadSubscriptions}
-            onSuccess={(msg) => setSuccess(msg)} onError={(msg) => setError(msg)} />
+          <SubscriptionCreateModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            isSA={isSA}
+            userId={user?.id}
+            userTenantId={user?.tenant_id || getCurrentTenantId() || undefined}
+            planOptions={plansData}
+            planDetails={{}}
+            tenantOptions={tenantsData}
+            plansLoading={false}
+            tenantsLoading={false}
+            getCurrentTenantId={getCurrentTenantId}
+            isSuperAdmin={isSuperAdmin}
+            loadSubscriptions={() => queryClient.invalidateQueries({ queryKey: ['billing-subscriptions-list'] })}
+            onSuccess={(msg) => toast.success(msg)}
+            onError={(msg) => toast.error(msg)}
+          />
         )}
+
         {showHistoryModal && (
-          <SubscriptionHistoryModal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)}
-            subscriptionId={historySubscriptionId} historyItems={historyItems}
-            historyLoading={historyLoading} historyError={historyError}
-            onDismissError={() => setHistoryError(null)} />
+          <SubscriptionHistoryModal
+            isOpen={showHistoryModal}
+            onClose={() => setShowHistoryModal(false)}
+            subscriptionId={historySubscriptionId}
+            historyItems={historyItems}
+            historyLoading={historyLoading}
+            historyError={historyError}
+            onDismissError={() => setHistoryError(null)}
+          />
         )}
       </Suspense>
-    </SuperAdminPageLayout>
+    </InfraErrorBoundary>
   );
-}
+});
+
+export default SubscriptionsPage;

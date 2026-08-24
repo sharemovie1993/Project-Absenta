@@ -15,6 +15,7 @@ import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { toLocalMonth } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
+import { formatDate } from '../../../utils/layoutUtils';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Users } from 'lucide-react';
 
@@ -146,11 +147,11 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
 
   // Kop Surat & Sekolah Query
   const kopQuery = useQuery({
-    queryKey: ['rekap-bulanan-kelas-kop', (user as any)?.tenant_id],
+    queryKey: ['rekap-bulanan-kelas-kop', (user as { tenant_id?: string })?.tenant_id],
     queryFn: async () => {
       const sek = await sekolahApi.getProfile().catch(() => null);
       let tenantData = null;
-      const tenantId = (user as any)?.tenant_id;
+      const tenantId = (user as { tenant_id?: string })?.tenant_id;
       if (tenantId) {
         const res = await getTenantById(tenantId).catch(() => null);
         if (res?.success) tenantData = res.data;

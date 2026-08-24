@@ -36,7 +36,7 @@ export const jadwalKegiatanSchema = z.object({
 
 export type JadwalKegiatanFormData = z.infer<typeof jadwalKegiatanSchema>;
 
-import { HARI_LIST as HARI_OPTION, WORKDAYS_HARI_KEYS as WORKDAYS } from '../../constants/day.constants';
+import { HARI_LIST as HARI_OPTION, WORKDAYS_HARI_KEYS as WORKDAYS } from '@/constants/day.constants';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 interface JadwalKegiatanFormModalProps {

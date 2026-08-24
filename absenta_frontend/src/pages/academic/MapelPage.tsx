@@ -123,7 +123,7 @@ export const MapelPage: React.FC = () => {
   const handleTemplateDownload = useCallback(async () => {
     try {
       toast('Menyiapkan template cerdas...', { icon: 'ℹ️' });
-      const tingkatList = hookTingkatList.map(String);
+      const tingkatList = hookTingkatList?.map(String) || [];
       const kelompokList = ['A', 'B', 'C', 'Peminatan', 'Muatan Lokal'];
 
       await generateAdvancedTemplate(

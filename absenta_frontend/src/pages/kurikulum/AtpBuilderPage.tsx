@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+const atpSchema = z.object({
+  nama_atp: z.string().min(1, 'Nama ATP wajib diisi'),
+  fase: z.string().min(1, 'Fase wajib diisi')
+});
+import { SectionCard } from '../../components/ui/SectionCard';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -12,7 +20,7 @@ import {
   GraduationCap,
   Clock
 } from 'lucide-react';
-import { PageLayout } from '../../components/common/PageLayout';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, Input, Label } from '../../components/ui';
 import {
   getAtpList,
@@ -47,7 +55,7 @@ const DEFAULT_TP: TujuanPembelajaranItem = {
 export const AtpBuilderPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const guruId = (user as any)?.guru_profile?.id || '';
+  const guruId = (user as Record<string, unknown>)?.guru_profile?.id || '';
 
   // ─── Selector State ───────────────────────────────────────────────
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
@@ -65,7 +73,7 @@ export const AtpBuilderPage: React.FC = () => {
     setNamaAtp(tpl.nama_template);
     setTotalJp(tpl.total_alokasi_jp || 36);
     if (tpl.TpTemplate && tpl.TpTemplate.length > 0) {
-      setTpList(tpl.TpTemplate.map((tp, idx) => ({
+      setTpList(tpl.TpTemplate?.map((tp, idx) => ({
         kode_tp: tp.kode_tp || `TP 1.${idx + 1}`,
         judul_materi: tp.judul_materi || '',
         deskripsi_tp: tp.deskripsi_tp || '',
@@ -85,7 +93,7 @@ export const AtpBuilderPage: React.FC = () => {
       const res = await listGuruMapel({ guru_id: guruId });
       // De-duplicate by mapel_id
       const seen = new Set<string>();
-      return (res.data || []).filter((gm: any) => {
+      return (res.data || []).filter((gm: unknown) => {
         if (!gm.Mapel?.id || seen.has(gm.Mapel.id)) return false;
         seen.add(gm.Mapel.id);
         return true;
@@ -99,7 +107,7 @@ export const AtpBuilderPage: React.FC = () => {
   // Auto-pilih mapel pertama jika belum dipilih
   useEffect(() => {
     if (guruMapelList.length > 0 && !selectedMapelId) {
-      setSelectedMapelId((guruMapelList[0] as any).Mapel?.id || '');
+      setSelectedMapelId((guruMapelList[0] as Record<string, unknown>).Mapel?.id || '');
     }
   }, [guruMapelList, selectedMapelId]);
 
@@ -118,8 +126,8 @@ export const AtpBuilderPage: React.FC = () => {
 
   // ─── Populate form saat ATP ditemukan ────────────────────────────
   useEffect(() => {
-    if ((atpPlans as any[]).length > 0) {
-      const current = (atpPlans as any[])[0];
+    if ((atpPlans as Record<string, unknown>[]).length > 0) {
+      const current = (atpPlans as Record<string, unknown>[])[0];
       setActiveAtpId(current.id || null);
       setNamaAtp(current.nama_atp || '');
       setTotalJp(current.total_alokasi_jp || 36);
@@ -130,7 +138,7 @@ export const AtpBuilderPage: React.FC = () => {
       }
     } else {
       setActiveAtpId(null);
-      const mapelItem = (guruMapelList as any[]).find((gm: any) => gm.Mapel?.id === selectedMapelId);
+      const mapelItem = (guruMapelList as Record<string, unknown>[]).find((gm: unknown) => gm.Mapel?.id === selectedMapelId);
       const mapelName = mapelItem?.Mapel?.nama_mapel || '';
       setNamaAtp(mapelName ? `ATP ${mapelName} — Fase ${selectedFase}` : `ATP Baru — Fase ${selectedFase}`);
       setTotalJp(36);
@@ -153,7 +161,7 @@ export const AtpBuilderPage: React.FC = () => {
 
   const handleRemoveTp = useCallback((index: number) => {
     if (tpList.length <= 1) { toast.error('Minimal harus ada 1 TP'); return; }
-    setTpList(prev => prev.filter((_, i) => i !== index).map((item, idx) => ({ ...item, urutan: idx + 1 })));
+    setTpList(prev => prev.filter((_, i) => i !== index)?.map((item, idx) => ({ ...item, urutan: idx + 1 })));
   }, [tpList.length]);
 
   const handleMoveTp = useCallback((index: number, direction: 'up' | 'down') => {
@@ -162,11 +170,11 @@ export const AtpBuilderPage: React.FC = () => {
     setTpList(prev => {
       const updated = [...prev];
       [updated[index], updated[targetIdx]] = [updated[targetIdx], updated[index]];
-      return updated.map((item, idx) => ({ ...item, urutan: idx + 1 }));
+      return updated?.map((item, idx) => ({ ...item, urutan: idx + 1 }));
     });
   }, [tpList]);
 
-  const handleTpChange = useCallback((index: number, field: keyof TujuanPembelajaranItem, value: any) => {
+  const handleTpChange = useCallback((index: number, field: keyof TujuanPembelajaranItem, value: unknown) => {
     setTpList(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -200,14 +208,14 @@ export const AtpBuilderPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['guruTeachingTimeline'] });
       queryClient.invalidateQueries({ queryKey: ['guru-riwayat-ajar'] });
     },
-    onError: (err: any) => toast.error(err.message || 'Gagal menyimpan ATP')
+    onError: (err: unknown) => toast.error(err.message || 'Gagal menyimpan ATP')
   });
 
   const calculatedJp = tpList.reduce((acc, curr) => acc + (Number(curr.alokasi_jp) || 0), 0);
-  const selectedMapelItem = (guruMapelList as any[]).find((gm: any) => gm.Mapel?.id === selectedMapelId);
+  const selectedMapelItem = (guruMapelList as Record<string, unknown>[]).find((gm: unknown) => gm.Mapel?.id === selectedMapelId);
 
   return (
-    <PageLayout
+    <AcademicPageLayout hardeningModuleKey="kurikulum_atp_builder"
       title="Penyusun ATP & TP"
       description="Rancang Alur Tujuan Pembelajaran per mata pelajaran yang Anda ampu — berbasis Kurikulum Merdeka."
       breadcrumbs={[
@@ -224,8 +232,8 @@ export const AtpBuilderPage: React.FC = () => {
           { text: 'Setelah disimpan, TP ini otomatis muncul di Form Jurnal KBM sebagai pilihan 1-klik.' }
         ]
       }}
-      hardeningModuleKey="kurikulum_atp_builder"
     >
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
       {/* Padding bawah agar tidak tertutup sticky bar */}
       <div className="space-y-4 pb-28 lg:pb-6">
 
@@ -264,24 +272,26 @@ export const AtpBuilderPage: React.FC = () => {
               </Label>
               {isLoadingMapel ? (
                 <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-              ) : (guruMapelList as any[]).length === 0 ? (
+              ) : (guruMapelList as Record<string, unknown>[]).length === 0 ? (
                 <div className="h-11 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/30 flex items-center px-3">
                   <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
                     Belum ada penugasan mapel — hubungi admin Kurikulum
                   </span>
                 </div>
               ) : (
-                <select
-                  className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-sm text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  value={selectedMapelId}
-                  onChange={(e) => setSelectedMapelId(e.target.value)}
-                >
-                  {(guruMapelList as any[]).map((gm: any) => (
-                    <option key={gm.Mapel?.id} value={gm.Mapel?.id}>
-                      {gm.Mapel?.nama_mapel}{gm.Mapel?.kode_mapel ? ` (${gm.Mapel.kode_mapel})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+    id="atp_select"
+    aria-label="Pilih Opsi ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
               )}
             </div>
 
@@ -291,15 +301,19 @@ export const AtpBuilderPage: React.FC = () => {
                 <Sparkles size={12} className="text-indigo-500" />
                 Fase Kurikulum Merdeka
               </Label>
-              <select
-                className="w-full h-11 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-bold text-sm text-blue-700 dark:text-blue-300 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                value={selectedFase}
-                onChange={(e) => setSelectedFase(e.target.value)}
-              >
-                {FASE_OPTIONS.map(f => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
-                ))}
-              </select>
+              <SearchableSelect
+    id="atp_select"
+    aria-label="Pilih Opsi ATP"
+    options={[
+      { value: 'Fase A', label: 'Fase A (Kelas 1-2)' },
+      { value: 'Fase B', label: 'Fase B (Kelas 3-4)' },
+      { value: 'Fase C', label: 'Fase C (Kelas 5-6)' },
+      { value: 'Fase D', label: 'Fase D (Kelas 7-9)' },
+      { value: 'Fase E', label: 'Fase E (Kelas 10)' },
+      { value: 'Fase F', label: 'Fase F (Kelas 11-12)' }
+    ]}
+    placeholder="Pilih Fase..."
+  />
             </div>
           </div>
 
@@ -377,7 +391,7 @@ export const AtpBuilderPage: React.FC = () => {
 
           {/* TP List */}
           <div className="p-4 sm:p-5 space-y-3">
-            {tpList.map((tp, idx) => (
+            {tpList?.map((tp, idx) => (
               <div
                 key={idx}
                 className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-700 transition-all overflow-hidden"
@@ -506,7 +520,8 @@ export const AtpBuilderPage: React.FC = () => {
         defaultMapelName={selectedMapelItem?.Mapel?.nama_mapel}
         onSelectTemplate={handleApplyTemplate}
       />
-    </PageLayout>
+    </SectionCard>
+    </AcademicPageLayout>
   );
 };
 

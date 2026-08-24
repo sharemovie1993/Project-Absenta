@@ -1,8 +1,9 @@
 import React, { useMemo, useCallback } from 'react';
-import { Card } from '../../../../components/ui/Card';
-import { Badge } from '../../../../components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Briefcase, CheckCircle2, Calendar, XCircle, Send, ChevronRight } from 'lucide-react';
-import type { HubinLowongan, HubinLamaran } from '../../../../api/hubin.api';
+import { formatDate } from '@/utils/layoutUtils';
+import type { HubinLowongan, HubinLamaran } from '@/api/hubin.api';
 
 interface JobCardProps {
   job: HubinLowongan;
@@ -69,7 +70,7 @@ export const JobCard: React.FC<JobCardProps> = React.memo(({
 
         <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 font-bold gap-2 mb-4">
           <span className="flex items-center gap-1">
-            <Calendar size={11} /> {new Date(job.tanggal_tutup).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            <Calendar size={11} /> {formatDate(job.tanggal_tutup, { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
           <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
             👥 {job.kuota} kuota

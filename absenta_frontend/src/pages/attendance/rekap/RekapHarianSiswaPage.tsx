@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 import { 
   SectionCard, 
   Button, 
@@ -23,6 +24,12 @@ import { Search, RefreshCw, User, Clock, FileText, Filter } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
+
+const rekapHarianFormSchema = z.object({
+  siswaId: z.string().min(1, 'Siswa wajib dipilih'),
+  tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid'),
+  tahunPelajaranId: z.string().optional()
+});
 
 interface RekapHarianRincianItem {
   waktu?: string;
@@ -115,8 +122,12 @@ export default React.memo(function RekapHarianSiswaPage() {
   const loading = rekapQuery.isLoading;
 
   const fetchData = useCallback(async () => {
+    const parseResult = rekapHarianFormSchema.safeParse({ siswaId, tanggal, tahunPelajaranId });
+    if (!parseResult.success) {
+      return;
+    }
     await rekapQuery.refetch();
-  }, [rekapQuery]);
+  }, [rekapQuery, siswaId, tanggal, tahunPelajaranId]);
 
   if (loading) {
     return (
@@ -227,8 +238,10 @@ export default React.memo(function RekapHarianSiswaPage() {
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Siswa</label>
+            <label htmlFor="select-rekap-siswa" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Siswa</label>
             <SearchableSelect
+              id="select-rekap-siswa"
+              aria-label="Pilih Siswa"
               value={siswaId}
               onValueChange={setSiswaId}
               options={siswaOptions}
@@ -239,8 +252,10 @@ export default React.memo(function RekapHarianSiswaPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tanggal Laporan</label>
+            <label htmlFor="input-rekap-tanggal" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tanggal Laporan</label>
             <Input 
+              id="input-rekap-tanggal"
+              aria-label="Tanggal Laporan"
               type="date" 
               value={tanggal} 
               onChange={e => setTanggal(e.target.value)} 
@@ -248,8 +263,10 @@ export default React.memo(function RekapHarianSiswaPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tahun Pelajaran</label>
+            <label htmlFor="select-rekap-tahun" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tahun Pelajaran</label>
             <SearchableSelect
+              id="select-rekap-tahun"
+              aria-label="Tahun Pelajaran"
               value={tahunPelajaranId}
               onValueChange={setTahunPelajaranId}
               options={tahunOptions}
@@ -327,7 +344,7 @@ export default React.memo(function RekapHarianSiswaPage() {
                 onLimitChange: setLimit
               }}
               toolbarRight={
-                <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest border-slate-200 dark:border-slate-800">
+                <Button variant="toolbarOutline" size="toolbar" onClick={() => window.print()} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
                   Cetak Rincian
                 </Button>
               }
@@ -338,16 +355,18 @@ export default React.memo(function RekapHarianSiswaPage() {
     </div>
   );
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Presensi', path: '/attendance' },
+    { label: 'Rekap', path: '/attendance/rekap' },
+    { label: 'Harian Siswa', path: '/attendance/rekap/siswa-harian' }
+  ], []);
+
   return (
     <AcademicPageLayout
       hardeningModuleKey="rekaphariansiswapage"
       title="Rekap Harian Siswa"
       description="Rincian kehadiran harian siswa beserta status dan waktu pencatatan"
-      breadcrumbs={[
-        { label: 'Presensi', path: '/attendance' },
-        { label: 'Rekap', path: '/attendance/rekap' },
-        { label: 'Harian Siswa', path: '/attendance/rekap/siswa-harian' }
-      ]}
+      breadcrumbs={breadcrumbs}
       instruction={{
         title: "Panduan Rekap Harian",
         description: "Gunakan halaman ini untuk memantau presensi siswa per hari secara spesifik.",

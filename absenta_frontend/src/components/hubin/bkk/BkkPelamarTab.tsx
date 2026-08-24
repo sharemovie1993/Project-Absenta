@@ -1,10 +1,10 @@
 import React, { useMemo, useCallback } from 'react';
-import { Card } from '../../../../components/ui/Card';
-import { Loader } from '../../../../components/ui/Loader';
-import { Badge } from '../../../../components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { Loader } from '@/components/ui/Loader';
+import { Badge } from '@/components/ui/Badge';
 import { STATUS_CONFIG, TimelinePanel } from './BkkModals';
 import { ExternalLink, RotateCcw, History } from 'lucide-react';
-import type { HubinLamaran } from '../../../../api/hubin.api';
+import type { HubinLamaran } from '@/api/hubin.api';
 
 interface BkkPelamarTabProps {
   loadingApplicants: boolean;

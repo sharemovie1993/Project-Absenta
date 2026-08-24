@@ -119,7 +119,7 @@ const TransitionScope: React.FC<Props> = React.memo(({
               <p className="text-xs text-slate-400 italic">Memuat tingkat kelas yang aktif...</p>
             ) : (
               <div className="flex flex-wrap gap-3">
-                {availableTingkat.map(t => {
+                {availableTingkat?.map(t => {
                   const isChecked = selectedTingkat.includes(t);
                   return (
                     <button

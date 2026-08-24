@@ -37,6 +37,7 @@ import { getJadwalKBM, deleteJadwalKBM, clearJadwalKBM, type JadwalKBM } from '.
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
 import { LogService } from '../../utils/LogService';
+import { formatDate } from '../../utils/layoutUtils';
 import useConfirm from '../../hooks/useConfirm';
 import { toast } from 'react-hot-toast';
 
@@ -245,11 +246,11 @@ export default function JadwalPelajaranPage() {
       ]);
 
       const kbmItems = res.data || [];
-      const piketItems: any[] = [];
-      const pembiasaanItems: any[] = [];
+      const piketItems: unknown[] = [];
+      const pembiasaanItems: unknown[] = [];
 
       if (piketRes?.success && Array.isArray(piketRes.data)) {
-        piketRes.data.forEach((p: any) => {
+        piketRes.data.forEach((p: { id: string; slot_mulai?: number; slot_selesai?: number; hari: string; jam_mulai?: string; jam_selesai?: string; pos_piket?: string; Guru?: unknown }) => {
           const startSlot = p.slot_mulai || 1;
           const endSlot = p.slot_selesai || 10;
           for (let slot = startSlot; slot <= endSlot; slot++) {
@@ -271,7 +272,7 @@ export default function JadwalPelajaranPage() {
       }
 
       if (kegiatanRes?.success && Array.isArray(kegiatanRes.data)) {
-        const parseArray = (val: any): string[] => {
+        const parseArray = (val: unknown): string[] => {
           if (!val) return [];
           if (Array.isArray(val)) return val;
           if (typeof val === 'string') {
@@ -279,12 +280,12 @@ export default function JadwalPelajaranPage() {
               const parsed = JSON.parse(val);
               if (Array.isArray(parsed)) return parsed;
             } catch {}
-            return val.split(',').map(s => s.trim()).filter(Boolean);
+            return val.split(',')?.map(s => s.trim()).filter(Boolean);
           }
           return [];
         };
 
-        kegiatanRes.data.forEach((keg: any) => {
+        kegiatanRes.data.forEach((keg: Parameters<typeof isRoutineKesiswaanActivity>[0] & { target_kelas_ids?: unknown; tenant_id?: string; waktu_mulai?: string; waktu_selesai?: string; nama?: string; target_semua_kelas?: boolean }) => {
           if (!isRoutineKesiswaanActivity(keg)) return;
 
           const days = parseArray(keg.hari);
@@ -314,7 +315,7 @@ export default function JadwalPelajaranPage() {
             });
           } else {
             const activeIds = keg.target_semua_kelas 
-              ? (kelasRawList || []).map((k: any) => k.id) 
+              ? (kelasRawList || [])?.map((k: { id: string }) => k.id) 
               : targetKelasIds;
 
             days.forEach((dStr: string) => {
@@ -379,10 +380,10 @@ export default function JadwalPelajaranPage() {
       }
 
       // 3. Fetch list of organizational assignments for principal NIP/Name signature
-      let strukturList: any[] = [];
+      let strukturList: unknown[] = [];
       try {
         const strukturRes = await getStrukturList({ page: 1, limit: 100 });
-        strukturList = strukturRes?.success ? strukturRes.data : [];
+        strukturList = strukturRes?.success ? (strukturRes.data as unknown[]) : [];
       } catch (e) {
         console.warn('Failed to fetch structure list', e);
       }
@@ -403,18 +404,18 @@ export default function JadwalPelajaranPage() {
       }
 
       // 5. Fetch master kegiatan for activity name mappings
-      let jenisKegiatanList: any[] = [];
+      let jenisKegiatanList: unknown[] = [];
       try {
         const jenisRes = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
-        jenisKegiatanList = jenisRes?.success ? jenisRes.data : [];
+        jenisKegiatanList = jenisRes?.success ? (jenisRes.data as unknown[]) : [];
       } catch (e) {
         console.warn('Failed to fetch jenis kegiatan list', e);
       }
 
       // 6. Extract unique classes and gurus from the current page's jadwal list to avoid potential 403 Forbidden errors
-      const classes: any[] = [];
+      const classes: Array<{ id: string; nama_kelas: string }> = [];
       const classIds = new Set<string>();
-      const gurus: any[] = [];
+      const gurus: Array<{ id: string; nama_guru: string }> = [];
       const guruIds = new Set<string>();
 
       jadwal.forEach(j => {
@@ -549,9 +550,10 @@ export default function JadwalPelajaranPage() {
       } else {
         toast.error(res?.message || 'Gagal mengosongkan jadwal');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to clear schedules', err);
-      toast.error(err?.message || 'Gagal mengosongkan jadwal KBM');
+      const errMsg = err instanceof Error ? err.message : 'Gagal mengosongkan jadwal KBM';
+      toast.error(errMsg);
     }
   }, [confirm, isSiswa, defaultKelasId, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, invalidateAllJadwalCaches, refetchJadwal]);
 
@@ -619,7 +621,7 @@ export default function JadwalPelajaranPage() {
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
-              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as any)}
+              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as 'grid' | 'builder' | 'preview')}
             />
           ) : !isSiswa ? (
             <TabSwitcher
@@ -628,7 +630,7 @@ export default function JadwalPelajaranPage() {
                 { id: 'preview', label: 'Pratinjau PDF', icon: Printer, colorClass: 'text-blue-600 dark:text-blue-400' }
               ]}
               activeTab={viewMode}
-              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as any)}
+              onChange={(id) => id === 'preview' ? triggerPrintPreview() : setViewMode(id as 'grid' | 'builder' | 'preview')}
             />
           ) : null}
         </div>

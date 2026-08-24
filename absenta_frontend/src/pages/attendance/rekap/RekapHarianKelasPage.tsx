@@ -164,11 +164,11 @@ export function RekapHarianKelasContent({
 
   // Kop Query
   const kopQuery = useQuery({
-    queryKey: ['rekap-harian-kelas-kop', (user as any)?.tenant_id],
+    queryKey: ['rekap-harian-kelas-kop', (user as { tenant_id?: string })?.tenant_id],
     queryFn: async () => {
       const sek = await sekolahApi.getProfile().catch(() => null);
       let tenantData = null;
-      const tenantId = (user as any)?.tenant_id;
+      const tenantId = (user as { tenant_id?: string })?.tenant_id;
       if (tenantId) {
         const res = await getTenantById(tenantId).catch(() => null);
         if (res?.success) tenantData = res.data;
@@ -543,7 +543,7 @@ export function RekapHarianKelasContent({
 
         {/* ─── Stat Badges Summary Row ───────────────────────────────── */}
         {rows && rows.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80">
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Siswa</span>
               <p className="text-lg font-black text-slate-800 dark:text-slate-100">{statsSummary.total}</p>
@@ -604,9 +604,14 @@ export function RekapHarianKelasContent({
             pagination={{
               currentPage: page,
               totalPages: Math.ceil(filteredRows.length / limit) || 1,
+              itemsPerPage: limit,
               pageSize: limit,
               totalItems: filteredRows.length,
               onPageChange: (newPage: number) => setPage(newPage),
+              onLimitChange: (newLimit: number) => {
+                setLimit(newLimit);
+                setPage(1);
+              },
               onPageSizeChange: (newLimit: number) => {
                 setLimit(newLimit);
                 setPage(1);
@@ -676,15 +681,26 @@ export default React.memo(function RekapHarianKelasPage() {
                       subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Presensi', path: '/attendance' },
+    { label: 'Rekap', path: '/attendance/rekap' },
+    { label: 'Harian Per Kelas', active: true }
+  ], []);
+
   return (
     <AcademicPageLayout
       title="Rekap Harian Per Kelas"
       description="Laporan detail status presensi seluruh siswa dalam satu kelas pada tanggal tertentu."
-      breadcrumbs={[
-        { label: 'Presensi', path: '/attendance' },
-        { label: 'Rekap', path: '/attendance/rekap' },
-        { label: 'Harian Per Kelas', active: true }
-      ]}
+      breadcrumbs={breadcrumbs}
+      instruction={{
+        title: 'Panduan Rekap Harian Kelas',
+        description: 'Laporan detail status presensi seluruh siswa dalam satu kelas pada tanggal tertentu.',
+        items: [
+          { text: 'Pilih Kelas dan Tanggal Laporan untuk memuat data presensi harian.' },
+          { text: 'Pantau persentase kehadiran dan ringkasan siswa yang tidak hadir.' },
+          { text: 'Gunakan tombol Ekspor Excel atau Cetak PDF untuk laporan resmi.' }
+        ]
+      }}
       hardeningModuleKey="rekap-harian-kelas"
     >
       <Suspense fallback={<div className="p-8 text-center"><Loader size="md" /></div>}>

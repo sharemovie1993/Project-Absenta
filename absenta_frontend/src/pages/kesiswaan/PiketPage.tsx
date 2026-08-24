@@ -34,6 +34,7 @@ import { usePiketGateStore } from '../../hooks/usePiketGateStore';
 import { calculatePiketAnalytics, getPiketPersonaConfig, type PiketPersonaMode } from '../../utils/piketStatusHelper';
 import { tenantApi } from '../../api/tenants.api';
 import { fetchActiveSystemConfig } from '../../services/systemConfig';
+import { formatDate } from '../../utils/layoutUtils';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
@@ -282,15 +283,15 @@ export default function PiketPage() {
   });
 
   const pendingTeacherCount = useMemo(() => {
-    const rawData = (sesiDataToday as any)?.data;
-    const rawSessions: any[] = Array.isArray(rawData)
+    const rawData = (sesiDataToday as { data?: unknown; sessions?: unknown[] })?.data;
+    const rawSessions: unknown[] = Array.isArray(rawData)
       ? rawData
-      : Array.isArray(rawData?.data)
-      ? rawData.data
-      : Array.isArray(rawData?.sessions)
-      ? rawData.sessions
-      : Array.isArray((sesiDataToday as any)?.sessions)
-      ? (sesiDataToday as any).sessions
+      : Array.isArray((rawData as { data?: unknown[] })?.data)
+      ? ((rawData as { data?: unknown[] }).data || [])
+      : Array.isArray((rawData as { sessions?: unknown[] })?.sessions)
+      ? ((rawData as { sessions?: unknown[] }).sessions || [])
+      : Array.isArray((sesiDataToday as { sessions?: unknown[] })?.sessions)
+      ? ((sesiDataToday as { sessions?: unknown[] }).sessions || [])
       : [];
     return Array.isArray(rawSessions) ? rawSessions.length : 0;
   }, [sesiDataToday]);
@@ -303,7 +304,7 @@ export default function PiketPage() {
   });
 
   const pendingLeaveCount = useMemo(() => {
-    const raw = (pendingLeaveRes as any)?.data;
+    const raw = (pendingLeaveRes as { data?: unknown[] })?.data;
     return Array.isArray(raw) ? raw.length : 0;
   }, [pendingLeaveRes]);
 
@@ -447,7 +448,7 @@ export default function PiketPage() {
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
                 <span className="font-bold text-slate-600 dark:text-slate-300">📅 Hari Ini:</span>
                 <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase">
-                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {formatDate(new Date(), { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
               </div>
               <div>

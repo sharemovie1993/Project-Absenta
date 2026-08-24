@@ -1,58 +1,36 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../../../../components/ui/Loader';
-import { Alert, AlertDescription } from '../../../../components/ui/Alert';
 import toast from 'react-hot-toast';
 import { useCapabilities } from '../../../../hooks/useCapabilities';
 import { 
-  getSesiAbsensiList, 
   createSesiAbsensi, 
-  getSesiAbsenSiswa, 
   tapSiswaKeSesi,
   updateAbsenGuru,
   deleteSesiAbsensi,
   generateSesiFromTemplate,
   updateSesiStatus
 } from '../../../../api/attendanceGerbang.api';
-import { SesiCard } from '../../../../components/attendance/sesi/SesiCard';
 import { SesiFilterPanel } from '../../../../components/attendance/sesi/SesiFilterPanel';
-import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from '../../../../components/attendance/sesi/SesiAttendanceList';
-import Button from '../../../../components/ui/Button';
-import { formatLocalDateTime, formatLocalTimeFromISO, roundTo5, toLocalDate } from '../../../../utils/attendance/time';
-import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
+import type { SesiDetail } from '../../../../components/attendance/sesi/SesiAttendanceList';
+import { toLocalDate } from '../../../../utils/attendance/time';
+import { type DropdownOption } from '../../../../api/dropdown.api';
 import { guruApi, mapelApi } from '../../../../api/academic.api';
-import { listGuruMapel } from '../../../../api/kurikulum/guru-mapel.api';
 import { jenisKegiatanMasterApi } from '../../../../api/academic/jenisKegiatanMaster.api';
-import { useSocket } from '../../../../hooks/useSocket';
 import { useUnifiedKbmSessions } from '../../../../hooks/attendance/useUnifiedKbmSessions';
-import { useSessionWindowAlert } from '../../../../hooks/attendance/useSessionWindowAlert';
-import { getTeacherStatusMeta } from '../../../../utils/kbm-normalizer';
-import { 
-  BookOpen, 
-  Activity, 
-  AlertCircle, 
-  CheckCircle2, 
-  Layers,
-  RefreshCw,
-  Plus
-} from 'lucide-react';
-
+import { formatDate } from '@/utils/date.utils';
+import { BookOpen, Activity, Layers } from 'lucide-react';
 import { type Student } from '../../../../components/common/SmartStudentPicker';
-import { JurnalKbmModal } from '../../../../components/kurikulum/JurnalKbmModal';
-import { AnalyticsCard } from '../../../../components/ui/AnalyticsCard';
 import ConfirmDialog from '../../../../components/ui/ConfirmDialog';
 import { AttendanceErrorBoundary } from '../../../../components/attendance/AttendanceErrorBoundary';
 import PremiumFeatureGate from '../../../../components/auth/PremiumFeatureGate';
-import { cn } from '../../../../lib/utils';
-
-// Import subcomponents
-import { SesiCreateModal } from '../../../../components/attendance/sesi/SesiCreateModal';
-import { SesiScanningModal } from '../../../../components/attendance/sesi/SesiScanningModal';
-import { BukaSesiFotoModal } from '../../../../components/dashboard/staff/modals/BukaSesiFotoModal';
-import { PhotoPreviewModal } from '../../../../components/dashboard/shared/kbm/PhotoPreviewModal';
-
+// Lazy Loaded Modals & Lists (Pilar 13)
+const SessionTimelineList = lazy(() => import('./SessionTimelineList'));
+const SesiCreateModal = lazy(() => import('../../../../components/attendance/sesi/SesiCreateModal').then(m => ({ default: m.SesiCreateModal })));
+const SesiScanningModal = lazy(() => import('../../../../components/attendance/sesi/SesiScanningModal').then(m => ({ default: m.SesiScanningModal })));
+const BukaSesiFotoModal = lazy(() => import('../../../../components/dashboard/staff/modals/BukaSesiFotoModal').then(m => ({ default: m.BukaSesiFotoModal })));
+const PhotoPreviewModal = lazy(() => import('../../../../components/dashboard/shared/kbm/PhotoPreviewModal').then(m => ({ default: m.PhotoPreviewModal })));
+const JurnalKbmModal = lazy(() => import('../../../../components/kurikulum/JurnalKbmModal').then(m => ({ default: m.JurnalKbmModal })));
 interface SessionManagerModuleProps {
   selectedKelasId: string;
   setSelectedKelasId: (id: string) => void;
@@ -61,65 +39,9 @@ interface SessionManagerModuleProps {
   userRole?: string;
   canCreateSession: boolean;
   managedKelasIds?: string[];
-  user?: any;
+  user?: Record<string, unknown>;
 }
-
-interface PetugasFormState {
-  kelas_id: string;
-  guru_id: string;
-  mapel_id?: string;
-  jenis_kegiatan: string;
-  tanggal: string;
-  waktu_mulai: string;
-  waktu_selesai: string;
-}
-
-interface SessionData {
-  id: string;
-  status?: string;
-  waktu_mulai?: string;
-  waktu_selesai?: string;
-  jenis_kegiatan?: string;
-  jenis_kegiatan_nama?: string;
-  ProgresMateri?: Record<string, unknown> | null;
-  kelas_id?: string;
-  guru_id?: string;
-  guru_nama?: string;
-  summary?: Record<string, number>;
-  guru_status?: string;
-}
-
-const SesiExpandedContent: React.FC<{ sesiId: string; sesi: SesiDetail; isReportMode?: boolean }> = React.memo(({ sesiId, sesi, isReportMode }) => {
-  const { data: presensiRes, isLoading } = useQuery({
-    queryKey: ['sesi-detail-attendance', sesiId],
-    queryFn: () => getSesiAbsenSiswa(sesiId),
-    enabled: !!sesiId,
-    refetchInterval: 15000,
-  });
-
-  const records: SesiAttendanceRecord[] = useMemo(() => {
-    const raw = presensiRes?.data || presensiRes;
-    return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
-  }, [presensiRes]);
-
-  if (isLoading && records.length === 0) {
-    return (
-      <div className="py-8 text-center space-y-2">
-        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-gray-400 font-bold">Memuat daftar presensi kelas...</p>
-      </div>
-    );
-  }
-
-  return <SesiAttendanceList records={records} sesi={sesi} isReportMode={isReportMode} />;
-});
-SesiExpandedContent.displayName = 'SesiExpandedContent';
-
-interface SocketPayload {
-  sesi_id: string;
-}
-
-const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
+export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.memo(({
   selectedKelasId,
   setSelectedKelasId,
   kelasOptions,
@@ -129,957 +51,420 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   managedKelasIds,
   user,
 }) => {
-  const { subscribe, unsubscribe } = useSocket();
   const queryClient = useQueryClient();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
   const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
-
   const invalidateAllKbmQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
     queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
     queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
-    queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance-monitoring'] });
-    queryClient.invalidateQueries({ queryKey: ['siswa-sesi-attendance'] });
-    queryClient.invalidateQueries({ queryKey: ['presensi-terpadu-sesi'] });
-    queryClient.invalidateQueries({ queryKey: ['today-kbm-schedule'] });
-    queryClient.invalidateQueries({ queryKey: ['my-schedule-timeline'] });
   }, [queryClient]);
-  
-  // State
-  const [tanggal, setTanggal] = useState<string>(toLocalDate());
-
-  const autoSiswaKelasId = (user as any)?.siswa_profile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id;
-  const effectiveKelasId = selectedKelasId || (isPetugasSiswa ? (managedKelasIds?.[0] || autoSiswaKelasId) : undefined);
-
-  const {
-    sessions,
-    isLoading: loading,
-    isError,
-    refetch,
-    bukaSesiPenugasan,
-  } = useUnifiedKbmSessions({
-    tanggal,
-    kelas_id: effectiveKelasId,
-    allowedKelasIds: isPetugasSiswa ? (managedKelasIds?.length ? managedKelasIds : effectiveKelasId ? [effectiveKelasId] : undefined) : undefined,
-  });
-
-  // 🔔 Automatic Session Window Audio & Vibration Alert for Petugas Kelas / Ops (H-15 Menit)
-  useSessionWindowAlert({
-    schedules: Array.isArray(sessions) ? (sessions as any) : [],
-    enabled: true,
-    roleLabel: isPetugasSiswa ? 'petugas_kelas' : 'ops',
-  });
-
-  // Tab Switcher State: KBM vs Kegiatan Sekolah (Supported via ?subtab=kegiatan)
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialSubtab = (searchParams.get('subtab') || searchParams.get('type') || '').toUpperCase();
-  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>(() => {
-    return initialSubtab === 'KEGIATAN' ? 'KEGIATAN' : 'KBM';
-  });
-
-  const handleTabChange = useCallback((newTab: 'KBM' | 'KEGIATAN') => {
-    setActiveTab(newTab);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('subtab', newTab.toLowerCase());
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  const kbmSessions = useMemo(() => {
-    const safe = Array.isArray(sessions) ? sessions : [];
-    return safe.filter((s) => {
-      const raw = String(s.jenis_kegiatan || 'KBM').toUpperCase();
-      return (raw === 'KBM' || raw === 'PELAJARAN') && !s.jadwal_kegiatan_id;
-    });
-  }, [sessions]);
-
-  const kegiatanSessions = useMemo(() => {
-    const safe = Array.isArray(sessions) ? sessions : [];
-    return safe.filter((s) => {
-      const raw = String(s.jenis_kegiatan || '').toUpperCase();
-      return (raw !== 'KBM' && raw !== 'PELAJARAN') || !!s.jadwal_kegiatan_id;
-    });
-  }, [sessions]);
-
-  const activeSessionsList = activeTab === 'KBM' ? kbmSessions : kegiatanSessions;
-  
-  // Delete Confirmation State
+  const [filterDate, setFilterDate] = useState<string>(toLocalDate(new Date()));
+  const [filterGuruId, setFilterGuruId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>('KBM');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingSesiId, setDeletingSesiId] = useState<string | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
-  
-  // Expanded State (for attendance list)
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [sessionAttendance, setSessionAttendance] = useState<Record<string, SesiAttendanceRecord[]>>({});
-  const expandedRef = useRef<Record<string, boolean>>({});
-  useEffect(() => {
-    expandedRef.current = expanded;
-  }, [expanded]);
-
-  // Create Session State
-  const [showCreateSessionForm, setShowCreateSessionForm] = useState(false);
-  const [creatingSession, setCreatingSession] = useState(false);
-  const defaultDuration = 60;
-  const startDate = roundTo5(new Date());
-  const nowLocal = formatLocalDateTime(startDate);
-  const endLocal = formatLocalDateTime(new Date(startDate.getTime() + defaultDuration * 60 * 1000));
-  const [petugasForm, setPetugasForm] = useState<PetugasFormState>({ 
-    kelas_id: selectedKelasId || '', 
-    guru_id: '', 
-    mapel_id: '', 
-    jenis_kegiatan: '', 
-    tanggal: toLocalDate(), 
-    waktu_mulai: nowLocal, 
-    waktu_selesai: endLocal 
-  });
-
-  useEffect(() => {
-    if (!selectedKelasId) return;
-    setPetugasForm((f) => (f.kelas_id ? f : { ...f, kelas_id: selectedKelasId }));
-  }, [selectedKelasId]);
-
-  // Dropdowns Query
-  const dropdownsQuery = useQuery({
-    queryKey: ['session-manager-dropdowns'],
-    queryFn: async () => {
-      const guruRes = await guruApi.getAll({ limit: 1000 });
-      const guruList = (guruRes.data as { id: string; nama_guru: string }[]) || [];
-      const mappedGuru = guruList.map((g) => ({ value: g.id, label: g.nama_guru }));
-      
-      const mapelRes = await mapelApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>);
-      const mapelList = (mapelRes.data as { id: string; kode_mapel?: string; nama_mapel?: string; nama?: string }[]) || [];
-      const mappedMapel = mapelList.map((m) => ({ value: m.id, label: m.kode_mapel || m.nama_mapel || m.nama || '' }));
-      
-      const jenisList = await dropdownApi.getJenisKegiatanMasterForDropdown();
-      const jenisMetaRes = await jenisKegiatanMasterApi.getAll({ limit: 1000 });
-      const jenisMetaList = (jenisMetaRes.data as { id: string; nama: string; tipe: string }[]) || [];
-      const typeMap: Record<string, string> = {};
-      jenisMetaList.forEach((jk) => { 
-        if (jk?.nama && jk?.tipe) typeMap[String(jk.nama)] = String(jk.tipe); 
-        if (jk?.id && jk?.tipe) typeMap[String(jk.id)] = String(jk.tipe); 
-      });
-
-      return {
-        guruOptions: mappedGuru,
-        mapelOptions: mappedMapel,
-        allMapelOptions: mappedMapel,
-        jenisOptions: jenisList,
-        jenisTypeByName: typeMap
-      };
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const guruOptions = dropdownsQuery.data?.guruOptions || [];
-  const allMapelOptions = dropdownsQuery.data?.allMapelOptions || [];
-  const jenisOptions = dropdownsQuery.data?.jenisOptions || [];
-  const jenisTypeByName = dropdownsQuery.data?.jenisTypeByName || {};
-
-  const [filteredMapelOptions, setFilteredMapelOptions] = useState<DropdownOption[] | null>(null);
-  const mapelOptions = filteredMapelOptions || allMapelOptions;
-
-  // Filter Mapel based on Guru
-  useEffect(() => {
-    let isMounted = true;
-    async function loadMapelForGuru() {
-      try {
-        const gid = petugasForm.guru_id;
-        if (!gid) {
-          if (isMounted) setFilteredMapelOptions(null);
-          return;
-        }
-        const res = await listGuruMapel({ guru_id: gid });
-        const items = (res.data as { mapel_id: string; Mapel?: { kode_mapel?: string; nama_mapel?: string; nama?: string } }[]) || [];
-        if (items.length === 0) {
-          if (isMounted) setFilteredMapelOptions(null);
-          return;
-        }
-        const filtered = items.map((gm) => {
-          const fromRel = gm.Mapel ? (gm.Mapel.kode_mapel || gm.Mapel.nama_mapel || gm.Mapel.nama) : undefined;
-          const fallback = allMapelOptions.find((o) => String(o.value) === String(gm.mapel_id))?.label || gm.mapel_id;
-          return { value: gm.mapel_id, label: fromRel || fallback };
-        });
-        if (isMounted) setFilteredMapelOptions(filtered);
-      } catch {
-        if (isMounted) setFilteredMapelOptions(null);
-      }
-    }
-    loadMapelForGuru();
-    return () => {
-      isMounted = false;
-    };
-  }, [petugasForm.guru_id, allMapelOptions]);
-
-  // Scanning State
   const [inputModalOpen, setInputModalOpen] = useState(false);
   const [inputModalSesiId, setInputModalSesiId] = useState<string>('');
-  const inputModalOpenRef = useRef(false);
-  const inputModalSesiIdRef = useRef('');
-  
-  useEffect(() => {
-    inputModalOpenRef.current = inputModalOpen;
-    inputModalSesiIdRef.current = inputModalSesiId;
-  }, [inputModalOpen, inputModalSesiId]);
-
-  const [scannerInput, setScannerInput] = useState('');
+  const [scannerInput, setScannerInput] = useState<string>('');
   const [scanLoading, setScanLoading] = useState(false);
   const scannerInputRef = useRef<HTMLInputElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-
-  // Journal State
-  const [journalModalOpen, setJournalModalOpen] = useState(false);
-  const [journalSesiId, setJournalSesiId] = useState('');
-  const [journalInitialData, setJournalInitialData] = useState<unknown>(null);
-
-  // Helper Functions for Labels
-  const getKelasLabel = useCallback(
-    (id?: string) => kelasOptions.find((k) => k.value === id)?.label || id || 'Semua Kelas',
-    [kelasOptions]
-  );
-  const getGuruLabel = useCallback(
-    (id?: string) => guruOptions.find((g) => g.value === id)?.label || 'Semua Guru',
-    [guruOptions]
-  );
-  const getMapelLabel = useCallback(
-    (id?: string) => mapelOptions.find((m) => m.value === id)?.label || '-',
-    [mapelOptions]
-  );
-
-  const fetchSessions = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
-
-  const playBeep = useCallback(async () => {
-    try {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!audioCtxRef.current) audioCtxRef.current = new AC();
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        try {
-          await ctx.resume();
-        } catch {}
-      }
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 1200;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
-    } catch {}
-  }, []);
-
-  // Photo Guru Verification State (Petugas snaps photo of teacher in front of classroom)
-  const [photoGuruModalOpen, setPhotoGuruModalOpen] = useState(false);
-  const [photoGuruTarget, setPhotoGuruTarget] = useState<{
-    sesiId: string;
-    guruId: string;
-    guruNama: string;
-    kelasNama: string;
-    mapelNama: string;
-  } | null>(null);
-
-  // Photo Preview Lightbox State for Petugas
-  const [previewPhotoData, setPreviewPhotoData] = useState<{
-    photoUrl: string;
-    guruNama?: string;
-    kelasNama?: string;
-    mapelNama?: string;
-    timestamp?: string;
-  } | null>(null);
-
-  const handleOpenPhotoGuruModal = useCallback((item: any) => {
-    const sesiId = item.id || item.session?.id;
-    const guruId = item.guru_id || item.Guru?.id;
-    const guruNama = item.guru_nama || item.Guru?.nama_guru || 'Guru Pengampu';
-    const kelasNama = item.kelas_nama || item.Kelas?.nama_kelas || getKelasLabel(item.kelas_id) || 'Kelas';
-    const mapelNama = item.mapel_nama || item.Mapel?.nama_mapel || item.kegiatan || 'KBM';
-
-    if (!guruId) {
-      toast.error('Data Guru pengampu belum terdaftar pada jadwal sesi ini');
-      return;
-    }
-
-    setPhotoGuruTarget({ sesiId, guruId, guruNama, kelasNama, mapelNama });
-    setPhotoGuruModalOpen(true);
-  }, [getKelasLabel]);
-
-  const handleConfirmPhotoGuru = useCallback(async (photoDataUrl: string) => {
-    if (!photoGuruTarget) return;
-    try {
-      setScanLoading(true);
-      await updateAbsenGuru(photoGuruTarget.sesiId, photoGuruTarget.guruId, {
-        status: 'HADIR',
-        foto: photoDataUrl,
-        foto_kegiatan: photoDataUrl,
-      });
-      toast.success(`Foto Terverifikasi! Guru ${photoGuruTarget.guruNama} berhasil dicatat hadir di depan kelas.`, { duration: 8000 });
-      await playBeep();
-      fetchSessions();
-      invalidateAllKbmQueries();
-      setPhotoGuruModalOpen(false);
-      setPhotoGuruTarget(null);
-    } catch (e: any) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      const m = errObj?.response?.data?.message || errObj?.message || 'Gagal mencatat presensi guru';
-      toast.error(String(m));
-    } finally {
-      setScanLoading(false);
-    }
-  }, [photoGuruTarget, playBeep, fetchSessions, invalidateAllKbmQueries]);
-
   const [generatingTemplate, setGeneratingTemplate] = useState(false);
-  const handleGenerateFromTemplate = useCallback(async () => {
-    setGeneratingTemplate(true);
-    try {
-      const res = await generateSesiFromTemplate();
-      if (res.success) {
-        toast.success(res.message || 'Sesi otomatis berhasil diproses');
-        fetchSessions();
-      } else {
-        const detailMsg = (res as { data?: { errors?: string[] } }).data?.errors && (res as { data?: { errors?: string[] } }).data!.errors!.length > 0 
-          ? `\nDetail: ${ (res as { data?: { errors?: string[] } }).data!.errors![0] }`
-          : '';
-        toast.error((res.message || 'Gagal membuat sesi dari template') + detailMsg);
-      }
-    } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal memicu pembuatan sesi';
-      toast.error(msg);
-    } finally {
-      setGeneratingTemplate(false);
-    }
-  }, [fetchSessions]);
+  const [showCreateSessionForm, setShowCreateSessionForm] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
+  const [photoGuruModalOpen, setPhotoGuruModalOpen] = useState(false);
+  const [photoGuruTarget, setPhotoGuruTarget] = useState<{ sesiId: string; kelasNama: string; mapelNama: string; guruNama: string } | null>(null);
+  const [previewPhotoData, setPreviewPhotoData] = useState<{ photoUrl: string; guruNama: string; kelasNama: string; mapelNama: string; timestamp: string } | null>(null);
+  const [journalModalOpen, setJournalModalOpen] = useState(false);
+  const [journalSesiId, setJournalSesiId] = useState<string>('');
+  const [journalInitialData, setJournalInitialData] = useState<Record<string, unknown> | null>(null);
 
-  const errorMsg = isError ? 'Gagal memuat sesi.' : null;
-
-
-
-  const normalizeDateTimeWithTanggal = useCallback((tanggalValue: string, dt: string): string => {
-    const datePart = String(tanggalValue || '').trim();
-    if (!datePart) return dt;
-    const raw = String(dt || '').trim();
-    const timePart = raw.includes('T') ? raw.split('T')[1] : raw;
-    const hhmm = String(timePart || '').slice(0, 5);
-    if (!/^\d{2}:\d{2}$/.test(hhmm)) return dt;
-    return `${datePart}T${hhmm}`;
+  const normalizeDateTimeWithTanggal = useCallback((timeStr: string, baseTanggal: string): string => {
+    if (!timeStr) return '';
+    if (timeStr.includes('T')) return timeStr;
+    const cleanTime = timeStr.trim();
+    const parts = cleanTime.split(':');
+    return `${baseTanggal}T${String(parts[0] || '00').padStart(2, '0')}:${String(parts[1] || '00').padStart(2, '0')}:${String(parts[2] || '00').padStart(2, '0')}`;
   }, []);
+  const [petugasForm, setPetugasForm] = useState({
+    kelas_id: selectedKelasId || '',
+    guru_id: '',
+    mapel_id: '',
+    jenis_kegiatan: 'KBM',
+    tanggal: toLocalDate(new Date()),
+    waktu_mulai: '',
+    waktu_selesai: '',
+  });
+  const { data: gurus = [] } = useQuery({
+    queryKey: ['dropdown-guru'],
+    queryFn: async () => {
+      const res = await guruApi.getAll({ limit: 500, is_active: true });
+      return (res.data || []) as Array<{ id: string; nama?: string; nama_guru?: string }>;
+    }
+  });
+  const { data: mapels = [] } = useQuery({
+    queryKey: ['dropdown-mapel'],
+    queryFn: async () => {
+      const res = await mapelApi.getAll({ limit: 500, is_active: true });
+      return (res.data || []) as Array<{ id: string; nama?: string; nama_mapel?: string }>;
+    }
+  });
 
-  // Create Session Handler
-  const handleCreateSession = useCallback(async () => {
-    const kelasId = petugasForm.kelas_id || selectedKelasId || '';
-    const tanggalSesi = petugasForm.tanggal || tanggal || toLocalDate();
+  const { data: jenisKegiatanList = [] } = useQuery({
+    queryKey: ['dropdown-jenis-kegiatan'],
+    queryFn: async () => {
+      const res = await jenisKegiatanMasterApi.getAll();
+      return (res.data || []) as Array<{ id: string; nama?: string; kode?: string }>;
+    }
+  });
+  const { sessions = [], loading, refetch: fetchSessions } = useUnifiedKbmSessions({
+    filterDate,
+    selectedKelasId,
+    filterGuruId,
+    user,
+    userRole,
+    managedKelasIds,
+  });
+  const getGuruLabel = useCallback((id?: string) => {
+    if (!id) return '-';
+    const g = (gurus ?? []).find(x => x.id === id);
+    return g?.nama || g?.nama_guru || id;
+  }, [gurus]);
+  const getMapelLabel = useCallback((id?: string) => {
+    if (!id) return '-';
+    const m = (mapels ?? []).find(x => x.id === id);
+    return m?.nama || m?.nama_mapel || id;
+  }, [mapels]);
 
-    if (!kelasId) {
-      toast('Pilih kelas terlebih dahulu', { icon: 'ℹ️' });
-      return;
-    }
-    if (!petugasForm.jenis_kegiatan) {
-      toast('Pilih jenis kegiatan terlebih dahulu', { icon: 'ℹ️' });
-      return;
-    }
-    if (!petugasForm.waktu_mulai || !petugasForm.waktu_selesai) {
-      toast('Mohon lengkapi waktu mulai dan selesai', { icon: 'ℹ️' });
-      return;
-    }
-    const t = jenisTypeByName[petugasForm.jenis_kegiatan] || '';
-    
-    setCreatingSession(true);
+  const getKelasLabel = useCallback((id?: string) => {
+    if (!id) return '-';
+    const k = (kelasOptions ?? []).find(x => x.value === id);
+    return k?.label || id;
+  }, [kelasOptions]);
+  const kbmSessions = useMemo(() => (sessions ?? []).filter(s => (s.jenis_kegiatan || 'KBM') === 'KBM'), [sessions]);
+  const kegiatanSessions = useMemo(() => (sessions ?? []).filter(s => s.jenis_kegiatan && s.jenis_kegiatan !== 'KBM'), [sessions]);
+  const activeSessionsList = useMemo(() => (activeTab === 'KBM' ? kbmSessions : kegiatanSessions) as unknown as Array<Record<string, unknown>>, [activeTab, kbmSessions, kegiatanSessions]);
+  const toggleExpand = useCallback((id: string) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+  const handleFinishSesi = useCallback(async (id: string) => {
     try {
-      const payload = {
-        ...petugasForm,
-        kelas_id: kelasId,
-        guru_id: petugasForm.guru_id && petugasForm.guru_id.trim() !== '' ? petugasForm.guru_id : undefined,
-        mapel_id: petugasForm.mapel_id && petugasForm.mapel_id.trim() !== '' ? petugasForm.mapel_id : undefined,
-        tanggal: tanggalSesi,
-        waktu_mulai: normalizeDateTimeWithTanggal(tanggalSesi, petugasForm.waktu_mulai),
-        waktu_selesai: normalizeDateTimeWithTanggal(tanggalSesi, petugasForm.waktu_selesai),
-      };
-      await createSesiAbsensi(payload);
-      toast.success('Sesi berhasil dibuat');
-      setShowCreateSessionForm(false);
-      fetchSessions();
-    } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      const m = errObj?.response?.data?.message || errObj?.message || 'Gagal membuat sesi';
-      toast.error(String(m));
-    } finally {
-      setCreatingSession(false);
+      await updateSesiStatus(id, 'SELESAI');
+      toast.success('Sesi KBM berhasil diselesaikan');
+      invalidateAllKbmQueries();
+    } catch {
+      toast.error('Gagal menyelesaikan sesi');
     }
-  }, [petugasForm, selectedKelasId, tanggal, jenisTypeByName, normalizeDateTimeWithTanggal, fetchSessions]);
-  
-  const handleDeleteSesi = useCallback((sesiId: string) => {
-    setDeletingSesiId(sesiId);
+  }, [invalidateAllKbmQueries]);
+  const handleDeleteSesi = useCallback((id: string) => {
+    setDeletingSesiId(id);
     setIsDeleteModalOpen(true);
   }, []);
 
   const executeDeleteSesi = useCallback(async () => {
     if (!deletingSesiId) return;
-    
-    setIsDeletingSession(true);
     try {
-      const res = await deleteSesiAbsensi(deletingSesiId);
-      if (res.success) {
-        toast.success('Sesi berhasil dihapus');
-        setIsDeleteModalOpen(false);
-        setDeletingSesiId(null);
-        fetchSessions();
-      } else {
-        toast.error(res.message || 'Gagal menghapus sesi');
-      }
-    } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      toast.error(errObj?.response?.data?.message || errObj?.message || 'Gagal menghapus sesi');
+      setIsDeletingSession(true);
+      await deleteSesiAbsensi(deletingSesiId);
+      toast.success('Sesi berhasil dihapus');
+      setIsDeleteModalOpen(false);
+      setDeletingSesiId(null);
+      invalidateAllKbmQueries();
+    } catch {
+      toast.error('Gagal menghapus sesi');
     } finally {
       setIsDeletingSession(false);
     }
-  }, [deletingSesiId, fetchSessions]);
-
-  // Expand Handler
-  const toggleExpand = useCallback(async (sesiId: string) => {
-    const isEx = !!expandedRef.current[sesiId];
-    setExpanded((p) => ({ ...p, [sesiId]: !isEx }));
-    if (!isEx) {
-      try {
-        const res = await getSesiAbsenSiswa(sesiId);
-        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
-      } catch {}
-    }
-  }, []);
-
-  // Scan Handlers
-  const handleOpenScan = useCallback(async (sesiId: string) => {
-    toast.dismiss();
-    setInputModalSesiId(sesiId);
-    setScannerInput('');
+  }, [deletingSesiId, invalidateAllKbmQueries]);
+  const handleOpenScan = useCallback((id: string) => {
+    setInputModalSesiId(id);
     setInputModalOpen(true);
-    
-    try {
-      const res = await getSesiAbsenSiswa(sesiId);
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
-    } catch {}
   }, []);
-
-  const handleOpenJournal = useCallback((session: SessionData) => {
-    setJournalSesiId(session.id);
-    setJournalInitialData(session.ProgresMateri || null);
+  const handleOpenJournal = useCallback((session: Record<string, unknown>) => {
+    setJournalSesiId(session.id as string);
+    setJournalInitialData((session.ProgresMateri as Record<string, unknown>) || null);
     setJournalModalOpen(true);
   }, []);
+  const handleOpenPhotoGuruModal = useCallback((item: Record<string, unknown>) => {
+    setPhotoGuruTarget({
+      sesiId: (item.id as string) || (item.session_id as string),
+      kelasNama: (item.kelas_nama as string) || getKelasLabel(item.kelas_id as string),
+      mapelNama: (item.mapel_nama as string) || getMapelLabel(item.mapel_id as string),
+      guruNama: (item.guru_nama as string) || getGuruLabel(item.guru_id as string),
+    });
+    setPhotoGuruModalOpen(true);
+  }, [getKelasLabel, getMapelLabel, getGuruLabel]);
 
-  const submitScan = useCallback(async (overrideId?: string, isGuruFromUniversal?: boolean) => {
-    const val = overrideId || scannerInput;
-    if (!val.trim()) return;
-    const token = val.trim();
+  const handleConfirmPhotoGuru = useCallback(async (base64Photo: string) => {
+    if (!photoGuruTarget?.sesiId) return;
     setScanLoading(true);
     try {
-      const currentSesiId = inputModalSesiIdRef.current;
-      const resSessionsList = await getSesiAbsensiList({ summary: true });
-      const rawData = (resSessionsList as any)?.data;
-      const activeSessions: SessionData[] = Array.isArray(rawData)
-        ? rawData
-        : Array.isArray(rawData?.sessions)
-          ? rawData.sessions
-          : [];
-      const sesi = activeSessions.find((s) => String(s.id) === String(currentSesiId));
-      const expectedGuruId = sesi?.guru_id;
-
-      if (isGuruFromUniversal || (expectedGuruId && token === expectedGuruId)) {
-        if (expectedGuruId && (token === expectedGuruId || isGuruFromUniversal)) {
-          handleOpenPhotoGuruModal(sesi);
-          setScannerInput('');
-          scannerInputRef.current?.focus();
-        } else {
-          toast.error(`Guru yang di-scan tidak sesuai dengan jadwal sesi ini (${sesi?.guru_nama || 'Tanpa Guru'})`, { duration: 8000 });
-          setScannerInput('');
-          scannerInputRef.current?.focus();
-        }
-        return;
-      }
-
-      const tapRes = await tapSiswaKeSesi(currentSesiId, { siswa_id: token });
-      if (tapRes?.success) {
-        toast.success('Berhasil dicatat', { duration: 8000 });
-        await playBeep();
-        invalidateAllKbmQueries();
-        const resList = await getSesiAbsenSiswa(currentSesiId);
-        const list = Array.isArray(resList?.data) ? resList.data : Array.isArray(resList) ? resList : [];
-        setSessionAttendance((p) => ({ ...p, [currentSesiId]: list }));
-        setScannerInput('');
-        scannerInputRef.current?.focus();
-      } else {
-        const msg = String(tapRes?.message || '').toLowerCase();
-        if (msg.includes('sudah') || msg.includes('exist')) {
-          toast('Siswa sudah terekam', { icon: 'ℹ️', duration: 8000 });
-          setScannerInput('');
-          scannerInputRef.current?.focus();
-        } else {
-          toast.error(tapRes?.message || 'Gagal absen siswa', { duration: 8000 });
-        }
-      }
+      await updateAbsenGuru(photoGuruTarget.sesiId, {
+        foto_masuk: base64Photo,
+        status: 'HADIR',
+      });
+      toast.success('Foto bukti guru berhasil disimpan & sesi dimulai!');
+      setPhotoGuruModalOpen(false);
+      setPhotoGuruTarget(null);
+      invalidateAllKbmQueries();
     } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      const m = errObj?.response?.data?.message || errObj?.message || 'Gagal melakukan scan';
-      toast.error(String(m), { duration: 8000 });
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan foto absensi guru');
     } finally {
       setScanLoading(false);
     }
-  }, [scannerInput, playBeep, fetchSessions, invalidateAllKbmQueries]);
-
-  const handleFinishSesi = useCallback(async (sesiId: string) => {
+  }, [photoGuruTarget, invalidateAllKbmQueries]);
+  const submitScan = useCallback(async (token: string, mode: 'MASUK' | 'PULANG' | 'TERLAMBAT' = 'MASUK', directStudentData?: Student | null) => {
+    if (!inputModalSesiId || !token) return;
+    setScanLoading(true);
     try {
-      const res = await updateSesiStatus(sesiId, 'SELESAI');
-      if (res.success) {
-        toast.success('Sesi berhasil diselesaikan. Absensi ALPA otomatis telah diproses.');
-        fetchSessions();
-        invalidateAllKbmQueries();
-        if (expandedRef.current[sesiId]) {
-          const attRes = await getSesiAbsenSiswa(sesiId);
-          const list = Array.isArray(attRes?.data) ? attRes.data : Array.isArray(attRes) ? attRes : [];
-          setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
-        }
-      } else {
-        toast.error(res.message || 'Gagal menyelesaikan sesi');
-      }
-    } catch (e: unknown) {
-      const errObj = e as { response?: { data?: { message?: string } } };
-      toast.error(errObj?.response?.data?.message || 'Gagal menyelesaikan sesi');
-    }
-  }, [fetchSessions, invalidateAllKbmQueries]);
-
-  // Socket
-  useEffect(() => {
-    const handleSesiUpdate = () => {
-      fetchSessions();
-      invalidateAllKbmQueries();
-    };
-    const handleSessionAttendanceUpdate = (payload: SocketPayload) => {
-      invalidateAllKbmQueries();
-      const isExpanded = expandedRef.current[payload.sesi_id];
-      const isModalOpen = inputModalOpenRef.current && inputModalSesiIdRef.current === payload.sesi_id;
-      
-      if (payload?.sesi_id && (isExpanded || isModalOpen)) {
-        getSesiAbsenSiswa(payload.sesi_id).then((res) => {
-          const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-          setSessionAttendance((p) => ({ ...p, [payload.sesi_id]: list }));
-        });
-      }
-    };
-
-    const handlePiketUpdate = () => {
-      fetchSessions();
-      Object.keys(expandedRef.current).forEach((sesiId) => {
-        if (expandedRef.current[sesiId]) {
-          getSesiAbsenSiswa(sesiId).then((res) => {
-            const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-            setSessionAttendance((p) => ({ ...p, [sesiId]: list }));
-          });
-        }
+      const res = await tapSiswaKeSesi(inputModalSesiId, {
+        token,
+        status: mode,
+        tipe: 'QRIS',
+        siswa_id: directStudentData?.id
       });
-    };
-
-    subscribe('sesi_status_update', handleSesiUpdate);
-    subscribe('session_attendance_update', handleSessionAttendanceUpdate);
-    subscribe('piket_status_update', handlePiketUpdate);
-
-    return () => {
-      unsubscribe('sesi_status_update', handleSesiUpdate);
-      unsubscribe('session_attendance_update', handleSessionAttendanceUpdate);
-      unsubscribe('piket_status_update', handlePiketUpdate);
-    };
-  }, [subscribe, unsubscribe, fetchSessions]);
-
-  // Analytics for Stats Header
-  const stats = useMemo(() => {
-    const safeSessions = Array.isArray(sessions) ? sessions : [];
-    const live = safeSessions.filter((s) => {
-      const isFinished = String(s.status || '').toUpperCase() === 'SELESAI';
-      const startAt = s.waktu_mulai ? new Date(s.waktu_mulai) : null;
-      const endAt = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
-      const isLiveByTime = startAt && endAt && new Date() >= startAt && new Date() <= endAt;
-      return !isFinished && isLiveByTime;
-    }).length;
-    
-    const pendingJournal = safeSessions.filter((s) => 
-      String(s.status || '').toUpperCase() === 'SELESAI' && 
-      (!s.ProgresMateri || !(s.ProgresMateri as { kegiatan?: string }).kegiatan) &&
-      (String(s.jenis_kegiatan_nama || '').toUpperCase().includes('KBM') || String(s.jenis_kegiatan || '').toUpperCase().includes('KBM'))
-    ).length;
-
-    return { total: safeSessions.length, live, pendingJournal };
-  }, [sessions]);
-
+      toast.success(res.message || 'Presensi siswa berhasil dicatat');
+      setScannerInput('');
+      invalidateAllKbmQueries();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(err.response?.data?.message || err.message || 'Gagal scan kehadiran');
+    } finally {
+      setScanLoading(false);
+    }
+  }, [inputModalSesiId, invalidateAllKbmQueries]);
+  const handleGenerateFromTemplate = useCallback(async () => {
+    try {
+      setGeneratingTemplate(true);
+      await generateSesiFromTemplate({ tanggal: filterDate, kelas_id: selectedKelasId || undefined });
+      toast.success('Sesi KBM berhasil disinkronkan dari jadwal');
+      invalidateAllKbmQueries();
+    } catch {
+      toast.error('Gagal sinkronisasi sesi dari jadwal');
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  }, [filterDate, selectedKelasId, invalidateAllKbmQueries]);
+  const handleCreateSession = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setCreatingSession(true);
+      await createSesiAbsensi({
+        ...petugasForm,
+        waktu_mulai: normalizeDateTimeWithTanggal(petugasForm.waktu_mulai, petugasForm.tanggal),
+        waktu_selesai: normalizeDateTimeWithTanggal(petugasForm.waktu_selesai, petugasForm.tanggal),
+      });
+      toast.success('Sesi baru berhasil dibuat');
+      setShowCreateSessionForm(false);
+      invalidateAllKbmQueries();
+    } catch {
+      toast.error('Gagal membuat sesi');
+    } finally {
+      setCreatingSession(false);
+    }
+  }, [petugasForm, normalizeDateTimeWithTanggal, invalidateAllKbmQueries]);
+  const jenisOptions = useMemo(() => [
+    { label: 'KBM Reguler', value: 'KBM' },
+    ...((jenisKegiatanList ?? [])?.map(j => ({ label: j.nama || j.kode || '', value: j.kode || j.id })) || [])
+  ], [jenisKegiatanList]);
+  const guruOptions = useMemo(() => (gurus ?? [])?.map(g => ({ label: g.nama || g.nama_guru || '', value: g.id })), [gurus]);
+  const mapelOptions = useMemo(() => (mapels ?? [])?.map(m => ({ label: m.nama || m.nama_mapel || '', value: m.id })), [mapels]);
   return (
     <AttendanceErrorBoundary>
       <PremiumFeatureGate
         moduleName="ABSENSI"
-        featureName="Operasional Presensi Realtime"
-        description="Kelola pencatatan kehadiran siswa di gerbang atau kelas secara langsung dengan validasi otomatis."
+        featureName="Manajemen Sesi Presensi KBM"
+        description="Pantau sesi KBM real-time, aktivitas mengajar guru, dan validasi tap siswa."
       >
-        <div className="space-y-2 sm:space-y-6 pb-20 sm:pb-0">
-
-          {/* 2. SIMPLIFIED TOOLBAR – Desktop/Tablet only (hidden on mobile HP) */}
-          <div className="hidden sm:flex flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900/80 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs backdrop-blur-md">
-            {/* Left: Sleek Date Navigator */}
-            <SesiFilterPanel
-              tanggal={tanggal}
-              onChangeTanggal={setTanggal}
-              selectedKelasId={selectedKelasId}
-              onChangeKelas={setSelectedKelasId}
-              kelasOptions={kelasOptions}
-              isGuru={isPetugasSiswa}
-              kelasLabel={getKelasLabel}
-              onSetToday={() => setTanggal(toLocalDate())}
-            />
-
-            {/* Right: Quick Action Buttons */}
-            <div className="flex items-center gap-1.5">
-              {canCreateSession && tanggal === toLocalDate() && (
-                <button 
-                  type="button"
-                  onClick={handleGenerateFromTemplate} 
-                  disabled={generatingTemplate}
-                  className="flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all font-bold text-xs shadow-2xs disabled:opacity-50"
-                >
-                  <RefreshCw size={13} className={generatingTemplate ? 'animate-spin' : ''} />
-                  <span>{generatingTemplate ? 'Sinkronisasi...' : 'Tarik Sesi Jadwal'}</span>
-                </button>
-              )}
-
-            </div>
-          </div>
-
-          {/* MOBILE BOTTOM NAV BAR (HP only) – sticky bottom */}
-          <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shadow-2xl">
-            {/* Date Navigator */}
-            <SesiFilterPanel
-              tanggal={tanggal}
-              onChangeTanggal={setTanggal}
-              selectedKelasId={selectedKelasId}
-              onChangeKelas={setSelectedKelasId}
-              kelasOptions={kelasOptions}
-              isGuru={isPetugasSiswa}
-              kelasLabel={getKelasLabel}
-              onSetToday={() => setTanggal(toLocalDate())}
-            />
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {canCreateSession && tanggal === toLocalDate() && (
-                <button
-                  type="button"
-                  onClick={handleGenerateFromTemplate}
-                  disabled={generatingTemplate}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-bold text-[11px] disabled:opacity-50 transition-all"
-                >
-                  <RefreshCw size={13} className={generatingTemplate ? 'animate-spin' : ''} />
-                  <span>{generatingTemplate ? 'Sinkron...' : 'Tarik'}</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 3. MAIN CONTENT / LIST */}
-          <div className="relative">
-            {/* Segmented Tab Switcher: KBM vs Kegiatan Sekolah */}
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-200 dark:border-gray-800 pb-3">
-              <button
-                type="button"
-                onClick={() => handleTabChange('KBM')}
-                className={`px-4 py-2 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'KBM'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 ring-1 ring-indigo-500'
-                    : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                <BookOpen size={14} />
-                <span>Sesi KBM Reguler</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
-                  activeTab === 'KBM' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  {kbmSessions.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTabChange('KEGIATAN')}
-                className={`px-4 py-2 rounded-xl font-extrabold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'KEGIATAN'
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20 ring-1 ring-amber-500'
-                    : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Activity size={14} />
-                <span>Kegiatan & Pembiasaan</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
-                  activeTab === 'KEGIATAN' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  {kegiatanSessions.length}
-                </span>
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-32">
-                <Loader className="mb-6" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Menyiapkan Log Sesi...</p>
-              </div>
-            ) : errorMsg ? (
-              <Alert variant="destructive" className="rounded-xl p-6 border-none bg-red-50 text-red-900 shadow-xl shadow-red-900/5">
-                <AlertCircle className="h-5 w-5" />
-                <AlertDescription className="font-bold">{errorMsg}</AlertDescription>
-              </Alert>
-            ) : activeSessionsList.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center justify-center p-16 bg-white dark:bg-gray-800/40 rounded-[3rem] border border-dashed border-gray-200 dark:border-gray-800 text-center space-y-8"
-              >
-                <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center shadow-inner">
-                  <Layers className="w-10 h-10 text-indigo-200 dark:text-indigo-800" />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white">
-                    {activeTab === 'KBM' ? 'Tidak Ada Sesi KBM' : 'Tidak Ada Sesi Kegiatan'}
-                  </h3>
-                  <p className="text-gray-400 font-medium max-w-sm mx-auto leading-relaxed">
-                    {activeTab === 'KBM' 
-                      ? 'Sistem belum menemukan sesi KBM tercatat untuk hari ini. Silakan tarik dari jadwal resmi.' 
-                      : 'Tidak ada sesi kegiatan sekolah atau pembiasaan yang tercatat untuk hari ini.'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  {canCreateSession && (
-                    <Button 
-                      onClick={handleGenerateFromTemplate} 
-                      disabled={generatingTemplate}
-                      className="h-12 px-8 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20"
-                    >
-                      {generatingTemplate ? 'Memproses...' : 'Sinkronkan Sesi'}
-                    </Button>
-                  )}
-                </div>
-              </motion.div>
-            ) : (
-              <div className="space-y-2 sm:space-y-6">
-                <div className="absolute left-2 sm:left-4 top-2 bottom-2 w-0.5 bg-gradient-to-b from-blue-500/40 via-indigo-500/20 to-transparent"></div>
-                
-                <div className="grid grid-cols-1 gap-2 sm:gap-4">
-                  {activeSessionsList.map((session, idx) => (
-                    <motion.div 
-                      key={session.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="relative pl-5 sm:pl-10"
-                    >
-                      {/* Timeline Node */}
-                      {(() => {
-                        const isFin = String(session.status || '').toUpperCase() === 'SELESAI' || (session as any)?._summary?.isFinished === true;
-                        const isLiv = !isFin && Boolean((session as any)?._summary?.isLive ?? (session as any)?.status?.isLive);
-                        const isOvd = !isFin && !isLiv && Boolean((session as any)?._summary?.isOverdue ?? (session as any)?.status?.isOverdue);
-                        const isRdy = !isFin && !isLiv && !isOvd && Boolean((session as any)?._summary?.isReadyToOpen ?? (session as any)?.status?.isReadyToOpen);
-
-                        return (
-                          <div className={cn(
-                            "absolute left-[3px] sm:left-[11px] top-4 w-2.5 h-2.5 rounded-full z-10",
-                            isLiv
-                              ? "bg-emerald-500 ring-4 ring-emerald-500/25 animate-pulse"
-                              : isRdy
-                              ? "bg-amber-500 ring-4 ring-amber-500/25 animate-pulse"
-                              : isOvd
-                              ? "bg-rose-500 ring-4 ring-rose-500/20"
-                              : isFin
-                              ? "bg-slate-400 ring-2 ring-slate-300 dark:ring-slate-700"
-                              : "bg-blue-600 ring-4 ring-blue-500/20"
-                          )}></div>
-                        );
-                      })()}
-                      
-                      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-xs hover:shadow-md transition-all">
-                        {(() => {
-                          const isSessionOverdue = Boolean(
-                            (session as any).isOverdue ||
-                            (session as any).is_overdue ||
-                            (session as any).status?.isOverdue ||
-                            (session as any)._summary?.isOverdue ||
-                            (session.status !== 'SELESAI' && session.waktu_selesai && new Date(session.waktu_selesai).getTime() < Date.now())
-                          );
-                          const isSessionFinished = session.status === 'SELESAI' || (session as any).isFinished;
-                          const isReportOnly = isReadOnlyExecutive || isSessionFinished || (isPetugasSiswa && isSessionOverdue);
-
-                          return (
-                            <>
-                              <SesiCard
-                                sesi={session}
-                                isExpanded={!!expanded[session.id]}
-                                counts={session.summary || {}}
-                                guruStatusText={(() => {
-                                  const rawStatus = session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || (session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus;
-                                  return getTeacherStatusMeta(rawStatus).label;
-                                })()}
-                                guruStatusVariant={(() => {
-                                  const rawStatus = session.guru_status || (session as any)?.AbsenGuru?.[0]?.status || (session as any)?._summary?.teacherStatus || (session as any)?.status?.teacherStatus;
-                                  return getTeacherStatusMeta(rawStatus).badgePropsVariant;
-                                })()}
-                                canFinish={String(session.status) !== 'SELESAI' && !isSessionOverdue}
-                                onToggleExpand={() => toggleExpand(session.id)}
-                                onFinish={() => handleFinishSesi(session.id)}
-                                onDelete={() => handleDeleteSesi(session.id)}
-                                onScan={() => handleOpenScan(session.id)}
-                                isGuru={isPetugasSiswa}
-                                jenisBadgeVariant="secondary"
-                                Icon={BookOpen}
-                                iconClass="w-4 h-4"
-                                mapelLabel={getMapelLabel}
-                                guruLabel={getGuruLabel}
-                                waktuMulaiText={formatLocalTimeFromISO(session.waktu_mulai) || ''}
-                                waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai) || ''}
-                                showScanGuru={!isReadOnlyExecutive && !isSessionOverdue}
-                                showScanSiswa={!isReadOnlyExecutive && !isSessionOverdue}
-                                canManage={!isReportOnly && (isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa))}
-                                onOpenJournal={() => handleOpenJournal(session)}
-                                onOpenPhotoModal={() => handleOpenPhotoGuruModal(session)}
-                                onViewPhoto={(item) => {
-                                  const pUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk;
-                                  if (pUrl) {
-                                    setPreviewPhotoData({
-                                      photoUrl: pUrl,
-                                      guruNama: item.guru_nama || getGuruLabel(item.guru_id),
-                                      kelasNama: item.kelas_nama || getKelasLabel(item.kelas_id),
-                                      mapelNama: item.mapel_nama || getMapelLabel(item.mapel_id),
-                                      timestamp: `${formatLocalTimeFromISO(item.waktu_mulai) || ''} - ${formatLocalTimeFromISO(item.waktu_selesai) || ''} WIB`,
-                                    });
-                                  }
-                                }}
-                                hideKelas={false}
-                              />
-                              
-                              <AnimatePresence>
-                                {expanded[session.id] && (
-                                  <motion.div 
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden bg-gray-50/50 dark:bg-gray-800/20 border-t border-gray-100 dark:border-gray-800"
-                                  >
-                                    <div className="p-8">
-                                      <SesiExpandedContent 
-                                        sesiId={session.id} 
-                                        sesi={session as unknown as SesiDetail} 
-                                        isReportMode={Boolean(isReportOnly || isSessionOverdue)}
-                                      />
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sesi Create Modal */}
-          <SesiCreateModal
-            isOpen={showCreateSessionForm}
-            onClose={() => setShowCreateSessionForm(false)}
-            petugasForm={petugasForm}
-            setPetugasForm={setPetugasForm}
+        <div className="space-y-6 w-full min-w-0 max-w-full">
+          {/* Header Controls & Filter */}
+          <SesiFilterPanel
+            filterDate={filterDate}
+            setFilterDate={setFilterDate}
+            selectedKelasId={selectedKelasId}
+            setSelectedKelasId={setSelectedKelasId}
+            filterGuruId={filterGuruId}
+            setFilterGuruId={setFilterGuruId}
             kelasOptions={kelasOptions}
-            jenisOptions={jenisOptions}
             guruOptions={guruOptions}
-            mapelOptions={mapelOptions}
-            onSave={handleCreateSession}
-            creatingSession={creatingSession}
-            normalizeDateTimeWithTanggal={normalizeDateTimeWithTanggal}
+            onRefresh={fetchSessions}
+            loading={loading}
+            onOpenCreateModal={() => setShowCreateSessionForm(true)}
+            onSyncSchedule={handleGenerateFromTemplate}
+            syncLoading={generatingTemplate}
+            canCreateSession={canCreateSession}
           />
-
-          {/* Sesi Scanning Modal */}
-          <SesiScanningModal
-            isOpen={inputModalOpen}
-            onClose={() => setInputModalOpen(false)}
-            scannerInputRef={scannerInputRef}
-            scannerInput={scannerInput}
-            setScannerInput={setScannerInput}
-            scanLoading={scanLoading}
-            onSubmitScan={submitScan}
-            inputModalSesiId={inputModalSesiId}
-            sessionAttendanceRecords={sessionAttendance[inputModalSesiId] || []}
-            currentSession={sessions.find((s) => s.id === inputModalSesiId) as unknown as SesiDetail}
-            kelasLabel={getKelasLabel(sessions.find((s) => s.id === inputModalSesiId)?.kelas_id)}
-          />
-
-          {/* Modal Foto Bukti Guru di Depan Kelas (Khusus Petugas Siswa) */}
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab('KBM')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'KBM'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <BookOpen size={14} />
+              <span>Sesi KBM Reguler</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/20">
+                {kbmSessions.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('KEGIATAN')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'KEGIATAN'
+                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <Activity size={14} />
+              <span>Kegiatan &amp; Pembiasaan</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/20">
+                {kegiatanSessions.length}
+              </span>
+            </button>
+          </div>
+          {/* Timeline View */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+              <Loader className="mb-4 animate-spin text-indigo-600" />
+              <p className="text-xs font-bold uppercase tracking-wider">Menyiapkan Log Sesi...</p>
+            </div>
+          ) : activeSessionsList.length === 0 ? (
+            <div className="p-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-4">
+              <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                {activeTab === 'KBM' ? 'Tidak Ada Sesi KBM' : 'Tidak Ada Sesi Kegiatan'}
+              </h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                {activeTab === 'KBM' ? 'Belum ada sesi KBM tercatat untuk tanggal ini.' : 'Tidak ada sesi kegiatan tercatat untuk tanggal ini.'}
+              </p>
+            </div>
+          ) : (
+            <Suspense fallback={<div className="h-64 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />}>
+              <SessionTimelineList
+                activeSessionsList={activeSessionsList}
+                expanded={expanded}
+                toggleExpand={toggleExpand}
+                handleFinishSesi={handleFinishSesi}
+                handleDeleteSesi={handleDeleteSesi}
+                handleOpenScan={handleOpenScan}
+                handleOpenJournal={handleOpenJournal}
+                handleOpenPhotoGuruModal={handleOpenPhotoGuruModal}
+                setPreviewPhotoData={setPreviewPhotoData}
+                getMapelLabel={getMapelLabel}
+                getGuruLabel={getGuruLabel}
+                getKelasLabel={getKelasLabel}
+                isPetugasSiswa={isPetugasSiswa}
+                isAdmin={isAdmin}
+                isStudent={isStudent}
+                isReadOnlyExecutive={isReadOnlyExecutive}
+                can={can}
+              />
+            </Suspense>
+          )}
+          {/* Lazy Modals */}
+          {showCreateSessionForm && (
+            <Suspense fallback={null}>
+              <SesiCreateModal
+                isOpen={showCreateSessionForm}
+                onClose={() => setShowCreateSessionForm(false)}
+                petugasForm={petugasForm}
+                setPetugasForm={setPetugasForm}
+                kelasOptions={kelasOptions}
+                jenisOptions={jenisOptions}
+                guruOptions={guruOptions}
+                mapelOptions={mapelOptions}
+                onSave={handleCreateSession}
+                creatingSession={creatingSession}
+                normalizeDateTimeWithTanggal={normalizeDateTimeWithTanggal}
+              />
+            </Suspense>
+          )}
+          {inputModalOpen && (
+            <Suspense fallback={null}>
+              <SesiScanningModal
+                isOpen={inputModalOpen}
+                onClose={() => setInputModalOpen(false)}
+                scannerInputRef={scannerInputRef}
+                scannerInput={scannerInput}
+                setScannerInput={setScannerInput}
+                scanLoading={scanLoading}
+                onSubmitScan={submitScan}
+                inputModalSesiId={inputModalSesiId}
+                sessionAttendanceRecords={[]}
+                currentSession={sessions.find((s) => s.id === inputModalSesiId) as unknown as SesiDetail}
+                kelasLabel={getKelasLabel(sessions.find((s) => s.id === inputModalSesiId)?.kelas_id)}
+              />
+            </Suspense>
+          )}
           {photoGuruTarget && (
-            <BukaSesiFotoModal
-              isOpen={photoGuruModalOpen}
-              onClose={() => {
-                setPhotoGuruModalOpen(false);
-                setPhotoGuruTarget(null);
-              }}
-              onConfirm={handleConfirmPhotoGuru}
-              kelasNama={photoGuruTarget.kelasNama}
-              mapelNama={photoGuruTarget.mapelNama}
-              guruNama={photoGuruTarget.guruNama}
-              isLoading={scanLoading}
-            />
+            <Suspense fallback={null}>
+              <BukaSesiFotoModal
+                isOpen={photoGuruModalOpen}
+                onClose={() => {
+                  setPhotoGuruModalOpen(false);
+                  setPhotoGuruTarget(null);
+                }}
+                onConfirm={handleConfirmPhotoGuru}
+                kelasNama={photoGuruTarget.kelasNama}
+                mapelNama={photoGuruTarget.mapelNama}
+                guruNama={photoGuruTarget.guruNama}
+                isLoading={scanLoading}
+              />
+            </Suspense>
           )}
-
-          {/* Modal Preview Foto Lightbox (Khusus Petugas Siswa / Admin) */}
           {previewPhotoData && (
-            <PhotoPreviewModal
-              isOpen={Boolean(previewPhotoData)}
-              onClose={() => setPreviewPhotoData(null)}
-              photoUrl={previewPhotoData.photoUrl}
-              guruNama={previewPhotoData.guruNama}
-              kelasNama={previewPhotoData.kelasNama}
-              mapelNama={previewPhotoData.mapelNama}
-              timestamp={previewPhotoData.timestamp}
+            <Suspense fallback={null}>
+              <PhotoPreviewModal
+                isOpen={Boolean(previewPhotoData)}
+                onClose={() => setPreviewPhotoData(null)}
+                photoUrl={previewPhotoData.photoUrl}
+                guruNama={previewPhotoData.guruNama}
+                kelasNama={previewPhotoData.kelasNama}
+                mapelNama={previewPhotoData.mapelNama}
+                timestamp={previewPhotoData.timestamp}
+              />
+            </Suspense>
+          )}
+          {journalModalOpen && (
+            <Suspense fallback={null}>
+              <JurnalKbmModal
+                isOpen={journalModalOpen}
+                onClose={() => setJournalModalOpen(false)}
+                sesiId={journalSesiId}
+                initialData={journalInitialData}
+                onSuccess={fetchSessions}
+                readOnly={!isAdmin && !can('attendance.sessions.update.journal')}
+              />
+            </Suspense>
+          )}
+          {isDeleteModalOpen && (
+            <ConfirmDialog
+              isOpen={isDeleteModalOpen}
+              title="Hapus Sesi Absensi?"
+              description="Apakah Anda yakin ingin menghapus sesi ini? Seluruh data kehadiran di dalam sesi ini akan hilang permanen dari sistem."
+              confirmText="Ya, Hapus Sesi"
+              cancelText="Batal"
+              style="danger"
+              onConfirm={executeDeleteSesi}
+              onCancel={() => {
+                setIsDeleteModalOpen(false);
+                setDeletingSesiId(null);
+              }}
+              loading={isDeletingSession}
             />
           )}
-
-          {/* Jurnal KBM Modal */}
-          <JurnalKbmModal
-            isOpen={journalModalOpen}
-            onClose={() => setJournalModalOpen(false)}
-            sesiId={journalSesiId}
-            initialData={journalInitialData}
-            onSuccess={fetchSessions}
-            readOnly={!isAdmin && !can('attendance.sessions.update.journal')}
-          />
-
-          {/* Delete Confirmation Dialog */}
-          <ConfirmDialog
-            isOpen={isDeleteModalOpen}
-            title="Hapus Sesi Absensi?"
-            description="Apakah Anda yakin ingin menghapus sesi ini? Seluruh data kehadiran di dalam sesi ini akan hilang permanen dari sistem."
-            confirmText="Ya, Hapus Sesi"
-            cancelText="Batal"
-            style="danger"
-            onConfirm={executeDeleteSesi}
-            onCancel={() => {
-              setIsDeleteModalOpen(false);
-              setDeletingSesiId(null);
-            }}
-            loading={isDeletingSession}
-          />
         </div>
       </PremiumFeatureGate>
     </AttendanceErrorBoundary>
   );
-};
-
-SessionManagerModuleComponent.displayName = 'SessionManagerModule';
-export const SessionManagerModule = React.memo(SessionManagerModuleComponent);
+});
+export default SessionManagerModule;

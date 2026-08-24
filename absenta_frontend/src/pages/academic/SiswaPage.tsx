@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { z } from 'zod';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import ReactOriginal, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Modal, SectionCard } from '../../components/ui';
 import SiswaList from '../../components/academic/siswa/SiswaList';
@@ -27,6 +30,17 @@ const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm')
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const Loader = lazy(() => import('../../components/ui/Loader').then(module => ({ default: module.Loader })));
 const SiswaHistory = lazy(() => import('../../components/academic/siswa/SiswaHistory').then(module => ({ default: module.SiswaHistory })));
+
+
+import { formatDate } from '../../utils/date.utils';
+
+// Zod Schema Validation Guard (Pilar 25)
+const siswaImportConfigSchema = z.object({
+  yearId: z.string().optional(),
+  semesterId: z.string().optional(),
+  useDefault: z.boolean(),
+  scenario: z.enum(['REGULAR', 'HISTORIS', 'PPDB']),
+});
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
 
@@ -395,29 +409,29 @@ const SiswaPage: React.FC = () => {
       { header: 'Transportasi', accessor: (row) => row.transportasi || '-', width: 16 },
       { header: 'No HP Siswa', accessor: (row) => row.no_hp || '-', width: 16 },
       { header: 'Sekolah Asal', accessor: (row) => row.sekolah_asal || '-', width: 25 },
-      { header: 'No. HP Ortu', accessor: (row) => (row as any).no_hp_ortu || (row as any).no_hp_ayah || '-', width: 16 },
+      { header: 'No. HP Ortu', accessor: (row) => (row as Record<string, unknown>).no_hp_ortu || (row as Record<string, unknown>).no_hp_ayah || '-', width: 16 },
       { header: 'Nama Ayah', accessor: (row) => row.nama_ayah || '-', width: 25 },
       { header: 'NIK Ayah', accessor: (row) => row.nik_ayah || '-', width: 20 },
-      { header: 'No HP Ayah', accessor: (row) => (row as any).no_hp_ayah || '-', width: 16 },
+      { header: 'No HP Ayah', accessor: (row) => (row as Record<string, unknown>).no_hp_ayah || '-', width: 16 },
       { header: 'Nama Ibu', accessor: (row) => row.nama_ibu || '-', width: 25 },
       { header: 'NIK Ibu', accessor: (row) => row.nik_ibu || '-', width: 20 },
-      { header: 'No HP Ibu', accessor: (row) => (row as any).no_hp_ibu || '-', width: 16 },
+      { header: 'No HP Ibu', accessor: (row) => (row as Record<string, unknown>).no_hp_ibu || '-', width: 16 },
       { header: 'Nama Wali', accessor: (row) => row.nama_wali || '-', width: 25 },
-      { header: 'No HP Wali', accessor: (row) => (row as any).no_hp_wali || '-', width: 16 },
+      { header: 'No HP Wali', accessor: (row) => (row as Record<string, unknown>).no_hp_wali || '-', width: 16 },
       { header: 'No RFID', accessor: (row) => row.no_rfid || '-', width: 16 },
       { header: 'Status', accessor: (row) => row.status, width: 10 },
     ];
 
     // Baris pertama: judul sheet
-    const excelData: any[][] = [];
+    const excelData: (string | number | boolean | null | undefined)[][] = [];
     excelData.push([sheetTitle]);
     excelData.push([]); // spacer
-    excelData.push(columns.map(c => c.header)); // header row
+    excelData.push(columns?.map(c => c.header)); // header row
 
     const sorted = sortSiswaPerKelas(data);
     sorted.forEach((item, idx) => {
-      const row = columns.map(c => {
-        const val = (c.accessor as any)(item, idx);
+      const row = columns?.map(c => {
+        const val = (c.accessor as (row: Siswa, index: number) => unknown)(item, idx);
         return val === null || val === undefined ? '' : val;
       });
       excelData.push(row);
@@ -474,7 +488,7 @@ const SiswaPage: React.FC = () => {
       }
     }
 
-    ws['!cols'] = columns.map(c => ({ wch: c.width || 15 }));
+    ws['!cols'] = columns?.map(c => ({ wch: c.width || 15 }));
     ws['!rows'] = [
       { hpt: 28 }, // judul
       { hpt: 6 },  // spacer
@@ -501,7 +515,7 @@ const SiswaPage: React.FC = () => {
       const siswaLulus = allSiswa.filter(s => !statusAktif.includes((s.status || '').toUpperCase()));
 
       const now = new Date();
-      const tglStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      const tglStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
       const namaSekolah = 'DATA MASTER PESERTA DIDIK';
 
       const wb = XLSX.utils.book_new();
@@ -595,8 +609,9 @@ const SiswaPage: React.FC = () => {
   const isWaliKelasContext = urlContext === 'walikelas';
 
   return (
-    <AcademicPageLayout
-      title={isWaliKelasContext ? "Siswa Kelas Saya" : "Master Data Siswa Sekolah"}
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title={isWaliKelasContext ? "Siswa Kelas Saya" : "Master Data Siswa Sekolah"}
       description={isWaliKelasContext 
         ? "Direktori & pemantauan khusus data siswa rombel binaan Anda." 
         : "Pusat pengelolaan & pemantauan biodata lengkap siswa seluruh sekolah."}
@@ -679,7 +694,7 @@ const SiswaPage: React.FC = () => {
             </div>
 
             {!importConfig.useDefault && (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tahun Pelajaran Target</label>
                   <SearchableSelect
@@ -725,8 +740,8 @@ const SiswaPage: React.FC = () => {
         </Suspense>
       </Modal>
     </AcademicPageLayout>
+    </InfraErrorBoundary>
   );
 };
 
 export default SiswaPage;
-SiswaPage;

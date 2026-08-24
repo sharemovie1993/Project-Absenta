@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '../../components/ui/Card';
+import { SectionCard } from '../../components/ui/SectionCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
@@ -10,7 +13,16 @@ import { Alert } from '../../components/ui/Alert';
 import { Loader } from '../../components/ui/Loader';
 import { tripaySimulatorApi } from '../../api/tripaySimulator.api';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
-import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '../../utils/layoutUtils';
+
+const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
+
+// Skema validasi Zod untuk Tripay Simulator (Pilar 25)
+const simulatorSchema = z.object({
+  reference: z.string().min(1, 'Payment reference wajib diisi'),
+  scenario: z.enum(['success', 'failed', 'expired', 'cancelled']),
+});
 
 interface FormData {
   reference: string;
@@ -39,15 +51,10 @@ interface TripayHealth {
   error?: string;
 }
 
-const TripaySimulatorPage: React.FC = () => {
+const TripaySimulatorPage: React.FC = React.memo(() => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SimulationResult | null>(null);
-  const [tripayHealth, setTripayHealth] = useState<TripayHealth | null>(null);
-  const [healthLoading, setHealthLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
-  
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
 
   const { register, handleSubmit, setValue, watch } = useForm<FormData>({
@@ -57,52 +64,47 @@ const TripaySimulatorPage: React.FC = () => {
     }
   });
 
-  // Load payment list and TripPay health on mount
-  useEffect(() => {
-    const init = async () => {
-      // Load TripPay health
+  const { data: tripayHealth, isLoading: healthLoading } = useQuery<TripayHealth>({
+    queryKey: ['tripay-health-simulator'],
+    queryFn: async () => {
       try {
-        setHealthLoading(true);
         const health = await tripaySimulatorApi.getTripayHealth();
-        setTripayHealth(health as TripayHealth);
+        return health as TripayHealth;
       } catch (error: unknown) {
         const errObj = error as { message?: string };
-        console.warn('Failed to fetch TripPay health:', error);
-        setTripayHealth({ 
+        return { 
           success: false, 
           message: 'Could not connect to TripPay integration',
           error: errObj.message 
-        });
-      } finally {
-        setHealthLoading(false);
+        };
       }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      // Load payment list
-      try {
-        setPaymentsLoading(true);
-        const response = await tripaySimulatorApi.getPaymentsList('TRIPAY', 10);
-        if (response.success && response.data?.payments) {
-          setPayments(response.data.payments as PaymentItem[]);
-          if (response.data.payments.length > 0) {
-            const firstPayment = response.data.payments[0] as PaymentItem;
-            setSelectedPayment(firstPayment);
-            setValue('reference', firstPayment.id);
-          }
-        }
-      } catch (error: unknown) {
-        console.warn('Failed to load payments:', error);
-        // Don't show error toast - payments are optional
-      } finally {
-        setPaymentsLoading(false);
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery<PaymentItem[]>({
+    queryKey: ['tripay-pending-payments'],
+    queryFn: async () => {
+      const response = await tripaySimulatorApi.getPaymentsList('TRIPAY', 10);
+      if (response.success && response.data?.payments) {
+        return response.data.payments as PaymentItem[];
       }
-    };
+      return [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-    init();
-  }, [setValue]);
+  useEffect(() => {
+    if (payments && payments.length > 0 && !selectedPayment) {
+      setSelectedPayment(payments[0]);
+      setValue('reference', payments[0].id);
+    }
+  }, [payments, selectedPayment, setValue]);
 
   const onSubmit = useCallback(async (data: FormData) => {
-    if (!data.reference) {
-      toast.error('Please select or enter a payment reference');
+    const parsed = simulatorSchema.safeParse(data);
+    if (!parsed.success) {
+      toast.error('Payment reference wajib diisi');
       return;
     }
 
@@ -110,8 +112,8 @@ const TripaySimulatorPage: React.FC = () => {
     setResult(null);
     try {
       const response = await tripaySimulatorApi.simulateWebhook(
-        data.scenario,
-        data.reference
+        parsed.data.scenario,
+        parsed.data.reference
       );
       setResult(response);
       setShowDetails(true);
@@ -166,17 +168,20 @@ const TripaySimulatorPage: React.FC = () => {
     }
   ], [tripayHealth, healthLoading, payments]);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Infrastruktur & Server', path: '/superadmin/backups' },
+    { label: 'Simulator Webhook Tripay' }
+  ], []);
+
   return (
     <SuperAdminPageLayout
       title="Tripay Webhook Simulator"
       description="Simulate payment callbacks from TripPay gateway for testing purposes."
       hardeningModuleKey="tripay_simulator"
-      breadcrumbs={[
-        { label: 'Infrastruktur & Server', path: '/superadmin/backups' },
-        { label: 'Simulator Webhook Tripay' }
-      ]}
+      breadcrumbs={breadcrumbs}
       instruction={{
         title: 'Simulator Webhook Tripay',
+        description: 'Simulasi callback webhook gateway pembayaran Tripay.',
         items: [
           { text: 'Gunakan halaman ini untuk mensimulasikan callback webhook dari gateway pembayaran Tripay.' },
           { text: 'Pilih salah satu transaksi pending atau masukkan reference manual untuk pengujian.' }
@@ -185,99 +190,101 @@ const TripaySimulatorPage: React.FC = () => {
       stats={headerStats}
       isLoadingStats={healthLoading}
     >
-
-      {/* TripPay Health Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Integration Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {healthLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader className="w-4 h-4" />
-              <span className="text-sm text-gray-600">Checking TripPay integration...</span>
-            </div>
-          ) : tripayHealth?.success ? (
-            <Alert className="bg-green-50 border-green-200 text-green-900">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                    TripPay Integration Active
-                  </p>
-                  <p className="text-sm mt-1">{tripayHealth.message}</p>
-                </div>
+      <InfraErrorBoundary>
+        {/* TripPay Health Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Integration Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {healthLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader className="w-4 h-4" />
+                <span className="text-sm text-gray-600">Checking TripPay integration...</span>
               </div>
-            </Alert>
-          ) : (
-            <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900">
-              <p className="font-semibold flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
-                TripPay Status: {tripayHealth?.message || 'Not available'}
-              </p>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Payment Selection Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Payment for Testing</CardTitle>
-          <CardDescription>
-            Choose an existing pending payment or manually enter a payment reference
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {paymentsLoading ? (
-            <div className="flex items-center gap-2 py-4">
-              <Loader className="w-4 h-4" />
-              <span className="text-sm text-gray-600">Loading available payments...</span>
-            </div>
-          ) : payments.length > 0 ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Available Pending Payments</Label>
-                <SearchableSelect
-                  value={selectedPayment?.id || ''}
-                  onValueChange={(val) => handlePaymentSelect(val)}
-                  options={[
-                    { value: '', label: '-- Pilih Pembayaran --' },
-                    ...payments?.map((payment) => ({
-                      value: payment.id,
-                      label: `${payment.gateway_transaction_id || payment.id.slice(0, 8)} - Rp ${(payment.amount / 100000).toFixed(0)}K - ${payment.status}`,
-                    })) || [],
-                  ]}
-                  placeholder="Pilih pembayaran pending..."
-                  searchPlaceholder="Cari pembayaran..."
-                  triggerClassName="w-full bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-
-              {selectedPayment && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm font-semibold text-blue-900 mb-2">Selected Payment Details:</p>
-                  <ul className="text-xs text-blue-800 space-y-1">
-                    <li><strong>Payment ID:</strong> {selectedPayment.id}</li>
-                    {selectedPayment.gateway_transaction_id && (
-                      <li><strong>Transaction ID:</strong> {selectedPayment.gateway_transaction_id}</li>
-                    )}
-                    <li><strong>Amount:</strong> Rp {(selectedPayment.amount / 100000).toFixed(2)}K</li>
-                    <li><strong>Status:</strong> {selectedPayment.status}</li>
-                    <li><strong>Created:</strong> {new Date(selectedPayment.created_at).toLocaleString()}</li>
-                  </ul>
+            ) : tripayHealth?.success ? (
+              <Alert className="bg-green-50 border-green-200 text-green-900">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                      TripPay Integration Active
+                    </p>
+                    <p className="text-sm mt-1">{tripayHealth.message}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <Alert className="bg-orange-50 border-orange-200 text-orange-900">
-              <p className="text-sm">
-                No pending payments found. Please create a payment first or enter a payment reference manually below.
-              </p>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+              </Alert>
+            ) : (
+              <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900">
+                <p className="font-semibold flex items-center gap-2">
+                  <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
+                  TripPay Status: {tripayHealth?.message || 'Not available'}
+                </p>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Payment Selection Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Payment for Testing</CardTitle>
+            <CardDescription>
+              Choose an existing pending payment or manually enter a payment reference
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {paymentsLoading ? (
+              <div className="flex items-center gap-2 py-4">
+                <Loader className="w-4 h-4" />
+                <span className="text-sm text-gray-600">Loading available payments...</span>
+              </div>
+            ) : payments.length > 0 ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Available Pending Payments</Label>
+                  <Suspense fallback={<div className="h-10 w-full bg-slate-100 rounded-lg animate-pulse" />}>
+                    <SearchableSelect
+                      value={selectedPayment?.id || ''}
+                      onValueChange={(val) => handlePaymentSelect(val)}
+                      options={[
+                        { value: '', label: '-- Pilih Pembayaran --' },
+                        ...((payments ?? [])?.map((payment) => ({
+                          value: payment.id,
+                          label: `${payment.gateway_transaction_id || payment.id.slice(0, 8)} - Rp ${(payment.amount / 100000).toFixed(0)}K - ${payment.status}`,
+                        })) || []),
+                      ]}
+                      placeholder="Pilih pembayaran pending..."
+                      searchPlaceholder="Cari pembayaran..."
+                      triggerClassName="w-full bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </Suspense>
+                </div>
+
+                {selectedPayment && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">Selected Payment Details:</p>
+                    <ul className="text-xs text-blue-800 space-y-1">
+                      <li><strong>Payment ID:</strong> {selectedPayment.id}</li>
+                      {selectedPayment.gateway_transaction_id && (
+                        <li><strong>Transaction ID:</strong> {selectedPayment.gateway_transaction_id}</li>
+                      )}
+                      <li><strong>Amount:</strong> Rp {(selectedPayment.amount / 100000).toFixed(2)}K</li>
+                      <li><strong>Status:</strong> {selectedPayment.status}</li>
+                      <li><strong>Created:</strong> {selectedPayment.created_at ? formatDate(selectedPayment.created_at, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Alert className="bg-orange-50 border-orange-200 text-orange-900">
+                <p className="text-sm">
+                  No pending payments found. Please create a payment first or enter a payment reference manually below.
+                </p>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
       {/* Simulation Form */}
       <Card>
@@ -307,19 +314,21 @@ const TripaySimulatorPage: React.FC = () => {
               {/* Scenario Selection */}
               <div className="space-y-2">
                 <Label htmlFor="scenario">Payment Outcome Scenario</Label>
-                <SearchableSelect
-                  value={watch('scenario') || 'success'}
-                  onValueChange={(val) => setValue('scenario', val as FormData['scenario'])}
-                  options={[
-                    { value: 'success', label: '✅ Success (Payment Confirmed)' },
-                    { value: 'failed', label: '❌ Failed (Payment Rejected)' },
-                    { value: 'expired', label: '⏱️ Expired (Payment Window Closed)' },
-                    { value: 'cancelled', label: '🚫 Cancelled (User Cancelled)' },
-                  ]}
-                  placeholder="Pilih skenario callback..."
-                  searchPlaceholder="Cari skenario..."
-                  triggerClassName="w-full bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
+                <Suspense fallback={<div className="h-10 w-full bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />}>
+                  <SearchableSelect
+                    value={watch('scenario') || 'success'}
+                    onValueChange={(val) => setValue('scenario', val as FormData['scenario'])}
+                    options={[
+                      { value: 'success', label: '✅ Success (Payment Confirmed)' },
+                      { value: 'failed', label: '❌ Failed (Payment Rejected)' },
+                      { value: 'expired', label: '⏱️ Expired (Payment Window Closed)' },
+                      { value: 'cancelled', label: '🚫 Cancelled (User Cancelled)' },
+                    ]}
+                    placeholder="Pilih skenario callback..."
+                    searchPlaceholder="Cari skenario..."
+                    triggerClassName="w-full bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </Suspense>
                 <p className="text-xs text-gray-500">
                   Select the payment outcome you want to simulate.
                 </p>
@@ -458,9 +467,10 @@ const TripaySimulatorPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      </InfraErrorBoundary>
     </SuperAdminPageLayout>
   );
-};
+});
 
 export default TripaySimulatorPage;
 

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
@@ -122,7 +124,7 @@ const Vouchers: React.FC = React.memo(() => {
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
-  const [memberInfo, setMemberInfo] = useState<any>(null);
+  const [memberInfo, setMemberInfo] = useState<Record<string, unknown>>(null);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -269,15 +271,21 @@ const Vouchers: React.FC = React.memo(() => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (isLocked) return;
     e.preventDefault();
+    if (isLocked) return;
+    const result = voucherSchema.safeParse(formData);
+    if (!result.success) {
+      toast.error(result.error.errors[0]?.message || 'Validasi voucher gagal');
+      return;
+    }
     setSubmitLoading(true);
     try {
       await api.post('/cooperative/vouchers', { ...formData, code: formData.code.toUpperCase() });
       toast.success('Voucher berhasil dibuat');
       setFormData({ code: '', description: '', discount: '', validUntil: '' });
       fetchVouchers();
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ['coop-vouchers'] });
+    } catch {
       toast.error('Gagal membuat voucher');
     } finally {
       setSubmitLoading(false);
@@ -378,7 +386,7 @@ const Vouchers: React.FC = React.memo(() => {
       key: 'actions',
       label: 'Aksi',
       render: (_val: unknown, row: Voucher) => (
-        <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)} icon={<Trash size={14} />} />
+        <Button variant="toolbarDanger" size="toolbar" onClick={() => handleDelete(row.id)} icon={<Trash size={14} />} />
       )
     }] : [])
   ], [hasManageAccess, handleDelete]);
@@ -416,7 +424,7 @@ const Vouchers: React.FC = React.memo(() => {
                 <div className="md:col-span-1">
                   <Card title="Buat Voucher Baru">
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      <Input
+                      <Input aria-label="Input field" 
                         label="Kode Voucher"
                         name="code"
                         value={formData.code}
@@ -425,7 +433,7 @@ const Vouchers: React.FC = React.memo(() => {
                         placeholder="CONTOH: PROMO10"
                         className="uppercase"
                       />
-                      <Input
+                      <Input aria-label="Input field" 
                         label="Nominal Diskon (Rp)"
                         name="discount"
                         type="number"
@@ -434,14 +442,14 @@ const Vouchers: React.FC = React.memo(() => {
                         required
                         placeholder="10000"
                       />
-                      <Input
+                      <Input aria-label="Input field" 
                         label="Keterangan"
                         name="description"
                         value={formData.description}
                         onChange={handleInputChange}
                         placeholder="Deskripsi promo..."
                       />
-                      <Input
+                      <Input aria-label="Input field" 
                         label="Berlaku Sampai (Opsional)"
                         name="validUntil"
                         type="date"
@@ -495,7 +503,7 @@ const Vouchers: React.FC = React.memo(() => {
           /* ======================================================================= */
           <Suspense fallback={
             <div className="flex justify-center items-center h-64">
-              <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-650 rounded-full animate-spin"></div>
             </div>
           }>
             <VoucherMemberView

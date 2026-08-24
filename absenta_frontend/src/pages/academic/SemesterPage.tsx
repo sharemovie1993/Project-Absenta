@@ -60,7 +60,7 @@ export const SemesterPage: React.FC = () => {
 
   const academicStats = useMemo(() => {
     const semName = stats?.semester?.nama_semester || stats?.active_semester || activeSemesterData?.nama_semester;
-    const yearName = stats?.tahun_pelajaran?.tahun || (stats?.semester as any)?.TahunPelajaran?.tahun || activeSemesterData?.TahunPelajaran?.tahun || '';
+    const yearName = stats?.tahun_pelajaran?.tahun || (stats?.semester as { TahunPelajaran?: { tahun?: string } } | undefined)?.TahunPelajaran?.tahun || activeSemesterData?.TahunPelajaran?.tahun || '';
 
     return [
       {
@@ -164,7 +164,7 @@ export const SemesterPage: React.FC = () => {
                       <p className="text-[9px] text-gray-500 dark:text-gray-400 leading-tight">Pindah semester dengan aman</p>
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => setWizardOpen(true)} className="h-8 text-xs">Buka Wizard</Button>
+                  <Button variant="toolbarPrimary" size="toolbar" onClick={() => setWizardOpen(true)} className="h-8 text-xs">Buka Wizard</Button>
                 </div>
               </Card>
             ) : undefined}

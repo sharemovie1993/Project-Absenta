@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { Card } from '../../components/ui/Card';
+import { formatDate } from '../../utils/layoutUtils';
 import { PiketSecurity } from '../../components/piket/PiketSecurity';
 import { piketApi, piketQueryKeys, type IzinKeluarSiswa } from '../../api/piket.api';
 import { usePiketIzinKeluarOptions } from '../../hooks/usePiketIzinKeluarOptions';
@@ -16,7 +18,7 @@ export default function PiketSecurityStandalonePage() {
   }>({ status: 'IDLE' });
 
   // Fetch daily permits using custom hook with 3-second real-time background polling
-  const { rawList: dailyPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions({ refetchInterval: 3000 });
+  const { rawList: dailyPermits, isLoading, refetch: refetchPermits } = usePiketIzinKeluarOptions({ refetchInterval: 3000 });
 
   // Handle Mark Returned
   const handleMarkReturned = useCallback(async (id: string, namaSiswa: string): Promise<boolean> => {
@@ -99,16 +101,18 @@ export default function PiketSecurityStandalonePage() {
         ]
       }}
     >
-      <div className="w-full py-2">
-        <PiketSecurity
-          dailyPermits={dailyPermits}
-          verificationResult={verificationResult}
-          setVerificationResult={setVerificationResult}
-          handleSecuritySelect={handleSecuritySelect}
-          handleSecurityEnter={handleSecurityEnter}
-          handleMarkReturned={handleMarkReturned}
-        />
-      </div>
+      <Card className="w-full min-w-0 border-0 bg-transparent shadow-none p-0">
+        <div className="w-full py-2">
+          <PiketSecurity
+            dailyPermits={dailyPermits}
+            verificationResult={verificationResult}
+            setVerificationResult={setVerificationResult}
+            handleSecuritySelect={handleSecuritySelect}
+            handleSecurityEnter={handleSecurityEnter}
+            handleMarkReturned={handleMarkReturned}
+          />
+        </div>
+      </Card>
     </AcademicPageLayout>
   );
 }

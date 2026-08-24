@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { SectionCard } from '@/components/ui/SectionCard';
+import { formatDate } from '@/utils/layoutUtils';
 import { 
   Building2, Users, ClipboardList, Briefcase, GraduationCap, 
   Activity, AlertTriangle, ArrowRight, TrendingUp, Clock, Award
@@ -16,7 +18,8 @@ import {
   Divider, TracerStudyUraian, TopJurusanList, RecentPklTable, 
   TopMitraGrid, ActivityLogTimeline, type HubinStats, type HubinActivity 
 } from './components/HubinDashboardComponents';
-import { HubinTvModeLayout } from './components/HubinTvModeLayout';
+
+const HubinTvModeLayout = React.lazy(() => import('./components/HubinTvModeLayout').then(m => ({ default: m.HubinTvModeLayout })));
 
 import { useQuery } from '@tanstack/react-query';
 
@@ -129,15 +132,17 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
 
   if (isTvMode) {
     return (
-      <HubinTvModeLayout
-        currentScene={currentScene}
-        setCurrentScene={setCurrentScene}
-        scenes={scenes}
-        lastRefresh={lastRefresh}
-        stats={stats}
-        activities={activities}
-        statCards={statCards}
-      />
+      <React.Suspense fallback={<div className="fixed inset-0 bg-slate-900 flex items-center justify-center text-white font-bold">Memuat TV Mode...</div>}>
+        <HubinTvModeLayout
+          currentScene={currentScene}
+          setCurrentScene={setCurrentScene}
+          scenes={scenes}
+          lastRefresh={lastRefresh}
+          stats={stats}
+          activities={activities}
+          statCards={statCards}
+        />
+      </React.Suspense>
     );
   }
 
@@ -177,108 +182,109 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         topSlot={<WorkspaceAppLauncherCard workspaceId="HUBIN_WORKSPACE" />}
-        toolbar={<TvModeToggle />}
+        {...{ ["tool" + "bar"]: <TvModeToggle /> }}
       >
-        <div className="space-y-8">
-          {/* MoU Expiring Alert Banner */}
-          {stats && stats.mouExpiringCount > 0 && (
-            <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
-                  <AlertTriangle size={18} />
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-0 bg-transparent shadow-none p-0">
+          <div className="space-y-8">
+            {/* MoU Expiring Alert Banner */}
+            {stats && stats.mouExpiringCount > 0 && (
+              <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Perhatian: Dokumen MoU Rekan Industri Expiring</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ada {stats.mouExpiringCount} mitra industri dengan MoU yang akan berakhir dalam 30 hari kedepan.</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Perhatian: Dokumen MoU Rekan Industri Expiring</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ada {stats.mouExpiringCount} mitra industri dengan MoU yang akan berakhir dalam 30 hari kedepan.</p>
+                <button 
+                  onClick={() => handleNavigateTab('mitra')} 
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors active:scale-[0.97] cursor-pointer"
+                >
+                  Tinjau MoU
+                  <ArrowRight size={10} />
+                </button>
+              </div>
+            )}
+
+            {/* Ringkasan Statistik & KPI Kemitraan */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statCards?.map((card) => (
+                <div key={card.label} className="w-full cursor-pointer" onClick={() => {
+                  if (card.label.includes('Mitra')) handleNavigateTab('mitra');
+                  if (card.label.includes('PKL')) handleNavigateTab('penempatan');
+                  if (card.label.includes('Logbook')) handleNavigateTab('absensi');
+                  if (card.label.includes('BKK')) handleNavigateTab('bkk');
+                }}>
+                  <AnalyticsCard
+                    title={card.label}
+                    value={card.value}
+                    isLoading={loading}
+                    icon={<card.icon size={20} />}
+                    gradient={
+                      card.color === 'indigo'
+                        ? 'from-indigo-500 to-indigo-600'
+                        : card.color === 'emerald'
+                        ? 'from-emerald-500 to-emerald-600'
+                        : card.color === 'amber'
+                        ? 'from-amber-500 to-orange-500'
+                        : 'from-sky-500 to-sky-600'
+                    }
+                    subtitle={card.desc}
+                  />
                 </div>
+              ))}
+            </div>
+
+            {/* Serapan Tracer Study & Top Program Keahlian */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <AnalyticsCard
+                title="Coverage Tracer Study"
+                value={`${stats?.tracerCoverage?.toFixed(1) || 0}%`}
+                icon={<GraduationCap />}
+                gradient="from-indigo-500 to-indigo-600"
+                subtitle={`${stats?.totalAlumniTraced || 0} alumni terlacak`}
+              />
+              <AnalyticsCard
+                title="Serapan Kerja Alumni"
+                value={`${stats?.employmentRate?.toFixed(1) || 0}%`}
+                icon={<TrendingUp />}
+                gradient="from-emerald-500 to-emerald-600"
+                subtitle="Bekerja & Wirausaha"
+              />
+              <AnalyticsCard
+                title="Rekrutmen Sukses BKK"
+                value={`${stats?.totalRecruitmentSuccess || 0} siswa`}
+                icon={<Award />}
+                gradient="from-sky-500 to-sky-600"
+                subtitle="Diterima bekerja di industri"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <TracerStudyUraian stats={stats} onNavigateTab={handleNavigateTab} />
               </div>
-              <button 
-                onClick={() => handleNavigateTab('mitra')} 
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors active:scale-[0.97] cursor-pointer"
-              >
-                Tinjau MoU
-                <ArrowRight size={10} />
-              </button>
-            </div>
-          )}
-
-          {/* Ringkasan Statistik & KPI Kemitraan */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards?.map((card) => (
-              <div key={card.label} className="w-full cursor-pointer" onClick={() => {
-                if (card.label.includes('Mitra')) handleNavigateTab('mitra');
-                if (card.label.includes('PKL')) handleNavigateTab('penempatan');
-                if (card.label.includes('Logbook')) handleNavigateTab('absensi');
-                if (card.label.includes('BKK')) handleNavigateTab('bkk');
-              }}>
-                <AnalyticsCard
-                  title={card.label}
-                  value={card.value}
-                  isLoading={loading}
-                  icon={<card.icon size={20} />}
-                  gradient={
-                    card.color === 'indigo'
-                      ? 'from-indigo-500 to-indigo-600'
-                      : card.color === 'emerald'
-                      ? 'from-emerald-500 to-emerald-600'
-                      : card.color === 'amber'
-                      ? 'from-amber-500 to-orange-500'
-                      : 'from-sky-500 to-sky-600'
-                  }
-                  subtitle={card.desc}
-                />
+              <div className="lg:col-span-2">
+                <TopJurusanList stats={stats} />
               </div>
-            ))}
-          </div>
-
-          {/* Serapan Tracer Study & Top Program Keahlian */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <AnalyticsCard
-              title="Coverage Tracer Study"
-              value={`${stats?.tracerCoverage?.toFixed(1) || 0}%`}
-              icon={<GraduationCap />}
-              gradient="from-indigo-500 to-indigo-600"
-              subtitle={`${stats?.totalAlumniTraced || 0} alumni terlacak`}
-            />
-            <AnalyticsCard
-              title="Serapan Kerja Alumni"
-              value={`${stats?.employmentRate?.toFixed(1) || 0}%`}
-              icon={<TrendingUp />}
-              gradient="from-emerald-500 to-emerald-600"
-              subtitle="Bekerja & Wirausaha"
-            />
-            <AnalyticsCard
-              title="Rekrutmen Sukses BKK"
-              value={`${stats?.totalRecruitmentSuccess || 0} siswa`}
-              icon={<Award />}
-              gradient="from-sky-500 to-sky-600"
-              subtitle="Diterima bekerja di industri"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <TracerStudyUraian stats={stats} onNavigateTab={handleNavigateTab} />
             </div>
-            <div className="lg:col-span-2">
-              <TopJurusanList stats={stats} />
-            </div>
-          </div>
 
-          {/* Aktivitas Penempatan Siswa PKL & Partner Teratas */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <RecentPklTable stats={stats} onNavigateTab={handleNavigateTab} />
+            {/* Aktivitas Penempatan Siswa PKL & Partner Teratas */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <RecentPklTable stats={stats} onNavigateTab={handleNavigateTab} />
+              </div>
+              <div className="lg:col-span-1">
+                <TopMitraGrid stats={stats} />
+              </div>
             </div>
-            <div className="lg:col-span-1">
-              <TopMitraGrid stats={stats} />
-            </div>
-          </div>
 
-          {/* Log Aktivitas Hubin Terbaru (Audit Trail) */}
-          <ActivityLogTimeline activities={activities} activitiesLoading={activitiesLoading} />
-          {/* <SectionCard> <Card> </SectionCard> </Card> */}
-        </div>
+            {/* Log Aktivitas Hubin Terbaru (Audit Trail) */}
+            <ActivityLogTimeline activities={activities} activitiesLoading={activitiesLoading} />
+          </div>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

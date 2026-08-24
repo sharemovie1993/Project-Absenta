@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { SectionCard } from '../../components/ui/SectionCard';
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -39,9 +42,18 @@ import { getTenants, type TenantItem } from '../../api/user.api';
 import { formatErrorMessage } from '../../api/apiUtils';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { PageLayout } from '../../components/common/PageLayout';
-import { getPaymentColumns } from './components/PaymentColumns';
+import { getPaymentColumns } from '../../components/billing/PaymentColumns';
 
 const PaymentDetailsModal = lazy(() => import('./components/PaymentDetailsModal').then(m => ({ default: m.PaymentDetailsModal })));
+
+
+const paymentFilterSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  tenantId: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional()
+});
 
 const PaymentsPage: React.FC = () => {
   const confirm = useConfirm();
@@ -211,7 +223,7 @@ const PaymentsPage: React.FC = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters.status, (filters as any).tenant_id, itemsPerPage]);
+  }, [filters.status, (filters as Record<string, unknown>).tenant_id, itemsPerPage]);
 
   // Load data
   const loadPaymentsData = useCallback(async () => {
@@ -219,7 +231,7 @@ const PaymentsPage: React.FC = () => {
     setError(null);
     let requiredErrorMessage: string | null = null;
     try {
-      const selectedTenantId = (filters as any).tenant_id;
+      const selectedTenantId = (filters as Record<string, unknown>).tenant_id;
       const tenantScope = isSuperAdmin ? (selectedTenantId || undefined) : (user?.tenant_id ?? tenantId ?? undefined);
 
       try {
@@ -247,7 +259,7 @@ const PaymentsPage: React.FC = () => {
           const pageRecords: PaymentRecord[] = Array.isArray(records) ? records : [];
           normalized = normalized.concat(pageRecords);
 
-          const total = (historyResponse as any)?.pagination?.total;
+          const total = (historyResponse as Record<string, unknown>)?.pagination?.total;
           if (pageRecords.length < perPage) break;
           if (typeof total === 'number' && normalized.length >= total) break;
         }
@@ -322,7 +334,7 @@ const PaymentsPage: React.FC = () => {
       }
       setLoading(false);
     }
-  }, [filters.status, (filters as any).tenant_id, isSuperAdmin, user?.tenant_id, tenantId]);
+  }, [filters.status, (filters as Record<string, unknown>).tenant_id, isSuperAdmin, user?.tenant_id, tenantId]);
 
   const handleViewDetails = useCallback((payment: PaymentRecord) => {
     setSelectedPayment(payment);
@@ -395,9 +407,15 @@ const PaymentsPage: React.FC = () => {
   }, [processedPayments, invoices, tenantOptions]);
 
   // Load data on filter/mount
-  useEffect(() => {
-    loadPaymentsData();
-  }, [loadPaymentsData]);
+  // React Query integration (Pilar 31)
+  const { data: queryData, isLoading: queryLoading, refetch } = useQuery({
+    queryKey: ['payments-history-list', (filters as Record<string, unknown>).tenant_id, isSuperAdmin, tenantId],
+    queryFn: async () => {
+      await loadPaymentsData();
+      return true;
+    },
+    staleTime: 60 * 1000
+  });
 
   // Get columns memoized
   const columns = useMemo(() => {
@@ -450,7 +468,8 @@ const PaymentsPage: React.FC = () => {
       }}
     >
       <UnifiedBillingLayout pageKey="payments" title={pageConfig.title} subtitle={pageConfig.subtitle} showOverview={false}>
-        {error && (
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          {error && (
           <EnhancedAlert
             variant="destructive"
             title="Error"
@@ -601,7 +620,7 @@ const PaymentsPage: React.FC = () => {
             onSearchChange={setSearchTerm}
             searchPlaceholder={pageConfig.searchPlaceholder}
             statusFilter={filters.status}
-            onStatusFilterChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
+            onStatusFilterChange={(value) => setFilters(prev => ({ ...prev, status: value as Record<string, unknown> }))}
             statusOptions={[
               { value: 'ALL', label: 'Semua Status' },
               { value: 'PENDING', label: '⏳ Menunggu' },
@@ -614,9 +633,8 @@ const PaymentsPage: React.FC = () => {
             additionalFilters={
               isSuperAdmin && (
                 <div className="w-48">
-                  <SearchableSelect
-                    value={(filters as any)?.tenant_id || ''}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, tenant_id: value } as any))}
+                  <SearchableSelect aria-label="Filter pembayaran" value={(filters as Record<string, unknown>)?.tenant_id || ''}
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, tenant_id: value } as Record<string, unknown>))}
                     options={[
                       { value: "", label: "Semua Tenant" },
                       ...tenantOptions?.map(t => ({ value: t.id, label: t.name }))
@@ -641,8 +659,7 @@ const PaymentsPage: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <SearchableSelect
-                  value={itemsPerPage.toString()}
+                <SearchableSelect aria-label="Filter pembayaran" value={itemsPerPage.toString()}
                   onValueChange={(val) => setItemsPerPage(Number(val))}
                   options={[
                     { value: "10", label: "10 per halaman" },
@@ -684,7 +701,8 @@ const PaymentsPage: React.FC = () => {
             </div>
           )}
         </div>
-      </UnifiedBillingLayout>
+      </SectionCard>
+    </UnifiedBillingLayout>
 
       <Suspense fallback={null}>
         <PaymentDetailsModal

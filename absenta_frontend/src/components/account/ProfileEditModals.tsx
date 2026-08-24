@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Modal, ModalFooter, Input, Label, Button, Loader
-} from '../../../components/ui';
-import { SearchableSelect } from '../../../components/ui/SearchableSelect';
-import { changePassword } from '../../../api/auth.api';
-import { updateMyEmail } from '../../../api/user.api';
-import { guruApi, siswaApi } from '../../../api/academic.api';
-import type { Guru, Siswa } from '../../../types/academic';
-import { SiswaForm } from '../../../components/academic/siswa/SiswaForm';
-import { GuruForm } from '../../../components/academic/guru/GuruForm';
+} from '@/components/ui';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { changePassword } from '@/api/auth.api';
+import { updateMyEmail } from '@/api/user.api';
+import { guruApi, siswaApi } from '@/api/academic.api';
+import type { Guru, Siswa } from '@/types/academic';
+import { SiswaForm } from '@/components/academic/siswa/SiswaForm';
+import { GuruForm } from '@/components/academic/guru/GuruForm';
 import {
   JENIS_KELAMIN_OPTIONS,
   AGAMA_OPTIONS,
@@ -22,7 +22,7 @@ import {
   getKelasForDropdown,
   getTahunPelajaranForDropdown,
   type DropdownOption
-} from '../../../api/dropdown.api';
+} from '@/api/dropdown.api';
 
 interface EditProfileModalProps {
   isOpen: boolean;

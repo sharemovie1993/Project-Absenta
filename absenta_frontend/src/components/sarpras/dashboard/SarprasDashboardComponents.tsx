@@ -2,6 +2,7 @@ import React from 'react';
 import { Cpu, Clock, Box, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { SectionCard } from '@/components/ui/SectionCard';
+import { formatDate } from '../../../utils/layoutUtils';
 
 export interface LoanRecord {
   id: string;
@@ -89,7 +90,7 @@ export const UnreturnedLoansList: React.FC<{ loans: LoanRecord[] }> = React.memo
                 <div className="min-w-0">
                   <h4 className="font-bold text-slate-800 dark:text-white text-xs truncate">{loan.Asset?.nama || 'Aset Tidak Dikenal'}</h4>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
-                    Peminjam: {loan.Peminjam?.full_name || 'Umum'} <span className="mx-1.5 opacity-20">•</span> Kembali: {loan.tanggal_kembali_plan ? new Date(loan.tanggal_kembali_plan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '—'}
+                    Peminjam: {loan.Peminjam?.full_name || 'Umum'} <span className="mx-1.5 opacity-20">•</span> Kembali: {loan.tanggal_kembali_plan ? formatDate(loan.tanggal_kembali_plan, { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                   </p>
                 </div>
               </div>
@@ -133,7 +134,7 @@ export const RecentTransactionsList: React.FC<{ loans: LoanRecord[] }> = React.m
                 <div className="min-w-0">
                   <h4 className="font-bold text-slate-800 dark:text-white text-xs truncate">{loan.Asset?.nama || 'Aset Tidak Dikenal'}</h4>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
-                    Oleh: {loan.Peminjam?.full_name || 'Umum'} <span className="mx-1.5 opacity-20">•</span> Tanggal: {loan.tanggal_pinjam ? new Date(loan.tanggal_pinjam).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '—'}
+                    Oleh: {loan.Peminjam?.full_name || 'Umum'} <span className="mx-1.5 opacity-20">•</span> Tanggal: {loan.tanggal_pinjam ? formatDate(loan.tanggal_pinjam, { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                   </p>
                 </div>
               </div>

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { formatDate } from '@/utils/date.utils';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
@@ -37,8 +38,8 @@ import {
   MaintenanceAlertsList,
   type LoanRecord,
   type RepairRecord
-} from './components/SarprasDashboardComponents';
-import { SarprasTvModeLayout } from './components/SarprasTvModeLayout';
+} from '@/components/sarpras/dashboard/SarprasDashboardComponents';
+import { SarprasTvModeLayout } from '@/components/sarpras/dashboard/SarprasTvModeLayout';
 
 export interface AssetStats {
   total: number;
@@ -205,17 +206,6 @@ const SarprasDashboard: React.FC = React.memo(() => {
         instruction={instruction}
         hardeningModuleKey="sarpras_dashboard"
         topSlot={<WorkspaceAppLauncherCard workspaceId="SARPRAS_WORKSPACE" />}
-        toolbar={
-          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-2 shadow-sm items-center">
-             <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-primary uppercase tracking-wider">
-                  {stats?.jurisdiction?.type === 'unit' ? `Unit: ${stats.jurisdiction.name}` : 'Global Access'}
-                </span>
-             </div>
-             <TvModeToggle />
-          </div>
-        }
       >
         <div className="space-y-8">
           {/* Ringkasan Aset & Kondisi Terkini */}
@@ -302,7 +292,7 @@ const SarprasDashboard: React.FC = React.memo(() => {
                       <h3 className="text-2xl font-black">Cek Inventaris</h3>
                       <p className="text-sm opacity-80 mt-2">Pastikan semua barang di unit {stats?.jurisdiction?.name || ''} selalu dalam kondisi optimal untuk praktikum.</p>
                     </div>
-                    <Button variant="secondary" className="w-full rounded-xl font-bold bg-white text-primary hover:bg-slate-100">
+                    <Button variant="toolbarOutline" className="w-full rounded-xl font-bold bg-white text-primary hover:bg-slate-100">
                       Pergi ke Gudang
                     </Button>
                  </div>

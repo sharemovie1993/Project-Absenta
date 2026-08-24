@@ -157,8 +157,7 @@ const KelasCard: React.FC<{
 
         {/* Kelas Tujuan (Kanan) */}
         <div className="flex-1 min-w-0">
-          <SearchableSelect
-            value={mappedValue}
+          <SearchableSelect aria-label="Pilih opsi transisi" value={mappedValue}
             onValueChange={onChange}
             options={options}
             placeholder="Pilih tujuan..."
@@ -204,7 +203,7 @@ const TingkatColumn: React.FC<{
 
       {/* Stack kartu kelas */}
       <div className="w-full flex flex-col gap-0">
-        {classes.map((kelas, idx) => (
+        {classes?.map((kelas, idx) => (
           <KelasCard
             key={kelas.id}
             kelas={kelas}
@@ -235,7 +234,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
   // Dynamic maxTingkat from allClasses (fallback jika jenjang tidak diset)
   const maxTingkat = useMemo(() => {
     if (allClasses.length === 0) return 12;
-    return Math.max(...allClasses.map(k => k.tingkat || 0));
+    return Math.max(...allClasses?.map(k => k.tingkat || 0));
   }, [allClasses]);
 
   useEffect(() => { fetchClasses(); }, []);
@@ -294,7 +293,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     if (!ok) return;
     setCreatingClasses(true);
     try {
-      const payload = missingClasses.map(m => ({
+      const payload = missingClasses?.map(m => ({
         sourceKelasId: m.sourceKelasId,
         namaKelas: editedNames[m.sourceKelasId] || m.suggestedNama,
       }));
@@ -445,7 +444,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
   };
 
   const handleSubmit = () => {
-    const result: ClassMapping[] = Object.entries(mapping).map(([from, to]) => ({
+    const result: ClassMapping[] = Object.entries(mapping)?.map(([from, to]) => ({
       fromKelasId: from,
       toKelasId: to,
     }));
@@ -471,7 +470,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
   }, [sortedClasses, managedClassId]);
 
   const tingkatList = useMemo(() =>
-    Object.keys(classesByTingkat).map(Number).sort((a, b) => a - b),
+    Object.keys(classesByTingkat)?.map(Number).sort((a, b) => a - b),
     [classesByTingkat]);
 
   const getTargetOptions = (source: Kelas) => {
@@ -618,11 +617,10 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
               </div>
             </div>
             <div className="flex flex-col gap-1.5 ml-7">
-              {missingClasses.map(m => (
+              {missingClasses?.map(m => (
                 <div key={m.sourceKelasId} className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-orange-800 dark:text-orange-300 min-w-[120px]">{m.sourceNama} →</span>
-                  <input
-                    type="text"
+                  <input aria-label="Input transisi kelas" type="text"
                     value={editedNames[m.sourceKelasId] ?? m.suggestedNama}
                     onChange={e => setEditedNames(prev => ({ ...prev, [m.sourceKelasId]: e.target.value }))}
                     className="text-[11px] px-2 py-1 rounded-lg border border-orange-300 dark:border-orange-700 bg-white dark:bg-orange-950/40 text-orange-900 dark:text-orange-200 font-bold w-40 focus:outline-none focus:ring-2 focus:ring-orange-400"
@@ -658,7 +656,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
 
       {/* ── Legend ── */}
       <div className="flex flex-wrap items-center gap-3 px-1">
-        {tingkatList.map(t => {
+        {tingkatList?.map(t => {
           const th = getTheme(t, tingkatList);
           return (
             <div key={t} className="flex items-center gap-1.5">
@@ -690,7 +688,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
               />
             )}
 
-            {tingkatList.map((tingkat) => (
+            {tingkatList?.map((tingkat) => (
               <TingkatColumn
                 key={tingkat}
                 tingkat={tingkat}

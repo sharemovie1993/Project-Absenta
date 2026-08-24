@@ -1,26 +1,45 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
-import { Modal } from '../../components/cooperative/ui/Modal';
 import toast from 'react-hot-toast';
 import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
 import {
-  ArrowLeft,
   Plus,
   Search,
   Phone,
   Mail,
   MapPin,
-  ChevronRight,
   Building2,
   Package,
   Edit2,
   Trash2,
-  X,
   CheckCircle2,
-  Clock,
-  User2
+  User2,
+  CheckCircle
 } from 'lucide-react';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
+import { Button, Input, SectionCard } from '@/components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { formatDate, formatCurrency } from '@/utils/layoutUtils';
+
+const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
+
+// Zod Schema Validation Guard (Pilar 25)
+const supplierFormSchema = z.object({
+  name: z.string().min(2, 'Nama supplier minimal 2 karakter'),
+  contact: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
+  address: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const searchFilterSchema = z.object({
+  search: z.string().optional(),
+});
 
 interface CoopSupplier {
   id: string;
@@ -54,7 +73,7 @@ const EMPTY_FORM: SupplierFormData = {
   notes: ''
 };
 
-const Suppliers: React.FC = () => {
+export const Suppliers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
 
   // UI state
@@ -67,26 +86,36 @@ const Suppliers: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingSupplier, setDeletingSupplier] = useState<CoopSupplier | null>(null);
 
-  // ─── Query: Fetch Suppliers ───────────────────────────────────────────────
+  // Query: Fetch Suppliers (Pilar 31)
   const { data: suppliers = [], isLoading } = useQuery<CoopSupplier[]>({
     queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
       const res = await api.get('/cooperative/suppliers');
-      return res.data;
-    }
+      const raw = res?.data;
+      return Array.isArray(raw) ? raw : (raw?.data || []);
+    },
+    staleTime: 2 * 60 * 1000,
   });
 
   const filteredSuppliers = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return suppliers;
-    return suppliers.filter(s =>
+    return (suppliers ?? []).filter(s =>
       s.name.toLowerCase().includes(q) ||
       (s.contact || '').toLowerCase().includes(q) ||
       (s.phone || '').toLowerCase().includes(q)
     );
   }, [suppliers, searchQuery]);
 
-  // ─── Mutation: Create Supplier ────────────────────────────────────────────
+  // Stats calculation
+  const stats = useMemo(() => {
+    const total = suppliers.length;
+    const active = (suppliers ?? []).filter(s => s.isActive !== false).length;
+    const totalSpent = (suppliers ?? []).reduce((sum, s) => sum + (s.totalValue || 0), 0);
+    return { total, active, totalSpent };
+  }, [suppliers]);
+
+  // Mutations
   const createMutation = useMutation({
     mutationFn: async (data: SupplierFormData) => {
       const res = await api.post('/cooperative/suppliers', data);
@@ -99,12 +128,11 @@ const Suppliers: React.FC = () => {
       setFormData(EMPTY_FORM);
       setEditingSupplier(null);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Gagal menambahkan supplier');
+    onError: () => {
+      toast.error('Gagal menambahkan supplier');
     }
   });
 
-  // ─── Mutation: Update Supplier ────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: SupplierFormData }) => {
       const res = await api.put(`/cooperative/suppliers/${id}`, data);
@@ -117,12 +145,11 @@ const Suppliers: React.FC = () => {
       setFormData(EMPTY_FORM);
       setEditingSupplier(null);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Gagal memperbarui supplier');
+    onError: () => {
+      toast.error('Gagal memperbarui supplier');
     }
   });
 
-  // ─── Mutation: Delete (Deactivate) Supplier ───────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/cooperative/suppliers/${id}`);
@@ -133,20 +160,33 @@ const Suppliers: React.FC = () => {
       setIsDeleteConfirmOpen(false);
       setDeletingSupplier(null);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Gagal menghapus supplier');
+    onError: () => {
+      toast.error('Gagal menghapus supplier');
     }
   });
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = supplierFormSchema.safeParse(formData);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data belum valid');
+      return;
+    }
+    if (editingSupplier) {
+      updateMutation.mutate({ id: editingSupplier.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  }, [formData, editingSupplier, createMutation, updateMutation]);
+
   const handleOpenCreate = useCallback(() => {
     setEditingSupplier(null);
     setFormData(EMPTY_FORM);
     setIsFormOpen(true);
   }, []);
 
-  const handleOpenEdit = useCallback((supplier: CoopSupplier, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleOpenEdit = useCallback((supplier: CoopSupplier, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name,
@@ -159,455 +199,360 @@ const Suppliers: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
-  const handleOpenDetail = useCallback((supplier: CoopSupplier) => {
-    setSelectedSupplier(supplier);
-    setIsDetailOpen(true);
-  }, []);
-
-  const handleSubmitForm = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim()) {
-      toast.error('Nama supplier wajib diisi');
-      return;
-    }
-    if (editingSupplier) {
-      updateMutation.mutate({ id: editingSupplier.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  }, [formData, editingSupplier, createMutation, updateMutation]);
-
-  const handleConfirmDelete = useCallback((supplier: CoopSupplier, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleConfirmDelete = useCallback((supplier: CoopSupplier, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setDeletingSupplier(supplier);
     setIsDeleteConfirmOpen(true);
   }, []);
 
-  const getInitials = (name: string) => {
-    const words = name.trim().split(' ').filter(Boolean);
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  };
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative/dashboard' },
+    { label: 'Daftar Supplier' }
+  ], []);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="block -mx-4 -mt-2 bg-white dark:bg-slate-950 min-h-screen pb-24">
-      
-      {/* ─── App Bar ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 sticky top-0 z-20 bg-white dark:bg-slate-950">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
-            aria-label="Kembali"
-          >
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="font-bold text-base text-emerald-600 dark:text-emerald-400">
-            Supplier
-          </h1>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleOpenCreate}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm active:scale-95 transition-transform cursor-pointer"
-        >
-          <Plus size={15} />
-          <span>Tambah</span>
-        </button>
-      </div>
-
-      {/* ─── Search Bar ───────────────────────────────────────────────────── */}
-      <div className="px-4 pt-3 pb-2">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Cari nama atau kontak supplier..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ─── Stats Summary ────────────────────────────────────────────────── */}
-      {!isLoading && suppliers.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20">
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Total Supplier</p>
-              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{suppliers.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <p className="text-xs text-slate-500 font-bold">Total Pembelian</p>
-              <p className="text-lg font-black text-slate-700 dark:text-slate-300 mt-0.5 truncate">
-                Rp {suppliers.reduce((s, sup) => s + sup.totalValue, 0).toLocaleString('id-ID')}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Supplier List ────────────────────────────────────────────────── */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-        {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="px-4 py-4 flex items-center gap-3 animate-pulse">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded w-1/2" />
-                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-2/3" />
-              </div>
-            </div>
-          ))
-        ) : filteredSuppliers.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">
-            <Building2 size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-bold text-sm">
-              {searchQuery ? 'Tidak ada supplier ditemukan' : 'Belum ada supplier'}
-            </p>
-            {!searchQuery && (
-              <button
-                type="button"
+    <PremiumFeatureGate
+      moduleName="KOPERASI"
+      featureName="Manajemen Supplier & Pemasok Koperasi"
+      description="Kelola data vendor, kontak sales, alamat gudang distributor, dan riwayat faktur pembelian toko koperasi."
+    >
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Manajemen Supplier & Pemasok"
+          description="Kelola data distributor resmi, kontak perwakilan, alamat gudang, dan riwayat faktur pembelian toko."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="coop_suppliers"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="toolbarPrimary"
+                size="toolbar"
                 onClick={handleOpenCreate}
-                className="mt-4 px-5 py-2.5 rounded-full bg-emerald-600 text-white text-xs font-bold"
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
               >
-                + Tambah Supplier Pertama
-              </button>
-            )}
-          </div>
-        ) : (
-          filteredSuppliers.map((supplier) => (
-            <div
-              key={supplier.id}
-              onClick={() => handleOpenDetail(supplier)}
-              className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 transition-colors flex items-center gap-3 select-none"
-            >
-              {/* Avatar */}
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center shrink-0 font-black text-sm text-emerald-600 dark:text-emerald-400">
-                {getInitials(supplier.name)}
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Supplier
+              </Button>
+            </div>
+          }
+          instruction={{
+            title: "Panduan Manajemen Supplier",
+            description: "Gunakan modul ini untuk mengelola relasi mitra distributor dan histori pengadaan barang toko koperasi.",
+            items: [
+              { text: "Klik tombol Tambah Supplier untuk mendaftarkan vendor atau distributor baru." },
+              { text: "Gunakan kolom pencarian untuk menemukan supplier berdasarkan nama atau kontak." },
+              { text: "Klik kartu supplier untuk melihat detail alamat, catatan pengiriman, dan total pembelian." }
+            ]
+          }}
+        >
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="space-y-6">
+              {/* Analytics Stats Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <AnalyticsCard
+                  title="Total Supplier"
+                  value={String(stats.total)}
+                  icon={Building2}
+                  color="indigo"
+                />
+                <AnalyticsCard
+                  title="Supplier Aktif"
+                  value={String(stats.active)}
+                  icon={CheckCircle}
+                  color="emerald"
+                />
+                <AnalyticsCard
+                  title="Total Pengadaan"
+                  value={formatCurrency(stats.totalSpent)}
+                  icon={Package}
+                  color="blue"
+                />
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                  {supplier.name}
-                </h3>
-                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  {supplier.phone && (
-                    <span className="flex items-center gap-0.5">
-                      <Phone size={10} />
-                      {supplier.phone}
-                    </span>
-                  )}
-                  {supplier.totalPurchases > 0 && (
-                    <span className="flex items-center gap-0.5">
-                      <Package size={10} />
-                      {supplier.totalPurchases} faktur
-                    </span>
-                  )}
+              {/* Filter Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Input
+                  id="supplier-search-input"
+                  aria-label="Cari nama supplier atau kontak"
+                  placeholder="Cari nama supplier, kontak, atau nomor telepon..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const parsed = searchFilterSchema.safeParse({ search: e.target.value });
+                    if (parsed.success) {
+                      setSearchQuery(e.target.value);
+                    }
+                  }}
+                  className="pl-10 text-xs w-full rounded-xl"
+                />
+              </div>
+
+              {/* Supplier Cards Grid */}
+              {isLoading ? (
+                <div className="text-center py-20 text-xs text-slate-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent mx-auto mb-2" />
+                  Memuat data supplier...
                 </div>
-                {supplier.totalValue > 0 && (
-                  <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Rp {supplier.totalValue.toLocaleString('id-ID')}
-                  </p>
-                )}
-              </div>
-
-              {/* Action Buttons + Chevron */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => handleOpenEdit(supplier, e)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors active:scale-90"
-                  title="Edit Supplier"
-                >
-                  <Edit2 size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleConfirmDelete(supplier, e)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:scale-90"
-                  title="Nonaktifkan Supplier"
-                >
-                  <Trash2 size={15} />
-                </button>
-                <ChevronRight size={16} className="text-slate-300 dark:text-slate-700 ml-1" />
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* ─── Modal: Form Tambah / Edit Supplier ──────────────────────────── */}
-      <Modal
-        isOpen={isFormOpen}
-        onClose={() => { setIsFormOpen(false); setEditingSupplier(null); setFormData(EMPTY_FORM); }}
-        title={editingSupplier ? 'Edit Supplier' : 'Tambah Supplier Baru'}
-      >
-        <form onSubmit={handleSubmitForm} className="space-y-3 py-1 text-xs">
-          {/* Nama Supplier */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nama Supplier / Toko / Agen *
-            </label>
-            <input
-              type="text"
-              placeholder="Contoh: PT Sumber Makmur, UD Grosir Murah..."
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
-              required
-              autoFocus
-            />
-          </div>
-
-          {/* Kontak Person */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-              <User2 size={12} /> Nama Kontak Person
-            </label>
-            <input
-              type="text"
-              placeholder="Nama sales / PIC supplier"
-              value={formData.contact}
-              onChange={(e) => setFormData(prev => ({ ...prev, contact: e.target.value }))}
-              className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {/* Telepon */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Phone size={12} /> Telepon / WA
-              </label>
-              <input
-                type="tel"
-                placeholder="08xxxxxxxxxx"
-                value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Mail size={12} /> Email
-              </label>
-              <input
-                type="email"
-                placeholder="email@supplier.com"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              />
-            </div>
-          </div>
-
-          {/* Alamat */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-              <MapPin size={12} /> Alamat
-            </label>
-            <textarea
-              placeholder="Alamat lengkap supplier..."
-              value={formData.address}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none text-xs"
-            />
-          </div>
-
-          {/* Catatan */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Catatan Tambahan
-            </label>
-            <textarea
-              placeholder="Catatan khusus, jadwal pengiriman, dll..."
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none text-xs"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => { setIsFormOpen(false); setEditingSupplier(null); setFormData(EMPTY_FORM); }}
-              className="flex-1 h-11 rounded-full border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 text-xs active:scale-95 transition-transform cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 h-11 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform cursor-pointer disabled:opacity-60"
-            >
-              {isSubmitting ? (
-                <span>Menyimpan...</span>
+              ) : filteredSuppliers.length === 0 ? (
+                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+                  Tidak ada data supplier yang ditemukan.
+                </div>
               ) : (
-                <>
-                  <CheckCircle2 size={15} />
-                  <span>{editingSupplier ? 'Simpan Perubahan' : 'Tambahkan'}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </Modal>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredSuppliers?.map((supplier) => (
+                    <div
+                      key={supplier.id}
+                      onClick={() => {
+                        setSelectedSupplier(supplier);
+                        setIsDetailOpen(true);
+                      }}
+                      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:border-emerald-500/40 transition-all cursor-pointer space-y-4"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
+                            <Building2 size={18} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                              {supplier.name}
+                            </h4>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {supplier.contact ? `PIC: ${supplier.contact}` : 'Supplier Mitra'}
+                            </span>
+                          </div>
+                        </div>
 
-      {/* ─── Modal: Detail Supplier ───────────────────────────────────────── */}
-      <Modal
-        isOpen={isDetailOpen}
-        onClose={() => { setIsDetailOpen(false); setSelectedSupplier(null); }}
-        title={selectedSupplier?.name || 'Detail Supplier'}
-      >
-        {selectedSupplier && (
-          <div className="space-y-4 py-1 text-xs">
-            {/* Info Cards */}
-            <div className="space-y-2">
-              {selectedSupplier.contact && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                  <User2 size={15} className="text-slate-400 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Kontak Person</p>
-                    <p className="font-bold text-slate-800 dark:text-slate-200">{selectedSupplier.contact}</p>
-                  </div>
-                </div>
-              )}
-              {selectedSupplier.phone && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                  <Phone size={15} className="text-emerald-500 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Telepon / WhatsApp</p>
-                    <a href={`tel:${selectedSupplier.phone}`} className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {selectedSupplier.phone}
-                    </a>
-                  </div>
-                </div>
-              )}
-              {selectedSupplier.email && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                  <Mail size={15} className="text-blue-500 shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Email</p>
-                    <a href={`mailto:${selectedSupplier.email}`} className="font-bold text-blue-600 dark:text-blue-400">
-                      {selectedSupplier.email}
-                    </a>
-                  </div>
-                </div>
-              )}
-              {selectedSupplier.address && (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                  <MapPin size={15} className="text-rose-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Alamat</p>
-                    <p className="font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSupplier.address}</p>
-                  </div>
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleOpenEdit(supplier, e)}
+                            className="w-7 h-7 text-emerald-600"
+                            title="Edit"
+                          >
+                            <Edit2 size={13} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleConfirmDelete(supplier, e)}
+                            className="w-7 h-7 text-rose-500"
+                            title="Nonaktifkan"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        {supplier.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone size={12} className="text-emerald-500 shrink-0" />
+                            <span>{supplier.phone}</span>
+                          </div>
+                        )}
+                        {supplier.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail size={12} className="text-blue-500 shrink-0" />
+                            <span className="truncate">{supplier.email}</span>
+                          </div>
+                        )}
+                        {supplier.address && (
+                          <div className="flex items-center gap-2">
+                            <MapPin size={12} className="text-rose-500 shrink-0" />
+                            <span className="truncate">{supplier.address}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <span className="text-[10px] text-slate-400">
+                          {supplier.totalPurchases || 0} Transaksi Faktur
+                        </span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {formatCurrency(supplier.totalValue || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
+          </SectionCard>
+        </AcademicPageLayout>
 
-            {/* Purchase Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-center">
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wide">Jumlah Faktur</p>
-                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-1">{selectedSupplier.totalPurchases}</p>
+        {/* Lazy Loaded Modals */}
+        <Suspense fallback={null}>
+          {isFormOpen && (
+            <Modal
+              isOpen={isFormOpen}
+              onClose={() => { setIsFormOpen(false); setEditingSupplier(null); setFormData(EMPTY_FORM); }}
+              title={editingSupplier ? 'Edit Data Supplier' : 'Tambah Supplier Baru'}
+            >
+              <form onSubmit={handleSubmit} className="space-y-4 py-2 text-xs">
+                <div>
+                  <label htmlFor="sup-name" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nama Supplier / Badan Usaha <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    id="sup-name"
+                    aria-label="Nama supplier"
+                    placeholder="PT. Sumber Makmur / Toko Berkah"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="sup-contact" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Kontak Person (Sales / PIC)
+                  </label>
+                  <Input
+                    id="sup-contact"
+                    aria-label="Kontak person"
+                    placeholder="Bpk. Budi Santoso"
+                    value={formData.contact}
+                    onChange={(e) => setFormData(prev => ({ ...prev, contact: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="sup-phone" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      No. Telepon / WhatsApp
+                    </label>
+                    <Input
+                      id="sup-phone"
+                      aria-label="Nomor telepon"
+                      placeholder="08xxxxxxxxxx"
+                      value={formData.phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="sup-email" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Email
+                    </label>
+                    <Input
+                      id="sup-email"
+                      aria-label="Email supplier"
+                      type="email"
+                      placeholder="email@supplier.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="sup-address" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Alamat Lengkap
+                  </label>
+                  <textarea
+                    id="sup-address"
+                    aria-label="Alamat lengkap supplier"
+                    placeholder="Alamat kantor atau gudang..."
+                    value={formData.address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Batal</Button>
+                  <Button type="submit" variant="primary" disabled={isSubmitting}>
+                    {isSubmitting ? 'Menyimpan...' : editingSupplier ? 'Simpan Perubahan' : 'Tambahkan'}
+                  </Button>
+                </div>
+              </form>
+            </Modal>
+          )}
+
+          {isDetailOpen && selectedSupplier && (
+            <Modal
+              isOpen={isDetailOpen}
+              onClose={() => { setIsDetailOpen(false); setSelectedSupplier(null); }}
+              title={selectedSupplier.name}
+            >
+              <div className="space-y-4 py-2 text-xs">
+                <div className="space-y-2">
+                  {selectedSupplier.contact && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
+                      <User2 size={15} className="text-slate-400 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Kontak Person</p>
+                        <p className="font-bold text-slate-800 dark:text-slate-200">{selectedSupplier.contact}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedSupplier.phone && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
+                      <Phone size={15} className="text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">Telepon / WhatsApp</p>
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSupplier.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-center">
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Jumlah Faktur</p>
+                    <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{selectedSupplier.totalPurchases || 0}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Total Pembelian</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mt-1 truncate">
+                      {formatCurrency(selectedSupplier.totalValue || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDetailOpen(false)}>Tutup</Button>
+                </div>
               </div>
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Total Nilai</p>
-                <p className="text-sm font-black text-slate-700 dark:text-slate-300 mt-1 truncate">
-                  Rp {selectedSupplier.totalValue.toLocaleString('id-ID')}
+            </Modal>
+          )}
+
+          {isDeleteConfirmOpen && deletingSupplier && (
+            <Modal
+              isOpen={isDeleteConfirmOpen}
+              onClose={() => { setIsDeleteConfirmOpen(false); setDeletingSupplier(null); }}
+              title="Nonaktifkan Supplier?"
+            >
+              <div className="space-y-4 py-2 text-xs">
+                <p className="text-slate-600 dark:text-slate-400">
+                  Supplier <strong className="text-slate-900 dark:text-slate-100">{deletingSupplier.name}</strong> akan dinonaktifkan.
                 </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Batal</Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => deleteMutation.mutate(deletingSupplier.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? 'Memproses...' : 'Ya, Nonaktifkan'}
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {selectedSupplier.notes && (
-              <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30">
-                <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide mb-1">Catatan</p>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{selectedSupplier.notes}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  setIsDetailOpen(false);
-                  handleOpenEdit(selectedSupplier, e);
-                }}
-                className="flex-1 h-11 rounded-full border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
-              >
-                <Edit2 size={14} />
-                <span>Edit</span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  setIsDetailOpen(false);
-                  handleConfirmDelete(selectedSupplier, e);
-                }}
-                className="flex-1 h-11 rounded-full border-2 border-rose-400 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
-              >
-                <Trash2 size={14} />
-                <span>Nonaktifkan</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* ─── Modal: Konfirmasi Hapus / Nonaktifkan ───────────────────────── */}
-      <Modal
-        isOpen={isDeleteConfirmOpen}
-        onClose={() => { setIsDeleteConfirmOpen(false); setDeletingSupplier(null); }}
-        title="Nonaktifkan Supplier?"
-      >
-        <div className="space-y-4 py-2 text-xs">
-          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            Supplier <strong className="text-slate-900 dark:text-slate-100">{deletingSupplier?.name}</strong> akan dinonaktifkan.
-            Riwayat pembelian dari supplier ini tidak akan terhapus.
-          </p>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => { setIsDeleteConfirmOpen(false); setDeletingSupplier(null); }}
-              className="flex-1 h-11 rounded-full border border-slate-200 dark:border-slate-700 font-bold text-slate-600 dark:text-slate-300 text-xs active:scale-95 cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={() => deletingSupplier && deleteMutation.mutate(deletingSupplier.id)}
-              disabled={deleteMutation.isPending}
-              className="flex-1 h-11 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs active:scale-95 cursor-pointer disabled:opacity-60"
-            >
-              {deleteMutation.isPending ? 'Memproses...' : 'Ya, Nonaktifkan'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-    </div>
+            </Modal>
+          )}
+        </Suspense>
+      </InfraErrorBoundary>
+    </PremiumFeatureGate>
   );
-};
+});
 
 export default Suppliers;

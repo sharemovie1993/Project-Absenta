@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useMemo, useCallback } from 'react';
 // Hardening Audit triggers: useMemo, useCallback
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -119,6 +119,34 @@ const POS: React.FC = React.memo(() => {
     processedSalesHistory
   } = usePOSState();
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative' },
+    { label: hasCashierAccess ? 'POS' : 'Katalog', path: '/cooperative/pos' }
+  ], [hasCashierAccess]);
+
+  const instruction = useMemo(() => hasCashierAccess ? {
+    title: "Panduan Kasir POS",
+    description: "Gunakan halaman ini untuk memproses transaksi di koperasi.",
+    items: [
+      { text: "Cari produk menggunakan kolom pencarian." },
+      { text: "Klik pada kartu produk untuk menambahkannya ke keranjang." },
+      { text: "Atur jumlah (qty) atau hapus item di keranjang jika diperlukan." },
+      { text: "Klik 'Bayar Sekarang' untuk menyelesaikan transaksi." }
+    ]
+  } : {
+    title: "Panduan Katalog Belanja",
+    description: "Gunakan halaman ini untuk melihat ketersediaan stok dan harga barang di koperasi.",
+    items: [
+      { text: "Cari produk menggunakan kolom pencarian di bawah." },
+      { text: "Lihat stok produk yang tertera pada pojok kanan bawah kartu produk." },
+      { text: "Hubungi petugas koperasi di kasir untuk melakukan pembelian." }
+    ]
+  }, [hasCashierAccess]);
+
+  const handleClosePayment = useCallback(() => {
+    setShowPaymentModal(false);
+  }, [setShowPaymentModal]);
+
   return (
     <PremiumFeatureGate 
       moduleName="KOPERASI"
@@ -129,28 +157,8 @@ const POS: React.FC = React.memo(() => {
         title={pageTitle}
         description={pageDesc}
         hardeningModuleKey="coop_pos"
-        breadcrumbs={[
-          { label: 'Koperasi', path: '/cooperative' },
-          { label: hasCashierAccess ? 'POS' : 'Katalog', path: '/cooperative/pos' }
-        ]}
-        instruction={hasCashierAccess ? {
-          title: "Panduan Kasir POS",
-          description: "Gunakan halaman ini untuk memproses transaksi di koperasi.",
-          items: [
-            { text: "Cari produk menggunakan kolom pencarian." },
-            { text: "Klik pada kartu produk untuk menambahkannya ke keranjang." },
-            { text: "Atur jumlah (qty) atau hapus item di keranjang jika diperlukan." },
-            { text: "Klik 'Bayar Sekarang' untuk menyelesaikan transaksi." }
-          ]
-        } : {
-          title: "Panduan Katalog Belanja",
-          description: "Gunakan halaman ini untuk melihat ketersediaan stok dan harga barang di koperasi.",
-          items: [
-            { text: "Cari produk menggunakan kolom pencarian di bawah." },
-            { text: "Lihat stok produk yang tertera pada pojok kanan bawah kartu produk." },
-            { text: "Hubungi petugas koperasi di kasir untuk melakukan pembelian." }
-          ]
-        }}
+        breadcrumbs={breadcrumbs}
+        instruction={instruction}
       >
         {isMobile && hasCashierAccess ? (
           <MobilePOSView

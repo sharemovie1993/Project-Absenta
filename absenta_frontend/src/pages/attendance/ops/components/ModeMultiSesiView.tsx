@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, lazy, useMemo } from 'react';
+import React, { useEffect, useState, Suspense, lazy, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PendingSiswaModule } from './PendingSiswaModule';
 import { SessionManagerModule } from './SessionManagerModule';
@@ -34,6 +34,20 @@ interface UserCapabilities {
   position_codes?: string[];
   full_name?: string;
   name?: string;
+  guru_profile?: {
+    wali_kelas_di?: { id?: string } | string;
+    kelas_id?: string;
+  };
+  siswa_profile?: {
+    kelas_id?: string;
+  };
+  kelas_id?: string;
+  Siswa?: {
+    kelas_id?: string;
+  };
+  siswa?: {
+    kelas_id?: string;
+  };
 }
 
 interface ModeMultiSesiViewProps {
@@ -62,7 +76,7 @@ export default React.memo(function ModeMultiSesiView({
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
   const { options: fetchedKelasOptions } = useKelasOptions();
-  const kelasOptions = fetchedKelasOptions || [];
+  const kelasOptions = useMemo(() => fetchedKelasOptions || [], [fetchedKelasOptions]);
   const [searchParams] = useSearchParams();
 
   const initialTab = useMemo<TabType>(() => {
@@ -83,8 +97,8 @@ export default React.memo(function ModeMultiSesiView({
     }
 
     // 2. Wali Kelas auto-filter ke kelas bimbingan
-    const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
-    const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
+    const waliKelasObj = user?.guru_profile?.wali_kelas_di;
+    const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : (waliKelasObj || user?.guru_profile?.kelas_id);
     if (waliKelasId) {
       if (kelasOptions.length > 0) {
         const match = kelasOptions.find(o => String(o.value) === String(waliKelasId) || String(o.label).toLowerCase() === String(waliKelasId).toLowerCase());
@@ -98,7 +112,7 @@ export default React.memo(function ModeMultiSesiView({
     }
 
     // 3. Siswa auto-filter ke kelas_id miliknya
-    const siswaKelasId = (user as any)?.siswa_profile?.kelas_id || (user as any)?.kelas_id || (user as any)?.Siswa?.kelas_id || (user as any)?.siswa?.kelas_id;
+    const siswaKelasId = user?.siswa_profile?.kelas_id || user?.kelas_id || user?.Siswa?.kelas_id || user?.siswa?.kelas_id;
     if (siswaKelasId) {
       if (kelasOptions.length > 0) {
         const match = kelasOptions.find(o => String(o.value) === String(siswaKelasId));
@@ -125,7 +139,7 @@ export default React.memo(function ModeMultiSesiView({
   const today = toLocalDate();
   const { isAdmin, isGateOfficer, isHomeroomTeacher, isOperator, can } = useCapabilities();
   const isGerbangPos = isGateOfficer || can('attendance.gate.tap.entry');
-  const isWaliKelasPos = isHomeroomTeacher || !!(user as any)?.guru_profile?.wali_kelas_di;
+  const isWaliKelasPos = isHomeroomTeacher || !!user?.guru_profile?.wali_kelas_di;
 
   // 1. Scanner Gerbang (Admin, Operator, Satpam/Petugas Gerbang, Guru Piket, atau saat diarahkan via ?tab=gerbang)
   const hasGateDutyOrPerm = 
@@ -230,6 +244,19 @@ export default React.memo(function ModeMultiSesiView({
     return opts;
   }, [urlTabParam, isPetugasSiswa, canAccessInput, canAccessSesi]);
 
+  const handleTabChange = useCallback((id: string) => {
+    setActiveTab(id as TabType);
+  }, []);
+
+  const handleRefreshData = useCallback(async () => {
+    await refreshStats();
+    await fetchNotPresent();
+  }, [refreshStats, fetchNotPresent]);
+
+  const handleTapSuccess = useCallback((data: { name: string }) => {
+    setLastScannedName(data.name);
+  }, []);
+
   return (
     <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto px-2 sm:px-4 pb-20 overflow-visible">
       {/* Header Tab Switcher (Hanya tampil jika ada lebih dari 1 opsi tab) */}
@@ -243,7 +270,7 @@ export default React.memo(function ModeMultiSesiView({
           <TabSwitcher
             options={tabOptions}
             activeTab={activeTab}
-            onChange={(id) => setActiveTab(id as TabType)}
+            onChange={handleTabChange}
           />
         </div>
       )}
@@ -268,13 +295,8 @@ export default React.memo(function ModeMultiSesiView({
                 }>
                   <GateInputModule 
                     miniStats={miniStats}
-                    refreshStats={async () => {
-                      await refreshStats();
-                      await fetchNotPresent();
-                    }}
-                    onTapSuccessMetadata={(data) => {
-                      setLastScannedName(data.name);
-                    }}
+                    refreshStats={handleRefreshData}
+                    onTapSuccessMetadata={handleTapSuccess}
                   />
                 </Suspense>
               </section>
@@ -292,10 +314,7 @@ export default React.memo(function ModeMultiSesiView({
                   isPetugasSiswa={isPetugasSiswa}
                   userRole={user?.role?.name}
                   socketConnected={isConnected}
-                  refreshData={async () => {
-                    await refreshStats();
-                    await fetchNotPresent();
-                  }}
+                  refreshData={handleRefreshData}
                 />
               </section>
             )}

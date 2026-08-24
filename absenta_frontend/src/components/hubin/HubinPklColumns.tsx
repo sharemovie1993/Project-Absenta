@@ -11,8 +11,7 @@ import {
   Trash2,
   Edit
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { id as localeID } from 'date-fns/locale';
+import { formatDate } from '../../utils/layoutUtils';
 import { PklStatusBadge } from './PklStatusBadge';
 import { Button } from '../ui';
 import { HubinJurnalStatus } from '../../constants/HubinConstants';
@@ -49,7 +48,7 @@ export const getPenempatanColumns = ({
     sortable: true,
     render: (_value: unknown, row: SiswaPkl) => (
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-550 shrink-0">
+        <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0">
           <User size={18} />
         </div>
         <div>
@@ -68,7 +67,7 @@ export const getPenempatanColumns = ({
           <Building2 size={14} className="text-indigo-500" />
           {row.Mitra?.nama}
         </div>
-        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-550 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
+        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
           <span>Pmb: {row.Pembimbing?.nama_guru || 'Belum ditunjuk'}</span>
         </div>
       </div>
@@ -78,11 +77,11 @@ export const getPenempatanColumns = ({
     key: 'periode',
     label: 'Periode',
     render: (_value: unknown, row: SiswaPkl) => (
-      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-950/30 p-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-850 w-fit">
+      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs bg-slate-50 dark:bg-slate-950/30 p-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 w-fit">
         <Calendar size={14} className="text-slate-400 shrink-0" />
         <div>
-          <p className="font-medium">{format(new Date(row.tanggal_mulai), 'd MMM yyyy', { locale: localeID })}</p>
-          <p className="text-[10px] text-slate-450 mt-0.5">s/d {row.tanggal_selesai ? format(new Date(row.tanggal_selesai), 'd MMM yyyy', { locale: localeID }) : 'Selesai'}</p>
+          <p className="font-medium">{formatDate(row.tanggal_mulai, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">s/d {row.tanggal_selesai ? formatDate(row.tanggal_selesai, { day: '2-digit', month: 'short', year: 'numeric' }) : 'Selesai'}</p>
         </div>
       </div>
     )

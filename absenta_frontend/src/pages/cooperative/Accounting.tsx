@@ -1,3 +1,9 @@
+import { z } from 'zod';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
+import { generateImportTemplate } from '@/utils/export.utils';
+import { formatDate } from '@/utils/date.utils';
+import { SectionCard } from '../../components/ui/SectionCard';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import React, { useEffect, useState, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -18,10 +24,8 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 
-import {
-    JournalTable,
-    PayrollDeductionsTable
-} from '../../components/cooperative/accounting';
+import { JournalTable } from '../../components/cooperative/accounting';
+const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 
 // Lazy loaded component for performance optimization
@@ -42,6 +46,11 @@ const indonesianMonths = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const accountingFilterSchema = z.object({
+  month: z.number().min(1).max(12),
+  year: z.number().min(2020)
+});
+
 const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
     const { subscription } = useAuthStore();
@@ -52,6 +61,7 @@ const Accounting: React.FC = React.memo(() => {
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [isPrinting, setIsPrinting] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [showPostConfirm, setShowPostConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     
@@ -222,107 +232,111 @@ const Accounting: React.FC = React.memo(() => {
     }, [savingCategories, visibleColumns, hasLoans, showLoans]);
 
     const handleExportExcel = useCallback(() => {
-        const monthName = indonesianMonths[selectedMonth - 1]?.toUpperCase() || 'JANUARI';
-        const currentCoopName = coopSettings?.cooperative_name || 'KOPERASI SEKOLAH';
-        
-        // Build headers dynamically
-        const headerRow1 = ['NO', 'NAMA ANGGOTA'];
-        const headerRow2 = ['', ''];
-        
-        const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-        const cols: { wch: number }[] = [{ wch: 6 }, { wch: 30 }];
-        
-        let colIdx = 2;
-        
-        // Dynamic saving categories group
-        const activeCats = savingCategories?.filter(cat => visibleColumns[cat.code]) || [];
-        if (activeCats.length > 0) {
-            const startCol = colIdx;
-            activeCats?.forEach((cat, index) => {
-                if (index === 0) {
-                    headerRow1.push('SIMPANAN');
-                } else {
-                    headerRow1.push('');
-                }
-                headerRow2.push(cat.name.replace('Simpanan', '').trim().toUpperCase());
-                cols.push({ wch: 15 });
-                colIdx++;
-            });
-            merges.push({ s: { r: 4, c: startCol }, e: { r: 4, c: colIdx - 1 } });
-        }
-        
-        // Pinjaman Angsuran group
-        if (hasLoans && showLoans) {
-            const startCol = colIdx;
-            headerRow1.push('PINJAMAN ANGSURAN', '', '');
-            headerRow2.push('KE-', 'POKOK', 'JASA');
-            cols.push({ wch: 6 }, { wch: 15 }, { wch: 15 });
-            colIdx += 3;
-            merges.push({ s: { r: 4, c: startCol }, e: { r: 4, c: colIdx - 1 } });
-        }
-        
-        headerRow1.push('JUMLAH');
-        headerRow2.push('');
-        cols.push({ wch: 18 });
-        
-        // Merge rows 4 and 5 for double header format
-        merges.push({ s: { r: 4, c: 0 }, e: { r: 5, c: 0 } }); 
-        merges.push({ s: { r: 4, c: 1 }, e: { r: 5, c: 1 } }); 
-        merges.push({ s: { r: 4, c: colIdx }, e: { r: 5, c: colIdx } }); 
-        
-        // Build rows data
-        const rowData = payrollData?.map((item, idx) => {
-            const row: (string | number | null)[] = [idx + 1, item.name.toUpperCase()];
+        setIsExporting(true);
+        try {
+            const monthName = indonesianMonths[selectedMonth - 1]?.toUpperCase() || 'JANUARI';
+            const currentCoopName = coopSettings?.cooperative_name || 'KOPERASI SEKOLAH';
             
+            // Build headers dynamically
+            const headerRow1 = ['NO', 'NAMA ANGGOTA'];
+            const headerRow2 = ['', ''];
+            
+            const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+            const cols: { wch: number }[] = [{ wch: 6 }, { wch: 30 }];
+            
+            let colIdx = 2;
+            
+            // Dynamic saving categories group
+            const activeCats = savingCategories?.filter(cat => visibleColumns[cat.code]) || [];
+            if (activeCats.length > 0) {
+                const startCol = colIdx;
+                activeCats?.forEach((cat, index) => {
+                    if (index === 0) {
+                        headerRow1.push('SIMPANAN');
+                    } else {
+                        headerRow1.push('');
+                    }
+                    headerRow2.push(cat.name.replace('Simpanan', '').trim().toUpperCase());
+                    cols.push({ wch: 15 });
+                    colIdx++;
+                });
+                merges.push({ s: { r: 4, c: startCol }, e: { r: 4, c: colIdx - 1 } });
+            }
+            
+            // Pinjaman Angsuran group
+            if (hasLoans && showLoans) {
+                const startCol = colIdx;
+                headerRow1.push('PINJAMAN ANGSURAN', '', '');
+                headerRow2.push('KE-', 'POKOK', 'JASA');
+                cols.push({ wch: 6 }, { wch: 15 }, { wch: 15 });
+                colIdx += 3;
+                merges.push({ s: { r: 4, c: startCol }, e: { r: 4, c: colIdx - 1 } });
+            }
+            
+            headerRow1.push('JUMLAH');
+            headerRow2.push('');
+            cols.push({ wch: 18 });
+            
+            // Merge rows 4 and 5 for double header format
+            merges.push({ s: { r: 4, c: 0 }, e: { r: 5, c: 0 } }); 
+            merges.push({ s: { r: 4, c: 1 }, e: { r: 5, c: 1 } }); 
+            merges.push({ s: { r: 4, c: colIdx }, e: { r: 5, c: colIdx } }); 
+            
+            // Build rows data
+            const rowData = payrollData?.map((item, idx) => {
+                const row: (string | number | null)[] = [idx + 1, item.name.toUpperCase()];
+                
+                activeCats?.forEach(cat => {
+                    row.push(item.savings[cat.code] || null);
+                });
+                if (hasLoans && showLoans) {
+                    row.push(item.loan.installmentNo || null);
+                    row.push(item.loan.pokok || null);
+                    row.push(item.loan.jasa || null);
+                }
+                row.push(calculateItemTotal(item));
+                return row;
+            }) || [];
+            
+            // Build totals row
+            const totalRow: (string | number | null)[] = ['JUMLAH', ''];
             activeCats?.forEach(cat => {
-                row.push(item.savings[cat.code] || null);
+                const colTotal = payrollData.reduce((acc, curr) => acc + (Number(curr.savings[cat.code]) || 0), 0);
+                totalRow.push(colTotal);
             });
             if (hasLoans && showLoans) {
-                row.push(item.loan.installmentNo || null);
-                row.push(item.loan.pokok || null);
-                row.push(item.loan.jasa || null);
+                const totalPokok = payrollData.reduce((acc, curr) => acc + curr.loan.pokok, 0);
+                const totalJasa = payrollData.reduce((acc, curr) => acc + curr.loan.jasa, 0);
+                totalRow.push('', totalPokok, totalJasa);
             }
-            row.push(calculateItemTotal(item));
-            return row;
-        }) || [];
-        
-        // Build totals row
-        const totalRow: (string | number | null)[] = ['JUMLAH', ''];
-        let grandTotalSum = 0;
-        
-        activeCats?.forEach(cat => {
-            const catTotal = payrollData?.reduce((sum, item) => sum + (item.savings[cat.code] || 0), 0) || 0;
-            totalRow.push(catTotal || null);
-            grandTotalSum += catTotal;
-        });
-        if (hasLoans && showLoans) {
-            const totalLoanPokok = payrollData?.reduce((sum, item) => sum + item.loan.pokok, 0) || 0;
-            const totalLoanJasa = payrollData?.reduce((sum, item) => sum + item.loan.jasa, 0) || 0;
-            totalRow.push('', totalLoanPokok, totalLoanJasa);
-            grandTotalSum += totalLoanPokok + totalLoanJasa;
+            const grandTotal = payrollData.reduce((acc, curr) => acc + calculateItemTotal(curr), 0);
+            totalRow.push(grandTotal);
+            
+            // Assemble Worksheet
+            const worksheetData = [
+                ['REKAPITULASI POTONGAN GAJI ANGGOTA KOPERASI'],
+                [currentCoopName.toUpperCase()],
+                [`BULAN: ${monthName} ${selectedYear}`],
+                [],
+                headerRow1,
+                headerRow2,
+                ...rowData,
+                totalRow
+            ];
+            
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+            
+            worksheet['!merges'] = merges;
+            worksheet['!cols'] = cols;
+            
+            XLSX.writeFile(workbook, `Rekap_Potongan_Koperasi_${monthName}_${selectedYear}.xlsx`);
+            toast.success('Rekap potongan gaji koperasi berhasil diekspor ke Excel!');
+        } catch (err: unknown) {
+            toast.error('Gagal mengekspor data ke Excel.');
+        } finally {
+            setIsExporting(false);
         }
-        totalRow.push(grandTotalSum);
-        
-        const aoaData = [
-            [`POTONGAN KOPERASI ${coopSettings?.cooperative_name?.toUpperCase().replace('KOPERASI', '').trim() || 'SEKOLAH'}`],
-            [currentCoopName.toUpperCase()],
-            [`BULAN ${monthName} ${selectedYear}`],
-            [],
-            headerRow1,
-            headerRow2,
-            ...rowData,
-            totalRow
-        ] as (string | number | null | undefined)[][];
-        
-        const worksheet = XLSX.utils.aoa_to_sheet(aoaData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Potongan');
-        
-        worksheet['!merges'] = merges;
-        worksheet['!cols'] = cols;
-        
-        XLSX.writeFile(workbook, `Rekap_Potongan_Koperasi_${monthName}_${selectedYear}.xlsx`);
-        toast.success('Rekap potongan gaji koperasi berhasil diekspor ke Excel!');
     }, [selectedMonth, selectedYear, coopSettings, savingCategories, visibleColumns, hasLoans, showLoans, payrollData, calculateItemTotal]);
 
     const activeSavings = useMemo(() => {
@@ -384,7 +398,7 @@ const Accounting: React.FC = React.memo(() => {
             render: (_, row: unknown) => {
                 const item = row as BalanceSheetItem;
                 return (
-                    <span className="font-black text-slate-850 dark:text-white">
+                    <span className="font-black text-slate-800 dark:text-white">
                         Rp {Math.round(Number(item.balance)).toLocaleString('id-ID')}
                     </span>
                 );
@@ -457,34 +471,24 @@ const Accounting: React.FC = React.memo(() => {
                 breadcrumbs={breadcrumbs}
                 instruction={instruction}
             >
-            <div className="space-y-6 print:hidden">
-                <div className="flex border-b border-slate-200 dark:border-slate-800 space-x-6">
-                    <button 
-                        onClick={() => setActiveTab('journal')}
-                        className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${activeTab === 'journal' ? 'border-indigo-650 text-indigo-650 dark:text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'}`}
-                    >
-                        <BookOpen size={14} className="mr-2 inline" /> Jurnal Umum
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('balance')}
-                        className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${activeTab === 'balance' ? 'border-indigo-650 text-indigo-650 dark:text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'}`}
-                    >
-                        <FileText size={14} className="mr-2 inline" /> Neraca Saldo
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('payroll')}
-                        className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${activeTab === 'payroll' ? 'border-indigo-650 text-indigo-650 dark:text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'}`}
-                    >
-                        <Calendar size={14} className="mr-2 inline" /> Rekap Potongan Gaji
-                    </button>
-                </div>
+            <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">
+                <TabSwitcher
+                    tabs={[
+                        { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
+                        { id: 'balance', label: 'Neraca Saldo', icon: FileText },
+                        { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as 'journal' | 'balance' | 'payroll')}
+                />
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
-                        <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+                        <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
                     </div>
                 ) : (
-                    <Card className="p-0 border border-slate-150 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden rounded-2xl">
+                    <Card className="p-0 border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden rounded-2xl">
                         {activeTab === 'journal' && (
                             <JournalTable journals={journals} />
                         )}
@@ -513,133 +517,38 @@ const Accounting: React.FC = React.memo(() => {
                         )}
 
                         {activeTab === 'payroll' && (
-                            <div className="space-y-6 p-4">
-                                {/* Filters and Actions Header */}
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        <div className="flex items-center gap-2 w-48">
-                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Bulan:</span>
-                                            <SearchableSelect
-                                                id="select_month"
-                                                value={String(selectedMonth)}
-                                                onValueChange={(val) => setSelectedMonth(parseInt(val))}
-                                                options={monthOptions}
-                                                placeholder="Pilih Bulan..."
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-2 w-36">
-                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Tahun:</span>
-                                            <SearchableSelect
-                                                id="select_year"
-                                                value={String(selectedYear)}
-                                                onValueChange={(val) => setSelectedYear(parseInt(val))}
-                                                options={yearOptions}
-                                                placeholder="Pilih Tahun..."
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={handlePrintPayroll}
-                                            className="h-9 px-4 text-xs font-bold bg-white border border-slate-200 dark:border-slate-800 dark:bg-slate-955 text-indigo-650 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all rounded-xl shadow-sm flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <Printer size={13} className="text-indigo-650" /> Cetak Laporan
-                                        </button>
-                                        <button
-                                            onClick={handleExportExcel}
-                                            className="h-9 px-4 text-xs font-bold bg-indigo-650 text-white hover:bg-indigo-700 transition-all rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <Download size={13} /> Ekspor Excel
-                                        </button>
-                                        
-                                        {isOperator && (
-                                            isPosted ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="h-9 px-3 text-xs font-black bg-emerald-100 dark:bg-emerald-955/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl flex items-center gap-1">
-                                                        <CheckCircle2 size={13} /> Posted
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowCancelConfirm(true)}
-                                                        className="h-9 px-3 text-xs font-bold bg-rose-50 dark:bg-rose-955/20 border border-rose-250 dark:border-rose-900/30 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition-all rounded-xl shadow-sm flex items-center justify-center cursor-pointer"
-                                                        title="Batalkan Posting Gaji"
-                                                    >
-                                                        Batalkan
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowPostConfirm(true)}
-                                                    disabled={payrollData.length === 0}
-                                                    className="h-9 px-4 text-xs font-black bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-405 text-white transition-all rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
-                                                >
-                                                    <CheckCircle2 size={13} /> Posting Potongan Gaji
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Dynamic Column Selector */}
-                                <div className="flex flex-col lg:flex-row lg:items-center gap-y-3 gap-x-6 bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Potongan Simpanan:</span>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            {savingCategories?.map(cat => (
-                                                <label key={cat.code} className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        aria-label={`Potongan ${cat.name}`}
-                                                        checked={!!visibleColumns[cat.code]} 
-                                                        onChange={(e) => setVisibleColumns({...visibleColumns, [cat.code]: e.target.checked})}
-                                                        className="w-4 h-4 rounded text-indigo-655 focus:ring-indigo-500 border-slate-300 dark:border-slate-800 dark:bg-slate-955"
-                                                    />
-                                                    {cat.name.replace('Simpanan', '').trim()}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    
-                                    {hasLoans && <div className="hidden lg:block h-5 w-px bg-slate-300 dark:bg-slate-800"></div>}
- 
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        {hasLoans && (
-                                            <>
-                                                <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Potongan Pinjaman:</span>
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            aria-label="Tampilkan Pinjaman"
-                                                            checked={showLoans} 
-                                                            onChange={(e) => setShowLoans(e.target.checked)}
-                                                            className="w-4 h-4 rounded text-indigo-650 focus:ring-indigo-500 border-slate-300 dark:border-slate-800 dark:bg-slate-955"
-                                                        />
-                                                        Koperasi
-                                                    </label>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Table Display */}
-                                <PayrollDeductionsTable
+                            <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat rekapitulasi gaji...</div>}>
+                                <PayrollDeductionsSection
+                                    selectedMonth={selectedMonth}
+                                    setSelectedMonth={setSelectedMonth}
+                                    selectedYear={selectedYear}
+                                    setSelectedYear={setSelectedYear}
+                                    monthOptions={monthOptions}
+                                    yearOptions={yearOptions}
+                                    handlePrintPayroll={handlePrintPayroll}
+                                    handleExportExcel={handleExportExcel}
+                                    isOperator={isOperator}
+                                    isPosted={isPosted}
+                                    setShowCancelConfirm={setShowCancelConfirm}
+                                    setShowPostConfirm={setShowPostConfirm}
                                     payrollData={payrollData}
                                     savingCategories={savingCategories}
                                     visibleColumns={visibleColumns}
-                                    hasLoans={hasLoans}
+                                    setVisibleColumns={setVisibleColumns}
                                     showLoans={showLoans}
-                                    showSavings={showSavings}
-                                    savingsColSpan={savingsColSpan}
-                                    calculateItemTotal={calculateItemTotal}
+                                    setShowLoans={setShowLoans}
+                                    loading={loading}
+                                    payrollPage={payrollPage}
+                                    payrollLimit={payrollLimit}
+                                    setPayrollPage={setPayrollPage}
+                                    setPayrollLimit={setPayrollLimit}
                                 />
-                            </div>
+                            </Suspense>
                         )}
                     </Card>
                 )}
             </div>
+            </SectionCard>
 
             {/* Style Cetak */}
             <style dangerouslySetInnerHTML={{__html: `
@@ -692,19 +601,25 @@ const Accounting: React.FC = React.memo(() => {
                             Aksi ini akan mencatat transaksi setoran <b>Simpanan Wajib & Lainnya</b> serta <b>Angsuran Pinjaman</b> secara otomatis untuk seluruh {payrollData.length} anggota aktif pada bulan <b>{indonesianMonths[selectedMonth - 1]} {selectedYear}</b> ke dalam database, serta membukukan jurnal akuntansinya.
                         </div>
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-455">
+                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-500">
                         Pastikan Anda telah memeriksa kebenaran data pada tabel potongan sebelum melanjutkan. Transaksi yang telah diposting tidak dapat diubah secara manual satu per satu secara langsung.
                     </p>
-                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-850">
+                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <Button
-                            variant="outline"
+                            type="button"
+                            aria-label="Batal Posting"
+                            variant="toolbarOutline"
+                            size="toolbar"
                             onClick={() => setShowPostConfirm(false)}
                             disabled={postingLoading}
                         >
                             Batal
                         </Button>
                         <Button
-                            variant="primary"
+                            type="button"
+                            aria-label="Posting Sekarang"
+                            variant="toolbarPrimary"
+                            size="toolbar"
                             onClick={handlePostPayroll}
                             isLoading={postingLoading}
                         >
@@ -728,19 +643,25 @@ const Accounting: React.FC = React.memo(() => {
                             Aksi ini akan <b>menghapus seluruh transaksi setoran simpanan</b> dan <b>mengembalikan status pembayaran angsuran pinjaman</b> serta <b>menghapus jurnal umum</b> yang dicatatkan pada posting potongan gaji bulan <b>{indonesianMonths[selectedMonth - 1]} {selectedYear}</b>.
                         </div>
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-455">
+                    <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-500">
                         Tindakan ini akan mengembalikan saldo simpanan anggota dan tagihan pinjaman mereka ke keadaan semula sebelum proses posting dilakukan. Harap berhati-hati sebelum memproses.
                     </p>
-                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-850">
+                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <Button
-                            variant="outline"
+                            type="button"
+                            aria-label="Batal Pembatalan Posting"
+                            variant="toolbarOutline"
+                            size="toolbar"
                             onClick={() => setShowCancelConfirm(false)}
                             disabled={postingLoading}
                         >
                             Batal
                         </Button>
                         <Button
-                            variant="danger"
+                            type="button"
+                            aria-label="Ya, Batalkan Posting"
+                            variant="toolbarDanger"
+                            size="toolbar"
                             onClick={handleCancelPayroll}
                             isLoading={postingLoading}
                         >

@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, 
@@ -7,22 +8,83 @@ import {
   ClipboardPaste, 
   Sparkles, 
   Award, 
-  FileText, 
-  Download, 
   Printer,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
+import { Card, SectionCard, Button, SearchableSelect } from '@/components/ui';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { hubinApi } from '../../api/hubin.api';
 import { kelasApi } from '../../api/academic.api';
 import { toast } from 'sonner';
-
 import { useDudiOptions } from '../../hooks/useDudiOptions';
-import { useActivePklStudents } from '../../hooks/useActivePklStudents';
 
-export default React.memo(function InputNilaiPklPage() {
+// Zod Schema Validation Guard (Pilar 25)
+const scoreFieldSchema = z.number().min(0).max(100).nullable();
+const deskripsiTpSchema = z.object({
+  mitra_id: z.string().min(1, 'Mitra DUDI wajib dipilih'),
+  deskripsi_tp: z.string().min(5, 'Deskripsi TP minimal 5 karakter'),
+});
+
+interface ScoreRow {
+  siswa_pkl_id: string;
+  nama_siswa: string;
+  nis: string;
+  mitra_nama: string;
+  instruktur_nama: string;
+  penanggung_jawab_nama: string;
+  alamat_dudi: string;
+  hard_kompetensi_teknis: number | null;
+  hard_sop_k3lh: number | null;
+  hard_alur_bisnis: number | null;
+  soft_kedisiplinan: number | null;
+  soft_kerajinan_inisiatif: number | null;
+  soft_kerjasama: number | null;
+  soft_kejujuran: number | null;
+  soft_tanggung_jawab: number | null;
+  nilai_akhir_pkl: number | null;
+  predikat_pkl: string;
+  catatan_pkl: string;
+  sakit_pkl: number;
+  izin_pkl: number;
+  alpa_pkl: number;
+  nomor_sertifikat: string;
+  deskripsi_tp: string;
+}
+
+interface RawPklItem {
+  id?: string;
+  siswa_pkl_id?: string;
+  Siswa?: { nama_siswa?: string; nis?: string; nisn?: string };
+  siswa_nama?: string;
+  nis?: string;
+  Mitra?: { nama?: string; alamat?: string };
+  mitra_nama?: string;
+  instruktur_nama?: string;
+  penanggung_jawab_nama?: string;
+  alamat_dudi?: string;
+  hard_kompetensi_teknis?: number | null;
+  hard_sop_k3lh?: number | null;
+  hard_alur_bisnis?: number | null;
+  soft_kedisiplinan?: number | null;
+  soft_kerajinan_inisiatif?: number | null;
+  soft_kerjasama?: number | null;
+  soft_kejujuran?: number | null;
+  soft_tanggung_jawab?: number | null;
+  nilai_akhir_pkl?: number | null;
+  predikat_pkl?: string;
+  catatan_pkl?: string;
+  sakit_pkl?: number;
+  izin_pkl?: number;
+  alpa_pkl?: number;
+  nomor_sertifikat?: string;
+  deskripsi_tp?: string;
+}
+
+export const InputNilaiPklPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<'nilai' | 'deskripsi'>('nilai');
@@ -30,20 +92,28 @@ export default React.memo(function InputNilaiPklPage() {
   const [selectedMitra, setSelectedMitra] = useState('');
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteRawText, setPasteRawText] = useState('');
-  const [selectedSiswaSertifikat, setSelectedSiswaSertifikat] = useState<any>(null);
+  const [selectedSiswaSertifikat, setSelectedSiswaSertifikat] = useState<ScoreRow | null>(null);
 
   // Deskripsi TP Form State
   const [deskripsiTpText, setDeskripsiTpText] = useState('');
 
   // Fetch Classes
-  const { data: classes } = useQuery({
+  const { data: classesData, isLoading: isLoadingClasses } = useQuery({
     queryKey: ['classes'],
     queryFn: () => kelasApi.getAll()
   });
 
+  const classOptions = useMemo(() => {
+    const raw = (classesData as { data?: Array<{ id: string; nama_kelas: string }> })?.data || 
+                (Array.isArray(classesData) ? classesData : []);
+    return (raw ?? [])?.map((k: { id: string; nama_kelas: string }) => ({
+      value: k.id,
+      label: k.nama_kelas
+    }));
+  }, [classesData]);
+
   // Integrated Custom Hooks (Pilar 31 Data Layer)
-  const { options: mitraOptions, rawList: rawMitraList } = useDudiOptions();
-  const { rawList: activePklStudentsList, isLoading: isLoadingPkl } = useActivePklStudents({ kelas_id: selectedKelas });
+  const { options: mitraOptions } = useDudiOptions();
 
   const { data: pklRekap, isLoading: isLoadingRekap } = useQuery({
     queryKey: ['pkl-rekap', selectedKelas],
@@ -51,24 +121,25 @@ export default React.memo(function InputNilaiPklPage() {
   });
 
   // Fetch Setting Deskripsi TP List
-  const { data: deskripsiList } = useQuery({
+  const { data: deskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
     queryKey: ['deskripsi-tp-list', selectedMitra],
     queryFn: () => hubinApi.getSettingDeskripsiPklList({ mitra_id: selectedMitra || undefined }),
   });
 
   // Scores Grid State
-  const [scores, setScores] = useState<Array<any>>([]);
+  const [scores, setScores] = useState<ScoreRow[]>([]);
 
   useEffect(() => {
-    const rawList = Array.isArray(pklRekap?.data) 
-      ? pklRekap.data 
-      : Array.isArray(pklRekap) 
-      ? pklRekap 
-      : (pklRekap as any)?.data?.list || [];
+    const rawResponse = pklRekap as { data?: RawPklItem[] | { list?: RawPklItem[] } } | RawPklItem[] | undefined;
+    const rawList = Array.isArray((rawResponse as { data?: RawPklItem[] })?.data) 
+      ? (rawResponse as { data: RawPklItem[] }).data 
+      : Array.isArray(rawResponse) 
+      ? rawResponse 
+      : (rawResponse as { data?: { list?: RawPklItem[] } })?.data?.list || [];
 
     if (Array.isArray(rawList)) {
-      setScores(rawList.map((item: any) => ({
-        siswa_pkl_id: item.id,
+      setScores(rawList?.map((item: RawPklItem) => ({
+        siswa_pkl_id: item.id || item.siswa_pkl_id || '',
         nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
         nis: item.Siswa?.nis || item.nis || '',
         mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
@@ -102,8 +173,8 @@ export default React.memo(function InputNilaiPklPage() {
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       toast.success('Nilai PKL & data sertifikat sekelas berhasil disimpan!');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Gagal menyimpan nilai PKL');
+    onError: () => {
+      toast.error('Gagal menyimpan nilai PKL');
     }
   });
 
@@ -115,20 +186,21 @@ export default React.memo(function InputNilaiPklPage() {
       toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil disimpan!');
       setDeskripsiTpText('');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Gagal menyimpan deskripsi TP PKL');
+    onError: () => {
+      toast.error('Gagal menyimpan deskripsi TP PKL');
     }
   });
 
   // Handle Score Input Change with Auto-Calc
-  const handleScoreChange = (index: number, field: string, val: any) => {
+  const handleScoreChange = useCallback((index: number, field: keyof ScoreRow, val: string) => {
     setScores(prev => {
       const clone = [...prev];
       const target = { ...clone[index] };
 
       if (field.startsWith('hard_') || field.startsWith('soft_')) {
-        const num = val === '' ? null : Math.min(100, Math.max(0, parseFloat(val) || 0));
-        target[field] = num;
+        const parsedVal = val === '' ? null : Math.min(100, Math.max(0, parseFloat(val) || 0));
+        scoreFieldSchema.parse(parsedVal);
+        (target as Record<string, unknown>)[field] = parsedVal;
 
         // Auto Calc Nilai Akhir PKL & Predikat
         const gradeList = [
@@ -139,429 +211,463 @@ export default React.memo(function InputNilaiPklPage() {
           target.soft_kerajinan_inisiatif,
           target.soft_kerjasama,
           target.soft_kejujuran,
-          target.soft_tanggung_jawab,
-        ].filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+          target.soft_tanggung_jawab
+        ].filter(g => typeof g === 'number' && g !== null) as number[];
 
         if (gradeList.length > 0) {
-          const sum = gradeList.reduce((a, b) => a + b, 0);
-          target.nilai_akhir_pkl = Number((sum / gradeList.length).toFixed(2));
+          const avg = gradeList.reduce((a, b) => a + b, 0) / gradeList.length;
+          target.nilai_akhir_pkl = Math.round(avg * 10) / 10;
 
-          if (target.nilai_akhir_pkl >= 90) target.predikat_pkl = 'Sangat Baik';
+          if (target.nilai_akhir_pkl >= 90) target.predikat_pkl = 'Amat Baik';
           else if (target.nilai_akhir_pkl >= 80) target.predikat_pkl = 'Baik';
           else if (target.nilai_akhir_pkl >= 70) target.predikat_pkl = 'Cukup';
           else target.predikat_pkl = 'Kurang';
+        } else {
+          target.nilai_akhir_pkl = null;
+          target.predikat_pkl = '-';
         }
       } else {
-        target[field] = val;
+        (target as Record<string, unknown>)[field] = val;
       }
 
       clone[index] = target;
       return clone;
     });
-  };
+  }, []);
 
-  const handleSaveAll = () => {
-    if (!selectedKelas) {
-      toast.error('Pilih kelas terlebih dahulu');
-      return;
-    }
-    saveBatchMutation.mutate(scores);
-  };
-
-  // Process Excel Paste (TSV)
-  const handleProcessPaste = () => {
-    if (!pasteRawText.trim()) {
-      toast.error('Data paste masih kosong');
-      return;
-    }
+  const handleProcessPaste = useCallback(() => {
+    if (!pasteRawText.trim()) return;
     const lines = pasteRawText.trim().split('\n');
-    let updatedCount = 0;
+    let matchedCount = 0;
 
     setScores(prev => {
       const clone = [...prev];
       lines.forEach(line => {
-        const parts = line.split('\t').map(p => p.trim());
-        if (parts.length < 2) return;
+        const parts = line.split('\t')?.map(p => p.trim());
+        if (parts.length >= 2) {
+          const nis = parts[0];
+          const idx = clone.findIndex(s => s.nis === nis);
+          if (idx !== -1) {
+            matchedCount++;
+            const t = { ...clone[idx] };
+            if (parts[1] !== undefined && parts[1] !== '') t.hard_kompetensi_teknis = parseFloat(parts[1]) || null;
+            if (parts[2] !== undefined && parts[2] !== '') t.hard_sop_k3lh = parseFloat(parts[2]) || null;
+            if (parts[3] !== undefined && parts[3] !== '') t.hard_alur_bisnis = parseFloat(parts[3]) || null;
+            if (parts[4] !== undefined && parts[4] !== '') t.soft_kedisiplinan = parseFloat(parts[4]) || null;
+            if (parts[5] !== undefined && parts[5] !== '') t.soft_kerajinan_inisiatif = parseFloat(parts[5]) || null;
+            if (parts[6] !== undefined && parts[6] !== '') t.soft_kerjasama = parseFloat(parts[6]) || null;
+            if (parts[7] !== undefined && parts[7] !== '') t.soft_kejujuran = parseFloat(parts[7]) || null;
+            if (parts[8] !== undefined && parts[8] !== '') t.soft_tanggung_jawab = parseFloat(parts[8]) || null;
+            if (parts[9] !== undefined && parts[9] !== '') t.catatan_pkl = parts[9];
 
-        const nisOrNama = parts[0].toLowerCase();
-        const idx = clone.findIndex(
-          s => s.nis.toLowerCase() === nisOrNama || s.nama_siswa.toLowerCase().includes(nisOrNama)
-        );
+            // Re-calculate
+            const gradeList = [
+              t.hard_kompetensi_teknis,
+              t.hard_sop_k3lh,
+              t.hard_alur_bisnis,
+              t.soft_kedisiplinan,
+              t.soft_kerajinan_inisiatif,
+              t.soft_kerjasama,
+              t.soft_kejujuran,
+              t.soft_tanggung_jawab
+            ].filter(g => typeof g === 'number' && g !== null) as number[];
 
-        if (idx !== -1) {
-          const target = { ...clone[idx] };
-          if (parts[1]) target.hard_kompetensi_teknis = parseFloat(parts[1]) || null;
-          if (parts[2]) target.hard_sop_k3lh = parseFloat(parts[2]) || null;
-          if (parts[3]) target.hard_alur_bisnis = parseFloat(parts[3]) || null;
-          if (parts[4]) target.soft_kedisiplinan = parseFloat(parts[4]) || null;
-          if (parts[5]) target.soft_kerajinan_inisiatif = parseFloat(parts[5]) || null;
-          if (parts[6]) target.soft_kerjasama = parseFloat(parts[6]) || null;
-          if (parts[7]) target.soft_kejujuran = parseFloat(parts[7]) || null;
-          if (parts[8]) target.soft_tanggung_jawab = parseFloat(parts[8]) || null;
-          if (parts[9]) target.catatan_pkl = parts[9];
+            if (gradeList.length > 0) {
+              const avg = gradeList.reduce((a, b) => a + b, 0) / gradeList.length;
+              t.nilai_akhir_pkl = Math.round(avg * 10) / 10;
+              if (t.nilai_akhir_pkl >= 90) t.predikat_pkl = 'Amat Baik';
+              else if (t.nilai_akhir_pkl >= 80) t.predikat_pkl = 'Baik';
+              else if (t.nilai_akhir_pkl >= 70) t.predikat_pkl = 'Cukup';
+              else t.predikat_pkl = 'Kurang';
+            }
 
-          // Re-calc
-          const gradeList = [
-            target.hard_kompetensi_teknis,
-            target.hard_sop_k3lh,
-            target.hard_alur_bisnis,
-            target.soft_kedisiplinan,
-            target.soft_kerajinan_inisiatif,
-            target.soft_kerjasama,
-            target.soft_kejujuran,
-            target.soft_tanggung_jawab,
-          ].filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
-
-          if (gradeList.length > 0) {
-            const sum = gradeList.reduce((a, b) => a + b, 0);
-            target.nilai_akhir_pkl = Number((sum / gradeList.length).toFixed(2));
-            if (target.nilai_akhir_pkl >= 90) target.predikat_pkl = 'Sangat Baik';
-            else if (target.nilai_akhir_pkl >= 80) target.predikat_pkl = 'Baik';
-            else if (target.nilai_akhir_pkl >= 70) target.predikat_pkl = 'Cukup';
-            else target.predikat_pkl = 'Kurang';
+            clone[idx] = t;
           }
-
-          clone[idx] = target;
-          updatedCount++;
         }
       });
       return clone;
     });
 
-    toast.success(`Berhasil mencocokkan & memperbarui ${updatedCount} baris data PKL dari Excel!`);
+    toast.success(`Berhasil memetakan ${matchedCount} data siswa dari Excel!`);
     setShowPasteModal(false);
     setPasteRawText('');
-  };
+  }, [pasteRawText]);
 
-  // Open Certificate Preview Modal
-  const handleOpenCertificate = async (siswaPklId: string) => {
-    try {
-      const res = await hubinApi.getSertifikatPklData(siswaPklId);
-      setSelectedSiswaSertifikat(res.data);
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memuat data sertifikat');
+  const handleSaveBatch = useCallback(() => {
+    if (scores.length === 0) {
+      toast.error('Tidak ada data siswa untuk disimpan');
+      return;
     }
-  };
+    saveBatchMutation.mutate({
+      kelas_id: selectedKelas || undefined,
+      scores: scores?.map(s => ({
+        siswa_pkl_id: s.siswa_pkl_id,
+        hard_kompetensi_teknis: s.hard_kompetensi_teknis,
+        hard_sop_k3lh: s.hard_sop_k3lh,
+        hard_alur_bisnis: s.hard_alur_bisnis,
+        soft_kedisiplinan: s.soft_kedisiplinan,
+        soft_kerajinan_inisiatif: s.soft_kerajinan_inisiatif,
+        soft_kerjasama: s.soft_kerjasama,
+        soft_kejujuran: s.soft_kejujuran,
+        soft_tanggung_jawab: s.soft_tanggung_jawab,
+        nilai_akhir_pkl: s.nilai_akhir_pkl,
+        predikat_pkl: s.predikat_pkl,
+        catatan_pkl: s.catatan_pkl,
+        sakit_pkl: s.sakit_pkl,
+        izin_pkl: s.izin_pkl,
+        alpa_pkl: s.alpa_pkl,
+        nomor_sertifikat: s.nomor_sertifikat,
+        instruktur_nama: s.instruktur_nama,
+        penanggung_jawab_nama: s.penanggung_jawab_nama,
+        alamat_dudi: s.alamat_dudi
+      }))
+    });
+  }, [scores, selectedKelas, saveBatchMutation]);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Hubin', href: '/hubin/dashboard' },
-    { label: 'Penilaian & Sertifikat PKL (Semester 5)' }
+    { label: 'Hubin & PKL', path: '/hubin/workspace' },
+    { label: 'Penilaian PKL' }
+  ], []);
+
+  const deskripsiListData = useMemo(() => {
+    const raw = (deskripsiList as { data?: Array<{ id: string; Mitra?: { nama: string }; deskripsi_tp: string }> })?.data;
+    return Array.isArray(raw) ? raw : [];
+  }, [deskripsiList]);
+
+  const tabs = useMemo(() => [
+    { id: 'nilai', label: 'Entri Nilai & Sertifikat Siswa' },
+    { id: 'deskripsi', label: 'Pengaturan Deskripsi TP DUDI' }
   ], []);
 
   return (
-    <AcademicPageLayout
-      title="Rapor & Sertifikat PKL (Semester 5)"
-      description="Pengisian Nilai Hard Skill, Soft Skill, dan Penerbitan Sertifikat PKL Resmi DUDI."
-      breadcrumbs={breadcrumbs}
-      hardeningModuleKey="inputnilaipklpage"
+    <PremiumFeatureGate
+      moduleName="HUBIN"
+      featureName="Penilaian & Sertifikasi PKL Siswa"
+      description="Kelola penilaian hard skills, soft skills, catatan instruktur industri, dan sertifikat resmi PKL siswa."
     >
-      <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-        
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-          <button
-            onClick={() => setActiveTab('nilai')}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
-              activeTab === 'nilai'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            <Award size={16} />
-            Input Nilai PKL Sekelas
-          </button>
-          <button
-            onClick={() => setActiveTab('deskripsi')}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
-              activeTab === 'deskripsi'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            <FileText size={16} />
-            Setting Deskripsi TP DUDI (Kaprog/Kajur)
-          </button>
-        </div>
+      <InfraErrorBoundary>
+        <AcademicPageLayout
+          title="Penilaian & Sertifikasi Praktik Kerja Lapangan (PKL)"
+          description="Entri nilai hard skills & soft skills, catatan instruktur DUDI, serta pratinjau sertifikat resmi PKL siswa."
+          breadcrumbs={breadcrumbs}
+          hardeningModuleKey="hubin_input_nilai_pkl"
+          topSlot={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleSaveBatch}
+                disabled={saveBatchMutation.isPending || scores.length === 0}
+                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {saveBatchMutation.isPending ? 'Menyimpan...' : 'Simpan Nilai PKL'}
+              </Button>
+            </div>
+          }
+          instruction={{
+            title: "Panduan Penilaian PKL",
+            description: "Gunakan modul ini untuk memasukkan capaian kompetensi siswa di DUDI mitra.",
+            items: [
+              { text: "Pilih kelas untuk memuat daftar siswa yang sedang atau telah menyelesaikan masa PKL." },
+              { text: "Gunakan fitur Paste dari Excel untuk mempercepat entri massal nilai dari instruktur industri." },
+              { text: "Klik tombol Sertifikat pada baris siswa untuk mencetak sertifikat resmi PKL." }
+            ]
+          }}
+        >
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="space-y-6">
+              {/* Tab Switcher Component */}
+              <TabSwitcher
+                activeTab={activeTab}
+                onChange={(t) => setActiveTab(t as 'nilai' | 'deskripsi')}
+                tabs={tabs}
+              />
 
-        {activeTab === 'nilai' ? (
-          <div className="space-y-6">
-            
-            {/* Filter Kelas */}
-            <Card className="p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1 w-full sm:w-80">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                    <Layers size={12} /> Pilih Kelas XII Rombel PKL
-                  </label>
-                  <select
-                    value={selectedKelas}
-                    onChange={(e) => setSelectedKelas(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Pilih Rombel Kelas --</option>
-                    {classes?.data?.map((k: any) => (
-                      <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                    ))}
-                  </select>
-                </div>
+              {activeTab === 'nilai' ? (
+                <div className="space-y-4">
+                  {/* Filter & Action Card */}
+                  <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                      <div className="flex-1 max-w-xs">
+                        <label htmlFor="filter-kelas-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                          Filter Kelas Siswa
+                        </label>
+                        <SearchableSelect
+                          id="filter-kelas-pkl"
+                          aria-label="Pilih kelas siswa PKL"
+                          value={selectedKelas}
+                          onValueChange={setSelectedKelas}
+                          options={[
+                            { value: '', label: '-- Semua Kelas PKL --' },
+                            ...classOptions
+                          ]}
+                          placeholder="Pilih Kelas"
+                        />
+                      </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    onClick={() => setShowPasteModal(true)}
-                    variant="outline"
-                    className="border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 rounded-xl font-bold text-xs"
-                  >
-                    <ClipboardPaste className="w-4 h-4 mr-1.5" />
-                    Paste dari Excel
-                  </Button>
-                  <Button
-                    onClick={handleSaveAll}
-                    disabled={saveBatchMutation.isPending || scores.length === 0}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-100"
-                  >
-                    <Save className="w-4 h-4 mr-1.5" />
-                    SIMPAN SEMUA NILAI PKL
-                  </Button>
-                </div>
-              </div>
-            </Card>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPasteModal(true)}
+                          className="flex items-center gap-1.5 text-xs font-bold rounded-xl"
+                        >
+                          <ClipboardPaste size={14} className="text-emerald-500" />
+                          Paste dari Excel
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
 
-            {/* Grid Table Input Nilai PKL */}
-            <Card className="p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
-              {isLoadingRekap || isLoadingPkl ? (
-                <div className="text-center py-20 text-slate-400 text-xs italic">Menarik data rekap penempatan PKL...</div>
-              ) : scores.length === 0 ? (
-                <div className="text-center py-20 text-slate-400 text-xs italic">
-                  {selectedKelas ? 'Belum ada siswa yang ditempatkan PKL di rombel ini.' : 'Belum ada data penempatan PKL tersedia.'}
+                  {/* Grid Table */}
+                  <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">
+                    {isLoadingRekap ? (
+                      <div className="text-center py-20 text-xs text-slate-400">
+                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-2" />
+                        Memuat data penilaian PKL siswa...
+                      </div>
+                    ) : scores.length === 0 ? (
+                      <div className="text-center py-20 text-xs text-slate-400">
+                        Belum ada data penempatan PKL aktif pada kelas ini.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto max-w-full">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-100 dark:border-slate-800">
+                            <tr>
+                              <th className="p-3 text-center w-12">No</th>
+                              <th className="p-3 min-w-[160px]">Siswa & Mitra DUDI</th>
+                              <th className="p-3 text-center min-w-[80px]">Teknis</th>
+                              <th className="p-3 text-center min-w-[80px]">K3LH</th>
+                              <th className="p-3 text-center min-w-[80px]">Bisnis</th>
+                              <th className="p-3 text-center min-w-[80px]">Disiplin</th>
+                              <th className="p-3 text-center min-w-[80px]">Kerjasama</th>
+                              <th className="p-3 text-center min-w-[80px]">Tanggung Jwb</th>
+                              <th className="p-3 text-center min-w-[80px]">Nilai Akhir</th>
+                              <th className="p-3 text-center min-w-[80px]">Predikat</th>
+                              <th className="p-3 min-w-[140px]">Catatan Evaluasi</th>
+                              <th className="p-3 text-center min-w-[100px]">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {scores?.map((score, index) => (
+                              <tr key={score.siswa_pkl_id || index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                <td className="p-3 text-center font-mono font-bold text-slate-400">{index + 1}</td>
+                                <td className="p-3">
+                                  <p className="font-bold text-slate-900 dark:text-white">{score.nama_siswa}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono">NIS: {score.nis}</p>
+                                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-tek-${index}`}
+                                    aria-label={`Nilai teknis ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.hard_kompetensi_teknis ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'hard_kompetensi_teknis', e.target.value)}
+                                    className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-k3-${index}`}
+                                    aria-label={`Nilai K3LH ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.hard_sop_k3lh ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'hard_sop_k3lh', e.target.value)}
+                                    className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-bis-${index}`}
+                                    aria-label={`Nilai alur bisnis ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.hard_alur_bisnis ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'hard_alur_bisnis', e.target.value)}
+                                    className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-dis-${index}`}
+                                    aria-label={`Nilai kedisiplinan ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.soft_kedisiplinan ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'soft_kedisiplinan', e.target.value)}
+                                    className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-ker-${index}`}
+                                    aria-label={`Nilai kerjasama ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.soft_kerjasama ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'soft_kerjasama', e.target.value)}
+                                    className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <input
+                                    id={`score-tgj-${index}`}
+                                    aria-label={`Nilai tanggung jawab ${score.nama_siswa}`}
+                                    type="number" min={0} max={100}
+                                    value={score.soft_tanggung_jawab ?? ''}
+                                    onChange={(e) => handleScoreChange(index, 'soft_tanggung_jawab', e.target.value)}
+                                    className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
+                                  {score.nilai_akhir_pkl ?? '-'}
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
+                                    {score.predikat_pkl}
+                                  </span>
+                                </td>
+
+                                <td className="p-2">
+                                  <input
+                                    id={`score-cat-${index}`}
+                                    aria-label={`Catatan evaluasi ${score.nama_siswa}`}
+                                    type="text"
+                                    placeholder="Catatan evaluasi..."
+                                    value={score.catatan_pkl}
+                                    onChange={(e) => handleScoreChange(index, 'catatan_pkl', e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-medium p-1.5"
+                                  />
+                                </td>
+
+                                <td className="p-2 text-center">
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={() => setSelectedSiswaSertifikat(score)}
+                                    className="text-[10px] font-bold flex items-center gap-1 mx-auto"
+                                  >
+                                    <Printer size={12} />
+                                    Sertifikat
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </Card>
                 </div>
               ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse min-w-[1200px]">
-                      <thead>
-                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-black tracking-wider text-[9px]">
-                          <th className="py-2.5 px-2">No</th>
-                          <th className="py-2.5 px-2">Siswa & DUDI</th>
-                          <th className="py-2.5 px-1 text-center bg-indigo-50/40 dark:bg-indigo-950/20" colSpan={3}>HARD SKILLS (0-100)</th>
-                          <th className="py-2.5 px-1 text-center bg-emerald-50/40 dark:bg-emerald-950/20" colSpan={5}>SOFT SKILLS (0-100)</th>
-                          <th className="py-2.5 px-2 text-center text-indigo-600 dark:text-indigo-400">NILAI AKHIR</th>
-                          <th className="py-2.5 px-2 text-center">PREDIKAT</th>
-                          <th className="py-2.5 px-2">Catatan Evaluasi</th>
-                          <th className="py-2.5 px-2 text-center">SERTIFIKAT</th>
-                        </tr>
-                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[8px] font-bold">
-                          <th></th>
-                          <th></th>
-                          <th className="text-center px-1">Teknis</th>
-                          <th className="text-center px-1">K3LH</th>
-                          <th className="text-center px-1">Bisnis</th>
-                          <th className="text-center px-1">Disiplin</th>
-                          <th className="text-center px-1">Kerajinan</th>
-                          <th className="text-center px-1">Teamwork</th>
-                          <th className="text-center px-1">Jujur</th>
-                          <th className="text-center px-1">TanggungJwb</th>
-                          <th></th>
-                          <th></th>
-                          <th></th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {scores.map((score, index) => (
-                          <tr key={score.siswa_pkl_id} className="border-b border-slate-50 dark:border-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                            <td className="py-3 px-2 font-bold text-slate-400">{index + 1}</td>
-                            <td className="py-3 px-2 font-semibold text-slate-800 dark:text-slate-200 max-w-xs">
-                              {score.nama_siswa}
-                              <span className="block text-[9px] text-indigo-600 dark:text-indigo-400 font-bold truncate">🏢 {score.mitra_nama}</span>
-                            </td>
-
-                            {/* Hard Skills */}
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.hard_kompetensi_teknis ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'hard_kompetensi_teknis', e.target.value)}
-                                className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.hard_sop_k3lh ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'hard_sop_k3lh', e.target.value)}
-                                className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.hard_alur_bisnis ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'hard_alur_bisnis', e.target.value)}
-                                className="w-14 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </td>
-
-                            {/* Soft Skills */}
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.soft_kedisiplinan ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'soft_kedisiplinan', e.target.value)}
-                                className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-emerald-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.soft_kerajinan_inisiatif ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'soft_kerajinan_inisiatif', e.target.value)}
-                                className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-emerald-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.soft_kerjasama ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'soft_kerjasama', e.target.value)}
-                                className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-emerald-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.soft_kejujuran ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'soft_kejujuran', e.target.value)}
-                                className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-emerald-500"
-                              />
-                            </td>
-                            <td className="py-2 px-1">
-                              <input
-                                type="number" min={0} max={100}
-                                value={score.soft_tanggung_jawab ?? ''}
-                                onChange={(e) => handleScoreChange(index, 'soft_tanggung_jawab', e.target.value)}
-                                className="w-14 bg-emerald-50/50 dark:bg-emerald-950/20 border-none rounded-lg text-xs font-bold text-center p-1.5 focus:ring-1 focus:ring-emerald-500"
-                              />
-                            </td>
-
-                            {/* Nilai Akhir & Predikat */}
-                            <td className="py-2 px-2 text-center font-black text-sm text-indigo-700 dark:text-indigo-300 bg-indigo-100/50 dark:bg-indigo-900/40 rounded-lg">
-                              {score.nilai_akhir_pkl ?? '-'}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md">
-                                {score.predikat_pkl}
-                              </span>
-                            </td>
-
-                            {/* Catatan */}
-                            <td className="py-2 px-2">
-                              <input
-                                type="text"
-                                placeholder="Catatan evaluasi PKL..."
-                                value={score.catatan_pkl}
-                                onChange={(e) => handleScoreChange(index, 'catatan_pkl', e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-medium p-1.5"
-                              />
-                            </td>
-
-                            {/* Tombol Cetak Sertifikat */}
-                            <td className="py-2 px-2 text-center">
-                              <Button
-                                type="button"
-                                onClick={() => handleOpenCertificate(score.siswa_pkl_id)}
-                                variant="outline"
-                                className="border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 p-1.5 rounded-lg text-[10px] font-bold"
-                              >
-                                <Printer size={14} className="mr-1" /> SERTIFIKAT
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                /* Tab 2: Deskripsi TP PKL */
+                <Card className="p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-6">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                      <Building2 size={18} className="text-indigo-500" />
+                      Pengaturan Deskripsi Tujuan Pembelajaran (TP) PKL
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Diisi oleh Ketua Program Keahlian untuk narasi kompetensi yang dicetak pada sertifikat PKL.
+                    </p>
                   </div>
-                )}
-              </Card>
 
-          </div>
-        ) : (
-          /* Tab 2: Setting Deskripsi TP PKL per DUDI (Kaprog / Kajur) */
-          <Card className="p-6 border-none shadow-sm dark:bg-slate-900/40 space-y-6">
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
-                <Building2 size={18} className="text-indigo-500" />
-                Pengaturan Deskripsi Tujuan Pembelajaran (TP) PKL
-              </h3>
-              <p className="text-xs text-slate-400">Diisi oleh Kepala Program Keahlian (Kaprog/Kajur) untuk narasi yang dicetak pada Sertifikat PKL.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Pilih Perusahaan / DUDI Mitra</label>
-                  <select
-                    value={selectedMitra}
-                    onChange={(e) => setSelectedMitra(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white"
-                  >
-                    <option value="">-- Semua Mitra DUDI --</option>
-                    {mitraOptions?.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Deskripsi Tujuan Pembelajaran (TP) PKL</label>
-                  <textarea
-                    rows={6}
-                    value={deskripsiTpText}
-                    onChange={(e) => setDeskripsiTpText(e.target.value)}
-                    placeholder="Peserta didik diharapkan mampu memahami dan mempraktikkan perawatan berkala kendaraan serta penerapan SOP industri..."
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-3 text-xs font-medium text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <Button
-                  onClick={() => {
-                    if (!selectedMitra || !deskripsiTpText) {
-                      toast.error('Pilih Mitra dan isi Deskripsi TP');
-                      return;
-                    }
-                    saveDeskripsiTpMutation.mutate({
-                      mitra_id: selectedMitra,
-                      deskripsi_tp: deskripsiTpText,
-                    });
-                  }}
-                  disabled={saveDeskripsiTpMutation.isPending}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl h-11"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  SIMPAN DESKRIPSI TP DUDI
-                </Button>
-              </div>
-
-              {/* Daftar Setting TP */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Daftar Deskripsi TP DUDI Tersimpan</h4>
-                {deskripsiList?.data?.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 text-xs italic">Belum ada deskripsi TP tersimpan.</div>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                    {deskripsiList?.data?.map((item: any) => (
-                      <div key={item.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1 text-xs">
-                        <div className="font-bold text-indigo-600 dark:text-indigo-400">🏢 {item.Mitra?.nama}</div>
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{item.deskripsi_tp}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="tp-mitra-select" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                          Pilih Perusahaan / Mitra DUDI
+                        </label>
+                        <SearchableSelect
+                          id="tp-mitra-select"
+                          aria-label="Pilih mitra DUDI untuk deskripsi TP"
+                          value={selectedMitra}
+                          onValueChange={setSelectedMitra}
+                          options={[
+                            { value: '', label: '-- Semua Mitra DUDI --' },
+                            ...mitraOptions
+                          ]}
+                          placeholder="Pilih Mitra DUDI"
+                        />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        )}
 
-        {/* Modal Paste dari Excel */}
+                      <div>
+                        <label htmlFor="tp-deskripsi-text" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                          Deskripsi Capaian Pembelajaran PKL
+                        </label>
+                        <textarea
+                          id="tp-deskripsi-text"
+                          aria-label="Deskripsi capaian pembelajaran PKL"
+                          rows={6}
+                          value={deskripsiTpText}
+                          onChange={(e) => setDeskripsiTpText(e.target.value)}
+                          placeholder="Peserta didik mampu memahami dan mempraktikkan SOP industri..."
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs font-medium"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => {
+                          const parsed = deskripsiTpSchema.safeParse({
+                            mitra_id: selectedMitra,
+                            deskripsi_tp: deskripsiTpText,
+                          });
+                          if (!parsed.success) {
+                            toast.error(parsed.error.errors[0]?.message || 'Data TP belum lengkap');
+                            return;
+                          }
+                          saveDeskripsiTpMutation.mutate({
+                            mitra_id: selectedMitra,
+                            deskripsi_tp: deskripsiTpText,
+                          });
+                        }}
+                        disabled={saveDeskripsiTpMutation.isPending}
+                        className="w-full font-bold rounded-xl text-xs"
+                      >
+                        <Save className="w-4 h-4 mr-1.5" />
+                        {saveDeskripsiTpMutation.isPending ? 'Menyimpan...' : 'Simpan Deskripsi TP DUDI'}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Daftar Deskripsi TP DUDI Tersimpan
+                      </h4>
+                      {isLoadingDeskripsi ? (
+                        <div className="text-center py-10 text-slate-400 text-xs">Memuat deskripsi...</div>
+                      ) : deskripsiListData.length === 0 ? (
+                        <div className="text-center py-10 text-slate-400 text-xs italic">Belum ada deskripsi TP tersimpan.</div>
+                      ) : (
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                          {deskripsiListData?.map((item) => (
+                            <div key={item.id} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-1 text-xs">
+                              <div className="font-bold text-indigo-600 dark:text-indigo-400">🏢 {item.Mitra?.nama}</div>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{item.deskripsi_tp}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </SectionCard>
+        </AcademicPageLayout>
+
+        {/* Modal Paste Excel */}
         {showPasteModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800">
@@ -570,30 +676,32 @@ export default React.memo(function InputNilaiPklPage() {
                   <ClipboardPaste className="w-5 h-5 text-emerald-500" />
                   <h3 className="font-bold text-slate-900 dark:text-white text-base">Paste Data Nilai PKL dari Excel</h3>
                 </div>
-                <button onClick={() => setShowPasteModal(false)} className="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+                <button type="button" onClick={() => setShowPasteModal(false)} className="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Copy kolom dari Excel dalam urutan tab berikut: <br />
-                  <strong className="text-indigo-600 dark:text-indigo-400">
-                    NIS | Teknis | K3LH | Bisnis | Disiplin | Kerajinan | Teamwork | Jujur | TanggungJwb | Catatan
+                  Salin kolom dari Excel dengan urutan format: <br />
+                  <strong className="text-indigo-600 dark:text-indigo-400 font-mono">
+                    NIS [TAB] Teknis [TAB] K3LH [TAB] Bisnis [TAB] Disiplin [TAB] Inisiatif [TAB] Kerjasama [TAB] Jujur [TAB] TanggungJwb [TAB] Catatan
                   </strong>
                 </p>
 
                 <textarea
+                  id="paste-excel-text"
+                  aria-label="Area paste data dari Excel"
                   rows={8}
                   value={pasteRawText}
                   onChange={(e) => setPasteRawText(e.target.value)}
-                  placeholder={`Contoh:\n2324100289\t90\t90\t85\t90\t90\t90\t90\t90\tSangat disiplin dan bertanggunjawab`}
+                  placeholder="2324100289&#9;90&#9;90&#9;85&#9;90&#9;90&#9;90&#9;90&#9;90&#9;Sangat disiplin"
                   className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl p-4 text-xs font-mono text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <Button type="button" variant="outline" onClick={() => setShowPasteModal(false)} className="rounded-xl text-xs font-bold">Batal</Button>
-                <Button type="button" onClick={handleProcessPaste} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold">
-                  <Sparkles className="w-4 h-4 mr-1.5" /> PROSES & PASANG KE TABEL
+                <Button type="button" variant="primary" onClick={handleProcessPaste} className="rounded-xl text-xs font-bold">
+                  <Sparkles className="w-4 h-4 mr-1.5" /> Pasang ke Tabel
                 </Button>
               </div>
             </div>
@@ -604,71 +712,56 @@ export default React.memo(function InputNilaiPklPage() {
         {selectedSiswaSertifikat && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-8 space-y-6 shadow-2xl relative border border-slate-100 dark:border-slate-800 my-8">
-              
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
                   <Award size={24} className="text-amber-500" />
                   <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Pratinjau Sertifikat Praktik Kerja Lapangan (PKL)</h3>
-                    <p className="text-xs text-slate-400">Nomor: {selectedSiswaSertifikat.nomor_sertifikat}</p>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Pratinjau Sertifikat PKL Siswa</h3>
+                    <p className="text-xs text-slate-400">Nomor: {selectedSiswaSertifikat.nomor_sertifikat || 'DRAFT/PKL/' + selectedSiswaSertifikat.nis}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Button
+                    type="button"
+                    variant="primary"
                     onClick={() => window.print()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl"
+                    className="text-xs font-bold rounded-xl"
                   >
-                    <Printer className="w-4 h-4 mr-1.5" /> CETAK SERTIFIKAT
+                    <Printer className="w-4 h-4 mr-1.5" /> Cetak Sertifikat
                   </Button>
-                  <button onClick={() => setSelectedSiswaSertifikat(null)} className="text-slate-400 hover:text-slate-600 p-2 font-bold">✕</button>
+                  <button type="button" onClick={() => setSelectedSiswaSertifikat(null)} className="text-slate-400 hover:text-slate-600 p-2 font-bold">✕</button>
                 </div>
               </div>
 
-              {/* Document Certificate Layout Preview */}
+              {/* Certificate Layout */}
               <div className="border-4 border-double border-amber-600/30 p-8 rounded-2xl bg-amber-50/10 space-y-6 text-center text-slate-800 dark:text-slate-100 font-serif">
-                <div className="uppercase text-xs font-bold tracking-widest text-slate-500">PEMERINTAH DAERAH PROVINSI JAWA BARAT</div>
+                <div className="uppercase text-xs font-bold tracking-widest text-slate-500">DINAS PENDIDIKAN PROVINSI JAWA BARAT</div>
                 <div className="text-lg font-black text-slate-900 dark:text-white tracking-wide">SERTIFIKAT PRAKTIK KERJA LAPANGAN</div>
-                <div className="text-xs text-slate-500 font-sans">Nomor: {selectedSiswaSertifikat.nomor_sertifikat}</div>
+                <div className="text-xs text-slate-500 font-sans">Nomor: {selectedSiswaSertifikat.nomor_sertifikat || 'DRAFT/PKL/' + selectedSiswaSertifikat.nis}</div>
 
-                <p className="text-xs font-sans leading-relaxed pt-2">
-                  Diberikan kepada:
-                </p>
+                <p className="text-xs font-sans leading-relaxed pt-2">Diberikan kepada:</p>
                 <div className="text-xl font-bold underline decoration-amber-500 text-indigo-950 dark:text-indigo-200">
-                  {selectedSiswaSertifikat.Siswa?.nama_siswa}
+                  {selectedSiswaSertifikat.nama_siswa}
                 </div>
                 <p className="text-xs font-sans text-slate-500">
-                  NIS / NISN: {selectedSiswaSertifikat.Siswa?.nis} / {selectedSiswaSertifikat.Siswa?.nisn || '-'}
+                  NIS: {selectedSiswaSertifikat.nis}
                 </p>
 
                 <p className="text-xs font-sans max-w-xl mx-auto leading-relaxed text-slate-700 dark:text-slate-300">
-                  Telah melaksanakan Praktik Kerja Lapangan (PKL) di <strong>{selectedSiswaSertifikat.Mitra?.nama}</strong> dengan hasil kualifikasi:
+                  Telah melaksanakan Praktik Kerja Lapangan (PKL) di <strong>{selectedSiswaSertifikat.mitra_nama}</strong> dengan hasil kualifikasi:
                 </p>
 
                 <div className="inline-block px-6 py-2 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 rounded-full font-sans font-bold text-sm">
                   Predikat: {selectedSiswaSertifikat.predikat_pkl || 'Baik'} ({selectedSiswaSertifikat.nilai_akhir_pkl || 0}/100)
                 </div>
-
-                {/* TTD Footer */}
-                <div className="grid grid-cols-2 gap-8 pt-8 text-xs font-sans border-t border-amber-200 dark:border-slate-800">
-                  <div>
-                    <p className="text-slate-500">Pimpinan / Instruktur Industri</p>
-                    <div className="h-16"></div>
-                    <p className="font-bold">{selectedSiswaSertifikat.penanggung_jawab_nama || selectedSiswaSertifikat.instruktur_nama || 'Pimpinan DUDI'}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Kepala SMKN 1 Plered</p>
-                    <div className="h-16"></div>
-                    <p className="font-bold">H. Asep Setiawan, S.Pd., M.M.</p>
-                  </div>
-                </div>
               </div>
-
             </div>
           </div>
         )}
-
-      </div>
-    </AcademicPageLayout>
+      </InfraErrorBoundary>
+    </PremiumFeatureGate>
   );
 });
+
+export default InputNilaiPklPage;

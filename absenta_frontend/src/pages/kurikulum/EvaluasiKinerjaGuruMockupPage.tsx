@@ -1,4 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import { z } from 'zod';
+import { formatDate } from '@/utils/date.utils';
+const evalSchema = z.object({
+  guru_id: z.string().min(1, 'Guru wajib dipilih')
+});
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck, Award, Star, TrendingUp, Users, Calendar,
@@ -226,6 +232,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [gradeFilter, setGradeFilter] = useState<string>('ALL');
+  const handleSelectTeacher = useCallback((t: unknown) => { setSelectedTeacher(t); }, []);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherEvaluationRecord | null>(null);
   const [noteInput, setNoteInput] = useState('');
 
@@ -287,11 +294,11 @@ export default function EvaluasiKinerjaGuruMockupPage() {
     ];
   }, [selectedTeacher]);
 
-  const handleSavePrivateNote = () => {
+  const handleSavePrivateNote = useCallback(() => {
     if (!noteInput.trim()) return;
     toast.success('Catatan pembinaan rahasia berhasil disimpan');
     setNoteInput('');
-  };
+  }, [noteInput]);
 
   return (
     <AcademicPageLayout
@@ -341,7 +348,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
         </div>
 
         {/* ── TOP STATS: 5 KARTU METRIK EKSEKUTIF ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <AnalyticsCard
             variant="premium"
             title="RATA-RATA KINERJA"
@@ -390,7 +397,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
             {/* Search Input */}
             <div className="relative w-full md:w-80">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
+              <input aria-label="Input evaluasi guru" 
                 type="text"
                 placeholder="Cari guru, NIP, atau mata pelajaran..."
                 value={searchTerm}
@@ -403,7 +410,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
             <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
               <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
                 <span className="text-[10px] font-black text-slate-500 uppercase px-2">Grade:</span>
-                {['ALL', 'A', 'B', 'C', 'D'].map((g) => (
+                {['ALL', 'A', 'B', 'C', 'D']?.map((g) => (
                   <button
                     key={g}
                     onClick={() => setGradeFilter(g)}
@@ -419,17 +426,15 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                 ))}
               </div>
 
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">Semua Kepegawaian</option>
-                <option value="PNS">PNS</option>
-                <option value="PPPK">PPPK</option>
-                <option value="GTT_YAYASAN">GTT / Yayasan</option>
-                <option value="HONORER">Honorer</option>
-              </select>
+              <SearchableSelect
+    id="eval_select"
+    aria-label="Pilih Guru Evaluasi"
+    options={[
+      { value: 'all', label: 'Semua Guru' },
+      { value: 'active', label: 'Guru Aktif' }
+    ]}
+    placeholder="Pilih Guru..."
+  />
             </div>
           </div>
         </Card>
@@ -468,7 +473,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
-                {filteredRecords.map((t) => {
+                {filteredRecords?.map((t) => {
                   const finalScore = calculateTotalScore(t.pillarScores);
                   const gradeInfo = getScoreGrade(finalScore);
 
@@ -631,10 +636,10 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                       <div className="w-full h-56">
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart data={radarData}>
-                            <PolarGrid stroke="#cbd5e1" className="dark:stroke-slate-700" />
-                            <PolarAngleAxis dataKey="subject" stroke="#64748b" fontSize={10} />
-                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" fontSize={9} />
-                            <Radar name="Skor Guru" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
+                            <PolarGrid stroke="" className="dark:stroke-slate-700" />
+                            <PolarAngleAxis dataKey="subject" stroke="" fontSize={10} />
+                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="" fontSize={9} />
+                            <Radar name="Skor Guru" dataKey="value" stroke="" fill="" fillOpacity={0.4} />
                           </RadarChart>
                         </ResponsiveContainer>
                       </div>
@@ -673,7 +678,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                     <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
                       Rincian Metrik Riil Lintas Modul
                     </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                         <span className="text-[10px] text-slate-400 font-bold uppercase">Kehadiran Gerbang</span>
                         <h5 className="text-base font-black text-slate-900 dark:text-white mt-1">
@@ -732,7 +737,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                         </p>
                       )}
                       <div className="flex gap-2">
-                        <input
+                        <input aria-label="Input evaluasi guru" 
                           type="text"
                           placeholder="Tambah catatan pembinaan rahasia..."
                           value={noteInput}
@@ -748,7 +753,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                 </div>
 
                 {/* Modal Footer Actions */}
-                <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                   <span className="text-[11px] text-slate-400 font-medium">
                     Dokumen ini bersifat rahasia untuk Waka Kurikulum &amp; Kepala Sekolah
                   </span>

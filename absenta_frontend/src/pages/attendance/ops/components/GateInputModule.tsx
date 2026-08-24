@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -49,7 +50,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
     queryFn: async () => {
       if (!tenantId) return null;
       const res = await getTenantById(tenantId);
-      const t = res.data as any;
+      const t = res.data as Record<string, unknown>;
       if (!t) return null;
       return {
         jamMasuk: t.jam_masuk_default || t.jamMasuk || '07:00',
@@ -126,7 +127,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
       if (directStudentData) {
         targetId = directStudentData.id;
-        targetName = directStudentData.nama_siswa || (directStudentData as any).nama_guru || '';
+        targetName = directStudentData.nama_siswa || (directStudentData as Record<string, unknown>).nama_guru || '';
       }
 
       const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -135,7 +136,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
       if (isBypassMode) {
         const res = await bypassLate({ siswa_id: targetId, note: 'Bypass Mode' });
         if (res.success) {
-          const sInfo = (res as any).data;
+          const sInfo = (res as Record<string, unknown>).data;
           const nama = sInfo?.nama_siswa || targetName || 'Siswa';
           const kelas = sInfo?.kelas && sInfo.kelas !== '-' ? ` - ${sInfo.kelas}` : '';
           const msg = `BYPASS BERHASIL: ${nama}${kelas}`;
@@ -147,7 +148,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           onTapSuccess?.();
           onTapSuccessMetadata?.({ name: nama });
         } else {
-          const errMsg = (res as any).message || 'Gagal memproses bypass';
+          const errMsg = (res as Record<string, unknown>).message || 'Gagal memproses bypass';
           toast.error(errMsg, { position: 'bottom-center' });
           addTapFeedback('error', errMsg, timeStr);
         }
@@ -157,8 +158,8 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
       // Direct single-step submission to backend (Backend resolves NIP, NIK, NISN, RFID, or UUID instantly)
       const tapRes = await submitTap({ siswa_id: targetId, arah: inputDirection, device_id: '', rfid: t });
       if (tapRes.success) {
-        const sInfo = (tapRes as any).data?.siswa_info;
-        const gInfo = (tapRes as any).data?.guru_info;
+        const sInfo = (tapRes as Record<string, unknown>).data?.siswa_info;
+        const gInfo = (tapRes as Record<string, unknown>).data?.guru_info;
         
         let successMsg = '';
         let personName = '';
@@ -171,7 +172,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           successMsg = `PRESENSI BERHASIL: ${gInfo.nama} (${gInfo.jenis_ptk || 'Pegawai'})`;
         } else {
           personName = targetName || 'Siswa/Guru';
-          successMsg = (tapRes as any).message || `PRESENSI BERHASIL: ${personName}`;
+          successMsg = (tapRes as Record<string, unknown>).message || `PRESENSI BERHASIL: ${personName}`;
         }
 
         toast.success(successMsg, { position: 'bottom-center' });
@@ -181,11 +182,11 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         onTapSuccess?.();
         onTapSuccessMetadata?.({ name: personName });
       } else {
-        const errMsg = (tapRes as any).message || 'Gagal mencatat tap';
+        const errMsg = (tapRes as Record<string, unknown>).message || 'Gagal mencatat tap';
         toast.error(errMsg, { position: 'bottom-center' });
         addTapFeedback('error', errMsg, timeStr);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       const errMsg = e.response?.data?.message || e.message || 'Gagal mencatat tap';
       toast.error(errMsg, { position: 'bottom-center' });
       addTapFeedback('error', errMsg, new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -200,6 +201,44 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const fetchTenantConfig = useCallback(async () => {
     await tenantConfigQuery.refetch();
   }, [tenantConfigQuery]);
+
+  const handleClearTapHistory = useCallback(() => {
+    setTapHistory([]);
+  }, []);
+
+  const renderedTapHistory = useMemo(() => {
+    return tapHistory?.map((item, idx) => (
+      <div 
+        key={item.id}
+        className={`p-3.5 rounded-xl border flex items-center justify-between shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${
+          idx === 0 ? 'ring-2 ring-indigo-500/20 scale-[1.01]' : 'opacity-85'
+        } ${
+          item.type === 'success' 
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200' 
+            : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200'
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 ${
+            item.type === 'success' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-rose-500 text-white shadow-xs'
+          }`}>
+            {item.type === 'success' ? '✓' : '✕'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-xs sm:text-sm uppercase tracking-tight truncate">{item.message}</span>
+              {idx === 0 && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-600 text-white uppercase shrink-0">
+                  Terbaru
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] opacity-75 font-medium mt-0.5">Waktu Tap: {item.time} WIB</div>
+          </div>
+        </div>
+      </div>
+    ));
+  }, [tapHistory]);
 
   const content = (
     <div className="space-y-6">
@@ -250,7 +289,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
               <div className="flex flex-col items-start"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pulang</span><span className="text-2xl font-black text-red-600">{miniStats.keluar}</span></div>
             </div>
           </div>
-          <Suspense fallback={<PageLoader />}><GerbangStatusHero currentTime={currentTime} tenantConfig={tenantConfig} inputDirection={inputDirection} timeStatus={timeStatus as any} isBypassMode={isBypassMode} setIsBypassMode={setIsBypassMode} onRefreshConfig={fetchTenantConfig} loadingConfig={loadingConfig} /></Suspense>
+          <Suspense fallback={<PageLoader />}><GerbangStatusHero currentTime={currentTime} tenantConfig={tenantConfig} inputDirection={inputDirection} timeStatus={timeStatus as Record<string, unknown>} isBypassMode={isBypassMode} setIsBypassMode={setIsBypassMode} onRefreshConfig={fetchTenantConfig} loadingConfig={loadingConfig} /></Suspense>
         </div>
       )}
 
@@ -273,44 +312,14 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
             <span>Riwayat Tap Terakhir (Terbaru di Atas)</span>
             <button 
               type="button" 
-              onClick={() => setTapHistory([])}
+              onClick={handleClearTapHistory}
               className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
             >
               Bersihkan
             </button>
           </div>
           <div className="space-y-2">
-            {tapHistory.map((item, idx) => (
-              <div 
-                key={item.id}
-                className={`p-3.5 rounded-xl border flex items-center justify-between shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${
-                  idx === 0 ? 'ring-2 ring-indigo-500/20 scale-[1.01]' : 'opacity-85'
-                } ${
-                  item.type === 'success' 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200' 
-                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 ${
-                    item.type === 'success' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-rose-500 text-white shadow-xs'
-                  }`}>
-                    {item.type === 'success' ? '✓' : '✕'}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-xs sm:text-sm uppercase tracking-tight truncate">{item.message}</span>
-                      {idx === 0 && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-600 text-white uppercase shrink-0">
-                          Terbaru
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] opacity-75 font-medium mt-0.5">Waktu Tap: {item.time} WIB</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {renderedTapHistory}
           </div>
         </div>
       )}

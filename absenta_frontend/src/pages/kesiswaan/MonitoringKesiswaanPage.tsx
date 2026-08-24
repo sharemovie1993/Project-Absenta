@@ -27,6 +27,8 @@ import { MemoizedAnalyticsCard } from '../../components/ui/AnalyticsCard';
 import type { CareStudentItem, LeaderboardItem } from '../../components/kesiswaan/monitoring/CareSpotlightSection';
 import type { MonthlyTrendItem } from '../../components/kesiswaan/monitoring/MonthlyTrendChart';
 
+import { formatDate } from '../../utils/layoutUtils';
+
 // Lazy load heavy subcomponents (Pilar 21)
 const CareSpotlightSection = lazy(() => import('../../components/kesiswaan/monitoring/CareSpotlightSection').then(m => ({ default: m.CareSpotlightSection })));
 const MonthlyTrendChart = lazy(() => import('../../components/kesiswaan/monitoring/MonthlyTrendChart').then(m => ({ default: m.MonthlyTrendChart })));
@@ -36,7 +38,7 @@ const TindakMasalPelanggaranModal = lazy(() => import('../../components/kesiswaa
 const REFETCH = 60_000;
 const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-const MonitoringKesiswaanPage: React.FC = () => {
+const MonitoringKesiswaanPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { isTvMode } = useTvStore();
   const [currentScene, setCurrentScene] = useState(0);
@@ -348,10 +350,17 @@ const MonitoringKesiswaanPage: React.FC = () => {
     );
   }
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Kesiswaan', path: '/kesiswaan' },
+    { label: 'Monitoring Disiplin' }
+  ], []);
+
   return (
     <AcademicPageLayout
       title="Monitoring Disiplin Kesiswaan"
       description="Live Display & Analitik Real-Time"
+      breadcrumbs={breadcrumbs}
       stats={academicStats}
       toolbar={
         <div className="flex gap-2 items-center flex-wrap">
@@ -445,6 +454,6 @@ const MonitoringKesiswaanPage: React.FC = () => {
       </div>
     </AcademicPageLayout>
   );
-};
+});
 
 export default MonitoringKesiswaanPage;

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
 import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight } from 'lucide-react';
@@ -398,7 +400,7 @@ const SHUPage: React.FC = React.memo(() => {
     return (
       <Suspense fallback={
         <div className="flex justify-center items-center h-64">
-          <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
         </div>
       }>
         <ShuMemberView
@@ -417,7 +419,7 @@ const SHUPage: React.FC = React.memo(() => {
     return (
       <Suspense fallback={
         <div className="flex justify-center items-center h-64">
-          <div className="w-8 h-8 border-4 border-indigo-655/20 border-t-indigo-655 rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
         </div>
       }>
         <ShuPeriodDetail
@@ -447,6 +449,16 @@ const SHUPage: React.FC = React.memo(() => {
     );
   }
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative' },
+    { label: 'SHU', path: isOperator ? '/cooperative/shu/manage' : '/cooperative/shu' }
+  ], [isOperator]);
+
+  const tabOptions = useMemo((): TabOption[] => [
+    { id: 'periods', label: 'Periode & Tahun Buku' },
+    { id: 'config', label: 'Aturan Distribusi SHU' }
+  ], []);
+
   // Render Admin Layout (Period Lists & Configurations)
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen SHU">
@@ -454,37 +466,20 @@ const SHUPage: React.FC = React.memo(() => {
         title="Manajemen SHU Koperasi"
         description="Kelola konfigurasi alokasi persentase dan rekapitulasi pembagian SHU tahunan"
         hardeningModuleKey={hardeningModuleKey}
-        breadcrumbs={[
-          { label: 'Koperasi', path: '/cooperative' },
-          { label: 'SHU', path: isOperator ? '/cooperative/shu/manage' : '/cooperative/shu' }
-        ]}
+        breadcrumbs={breadcrumbs}
         instruction={adminInstruction}
       >
-      {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 space-x-6">
-        <button
-          onClick={() => setActiveTab('periods')}
-          className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${
-            activeTab === 'periods'
-              ? 'border-indigo-600 text-indigo-655 dark:text-indigo-400'
-              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'
-          }`}
-        >
-          Periode & Tahun Buku
-        </button>
-        <button
-          onClick={() => setActiveTab('config')}
-          className={`pb-3 font-black text-xs uppercase tracking-wider transition-all border-b-2 ${
-            activeTab === 'config'
-              ? 'border-indigo-600 text-indigo-655 dark:text-indigo-400'
-              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'
-          }`}
-        >
-          Aturan Distribusi SHU
-        </button>
-      </div>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+          {/* Tab Switcher */}
+          <div className="mb-6">
+            <TabSwitcher
+              options={tabOptions}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as 'periods' | 'config')}
+            />
+          </div>
 
-      {activeTab === 'periods' ? (
+          {activeTab === 'periods' ? (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Card Panduan Alur Kerja SHU */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-900/50 dark:to-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl p-5 shadow-sm">
@@ -501,7 +496,7 @@ const SHUPage: React.FC = React.memo(() => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
               {/* Step 1 */}
               <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-indigo-300 dark:hover:border-indigo-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-150 dark:text-slate-800 select-none">01</div>
+                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">01</div>
                 <h5 className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 mb-1 tracking-wider">Atur Aturan</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Buka tab <strong>Aturan Distribusi SHU</strong> untuk menentukan porsi pembagian (Jasa Modal, Jasa Transaksi, Cadangan, Pengurus, Sosial, dll). Total aturan harus 100%.
@@ -510,7 +505,7 @@ const SHUPage: React.FC = React.memo(() => {
 
               {/* Step 2 */}
               <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-purple-300 dark:hover:border-purple-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-150 dark:text-slate-800 select-none">02</div>
+                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">02</div>
                 <h5 className="text-xs font-black uppercase text-purple-600 dark:text-purple-400 mb-1 tracking-wider">Buat Periode</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Klik tombol <strong>Buat Periode SHU Baru</strong>. Masukkan tahun buku, rentang tanggal, serta Total Pendapatan & Biaya Koperasi pada periode tersebut.
@@ -519,7 +514,7 @@ const SHUPage: React.FC = React.memo(() => {
 
               {/* Step 3 */}
               <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-150 dark:text-slate-800 select-none">03</div>
+                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">03</div>
                 <h5 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Kalkulasi & Setujui</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Pilih <strong>Kelola SHU</strong> pada periode yang dibuat. Klik <strong>Hitung Alokasi SHU</strong> (oleh Bendahara), lalu minta Ketua Koperasi untuk meninjau dan klik <strong>Setujui Pembagian</strong>.
@@ -528,7 +523,7 @@ const SHUPage: React.FC = React.memo(() => {
 
               {/* Step 4 */}
               <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-emerald-300 dark:hover:border-emerald-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-150 dark:text-slate-800 select-none">04</div>
+                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">04</div>
                 <h5 className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Distribusikan</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Setelah disetujui, klik <strong>Distribusikan ke Tabungan</strong>. Sistem secara otomatis menyetor dana SHU masing-masing anggota ke rekening Simpanan Sukarela mereka.
@@ -540,7 +535,7 @@ const SHUPage: React.FC = React.memo(() => {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Tahun Buku SHU</h3>
-              <p className="text-xs text-slate-455">Daftar periode pembukuan pembagian SHU koperasi</p>
+              <p className="text-xs text-slate-400">Daftar periode pembukuan pembagian SHU koperasi</p>
             </div>
             {canManageShu && (
               <Button
@@ -558,17 +553,17 @@ const SHUPage: React.FC = React.memo(() => {
               <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
             </div>
           ) : periods.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-150 dark:border-slate-800 rounded-2xl">
+            <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-800 rounded-2xl">
               {canManageShu 
                 ? 'Belum ada periode SHU yang dikonfigurasi. Klik tombol "+ Buat Periode SHU Baru".' 
                 : 'Belum ada periode SHU yang dikonfigurasi.'}
             </div>
           ) : (
-            <SectionCard className="p-0 border border-slate-150 dark:border-slate-850 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+            <SectionCard className="p-0 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-855 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-wider">
                       <th className="p-4 w-12 text-center">No</th>
                       <th className="p-4 text-center">Tahun Buku</th>
                       <th className="p-4">Tanggal Awal s.d Akhir</th>
@@ -577,16 +572,16 @@ const SHUPage: React.FC = React.memo(() => {
                       <th className="p-4 text-center">Tindakan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {periods?.map((p, idx) => (
                       <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                         <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
-                        <td className="p-4 text-center font-extrabold text-slate-855 dark:text-slate-100">{p.year}</td>
+                        <td className="p-4 text-center font-extrabold text-slate-800 dark:text-slate-100">{p.year}</td>
                         <td className="p-4 font-medium text-slate-600 dark:text-slate-400">
-                          {new Date(p.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} s.d{' '}
-                          {new Date(p.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {formatDate(p.startDate, { day: '2-digit', month: 'short' })} s.d{' '}
+                          {formatDate(p.endDate, { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
-                        <td className="p-4 text-right font-black text-slate-855 dark:text-slate-100">
+                        <td className="p-4 text-right font-black text-slate-800 dark:text-slate-100">
                           Rp {Number(p.totalShu).toLocaleString('id-ID')}
                         </td>
                         <td className="p-4 text-center">
@@ -594,9 +589,9 @@ const SHUPage: React.FC = React.memo(() => {
                             p.status === 'DISTRIBUTED' 
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20 dark:bg-emerald-950/20' 
                               : p.status === 'APPROVED' 
-                              ? 'bg-blue-50 text-blue-650 border-blue-500/20 dark:bg-blue-950/20' 
+                              ? 'bg-blue-50 text-blue-600 border-blue-500/20 dark:bg-blue-950/20' 
                               : p.status === 'CALCULATED' 
-                              ? 'bg-purple-50 text-purple-650 border-purple-500/20 dark:bg-purple-950/20' 
+                              ? 'bg-purple-50 text-purple-600 border-purple-500/20 dark:bg-purple-950/20' 
                               : 'bg-slate-50 text-slate-500 border-slate-200'
                           }`}>
                             {p.status}
@@ -608,7 +603,7 @@ const SHUPage: React.FC = React.memo(() => {
                               onClick={() => setSelectedPeriodId(p.id)}
                               size="xs"
                               variant="outline"
-                              className="text-indigo-655 border-indigo-200 hover:bg-indigo-50 font-bold inline-flex items-center gap-1 text-[10px]"
+                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 font-bold inline-flex items-center gap-1 text-[10px]"
                             >
                               <Eye size={10} /> Kelola SHU <ArrowUpRight size={10} />
                             </Button>
@@ -635,7 +630,7 @@ const SHUPage: React.FC = React.memo(() => {
       ) : (
         <Suspense fallback={
           <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
           </div>
         }>
           <ShuRulesForm
@@ -656,8 +651,9 @@ const SHUPage: React.FC = React.memo(() => {
           onSuccess={fetchPeriods}
         />
       </Suspense>
-    </AcademicPageLayout>
-  </PremiumFeatureGate>
+    </SectionCard>
+  </AcademicPageLayout>
+    </PremiumFeatureGate>
   );
 });
 

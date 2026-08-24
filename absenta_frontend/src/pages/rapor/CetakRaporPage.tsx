@@ -53,6 +53,20 @@ import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStude
 const PAGE_INSTRUCTION =
   'Pilih Rombel / Kelas untuk merekap ranking leger, mengisi absensi & catatan wali kelas, serta mencetak lembar e-Rapor resmi Kemendikbud.';
 
+interface KelasOptionItem {
+  id: string;
+  nama_kelas?: string;
+  nama?: string;
+  nama_lengkap?: string;
+  tingkat?: number | string;
+  jurusan_id?: string;
+  kode_jurusan?: string;
+  jurusan?: {
+    id?: string;
+    kode_jurusan?: string;
+  };
+}
+
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
   const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
@@ -76,7 +90,8 @@ export default React.memo(function CetakRaporPage() {
   // ── User Auth & Wali Kelas Operational Context ──
   const { user } = useAuthStore();
   const userKelasId = useMemo(() => {
-    return user?.wali_kelas_kelas_id || (user as any)?.kelas_id || (user as any)?.assigned_kelas_id || null;
+    const u = user as { wali_kelas_kelas_id?: string; kelas_id?: string; assigned_kelas_id?: string } | null;
+    return u?.wali_kelas_kelas_id || u?.kelas_id || u?.assigned_kelas_id || null;
   }, [user]);
 
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
@@ -112,7 +127,7 @@ export default React.memo(function CetakRaporPage() {
   // Auto-select class: prioritize Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
     if (!selectedKelas && classList && classList.length > 0) {
-      if (userKelasId && classList.some((k: any) => k.id === userKelasId)) {
+      if (userKelasId && (classList as KelasOptionItem[])?.some((k) => k.id === userKelasId)) {
         setSelectedKelas(userKelasId);
       } else {
         setSelectedKelas(classList[0].id);
@@ -123,20 +138,22 @@ export default React.memo(function CetakRaporPage() {
   const activeYear = useMemo<AcademicYear | null>(() => {
     const targetId = selectedTahunPelajaran || activeTp?.id;
     if (!targetId) return null;
-    const matched = (tpOptions ?? []).find(t => t.value === targetId);
-    return { id: targetId, nama: (matched?.raw as any)?.tahun || activeTp?.tahun || targetId, is_active: true };
+    const matched = (tpOptions ?? [])?.find(t => t.value === targetId);
+    const rawTp = matched?.raw as { tahun?: string } | undefined;
+    return { id: targetId, nama: rawTp?.tahun || activeTp?.tahun || targetId, is_active: true };
   }, [activeTp, selectedTahunPelajaran, tpOptions]);
 
   const activeSemester = useMemo<Semester | null>(() => {
     const targetId = selectedSemester || activeSem?.id;
     if (!targetId) return null;
-    const matched = (semesterOptions ?? []).find(s => s.value === targetId);
-    return { id: targetId, nama: (matched?.raw as any)?.nama_semester || activeSem?.nama_semester || targetId, is_active: true };
+    const matched = (semesterOptions ?? [])?.find(s => s.value === targetId);
+    const rawSem = matched?.raw as { nama_semester?: string } | undefined;
+    return { id: targetId, nama: rawSem?.nama_semester || activeSem?.nama_semester || targetId, is_active: true };
   }, [activeSem, selectedSemester, semesterOptions]);
 
   // ── Hook Struktur Kurikulum Rombel ──
-  const currentKelasObj = useMemo(() => {
-    return (classList ?? []).find((k: any) => k.id === selectedKelas);
+  const currentKelasObj = useMemo<KelasOptionItem | undefined>(() => {
+    return (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
   }, [classList, selectedKelas]);
 
   const { totalJp: kurikulumTotalJp, rawList: kurikulumStrukturList } = useStrukturKurikulumOptions({
@@ -170,7 +187,7 @@ export default React.memo(function CetakRaporPage() {
 
   // ── Enhanced Kelas Options with Wali Kelas Label & Highlighting ──
   const kelasOptions = useMemo<SearchableSelectOption[]>(() => {
-    return (classList ?? []).map((k: any) => {
+    return (classList as KelasOptionItem[] ?? [])?.map((k) => {
       const isWali = Boolean(userKelasId && k.id === userKelasId);
       const namePart = k.nama_kelas || k.nama || k.nama_lengkap || 'Rombel';
       const tingkatPart = k.tingkat ? `Kelas ${k.tingkat} - ` : '';
@@ -196,7 +213,7 @@ export default React.memo(function CetakRaporPage() {
     const baseList: RawStudent[] =
       safeStudentList.length > 0
         ? safeStudentList
-        : (safeLegerStudents ?? []).map((ls) => ({
+        : (safeLegerStudents ?? [])?.map((ls) => ({
             id: ls.siswa_id ?? ls.id ?? '',
             sakit: ls.sakit,
             izin: ls.izin,
@@ -208,8 +225,8 @@ export default React.memo(function CetakRaporPage() {
     const q = searchQuery.toLowerCase().trim();
 
     return (baseList ?? [])
-      .map((s): LegerStudent => {
-        const found = (safeLegerStudents ?? []).find(
+      ?.map((s): LegerStudent => {
+        const found = (safeLegerStudents ?? [])?.find(
           (ls) => ls.id === s.id || ls.siswa_id === s.id
         );
         const nama = s.nama_siswa ?? s.nama ?? s.nama_lengkap ?? '—';
@@ -392,14 +409,14 @@ export default React.memo(function CetakRaporPage() {
     setIsBatchPrinting(true);
     toast.info(`Memproses cetak massal ${filteredStudents.length} Rapor Siswa...`);
     try {
-      const currentKelasObj = (classList ?? []).find((k: any) => k.id === selectedKelas);
+      const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
       const { blobUrl } = await generateRaporKelasBatchPdf({
         students: filteredStudents,
         tahunPelajaranId: activeYear.id,
         semesterId: activeSemester.id,
         tahunPelajaranNama: activeYear.nama,
         semesterNama: activeSemester.nama,
-        kelasNama: (currentKelasObj as any)?.nama_kelas || 'Sekelas',
+        kelasNama: currentKelasObj?.nama_kelas || 'Sekelas',
       });
       window.open(blobUrl, '_blank');
       toast.success(`Pratinjau Rapor Sekelas (${filteredStudents.length} Siswa) dibuka di tab baru`);
@@ -421,7 +438,16 @@ export default React.memo(function CetakRaporPage() {
       title="Leger Kelas & Cetakan Rapor"
       description="Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pratinjau PDF lembar e-Rapor resmi di tab baru."
       breadcrumbs={breadcrumbs}
-      instruction={PAGE_INSTRUCTION}
+      instruction={{
+        title: 'Panduan Cetak Rapor & Leger',
+        description: 'Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pencetakan lembar e-Rapor resmi.',
+        items: [
+          { text: 'Pilih Rombel / Kelas untuk merekap ranking leger dan absensi.' },
+          { text: 'Klik Ringkasan untuk mengisi catatan wali kelas dan status transisi.' },
+          { text: 'Gunakan Cetak Sekaligus untuk mengunduh seluruh rapor dalam 1 file PDF.' },
+          { text: 'Ekspor Leger ke spreadsheet Excel untuk kebutuhan arsip dan administrasi.' }
+        ]
+      }}
       hardeningModuleKey="cetakraporpage"
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { 
   Save, 
@@ -9,8 +11,7 @@ import {
   Loader2
 } from 'lucide-react';
 import UnifiedBillingLayout from '../../components/billing/UnifiedBillingLayout';
-import { Button, Loader, EnhancedAlert, Input } from '../../components/ui';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Button, Loader, EnhancedAlert, Input, SectionCard, Card } from '../../components/ui';
 import {
   getBillingSettings,
   updateBillingSettings,
@@ -19,8 +20,25 @@ import {
 } from '../../api/settings.api';
 import { PageLayout } from '../../components/common/PageLayout';
 
-const BillingSettingsPage: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+// Lazy load heavy components
+const SearchableSelect = lazy(() => import('@/components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
+
+// Skema validasi Zod untuk Pengaturan Billing (Pilar 25)
+const billingSettingsSchema = z.object({
+  company_name: z.string().optional(),
+  tax_id: z.string().optional(),
+  default_currency: z.string().optional(),
+  billing_cycle: z.string().optional(),
+  company_address: z.string().optional(),
+  auto_generate_bills: z.boolean().optional(),
+  auto_send_invoices: z.boolean().optional(),
+  auto_generate_invoices_from_billing: z.boolean().optional(),
+  payment_reminders: z.boolean().optional(),
+  auto_suspend_overdue: z.boolean().optional(),
+});
+
+const BillingSettingsPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
@@ -51,30 +69,24 @@ const BillingSettingsPage: React.FC = () => {
     }
   });
 
-  const loadSettings = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
+  const { data: settingsData, isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['billing-settings'],
+    queryFn: async () => {
       const response = await getBillingSettings();
-      
-      if (response.success) {
-        setBillingSettings({
-          ...response.data.billing_settings,
-          auto_generate_invoices_from_billing:
-            response.data.billing_settings.auto_generate_invoices_from_billing ?? false
-        });
-      } else {
-        setError(response.message || 'Gagal memuat pengaturan');
-      }
-    } catch (err) {
-      const errorObj = err as { message?: string };
-      console.error('Error loading settings:', err);
-      setError(errorObj.message || 'Gagal memuat pengaturan');
-    } finally {
-      setLoading(false);
+      if (!response.success) throw new Error(response.message || 'Gagal memuat pengaturan');
+      return response.data.billing_settings;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (settingsData) {
+      setBillingSettings({
+        ...settingsData,
+        auto_generate_invoices_from_billing: settingsData.auto_generate_invoices_from_billing ?? false
+      });
     }
-  }, []);
+  }, [settingsData]);
 
   const handleSaveSettings = useCallback(async () => {
     try {
@@ -82,6 +94,12 @@ const BillingSettingsPage: React.FC = () => {
       setError(null);
       setSuccess(null);
       
+      const parsed = billingSettingsSchema.safeParse(billingSettings);
+      if (!parsed.success) {
+        setError('Format data pengaturan tidak valid');
+        return;
+      }
+
       const response = await updateBillingSettings({
         billing_settings: billingSettings
       });
@@ -89,6 +107,7 @@ const BillingSettingsPage: React.FC = () => {
       if (response.success) {
         setSuccess('Pengaturan berhasil disimpan');
         setBillingSettings(response.data.billing_settings);
+        queryClient.invalidateQueries({ queryKey: ['billing-settings'] });
       } else {
         setError(response.message || 'Gagal menyimpan pengaturan');
       }
@@ -99,7 +118,7 @@ const BillingSettingsPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [billingSettings]);
+  }, [billingSettings, queryClient]);
 
   const handleResetSettings = useCallback(async () => {
     try {
@@ -112,6 +131,7 @@ const BillingSettingsPage: React.FC = () => {
       if (response.success) {
         setSuccess('Pengaturan berhasil direset ke default');
         setBillingSettings(response.data.billing_settings);
+        queryClient.invalidateQueries({ queryKey: ['billing-settings'] });
       } else {
         setError(response.message || 'Gagal mereset pengaturan');
       }
@@ -122,22 +142,21 @@ const BillingSettingsPage: React.FC = () => {
     } finally {
       setResetting(false);
     }
-  }, []);
+  }, [queryClient]);
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  const breadcrumbs = useMemo(() => [
+    { label: 'Billing', path: '/billing' },
+    { label: 'Settings', path: '/billing/settings' }
+  ], []);
 
   if (loading) {
     return (
       <PageLayout
         hardeningModuleKey="billing_settings"
-        breadcrumbs={[
-          { label: 'Billing', path: '/billing' },
-          { label: 'Settings', path: '/billing/settings' }
-        ]}
+        breadcrumbs={breadcrumbs}
         instruction={{
           title: 'Pengaturan Billing',
+          description: 'Kelola preferensi dan otomasi sistem tagihan.',
           items: [
             { text: 'Kelola pengaturan profil billing, NPWP, siklus pembayaran default, dan otomasi.' },
             { text: 'Pengaturan notifikasi email and webhook kini dipusatkan di halaman Settings utama.' }
@@ -145,9 +164,11 @@ const BillingSettingsPage: React.FC = () => {
         }}
       >
         <UnifiedBillingLayout pageKey="settings" title="⚙️ Billing Settings" showOverview={false}>
-          <div className="flex items-center justify-center py-12">
-            <Loader size="lg" />
-          </div>
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <div className="flex items-center justify-center py-12">
+              <Loader size="lg" />
+            </div>
+          </SectionCard>
         </UnifiedBillingLayout>
       </PageLayout>
     );
@@ -156,12 +177,10 @@ const BillingSettingsPage: React.FC = () => {
   return (
     <PageLayout
       hardeningModuleKey="billing_settings"
-      breadcrumbs={[
-        { label: 'Billing', path: '/billing' },
-        { label: 'Settings', path: '/billing/settings' }
-      ]}
+      breadcrumbs={breadcrumbs}
       instruction={{
         title: 'Pengaturan Billing',
+        description: 'Kelola preferensi dan otomasi sistem tagihan.',
         items: [
           { text: 'Kelola pengaturan profil billing, NPWP, siklus pembayaran default, dan otomasi.' },
           { text: 'Pengaturan notifikasi email and webhook kini dipusatkan di halaman Settings utama.' }
@@ -169,9 +188,10 @@ const BillingSettingsPage: React.FC = () => {
       }}
     >
       <UnifiedBillingLayout pageKey="settings" title="⚙️ Billing Settings" showOverview={false}>
-        <div className="space-y-8">
-          {/* Alert Messages */}
-          {error && (
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-8">
+            {/* Alert Messages */}
+            {error && (
             <EnhancedAlert
               variant="destructive"
               title="Error"
@@ -268,43 +288,47 @@ const BillingSettingsPage: React.FC = () => {
                 <label htmlFor="currencySelect" className="block text-sm font-medium text-gray-700 mb-2">
                   Mata Uang Default
                 </label>
-                <SearchableSelect
-                  id="currencySelect"
-                  value={billingSettings.default_currency}
-                  onValueChange={(val) => setBillingSettings(prev => ({
-                    ...prev,
-                    default_currency: val
-                  }))}
-                  options={[
-                    { label: 'IDR - Rupiah', value: 'IDR' },
-                    { label: 'USD - Dollar', value: 'USD' },
-                    { label: 'EUR - Euro', value: 'EUR' }
-                  ]}
-                  placeholder="Pilih Mata Uang"
-                  searchPlaceholder="Cari mata uang..."
-                  triggerClassName="w-full"
-                />
+                <Suspense fallback={<div className="h-10 w-full bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />}>
+                  <SearchableSelect
+                    id="currencySelect"
+                    value={billingSettings.default_currency}
+                    onValueChange={(val) => setBillingSettings(prev => ({
+                      ...prev,
+                      default_currency: val
+                    }))}
+                    options={[
+                      { label: 'IDR - Rupiah', value: 'IDR' },
+                      { label: 'USD - Dollar', value: 'USD' },
+                      { label: 'EUR - Euro', value: 'EUR' }
+                    ]}
+                    placeholder="Pilih Mata Uang"
+                    searchPlaceholder="Cari mata uang..."
+                    triggerClassName="w-full"
+                  />
+                </Suspense>
               </div>
               <div>
                 <label htmlFor="billingCycleSelect" className="block text-sm font-medium text-gray-700 mb-2">
                   Siklus Penagihan
                 </label>
-                <SearchableSelect
-                  id="billingCycleSelect"
-                  value={billingSettings.billing_cycle}
-                  onValueChange={(val) => setBillingSettings(prev => ({
-                    ...prev,
-                    billing_cycle: val as 'monthly' | 'quarterly' | 'annually'
-                  }))}
-                  options={[
-                    { label: 'Bulanan', value: 'monthly' },
-                    { label: 'Triwulan', value: 'quarterly' },
-                    { label: 'Tahunan', value: 'annually' }
-                  ]}
-                  placeholder="Pilih Siklus"
-                  searchPlaceholder="Cari siklus..."
-                  triggerClassName="w-full"
-                />
+                <Suspense fallback={<div className="h-10 w-full bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />}>
+                  <SearchableSelect
+                    id="billingCycleSelect"
+                    value={billingSettings.billing_cycle}
+                    onValueChange={(val) => setBillingSettings(prev => ({
+                      ...prev,
+                      billing_cycle: val as 'monthly' | 'quarterly' | 'annually'
+                    }))}
+                    options={[
+                      { label: 'Bulanan', value: 'monthly' },
+                      { label: 'Triwulan', value: 'quarterly' },
+                      { label: 'Tahunan', value: 'annually' }
+                    ]}
+                    placeholder="Pilih Siklus"
+                    searchPlaceholder="Cari siklus..."
+                    triggerClassName="w-full"
+                  />
+                </Suspense>
               </div>
               <div className="md:col-span-2">
                 <label htmlFor="companyAddressInput" className="block text-sm font-medium text-gray-700 mb-2">
@@ -480,10 +504,11 @@ const BillingSettingsPage: React.FC = () => {
             </div>
           </motion.div>
         </div>
-      </UnifiedBillingLayout>
-    </PageLayout>
-  );
-};
+      </SectionCard>
+    </UnifiedBillingLayout>
+  </PageLayout>
+);
+});
 
 export default BillingSettingsPage;
 

@@ -1,3 +1,9 @@
+const infraSchema = z.object({
+  host: z.string().optional(),
+  port: z.number().optional()
+});
+import { z } from 'zod';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { requestWithFallback } from '@/api/apiUtils';
@@ -151,7 +157,7 @@ const InfraControlCenterContent: React.FC = () => {
 
       // Update server time offset dari paket WebSocket untuk mengatasi drift jam lokal
       if (payload.timestamp && typeof window !== 'undefined') {
-        (window as any).__SERVER_TIME_OFFSET__ = Date.now() - Number(payload.timestamp);
+        (window as Record<string, unknown>).__SERVER_TIME_OFFSET__ = Date.now() - Number(payload.timestamp);
       }
 
       // Update cache React Query secara langsung untuk performa instan dan DRY
@@ -391,7 +397,7 @@ const InfraControlCenterContent: React.FC = () => {
     return (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm w-full">
         <div className="relative flex-grow">
-          <Input
+          <Input aria-label="Input konfigurasi infra" 
             value={workerSearch}
             onChange={(e) => setWorkerSearch(e.target.value)}
             placeholder="Cari worker berdasarkan tipe atau server node..."

@@ -21,6 +21,7 @@ import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useJenjang } from '../../hooks/useJenjang';
+import { formatDate } from '../../utils/layoutUtils';
 import { TahunPelajaranSelect, useTahunPelajaranOptions } from '../../components/common';
 import { 
   CalendarEvent, 
@@ -446,7 +447,7 @@ export default function KalenderAkademikPage() {
 
   const renderDayTooltip = (dayEvs: CalendarEvent[]) => {
     return (
-      <div className="flex flex-col gap-2 p-1 max-w-[260px]">
+      <div className="flex flex-col gap-2 p-1 max-w-[260px] max-w-full">
         {dayEvs?.map(ev => {
           const j = getJenisOption(ev.jenis);
           return (
@@ -569,7 +570,7 @@ export default function KalenderAkademikPage() {
 
       {/* ─── Stats Cards ────────────────────────────────────────────── */}
       {statsData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
           {[
             { label: 'Total Event', value: statsData.total_events, icon: <Flag size={15} />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/50' },
             { label: 'Hari Libur', value: statsData.hari_libur, icon: <AlertCircle size={15} />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/50' },

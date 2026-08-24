@@ -7,6 +7,7 @@ import { kesiswaanApi } from '../../api/kesiswaan.api';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '../../components/ui/Loader';
 import { Card } from '../../components/ui/Card';
+import { formatDate } from '../../utils/layoutUtils';
 import type { Kelas, Siswa } from '../../types/academic';
 import type { Sekolah } from '../../api/academic/sekolah.api';
 import type { Tenant } from '../../api/tenants.api';
@@ -21,6 +22,7 @@ const hardeningModuleKey = 'cetak_berkas_kesiswaan';
 
 export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   // Move static doc options outside of component scope to avoid DOM churn (Pillar 3)
   const docOptions: DocOption[] = useMemo(() => [
@@ -125,7 +127,7 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
         }
       } else if (selectedPrintType === 'recap_violations') {
         await Promise.all(
-          classesToPrint.map(async (c) => {
+          classesToPrint?.map(async (c) => {
             if (!c) return;
             const res = await queryClient.fetchQuery({
               queryKey: ['pelanggaran-kelas', c.id],
@@ -140,7 +142,7 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
         );
       } else if (selectedPrintType === 'recap_achievements') {
         await Promise.all(
-          classesToPrint.map(async (c) => {
+          classesToPrint?.map(async (c) => {
             if (!c) return;
             const res = await queryClient.fetchQuery({
               queryKey: ['prestasi-kelas', c.id],

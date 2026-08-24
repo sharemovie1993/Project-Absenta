@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 const stats = [
   {
@@ -44,7 +45,6 @@ export const PetugasPage: React.FC = React.memo(() => {
   const { isAdmin, can } = useCapabilities();
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
-  const handleDummy = useCallback(() => {}, []);
   
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');

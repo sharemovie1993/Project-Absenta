@@ -562,6 +562,12 @@ const server = http.createServer((req, res) => {
     const usesReactQueryOrHook = content.includes('useQuery') || content.includes('useMutation') || /use[A-Z]\w*Options/.test(content);
     const missingDataFetchingOptimization = hasRawEffectDataFetching && !usesReactQueryOrHook;
 
+    // ─── Pilar 32: Standarisasi Cache Invalidation & Sinkronisasi Mutasi (Cache Invalidation Guard) ───
+    const usesHardReload = /window\.location\.reload\s*\(|location\.reload\s*\(/.test(content);
+    const hasMutationOperations = /useMutation\b|\b(api|axios|tenantApi|academicApi)\.(post|put|patch|delete)\b|handleDelete|handleBulkDelete|handleStatusChange|handleToggle/i.test(content);
+    const hasCacheInvalidation = /invalidateQueries|invalidateCache|queryClient|refetch\s*\(|onSuccess\s*:\s*|onSuccess\s*\(|mutateAsync|onComplete/i.test(content);
+    const missingCacheInvalidation = usesHardReload || (hasMutationOperations && !hasCacheInvalidation);
+
     const issues = [];
     if (!isComponentFile && !usesLayout) {
       issues.push('❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)');
@@ -668,6 +674,9 @@ const server = http.createServer((req, res) => {
     if (missingDataFetchingOptimization) {
       issues.push("❌ Terdeteksi penggunaan raw useEffect untuk pengambilan data (Pelanggaran Pilar 31 Optimasi Data Fetching). Wajib dilindungi/migrasi ke React Query (useQuery / useMutation) atau Custom Options Hook terstandar untuk mendukung caching, auto-refetch, dan performa data terpusat.");
     }
+    if (missingCacheInvalidation) {
+      issues.push("❌ Terdeteksi operasi mutasi data tanpa pemanggilan Cache Invalidation atau menggunakan hard reload 'window.location.reload()' (Pelanggaran Pilar 32 Standarisasi Invalidation Cache). Wajib memanggil 'queryClient.invalidateQueries(...)' atau invalidator cache terpusat agar UI otomatis tersinkronisasi tanpa menampilkan data basi.");
+    }
 
     // Buat laporan perintah refaktor instan (Copy-Pasteable Prompt)
     let prompt = `Tolong lakukan refaktor hardening penuh pada halaman ${relativePath} berdasarkan temuan audit arsitektur terbaru:\n\n`;
@@ -715,6 +724,7 @@ const server = http.createServer((req, res) => {
       whitelabelBrandingGuard: isComponentFile ? true : !missingWhitelabelBranding,
       responsiveLayoutAdaptationGuard: isComponentFile ? true : !missingResponsiveAdaptation,
       dataFetchingOptimizationGuard: !missingDataFetchingOptimization,
+      cacheInvalidationGuard: !missingCacheInvalidation,
       usesUiComponents,
       issues,
       refactorPrompt: prompt,

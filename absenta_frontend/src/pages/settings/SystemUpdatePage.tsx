@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { RefreshCw, GitCommit, CheckCircle2, XCircle, Loader2, Terminal, UploadCloud, ShieldCheck, Globe, Database, X } from 'lucide-react';
 import { systemUpdateApi, type UpdateProgress, type UpdateCheckData } from '@/api/systemUpdate.api';
@@ -22,9 +23,9 @@ const STEPS: { key: UpdateProgress['step']; label: string; desc: string }[] = [
 
 function getStepStatus(progress: UpdateProgress | null, stepKey: string) {
   if (!progress) return 'pending';
-  const order = STEPS.map(s => s.key);
-  const currentIdx = order.indexOf(progress.step as any);
-  const stepIdx    = order.indexOf(stepKey as any);
+  const order = STEPS?.map(s => s.key);
+  const currentIdx = order.indexOf(progress.step as Record<string, unknown>);
+  const stepIdx    = order.indexOf(stepKey as Record<string, unknown>);
   if (progress.status === 'failed' && progress.step === stepKey) return 'failed';
   if (currentIdx >  stepIdx) return 'completed';
   if (currentIdx === stepIdx) return 'active';
@@ -32,8 +33,8 @@ function getStepStatus(progress: UpdateProgress | null, stepKey: string) {
 }
 
 const pct = (step: UpdateProgress['step']) => {
-  const order = STEPS.map(s => s.key);
-  const idx   = order.indexOf(step as any);
+  const order = STEPS?.map(s => s.key);
+  const idx   = order.indexOf(step as Record<string, unknown>);
   return idx >= 0 ? Math.round(((idx + 1) / STEPS.length) * 100) : 100;
 };
 
@@ -120,7 +121,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
     countdownRef.current = setInterval(() => {
       c -= 1;
       setCountdown(c);
-      if (c <= 0) { stopCountdown(); window.location.reload(); }
+      if (c <= 0) { stopCountdown(); queryClient.invalidateQueries({ queryKey: ['system-update-status'] }); }
     }, 1000);
   }, []);
 
@@ -279,7 +280,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
 
                   {/* Steps */}
                   <div className="space-y-3">
-                    {STEPS.map(s => {
+                    {STEPS?.map(s => {
                       const st = getStepStatus(progress, s.key);
                       return (
                         <div key={s.key} className="flex items-center gap-3">
@@ -496,7 +497,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
               {/* Data Breakdown Table */}
               <div className="space-y-2">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Rincian Target Data (~91.603 Record)</span>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                     <span className="text-[10px] font-bold text-slate-400 block">Tingkat 1 (Provinsi)</span>
                     <span className="text-sm font-black text-slate-800 dark:text-slate-100">38 Provinsi</span>
@@ -545,7 +546,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
                     } else {
                       toast.error(res.data?.message || 'Gagal memulai sinkronisasi wilayah.');
                     }
-                  } catch (err: any) {
+                  } catch (err: unknown) {
                     toast.error(err?.response?.data?.message || err?.message || 'Gagal memicu sinkronisasi wilayah.');
                   } finally {
                     setSyncingWilayah(false);

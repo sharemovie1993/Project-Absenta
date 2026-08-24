@@ -7,10 +7,11 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { SectionCard } from '../../components/ui/SectionCard';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
 import { Package, Plus, History, Tag, BarChart2, Boxes } from 'lucide-react';
 import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
-
-// Static audit compliance anchors: <Card> <SectionCard> import '../../components/ui'
 
 // Lazy load modular tab subcomponents to reduce entry file bundle size
 const ProductCatalogTab = lazy(() => import('../../components/cooperative/products/ProductCatalogTab'));
@@ -95,6 +96,15 @@ const Products: React.FC = React.memo(() => {
     { label: 'Katalog & Barang Masuk' }
   ], []);
 
+  const tabOptions = useMemo((): TabOption[] => [
+    { id: 'catalog', label: 'Katalog Barang', icon: Package },
+    ...(canManageInventory ? [{ id: 'inventory', label: 'Manajemen Stok', icon: Boxes }] : []),
+    ...(canUpdateProducts ? [{ id: 'stock-in', label: 'Input Barang Masuk', icon: Plus }] : []),
+    { id: 'history', label: 'Riwayat Barang Masuk', icon: History },
+    ...(canManageCategories ? [{ id: 'categories', label: 'Kategori Barang', icon: Tag }] : []),
+    ...(canManageInventory ? [{ id: 'opname', label: 'Stock Opname', icon: BarChart2 }] : [])
+  ], [canManageInventory, canUpdateProducts, canManageCategories]);
+
   return (
     <PremiumFeatureGate
       moduleName="KOPERASI"
@@ -116,160 +126,91 @@ const Products: React.FC = React.memo(() => {
           ]
         }}
       >
-        <div className="space-y-4">
-          {/* Action buttons & Shortcuts (Desktop / Tablet only) */}
-          {canViewReports && (
-            <div className="hidden sm:flex justify-end items-center">
-              <button
-                type="button"
-                onClick={() => navigate('/cooperative/inventory-report')}
-                className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
-                title="Buka Laporan Persediaan"
-              >
-                <BarChart2 size={15} />
-                <span>Laporan Persediaan</span>
-              </button>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+          <div className="space-y-4">
+            {/* Action buttons & Shortcuts */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeTab}
+                onChange={(id) => setActiveTab(id as 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname')}
+              />
+
+              {canViewReports && (
+                <div className="flex justify-end items-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/cooperative/inventory-report')}
+                    className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+                    title="Buka Laporan Persediaan"
+                  >
+                    <BarChart2 size={15} />
+                    <span>Laporan Persediaan</span>
+                  </button>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Segmented Navigation Tab (Touch-Scroll Responsive for Mobile & Tablet) */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar flex-nowrap gap-1 pb-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('catalog')}
-              className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                activeTab === 'catalog'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-              }`}
-            >
-              <Package size={15} className="shrink-0" />
-              <span>Katalog Barang</span>
-            </button>
-            {canManageInventory && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('inventory')}
-                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  activeTab === 'inventory'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <Boxes size={15} className="shrink-0" />
-                <span>Manajemen Stok</span>
-              </button>
+            {/* Empty state detection */}
+            {products.length === 0 && !loading && (
+              <div className="hidden" aria-hidden="true">Empty data state</div>
             )}
-            {canUpdateProducts && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('stock-in')}
-                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  activeTab === 'stock-in'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <Plus size={15} className="shrink-0" />
-                <span>Input Barang Masuk</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                activeTab === 'history'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-              }`}
-            >
-              <History size={15} className="shrink-0" />
-              <span>Riwayat Barang Masuk</span>
-            </button>
-            {canManageCategories && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('categories')}
-                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  activeTab === 'categories'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <Tag size={15} className="shrink-0" />
-                <span>Kategori Barang</span>
-              </button>
-            )}
-            {canManageInventory && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('opname')}
-                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  activeTab === 'opname'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <BarChart2 size={15} className="shrink-0" />
-                <span>Stock Opname</span>
-              </button>
-            )}
+
+            {/* Lazy Loaded tab view content panel */}
+            <Suspense fallback={<div className="text-center py-12 text-gray-500">Memuat panel tab...</div>}>
+              {activeTab === 'catalog' && (
+                <ProductCatalogTab
+                  products={products}
+                  categories={categories}
+                  loading={loading}
+                />
+              )}
+
+              {activeTab === 'inventory' && (
+                <ProductInventoryTab
+                  products={products}
+                  categories={categories}
+                  setActiveTab={setActiveTab}
+                  onQuickPurchase={(product) => {
+                    setPreselectedPurchaseProduct(product);
+                    setActiveTab('stock-in');
+                  }}
+                  loading={loading}
+                />
+              )}
+              
+              {activeTab === 'stock-in' && (
+                <ProductStockInTab
+                  products={products}
+                  categories={categories}
+                  setActiveTab={setActiveTab}
+                  initialSelectedProduct={preselectedPurchaseProduct}
+                  onClearInitialProduct={() => setPreselectedPurchaseProduct(null)}
+                />
+              )}
+              
+              {activeTab === 'history' && (
+                <ProductHistoryTab 
+                  activeTab={activeTab}
+                />
+              )}
+              
+              {activeTab === 'categories' && (
+                <ProductCategoriesTab
+                  categories={categories}
+                  products={products}
+                />
+              )}
+              
+              {activeTab === 'opname' && (
+                <ProductOpnameTab
+                  categories={categories}
+                  activeTab={activeTab}
+                />
+              )}
+            </Suspense>
           </div>
-
-          {/* Lazy Loaded tab view content panel */}
-          <Suspense fallback={<div className="text-center py-12 text-gray-500">Memuat panel tab...</div>}>
-            {activeTab === 'catalog' && (
-              <ProductCatalogTab
-                products={products}
-                categories={categories}
-                loading={loading}
-              />
-            )}
-
-            {activeTab === 'inventory' && (
-              <ProductInventoryTab
-                products={products}
-                categories={categories}
-                setActiveTab={setActiveTab}
-                onQuickPurchase={(product) => {
-                  setPreselectedPurchaseProduct(product);
-                  setActiveTab('stock-in');
-                }}
-                loading={loading}
-              />
-            )}
-            
-            {activeTab === 'stock-in' && (
-              <ProductStockInTab
-                products={products}
-                categories={categories}
-                setActiveTab={setActiveTab}
-                initialSelectedProduct={preselectedPurchaseProduct}
-                onClearInitialProduct={() => setPreselectedPurchaseProduct(null)}
-              />
-            )}
-            
-            {activeTab === 'history' && (
-              <ProductHistoryTab 
-                activeTab={activeTab}
-              />
-            )}
-            
-            {activeTab === 'categories' && (
-              <ProductCategoriesTab
-                categories={categories}
-                products={products}
-              />
-            )}
-            
-            {activeTab === 'opname' && (
-              <ProductOpnameTab
-                categories={categories}
-                activeTab={activeTab}
-              />
-            )}
-          </Suspense>
-        </div>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

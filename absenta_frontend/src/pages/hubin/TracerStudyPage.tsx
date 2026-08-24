@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, lazy, Suspense } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { SectionCard } from '../../components/ui';
 import { Users } from 'lucide-react';
-import { TracerStudySection } from './components/TracerStudySection';
+
+const TracerStudySection = lazy(() => import('./components/TracerStudySection').then(m => ({ default: m.TracerStudySection })));
 
 export const TracerStudyPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
@@ -38,20 +40,25 @@ export const TracerStudyPage: React.FC = React.memo(() => {
       featureName="Tracer Study"
       description="Sistem pelacakan dan survei keterserapan alumni di dunia kerja, wirausaha, maupun pendidikan tinggi."
     >
-      <AcademicPageLayout 
-        title={title}
-        description={description}
-        hardeningModuleKey="hubin_tracer"
-        instruction={{
-          title: "Panduan Tracer Study Alumni",
-          items: instructions
-        }}
-        breadcrumbs={breadcrumbs}
-      >
-        <SectionCard icon={Users} title="Data Tracer Study Alumni" fullWidth>
-          <TracerStudySection />
-        </SectionCard>
-      </AcademicPageLayout>
+      <InfraErrorBoundary>
+        <AcademicPageLayout 
+          title={title}
+          description={description}
+          hardeningModuleKey="hubin_tracer"
+          instruction={{
+            title: "Panduan Tracer Study Alumni",
+            description: "Modul pelacakan keterserapan lulusan di dunia industri, universitas, dan wirausaha.",
+            items: instructions
+          }}
+          breadcrumbs={breadcrumbs}
+        >
+          <SectionCard icon={Users} title="Data Tracer Study Alumni" fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+            <Suspense fallback={<div className="text-center py-20 text-xs text-slate-400">Memuat modul Tracer Study...</div>}>
+              <TracerStudySection />
+            </Suspense>
+          </SectionCard>
+        </AcademicPageLayout>
+      </InfraErrorBoundary>
     </PremiumFeatureGate>
   );
 });

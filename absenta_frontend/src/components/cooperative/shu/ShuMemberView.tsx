@@ -39,7 +39,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
           instruction={memberInstruction}
         >
           <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-650/20 border-t-indigo-650 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
           </div>
         </AcademicPageLayout>
       </PremiumFeatureGate>
@@ -127,7 +127,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
 
           {/* History Table */}
           <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md">
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-150 mb-4">Riwayat Distribusi SHU</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">Riwayat Distribusi SHU</h3>
             {loadingHistory ? (
               <div className="flex items-center justify-center min-h-[150px]">
                 <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -137,10 +137,10 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
                 Belum ada data riwayat penerimaan SHU.
               </div>
             ) : (
-              <div className="overflow-x-auto border border-slate-150 dark:border-slate-800 rounded-2xl">
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-850 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-wider">
                       <th className="p-4 text-center w-12">No</th>
                       <th className="p-4">Tahun Buku</th>
                       <th className="p-4 text-right">Simpanan Modal Saya</th>
@@ -153,7 +153,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
                       <th className="p-4 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {(myHistory || []).map((item, idx) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                         <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
@@ -162,7 +162,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
                         <td className="p-4 text-right font-medium">Rp {Number(item.totalTransaksi).toLocaleString('id-ID')}</td>
                         <td className="p-4 text-right font-medium text-emerald-600 dark:text-emerald-400">Rp {Number(item.jasaModal).toLocaleString('id-ID')}</td>
                         <td className="p-4 text-right font-medium text-sky-600 dark:text-sky-400">Rp {Number(item.jasaTransaksi).toLocaleString('id-ID')}</td>
-                        <td className="p-4 text-right font-extrabold text-indigo-650 dark:text-indigo-400 bg-indigo-500/5">
+                        <td className="p-4 text-right font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
                           Rp {Number(item.totalShu).toLocaleString('id-ID')}
                         </td>
                         <td className="p-4 text-center">

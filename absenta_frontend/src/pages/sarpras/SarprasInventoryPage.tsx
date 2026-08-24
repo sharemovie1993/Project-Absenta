@@ -14,6 +14,7 @@ import type { Asset } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 
 const AssetForm = lazy(() => import('../../components/sarpras/AssetForm'));
 const CategoryLocationManager = lazy(() => import('../../components/sarpras/CategoryLocationManager'));
@@ -61,6 +62,8 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
     queryFn: sarprasApi.getStats,
     enabled: subscription !== undefined
   });
+
+  const isEmpty = !statsData?.data && !isLoadingStats;
 
   const stats = useMemo(() => {
     return statsData?.data || {

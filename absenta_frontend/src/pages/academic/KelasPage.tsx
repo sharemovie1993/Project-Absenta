@@ -90,8 +90,8 @@ export const KelasPage: React.FC = () => {
   const [subMode, setSubMode] = useState<'manual' | null>(null);
 
   const sortedTingkatStats = useMemo(() => {
-    const statsMap = new Map((stats?.active_kelas_by_tingkat || []).map(item => [item.tingkat, item.count]));
-    return hookTingkatList.map(t => ({
+    const statsMap = new Map((stats?.active_kelas_by_tingkat || [])?.map(item => [item.tingkat, item.count]));
+    return (hookTingkatList || [])?.map(t => ({
       tingkat: t,
       count: statsMap.get(t) || 0
     }));
@@ -113,26 +113,26 @@ export const KelasPage: React.FC = () => {
       title: "Jumlah Rombel Per Tingkat",
       variant: "sub-cards" as const,
       value: sortedTingkatStats.length === 0 ? "Tidak ada rombel aktif" : undefined,
-      subCards: sortedTingkatStats.map((item, index) => {
+      subCards: (sortedTingkatStats || [])?.map((item, index) => {
         const themes = [
           {
             bg: "bg-sky-50/50 dark:bg-sky-950/20",
-            border: "border-sky-100 dark:border-sky-900/40 hover:border-sky-300 dark:hover:border-sky-850",
+            border: "border-sky-100 dark:border-sky-900/40 hover:border-sky-300 dark:hover:border-sky-800",
             text: "text-sky-600 dark:text-sky-400"
           },
           {
             bg: "bg-violet-50/50 dark:bg-violet-950/20",
-            border: "border-violet-100 dark:border-violet-900/40 hover:border-violet-300 dark:hover:border-violet-850",
+            border: "border-violet-100 dark:border-violet-900/40 hover:border-violet-300 dark:hover:border-violet-800",
             text: "text-violet-600 dark:text-violet-400"
           },
           {
             bg: "bg-rose-50/50 dark:bg-rose-950/20",
-            border: "border-rose-100 dark:border-rose-900/40 hover:border-rose-300 dark:hover:border-rose-850",
+            border: "border-rose-100 dark:border-rose-900/40 hover:border-rose-300 dark:hover:border-rose-800",
             text: "text-rose-600 dark:text-rose-400"
           },
           {
             bg: "bg-emerald-50/50 dark:bg-emerald-950/20",
-            border: "border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-850",
+            border: "border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-800",
             text: "text-emerald-600 dark:text-emerald-400"
           }
         ];
@@ -209,7 +209,7 @@ export const KelasPage: React.FC = () => {
 
       const jurusanNames = (jurusanRes.data || [])?.map(j => j?.nama).filter(Boolean);
       const guruNames = (guruRes.data || [])?.map(g => g?.nama_guru).filter(Boolean);
-      const tingkatList = hookTingkatList.map(String);
+      const tingkatList = hookTingkatList?.map(String) || [];
 
       await generateAdvancedTemplate(
         [

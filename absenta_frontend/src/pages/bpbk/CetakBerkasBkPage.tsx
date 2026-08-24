@@ -1,20 +1,28 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { bpbkApi } from '../../api/bpbk.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { Card } from '../../components/ui/Card';
+import { formatDate } from '../../utils/layoutUtils';
 
 export const CetakBerkasBkPage: React.FC = React.memo(() => {
   const { isBpbk, isAdmin, can } = useCapabilities();
-  const docOptions: DocOption[] = [
+  const docOptions: DocOption[] = useMemo(() => [
     { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
     { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true },
     { value: 'student_attendance_card', label: '3. KARTU KONTROL KEHADIRAN SISWA TERBINA (BK)', requireClass: true },
     { value: 'bk_minutes', label: '4. BERITA ACARA PERTEMUAN WALI SISWA (BK)', requireClass: true },
     { value: 'bk_statement', label: '5. SURAT PERNYATAAN / PERJANJIAN WALI SISWA (BK)', requireClass: true }
-  ];
+  ], []);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'BP/BK', path: '/bpbk/dashboard' },
+    { label: 'Cetak Berkas' }
+  ], []);
 
   return (
     <PremiumFeatureGate
@@ -22,14 +30,14 @@ export const CetakBerkasBkPage: React.FC = React.memo(() => {
       featureName="Cetak Berkas BK"
       description="Buat dan cetak kartu layanan BK, laporan perkembangan, surat pemanggilan, kartu kontrol kehadiran, dan berita acara secara otomatis."
     >
-      <CetakBerkasTemplate
-        module="bpbk"
-        title="Cetak Berkas BK"
-        description="Buat dan cetak kartu layanan BK, laporan perkembangan, dan surat pemanggilan secara otomatis."
-        breadcrumbs={[
-          { label: 'BP/BK', path: '/bpbk/dashboard' },
-          { label: 'Cetak Berkas' }
-        ]}
+      <InfraErrorBoundary>
+        <Card className="border-none shadow-none bg-transparent">
+          <CetakBerkasTemplate
+            module="bpbk"
+            title="Cetak Berkas BK"
+            description="Buat dan cetak kartu layanan BK, laporan perkembangan, dan surat pemanggilan secara otomatis."
+            breadcrumbs={breadcrumbs}
+            hardeningModuleKey="cetak_berkas_bk"
         instruction={{
           title: "Panduan Cetak Berkas BK",
           description: (
@@ -129,7 +137,11 @@ export const CetakBerkasBkPage: React.FC = React.memo(() => {
             filterData: { counselings, selectedStudent, classes, students }
           });
         }}
-      />
+          />
+        </Card>
+      </InfraErrorBoundary>
     </PremiumFeatureGate>
   );
 });
+
+export default CetakBerkasBkPage;

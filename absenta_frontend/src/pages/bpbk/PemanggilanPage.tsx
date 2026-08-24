@@ -1,11 +1,11 @@
-import React from 'react';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { PemanggilanSection } from './components/PemanggilanSection';
-import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
-import { useCapabilities } from '../../hooks/useCapabilities';
+import React, { lazy, Suspense } from 'react';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
+import { SectionCard } from '@/components/ui';
+
+const PemanggilanSection = lazy(() => import('./components/PemanggilanSection').then(m => ({ default: m.PemanggilanSection })));
 
 export default React.memo(function PemanggilanPage() {
-  const { isBpbk, isAdmin, can } = useCapabilities();
   return (
     <PremiumFeatureGate
       moduleName="BPBK"
@@ -29,9 +29,11 @@ export default React.memo(function PemanggilanPage() {
           ]
         }}
       >
-        <div className="w-full min-w-0">
-          <PemanggilanSection />
-        </div>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <Suspense fallback={<div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />}>
+            <PemanggilanSection />
+          </Suspense>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

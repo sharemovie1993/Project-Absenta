@@ -133,7 +133,7 @@ export const PrestasiSection: React.FC = React.memo(() => {
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || 'Koneksi bermasalah');
     }
   }, [confirm, queryClient, refetch]);
@@ -169,7 +169,7 @@ export const PrestasiSection: React.FC = React.memo(() => {
       setModalOpen(false);
       resetForm();
       refetch();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || 'Gagal menyimpan catatan prestasi');
     }
   }, [selectedId, formData, queryClient, refetch, resetForm]);
@@ -389,7 +389,7 @@ export const PrestasiSection: React.FC = React.memo(() => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Perolehan</Label>
                 <Input

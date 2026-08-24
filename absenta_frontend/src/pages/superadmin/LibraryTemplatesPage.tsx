@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Library,
@@ -15,14 +16,30 @@ import {
   TrendingUp,
   RefreshCw,
   CheckCircle,
-  X,
-  Filter
+  Filter,
+  Loader2
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Card, Button, Badge, Modal } from '../../components/ui';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { Card, SectionCard, Button, Badge, SearchableSelect } from '../../components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
+
+// Lazy load modal (Pilar 13)
+const LibraryTemplateModal = lazy(() => import('./components/LibraryTemplateModal'));
+
+// Zod Schema Validation Guard (Pilar 25)
+const templateFormSchema = z.object({
+  jenjang: z.string().min(1, 'Jenjang wajib dipilih'),
+  nama_mapel: z.string().min(2, 'Nama mata pelajaran minimal 2 karakter'),
+  judul: z.string().min(3, 'Judul template minimal 3 karakter'),
+  jenis: z.string().min(1, 'Jenis dokumen wajib dipilih'),
+  tingkat: z.number(),
+  fase: z.string(),
+  topik: z.string().min(2, 'Topik wajib diisi'),
+});
 
 interface LibraryTemplate {
   id: string;
@@ -60,64 +77,10 @@ const JENJANG_OPTIONS = [
   { label: 'Umum / All', value: 'ALL' },
 ];
 
-export const JENJANG_TINGKAT_MAP: Record<string, Array<{ tingkat: number; label: string; fase: string }>> = {
-  PAUD: [{ tingkat: 0, label: 'PAUD / TK (Fase PAUD)', fase: 'PAUD' }],
-  SD: [
-    { tingkat: 1, label: 'Kelas 1 (Fase A)', fase: 'A' },
-    { tingkat: 2, label: 'Kelas 2 (Fase A)', fase: 'A' },
-    { tingkat: 3, label: 'Kelas 3 (Fase B)', fase: 'B' },
-    { tingkat: 4, label: 'Kelas 4 (Fase B)', fase: 'B' },
-    { tingkat: 5, label: 'Kelas 5 (Fase C)', fase: 'C' },
-    { tingkat: 6, label: 'Kelas 6 (Fase C)', fase: 'C' },
-  ],
-  SMP: [
-    { tingkat: 7, label: 'Kelas 7 / VII (Fase D)', fase: 'D' },
-    { tingkat: 8, label: 'Kelas 8 / VIII (Fase D)', fase: 'D' },
-    { tingkat: 9, label: 'Kelas 9 / IX (Fase D)', fase: 'D' },
-  ],
-  SMA: [
-    { tingkat: 10, label: 'Kelas 10 / X (Fase E)', fase: 'E' },
-    { tingkat: 11, label: 'Kelas 11 / XI (Fase F)', fase: 'F' },
-    { tingkat: 12, label: 'Kelas 12 / XII (Fase F)', fase: 'F' },
-  ],
-  SMK: [
-    { tingkat: 10, label: 'Kelas 10 / X (Fase E)', fase: 'E' },
-    { tingkat: 11, label: 'Kelas 11 / XI (Fase F)', fase: 'F' },
-    { tingkat: 12, label: 'Kelas 12 / XII (Fase F)', fase: 'F' },
-    { tingkat: 13, label: 'Kelas 13 / XIII (Fase F)', fase: 'F' },
-  ],
-  SLB: [
-    { tingkat: 1, label: 'Kelas 1 (Fase A)', fase: 'A' },
-    { tingkat: 2, label: 'Kelas 2 (Fase A)', fase: 'A' },
-    { tingkat: 3, label: 'Kelas 3 (Fase B)', fase: 'B' },
-    { tingkat: 4, label: 'Kelas 4 (Fase B)', fase: 'B' },
-    { tingkat: 5, label: 'Kelas 5 (Fase C)', fase: 'C' },
-    { tingkat: 6, label: 'Kelas 6 (Fase C)', fase: 'C' },
-    { tingkat: 7, label: 'Kelas 7 (Fase D)', fase: 'D' },
-    { tingkat: 8, label: 'Kelas 8 (Fase D)', fase: 'D' },
-    { tingkat: 9, label: 'Kelas 9 (Fase D)', fase: 'D' },
-    { tingkat: 10, label: 'Kelas 10 (Fase E)', fase: 'E' },
-    { tingkat: 11, label: 'Kelas 11 (Fase F)', fase: 'F' },
-    { tingkat: 12, label: 'Kelas 12 (Fase F)', fase: 'F' },
-  ],
-  ALL: [
-    { tingkat: 1, label: 'Kelas 1 (Fase A)', fase: 'A' },
-    { tingkat: 2, label: 'Kelas 2 (Fase A)', fase: 'A' },
-    { tingkat: 3, label: 'Kelas 3 (Fase B)', fase: 'B' },
-    { tingkat: 4, label: 'Kelas 4 (Fase B)', fase: 'B' },
-    { tingkat: 5, label: 'Kelas 5 (Fase C)', fase: 'C' },
-    { tingkat: 6, label: 'Kelas 6 (Fase C)', fase: 'C' },
-    { tingkat: 7, label: 'Kelas 7 / VII (Fase D)', fase: 'D' },
-    { tingkat: 8, label: 'Kelas 8 / VIII (Fase D)', fase: 'D' },
-    { tingkat: 9, label: 'Kelas 9 / IX (Fase D)', fase: 'D' },
-    { tingkat: 10, label: 'Kelas 10 / X (Fase E)', fase: 'E' },
-    { tingkat: 11, label: 'Kelas 11 / XI (Fase F)', fase: 'F' },
-    { tingkat: 12, label: 'Kelas 12 / XII (Fase F)', fase: 'F' },
-  ]
-};
+import { JENJANG_TINGKAT_MAP } from './constants/kurikulumConstants';
+export { JENJANG_TINGKAT_MAP };
 
-
-export function LibraryTemplatesPage() {
+export const LibraryTemplatesPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
@@ -138,38 +101,28 @@ export function LibraryTemplatesPage() {
     jenis: 'MODUL_AJAR',
     judul: '',
     topik: '',
-    html_content: ''
   });
 
-  // Query Data
-  const { data: libraryData, isLoading, isRefetching } = useQuery({
-    queryKey: ['superadmin-library-templates', selectedJenjang, selectedJenis, searchQuery],
-    queryFn: () => kurikulumApi.getLibraryTemplates({
-      jenjang: selectedJenjang || undefined,
-      jenis: selectedJenis || undefined,
-      search: searchQuery || undefined
-    })
+  // Query Templates
+  const { data: templates = [], isLoading, refetch } = useQuery<LibraryTemplate[]>({
+    queryKey: ['admin-library-templates', selectedJenjang, selectedJenis, searchQuery],
+    queryFn: async () => {
+      const res = await kurikulumApi.getLibraryTemplates({
+        jenjang: selectedJenjang || undefined,
+        jenis: selectedJenis || undefined,
+        search: searchQuery || undefined
+      });
+      return (res.data || []) as LibraryTemplate[];
+    }
   });
-
-  const templates: LibraryTemplate[] = libraryData?.data ?? [];
-
-  // Analytics Stats
-  const stats = useMemo(() => {
-    const total = templates.length;
-    const totalDownloads = templates.reduce((acc, curr) => acc + (curr.downloads_count || 0), 0);
-    const mapelCount = new Set(templates.map((t) => t.nama_mapel)).size;
-    const modulAjarCount = templates.filter((t) => t.jenis === 'MODUL_AJAR').length;
-    return { total, totalDownloads, mapelCount, modulAjarCount };
-  }, [templates]);
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: typeof formState) => kurikulumApi.createLibraryTemplate(data),
+    mutationFn: kurikulumApi.createLibraryTemplate,
     onSuccess: () => {
-      toast.success('Template Bank Library Nasional berhasil ditambahkan!');
+      toast.success('Template berhasil ditambahkan ke Perpusnas!');
       setIsModalOpen(false);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ['superadmin-library-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-library-templates'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menambahkan template';
@@ -178,13 +131,12 @@ export function LibraryTemplatesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (vars: { id: string; data: Partial<typeof formState> }) =>
-      kurikulumApi.updateLibraryTemplate(vars.id, vars.data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<LibraryTemplate> }) =>
+      kurikulumApi.updateLibraryTemplate(id, data),
     onSuccess: () => {
-      toast.success('Template Bank Library berhasil diperbarui!');
+      toast.success('Template berhasil diperbarui!');
       setIsModalOpen(false);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ['superadmin-library-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-library-templates'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal memperbarui template';
@@ -193,10 +145,10 @@ export function LibraryTemplatesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => kurikulumApi.deleteLibraryTemplate(id),
+    mutationFn: kurikulumApi.deleteLibraryTemplate,
     onSuccess: () => {
-      toast.success('Template berhasil dihapus dari Bank Katalog Library');
-      queryClient.invalidateQueries({ queryKey: ['superadmin-library-templates'] });
+      toast.success('Template berhasil dihapus dari perpusnas');
+      queryClient.invalidateQueries({ queryKey: ['admin-library-templates'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus template';
@@ -204,7 +156,7 @@ export function LibraryTemplatesPage() {
     }
   });
 
-  const resetForm = () => {
+  const handleOpenCreate = useCallback(() => {
     setEditingItem(null);
     setFormState({
       jenjang: 'SMK',
@@ -215,16 +167,11 @@ export function LibraryTemplatesPage() {
       jenis: 'MODUL_AJAR',
       judul: '',
       topik: '',
-      html_content: ''
     });
-  };
-
-  const handleOpenAdd = () => {
-    resetForm();
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenEdit = (item: LibraryTemplate) => {
+  const handleOpenEdit = useCallback((item: LibraryTemplate) => {
     setEditingItem(item);
     setFormState({
       jenjang: item.jenjang || 'SMK',
@@ -235,388 +182,282 @@ export function LibraryTemplatesPage() {
       jenis: item.jenis || 'MODUL_AJAR',
       judul: item.judul || '',
       topik: item.topik || '',
-      html_content: ''
     });
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id: string, judul: string) => {
+  const handleDelete = useCallback(async (item: LibraryTemplate) => {
     const ok = await confirm({
-      title: 'Hapus Template Library',
-      message: `Apakah Anda yakin ingin menghapus template "${judul}" dari Bank Katalog Nasional?`,
-      confirmText: 'Hapus Master',
+      title: 'Hapus Template Master',
+      description: `Apakah Anda yakin ingin menghapus template "${item.judul}" dari repositori nasional?`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
       style: 'danger'
     });
     if (ok) {
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(item.id);
     }
-  };
+  }, [confirm, deleteMutation]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    const parsed = templateFormSchema.safeParse(formState);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Data form belum valid');
+      return;
+    }
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data: formState });
     } else {
       createMutation.mutate(formState);
     }
-  };
+  }, [formState, editingItem, createMutation, updateMutation]);
+
+  // Analytics Stats
+  const totalDownloads = useMemo(() => {
+    return (templates ?? []).reduce((acc, curr) => acc + (curr.downloads_count || 0), 0);
+  }, [templates]);
+
+  const totalModul = useMemo(() => {
+    return (templates ?? []).filter(t => t.jenis === 'MODUL_AJAR').length;
+  }, [templates]);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Platform Kurikulum' },
+    { label: 'Perpustakaan Template Modul Nasional' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Panduan Perpustakaan Template Nasional',
+    description: 'Pusat repositori master RPP, Modul Ajar, ATP, PROTA, dan PROMES Kurikulum Merdeka untuk guru di seluruh Indonesia.',
+    items: [
+      { text: 'Template yang ditambahkan di halaman ini akan otomatis muncul di modul perangkat ajar setiap guru.' },
+      { text: 'Guru dapat mengunduh atau menyalin template secara instan untuk disesuaikan dengan kondisi sekolah.' },
+      { text: 'Pastikan jenjang, fase, dan tingkat kelas terisi dengan akurat sesuai standar Permendikbudristek.' }
+    ]
+  }), []);
+
+  const modalJenjangOptions = useMemo(() => [
+    { value: 'PAUD', label: 'PAUD / TK' },
+    { value: 'SD', label: 'SD / MI' },
+    { value: 'SMP', label: 'SMP / MTs' },
+    { value: 'SMA', label: 'SMA / MA' },
+    { value: 'SMK', label: 'SMK / MAK' },
+    { value: 'SLB', label: 'SLB' },
+    { value: 'ALL', label: 'Umum / All' },
+  ], []);
+
+  const modalJenisOptions = useMemo(() => [
+    { value: 'MODUL_AJAR', label: 'Modul Ajar' },
+    { value: 'ATP', label: 'ATP (Alur Tujuan Pembelajaran)' },
+    { value: 'MODUL_PROJEK', label: 'Modul Projek (P5)' },
+    { value: 'PROTA', label: 'Program Tahunan (PROTA)' },
+    { value: 'PROMES', label: 'Program Semester (PROMES)' },
+    { value: 'KKTP', label: 'KKTP' },
+  ], []);
+
+  const tingkatOptions = useMemo(() => {
+    const list = JENJANG_TINGKAT_MAP[formState.jenjang] || JENJANG_TINGKAT_MAP['SMK'];
+    return (list ?? [])?.map(opt => ({ value: String(opt.tingkat), label: opt.label }));
+  }, [formState.jenjang]);
 
   return (
-    <AcademicPageLayout
-      title="Bank Katalog Library Nasional"
-      subtitle="Manajemen Master Katalog Berkas Perangkat Ajar & Template AI Seluruh Sekolah (Superadmin Level)"
-      icon={Library}
-      actions={
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['superadmin-library-templates'] })}
-            className="rounded-xl font-bold"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            Segarkan
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleOpenAdd}
-            className="rounded-xl font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Tambah Master Template
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 text-white border-0 shadow-lg shadow-violet-500/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-violet-100 uppercase tracking-wider">Total Master Template</p>
-                <h3 className="text-2xl font-black mt-1">{stats.total} Dokumen</h3>
-              </div>
-              <div className="p-3 bg-white/15 rounded-xl backdrop-blur-md">
-                <Library className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0 shadow-lg shadow-emerald-500/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-emerald-100 uppercase tracking-wider">Total Adopsi Guru</p>
-                <h3 className="text-2xl font-black mt-1">{stats.totalDownloads} Kali Adopsi</h3>
-              </div>
-              <div className="p-3 bg-white/15 rounded-xl backdrop-blur-md">
-                <Download className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-gradient-to-br from-indigo-500 to-blue-600 text-white border-0 shadow-lg shadow-indigo-500/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-indigo-100 uppercase tracking-wider">Cakupan Mapel</p>
-                <h3 className="text-2xl font-black mt-1">{stats.mapelCount} Mata Pelajaran</h3>
-              </div>
-              <div className="p-3 bg-white/15 rounded-xl backdrop-blur-md">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white border-0 shadow-lg shadow-amber-500/10 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-amber-100 uppercase tracking-wider">Modul Ajar Master</p>
-                <h3 className="text-2xl font-black mt-1">{stats.modulAjarCount} Berkas</h3>
-              </div>
-              <div className="p-3 bg-white/15 rounded-xl backdrop-blur-md">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Filter Controls Bar */}
-        <Card className="p-4 rounded-2xl space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari judul template, mapel, atau topik..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none"
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Repositori Template Perangkat Ajar Nasional"
+        description="Kelola master bank modul ajar, ATP, PROTA, PROMES, dan perangkat kurikulum resmi siap unduh."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="library_templates_page"
+        instruction={instruction}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6 pb-12 w-full min-w-0 max-w-full">
+            {/* Top Analytics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full min-w-0 max-w-full">
+              <AnalyticsCard
+                title="Total Template Tersedia"
+                value={templates.length}
+                icon={<BookOpen className="w-5 h-5 text-white" />}
+                gradient="from-violet-600 to-indigo-700 text-white"
+                subtitle="Master dokumen di perpusnas"
+              />
+              <AnalyticsCard
+                title="Total Modul Ajar"
+                value={totalModul}
+                icon={<FileText className="w-5 h-5 text-white" />}
+                gradient="from-blue-600 to-cyan-700 text-white"
+                subtitle="Perangkat berbasis aktivitas"
+              />
+              <AnalyticsCard
+                title="Total Unduhan Guru"
+                value={totalDownloads}
+                icon={<Download className="w-5 h-5 text-white" />}
+                gradient="from-emerald-600 to-teal-700 text-white"
+                subtitle="Dimanfaatkan oleh guru sekolah"
               />
             </div>
 
-            <select
-              value={selectedJenjang}
-              onChange={(e) => setSelectedJenjang(e.target.value)}
-              className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none font-bold"
-            >
-              {JENJANG_OPTIONS.map((j) => (
-                <option key={j.value} value={j.value}>
-                  {j.label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedJenis}
-              onChange={(e) => setSelectedJenis(e.target.value)}
-              className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none font-bold"
-            >
-              {JENIS_OPTIONS.map((j) => (
-                <option key={j.value} value={j.value}>
-                  {j.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </Card>
-
-        {/* Data Table */}
-        <Card className="p-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          {isLoading ? (
-            <div className="p-12 text-center text-xs text-slate-500 font-bold">Memuat Katalog Library Nasional...</div>
-          ) : templates.length === 0 ? (
-            <div className="p-12 text-center space-y-2">
-              <Library className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
-              <p className="text-sm font-bold text-slate-600 dark:text-slate-400">Belum ada template master di Katalog Library</p>
-              <p className="text-xs text-slate-400">Klik "Tambah Master Template" untuk mendaftarkan berkas Kurikulum Merdeka nasional.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="p-4">Dokumen & Judul Template</th>
-                    <th className="p-4">Jenjang & Mapel</th>
-                    <th className="p-4">Jenis Perangkat</th>
-                    <th className="p-4">Tingkat / Fase</th>
-                    <th className="p-4 text-center">Statistik Adopsi</th>
-                    <th className="p-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                  {templates.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
-                      <td className="p-4 font-bold text-slate-800 dark:text-slate-200 max-w-xs">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-violet-500 shrink-0" />
-                          <span className="truncate">{item.judul}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-slate-700 dark:text-slate-300 block">{item.nama_mapel}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">
-                            {item.jenjang || 'ALL'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300 font-bold text-[10px]">
-                          {item.jenis}
-                        </Badge>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-bold text-slate-600 dark:text-slate-400">
-                          {item.tingkat ? `Kelas ${item.tingkat}` : '-'} {item.fase ? `(Fase ${item.fase})` : ''}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-                          <Download size={13} /> {item.downloads_count || 0} x
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenEdit(item)}
-                            className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-slate-900 dark:hover:text-slate-200"
-                            title="Edit Master Template"
-                          >
-                            <Edit size={14} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(item.id, item.judul)}
-                            className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                            title="Hapus Template"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        {/* Modal Form Tambah / Edit */}
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          title={editingItem ? 'Edit Master Template Library' : 'Tambah Master Template Library Baru'}
-          size="lg"
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Jenjang Pendidikan <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formState.jenjang}
-                  onChange={(e) => setFormState({ ...formState, jenjang: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none font-bold"
-                >
-                  <option value="PAUD">PAUD / TK</option>
-                  <option value="SD">SD / MI</option>
-                  <option value="SMP">SMP / MTs</option>
-                  <option value="SMA">SMA / MA</option>
-                  <option value="SMK">SMK / MAK</option>
-                  <option value="SLB">SLB</option>
-                  <option value="ALL">Semua / General</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Jenis Perangkat <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formState.jenis}
-                  onChange={(e) => setFormState({ ...formState, jenis: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none font-bold"
-                >
-                  <option value="MODUL_AJAR">Modul Ajar</option>
-                  <option value="ATP">ATP (Alur Tujuan Pembelajaran)</option>
-                  <option value="MODUL_PROJEK">Modul Projek (P5)</option>
-                  <option value="PROTA">Program Tahunan (PROTA)</option>
-                  <option value="PROMES">Program Semester (PROMES)</option>
-                  <option value="KKTP">KKTP</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nama Mata Pelajaran <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formState.nama_mapel}
-                  onChange={(e) => setFormState({ ...formState, nama_mapel: e.target.value })}
-                  placeholder="Contoh: Pemrograman Web / Bahasa Indonesia"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none"
+            {/* Filter and Action Bar */}
+            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full min-w-0 max-w-full">
+              <div className="flex-1 relative max-w-md w-full min-w-0">
+                <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  id="search-library-template"
+                  aria-label="Cari mata pelajaran, topik, atau judul template"
+                  placeholder="Cari mata pelajaran, topik, atau judul..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-xl text-xs w-full"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Judul Template Dokumen <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formState.judul}
-                  onChange={(e) => setFormState({ ...formState, judul: e.target.value })}
-                  placeholder="Contoh: Modul Ajar RESTful API Frontend React"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Tingkat Kelas <span className="text-rose-500">*</span>
-                </label>
-                {(() => {
-                  const options = JENJANG_TINGKAT_MAP[formState.jenjang] || JENJANG_TINGKAT_MAP['SMK'];
-                  return (
-                    <select
-                      value={formState.tingkat}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        const match = options.find((o) => o.tingkat === val);
-                        setFormState({
-                          ...formState,
-                          tingkat: val,
-                          fase: match?.fase || formState.fase
-                        });
-                      }}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none font-bold"
-                    >
-                      {options.map((opt) => (
-                        <option key={opt.tingkat} value={opt.tingkat}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  );
-                })()}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Fase Kurikulum Merdeka (Otomatis)
-                </label>
-                <div className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 font-bold text-violet-700 dark:text-violet-300 flex items-center justify-between">
-                  <span>Fase {formState.fase || 'E'}</span>
-                  <Badge className="bg-violet-200 dark:bg-violet-900 text-violet-900 dark:text-violet-200 text-[10px]">
-                    Auto-Sync Jenjang
-                  </Badge>
+              <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                <div className="w-40">
+                  <SearchableSelect
+                    id="filter-jenjang-library"
+                    aria-label="Filter Jenjang Sekolah"
+                    value={selectedJenjang}
+                    onValueChange={setSelectedJenjang}
+                    options={JENJANG_OPTIONS}
+                    placeholder="Semua Jenjang"
+                  />
                 </div>
+
+                <div className="w-44">
+                  <SearchableSelect
+                    id="filter-jenis-library"
+                    aria-label="Filter Jenis Perangkat"
+                    value={selectedJenis}
+                    onValueChange={setSelectedJenis}
+                    options={JENIS_OPTIONS}
+                    placeholder="Semua Jenis"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  className="rounded-xl"
+                >
+                  <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="toolbarPrimary"
+                  size="toolbar"
+                  onClick={handleOpenCreate}
+                  className="rounded-xl font-bold bg-violet-600 hover:bg-violet-700 text-white"
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  Tambah Template
+                </Button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Topik / Pokok Bahasan Utama <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formState.topik}
-                onChange={(e) => setFormState({ ...formState, topik: e.target.value })}
-                placeholder="Contoh: REST API & State Management"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-violet-500 outline-none"
-              />
-            </div>
+            {/* List Templates Grid */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20 text-xs text-slate-400 gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-600" /> Memuat katalog perpusnas...
+              </div>
+            ) : templates.length === 0 ? (
+              <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent flex flex-col items-center justify-center space-y-3 rounded-2xl w-full min-w-0 max-w-full">
+                <Library size={48} className="text-slate-300 dark:text-slate-700" />
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">Tidak Ada Template Ditemukan</h4>
+                <p className="text-xs text-slate-400 max-w-sm">
+                  {searchQuery ? 'Tidak ada hasil yang sesuai dengan kriteria filter.' : 'Belum ada master template perangkat ajar terdaftar.'}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full min-w-0 max-w-full">
+                {(templates ?? [])?.map((item) => (
+                  <Card
+                    key={item.id}
+                    className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all bg-white dark:bg-slate-900 flex flex-col justify-between group w-full min-w-0 max-w-full"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 border-none font-bold text-[10px]">
+                          {item.jenis.replace('_', ' ')}
+                        </Badge>
+                        <span className="text-[10px] font-mono font-bold text-slate-400">
+                          Jenjang {item.jenjang} • Fase {item.fase || 'E'}
+                        </span>
+                      </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-xl font-bold">
-                BATAL
-              </Button>
-              <Button
-                type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="rounded-xl font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20"
-              >
-                {editingItem ? 'SIMPAN PERUBAHAN' : 'TAMBAH TEMPLATE'}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      </div>
-    </AcademicPageLayout>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-violet-600 transition-colors line-clamp-2">
+                          {item.judul}
+                        </h4>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mt-1">
+                          Mapel: {item.nama_mapel}
+                        </span>
+                      </div>
+
+                      {item.topik && (
+                        <p className="text-[11px] text-slate-400 line-clamp-2 bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                          Topik: {item.topik}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                        <Download size={13} className="text-emerald-500" />
+                        <span>{item.downloads_count || 0} Unduhan</span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEdit(item)}
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-violet-600 rounded-lg"
+                        >
+                          <Edit size={13} />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item)}
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-lg"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* Lazy Loaded Modal */}
+        {isModalOpen && (
+          <Suspense fallback={null}>
+            <LibraryTemplateModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              isEditing={Boolean(editingItem)}
+              formState={formState}
+              setFormState={setFormState}
+              jenjangOptions={modalJenjangOptions}
+              jenisOptions={modalJenisOptions}
+              tingkatOptions={tingkatOptions}
+              onSubmit={handleSubmit}
+              isPending={createMutation.isPending || updateMutation.isPending}
+            />
+          </Suspense>
+        )}
+      </AcademicPageLayout>
+    </InfraErrorBoundary>
   );
-}
+});
 
 export default LibraryTemplatesPage;

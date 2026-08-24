@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, AlertDescription, AlertTitle, Badge, Loader, Table, SectionCard, Button } from '@/components/ui';
+import { Alert, AlertDescription, AlertTitle, Badge, Table, SectionCard, Button, type Column } from '@/components/ui';
 import { SuperAdminPageLayout } from '../../../components/layout/SuperAdminPageLayout';
-import { TrendingUp, Coins, BarChart3, RefreshCcw, Search } from 'lucide-react';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { TrendingUp, Coins, BarChart3, RefreshCcw, Search, Loader2 } from 'lucide-react';
 import { superadminIntelligenceApi } from '@/api/superadmin-intelligence.api';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { formatDate } from '@/utils/layoutUtils';
 
 interface CohortRow {
   cohort_month: string;
@@ -16,12 +18,22 @@ interface CohortRow {
   revenue_generated?: number;
 }
 
+interface ForecastData {
+  month?: string;
+  current_mrr?: number;
+  forecast_mrr?: number;
+  risk_adjusted_forecast?: number;
+  forecast_arr?: number;
+  projected_churn_loss?: number;
+  projected_upgrade_gain?: number;
+  risk_loss?: number;
+}
+
 function formatMonthLabel(raw: string | Date | null | undefined): string {
   if (!raw) return '-';
-  const d = typeof raw === 'string' ? new Date(raw) : raw;
   try {
-    return d.toISOString().slice(0, 7);
-  } catch (e) {
+    return formatDate(raw);
+  } catch {
     return '-';
   }
 }
@@ -43,7 +55,7 @@ function RetentionBadge({ retained, total }: { retained: number; total: number }
   return <Badge variant="warning">{formatPct(pct)}</Badge>;
 }
 
-function RevenueIntelligenceContent() {
+export const RevenueIntelligencePage: React.FC = React.memo(() => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -52,7 +64,7 @@ function RevenueIntelligenceContent() {
     queryKey: ['superadmin', 'analytics', 'revenue-forecast'],
     queryFn: async () => {
       const res = await superadminIntelligenceApi.getRevenueForecast();
-      return res.data;
+      return (res.data || {}) as ForecastData;
     },
   });
 
@@ -60,7 +72,7 @@ function RevenueIntelligenceContent() {
     queryKey: ['superadmin', 'analytics', 'cohort', 24],
     queryFn: async () => {
       const res = await superadminIntelligenceApi.getCohortRetention(24);
-      return res.data as CohortRow[];
+      return (res.data || []) as CohortRow[];
     },
   });
 
@@ -70,7 +82,7 @@ function RevenueIntelligenceContent() {
   const cohorts = useMemo(() => cohortQuery.data || [], [cohortQuery.data]);
 
   const statsData = useMemo(() => {
-    const data = forecastQuery.data as any;
+    const data = forecastQuery.data;
     const currentMrr = Number(data?.current_mrr || 0);
     const forecastMrr = Number(data?.forecast_mrr || 0);
     const riskAdjusted = Number(data?.risk_adjusted_forecast || 0);
@@ -125,9 +137,9 @@ function RevenueIntelligenceContent() {
   const sortedCohorts = useMemo(() => {
     const items = [...(cohorts ?? [])];
     if (sortConfig) {
-      items.sort((a: any, b: any) => {
-        const valA = a[sortConfig.key];
-        const valB = b[sortConfig.key];
+      items.sort((a, b) => {
+        const valA = a[sortConfig.key as keyof CohortRow] ?? '';
+        const valB = b[sortConfig.key as keyof CohortRow] ?? '';
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -138,9 +150,10 @@ function RevenueIntelligenceContent() {
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return (sortedCohorts ?? []).slice(start, start + pageSize).map((c) => {
+    return (sortedCohorts ?? []).slice(start, start + pageSize)?.map((c) => {
       const total = Number(c.active_count || 0);
       return {
+        id: c.cohort_month,
         cohort_month: formatMonthLabel(c.cohort_month),
         active_count: total,
         r1: <RetentionBadge retained={Number(c.retained_after_1_month || 0)} total={total} />,
@@ -164,50 +177,15 @@ function RevenueIntelligenceContent() {
     cohortQuery.refetch();
   }, [forecastQuery, cohortQuery]);
 
-  if (anyLoading && !forecastQuery.data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader size="lg" />
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Menganalisis Data Pendapatan...</p>
-      </div>
-    );
-  }
-
-  if (anyError) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive" className="rounded-xl border-2">
-          <AlertTitle className="font-black uppercase tracking-tight">Gagal memuat Analisis & Proyeksi</AlertTitle>
-          <AlertDescription className="font-medium">Sistem kecerdasan bisnis sedang mengalami gangguan teknis. Periksa koneksi atau coba ulang beberapa saat lagi.</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (!forecastQuery.data && !cohortQuery.data && !anyLoading) {
-    return (
-      <SuperAdminPageLayout
-        hardeningModuleKey="superadmin_revenue_intelligence"
-        title="Perencanaan & Proyeksi Pendapatan"
-        description="Belum ada data analisis yang tersedia untuk periode ini."
-        breadcrumbs={[
-          { label: 'Analisis & Kecerdasan Bisnis' },
-          { label: 'Perencanaan Pendapatan' }
-        ]}
-      >
-        <div className="flex flex-col items-center justify-center min-h-[40vh] p-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
-           <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4 text-slate-400">
-              <Search size={32} />
-           </div>
-           <h3 className="text-xl font-bold mb-2">Data Tidak Ditemukan</h3>
-           <p className="text-slate-500 max-w-xs mx-auto mb-6">Maaf, kami tidak menemukan data pendapatan untuk dianalisis saat ini.</p>
-           <Button onClick={handleRefresh} variant="outline" className="rounded-xl">
-              <RefreshCcw size={16} className="mr-2" /> Segarkan Data
-           </Button>
-        </div>
-      </SuperAdminPageLayout>
-    );
-  }
+  const tableColumns: Column[] = useMemo(() => [
+    { key: 'cohort_month', label: 'Periode Mulai', sortable: true },
+    { key: 'active_count', label: 'Sekolah Aktif', sortable: true },
+    { key: 'r1', label: 'R+1 Bulan', align: 'center' },
+    { key: 'r3', label: 'R+3 Bulan', align: 'center' },
+    { key: 'r6', label: 'R+6 Bulan', align: 'center' },
+    { key: 'r12', label: 'R+12 Bulan', align: 'center' },
+    { key: 'revenue_generated', label: 'LTV (12 Bln)', align: 'right', sortable: true },
+  ], []);
 
   const instruction = useMemo(() => ({
     title: 'Panduan Revenue Intelligence',
@@ -220,138 +198,169 @@ function RevenueIntelligenceContent() {
     ]
   }), []);
 
-  return (
-    <SuperAdminPageLayout
-      hardeningModuleKey="superadmin_revenue_intelligence"
-      instruction={instruction}
-      title="Perencanaan & Proyeksi Pendapatan"
-      description="Digunakan untuk menyusun skenario pendapatan ke depan dan memahami faktor penggeraknya."
-      breadcrumbs={[
-        { label: 'Analisis & Kecerdasan Bisnis', path: '/superadmin/intelligence/revenue' },
-        { label: 'Perencanaan Pendapatan' }
-      ]}
-      stats={statsMetrics}
-      isLoadingStats={forecastQuery.isLoading}
-    >
-      <div className="space-y-6">
-        <SectionCard
-          title="Ringkasan Angka Perencanaan"
-          icon={TrendingUp}
-          fullWidth
-          actions={<span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">Periode Proyeksi: {formatMonthLabel(forecastQuery.data?.month || null)}</span>}
-        >
-          <div className="w-full space-y-4">
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-              Ringkasan angka utama yang dipakai sebagai dasar simulasi dan proyeksi pertumbuhan platform Absenta.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 w-full">
-              <AnalyticsCard 
-                title="MRR Saat Ini" 
-                subtitle="Pendapatan langganan berjalan" 
-                value={formatCurrency(statsData.currentMrr)} 
-                gradient="from-slate-500 to-slate-700 text-white" 
-              />
-              <AnalyticsCard 
-                title="Estimasi MRR" 
-                subtitle="Estimasi bulan berikutnya" 
-                value={formatCurrency(statsData.forecastMrr)} 
-                gradient="from-blue-500 to-blue-700 text-white" 
-              />
-              <AnalyticsCard 
-                title="Pasca Risiko" 
-                subtitle="Pendapatan setelah risiko" 
-                value={formatCurrency(statsData.riskAdjusted)} 
-                gradient="from-purple-500 to-purple-700 text-white" 
-              />
-              <AnalyticsCard 
-                title="Proyeksi ARR" 
-                subtitle="Estimasi pendapatan 1 tahun" 
-                value={formatCurrency(statsData.forecastArr)} 
-                gradient="from-pink-500 to-pink-700 text-white" 
-              />
-              <AnalyticsCard 
-                title="Net Growth" 
-                subtitle="Pertumbuhan bersih" 
-                value={formatPct(statsData.netGrowthPct)} 
-                gradient="from-emerald-500 to-emerald-700 text-white" 
-              />
-              <AnalyticsCard 
-                title="Risk Loss" 
-                subtitle="Pendapatan berisiko hilang" 
-                value={formatPct(statsData.riskLossPct)} 
-                gradient="from-rose-500 to-rose-700 text-white" 
-              />
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Faktor Perubahan Pendapatan"
-          icon={Coins}
-          fullWidth
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            <AnalyticsCard 
-              title="Kenaikan Upgrade" 
-              value={formatCurrency(statsData.projectedUpgrade)} 
-              gradient="from-emerald-500 to-emerald-700 text-white" 
-            />
-            <AnalyticsCard 
-              title="Kehilangan Churn" 
-              value={formatCurrency(statsData.projectedChurn)} 
-              gradient="from-rose-500 to-rose-700 text-white" 
-            />
-            <AnalyticsCard 
-              title="Risiko Kehilangan" 
-              value={formatCurrency(statsData.riskLoss)} 
-              gradient="from-amber-500 to-amber-700 text-white" 
-            />
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="Retensi Sekolah Berdasarkan Angkatan"
-          icon={BarChart3}
-          fullWidth
-          noPadding
-        >
-          <div className="p-6 w-full space-y-4">
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Visualisasi tingkat bertahannya sekolah setelah mulai berlangganan platform (Retention Analysis).
-            </p>
-            <Table
-              columns={[
-                { key: 'cohort_month', label: 'Periode Mulai', sortable: true },
-                { key: 'active_count', label: 'Sekolah', sortable: true },
-                { key: 'r1', label: 'R+1 Bulan', className: 'text-center' },
-                { key: 'r3', label: 'R+3 Bulan', className: 'text-center' },
-                { key: 'r6', label: 'R+6 Bulan', className: 'text-center' },
-                { key: 'r12', label: 'R+12 Bulan', className: 'text-center' },
-                { key: 'revenue_generated', label: 'LTV (12 Bln)', className: 'text-right', sortable: true },
-              ]}
-              data={paginatedData}
-              emptyMessage="Belum ada data cohort untuk ditampilkan."
-              pagination={{
-                currentPage: currentPage,
-                totalPages: Math.ceil(sortedCohorts.length / pageSize),
-                totalItems: sortedCohorts.length,
-                itemsPerPage: pageSize,
-                onPageChange: setCurrentPage,
-                onLimitChange: setPageSize,
-              }}
-              onSort={handleSort}
-              sortBy={sortConfig?.key}
-              sortOrder={sortConfig?.direction}
-            />
-          </div>
-        </SectionCard>
+  if (anyLoading && !forecastQuery.data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Menganalisis Data Pendapatan...</p>
       </div>
-    </SuperAdminPageLayout>
-  );
-}
+    );
+  }
 
-export default function RevenueIntelligencePage() {
+  if (anyError) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive" className="rounded-2xl border-2">
+          <AlertTitle className="font-bold uppercase tracking-tight">Gagal Memuat Analisis &amp; Proyeksi</AlertTitle>
+          <AlertDescription className="font-medium">Sistem kecerdasan bisnis sedang mengalami gangguan teknis. Periksa koneksi atau coba ulang beberapa saat lagi.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
-    <RevenueIntelligenceContent />
+    <InfraErrorBoundary>
+      <SuperAdminPageLayout
+        hardeningModuleKey="superadmin_revenue_intelligence"
+        instruction={instruction}
+        title="Perencanaan &amp; Proyeksi Pendapatan"
+        description="Digunakan untuk menyusun skenario pendapatan ke depan dan memahami faktor penggeraknya."
+        breadcrumbs={[
+          { label: 'Analisis & Kecerdasan Bisnis' },
+          { label: 'Perencanaan Pendapatan' }
+        ]}
+        stats={statsMetrics}
+        isLoadingStats={forecastQuery.isLoading}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6 w-full min-w-0 max-w-full">
+            <SectionCard
+              title="Ringkasan Angka Perencanaan"
+              icon={TrendingUp}
+              fullWidth
+              actions={<span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">Periode Proyeksi: {formatMonthLabel(forecastQuery.data?.month || null)}</span>}
+            >
+              <div className="w-full space-y-4">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Ringkasan angka utama yang dipakai sebagai dasar simulasi dan proyeksi pertumbuhan platform Absenta.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 w-full">
+                  <AnalyticsCard 
+                    title="MRR Saat Ini" 
+                    subtitle="Pendapatan langganan berjalan" 
+                    value={formatCurrency(statsData.currentMrr)} 
+                    gradient="from-slate-500 to-slate-700 text-white" 
+                  />
+                  <AnalyticsCard 
+                    title="Estimasi MRR" 
+                    subtitle="Estimasi bulan berikutnya" 
+                    value={formatCurrency(statsData.forecastMrr)} 
+                    gradient="from-blue-500 to-blue-700 text-white" 
+                  />
+                  <AnalyticsCard 
+                    title="Pasca Risiko" 
+                    subtitle="Pendapatan setelah risiko" 
+                    value={formatCurrency(statsData.riskAdjusted)} 
+                    gradient="from-purple-500 to-purple-700 text-white" 
+                  />
+                  <AnalyticsCard 
+                    title="Proyeksi ARR" 
+                    subtitle="Estimasi pendapatan 1 tahun" 
+                    value={formatCurrency(statsData.forecastArr)} 
+                    gradient="from-pink-500 to-pink-700 text-white" 
+                  />
+                  <AnalyticsCard 
+                    title="Net Growth" 
+                    subtitle="Pertumbuhan bersih" 
+                    value={formatPct(statsData.netGrowthPct)} 
+                    gradient="from-emerald-500 to-emerald-700 text-white" 
+                  />
+                  <AnalyticsCard 
+                    title="Risk Loss" 
+                    subtitle="Pendapatan berisiko hilang" 
+                    value={formatPct(statsData.riskLossPct)} 
+                    gradient="from-rose-500 to-rose-700 text-white" 
+                  />
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Faktor Perubahan Pendapatan"
+              icon={Coins}
+              fullWidth
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                <AnalyticsCard 
+                  title="Kenaikan Upgrade" 
+                  value={formatCurrency(statsData.projectedUpgrade)} 
+                  gradient="from-emerald-500 to-emerald-700 text-white" 
+                />
+                <AnalyticsCard 
+                  title="Kehilangan Churn" 
+                  value={formatCurrency(statsData.projectedChurn)} 
+                  gradient="from-rose-500 to-rose-700 text-white" 
+                />
+                <AnalyticsCard 
+                  title="Risiko Kehilangan" 
+                  value={formatCurrency(statsData.riskLoss)} 
+                  gradient="from-amber-500 to-amber-700 text-white" 
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Retensi Sekolah Berdasarkan Angkatan (Cohort Analysis)"
+              icon={BarChart3}
+              fullWidth
+              noPadding
+            >
+              <div className="p-6 w-full space-y-4">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Visualisasi tingkat bertahannya sekolah setelah mulai berlangganan platform (Retention Analysis).
+                </p>
+                <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
+                  <Table
+                    columns={tableColumns}
+                    data={paginatedData}
+                    emptyMessage="Belum ada data cohort untuk ditampilkan."
+                    toolbarLeft={
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Daftar Angkatan Tenant ({sortedCohorts.length} Cohort)
+                      </span>
+                    }
+                    toolbarRight={
+                      <Button
+                        type="button"
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={handleRefresh}
+                        className="rounded-xl"
+                      >
+                        <RefreshCcw size={12} className="mr-1.5" />
+                        Segarkan
+                      </Button>
+                    }
+                    pagination={{
+                      currentPage: currentPage,
+                      totalPages: Math.max(1, Math.ceil(sortedCohorts.length / pageSize)),
+                      totalItems: sortedCohorts.length,
+                      itemsPerPage: pageSize,
+                      onPageChange: setCurrentPage,
+                      onLimitChange: (limit) => { setPageSize(limit); setCurrentPage(1); }
+                    }}
+                    onSort={handleSort}
+                    sortBy={sortConfig?.key}
+                    sortOrder={sortConfig?.direction}
+                  />
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+        </SectionCard>
+      </SuperAdminPageLayout>
+    </InfraErrorBoundary>
   );
-}
+});
+
+export default RevenueIntelligencePage;

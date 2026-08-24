@@ -1,3 +1,5 @@
+import { SectionCard } from '../../components/ui/SectionCard';
+import { formatDate } from '@/utils/date.utils';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -22,10 +24,10 @@ import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
 import { useWaOnboarding, type RoleFilterType, type StatusFilterType } from '@/hooks/useWaOnboarding';
-import { WaOnboardingStatsCards } from './components/WaOnboardingStatsCards';
-import { WaOnboardingFilterBar } from './components/WaOnboardingFilterBar';
-import { WaOnboardingPreviewModal } from './components/WaOnboardingPreviewModal';
-import { WaOnboardingBulkModal } from './components/WaOnboardingBulkModal';
+import { WaOnboardingStatsCards } from '@/components/notifications/onboarding/WaOnboardingStatsCards';
+import { WaOnboardingFilterBar } from '@/components/notifications/onboarding/WaOnboardingFilterBar';
+import { WaOnboardingPreviewModal } from '@/components/notifications/onboarding/WaOnboardingPreviewModal';
+import { WaOnboardingBulkModal } from '@/components/notifications/onboarding/WaOnboardingBulkModal';
 
 export function WhatsAppOnboardingPage() {
   const navigate = useNavigate();
@@ -190,9 +192,20 @@ export function WhatsAppOnboardingPage() {
 
   return (
     <AcademicPageLayout
+      hardeningModuleKey="notifications_whatsapp_onboarding"
+      instruction={{
+        title: "Panduan Integrasi WhatsApp Gateway",
+        description: "Langkah-langkah aktivasi perangkat WhatsApp resmi sekolah.",
+        items: [
+          { text: "Pindai QR Code menggunakan aplikasi WhatsApp di smartphone admin/sekolah." },
+          { text: "Pastikan status perangkat terhubung hijau sebelum melakukan pengiriman massal." }
+        ]
+      }}
       title="WhatsApp Onboarding & Sapa Pengguna"
       description="Monitoring status pengiriman pesan selamat datang & panduan login via WA"
     >
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
+
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
         {/* HEADER BAR */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
@@ -279,7 +292,7 @@ export function WhatsAppOnboardingPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => {
+                  users?.map((u) => {
                     const isSudah = u.statusKomunikasi === 'SUDAH';
                     const roleBadge =
                       u.userType === 'GURU'
@@ -405,6 +418,8 @@ export function WhatsAppOnboardingPage() {
         totalBelum={summary.totalBelum}
         roleFilterLabel={roleFilter}
       />
-    </AcademicPageLayout>
+    
+      </SectionCard>
+</AcademicPageLayout>
   );
 }

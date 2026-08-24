@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { bpbkApi, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
-import { Table, type Column } from '../../../components/ui/Table';
+import { type Column } from '../../../components/ui/Table';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Search, Calendar, User, Tag, FileJson, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { formatDate } from '../../../utils/layoutUtils';
 
 interface BkAuditLog {
   id: string;
@@ -31,6 +33,10 @@ interface DiffMetadata {
 }
 
 type BadgeVariant = 'error' | 'warning' | 'success' | 'outline' | 'default' | 'info';
+
+const searchSchema = z.object({
+  search: z.string().optional(),
+});
 
 export const AuditSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
@@ -131,8 +137,8 @@ export const AuditSection: React.FC = React.memo(() => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 font-medium">
               {changes?.map(key => (
                 <tr key={key} className="hover:bg-slate-50/30 dark:hover:bg-slate-900/10">
-                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-350 font-mono text-[11px]">{key}</td>
-                  <td className="px-4 py-2.5 bg-rose-50/10 text-rose-500 dark:text-rose-450 line-through break-all">{formatVal(oldValue[key])}</td>
+                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 font-mono text-[11px]">{key}</td>
+                  <td className="px-4 py-2.5 bg-rose-50/10 text-rose-500 dark:text-rose-400 line-through break-all">{formatVal(oldValue[key])}</td>
                   <td className="px-4 py-2.5 bg-emerald-50/10 text-emerald-600 dark:text-emerald-400 font-bold break-all">{formatVal(newValue[key])}</td>
                 </tr>
               ))}
@@ -157,7 +163,7 @@ export const AuditSection: React.FC = React.memo(() => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 font-medium">
               {keys?.map(key => (
                 <tr key={key} className="hover:bg-slate-50/30 dark:hover:bg-slate-900/10">
-                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-350 font-mono text-[11px]">{key}</td>
+                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 font-mono text-[11px]">{key}</td>
                   <td className="px-4 py-2.5 bg-emerald-50/10 text-emerald-600 dark:text-emerald-400 font-bold break-all">{formatVal(newValue[key])}</td>
                 </tr>
               ))}
@@ -176,14 +182,14 @@ export const AuditSection: React.FC = React.memo(() => {
             <thead className="bg-slate-50 dark:bg-slate-950/70 text-slate-500 font-bold uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-2">Kolom / Field</th>
-                <th className="px-4 py-2 bg-rose-50/20 text-rose-600 dark:text-rose-455">Nilai Terhapus</th>
+                <th className="px-4 py-2 bg-rose-50/20 text-rose-600 dark:text-rose-400">Nilai Terhapus</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 font-medium">
               {keys?.map(key => (
                 <tr key={key} className="hover:bg-slate-50/30 dark:hover:bg-slate-900/10">
-                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-350 font-mono text-[11px]">{key}</td>
-                  <td className="px-4 py-2.5 bg-rose-50/10 text-rose-500 dark:text-rose-450 line-through break-all">{formatVal(oldValue[key])}</td>
+                  <td className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 font-mono text-[11px]">{key}</td>
+                  <td className="px-4 py-2.5 bg-rose-50/10 text-rose-500 dark:text-rose-400 line-through break-all">{formatVal(oldValue[key])}</td>
                 </tr>
               ))}
             </tbody>
@@ -194,7 +200,7 @@ export const AuditSection: React.FC = React.memo(() => {
 
     // Fallback display
     return (
-      <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-mono text-slate-650 dark:text-slate-400">
+      <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400">
         {JSON.stringify(metadata, null, 2)}
       </div>
     );
@@ -210,7 +216,7 @@ export const AuditSection: React.FC = React.memo(() => {
             <User className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="font-bold text-slate-850 dark:text-white text-xs">{item.User?.full_name || 'System / Auto'}</div>
+            <div className="font-bold text-slate-800 dark:text-white text-xs">{item.User?.full_name || 'System / Auto'}</div>
             <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{item.User?.email || '-'}</div>
           </div>
         </div>
@@ -229,7 +235,7 @@ export const AuditSection: React.FC = React.memo(() => {
       key: 'entity',
       label: 'Entitas Modul',
       render: (_, item: BkAuditLog) => (
-        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-650 dark:text-slate-355">
+        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-600 dark:text-slate-300">
           <Tag className="w-3.5 h-3.5 text-slate-400" />
           {item.entity}
         </div>
@@ -241,10 +247,7 @@ export const AuditSection: React.FC = React.memo(() => {
       render: (_, item: BkAuditLog) => (
         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          {new Date(item.created_at).toLocaleString('id-ID', {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-          })}
+          {formatDate(item.created_at, { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>
       )
     },
@@ -286,9 +289,16 @@ export const AuditSection: React.FC = React.memo(() => {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
         <Input
+          id="bpbk-audit-search"
+          aria-label="Cari log audit"
           placeholder="Cari berdasarkan tindakan, entitas modul, atau nama operator..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            const parsed = searchSchema.safeParse({ search: e.target.value });
+            if (parsed.success) {
+              setSearch(e.target.value);
+            }
+          }}
           className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
         />
       </div>
@@ -301,7 +311,7 @@ export const AuditSection: React.FC = React.memo(() => {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="w-full overflow-hidden rounded-xl border border-gray-150 dark:border-gray-800/60 shadow-sm bg-white dark:bg-slate-900">
+          <div className="w-full overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800/60 shadow-sm bg-white dark:bg-slate-900">
             <table className="min-w-full">
               <thead className="bg-gray-50 dark:bg-slate-950/60 border-b border-gray-200 dark:border-gray-800">
                 <tr>
@@ -366,7 +376,7 @@ export const AuditSection: React.FC = React.memo(() => {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/20 dark:bg-slate-950/20">
                 <div className="text-[11px] text-slate-500 font-medium">
-                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-350">{((page - 1) * limit) + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-350">{Math.min(page * limit, totalItems)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-350">{totalItems}</span>
+                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{((page - 1) * limit) + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(page * limit, totalItems)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{totalItems}</span>
                 </div>
                 
                 <div className="flex items-center space-x-1 border border-gray-200/60 dark:border-gray-800/80 rounded-lg p-0.5 bg-white dark:bg-slate-900 shadow-sm">
@@ -379,7 +389,7 @@ export const AuditSection: React.FC = React.memo(() => {
                   >
                     Prev
                   </Button>
-                  <div className="px-2 text-[9px] font-black text-indigo-650 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20 py-0.5 rounded-md border border-indigo-100/30">
+                  <div className="px-2 text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20 py-0.5 rounded-md border border-indigo-100/30">
                     {page} / {totalPages}
                   </div>
                   <Button
@@ -400,5 +410,3 @@ export const AuditSection: React.FC = React.memo(() => {
     </Card>
   );
 });
-
-

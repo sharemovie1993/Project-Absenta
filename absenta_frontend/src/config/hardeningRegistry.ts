@@ -1600,6 +1600,19 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
           : 'Gagal: Terdeteksi penggunaan raw useEffect untuk pengambilan data. Wajib dilindungi/migrasi ke React Query (useQuery / useMutation) atau Custom Options Hook terstandar.'
       });
     }
+
+    // 32. Audit Kriteria: Standarisasi Cache Invalidation & Sinkronisasi Mutasi Data (Cache Invalidation Guard)
+    if (auditData.cacheInvalidationGuard !== undefined && auditData.cacheInvalidationGuard !== null) {
+      config.standards.push({
+        id: 'architectural_cache_invalidation',
+        name: 'Standarisasi Cache Invalidation & Sinkronisasi Mutasi Data (Cache Invalidation Guard)',
+        description: 'Memverifikasi bahwa aksi mutasi data (Create/Update/Delete/useMutation) menginvalidation query cache (queryClient.invalidateQueries) secara terstandar dan bebas dari anti-pattern hard reload (window.location.reload) untuk menjaga kesegaran data UI.',
+        status: auditData.cacheInvalidationGuard ? 'VERIFIED' : 'FAILED',
+        details: auditData.cacheInvalidationGuard
+          ? 'Tervalidasi: Operasi mutasi data terproteksi dengan pembersihan dan pembaruan cache (invalidateQueries) yang konsisten.'
+          : 'Gagal: Terdeteksi operasi mutasi data tanpa pemanggilan invalidateQueries atau menggunakan reload browser manual (window.location.reload).'
+      });
+    }
   }
 
   // Append any specific hand-written functional standards from original registry

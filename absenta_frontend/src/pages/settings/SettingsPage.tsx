@@ -6,9 +6,10 @@ import { useCapabilities } from '@/hooks/useCapabilities';
 import { getUserNotificationPreferences } from '@/api/notifications.api';
 import { fetchActiveSystemConfig, saveSystemConfig, type SystemConfigPayload } from '@/services/systemConfig';
 import { Settings } from 'lucide-react';
-import { Button, Loader, EmptyState } from '../../components/ui';
+import { Button, Loader, EmptyState, SectionCard, TabSwitcher } from '../../components/ui';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { formatDate } from '../../utils/layoutUtils';
 import { easyTunnelApi, SystemInfo } from '@/api/easyTunnel.api';
 
 // Lazy loaded sub-components
@@ -306,24 +307,16 @@ const SettingsPage: React.FC = () => {
       isLoading={isLoading}
     >
       <div className="space-y-6 max-w-5xl mx-auto pb-20">
-        <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-            {tabs?.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setSearchParams({ tab: tab.id });
-                }}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <TabSwitcher
+          options={(tabs ?? [])?.map(t => ({ id: t.id, label: t.label }))}
+          activeTab={activeTab}
+          onChange={(id) => {
+            setActiveTab(id);
+            setSearchParams({ tab: id });
+          }}
+        />
 
-        <div className="space-y-6">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
           {!loadingConfig && !config.app_name && activeTab === 'general' ? (
             <EmptyState icon={Settings} title="Konfigurasi Kosong" description="Belum ada data konfigurasi yang dimuat." />
           ) : null}
@@ -343,7 +336,7 @@ const SettingsPage: React.FC = () => {
               {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
             </Suspense>
           </React.Fragment>
-        </div>
+        </SectionCard>
       </div>
     </AcademicPageLayout>
   );

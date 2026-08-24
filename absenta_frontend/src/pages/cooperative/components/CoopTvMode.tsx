@@ -1,59 +1,20 @@
 import React from 'react';
 import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserCheck, Award, ChevronLeft, ChevronRight, RefreshCw, CheckCircle2, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../lib/utils';
 import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
 import { TvModeToggle } from '../../../components/ui/TvModeToggle';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
+import { formatDate } from '../../../utils/layoutUtils';
 
-export interface CriticalStockItem {
-  name: string;
-  category: string;
-  status: 'HABIS' | 'RENDAH';
-  stock: number;
-}
-
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface SaleItem {
-  product?: { name?: string };
-  quantity: number;
-  price: number;
-}
-
-export interface Sale {
-  id: string;
-  date: string;
-  paymentMethod: string;
-  items: SaleItem[];
-  discount: number;
-  total: number;
-  voucherCode?: string;
-  cashAmount?: number;
-  changeAmount?: number;
-}
-
-export interface MemberInfo {
-  User?: { full_name?: string };
-  memberNo?: string;
-  status?: string;
-}
-
-export interface CoopUserInfo {
-  id?: string;
-  full_name?: string;
-  name?: string;
-  role?: { name?: string };
-}
+export interface CriticalStockItem { name: string; category: string; status: 'HABIS' | 'RENDAH'; stock: number; }
+export interface Announcement { id: string; title: string; content: string; createdAt: string; }
+export interface SaleItem { product?: { name?: string }; quantity: number; price: number; }
+export interface Sale { id: string; date: string; paymentMethod: string; items: SaleItem[]; discount: number; total: number; voucherCode?: string; cashAmount?: number; changeAmount?: number; }
+export interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
+export interface CoopUserInfo { id?: string; full_name?: string; name?: string; role?: { name?: string }; }
 
 export interface CoopTvModeProps {
   isGuruOrSiswa: boolean;
@@ -66,12 +27,7 @@ export interface CoopTvModeProps {
   user: CoopUserInfo | null;
   announcements: Announcement[];
   salesHistory: Sale[];
-  stats: {
-    totalMembers: number;
-    totalSavings: number;
-    totalLoans: number;
-    dueInstallments: number;
-  };
+  stats: { totalMembers: number; totalSavings: number; totalLoans: number; dueInstallments: number; };
   chartData: { name: string; simpanan: number; pinjaman: number; }[];
   criticalStockLoading: boolean;
   criticalStock: CriticalStockItem[];
@@ -245,7 +201,7 @@ export const CoopTvMode: React.FC<CoopTvModeProps> = React.memo(({
                               salesHistory.slice(0, 5)?.map((sale, i) => (
                                 <tr key={i} className="border-b border-slate-50 dark:border-slate-900 hover:bg-slate-50/40 dark:hover:bg-slate-900/40 transition-colors">
                                   <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-medium">
-                                    {format(new Date(sale.date), 'dd/MM/yyyy HH:mm', { locale: id })}
+                                    {formatDate(sale.date, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                   </td>
                                   <td className="py-3.5 px-4 font-mono text-slate-500 font-semibold">
                                     #{sale.id.slice(0, 8)}
@@ -287,10 +243,10 @@ export const CoopTvMode: React.FC<CoopTvModeProps> = React.memo(({
                                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">PENGUMUMAN</span>
                                 </div>
                                 <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase line-clamp-1">{ann.title}</h4>
-                                  <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-2 line-clamp-4 leading-relaxed font-medium">{ann.content}</p>
+                                <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-2 line-clamp-4 leading-relaxed font-medium">{ann.content}</p>
                               </div>
                               <p className="text-slate-400 text-[9px] mt-4 font-bold">
-                                {new Date(ann.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                {formatDate(ann.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
                               </p>
                             </div>
                           ))
@@ -484,7 +440,7 @@ export const CoopTvMode: React.FC<CoopTvModeProps> = React.memo(({
                                 <p className="text-gray-600 dark:text-gray-400 text-[11px] mt-1 line-clamp-4 leading-relaxed font-medium">{ann.content}</p>
                               </div>
                               <p className="text-gray-400 text-[9px] mt-4 font-bold text-right">
-                                {new Date(ann.createdAt).toLocaleDateString()}
+                                {formatDate(ann.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
                               </p>
                             </div>
                           ))

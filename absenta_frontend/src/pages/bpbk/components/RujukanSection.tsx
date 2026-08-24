@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { formatDate } from '../../../utils/layoutUtils';
 import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type RujukanKasus, bpbkQueryKeys } from '../../../api/bpbk.api';
@@ -16,6 +18,14 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+
+const rujukanFormSchema = z.object({
+  kasus_bk_id: z.string().min(1, 'Kasus wajib dipilih'),
+  pihak_rujukan: z.string().min(1, 'Pihak rujukan wajib diisi'),
+  tanggal_rujukan: z.string().min(1, 'Tanggal rujukan wajib diisi'),
+  alasan_rujukan: z.string().min(1, 'Alasan rujukan wajib diisi'),
+  progres_terakhir: z.string().optional()
+});
 
 export const RujukanSection: React.FC = React.memo(() => {
   const [page, setPage] = useState(1);
@@ -152,7 +162,7 @@ export const RujukanSection: React.FC = React.memo(() => {
     {
       key: 'siswa',
       label: 'Profil Siswa',
-      render: (_, item: any) => (
+      render: (_, item: unknown) => (
         <div>
           <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
@@ -185,7 +195,7 @@ export const RujukanSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: any) => (
+      render: (_, item: unknown) => (
         <div className="flex gap-1 justify-end">
           <Button
             variant="ghost"

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback, useMemo, useState } from 'react';
+import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { Activity, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -8,13 +9,26 @@ import {
   Badge,
   Button,
   Input,
-  Loader,
-  SectionHeader,
   SearchableSelect,
   Table,
+  SectionCard,
+  Card,
+  type Column
 } from '@/components/ui';
-import { formatDateTime } from '@/utils/layoutUtils';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { formatDate } from '@/utils/layoutUtils';
 import { type DocumentAction, type DocumentActivityItem, listDocumentActivities } from '@/api/documents.api';
+
+// Zod Schema Validation Guard (Pilar 25)
+const activityFilterSchema = z.object({
+  tenantId: z.string().optional(),
+  documentId: z.string().optional(),
+  actorUserId: z.string().optional(),
+  action: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+});
 
 type ActionFilter = DocumentAction | 'ALL';
 
@@ -29,24 +43,23 @@ function formatActionLabel(action: DocumentAction) {
   return ACTION_OPTIONS.find((o) => o.value === action)?.label ?? action;
 }
 
-function badgeVariantForAction(action: DocumentAction) {
+function badgeVariantForAction(action: DocumentAction): 'success' | 'info' | 'destructive' | 'secondary' {
   if (action === 'UPLOAD') return 'success';
   if (action === 'DOWNLOAD') return 'info';
-  if (action === 'DELETE') return 'error';
-  return 'outline';
+  if (action === 'DELETE') return 'destructive';
+  return 'secondary';
 }
 
-export default function DocumentActivityPage() {
+export const DocumentActivityPage: React.FC = React.memo(() => {
   const { user, tenantId } = useAuthStore();
   const { isAdmin } = useCapabilities();
   const isSuperAdmin = isAdmin;
-  const tenantIdValue = ((user as any)?.tenant_id ?? tenantId ?? null) as string | null;
+  const tenantIdValue = (user?.tenant_id || tenantId || null) as string | null;
 
-  const [items, setItems] = useState<DocumentActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [tenantIdFilter, setTenantIdFilter] = useState('');
   const [documentIdFilter, setDocumentIdFilter] = useState('');
@@ -55,75 +68,81 @@ export default function DocumentActivityPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const itemsPerPage = 20;
+  // React Query Fetching (Pilar 31)
+  const { data: activityData, isLoading: loading, refetch } = useQuery({
+    queryKey: [
+      'document-activities',
+      currentPage,
+      itemsPerPage,
+      tenantIdFilter,
+      documentIdFilter,
+      actorUserIdFilter,
+      actionFilter,
+      dateFrom,
+      dateTo,
+      isSuperAdmin
+    ],
+    queryFn: async () => {
+      const res = await listDocumentActivities({
+        page: currentPage,
+        limit: itemsPerPage,
+        tenant_id: isSuperAdmin ? (tenantIdFilter.trim() || undefined) : undefined,
+        document_id: documentIdFilter.trim() || undefined,
+        actor_user_id: actorUserIdFilter.trim() || undefined,
+        action: actionFilter === 'ALL' ? undefined : actionFilter,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      });
 
-  const fetchActivities = useCallback(
-    async (page = 1) => {
-      try {
-        setLoading(true);
-        const res = await listDocumentActivities({
-          page,
-          limit: itemsPerPage,
-          tenant_id: isSuperAdmin ? (tenantIdFilter.trim() || undefined) : undefined,
-          document_id: documentIdFilter.trim() || undefined,
-          actor_user_id: actorUserIdFilter.trim() || undefined,
-          action: actionFilter === 'ALL' ? undefined : actionFilter,
-          date_from: dateFrom || undefined,
-          date_to: dateTo || undefined,
-        });
-
-        if (!res.success) {
-          toast.error(res.message || 'Gagal memuat aktivitas dokumen');
-          return;
-        }
-
-        setItems(res.data || []);
-        setCurrentPage(res.pagination.page);
-        setTotalPages(res.pagination.totalPages);
-        setTotalItems(res.pagination.total);
-      } catch (e: any) {
-        toast.error(e?.message || 'Gagal memuat aktivitas dokumen');
-      } finally {
-        setLoading(false);
+      if (!res.success) {
+        throw new Error(res.message || 'Gagal memuat aktivitas dokumen');
       }
+
+      return res;
     },
-    [actionFilter, actorUserIdFilter, dateFrom, dateTo, documentIdFilter, isSuperAdmin, tenantIdFilter]
-  );
+    staleTime: 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchActivities(1);
-    setCurrentPage(1);
-  }, [fetchActivities]);
+  const items: DocumentActivityItem[] = useMemo(() => activityData?.data || [], [activityData]);
+  const totalPages = activityData?.pagination?.totalPages || 1;
+  const totalItems = activityData?.pagination?.total || 0;
 
-  const paginationInfo = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage + 1;
-    const end = Math.min(currentPage * itemsPerPage, totalItems);
-    if (totalItems === 0) return 'Menampilkan 0 data';
-    return `Menampilkan ${start}-${end} dari ${totalItems} data`;
-  }, [currentPage, totalItems]);
+  const handleSort = useCallback((columnKey: string, direction: 'asc' | 'desc') => {
+    setSortBy(columnKey);
+    setSortOrder(direction);
+  }, []);
 
-  const columns = useMemo(() => {
-    const base = [
+  const columns: Column[] = useMemo(() => {
+    const base: Column[] = [
       {
         key: 'created_at',
         label: 'Waktu',
-        className: 'w-52',
-        render: (value: string) => formatDateTime(value),
+        sortable: true,
+        render: (value: unknown) => (
+          <span className="text-xs text-slate-500">
+            {formatDate(value as string, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        ),
       },
       {
         key: 'action',
         label: 'Aksi',
-        className: 'w-32',
-        render: (value: DocumentAction) => <Badge variant={badgeVariantForAction(value) as any}>{formatActionLabel(value)}</Badge>,
+        sortable: true,
+        render: (value: unknown) => (
+          <Badge variant={badgeVariantForAction(value as DocumentAction)} className="text-[10px] font-bold">
+            {formatActionLabel(value as DocumentAction)}
+          </Badge>
+        ),
       },
       {
         key: 'Document',
         label: 'Dokumen',
-        render: (_: any, row: DocumentActivityItem) => (
+        sortable: true,
+        render: (_: unknown, row: DocumentActivityItem) => (
           <div className="min-w-0">
-            <div className="font-medium truncate">{row.Document?.title || '-'}</div>
-            <div className="mt-1">
-              <Badge variant="outline">{row.Document?.category || '-'}</Badge>
+            <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{row.Document?.title || '-'}</div>
+            <div className="mt-0.5">
+              <Badge variant="secondary" className="text-[9px]">{row.Document?.category || '-'}</Badge>
             </div>
           </div>
         ),
@@ -131,10 +150,11 @@ export default function DocumentActivityPage() {
       {
         key: 'ActorUser',
         label: 'Pelaku',
-        render: (_: any, row: DocumentActivityItem) => (
+        sortable: true,
+        render: (_: unknown, row: DocumentActivityItem) => (
           <div className="min-w-0">
-            <div className="font-medium truncate">{row.ActorUser?.full_name || '-'}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.ActorUser?.email || '-'}</div>
+            <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{row.ActorUser?.full_name || '-'}</div>
+            <div className="text-[10px] text-slate-400 truncate">{row.ActorUser?.email || '-'}</div>
           </div>
         ),
       },
@@ -144,18 +164,28 @@ export default function DocumentActivityPage() {
       base.splice(3, 0, {
         key: 'actor_tenant_id',
         label: 'Tenant',
-        className: 'w-64',
-        render: (value: string | null) => <span className="text-sm">{value || '-'}</span>,
+        sortable: true,
+        render: (value: unknown) => <span className="text-xs text-slate-600 dark:text-slate-300">{(value as string) || '-'}</span>,
       });
     }
 
-    return base as any[];
+    return base;
   }, [isSuperAdmin, tenantIdValue]);
 
   const handleApplyFilter = useCallback(() => {
-    setCurrentPage(1);
-    fetchActivities(1);
-  }, [fetchActivities]);
+    const parsed = activityFilterSchema.safeParse({
+      tenantId: tenantIdFilter,
+      documentId: documentIdFilter,
+      actorUserId: actorUserIdFilter,
+      action: actionFilter,
+      dateFrom,
+      dateTo,
+    });
+    if (parsed.success) {
+      setCurrentPage(1);
+      refetch();
+    }
+  }, [tenantIdFilter, documentIdFilter, actorUserIdFilter, actionFilter, dateFrom, dateTo, refetch]);
 
   const handleResetFilter = useCallback(() => {
     setTenantIdFilter('');
@@ -165,109 +195,147 @@ export default function DocumentActivityPage() {
     setDateFrom('');
     setDateTo('');
     setCurrentPage(1);
-    fetchActivities(1);
-  }, [fetchActivities]);
+  }, []);
 
-  const handlePageChange = useCallback(
-    (page: number) => {
-      setCurrentPage(page);
-      fetchActivities(page);
-    },
-    [fetchActivities]
-  );
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dokumen', path: '/documents' },
+    { label: 'Aktivitas Dokumen' }
+  ], []);
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        title="Aktivitas Dokumen"
-        subtitle="Audit log: upload, download, dan delete"
-        icon={<Activity className="w-6 h-6" />}
-      >
-        <Button variant="outline" onClick={() => fetchActivities(currentPage)} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </SectionHeader>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {isSuperAdmin && !tenantIdValue ? (
-            <Input
-              placeholder="Tenant ID (opsional)"
-              value={tenantIdFilter}
-              onChange={(e) => setTenantIdFilter(e.target.value)}
-            />
-          ) : null}
-          <Input
-            placeholder="Document ID (opsional)"
-            value={documentIdFilter}
-            onChange={(e) => setDocumentIdFilter(e.target.value)}
-          />
-          <Input
-            placeholder="Actor User ID (opsional)"
-            value={actorUserIdFilter}
-            onChange={(e) => setActorUserIdFilter(e.target.value)}
-          />
-          <SearchableSelect
-            value={actionFilter}
-            onValueChange={(v) => setActionFilter(v as ActionFilter)}
-            options={ACTION_OPTIONS}
-            placeholder="Pilih aksi"
-            className="w-full"
-          />
-          <Input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <Input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 justify-end">
-          <Button variant="outline" onClick={handleResetFilter} disabled={loading}>
-            Reset
-          </Button>
-          <Button onClick={handleApplyFilter} disabled={loading}>
-            Terapkan
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader size="lg" />
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Audit Log Aktivitas Dokumen"
+        description="Pantau riwayat unggah, unduh, dan penghapusan dokumen secara sistematis."
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="document_activity"
+        topSlot={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => refetch()}
+              disabled={loading}
+              className="flex items-center gap-1.5 font-bold rounded-xl"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Segarkan
+            </Button>
           </div>
-        ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-            <Table columns={columns as any} data={items} emptyMessage="Tidak ada aktivitas" />
-
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-4 border-t dark:border-gray-700">
-                <div className="text-sm text-gray-500 dark:text-gray-400">{paginationInfo}</div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage <= 1 || loading}
-                  >
-                    Sebelumnya
-                  </Button>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages || loading}
-                  >
-                    Berikutnya
-                  </Button>
-                </div>
+        }
+        instruction={{
+          title: "Panduan Log Aktivitas Dokumen",
+          description: "Gunakan halaman ini untuk memverifikasi jejak audit operasional dokumen.",
+          items: [
+            { text: "Filter berdasarkan aksi UPLOAD, DOWNLOAD, atau DELETE untuk audit spesifik." },
+            { text: "Gunakan rentang tanggal untuk membatasi periode log aktivitas." },
+            { text: "Semua aktivitas tercatat secara permanen untuk keamanan kepatuhan." }
+          ]
+        }}
+      >
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+          <div className="space-y-6">
+            {/* Filter Section */}
+            <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {isSuperAdmin && !tenantIdValue ? (
+                  <Input
+                    id="doc-tenant-filter"
+                    aria-label="Filter ID Tenant"
+                    placeholder="Tenant ID (opsional)"
+                    value={tenantIdFilter}
+                    onChange={(e) => setTenantIdFilter(e.target.value)}
+                    className="text-xs rounded-xl"
+                  />
+                ) : null}
+                <Input
+                  id="doc-id-filter"
+                  aria-label="Filter ID Dokumen"
+                  placeholder="Document ID (opsional)"
+                  value={documentIdFilter}
+                  onChange={(e) => setDocumentIdFilter(e.target.value)}
+                  className="text-xs rounded-xl"
+                />
+                <Input
+                  id="doc-actor-filter"
+                  aria-label="Filter ID User Pelaku"
+                  placeholder="Actor User ID (opsional)"
+                  value={actorUserIdFilter}
+                  onChange={(e) => setActorUserIdFilter(e.target.value)}
+                  className="text-xs rounded-xl"
+                />
+                <SearchableSelect
+                  id="doc-action-filter"
+                  aria-label="Pilih jenis aksi dokumen"
+                  value={actionFilter}
+                  onValueChange={(v) => setActionFilter(v as ActionFilter)}
+                  options={ACTION_OPTIONS}
+                  placeholder="Pilih aksi"
+                  className="w-full"
+                />
+                <Input
+                  id="doc-date-from"
+                  aria-label="Tanggal mulai aktivitas"
+                  type="datetime-local"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="text-xs rounded-xl"
+                />
+                <Input
+                  id="doc-date-to"
+                  aria-label="Tanggal akhir aktivitas"
+                  type="datetime-local"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="text-xs rounded-xl"
+                />
               </div>
-            )}
-          </motion.div>
-        )}
-      </div>
 
-    </div>
+              <div className="flex flex-wrap items-center gap-2 justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button variant="toolbarOutline" size="toolbar" onClick={handleResetFilter} disabled={loading} className="rounded-xl">
+                  Reset
+                </Button>
+                <Button variant="toolbarPrimary" size="toolbar" onClick={handleApplyFilter} disabled={loading} className="rounded-xl">
+                  Terapkan
+                </Button>
+              </div>
+            </Card>
+
+            {/* Table Section */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <Table
+                columns={columns}
+                data={items}
+                isLoading={loading}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                toolbarLeft={<div className="font-bold text-xs text-slate-800 dark:text-slate-200">Log Aktivitas</div>}
+                toolbarRight={
+                  <Button variant="toolbarOutline" size="toolbar" onClick={() => refetch()} disabled={loading} className="rounded-xl">
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+                    Segarkan
+                  </Button>
+                }
+                emptyMessage="Tidak ada log aktivitas dokumen yang sesuai kriteria."
+                pagination={{
+                  currentPage,
+                  totalPages,
+                  totalItems,
+                  itemsPerPage,
+                  onPageChange: setCurrentPage,
+                  onLimitChange: (limit) => {
+                    setItemsPerPage(limit);
+                    setCurrentPage(1);
+                  },
+                }}
+              />
+            </div>
+          </div>
+        </SectionCard>
+      </AcademicPageLayout>
+    </InfraErrorBoundary>
   );
-}
+});
+
+export default DocumentActivityPage;

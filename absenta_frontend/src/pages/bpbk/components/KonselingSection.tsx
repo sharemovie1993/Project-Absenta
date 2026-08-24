@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { formatDate } from '../../../utils/layoutUtils';
 import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KonselingSiswa, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
@@ -18,6 +20,15 @@ import { useDebounce } from '../../../hooks/useDebounce';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+
+const konselingFormSchema = z.object({
+  siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
+  tanggal: z.string().min(1, 'Tanggal wajib diisi'),
+  tipe: z.string().min(1, 'Tipe konseling wajib dipilih'),
+  masalah: z.string().min(1, 'Uraian masalah wajib diisi'),
+  solusi: z.string().optional(),
+  status: z.string().default('PROSES')
+});
 
 export const KonselingSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
@@ -206,7 +217,7 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'siswa',
       label: 'Profil Siswa',
-      render: (_, item: any) => (
+      render: (_, item: unknown) => (
         <div>
           <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
@@ -241,7 +252,7 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'petugas',
       label: 'Konselor/BK',
-      render: (_, item: any) => (
+      render: (_, item: unknown) => (
         <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
           {item.Petugas?.full_name || 'Petugas BK'}
         </span>
@@ -250,7 +261,7 @@ export const KonselingSection: React.FC = React.memo(() => {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_, item: any) => (
+      render: (_, item: unknown) => (
         <div className="flex gap-1 justify-end">
           {showDeleted ? (
             can('bk.recyclebin.restore') && (
