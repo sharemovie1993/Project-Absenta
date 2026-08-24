@@ -610,6 +610,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
             onImport={handleImportProducts}
             onDownloadTemplate={handleTemplateDownload}
             onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+              queryClient.invalidateQueries({ queryKey: ['koperasi-products'] });
               fetchProducts();
               fetchCategories();
             }}

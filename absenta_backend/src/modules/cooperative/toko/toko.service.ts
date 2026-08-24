@@ -800,7 +800,16 @@ export class TokoService {
                     code = `KOP-${randomNum}`;
                 }
 
-                const category = row.category ? String(row.category).trim() : 'Lainnya';
+                const minStock = row.minStock !== undefined && !isNaN(Number(row.minStock)) ? Number(row.minStock) : 0;
+                const weight = row.weight !== undefined && !isNaN(Number(row.weight)) ? Number(row.weight) : 0;
+                const discount = row.discount !== undefined && !isNaN(Number(row.discount)) ? Number(row.discount) : 0;
+                const unit = row.unit ? String(row.unit).trim() : 'pcs';
+                const rackLocation = row.rackLocation ? String(row.rackLocation).trim() : null;
+                const description = row.description ? String(row.description).trim() : null;
+                const productType = row.productType ? String(row.productType).trim() : 'Default';
+                const imageUrl = row.imageUrl ? String(row.imageUrl).trim() : null;
+
+                const category = row.category ? String(row.category).trim() : 'Lain-lain';
                 await ProductCategoryService.ensureCategoryExists(tenantId, category);
 
                 const existing = await prisma.product.findFirst({
@@ -816,7 +825,14 @@ export class TokoService {
                             price,
                             costPrice,
                             stock: existing.stock + stock,
-                            description: row.description ? String(row.description).trim() : existing.description
+                            minStock: minStock !== 0 ? minStock : existing.minStock,
+                            unit: unit || existing.unit,
+                            weight: weight !== 0 ? weight : existing.weight,
+                            discount: discount !== 0 ? discount : existing.discount,
+                            rackLocation: rackLocation || existing.rackLocation,
+                            description: description || existing.description,
+                            imageUrl: imageUrl || existing.imageUrl,
+                            productType: productType || existing.productType,
                         }
                     });
                     updated++;
@@ -830,7 +846,16 @@ export class TokoService {
                             price,
                             costPrice,
                             stock,
-                            description: row.description ? String(row.description).trim() : null
+                            minStock,
+                            unit,
+                            weight,
+                            discount,
+                            rackLocation,
+                            description,
+                            imageUrl,
+                            productType,
+                            showInTransaction: true,
+                            useStock: true,
                         }
                     });
                     created++;

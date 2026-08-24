@@ -370,22 +370,33 @@ export default async function tokoRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const categories = await ProductCategoryService.getCategories(tenantId);
             const headers = [
-                'BARCODE / KODE BARANG', 'NAMA PRODUK', 'KATEGORI', 'HARGA JUAL', 'HARGA MODAL', 'STOK AWAL', 'DESKRIPSI'
+                'BARCODE / KODE BARANG',
+                'NAMA PRODUK',
+                'KATEGORI',
+                'HARGA JUAL',
+                'HARGA MODAL',
+                'STOK AWAL',
+                'BATAS MINIMUM STOK',
+                'SATUAN',
+                'BERAT (GRAM)',
+                'LETAK RAK',
+                'DISKON',
+                'KETERANGAN'
             ];
 
             const dataWithHints = [
-                ['PETUNJUK CEPAT:', '', '', '', '', '', ''],
-                ['1. Kolom BERWARNA EMAS wajib diisi (Barcode, Nama Produk, Kategori, Harga Jual).', '', '', '', '', '', ''],
-                ['2. Agar angka NOL tidak hilang di depan barcode, awali dengan tanda PETIK SATU (\'). Contoh: \'89912345678', '', '', '', '', '', ''],
-                ['3. Harga Jual, Harga Modal, dan Stok Awal diisi dengan angka bulat positif saja (Tanpa titik/koma ribuan).', '', '', '', '', '', ''],
-                ['4. Kolom Kategori diisi dengan nama kategori (misal: Makanan, Minuman, ATK). Jika kategori belum ada, sistem akan membuatnya otomatis.', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''], // Spacer
+                ['PETUNJUK CEPAT IMPOR PRODUK KOPERASI:', '', '', '', '', '', '', '', '', '', '', ''],
+                ['1. Kolom BERWARNA EMAS wajib diisi (Barcode, Nama Produk, Kategori, Harga Jual). Kolom lainnya opsional.', '', '', '', '', '', '', '', '', '', '', ''],
+                ['2. Agar angka NOL tidak hilang di depan barcode, awali dengan tanda petik satu (\'). Contoh: \'89912345678', '', '', '', '', '', '', '', '', '', '', ''],
+                ['3. Harga Jual, Harga Modal, Stok, Batas Min Stok diisi dengan angka bulat positif (Tanpa titik/koma ribuan).', '', '', '', '', '', '', '', '', '', '', ''],
+                ['4. Kolom Kategori diisi dengan nama kategori (misal: Makanan, Minuman, ATK). Kategori baru akan dibuat otomatis.', '', '', '', '', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', '', '', '', '', ''], // Spacer
                 headers
             ];
 
             const ws = XLSX.utils.aoa_to_sheet(dataWithHints);
 
-            // Styles matching the professional academic style
+            // Styles matching professional academic style
             const hintStyle = {
                 font: { bold: true, color: { rgb: "4F46E5" } },
                 alignment: { horizontal: "left" }
@@ -438,7 +449,7 @@ export default async function tokoRoutes(fastify: any) {
                 }
             });
 
-            ws['!cols'] = headers.map(() => ({ wch: 25 }));
+            ws['!cols'] = headers.map(() => ({ wch: 22 }));
             ws['!rows'] = Array(7).fill({ hpt: 20 });
             ws['!rows'][6] = { hpt: 30 }; // Header row taller
 
