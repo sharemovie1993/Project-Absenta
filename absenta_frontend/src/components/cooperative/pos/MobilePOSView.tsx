@@ -843,34 +843,29 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                   key={product.id}
                   onClick={() => !isOutOfStock && addToCart(product)}
                   className={cn(
-                    "p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 select-none cursor-pointer",
+                    "p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 select-none cursor-pointer bg-white dark:bg-slate-900 shadow-2xs hover:border-slate-300",
                     isSelected
-                      ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 shadow-xs"
-                      : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-slate-300",
+                      ? "border-blue-400 dark:border-blue-600 bg-blue-50/30 dark:bg-blue-950/20"
+                      : "border-slate-200/90 dark:border-slate-800",
                     isOutOfStock && "opacity-40 pointer-events-none bg-slate-100 dark:bg-slate-900"
                   )}
                 >
                   {/* Left Initial Avatar */}
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center shrink-0 select-none">
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-sm flex items-center justify-center shrink-0 select-none">
                     {getInitials(product.name)}
                   </div>
 
-                  {/* Middle: Product Name, Code, Stock & Price */}
+                  {/* Middle: Product Name & Price */}
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-snug line-clamp-1">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-snug truncate">
                       {product.name}
                     </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                      <span className="font-mono text-[10px] font-bold text-slate-400">{product.code}</span>
-                      <span>•</span>
-                      <span>Stok: {product.stock}</span>
-                    </p>
-                    <p className="text-xs font-black text-blue-600 dark:text-blue-400 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Rp {Number(product.price).toLocaleString('id-ID')}
                     </p>
                   </div>
 
-                  {/* Right: Quantity Badge & Decrement */}
+                  {/* Right: Minimalist Square Quantity Badge (Kasir Pintar Persona) */}
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {isSelected && (
                       <button
@@ -883,9 +878,9 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                       </button>
                     )}
 
-                    {/* Prominent Qty Badge Box */}
+                    {/* Square Outline Qty Badge */}
                     {isSelected && (
-                      <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-xs font-mono animate-in zoom-in-50 duration-150">
+                      <div className="w-7 h-7 rounded-lg border-2 border-slate-800 dark:border-slate-200 text-slate-900 dark:text-slate-100 font-black text-xs flex items-center justify-center font-mono animate-in zoom-in-50 duration-150">
                         {qtyInCart}
                       </div>
                     )}
@@ -898,34 +893,48 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          FLOATING BOTTOM STICKY BAR (Di atas bar bottom navigation)
+          FLOATING BOTTOM STICKY BAR (Kasir Pintar Persona: Main Pill + Member Button)
           ─────────────────────────────────────────────────────────────────────── */}
       {cart.length > 0 && (
-        <div className="fixed bottom-[calc(118px+env(safe-area-inset-bottom))] inset-x-3 z-55 animate-in slide-in-from-bottom-3 duration-200">
-          <div className="bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-md text-white p-2 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700/60">
-            {/* Left info pill */}
-            <div className="pl-3 pr-2 py-1 flex items-center gap-2.5 flex-1 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center font-mono font-black text-xs shrink-0">
+        <div className="fixed bottom-[calc(118px+env(safe-area-inset-bottom))] inset-x-3 z-55 flex items-center gap-2 animate-in slide-in-from-bottom-3 duration-200">
+          {/* Main Action Pill (Covering ~85% width) */}
+          <button
+            type="button"
+            onClick={() => setMobileStep('summary')}
+            className="flex-1 h-13 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-between px-4 shadow-xl active:scale-98 transition-transform cursor-pointer"
+          >
+            {/* Left side: Item Count Pill + Text */}
+            <div className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-full bg-white text-blue-600 font-black text-xs flex items-center justify-center font-mono shadow-xs">
                 {totalItemsCount}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Belanja</p>
-                <p className="text-sm font-black text-white truncate">
-                  Rp {totalAmount.toLocaleString('id-ID')}
-                </p>
-              </div>
+              </span>
+              <span className="font-extrabold text-xs text-white">
+                Barang
+              </span>
             </div>
 
-            {/* Right: Tombol LANJUT */}
-            <button
-              type="button"
-              onClick={() => setMobileStep('summary')}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-transform shrink-0 cursor-pointer"
-            >
+            {/* Right side: LANJUT Button */}
+            <div className="flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-white">
               <span>LANJUT</span>
-              <span>➔</span>
-            </button>
-          </div>
+              <span className="text-sm font-bold">➔</span>
+            </div>
+          </button>
+
+          {/* Right Separate Member/Customer Button (Covering ~15% width) */}
+          <button
+            type="button"
+            onClick={() => setShowMemberModal(true)}
+            className={cn(
+              "w-13 h-13 rounded-2xl border-2 flex items-center justify-center shadow-xl active:scale-95 transition-transform cursor-pointer shrink-0",
+              selectedMember
+                ? "bg-blue-50 dark:bg-blue-950 border-blue-600 text-blue-600"
+                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+            )}
+            title="Pilih Pelanggan / Anggota"
+            aria-label="Pilih Pelanggan"
+          >
+            <User size={20} className={selectedMember ? "text-blue-600 dark:text-blue-400" : "text-slate-600 dark:text-slate-300"} />
+          </button>
         </div>
       )}
     </div>
