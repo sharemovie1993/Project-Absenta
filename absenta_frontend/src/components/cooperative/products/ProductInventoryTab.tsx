@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
@@ -14,8 +14,9 @@ import {
   Package, 
   CheckCircle2,
   AlertTriangle,
-  SlidersHorizontal,
-  Plus,
+  ChevronRight,
+  History,
+  FileText,
   Boxes
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -80,7 +81,11 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
   const [stockStatusFilter, setStockStatusFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
   const [sortOption, setSortOption] = useState<'name_asc' | 'name_desc' | 'stock_asc' | 'stock_desc' | 'cost_desc'>('name_asc');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // 1:1 Kasir Pintar Modals State
+  const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
   const [selectedProductForAdjust, setSelectedProductForAdjust] = useState<Product | null>(null);
+  const [selectedProductForLog, setSelectedProductForLog] = useState<Product | null>(null);
 
   // Desktop Table pagination & sort states
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,16 +206,26 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
     },
     {
       key: 'actions',
-      label: 'Aksi Stok',
+      label: 'Aksi',
       render: (_val: unknown, row: Product) => (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => setSelectedProductForAdjust(row)}
-          className="text-xs font-bold"
-        >
-          Sesuaikan Stok
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setSelectedProductForAdjust(row)}
+            className="text-xs font-bold"
+          >
+            Sesuaikan Stok
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedProductForLog(row)}
+            className="text-xs font-bold"
+          >
+            Log Barang
+          </Button>
+        </div>
       )
     }
   ], []);
@@ -308,7 +323,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
               return (
                 <div
                   key={prod.id}
-                  onClick={() => setSelectedProductForAdjust(prod)}
+                  onClick={() => setSelectedProductForAction(prod)}
                   className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50 cursor-pointer active:bg-slate-100 dark:active:bg-slate-900 transition-colors flex items-start gap-3.5 select-none"
                 >
                   {/* Product Thumbnail / 2-Letter Initials */}
@@ -410,6 +425,93 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
+          1:1 KASIR PINTAR "AKSI" MODAL POPUP (Mobile Persona)
+          ─────────────────────────────────────────────────────────────────────── */}
+      {selectedProductForAction && (
+        <div className="fixed inset-0 z-[99999] bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100 dark:border-slate-800">
+            {/* Title */}
+            <h3 className="text-center font-black text-sm tracking-wider uppercase text-slate-900 dark:text-slate-100">
+              AKSI
+            </h3>
+
+            {/* Product Summary Row */}
+            <div className="flex items-center gap-3 py-1">
+              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden font-bold text-slate-400 dark:text-slate-500 text-sm">
+                {selectedProductForAction.imageUrl ? (
+                  <img 
+                    src={selectedProductForAction.imageUrl} 
+                    alt={selectedProductForAction.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <span>{getInitials(selectedProductForAction.name)}</span>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                  {selectedProductForAction.name}
+                </h4>
+                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                  {selectedProductForAction.code}
+                </p>
+              </div>
+
+              <div className="text-right shrink-0">
+                <p className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                  Rp {Number(selectedProductForAction.price || 0).toLocaleString('id-ID')}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  {selectedProductForAction.stock !== undefined ? `${selectedProductForAction.stock} ${selectedProductForAction.unit || 'pcs'}` : 'Unlimited'}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons: Edit / Lihat Stok & Log Barang */}
+            <div className="space-y-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const prod = selectedProductForAction;
+                  setSelectedProductForAction(null);
+                  setSelectedProductForAdjust(prod);
+                }}
+                className="w-full h-12 px-4 rounded-full border border-emerald-500/70 hover:border-emerald-600 dark:border-emerald-500/50 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-100 active:scale-98 transition-all hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 cursor-pointer"
+              >
+                <span>Edit / Lihat Stok</span>
+                <ChevronRight size={16} className="text-slate-700 dark:text-slate-300" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const prod = selectedProductForAction;
+                  setSelectedProductForAction(null);
+                  setSelectedProductForLog(prod);
+                }}
+                className="w-full h-12 px-4 rounded-full border border-emerald-500/70 hover:border-emerald-600 dark:border-emerald-500/50 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-100 active:scale-98 transition-all hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 cursor-pointer"
+              >
+                <span>Log Barang</span>
+                <ChevronRight size={16} className="text-slate-700 dark:text-slate-300" />
+              </button>
+            </div>
+
+            {/* Confirmation / Dismiss Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForAction(null)}
+                className="w-full h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs tracking-wider uppercase shadow-md flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
           MODAL: Filter Kategori & Status Stok (Mobile)
           ─────────────────────────────────────────────────────────────────────── */}
       <Modal
@@ -493,7 +595,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
       </Modal>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          MODAL: Sesuaikan Stok Produk
+          MODAL: Sesuaikan Stok Produk (Edit / Lihat Stok)
           ─────────────────────────────────────────────────────────────────────── */}
       {selectedProductForAdjust && (
         <OpnameFormModal
@@ -510,6 +612,42 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
           }}
           isLoading={adjustStockMutation.isPending}
         />
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Log Barang (Riwayat Mutasi & Transaksi Produk)
+          ─────────────────────────────────────────────────────────────────────── */}
+      {selectedProductForLog && (
+        <Modal
+          isOpen={Boolean(selectedProductForLog)}
+          onClose={() => setSelectedProductForLog(null)}
+          title={`Log Barang: ${selectedProductForLog.name}`}
+        >
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+              <p className="text-slate-500 dark:text-slate-400">Kode: <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{selectedProductForLog.code}</span></p>
+              <p className="text-slate-500 dark:text-slate-400">Stok Saat Ini: <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedProductForLog.stock} {selectedProductForLog.unit || 'pcs'}</span></p>
+              <p className="text-slate-500 dark:text-slate-400">Harga Modal: <span className="font-bold text-slate-800 dark:text-slate-200">Rp {Number(selectedProductForLog.costPrice || 0).toLocaleString('id-ID')}</span></p>
+            </div>
+
+            <div className="text-center py-8 text-slate-400 text-xs space-y-1">
+              <History size={32} className="mx-auto mb-1.5 text-slate-300 dark:text-slate-600" />
+              <p className="font-bold text-slate-600 dark:text-slate-300">Riwayat Mutasi Barang</p>
+              <p className="text-[11px] text-slate-400">Seluruh mutasi tercatat otomatis melalui transaksi kasir dan faktur barang masuk.</p>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSelectedProductForLog(null)}
+                className="w-full font-bold"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
