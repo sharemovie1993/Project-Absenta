@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Modal } from '../../../components/cooperative/ui/Modal';
-import { Input } from '../../../components/cooperative/ui/Input';
+import { 
+  ArrowLeft, 
+  Camera, 
+  Image as ImageIcon, 
+  RotateCw, 
+  Barcode, 
+  Plus, 
+  Check, 
+  Info, 
+  Loader2, 
+  X 
+} from 'lucide-react';
 import { Button } from '../../../components/cooperative/ui/Button';
-import { SearchableSelect } from '../../../components/ui/SearchableSelect';
-import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 
 interface Product {
   id: string;
@@ -46,17 +55,43 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    price: '',
-    costPrice: '',
-    stock: '',
+    price: '0',
+    costPrice: '0',
+    stock: '0',
     category: '',
-    imageUrl: ''
+    imageUrl: '',
+    productType: 'Default',
+    showInTransaction: true,
+    useStock: true,
   });
 
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const DEFAULT_COOP_CATEGORIES = useMemo(() => [
+    'Makanan',
+    'Minuman',
+    'Kebutuhan Harian',
+    'Alat Tulis & Kantor',
+    'Kesehatan & Obat',
+    'Lain-lain'
+  ], []);
+
+  const categoryOptions = useMemo(() => {
+    const rawList = (existingCategories && existingCategories.length > 0)
+      ? existingCategories
+      : DEFAULT_COOP_CATEGORIES;
+
+    return Array.from(new Set([
+      ...rawList.filter((cat) => cat && cat !== 'ALL'),
+      ...DEFAULT_COOP_CATEGORIES
+    ]));
+  }, [existingCategories, DEFAULT_COOP_CATEGORIES]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -66,27 +101,31 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         price: editingProduct.price.toString(),
         costPrice: editingProduct.costPrice.toString(),
         stock: editingProduct.stock.toString(),
-        category: editingProduct.category || '',
-        imageUrl: editingProduct.imageUrl || ''
+        category: editingProduct.category || categoryOptions[0] || 'Makanan',
+        imageUrl: editingProduct.imageUrl || '',
+        productType: 'Default',
+        showInTransaction: true,
+        useStock: true,
       });
-      // Check if current category is not in standard list to toggle custom input
-      const isCustom = editingProduct.category && !existingCategories.includes(editingProduct.category);
-      setIsCustomCategory(!!isCustom);
     } else {
+      const randomNum = Math.floor(10000000 + Math.random() * 90000000);
       setFormData({
-        code: '',
+        code: `KOP-${randomNum}`,
         name: '',
-        price: '',
-        costPrice: '',
-        stock: '',
-        category: '',
-        imageUrl: ''
+        price: '0',
+        costPrice: '0',
+        stock: '0',
+        category: categoryOptions[0] || 'Makanan',
+        imageUrl: '',
+        productType: 'Default',
+        showInTransaction: true,
+        useStock: true,
       });
-      setIsCustomCategory(false);
     }
     setValidationErrors({});
-  }, [editingProduct, isOpen, existingCategories]);
+  }, [editingProduct, isOpen, categoryOptions]);
 
+  // Image Upload Handler
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,61 +160,51 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
       toast.error(err.response?.data?.message || 'Gagal mengunggah foto produk', { id: 'prod-photo-upload', duration: 3000 });
     } finally {
       setIsUploadingImage(false);
-      // Reset input value so same file can be re-selected if needed
       if (e.target) e.target.value = '';
     }
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setValidationErrors((prev) => ({ ...prev, [name]: '' }));
   }, []);
 
-  const handleCategoryChange = useCallback((val: string) => {
-    setFormData((prev) => ({ ...prev, category: val }));
-    setValidationErrors((prev) => ({ ...prev, category: '' }));
-  }, []);
-
   const handleGenerateCode = useCallback(() => {
-    const randomNum = Math.floor(10000000 + Math.random() * 90000000); // 8-digit random
+    const randomNum = Math.floor(10000000 + Math.random() * 90000000);
     const autoCode = `KOP-${randomNum}`;
     setFormData((prev) => ({ ...prev, code: autoCode }));
     setValidationErrors((prev) => ({ ...prev, code: '' }));
   }, []);
 
-  // Handle Enter key for barcode scanner (prevents submit, focuses product name)
-  const handleCodeKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const nameInput = document.getElementById('prod-name');
-      if (nameInput) {
-        nameInput.focus();
-      }
-    }
-  }, []);
+  // Live Markup & Margin Calculations (Kasir Pintar Style)
+  const metrics = useMemo(() => {
+    const cost = Number(formData.costPrice || 0);
+    const sell = Number(formData.price || 0);
 
-  const warningMessage = useMemo(() => {
-    const priceNum = Number(formData.price || 0);
-    const costNum = Number(formData.costPrice || 0);
-    if (priceNum > 0 && costNum > 0 && priceNum < costNum) {
-      return 'Harga jual lebih rendah dari harga modal (Rugi)';
+    if (cost <= 0 || sell <= 0) {
+      return { markup: 0, margin: 0 };
     }
-    return '';
-  }, [formData.price, formData.costPrice]);
+
+    const profit = sell - cost;
+    const markup = Math.round((profit / cost) * 100);
+    const margin = Math.round((profit / sell) * 100);
+
+    return { markup, margin };
+  }, [formData.costPrice, formData.price]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!formData.code.trim()) {
-      errors.code = 'Kode produk wajib diisi.';
-    }
     if (!formData.name.trim()) {
       errors.name = 'Nama produk wajib diisi.';
     }
+    if (!formData.code.trim()) {
+      errors.code = 'Kode produk wajib diisi.';
+    }
     if (!formData.category || !formData.category.trim()) {
-      errors.category = 'Kategori produk wajib dipilih atau diisi.';
+      errors.category = 'Kategori produk wajib dipilih.';
     }
 
     const priceNum = Number(formData.price);
@@ -189,267 +218,381 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     }
 
     const stockNum = Number(formData.stock);
-    if (!editingProduct && (isNaN(stockNum) || stockNum < 0)) {
-      errors.stock = 'Stok awal tidak boleh negatif.';
+    if (isNaN(stockNum) || stockNum < 0) {
+      errors.stock = 'Stok tidak boleh negatif.';
     }
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      toast.error('Mohon periksa kolom yang belum lengkap');
       return;
     }
 
     setValidationErrors({});
-    onSubmit(formData);
-  }, [formData, onSubmit, editingProduct]);
+    onSubmit({
+      code: formData.code.trim(),
+      name: formData.name.trim(),
+      price: String(priceNum),
+      costPrice: String(costNum),
+      stock: String(stockNum),
+      category: formData.category.trim(),
+      imageUrl: formData.imageUrl || undefined
+    });
+  }, [formData, onSubmit]);
 
-  const DEFAULT_COOP_CATEGORIES = useMemo(() => [
-    'Makanan',
-    'Minuman',
-    'Kebutuhan Harian',
-    'Alat Tulis & Kantor',
-    'Kesehatan & Obat',
-    'Lain-lain'
-  ], []);
-
-  const categoryOptions = useMemo(() => {
-    const rawList = (existingCategories && existingCategories.length > 0)
-      ? existingCategories
-      : DEFAULT_COOP_CATEGORIES;
-
-    const combined = Array.from(new Set([
-      ...rawList.filter((cat) => cat && cat !== 'ALL'),
-      ...DEFAULT_COOP_CATEGORIES
-    ]));
-
-    return combined.map((cat) => ({
-      label: cat,
-      value: cat
-    }));
-  }, [existingCategories, DEFAULT_COOP_CATEGORIES]);
+  if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor="prod-code" className="block text-sm font-medium text-gray-700">
-                Kode Produk
-              </label>
-              <button
-                type="button"
-                onClick={handleGenerateCode}
-                className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
-              >
-                Buat Otomatis
-              </button>
-            </div>
-            <Input
-              id="prod-code"
-              name="code"
-              value={formData.code}
-              onChange={handleInputChange}
-              onKeyDown={handleCodeKeyDown}
-              required
-              autoFocus
-              placeholder="E.g. PRD-001"
-              aria-label="Kode Produk"
-              error={validationErrors.code}
-            />
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-950 w-full sm:max-w-md h-[92vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-250">
+        
+        {/* ─────────────────────────────────────────────────────────────────────
+            TOP APP BAR (1:1 Kasir Pintar)
+            ───────────────────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-950">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 -ml-1 text-slate-700 dark:text-slate-300 active:scale-95 cursor-pointer"
+              aria-label="Kembali"
+            >
+              <ArrowLeft size={22} />
+            </button>
+            <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+              {editingProduct ? 'Edit Barang' : 'Tambah Barang'}
+            </h2>
           </div>
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor={isCustomCategory ? 'prod-category-custom' : 'prod-category-select'} className="block text-sm font-medium text-gray-700">
-                Kategori Produk
-              </label>
-              <label className="flex items-center space-x-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isCustomCategory}
-                  onChange={(e) => {
-                    setIsCustomCategory(e.target.checked);
-                    setFormData((prev) => ({ ...prev, category: '' }));
-                    setValidationErrors((prev) => ({ ...prev, category: '' }));
-                  }}
-                  className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
-                />
-                <span className="text-xs text-gray-500 font-medium">Buat Baru</span>
-              </label>
-            </div>
 
-            {isCustomCategory ? (
-              <Input
-                id="prod-category-custom"
-                placeholder="Ketik kategori baru..."
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                required
-                aria-label="Kategori Baru"
-                error={validationErrors.category}
-              />
-            ) : (
-              <div>
-                <SearchableSelect
-                  id="prod-category-select"
-                  options={categoryOptions}
-                  value={formData.category}
-                  onValueChange={handleCategoryChange}
-                  placeholder="Pilih atau cari kategori..."
-                  clearable
-                />
-                {validationErrors.category && <p className="mt-1 text-sm text-red-600">{validationErrors.category}</p>}
-              </div>
-            )}
-          </div>
+          {!editingProduct && (
+            <button
+              type="button"
+              onClick={handleGenerateCode}
+              className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs tracking-tight shadow-xs cursor-pointer active:scale-95 transition-transform"
+            >
+              Tambah Instan
+            </button>
+          )}
         </div>
 
-        <Input
-          id="prod-name"
-          label="Nama Produk"
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          required
-          placeholder="E.g. Susu UHT 250ml"
-          aria-label="Nama Produk"
-          error={validationErrors.name}
-        />
+        {/* ─────────────────────────────────────────────────────────────────────
+            SCROLLABLE FORM CONTENT (1:1 Kasir Pintar Persona)
+            ───────────────────────────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Hidden File Inputs */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+          />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Input
-              id="prod-price"
-              label="Harga Jual (Rp)"
-              name="price"
-              type="number"
-              min="0"
-              value={formData.price}
-              onChange={handleInputChange}
-              required
-              placeholder="0"
-              aria-label="Harga Jual"
-              error={validationErrors.price}
-            />
-            {formData.price && !isNaN(Number(formData.price)) && (
-              <p className="mt-1 text-xs text-slate-500 font-medium">
-                Pratinjau: Rp {Number(formData.price).toLocaleString('id-ID')}
-              </p>
-            )}
-            {warningMessage && (
-              <p className="mt-1 text-xs text-amber-600 font-bold">
-                ⚠️ {warningMessage}
-              </p>
-            )}
-          </div>
-          <div>
-            <Input
-              id="prod-cost-price"
-              label="Harga Modal (Rp)"
-              name="costPrice"
-              type="number"
-              min="0"
-              value={formData.costPrice}
-              onChange={handleInputChange}
-              required
-              placeholder="0"
-              aria-label="Harga Modal"
-              error={validationErrors.costPrice}
-            />
-            {formData.costPrice && !isNaN(Number(formData.costPrice)) && (
-              <p className="mt-1 text-xs text-slate-500 font-medium">
-                Pratinjau: Rp {Number(formData.costPrice).toLocaleString('id-ID')}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Foto Produk (Terintegrasi ke Storage Engine) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Foto Produk (Opsional)
-          </label>
-          <div className="flex items-center gap-3.5 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative">
+          {/* 1. Centered Photo Box & Camera/Gallery Icons */}
+          <div className="flex flex-col items-center justify-center pt-1 pb-2">
+            <div className="w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden shadow-2xs group">
               {formData.imageUrl ? (
-                <img
-                  src={formData.imageUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                />
+                <>
+                  <img
+                    src={formData.imageUrl}
+                    alt="Preview Barang"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                    className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-rose-600 transition-colors"
+                    title="Hapus Foto"
+                  >
+                    <X size={12} />
+                  </button>
+                </>
+              ) : isUploadingImage ? (
+                <Loader2 size={24} className="text-emerald-500 animate-spin" />
               ) : (
-                <ImageIcon className="text-slate-400" size={24} />
+                <ImageIcon size={36} className="text-slate-300 dark:text-slate-600" />
               )}
             </div>
-            <div className="flex-1 min-w-0 space-y-1.5">
+
+            {/* Camera & Gallery Action Buttons */}
+            <div className="flex items-center gap-6 mt-2.5 text-slate-600 dark:text-slate-400">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="p-1.5 hover:text-emerald-600 active:scale-90 transition-transform cursor-pointer"
+                title="Ambil Foto Kamera"
+              >
+                <Camera size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="p-1.5 hover:text-emerald-600 active:scale-90 transition-transform cursor-pointer"
+                title="Pilih dari Galeri"
+              >
+                <ImageIcon size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Nama* */}
+          <div className="space-y-1">
+            <label htmlFor="prod-name-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Nama*
+            </label>
+            <input
+              id="prod-name-input"
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Contoh: Marie Susu 115gr"
+              className={cn(
+                "w-full h-11 px-3.5 rounded-xl border bg-white dark:bg-slate-900 text-xs font-medium outline-none transition-all focus:ring-2 focus:ring-emerald-500",
+                validationErrors.name ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+              )}
+              required
+            />
+            {validationErrors.name && (
+              <p className="text-[11px] text-rose-500 font-medium">{validationErrors.name}</p>
+            )}
+          </div>
+
+          {/* 3. Tipe Barang */}
+          <div className="space-y-1">
+            <label htmlFor="prod-type-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Tipe Barang
+            </label>
+            <div className="relative">
+              <select
+                id="prod-type-select"
+                name="productType"
+                value={formData.productType}
+                onChange={handleInputChange}
+                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none appearance-none cursor-pointer"
+              >
+                <option value="Default">Default</option>
+                <option value="Barang Fisik">Barang Fisik</option>
+                <option value="Jasa / Layanan">Jasa / Layanan</option>
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                ▼
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Checkboxes: Tampilkan di Transaksi & Pakai Stok */}
+          <div className="space-y-2 pt-1">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
+                type="checkbox"
+                checked={formData.showInTransaction}
+                onChange={(e) => setFormData(prev => ({ ...prev, showInTransaction: e.target.checked }))}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
               />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingImage}
-                  className="text-xs flex items-center gap-1.5"
-                >
-                  {isUploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                  <span>{formData.imageUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
-                </Button>
-                {formData.imageUrl && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                    className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900"
-                  >
-                    Hapus
-                  </Button>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Tampilkan di Transaksi
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formData.useStock}
+                onChange={(e) => setFormData(prev => ({ ...prev, useStock: e.target.checked }))}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+              />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Pakai stok
+              </span>
+            </label>
+          </div>
+
+          {/* 5. Stok* */}
+          {formData.useStock && (
+            <div className="space-y-1">
+              <label htmlFor="prod-stock-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Stok*
+              </label>
+              <input
+                id="prod-stock-input"
+                type="number"
+                min="0"
+                name="stock"
+                value={formData.stock}
+                onChange={handleInputChange}
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+            </div>
+          )}
+
+          {/* 6. Kode* (With Auto Generate & Barcode Scanner) */}
+          <div className="space-y-1">
+            <label htmlFor="prod-code-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Kode*
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="prod-code-input"
+                type="text"
+                name="code"
+                value={formData.code}
+                onChange={handleInputChange}
+                placeholder="KOP-12345678"
+                className={cn(
+                  "w-full h-11 pl-3.5 pr-20 rounded-xl border bg-white dark:bg-slate-900 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500",
+                  validationErrors.code ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
                 )}
+                required
+              />
+              <div className="absolute right-2 flex items-center gap-1.5 text-emerald-600">
+                <button
+                  type="button"
+                  onClick={handleGenerateCode}
+                  className="p-1.5 hover:bg-emerald-50 rounded-lg active:scale-95 cursor-pointer"
+                  title="Generate Kode Otomatis"
+                >
+                  <RotateCw size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toast('Scanner Barcode siap digunakan')}
+                  className="p-1.5 hover:bg-emerald-50 rounded-lg active:scale-95 cursor-pointer"
+                  title="Scan Barcode"
+                >
+                  <Barcode size={18} />
+                </button>
               </div>
-              <p className="text-[10px] text-slate-400">
-                Format PNG, JPG, WebP. Tersimpan otomatis ke storage engine.
+            </div>
+            {validationErrors.code && (
+              <p className="text-[11px] text-rose-500 font-medium">{validationErrors.code}</p>
+            )}
+          </div>
+
+          {/* 7. Harga dasar* (Harga Modal) */}
+          <div className="space-y-1">
+            <label htmlFor="prod-cost-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Harga dasar*
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-xs font-bold text-slate-500 pointer-events-none">
+                Rp
+              </span>
+              <input
+                id="prod-cost-input"
+                type="number"
+                min="0"
+                name="costPrice"
+                value={formData.costPrice}
+                onChange={handleInputChange}
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+            </div>
+          </div>
+
+          {/* 8. Harga jual* + Markup & Margin Subtitles */}
+          <div className="space-y-1">
+            <label htmlFor="prod-price-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Harga jual*
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-3.5 text-xs font-bold text-slate-500 pointer-events-none">
+                Rp
+              </span>
+              <input
+                id="prod-price-input"
+                type="number"
+                min="0"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+            </div>
+
+            {/* Live Profit Metrics (Kasir Pintar Style) */}
+            <div className="pt-1 space-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold italic">
+              <p className="flex items-center gap-1">
+                <span>Markup Penjualan {metrics.markup}%</span>
+                <Info size={12} className="inline opacity-70" />
+              </p>
+              <p className="flex items-center gap-1">
+                <span>Margin Keuntungan {metrics.margin}%</span>
+                <Info size={12} className="inline opacity-70" />
               </p>
             </div>
           </div>
-        </div>
 
-        <Input
-          id="prod-stock"
-          label="Stok Awal"
-          name="stock"
-          type="number"
-          min="0"
-          value={formData.stock}
-          onChange={handleInputChange}
-          required
-          disabled={!!editingProduct}
-          placeholder="0"
-          aria-label="Stok Awal"
-          error={validationErrors.stock}
-        />
+          {/* 9. Kategori */}
+          <div className="space-y-1 pb-4">
+            <label htmlFor="prod-category-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Kategori
+            </label>
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <select
+                  id="prod-category-select"
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none appearance-none cursor-pointer"
+                >
+                  {categoryOptions.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                  ▼
+                </span>
+              </div>
 
-        <div className="flex justify-end space-x-3 mt-6">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Batal
-          </Button>
-          <Button type="submit" isLoading={isLoading}>
-            Simpan
-          </Button>
-        </div>
-      </form>
-    </Modal>
+              <button
+                type="button"
+                onClick={() => {
+                  const custom = prompt('Masukkan nama kategori baru:');
+                  if (custom && custom.trim()) {
+                    setFormData(prev => ({ ...prev, category: custom.trim() }));
+                  }
+                }}
+                className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 active:scale-95 cursor-pointer shadow-2xs"
+                title="Tambah Kategori Baru"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* 10. Bottom Full-Width Simpan Button */}
+          <div className="pt-2 sticky bottom-0 bg-white dark:bg-slate-950 pb-2">
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={isLoading}
+              className="w-full h-13 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+            >
+              Simpan
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 });
+
+ProductFormModal.displayName = 'ProductFormModal';
+
 export default ProductFormModal;
