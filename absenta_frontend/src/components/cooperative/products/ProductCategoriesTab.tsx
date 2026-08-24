@@ -378,14 +378,14 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
                     )}
                   </div>
 
-                  {/* Bottom Line: sisa : 0 (Left) and Modal : Rp 0 (Right) */}
-                  <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    <span>
+                  {/* Bottom Line: sisa : 0 (Left 50%) and Modal : Rp 0 (Right 50% - Straight Alignment) */}
+                  <div className="grid grid-cols-2 items-center mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    <div className="text-left">
                       sisa : {stats.totalStock}
-                    </span>
-                    <span>
+                    </div>
+                    <div className="text-left pl-2 font-mono">
                       Modal : Rp {stats.totalCost.toLocaleString('id-ID')}
-                    </span>
+                    </div>
                   </div>
                 </div>
               );
