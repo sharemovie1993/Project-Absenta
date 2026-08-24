@@ -354,10 +354,10 @@ const Dashboard: React.FC = React.memo(() => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {!isGuruOrSiswa ? (
             <>
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-w-0">
                 <SectionCard title="Pertumbuhan Aset (6 Bulan Terakhir)" fullWidth noPadding>
-                  <div className="h-80 p-6">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 p-6 w-full min-w-0">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
                       <BarChart
                         data={chartData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
