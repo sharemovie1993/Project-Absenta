@@ -28,6 +28,7 @@ import { SocketProvider } from './contexts/SocketContext';
 import { LogService } from './utils/LogService';
 import { loadActiveSystemConfig } from './services/systemConfig';
 import { isCapacitorApp } from './services/serverConfig';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
 import { FloatingDemoSwitcher } from './components/common/FloatingDemoSwitcher';
@@ -261,6 +262,15 @@ function App() {
   const isSaas = import.meta.env.VITE_DEPLOY_MODE !== 'ON_PREMISE';
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
+
+  // Prevent Mobile Status Bar from overlapping web content in Capacitor
+  useEffect(() => {
+    if (isCapacitorApp() || (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.())) {
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+      StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => {});
+    }
+  }, []);
 
   // Intercept quick_login_token & support_token query param for Quick Login from WhatsApp / Licensing Server
   useEffect(() => {
