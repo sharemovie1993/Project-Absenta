@@ -148,6 +148,96 @@ export class TokoService {
         return updated;
     }
 
+    // Get Product Movement Logs (Sales, Stock-in, Adjustments)
+    static async getProductLogs(tenantId: string, productId: string, options?: { startDate?: string; endDate?: string }) {
+        const product = await prisma.product.findFirst({
+            where: { id: productId, tenantId }
+        });
+        if (!product) throw new Error('Produk tidak ditemukan');
+
+        const sales = await prisma.saleItem.findMany({
+            where: {
+                productId,
+                sale: { tenantId }
+            },
+            include: {
+                sale: true
+            },
+            orderBy: {
+                sale: { createdAt: 'desc' }
+            }
+        });
+
+        const stockIns = await prisma.coopStockInItem.findMany({
+            where: {
+                productId,
+                stockIn: { tenantId }
+            },
+            include: {
+                stockIn: true
+            },
+            orderBy: {
+                stockIn: { date: 'desc' }
+            }
+        });
+
+        const logs: any[] = [];
+
+        sales.forEach(s => {
+            logs.push({
+                id: `sale-${s.id}`,
+                timestamp: s.sale?.createdAt || new Date(),
+                masuk: 0,
+                keluar: s.quantity,
+                stok: product.stock,
+                type: 'PENJUALAN',
+                reference: s.sale?.id ? `TRX-${s.sale.id.substring(0, 8)}` : '-',
+                notes: `Penjualan Kasir (${s.quantity} pcs)`
+            });
+        });
+
+        stockIns.forEach(si => {
+            logs.push({
+                id: `stockin-${si.id}`,
+                timestamp: si.stockIn?.date || new Date(),
+                masuk: si.quantity,
+                keluar: 0,
+                stok: product.stock,
+                type: 'BARANG_MASUK',
+                reference: si.stockIn?.invoiceNumber || '-',
+                notes: `Kulakan ${si.stockIn?.supplier ? `(${si.stockIn.supplier})` : ''} (+${si.quantity} pcs)`
+            });
+        });
+
+        if (logs.length === 0) {
+            logs.push({
+                id: `init-${product.id}`,
+                timestamp: product.createdAt,
+                masuk: product.stock,
+                keluar: 0,
+                stok: product.stock,
+                type: 'STOK_AWAL',
+                reference: product.code,
+                notes: 'Pencatatan Stok Awal'
+            });
+        }
+
+        logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        return {
+            product: {
+                id: product.id,
+                code: product.code,
+                name: product.name,
+                stock: product.stock,
+                costPrice: product.costPrice,
+                price: product.price,
+                unit: product.unit || 'pcs'
+            },
+            logs
+        };
+    }
+
     // Delete Product (dengan proteksi data historis)
     static async deleteProduct(id: string, operatorId?: string | null) {
         const product = await prisma.product.findUnique({ where: { id } });

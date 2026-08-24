@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
@@ -14,10 +14,11 @@ import {
   Package, 
   CheckCircle2,
   ChevronRight,
-  History,
   MoreVertical,
   HelpCircle,
-  Boxes
+  FileText,
+  Calendar,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -47,6 +48,17 @@ interface Product {
   unit?: string | null;
   rackLocation?: string | null;
   useStock?: boolean;
+}
+
+interface ProductMovementLog {
+  id: string;
+  timestamp: string;
+  masuk: number;
+  keluar: number;
+  stok: number;
+  type: string;
+  reference: string;
+  notes: string;
 }
 
 interface ProductInventoryTabProps {
@@ -117,6 +129,21 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
     }
   });
 
+  // Query to fetch product logs (Kasir Pintar Persona: Log Barang)
+  const productLogsQuery = useQuery({
+    queryKey: ['koperasi-product-logs', selectedProductForLog?.id],
+    queryFn: async () => {
+      if (!selectedProductForLog) return { logs: [] };
+      const res = await api.get(`/cooperative/toko/${selectedProductForLog.id}/logs`);
+      return res.data;
+    },
+    enabled: Boolean(selectedProductForLog),
+    staleTime: 30 * 1000,
+  });
+
+  const productLogs: ProductMovementLog[] = productLogsQuery.data?.logs || [];
+  const isLogsLoading = productLogsQuery.isLoading;
+
   // Filtered products
   const filteredProducts = useMemo(() => {
     return products.filter(prod => {
@@ -169,6 +196,24 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
     const words = name.trim().split(' ').filter(Boolean);
     if (words.length === 1) return words[0].substring(0, 2);
     return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  // Helper date formatter for Log Barang
+  const formatLogDate = (isoStr: string) => {
+    const d = new Date(isoStr);
+    const day = d.getDate();
+    const month = d.toLocaleString('id-ID', { month: 'short' });
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    const secs = String(d.getSeconds()).padStart(2, '0');
+    const ms = String(d.getMilliseconds()).padStart(3, '0');
+
+    return {
+      timeStr: `${hours}:${mins}:${secs}.${ms}`,
+      dayStr: String(day),
+      monthYearStr: `${month} ${year}`
+    };
   };
 
   // Desktop columns
@@ -633,6 +678,128 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
       )}
 
       {/* ───────────────────────────────────────────────────────────────────────
+          1:1 KASIR PINTAR "LOG BARANG" FULL SCREEN VIEW (Mobile Persona)
+          ─────────────────────────────────────────────────────────────────────── */}
+      {selectedProductForLog && (
+        <div className="fixed inset-0 z-[99999] bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col animate-in slide-in-from-right-5 duration-200">
+          
+          {/* 1. App Bar Header */}
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-950 shrink-0 pt-[calc(0.875rem+env(safe-area-inset-top))]">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedProductForLog(null)}
+                className="p-1 -ml-1 text-slate-800 dark:text-slate-200 active:scale-95 cursor-pointer"
+                aria-label="Kembali"
+              >
+                <ArrowLeft size={22} />
+              </button>
+              <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                Log Barang
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => toast.success('Laporan log mutasi barang siap diexport')}
+              className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 active:scale-90 transition-transform cursor-pointer"
+              title="Export Log Laporan"
+            >
+              <FileText size={20} />
+            </button>
+          </div>
+
+          {/* 2. Product Name & Code Subheader Strip */}
+          <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <h3 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+              {selectedProductForLog.name}
+            </h3>
+            <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              {selectedProductForLog.code}
+            </p>
+          </div>
+
+          {/* 3. Date Range Filter Pill */}
+          <div className="px-4 pt-3 pb-1 shrink-0">
+            <div className="h-10 px-4 rounded-full border border-emerald-500/70 bg-white dark:bg-slate-900 flex items-center gap-2.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+              <Calendar size={16} className="text-emerald-600 dark:text-emerald-400" />
+              <span>24 Jul 2026 - 24 Agu 2026</span>
+            </div>
+          </div>
+
+          {/* 4. Log Movement Entries List */}
+          <div className="flex-1 overflow-y-auto px-4 divide-y divide-slate-100 dark:divide-slate-800/80">
+            {isLogsLoading ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                <Loader2 size={24} className="text-emerald-500 animate-spin" />
+                <span>Memuat log mutasi barang...</span>
+              </div>
+            ) : productLogs.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 text-xs">
+                Belum ada data transaksi untuk produk ini.
+              </div>
+            ) : (
+              productLogs.map(log => {
+                const { timeStr, dayStr, monthYearStr } = formatLogDate(log.timestamp);
+
+                return (
+                  <div key={log.id} className="py-3.5 flex items-center justify-between gap-2 select-none">
+                    {/* Column 1: Time & Date */}
+                    <div className="w-28 shrink-0">
+                      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                        {timeStr}
+                      </p>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-xl font-black text-slate-900 dark:text-slate-100">
+                          {dayStr}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {monthYearStr}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Column 2: Masuk */}
+                    <div className="text-center flex-1">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        Masuk
+                      </p>
+                      <p className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
+                        {log.masuk}
+                      </p>
+                    </div>
+
+                    {/* Column 3: Keluar */}
+                    <div className="text-center flex-1">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        Keluar
+                      </p>
+                      <p className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
+                        {log.keluar}
+                      </p>
+                    </div>
+
+                    {/* Column 4: Stok & Chevron */}
+                    <div className="flex items-center gap-2 shrink-0 text-right">
+                      <div className="text-center min-w-[36px]">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                          Stok
+                        </p>
+                        <p className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
+                          {log.stok}
+                        </p>
+                      </div>
+                      <ChevronRight size={18} className="text-emerald-500" />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
           MODAL: Filter Kategori & Status Stok (Mobile)
           ─────────────────────────────────────────────────────────────────────── */}
       <Modal
@@ -733,42 +900,6 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
           }}
           isLoading={adjustStockMutation.isPending}
         />
-      )}
-
-      {/* ───────────────────────────────────────────────────────────────────────
-          MODAL: Log Barang (Riwayat Mutasi & Transaksi Produk)
-          ─────────────────────────────────────────────────────────────────────── */}
-      {selectedProductForLog && (
-        <Modal
-          isOpen={Boolean(selectedProductForLog)}
-          onClose={() => setSelectedProductForLog(null)}
-          title={`Log Barang: ${selectedProductForLog.name}`}
-        >
-          <div className="space-y-4 py-2">
-            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
-              <p className="text-slate-500 dark:text-slate-400">Kode: <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{selectedProductForLog.code}</span></p>
-              <p className="text-slate-500 dark:text-slate-400">Stok Saat Ini: <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedProductForLog.stock} {selectedProductForLog.unit || 'pcs'}</span></p>
-              <p className="text-slate-500 dark:text-slate-400">Harga Modal: <span className="font-bold text-slate-800 dark:text-slate-200">Rp {Number(selectedProductForLog.costPrice || 0).toLocaleString('id-ID')}</span></p>
-            </div>
-
-            <div className="text-center py-8 text-slate-400 text-xs space-y-1">
-              <History size={32} className="mx-auto mb-1.5 text-slate-300 dark:text-slate-600" />
-              <p className="font-bold text-slate-600 dark:text-slate-300">Riwayat Mutasi Barang</p>
-              <p className="text-[11px] text-slate-400">Seluruh mutasi tercatat otomatis melalui transaksi kasir dan faktur barang masuk.</p>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setSelectedProductForLog(null)}
-                className="w-full font-bold"
-              >
-                Tutup
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   );

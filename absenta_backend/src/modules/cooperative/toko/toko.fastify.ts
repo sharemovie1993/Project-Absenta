@@ -178,6 +178,17 @@ export default async function tokoRoutes(fastify: any) {
         }
     });
 
+    // GET /products/:id/logs
+    fastify.get('/:id/logs', { preHandler: [requireCapability('cooperative.store.products.view.list')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const logs = await TokoService.getProductLogs(tenantId, req.params.id, req.query as any);
+            return logs;
+        } catch (error: any) {
+            reply.code(500).send({ error: error.message || 'Failed to fetch product logs' });
+        }
+    });
+
     // POST /stock-in
     fastify.post('/stock-in', { preHandler: [requireCapability('cooperative.store.products.update')] }, async (req: any, reply: any) => {
         try {
