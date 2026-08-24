@@ -144,7 +144,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         description: editingProduct.description || '',
         barcode: editingProduct.barcode || '',
       });
-      // If product has extra fields populated, auto expand
       if (editingProduct.minStock || editingProduct.rackLocation || editingProduct.description || editingProduct.discount) {
         setIsExpanded(true);
       }
@@ -304,18 +303,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-950 w-full sm:max-w-md h-[92vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-250">
+    <div className="fixed inset-0 z-[99999] bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-transparent dark:border-slate-800 w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] rounded-none sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-250">
         
         {/* ─────────────────────────────────────────────────────────────────────
-            TOP APP BAR (1:1 Kasir Pintar)
+            TOP APP BAR (Theme-Aware 1:1 Kasir Pintar)
             ───────────────────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-950">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/90 shrink-0 bg-white dark:bg-slate-950 pt-[calc(0.875rem+env(safe-area-inset-top))] sm:pt-3.5">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="p-1 -ml-1 text-slate-700 dark:text-slate-300 active:scale-95 cursor-pointer"
+              className="p-1 -ml-1 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white active:scale-95 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
               aria-label="Kembali"
             >
               <ArrowLeft size={22} />
@@ -329,7 +328,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             <button
               type="button"
               onClick={handleGenerateCode}
-              className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs tracking-tight shadow-xs cursor-pointer active:scale-95 transition-transform"
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs tracking-tight shadow-xs cursor-pointer active:scale-95 transition-transform"
             >
               Tambah Instan
             </button>
@@ -337,9 +336,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────────────
-            SCROLLABLE FORM CONTENT (1:1 Kasir Pintar Persona)
+            SCROLLABLE FORM CONTENT (100% Theme-Aware)
             ───────────────────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-slate-950">
           {/* Hidden File Inputs */}
           <input
             type="file"
@@ -359,7 +358,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
 
           {/* 1. Centered Photo Box & Camera/Gallery Icons */}
           <div className="flex flex-col items-center justify-center pt-1 pb-2">
-            <div className="w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden shadow-2xs group">
+            <div className="w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center relative overflow-hidden shadow-2xs group">
               {formData.imageUrl ? (
                 <>
                   <img
@@ -371,7 +370,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
-                    className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-rose-600 transition-colors"
+                    className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-colors"
                     title="Hapus Foto"
                   >
                     <X size={12} />
@@ -380,7 +379,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               ) : isUploadingImage ? (
                 <Loader2 size={24} className="text-emerald-500 animate-spin" />
               ) : (
-                <ImageIcon size={36} className="text-slate-300 dark:text-slate-600" />
+                <ImageIcon size={36} className="text-slate-400 dark:text-slate-600" />
               )}
             </div>
 
@@ -390,7 +389,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="p-1.5 hover:text-emerald-600 active:scale-90 transition-transform cursor-pointer"
+                className="p-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-90 transition-transform cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
                 title="Ambil Foto Kamera"
               >
                 <Camera size={20} />
@@ -399,7 +398,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="p-1.5 hover:text-emerald-600 active:scale-90 transition-transform cursor-pointer"
+                className="p-1.5 hover:text-emerald-600 dark:hover:text-emerald-400 active:scale-90 transition-transform cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900"
                 title="Pilih dari Galeri"
               >
                 <ImageIcon size={20} />
@@ -420,7 +419,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               onChange={handleInputChange}
               placeholder="Contoh: Marie Susu 115gr"
               className={cn(
-                "w-full h-11 px-3.5 rounded-xl border bg-white dark:bg-slate-900 text-xs font-medium outline-none transition-all focus:ring-2 focus:ring-emerald-500",
+                "w-full h-11 px-3.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
                 validationErrors.name ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
               )}
               required
@@ -441,13 +440,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 name="productType"
                 value={formData.productType}
                 onChange={handleInputChange}
-                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none appearance-none cursor-pointer"
+                className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
-                <option value="Default">Default</option>
-                <option value="Barang Fisik">Barang Fisik</option>
-                <option value="Jasa / Layanan">Jasa / Layanan</option>
+                <option value="Default" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Default</option>
+                <option value="Barang Fisik" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Barang Fisik</option>
+                <option value="Jasa / Layanan" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Jasa / Layanan</option>
               </select>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">
                 ▼
               </span>
             </div>
@@ -460,7 +459,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 type="checkbox"
                 checked={formData.showInTransaction}
                 onChange={(e) => setFormData(prev => ({ ...prev, showInTransaction: e.target.checked }))}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
               />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Tampilkan di Transaksi
@@ -472,7 +471,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 type="checkbox"
                 checked={formData.useStock}
                 onChange={(e) => setFormData(prev => ({ ...prev, useStock: e.target.checked }))}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
               />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Pakai stok
@@ -493,7 +492,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 name="stock"
                 value={formData.stock}
                 onChange={handleInputChange}
-                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 required
               />
             </div>
@@ -513,16 +512,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 onChange={handleInputChange}
                 placeholder="KOP-12345678"
                 className={cn(
-                  "w-full h-11 pl-3.5 pr-20 rounded-xl border bg-white dark:bg-slate-900 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500",
+                  "w-full h-11 pl-3.5 pr-20 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
                   validationErrors.code ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
                 )}
                 required
               />
-              <div className="absolute right-2 flex items-center gap-1.5 text-emerald-600">
+              <div className="absolute right-2 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                 <button
                   type="button"
                   onClick={handleGenerateCode}
-                  className="p-1.5 hover:bg-emerald-50 rounded-lg active:scale-95 cursor-pointer"
+                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg active:scale-95 cursor-pointer transition-colors"
                   title="Generate Kode Otomatis"
                 >
                   <RotateCw size={16} />
@@ -530,7 +529,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => toast('Scanner Barcode siap digunakan')}
-                  className="p-1.5 hover:bg-emerald-50 rounded-lg active:scale-95 cursor-pointer"
+                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg active:scale-95 cursor-pointer transition-colors"
                   title="Scan Barcode"
                 >
                   <Barcode size={18} />
@@ -548,7 +547,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               Harga dasar*
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-xs font-bold text-slate-500 pointer-events-none">
+              <span className="absolute left-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 pointer-events-none">
                 Rp
               </span>
               <input
@@ -558,7 +557,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 name="costPrice"
                 value={formData.costPrice}
                 onChange={handleInputChange}
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 required
               />
             </div>
@@ -570,7 +569,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               Harga jual*
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-xs font-bold text-slate-500 pointer-events-none">
+              <span className="absolute left-3.5 text-xs font-bold text-slate-500 dark:text-slate-400 pointer-events-none">
                 Rp
               </span>
               <input
@@ -580,7 +579,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 name="price"
                 value={formData.price}
                 onChange={handleInputChange}
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 required
               />
             </div>
@@ -610,13 +609,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none appearance-none cursor-pointer"
+                  className="w-full h-11 px-3.5 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-medium outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 >
                   {categoryOptions.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat} value={cat} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">{cat}</option>
                   ))}
                 </select>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">
                   ▼
                 </span>
               </div>
@@ -629,7 +628,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                     setFormData(prev => ({ ...prev, category: custom.trim() }));
                   }
                 }}
-                className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 active:scale-95 cursor-pointer shadow-2xs"
+                className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 active:scale-95 cursor-pointer shadow-2xs hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
                 title="Tambah Kategori Baru"
               >
                 <Plus size={18} />
@@ -655,7 +654,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                   value={formData.minStock}
                   onChange={handleInputChange}
                   placeholder="0"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
 
@@ -673,7 +672,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                     value={formData.weight}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
 
@@ -688,7 +687,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                     value={formData.unit}
                     onChange={handleInputChange}
                     placeholder="pcs"
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -707,9 +706,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                     value={formData.discount}
                     onChange={handleInputChange}
                     placeholder="0"
-                    className="flex-1 h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="flex-1 h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
-                  <div className="flex h-11 rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-900 shrink-0">
+                  <div className="flex h-11 rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-100 dark:bg-slate-900 shrink-0">
                     <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, discountType: 'PERCENT' }))}
@@ -717,7 +716,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                         "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
                         formData.discountType === 'PERCENT'
                           ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                       )}
                     >
                       %
@@ -729,7 +728,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                         "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
                         formData.discountType === 'NOMINAL'
                           ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                       )}
                     >
                       Rp
@@ -750,7 +749,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                   value={formData.rackLocation}
                   onChange={handleInputChange}
                   placeholder="Contoh: Rak A-02"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
 
@@ -766,7 +765,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Catatan / keterangan tambahan produk"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
 
@@ -775,7 +774,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => toast('Fitur multi-tier harga (Grosir/Eceran) siap dikonfigurasi')}
-                  className="w-full py-3 px-4 rounded-xl border border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 text-center transition-colors cursor-pointer"
+                  className="w-full py-3 px-4 rounded-xl border border-emerald-500/70 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 hover:bg-emerald-50/60 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-center transition-colors cursor-pointer"
                 >
                   <p className="text-xs font-black">Tambah Tipe Harga</p>
                   <p className="text-[11px] font-semibold opacity-90">(Grosir / Retailer / Eceran / Gojek)</p>
@@ -794,19 +793,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer select-none py-2 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95"
             >
               <span>{isExpanded ? 'Tampilkan sedikit' : 'Tampilkan Lebih'}</span>
-              {isExpanded ? <ChevronUp size={16} className="text-emerald-600" /> : <ChevronDown size={16} className="text-slate-500" />}
+              {isExpanded ? <ChevronUp size={16} className="text-emerald-600 dark:text-emerald-400" /> : <ChevronDown size={16} className="text-slate-500 dark:text-slate-400" />}
             </button>
           </div>
 
           {/* ─────────────────────────────────────────────────────────────────────
               BOTTOM FULL-WIDTH SIMPAN BUTTON
               ───────────────────────────────────────────────────────────────────── */}
-          <div className="pt-2 sticky bottom-0 bg-white dark:bg-slate-950 pb-2">
+          <div className="pt-2 sticky bottom-0 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800/80 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Button
               type="submit"
               size="lg"
               isLoading={isLoading}
-              className="w-full h-13 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+              className="w-full h-13 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
             >
               Simpan
             </Button>
