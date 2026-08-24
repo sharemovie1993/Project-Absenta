@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
-import { Table } from '../../ui';
+import { Table, MobileDataList } from '../../ui';
 import type { Column } from '../../ui/Table';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import ConfirmDialog from '../../ui/ConfirmDialog';
@@ -11,6 +11,7 @@ import { importDataFromExcel } from '../../../utils/import.utils';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const ProductFormModal = lazy(() => import('../../../pages/cooperative/components/ProductFormModal'));
 const OpnameFormModal = lazy(() => import('../../../pages/cooperative/components/OpnameFormModal'));
@@ -59,6 +60,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   fetchCategories,
   loading = false,
 }) => {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const canCreate = user?.capabilities?.includes('cooperative.store.products.create') || false;
@@ -360,61 +362,212 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     </div>
   ), [categoryOptions, categoryFilter]);
 
-  return (
-    <div className="space-y-4">
+  const renderProductMobileCard = useCallback((product: Product) => {
+    const isLowStock = product.stock <= 5;
+    return (
+      <div 
+        key={product.id}
+        className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs space-y-3 transition-all"
+      >
+        {/* Header: Code, Category & Name */}
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap mb-1">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[10px] font-bold">
+                {product.code}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
+                {product.category || 'Umum'}
+              </span>
+            </div>
+            <h4 className="font-black text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {product.name}
+            </h4>
+          </div>
+
+          <span className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 ${
+            isLowStock 
+              ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800' 
+              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+          }`}>
+            {product.stock} pcs
+          </span>
+        </div>
+
+        {/* Prices & Action Bar */}
+        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/70 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3.5">
+            <div>
+              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Modal</p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                Rp {Number(product.costPrice || 0).toLocaleString('id-ID')}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Harga Jual</p>
+              <p className="text-sm font-black text-blue-600 dark:text-blue-400">
+                Rp {Number(product.price || 0).toLocaleString('id-ID')}
+              </p>
+            </div>
+          </div>
+
+          {(canUpdate || canDelete) && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canUpdate && (
+                <>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleOpenOpnameModal(product)} 
+                    className="h-8 px-2.5 text-xs font-bold"
+                  >
+                    Opname
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary" 
+                    onClick={() => handleOpenProductModal(product)} 
+                    icon={<Edit size={13} />} 
+                    className="h-8 w-8 p-0" 
+                    aria-label="Edit Produk" 
+                  />
+                </>
+              )}
+              {canDelete && (
+                <Button 
+                  size="sm" 
+                  variant="danger" 
+                  onClick={() => handleProductDeleteClick(product.id)} 
+                  icon={<Trash size={13} />} 
+                  className="h-8 w-8 p-0" 
+                  aria-label="Hapus Produk" 
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [canUpdate, canDelete, handleOpenOpnameModal, handleOpenProductModal, handleProductDeleteClick]);
+
+  const mobileToolbar = useMemo(() => (
+    <div className="flex flex-col gap-2.5 w-full">
       {canCreate && (
-        <div className="flex flex-col-reverse sm:flex-row justify-end items-stretch sm:items-center gap-2 mb-3">
-          <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={16} />} className="w-full sm:w-auto">
-            Import Excel
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" onClick={() => handleOpenProductModal()} icon={<Plus size={14} />} className="w-full justify-center">
+            Tambah Produk
           </Button>
-          <Button onClick={() => handleOpenProductModal()} icon={<Plus size={16} />} className="w-full sm:w-auto">
-            Tambah Produk Baru
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={14} />} className="w-full justify-center">
+            Import Excel
           </Button>
         </div>
       )}
-
-      <Table 
-        columns={catalogColumns}
-        data={paginatedProducts} 
-        loading={loading}
-        emptyMessage={
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/50 shadow-xs">
-              <Package size={28} />
-            </div>
-            <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 mb-1">
-              Belum Ada Produk di Katalog
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
-              Koperasi Anda belum memiliki produk terdaftar. Silakan tambahkan produk baru secara manual atau impor melalui file Excel.
-            </p>
-            {canCreate && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Button size="sm" onClick={() => handleOpenProductModal()} icon={<Plus size={14} />}>
-                  Tambah Produk Pertama
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={14} />}>
-                  Import Excel
-                </Button>
-              </div>
-            )}
+      <div className="flex flex-col gap-2 w-full">
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
           </div>
-        }
-        sortBy={sortKey}
-        sortOrder={sortDirection}
-        onSort={handleSort}
-        pagination={{
-          currentPage: currentPage,
-          totalPages: totalPages,
-          totalItems: filteredProducts.length,
-          itemsPerPage: limit,
-          onPageChange: setCurrentPage,
-          onLimitChange: setLimit
-        }}
-        rowKey="id"
-        toolbarLeft={toolbarLeft}
-        toolbarRight={toolbarRight}
-      />
+          <input
+            id="mobile-catalog-search"
+            type="text"
+            placeholder="Cari produk berdasarkan nama / kode..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="block w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+            aria-label="Cari produk"
+          />
+        </div>
+        <div className="w-full">
+          <SearchableSelect
+            id="mobile-category-filter"
+            options={categoryOptions}
+            value={categoryFilter}
+            onValueChange={setCategoryFilter}
+            placeholder="Semua Kategori"
+            clearable
+          />
+        </div>
+      </div>
+    </div>
+  ), [canCreate, handleOpenProductModal, searchQuery, categoryOptions, categoryFilter]);
+
+  const emptyStateContent = useMemo(() => (
+    <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/50 shadow-xs">
+        <Package size={28} />
+      </div>
+      <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 mb-1">
+        Belum Ada Produk di Katalog
+      </h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+        Koperasi Anda belum memiliki produk terdaftar. Silakan tambahkan produk baru secara manual atau impor melalui file Excel.
+      </p>
+      {canCreate && (
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Button size="sm" onClick={() => handleOpenProductModal()} icon={<Plus size={14} />}>
+            Tambah Produk Pertama
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={14} />}>
+            Import Excel
+          </Button>
+        </div>
+      )}
+    </div>
+  ), [canCreate, handleOpenProductModal]);
+
+  return (
+    <div className="space-y-4">
+      {isMobile ? (
+        <MobileDataList
+          title="Katalog Produk"
+          data={paginatedProducts}
+          loading={loading}
+          totalItems={filteredProducts.length}
+          onRefresh={fetchProducts}
+          renderCard={renderProductMobileCard}
+          pagination={{
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChange: setCurrentPage
+          }}
+          toolbar={mobileToolbar}
+          emptyMessage={emptyStateContent}
+        />
+      ) : (
+        <>
+          {canCreate && (
+            <div className="flex flex-col-reverse sm:flex-row justify-end items-stretch sm:items-center gap-2 mb-3">
+              <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={16} />} className="w-full sm:w-auto">
+                Import Excel
+              </Button>
+              <Button onClick={() => handleOpenProductModal()} icon={<Plus size={16} />} className="w-full sm:w-auto">
+                Tambah Produk Baru
+              </Button>
+            </div>
+          )}
+
+          <Table 
+            columns={catalogColumns}
+            data={paginatedProducts} 
+            loading={loading}
+            emptyMessage={emptyStateContent}
+            sortBy={sortKey}
+            sortOrder={sortDirection}
+            onSort={handleSort}
+            pagination={{
+              currentPage: currentPage,
+              totalPages: totalPages,
+              totalItems: filteredProducts.length,
+              itemsPerPage: limit,
+              onPageChange: setCurrentPage,
+              onLimitChange: setLimit
+            }}
+            rowKey="id"
+            toolbarLeft={toolbarLeft}
+            toolbarRight={toolbarRight}
+          />
+        </>
+      )}
 
       <Suspense fallback={<div className="text-center py-4 text-sm text-gray-500">Memuat formulir modal...</div>}>
         {importOpen && (
