@@ -245,6 +245,7 @@ const Products: React.FC = React.memo(() => {
             {activeTab === 'opname' && (
               <ProductOpnameTab
                 categories={categories}
+                products={products}
                 fetchProducts={fetchProducts}
                 activeTab={activeTab}
               />
