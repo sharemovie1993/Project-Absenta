@@ -218,13 +218,24 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                       <div className="flex items-center gap-1 mt-1">
                         <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", isSimple ? "bg-emerald-500" : "bg-blue-500")} />
                         <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none truncate">
-                          {norm.replace('_', ' ')}
+                          {isSimple ? 'Mode Sederhana' : 'Multi Sesi'}
                         </span>
                       </div>
                     );
                   })()}
                 </div>
             </Link>
+
+            {isNotDashboard && (
+              <Link
+                to="/dashboard"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 border border-slate-200 dark:border-slate-700/60 transition-all shadow-2xs group ml-1 shrink-0"
+                title="Kembali ke Dashboard Staff Utama"
+              >
+                <ArrowLeft size={12} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                <span>Dashboard Staff</span>
+              </Link>
+            )}
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}

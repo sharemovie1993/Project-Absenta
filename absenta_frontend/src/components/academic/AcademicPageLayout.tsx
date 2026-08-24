@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsCard, MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
@@ -181,27 +181,27 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   const location = useLocation();
   const currentPath = location.pathname.toLowerCase().replace(/\/$/, "");
   
-  const isModuleRootDashboard = useMemo(() => {
-    // Untuk Kepala Sekolah, halaman dashboard modul anak bukanlah root home, sehingga tombol kembali tetap aktif
-    if (isKepsek) return currentPath === '' || currentPath === '/' || currentPath === '/dashboard';
-    return (
-      currentPath === '' ||
-      currentPath === '/' ||
-      currentPath === '/dashboard' ||
-      currentPath === '/kurikulum/dashboard' ||
-      currentPath === '/kesiswaan/monitoring' ||
-      currentPath === '/sarpras/dashboard' ||
-      currentPath === '/bpbk/dashboard' ||
-      currentPath === '/hubin/dashboard' ||
-      currentPath === '/cooperative/dashboard' ||
-      currentPath === '/cbt/dashboard' ||
-      currentPath === '/rapor/dashboard' ||
-      currentPath === '/correspondence/dashboard' ||
-      currentPath === '/attendance/dashboard'
-    );
-  }, [currentPath, isKepsek]);
+  const isMainStaffDashboard = useMemo(() => {
+    return currentPath === '' || currentPath === '/' || currentPath === '/dashboard' || currentPath === '/dashboard/overview';
+  }, [currentPath]);
 
-  const isNotDashboard = !isModuleRootDashboard;
+  const isModuleRootDashboard = useMemo(() => {
+    return [
+      '/kurikulum/dashboard', '/kurikulum',
+      '/kesiswaan/monitoring', '/kesiswaan',
+      '/sarpras/dashboard', '/sarpras',
+      '/bpbk/dashboard', '/bpbk',
+      '/hubin/dashboard', '/hubin',
+      '/bkk/dashboard', '/bkk',
+      '/cooperative/dashboard', '/cooperative',
+      '/cbt/dashboard', '/cbt',
+      '/rapor/dashboard', '/rapor',
+      '/correspondence/dashboard', '/correspondence',
+      '/attendance/dashboard', '/attendance',
+      '/academic/dashboard', '/academic',
+      '/piket/dashboard', '/piket'
+    ].includes(currentPath);
+  }, [currentPath]);
 
   const handleGoBack = useCallback(() => {
     // 1. Khusus Kepala Sekolah: Selalu utamakan kembali ke Executive Dashboard (/dashboard)
@@ -215,13 +215,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     }
 
     // 2. Jika berada di root modul, kembali ke portal utama /dashboard
-    const isRoot = [
-      '/kurikulum/dashboard', '/kesiswaan/monitoring', '/sarpras/dashboard', 
-      '/bpbk/dashboard', '/hubin/dashboard', '/cooperative/dashboard', 
-      '/cbt/dashboard', '/rapor/dashboard', '/correspondence/dashboard', '/attendance/dashboard'
-    ].includes(currentPath);
-
-    if (isRoot) {
+    if (isModuleRootDashboard) {
       navigate('/dashboard');
       return;
     }
@@ -277,7 +271,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     } else {
       navigate('/dashboard');
     }
-  }, [navigate, currentPath, isKepsek]);
+  }, [navigate, currentPath, isKepsek, isModuleRootDashboard]);
 
   if (isLoading) {
     return (
@@ -318,16 +312,38 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       {!isTvMode && (
         <div className="px-3 sm:px-0 flex items-center justify-between gap-2.5 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
           <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-            {isNotDashboard && (
-              <button
-                type="button"
-                onClick={handleGoBack}
-                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
-                title="Kembali ke halaman sebelumnya"
-              >
-                <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
-                <span className="tracking-tight">Kembali</span>
-              </button>
+            {!isMainStaffDashboard && (
+              isModuleRootDashboard ? (
+                <Link
+                  to="/dashboard"
+                  className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
+                  title="Kembali ke Dashboard Staff Utama"
+                >
+                  <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                  <span className="tracking-tight">Dashboard Staff</span>
+                </Link>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGoBack}
+                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
+                    title="Kembali ke halaman sebelumnya"
+                  >
+                    <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                    <span className="tracking-tight">Kembali</span>
+                  </button>
+
+                  <Link
+                    to="/dashboard"
+                    className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs select-none shrink-0"
+                    title="Langsung ke Dashboard Staff Utama"
+                  >
+                    <LayoutGrid size={13} className="text-indigo-600 dark:text-indigo-400" />
+                    <span className="tracking-tight">Dashboard Staff</span>
+                  </Link>
+                </>
+              )
             )}
 
             {/* Bilah Navigasi Menu Terkait Otomatis Sejajar (Desktop / Tablet Topbar) */}

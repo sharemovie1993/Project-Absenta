@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Layers, 
+  ArrowLeft,
   Calendar, 
   Users, 
   FileText, 
@@ -787,12 +788,23 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
                 </h2>
               </div>
 
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-[9.5px] font-extrabold border shrink-0",
-                cluster.badgeColor
-              )}>
-                {cluster.items.length} Menu
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 transition-all border border-indigo-200 dark:border-indigo-800 shadow-2xs group cursor-pointer"
+                  title="Kembali ke Dashboard Staff Utama"
+                >
+                  <ArrowLeft size={11} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                  <span>Dashboard Staff</span>
+                </Link>
+
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[9.5px] font-extrabold border shrink-0",
+                  cluster.badgeColor
+                )}>
+                  {cluster.items.length} Menu
+                </span>
+              </div>
             </div>
 
             {/* Grid 4-Kolom Tetap ala GoPay Agen (Selalu Rata Atas / Top-Aligned) */}
