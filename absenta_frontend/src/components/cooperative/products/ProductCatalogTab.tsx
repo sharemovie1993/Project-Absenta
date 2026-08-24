@@ -549,7 +549,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
           data={paginatedProducts}
           loading={loading}
           totalItems={filteredProducts.length}
-          onRefresh={fetchProducts}
+          onRefresh={() => invalidateAllProductCaches(queryClient)}
           renderCard={renderProductMobileCard}
           pagination={{
             currentPage: currentPage,
