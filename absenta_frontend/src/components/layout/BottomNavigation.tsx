@@ -124,10 +124,10 @@ export const BottomNavigation: React.FC = React.memo(() => {
     return { label: 'Tata Usaha', shortLabel: 'TU', badge: 'TU' };
   }, [isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras]);
 
-  // Close floating flyout ONLY when navigating to a different page route (pathname change)
+  // Close floating flyout when navigating or changing query params
   useEffect(() => {
     setOpenFlyoutId(null);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Don't render for Parent App as it has its own parent layout
   if (location.pathname.startsWith('/parent-app')) {
@@ -291,7 +291,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 3. Wali Kelas (dengan sub-tab anak yang melayang)
+    // 3. Wali Kelas (Direct clean navigation to /dashboard?tab=binaan)
     if (isWaliKelas && !isKepsek) {
       list.push({
         id: 'binaan',
@@ -301,14 +301,6 @@ export const BottomNavigation: React.FC = React.memo(() => {
         badge: waliKelasNama || '8B',
         targetPath: '/dashboard?tab=binaan',
         isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'binaan') || pathname.startsWith('/kurikulum/wali-kelas'),
-        children: [
-          { id: 'approval', label: 'Izin Siswa', icon: MailCheck, targetPath: '/dashboard?tab=binaan&subtab=approval' },
-          { id: 'students', label: 'Data Siswa', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=students' },
-          { id: 'health', label: 'Presensi Kelas', icon: HeartPulse, targetPath: '/dashboard?tab=binaan&subtab=health' },
-          { id: 'discipline', label: 'Pelanggaran Siswa', icon: Scale, targetPath: '/dashboard?tab=binaan&subtab=discipline' },
-          { id: 'halloffame', label: 'Prestasi Siswa', icon: Trophy, targetPath: '/dashboard?tab=binaan&subtab=halloffame' },
-          { id: 'rekap', label: 'Jurnal Kelas', icon: ScrollText, targetPath: '/dashboard?tab=binaan&subtab=rekap' },
-        ]
       });
     }
 
