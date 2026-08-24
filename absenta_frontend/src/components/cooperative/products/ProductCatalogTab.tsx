@@ -26,6 +26,12 @@ interface Product {
   stock: number;
   category: string;
   imageUrl?: string | null;
+  productType?: string | null;
+  showInTransaction?: boolean;
+  useStock?: boolean;
+  barcode?: string | null;
+  unit?: string | null;
+  description?: string | null;
 }
 
 interface ProductCategory {

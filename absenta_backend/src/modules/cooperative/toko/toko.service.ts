@@ -40,13 +40,19 @@ export class TokoService {
         const product = await prisma.product.create({
             data: {
                 tenantId,
-                code:      data.code,
-                name:      data.name,
-                price:     Number(data.price),
-                costPrice: Number(data.costPrice || 0),
-                stock:     Number(data.stock || 0),
-                category:  data.category || null,
-                imageUrl:  data.imageUrl || null,
+                code:              data.code,
+                name:              data.name,
+                price:             Number(data.price),
+                costPrice:         Number(data.costPrice || 0),
+                stock:             Number(data.stock || 0),
+                category:          data.category || null,
+                imageUrl:          data.imageUrl || null,
+                productType:       data.productType || 'Default',
+                showInTransaction: data.showInTransaction !== undefined ? Boolean(data.showInTransaction) : true,
+                useStock:          data.useStock !== undefined ? Boolean(data.useStock) : true,
+                barcode:           data.barcode || null,
+                unit:              data.unit || null,
+                description:       data.description || null,
             },
         });
 
@@ -91,6 +97,12 @@ export class TokoService {
         if (data.stock !== undefined) updateData.stock = Number(data.stock);
         if (data.category !== undefined) updateData.category = data.category || null;
         if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
+        if (data.productType !== undefined) updateData.productType = data.productType || 'Default';
+        if (data.showInTransaction !== undefined) updateData.showInTransaction = Boolean(data.showInTransaction);
+        if (data.useStock !== undefined) updateData.useStock = Boolean(data.useStock);
+        if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
+        if (data.unit !== undefined) updateData.unit = data.unit || null;
+        if (data.description !== undefined) updateData.description = data.description || null;
 
         const updated = await prisma.product.update({
             where: { id },

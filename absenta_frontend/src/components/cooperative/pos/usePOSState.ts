@@ -69,9 +69,16 @@ export interface Product {
   code: string;
   name: string;
   price: string;
+  costPrice?: string | number;
   stock: number;
   category?: string;
   imageUrl?: string | null;
+  productType?: string | null;
+  showInTransaction?: boolean;
+  useStock?: boolean;
+  barcode?: string | null;
+  unit?: string | null;
+  description?: string | null;
 }
 
 export interface CartItem extends Product {

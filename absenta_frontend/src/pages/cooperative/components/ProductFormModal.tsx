@@ -25,6 +25,12 @@ interface Product {
   stock: number;
   category: string;
   imageUrl?: string | null;
+  productType?: string | null;
+  showInTransaction?: boolean;
+  useStock?: boolean;
+  barcode?: string | null;
+  unit?: string | null;
+  description?: string | null;
 }
 
 interface ProductFormModalProps {
@@ -39,6 +45,9 @@ interface ProductFormModalProps {
     stock: string;
     category: string;
     imageUrl?: string;
+    productType?: string;
+    showInTransaction?: boolean;
+    useStock?: boolean;
   }) => Promise<void>;
   isLoading: boolean;
   existingCategories: string[];
@@ -103,9 +112,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         stock: editingProduct.stock.toString(),
         category: editingProduct.category || categoryOptions[0] || 'Makanan',
         imageUrl: editingProduct.imageUrl || '',
-        productType: 'Default',
-        showInTransaction: true,
-        useStock: true,
+        productType: editingProduct.productType || 'Default',
+        showInTransaction: editingProduct.showInTransaction !== undefined ? editingProduct.showInTransaction : true,
+        useStock: editingProduct.useStock !== undefined ? editingProduct.useStock : true,
       });
     } else {
       const randomNum = Math.floor(10000000 + Math.random() * 90000000);
@@ -236,7 +245,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
       costPrice: String(costNum),
       stock: String(stockNum),
       category: formData.category.trim(),
-      imageUrl: formData.imageUrl || undefined
+      imageUrl: formData.imageUrl || undefined,
+      productType: formData.productType,
+      showInTransaction: formData.showInTransaction,
+      useStock: formData.useStock,
     });
   }, [formData, onSubmit]);
 

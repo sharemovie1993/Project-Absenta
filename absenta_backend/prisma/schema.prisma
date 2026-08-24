@@ -2675,14 +2675,20 @@ model JournalItem {
 
 // --- TOKO / PERDAGANGAN ---
 model Product {
-  id        String  @id @default(uuid())
-  code      String
-  name      String
-  price     Decimal
-  costPrice Decimal @default(0)
-  stock     Int     @default(0)
-  category  String?
-  imageUrl  String?
+  id                String   @id @default(uuid())
+  code              String
+  name              String
+  price             Decimal
+  costPrice         Decimal  @default(0)
+  stock             Int      @default(0)
+  category          String?
+  imageUrl          String?
+  productType       String?  @default("Default")
+  showInTransaction Boolean  @default(true)
+  useStock          Boolean  @default(true)
+  barcode           String?
+  unit              String?
+  description       String?
 
   tenantId String
 
