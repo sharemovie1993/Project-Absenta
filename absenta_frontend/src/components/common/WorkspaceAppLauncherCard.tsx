@@ -178,11 +178,12 @@ const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
   { id: 'vch', title: 'Poin & Benefit', path: '/cooperative/vouchers', icon: 'Sparkles' },
   { id: 'anc', title: 'Pengumuman', path: '/cooperative/announcements', icon: 'Bell' },
   { id: 'tck', title: 'Aduan & Keluhan', path: '/cooperative/tickets', icon: 'MessageSquare' },
-  // 🏪 Toko & Kasir (4 menu)
+  // 🏪 Toko & Kasir (5 menu)
   { id: 'prd', title: 'Katalog Barang', path: '/cooperative/products', icon: 'Package' },
   { id: 'pos', title: 'POS Kasir Toko', path: '/cooperative/pos', icon: 'ShoppingCart' },
   { id: 'vch_mng', title: 'Voucher & Promo', path: '/cooperative/vouchers/manage', icon: 'Sparkles' },
   { id: 'inv_rep', title: 'Laporan Stok', path: '/cooperative/inventory-report', icon: 'Printer' },
+  { id: 'sup', title: 'Supplier', path: '/cooperative/suppliers', icon: 'Building2' },
   // 💼 Manajemen Pengurus (7 menu)
   { id: 'mbr', title: 'Kelola Anggota', path: '/cooperative/members', icon: 'Users' },
   { id: 'svg_mng', title: 'Input Simpanan', path: '/cooperative/savings/manage', icon: 'Wallet' },
@@ -513,8 +514,9 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
           p.includes('/products') ||
           p.includes('/inventory-report') ||
           p.includes('/vouchers/manage') ||
+          p.includes('/suppliers') ||
           (p.includes('/cooperative/pos') && !p.includes('catalog')) ||
-          t.includes('barang') || t.includes('kasir') || t.includes('stok')
+          t.includes('barang') || t.includes('kasir') || t.includes('stok') || t.includes('supplier')
         ) {
           cStore.push(item);
         }
