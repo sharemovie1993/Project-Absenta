@@ -129,7 +129,7 @@ export const SupervisiAnalyticsDashboard: React.FC = React.memo(() => {
                 Belum ada tren nilai observasi pada periode ini.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minWidth={0} width="100%" height="100%">
                 <LineChart data={monthlyTrend} margin={{ top: 10, right: 20, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                   <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} />

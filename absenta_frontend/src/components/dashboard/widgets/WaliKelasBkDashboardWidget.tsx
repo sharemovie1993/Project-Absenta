@@ -159,7 +159,7 @@ export const WaliKelasBkDashboardWidget: React.FC = () => {
           <div className="py-12 text-center text-slate-400 italic text-xs">Belum ada data historis snapshot kelas</div>
         ) : (
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={0} width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/40" />
                 <XAxis dataKey="displayDate" tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />

@@ -587,7 +587,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     Tingkat Kepatuhan Penggunaan per Modul Absenta
                   </h3>
                   <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <BarChart
                         data={[
                           { name: 'Presensi Gerbang', adopsi: 94 },
@@ -614,7 +614,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     Segmentasi Kesiapan Digital Guru &amp; Siswa
                   </h3>
                   <div className="h-64 flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={[

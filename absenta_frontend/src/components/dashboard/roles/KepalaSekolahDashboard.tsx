@@ -402,7 +402,7 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
                 {/* Tren Kehadiran Bulanan */}
                 <CompactSectionCard title="Tren Kehadiran Sekolah (Guru vs Siswa)" icon={TrendingUp} iconColor="blue">
                   <div className="h-52 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <LineChart data={trendData}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                         <XAxis dataKey="name" tick={{ fontSize: 10 }} />
@@ -420,7 +420,7 @@ export const KepalaSekolahDashboard: React.FC = React.memo(() => {
                 <CompactSectionCard title="Distribusi Kehadiran Siswa Hari Ini" icon={PieChart} iconColor="indigo">
                   <div className="flex flex-col sm:flex-row items-center gap-6 h-52">
                     <div className="w-full sm:w-1/2 h-44">
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer minWidth={0} width="100%" height="100%">
                         <PieChart>
                           <Pie 
                             data={distributionData} 

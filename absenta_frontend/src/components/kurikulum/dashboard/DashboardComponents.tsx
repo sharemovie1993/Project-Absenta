@@ -141,7 +141,7 @@ export const DistribusiChart = React.memo(function DistribusiChart({ data, loadi
   }
   if (data.length === 0) return <EmptyState text="Belum ada data struktur kurikulum" />;
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer minWidth={0} width="100%" height="100%">
       <BarChart data={data} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
         <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
@@ -217,7 +217,7 @@ export const SupervisiPanel = React.memo(function SupervisiPanel({
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0 w-24 h-24">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer minWidth={0} width="100%" height="100%">
             <PieChart>
               <Pie data={pieData.length ? pieData : [{ name: 'Kosong', value: 1, color: '#e2e8f0' }]}
                 cx="50%" cy="50%" innerRadius={28} outerRadius={42} paddingAngle={3}
@@ -328,7 +328,7 @@ export const PerangkatPanel = React.memo(function PerangkatPanel({
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0 w-24 h-24">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer minWidth={0} width="100%" height="100%">
             <PieChart>
               <Pie data={pieData.length ? pieData : [{ name: 'Kosong', value: 1, color: '#e2e8f0' }]}
                 cx="50%" cy="50%" innerRadius={28} outerRadius={42} paddingAngle={3}

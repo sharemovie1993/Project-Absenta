@@ -126,7 +126,7 @@ const PaymentChart = () => {
     <Card>
       <div className="p-6">
         <h3 className="text-lg font-semibold mb-3">Tren Pembayaran</h3>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer minWidth={0} width="100%" height={250}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis 

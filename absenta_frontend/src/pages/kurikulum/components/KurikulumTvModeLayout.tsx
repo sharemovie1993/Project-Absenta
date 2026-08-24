@@ -203,7 +203,7 @@ export const KurikulumTvModeLayout: React.FC<KurikulumTvModeLayoutProps> = React
                     <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm rounded-2xl p-6 flex flex-col justify-between min-h-[360px]">
                       <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4 font-black">Beban JP per Kelompok Mapel</h3>
                       <div className="h-64 flex-1">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer minWidth={0} width="100%" height="100%">
                           <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                             <XAxis dataKey="nama" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} angle={-30} textAnchor="end" interval={0} />

@@ -299,7 +299,7 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
 
                       <div className="h-72 w-full pt-2">
                         {chartData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer minWidth={0} width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-100 dark:stroke-slate-800" />
                               <XAxis dataKey="kelas" tick={{ fontSize: 10 }} className="text-slate-600 dark:text-slate-400" />

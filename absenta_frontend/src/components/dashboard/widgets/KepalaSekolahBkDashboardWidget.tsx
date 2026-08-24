@@ -198,7 +198,7 @@ export const KepalaSekolahBkDashboardWidget: React.FC = () => {
             ) : (
               <>
                 <div className="w-40 h-40">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer minWidth={0} width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={riskHeatmapData}
@@ -240,7 +240,7 @@ export const KepalaSekolahBkDashboardWidget: React.FC = () => {
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Profil Risiko Rata-Rata per Jurusan</h3>
           </div>
           <div className="flex-1 h-44 min-h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={0} width="100%" height="100%">
               <BarChart data={statistikJurusan} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/40" />
                 <XAxis dataKey="jurusan" tick={{ fontSize: 8, fontWeight: 'bold' }} stroke="#94a3b8" />

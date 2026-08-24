@@ -53,7 +53,7 @@ export default function AttendanceChart({
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer minWidth={0} width="100%" height={height}>
         <LineChart
           data={chartData}
           margin={{

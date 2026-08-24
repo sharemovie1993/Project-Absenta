@@ -388,7 +388,7 @@ function TenantAttendanceCharts({ data, tenantId }: TenantAttendanceChartsProps)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={0} width="100%" height={300}>
               <AreaChart data={dailyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
@@ -450,7 +450,7 @@ function TenantAttendanceCharts({ data, tenantId }: TenantAttendanceChartsProps)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={0} width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={statusDistribution}
@@ -492,7 +492,7 @@ function TenantAttendanceCharts({ data, tenantId }: TenantAttendanceChartsProps)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={0} width="100%" height={300}>
               <BarChart data={classPerformanceData} layout="horizontal">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
@@ -544,7 +544,7 @@ function TenantAttendanceCharts({ data, tenantId }: TenantAttendanceChartsProps)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={0} width="100%" height={300}>
               <LineChart data={weeklyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 

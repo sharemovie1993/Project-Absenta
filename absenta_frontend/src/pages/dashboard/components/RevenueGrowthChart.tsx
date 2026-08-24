@@ -22,7 +22,7 @@ const RevenueGrowthChart: React.FC<RevenueGrowthChartProps> = ({ data, loading }
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer minWidth={0} width="100%" height="100%">
       <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />

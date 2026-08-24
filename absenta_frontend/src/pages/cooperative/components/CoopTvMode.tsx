@@ -342,7 +342,7 @@ export const CoopTvMode: React.FC<CoopTvModeProps> = React.memo(({
                         </div>
                       </div>
                       <div className="h-64 flex-1">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer minWidth={0} width="100%" height="100%">
                           <BarChart
                             data={chartData}
                             margin={{ top: 20, right: 30, left: 10, bottom: 5 }}

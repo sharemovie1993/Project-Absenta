@@ -431,7 +431,7 @@ export default function RevenueDashboardPage() {
           fullWidth
         >
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={0} width="100%" height="100%">
               <LineChart data={trendChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeOpacity={0.4} />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} />

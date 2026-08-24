@@ -350,7 +350,7 @@ export const InfraMonitoringPanel: React.FC<InfraMonitoringPanelProps> = React.m
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-72 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minWidth={0} width="100%" height="100%">
                 <AreaChart data={gatewayHistoryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="stripeGrad" x1="0" y1="0" x2="0" y2="1">

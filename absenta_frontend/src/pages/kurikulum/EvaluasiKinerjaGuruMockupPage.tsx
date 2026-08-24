@@ -634,7 +634,7 @@ export default function EvaluasiKinerjaGuruMockupPage() {
                         Radar Kompetensi &amp; Disiplin 5 Dimensi
                       </h4>
                       <div className="w-full h-56">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer minWidth={0} width="100%" height="100%">
                           <RadarChart data={radarData}>
                             <PolarGrid stroke="" className="dark:stroke-slate-700" />
                             <PolarAngleAxis dataKey="subject" stroke="" fontSize={10} />

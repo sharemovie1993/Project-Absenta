@@ -65,7 +65,7 @@ export const SupervisiProgressWidget: React.FC<SupervisiProgressWidgetProps> = R
       {/* Donut Chart */}
       <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0" style={{ width: 96, height: 96 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer minWidth={0} width="100%" height="100%">
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={30} outerRadius={44}
                 paddingAngle={3} dataKey="value" strokeWidth={0}>

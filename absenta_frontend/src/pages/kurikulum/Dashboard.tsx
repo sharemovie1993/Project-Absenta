@@ -515,7 +515,7 @@ export default function KurikulumDashboard() {
                       {[...Array(6)]?.map((_, i) => <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${35 + i * 10}%` }} />)}
                     </div>
                   ) : beban.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                         <XAxis dataKey="nama" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />

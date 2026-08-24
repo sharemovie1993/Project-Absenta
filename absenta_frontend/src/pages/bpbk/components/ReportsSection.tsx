@@ -298,7 +298,7 @@ export const ReportsSection: React.FC = React.memo(() => {
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Statistik Kasus per Kategori</h3>
           </div>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={0} width="100%" height="100%">
               <BarChart data={kasusKategoriData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/40" />
                 <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
@@ -323,7 +323,7 @@ export const ReportsSection: React.FC = React.memo(() => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minWidth={0} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={riskDistributionData}
@@ -553,7 +553,7 @@ export const ReportsSection: React.FC = React.memo(() => {
 
               {/* The LineChart */}
               <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minWidth={0} width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 20, right: 30, left: -10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-slate-800/40" />
                     <XAxis dataKey="displayDate" tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />

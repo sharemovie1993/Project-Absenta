@@ -243,7 +243,7 @@ function TenantOverviewCharts({ userStats, metrics, tenantId }: TenantOverviewCh
         </CardHeader>
         <CardContent>
           {usersByRoleData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer minWidth={0} width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={usersByRoleData}
@@ -286,7 +286,7 @@ function TenantOverviewCharts({ userStats, metrics, tenantId }: TenantOverviewCh
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer minWidth={0} width="100%" height={300}>
             <BarChart data={userStatusData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
@@ -318,7 +318,7 @@ function TenantOverviewCharts({ userStats, metrics, tenantId }: TenantOverviewCh
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer minWidth={0} width="100%" height={300}>
             <LineChart data={monthlyRegistrationData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
@@ -354,7 +354,7 @@ function TenantOverviewCharts({ userStats, metrics, tenantId }: TenantOverviewCh
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer minWidth={0} width="100%" height={300}>
             <AreaChart data={activityData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 

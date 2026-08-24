@@ -26,7 +26,7 @@ export const MemberParticipationChart: React.FC<MemberParticipationChartProps> =
         </p>
       </div>
       <div className="h-48 w-full md:w-80 shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer minWidth={0} width="100%" height="100%">
           <PieChart>
             <Pie
               data={statusData}

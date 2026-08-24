@@ -368,7 +368,7 @@ export const UpgradeIntelligencePage: React.FC = React.memo(() => {
                 <div className="w-full overflow-x-auto">
                   <div className="min-w-[520px]">
                     <Suspense fallback={<div className="h-64 flex items-center justify-center text-xs text-slate-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat grafik...</div>}>
-                      <ResponsiveContainer width="100%" height={260}>
+                      <ResponsiveContainer minWidth={0} width="100%" height={260}>
                         <BarChart
                           data={funnelStageData}
                           margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
@@ -397,7 +397,7 @@ export const UpgradeIntelligencePage: React.FC = React.memo(() => {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 w-full">
                   <div className="w-full flex items-center justify-center">
                     <Suspense fallback={<div className="h-60 flex items-center justify-center text-xs text-slate-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat pie chart...</div>}>
-                      <ResponsiveContainer width="100%" height={240}>
+                      <ResponsiveContainer minWidth={0} width="100%" height={240}>
                         <PieChart>
                           <Tooltip 
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
@@ -499,7 +499,7 @@ export const UpgradeIntelligencePage: React.FC = React.memo(() => {
                 <div className="w-full overflow-x-auto">
                   <div className="min-w-[400px]">
                     <Suspense fallback={<div className="h-64 flex items-center justify-center text-xs text-slate-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Memuat scatter chart...</div>}>
-                      <ResponsiveContainer width="100%" height={260}>
+                      <ResponsiveContainer minWidth={0} width="100%" height={260}>
                         <ScatterChart
                           margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
                         >
