@@ -12,8 +12,8 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
 
-// Lazy load komponen berat
-const Table = lazy(() => import('../../components/cooperative/ui/Table').then(m => ({ default: m.Table })));
+import { Table } from '../../components/ui/Table';
+import type { Column } from '../../components/ui/Table';
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
 
 interface Announcement {
@@ -30,7 +30,7 @@ const Announcements: React.FC = React.memo(() => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(10);
 
   // Otorisasi & Gating Logic
   const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
@@ -114,14 +114,36 @@ const Announcements: React.FC = React.memo(() => {
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil((announcements ?? []).length / pageLimit)), [announcements, pageLimit]);
 
-  const columns = useMemo(() => [
-    { header: 'Judul', accessor: 'title' as keyof Announcement, className: 'font-medium' },
-    { header: 'Isi', accessor: (row: Announcement) => <span className="line-clamp-2">{row.content}</span> },
-    { header: 'Tanggal', accessor: (row: Announcement) => new Date(row.createdAt).toLocaleDateString('id-ID') },
+  const columns = useMemo<Column[]>(() => [
+    {
+      key: 'title',
+      label: 'Judul',
+      sortable: true,
+      render: (_val: unknown, row: Announcement) => (
+        <span className="font-semibold text-slate-800 dark:text-slate-100">{row.title}</span>
+      )
+    },
+    {
+      key: 'content',
+      label: 'Isi',
+      render: (_val: unknown, row: Announcement) => (
+        <span className="line-clamp-2 text-xs text-slate-600 dark:text-slate-400">{row.content}</span>
+      )
+    },
+    {
+      key: 'createdAt',
+      label: 'Tanggal',
+      sortable: true,
+      render: (_val: unknown, row: Announcement) => (
+        <span className="text-xs text-slate-500">{new Date(row.createdAt).toLocaleDateString('id-ID')}</span>
+      )
+    },
     ...(canDelete ? [{
-      header: 'Aksi', accessor: (row: Announcement) => (
+      key: 'actions',
+      label: 'Aksi',
+      render: (_val: unknown, row: Announcement) => (
         <button
-          className="text-red-600 hover:text-red-800 font-medium text-sm px-2 py-1 rounded"
+          className="text-red-600 hover:text-red-800 font-medium text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           onClick={() => handleDelete(row.id)}
           aria-label={`Hapus pengumuman ${row.title}`}
         >
@@ -206,39 +228,20 @@ const Announcements: React.FC = React.memo(() => {
 
             {/* List */}
             <div className={canCreate ? "md:col-span-2" : "w-full"}>
-              <Suspense fallback={<div className="h-64 bg-gray-100 rounded-lg animate-pulse" />}>
-                <Table
-                  data={paginatedData}
-                  columns={columns}
-                  keyField="id"
-                  isLoading={loading}
-                  emptyMessage="Belum ada pengumuman."
-                />
-              </Suspense>
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-                  <span>Halaman {currentPage} dari {totalPages}</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage <= 1}
-                      className="px-3 py-1 border rounded disabled:opacity-40"
-                      aria-label="Halaman sebelumnya"
-                    >
-                      ‹
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="px-3 py-1 border rounded disabled:opacity-40"
-                      aria-label="Halaman berikutnya"
-                    >
-                      ›
-                    </button>
-                  </div>
-                </div>
-              )}
+              <Table
+                data={paginatedData}
+                columns={columns}
+                loading={loading}
+                emptyMessage="Belum ada pengumuman."
+                pagination={{
+                  currentPage,
+                  totalPages,
+                  onPageChange: setCurrentPage,
+                  totalItems: announcements.length,
+                  itemsPerPage: pageLimit,
+                  onItemsPerPageChange: setPageLimit
+                }}
+              />
             </div>
           </div>
         </div>

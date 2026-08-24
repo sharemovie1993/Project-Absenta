@@ -4,6 +4,8 @@ import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { Table } from '../../ui/Table';
+import type { Column } from '../../ui/Table';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Plus, ArrowLeft, Calendar, ChevronDown, CheckCircle2, AlertTriangle, FileText, Clock, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -171,6 +173,86 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
     });
   };
 
+  const opnameDesktopColumns = useMemo<Column[]>(() => [
+    {
+      key: 'opnameNumber',
+      label: 'Nomor Sesi',
+      sortable: true,
+      render: (_val: unknown, sess: OpnameSession) => (
+        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm font-mono">
+          {sess.opnameNumber}
+        </span>
+      )
+    },
+    {
+      key: 'date',
+      label: 'Tanggal',
+      sortable: true,
+      render: (_val: unknown, sess: OpnameSession) => (
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {new Date(sess.date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (_val: unknown, sess: OpnameSession) => (
+        <span className={cn(
+          "inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold",
+          sess.status === 'DRAFT' ? 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40' :
+          sess.status === 'COMPLETED' ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-950/40' :
+          'bg-slate-50 text-slate-400 border border-slate-200'
+        )}>
+          {sess.status}
+        </span>
+      )
+    },
+    {
+      key: 'notes',
+      label: 'Catatan',
+      render: (_val: unknown, sess: OpnameSession) => (
+        <span className="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate block">
+          {sess.notes || '-'}
+        </span>
+      )
+    },
+    {
+      key: 'items',
+      label: 'Total Item',
+      render: (_val: unknown, sess: OpnameSession) => (
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          {sess.items?.length || 0} barang
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Aksi',
+      render: (_val: unknown, sess: OpnameSession) => (
+        <div className="flex justify-end">
+          {sess.status === 'DRAFT' ? (
+            <Button 
+              size="sm" 
+              onClick={() => setActiveOpnameSessionId(sess.id)}
+            >
+              Lanjutkan Audit
+            </Button>
+          ) : (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setActiveOpnameSessionId(sess.id)}
+            >
+              Lihat Laporan
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ], []);
+
   return (
     <div className="space-y-4">
       {activeOpnameSessionId ? (
@@ -333,76 +415,12 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
               )}
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
-              {opnameLoading ? (
-                <div className="text-center py-12 text-gray-500">Memuat riwayat sesi opname...</div>
-              ) : opnameSessions.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-sm">
-                  Belum ada sesi stock opname yang dibuat. Klik tombol di atas untuk memulai audit fisik.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
-                    <thead className="bg-slate-50 dark:bg-slate-950">
-                      <tr>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nomor Sesi</th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Catatan</th>
-                        <th className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Item</th>
-                        <th className="px-4 sm:px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-100 dark:divide-slate-800">
-                      {(opnameSessions || []).map((sess) => (
-                        <tr key={sess.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800 dark:text-slate-100">
-                            {sess.opnameNumber}
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-                            {new Date(sess.date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={cn(
-                              "inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold",
-                              sess.status === 'DRAFT' ? 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40' :
-                              sess.status === 'COMPLETED' ? 'bg-green-50 text-green-600 border border-green-200 dark:bg-green-950/40' :
-                              'bg-slate-50 text-slate-400 border border-slate-200'
-                            )}>
-                              {sess.status}
-                            </span>
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 dark:text-slate-400 max-w-xs truncate">
-                            {sess.notes || '-'}
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-semibold text-center text-gray-700 dark:text-slate-300">
-                            {sess.items?.length || 0} barang
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            {sess.status === 'DRAFT' ? (
-                              <Button 
-                                size="sm" 
-                                onClick={() => setActiveOpnameSessionId(sess.id)}
-                              >
-                                Lanjutkan Audit
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => setActiveOpnameSessionId(sess.id)}
-                              >
-                                Lihat Laporan
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <Table
+              data={opnameSessions}
+              columns={opnameDesktopColumns}
+              loading={opnameLoading}
+              emptyMessage="Belum ada sesi stock opname yang dibuat. Klik tombol di atas untuk memulai audit fisik."
+            />
           </div>
         </div>
       )}

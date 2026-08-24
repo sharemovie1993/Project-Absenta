@@ -11,8 +11,8 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
-// Lazy load komponen berat
-const Table = lazy(() => import('../../components/cooperative/ui/Table').then(m => ({ default: m.Table })));
+import { Table } from '../../components/ui/Table';
+import type { Column } from '../../components/ui/Table';
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
 interface Ticket {
@@ -33,7 +33,7 @@ const Tickets: React.FC = React.memo(() => {
   const isManageRoute = location.pathname.endsWith('/manage');
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageLimit = 10;
+  const [pageLimit, setPageLimit] = useState(10);
   const [formData, setFormData] = useState({
     subject: '',
     priority: 'MEDIUM',
@@ -88,38 +88,67 @@ const Tickets: React.FC = React.memo(() => {
   const paginatedTickets = useMemo(() => {
     const start = (currentPage - 1) * pageLimit;
     return (tickets ?? []).slice(start, start + pageLimit);
-  }, [tickets, currentPage]);
+  }, [tickets, currentPage, pageLimit]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil((tickets ?? []).length / pageLimit)), [tickets]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil((tickets ?? []).length / pageLimit)), [tickets, pageLimit]);
 
-  const columns = useMemo(() => [
-    { header: 'Subjek', accessor: 'subject' as keyof Ticket, className: 'font-medium', sortable: true },
-    { header: 'Pengirim', accessor: (row: Ticket) => row.member?.name ?? 'Unknown', sortable: true },
+  const columns = useMemo<Column[]>(() => [
     {
-      header: 'Prioritas', accessor: (row: Ticket) => (
-        <span className={`text-xs font-bold ${
-            row.priority === 'HIGH' ? 'text-red-600' :
-            row.priority === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
-        }`}>
-            {row.priority}
-        </span>
-      ), sortable: true
+      key: 'subject',
+      label: 'Subjek',
+      sortable: true,
+      render: (_val: unknown, row: Ticket) => (
+        <span className="font-semibold text-slate-800 dark:text-slate-100">{row.subject}</span>
+      )
     },
     {
-      header: 'Status', accessor: (row: Ticket) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-            row.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-            row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+      key: 'member',
+      label: 'Pengirim',
+      sortable: true,
+      render: (_val: unknown, row: Ticket) => (
+        <span className="text-xs text-slate-600 dark:text-slate-400">{row.member?.name ?? 'Unknown'}</span>
+      )
+    },
+    {
+      key: 'priority',
+      label: 'Prioritas',
+      sortable: true,
+      render: (_val: unknown, row: Ticket) => (
+        <span className={`text-xs font-bold ${
+          row.priority === 'HIGH' ? 'text-red-600' :
+          row.priority === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
         }`}>
-            {row.status.replace('_', ' ')}
+          {row.priority}
         </span>
       )
     },
-    { header: 'Dibuat', accessor: (row: Ticket) => new Date(row.createdAt).toLocaleDateString('id-ID'), sortable: true },
     {
-      header: 'Aksi', accessor: (row: Ticket) => (
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (_val: unknown, row: Ticket) => (
+        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+          row.status === 'OPEN' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' :
+          row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+        }`}>
+          {row.status.replace('_', ' ')}
+        </span>
+      )
+    },
+    {
+      key: 'createdAt',
+      label: 'Dibuat',
+      sortable: true,
+      render: (_val: unknown, row: Ticket) => (
+        <span className="text-xs text-slate-500">{new Date(row.createdAt).toLocaleDateString('id-ID')}</span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Aksi',
+      render: (_val: unknown, row: Ticket) => (
         <Link to={`/cooperative/tickets/${row.id}`}>
-            <Button size="sm" variant="outline">Lihat Detail</Button>
+          <Button size="sm" variant="outline">Lihat Detail</Button>
         </Link>
       )
     }
@@ -163,40 +192,20 @@ const Tickets: React.FC = React.memo(() => {
             )}
           </div>
 
-          <Suspense fallback={<div className="h-64 bg-gray-100 rounded-lg animate-pulse" />}>
-            <Table
-              data={paginatedTickets}
-              columns={columns}
-              keyField="id"
-              isLoading={loading}
-              emptyMessage="Belum ada tiket bantuan."
-            />
-          </Suspense>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-              <span>Halaman {currentPage} dari {totalPages}</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage <= 1}
-                  className="px-3 py-1 border rounded disabled:opacity-40"
-                  aria-label="Halaman sebelumnya"
-                >
-                  ‹
-                </button>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage >= totalPages}
-                  className="px-3 py-1 border rounded disabled:opacity-40"
-                  aria-label="Halaman berikutnya"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          )}
+          <Table
+            data={paginatedTickets}
+            columns={columns}
+            loading={loading}
+            emptyMessage="Belum ada tiket bantuan."
+            pagination={{
+              currentPage,
+              totalPages,
+              onPageChange: setCurrentPage,
+              totalItems: tickets.length,
+              itemsPerPage: pageLimit,
+              onItemsPerPageChange: setPageLimit
+            }}
+          />
 
           <Suspense fallback={null}>
             <Modal

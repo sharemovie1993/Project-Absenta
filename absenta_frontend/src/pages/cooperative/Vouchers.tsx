@@ -4,7 +4,8 @@ import { useLocation } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
-import { Table } from '../../components/cooperative/ui/Table';
+import { Table } from '../../components/ui/Table';
+import type { Column } from '../../components/ui/Table';
 import { Card } from '../../components/cooperative/ui/Card';
 import { Plus, Trash, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -336,23 +337,51 @@ const Vouchers: React.FC = React.memo(() => {
     return sortedVouchers.slice(startIndex, startIndex + limit);
   }, [sortedVouchers, page, limit]);
 
-  const columns = useMemo(() => {
-    const baseCols = [
-      { header: 'Kode', accessor: 'code' as keyof Voucher, className: 'font-mono font-bold text-blue-600', sortable: true, sortKey: 'code' },
-      { header: 'Diskon', accessor: (row: Voucher) => `Rp ${Number(row.discount).toLocaleString('id-ID')}`, sortable: true, sortKey: 'discount' },
-      { header: 'Keterangan', accessor: 'description' as keyof Voucher, sortable: true, sortKey: 'description' },
-      { header: 'Berlaku Sampai', accessor: (row: Voucher) => row.validUntil ? new Date(row.validUntil).toLocaleDateString('id-ID') : '-', sortable: true, sortKey: 'validUntil' },
-    ];
-    if (hasManageAccess) {
-      baseCols.push({
-        header: 'Aksi',
-        accessor: (row: Voucher) => (
-          <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)} icon={<Trash size={14} />} />
-        )
-      } as any);
-    }
-    return baseCols;
-  }, [hasManageAccess, handleDelete]);
+  const columns = useMemo<Column[]>(() => [
+    {
+      key: 'code',
+      label: 'Kode',
+      sortable: true,
+      render: (_val: unknown, row: Voucher) => (
+        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{row.code}</span>
+      )
+    },
+    {
+      key: 'discount',
+      label: 'Diskon',
+      sortable: true,
+      render: (_val: unknown, row: Voucher) => (
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          Rp {Number(row.discount).toLocaleString('id-ID')}
+        </span>
+      )
+    },
+    {
+      key: 'description',
+      label: 'Keterangan',
+      sortable: true,
+      render: (_val: unknown, row: Voucher) => (
+        <span className="text-xs text-slate-600 dark:text-slate-400">{row.description || '-'}</span>
+      )
+    },
+    {
+      key: 'validUntil',
+      label: 'Berlaku Sampai',
+      sortable: true,
+      render: (_val: unknown, row: Voucher) => (
+        <span className="text-xs text-slate-500">
+          {row.validUntil ? new Date(row.validUntil).toLocaleDateString('id-ID') : 'Selamanya'}
+        </span>
+      )
+    },
+    ...(hasManageAccess ? [{
+      key: 'actions',
+      label: 'Aksi',
+      render: (_val: unknown, row: Voucher) => (
+        <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)} icon={<Trash size={14} />} />
+      )
+    }] : [])
+  ], [hasManageAccess, handleDelete]);
 
   return (
     <PremiumFeatureGate 
@@ -437,17 +466,19 @@ const Vouchers: React.FC = React.memo(() => {
                 <Table 
                   data={paginatedVouchers} 
                   columns={columns} 
-                  keyField="id" 
-                  isLoading={loading}
+                  loading={loading}
                   emptyMessage="Belum ada voucher aktif."
-                  sortKey={sortKey}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  currentPage={page}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  limit={limit}
-                  onLimitChange={setLimit}
+                  sortBy={sortKey}
+                  sortOrder={sortDirection}
+                  onSort={(key) => handleSort(key)}
+                  pagination={{
+                    currentPage: page,
+                    totalPages,
+                    onPageChange: setPage,
+                    totalItems: sortedVouchers.length,
+                    itemsPerPage: limit,
+                    onLimitChange: setLimit
+                  }}
                   toolbarLeft={
                     <div className="flex items-center gap-2">
                       <Tag className="text-blue-500 w-5 h-5" />
