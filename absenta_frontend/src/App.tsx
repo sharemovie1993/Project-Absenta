@@ -27,6 +27,7 @@ import { ConfirmProvider } from '@/providers/ConfirmProvider';
 import { SocketProvider } from './contexts/SocketContext';
 import { LogService } from './utils/LogService';
 import { loadActiveSystemConfig } from './services/systemConfig';
+import { isCapacitorApp } from './services/serverConfig';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
 import { FloatingDemoSwitcher } from './components/common/FloatingDemoSwitcher';
@@ -1677,6 +1678,11 @@ function UnauthedGate() {
   const location = useLocation();
   const path = String(location.pathname || '');
   const hostname = (typeof window !== 'undefined' ? window.location.hostname : '').toLowerCase();
+
+  // Khusus aplikasi Android / iOS Capacitor, arahkan langsung ke halaman Login / Gateway
+  if (isCapacitorApp() || (typeof window !== 'undefined' && ((window as any).Capacitor?.isNativePlatform?.() || localStorage.getItem('absenta_custom_server_domain')))) {
+    return <Navigate to="/login" replace />;
+  }
   
   // Deteksi domain utama marketing vs domain portal SaaS app
   const isMarketingDomain = hostname === 'absenta.id' || 

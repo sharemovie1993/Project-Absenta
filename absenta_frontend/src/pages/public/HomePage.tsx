@@ -101,11 +101,16 @@ export default function HomePage() {
           </div>
           <h2 className="text-2xl font-bold mb-2">Konfigurasi Tidak Ditemukan</h2>
           <p className="text-slate-500 max-w-md mx-auto mb-8">
-            Maaf, kami tidak dapat memuat konfigurasi sistem saat ini. Silakan coba segarkan halaman atau hubungi administrator.
+            Maaf, kami tidak dapat memuat konfigurasi sistem saat ini. Silakan hubungkan ke server sekolah Anda atau segarkan halaman.
           </p>
-          <Button onClick={() => window.location.reload()} variant="primary">
-            Segarkan Halaman
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+            <Button onClick={() => navigate('/login')} variant="primary">
+              Masuk / Hubungkan Server Sekolah
+            </Button>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Segarkan Halaman
+            </Button>
+          </div>
         </div>
       </AcademicPageLayout>
     );
