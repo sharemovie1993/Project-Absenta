@@ -785,16 +785,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
           )}
 
           {/* ─────────────────────────────────────────────────────────────────────
-              EXPAND / COLLAPSE TOGGLE (Tampilkan lebih / Tampilkan sedikit)
+              EXPAND / COLLAPSE TOGGLE (Tampilkan Lebih / Tampilkan sedikit)
               ───────────────────────────────────────────────────────────────────── */}
-          <div className="pt-2 text-center">
+          <div className="pt-2 pb-1 text-center">
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 transition-colors cursor-pointer select-none py-1"
+              onClick={() => setIsExpanded(prev => !prev)}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer select-none py-2 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 active:scale-95"
             >
-              <span>{isExpanded ? 'Tampilkan sedikit' : 'Tampilkan lebih'}</span>
-              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <span>{isExpanded ? 'Tampilkan sedikit' : 'Tampilkan Lebih'}</span>
+              {isExpanded ? <ChevronUp size={16} className="text-emerald-600" /> : <ChevronDown size={16} className="text-slate-500" />}
             </button>
           </div>
 

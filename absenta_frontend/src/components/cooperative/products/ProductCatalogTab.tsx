@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
-const ProductFormModal = lazy(() => import('../../../pages/cooperative/components/ProductFormModal'));
+import { ProductFormModal } from '../../../pages/cooperative/components/ProductFormModal';
 const OpnameFormModal = lazy(() => import('../../../pages/cooperative/components/OpnameFormModal'));
 const ExcelImportModal = lazy(() => import('../../academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
