@@ -116,14 +116,14 @@ const Products: React.FC = React.memo(() => {
           ]
         }}
       >
-        <div className="space-y-6">
-          {/* Action buttons & Shortcuts */}
+        <div className="space-y-4">
+          {/* Action buttons & Shortcuts (Desktop / Tablet only) */}
           {canViewReports && (
-            <div className="flex justify-end items-center">
+            <div className="hidden sm:flex justify-end items-center">
               <button
                 type="button"
                 onClick={() => navigate('/cooperative/inventory-report')}
-                className="flex items-center gap-2 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+                className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
                 title="Buka Laporan Persediaan"
               >
                 <BarChart2 size={15} />
@@ -137,7 +137,7 @@ const Products: React.FC = React.memo(() => {
             <button
               type="button"
               onClick={() => setActiveTab('catalog')}
-              className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 activeTab === 'catalog'
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                   : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
@@ -150,7 +150,7 @@ const Products: React.FC = React.memo(() => {
               <button
                 type="button"
                 onClick={() => setActiveTab('inventory')}
-                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'inventory'
                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                     : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
@@ -164,7 +164,7 @@ const Products: React.FC = React.memo(() => {
               <button
                 type="button"
                 onClick={() => setActiveTab('stock-in')}
-                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'stock-in'
                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                     : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
@@ -177,7 +177,7 @@ const Products: React.FC = React.memo(() => {
             <button
               type="button"
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 activeTab === 'history'
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                   : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
@@ -190,7 +190,7 @@ const Products: React.FC = React.memo(() => {
               <button
                 type="button"
                 onClick={() => setActiveTab('categories')}
-                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'categories'
                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                     : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
@@ -204,7 +204,7 @@ const Products: React.FC = React.memo(() => {
               <button
                 type="button"
                 onClick={() => setActiveTab('opname')}
-                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 py-2 px-3 sm:px-4 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'opname'
                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
                     : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
