@@ -49,13 +49,7 @@ const UserPage: React.FC = () => {
   const [tenantLabel, setTenantLabel] = useState<string>('Tenant Anda');
 
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader size="lg" />
-      </div>
-    );
-  }
+  
 
   // Check permissions
   const canManage = useMemo(() => {
@@ -102,7 +96,15 @@ const UserPage: React.FC = () => {
       : Array.isArray(input)
         ? input
         : [];
-    return (src as unknown[])
+    if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  return (src as unknown[])
       ?.map((r) => {
         const obj = r as Record<string, unknown>;
         const id = obj.id;

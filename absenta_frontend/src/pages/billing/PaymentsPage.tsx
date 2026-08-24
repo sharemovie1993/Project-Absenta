@@ -63,13 +63,6 @@ const PaymentsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (isAuthLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader size="lg" />
-      </div>
-    );
-  }
 
   // State management
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -430,7 +423,15 @@ const PaymentsPage: React.FC = () => {
   }, [handleViewDetails, canManagePayments]);
 
   if (loading) {
+    if (isAuthLoading) {
     return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  return (
       <PageLayout
         hardeningModuleKey="billing_payment_history"
         breadcrumbs={[

@@ -195,6 +195,10 @@ const Dashboard: React.FC = React.memo(() => {
 
   const fmtTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative' },
+    { label: 'Dashboard', path: '/cooperative/dashboard' },
+  ], []);
   if (loading) {
       return <div className="flex justify-center items-center h-64 text-gray-500 font-bold dark:text-slate-400">Loading Dashboard...</div>;
   }
@@ -220,10 +224,7 @@ const Dashboard: React.FC = React.memo(() => {
     );
   }
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Koperasi', path: '/cooperative' },
-    { label: 'Dashboard', path: '/cooperative/dashboard' },
-  ], []);
+
 
   return (
     <PremiumFeatureGate 

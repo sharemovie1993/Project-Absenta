@@ -276,6 +276,26 @@ export default function KurikulumDashboard() {
   const headerDesc = [semNama, tpTahun ? `TP ${tpTahun}` : ''].filter(Boolean).join(' — ')
     || 'Analitik beban belajar, supervisi guru, dan perencanaan akademik';
 
+  /* ────────────────────────────────────────────────────────────────────────
+     NORMAL MODE STATE & HOOKS
+  ──────────────────────────────────────────────────────────────────────── */
+  const [curriculumTab, setCurriculumTab] = useState<'overview' | 'beban' | 'perangkat' | 'supervisi'>('overview');
+
+  const teachersPendingPerangkat = useMemo(() => {
+    const list = safeArr<{ status?: string; guru_id?: string }>(perangkatR);
+    const approvedGuruIds = new Set(
+      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id)?.map(p => p.guru_id)
+    );
+    return activeEducators
+      .filter(g => !approvedGuruIds.has(g.id))
+      ?.map(g => ({
+        id: g.id,
+        nama: g.nama_guru,
+        nip: (g as Record<string, unknown>).nip || '-',
+        hasSubmitted: list.some(p => p.guru_id === g.id),
+      }));
+  }, [activeEducators, perangkatR]);
+
   /* ── ──────────────────────────────────────────────────────────────────────
      TV MODE
   ──────────────────────────────────────────────────────────────────────── */
@@ -314,27 +334,6 @@ export default function KurikulumDashboard() {
       </Suspense>
     );
   }
-
-  /* ────────────────────────────────────────────────────────────────────────
-     NORMAL MODE
-  ──────────────────────────────────────────────────────────────────────── */
-  const [curriculumTab, setCurriculumTab] = useState<'overview' | 'beban' | 'perangkat' | 'supervisi'>('overview');
-  const navigate = useNavigate();
-
-  const teachersPendingPerangkat = useMemo(() => {
-    const list = safeArr<{ status?: string; guru_id?: string }>(perangkatR);
-    const approvedGuruIds = new Set(
-      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id)?.map(p => p.guru_id)
-    );
-    return activeEducators
-      .filter(g => !approvedGuruIds.has(g.id))
-      ?.map(g => ({
-        id: g.id,
-        nama: g.nama_guru,
-        nip: (g as Record<string, unknown>).nip || '-',
-        hasSubmitted: list.some(p => p.guru_id === g.id),
-      }));
-  }, [activeEducators, perangkatR]);
 
   const metricsData = [
     {

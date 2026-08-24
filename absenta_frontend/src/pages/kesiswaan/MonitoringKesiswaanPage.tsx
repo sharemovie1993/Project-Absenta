@@ -191,6 +191,12 @@ const MonitoringKesiswaanPage: React.FC = React.memo(() => {
     ]
   }), []);
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Kesiswaan', path: '/kesiswaan' },
+    { label: 'Monitoring Disiplin' }
+  ], []);
+
   if (isTvMode) {
     const scenes = [
       { title: "Ringkasan Harian, Piket & Agenda", desc: "Statistik harian, piket aktif, dan agenda terdekat" },
@@ -350,11 +356,7 @@ const MonitoringKesiswaanPage: React.FC = React.memo(() => {
     );
   }
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Kesiswaan', path: '/kesiswaan' },
-    { label: 'Monitoring Disiplin' }
-  ], []);
+  
 
   return (
     <AcademicPageLayout

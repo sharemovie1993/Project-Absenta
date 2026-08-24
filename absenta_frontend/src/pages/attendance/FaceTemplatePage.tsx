@@ -301,10 +301,7 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
     </div>
   );
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Presensi', path: '/attendance/ops' },
-    { label: 'Rekam Wajah Premium', active: true }
-  ], []);
+  
 
   return (
     <PageLayout

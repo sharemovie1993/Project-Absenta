@@ -1,34 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  UserCheck,
-  BookOpen,
-  Users,
-  ShieldCheck,
-  Building,
-  Briefcase,
-  ShoppingCart,
-  ClipboardList,
-  User,
-  Calendar,
-  Clock,
-  Home,
-  MailCheck,
-  HeartPulse,
-  Scale,
-  ScrollText,
-  HeartHandshake,
-  FileText,
-  Trophy,
-} from 'lucide-react';
+import { UserCheck, BookOpen, Users, ShieldCheck, Building, Briefcase, ShoppingCart, ClipboardList, User, Calendar, Clock, Home, MailCheck, HeartPulse, Scale, ScrollText, HeartHandshake, FileText, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 import { getUserPositions } from '@/config/navigation.config';
 import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
-
 export interface MobileBottomSubItem {
   id: string;
   label: string;
@@ -36,7 +15,6 @@ export interface MobileBottomSubItem {
   targetPath: string;
   badge?: string | number | null;
 }
-
 export interface MobileBottomTabItem {
   id: string;
   label: string;
@@ -47,14 +25,14 @@ export interface MobileBottomTabItem {
   isActive: (pathname: string, currentTabParam: string | null) => boolean;
   children?: MobileBottomSubItem[];
 }
-
 export const BottomNavigation: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuthStore();
+  const {
+    user
+  } = useAuthStore();
   const [openFlyoutId, setOpenFlyoutId] = useState<string | null>(null);
-
   const {
     isAdmin,
     isSarpras,
@@ -77,51 +55,52 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
     isKoperasi,
-    isSiswa,
+    isSiswa
   } = useCapabilities();
-
   const guruProfile = user?.guru_profile;
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
-
-  const jenisPtk = (
-    guruProfile?.jenis_ptk ||
-    (user?.guru_profile as any)?.jenis_ptk ||
-    (user as any)?.jenis_ptk ||
-    ''
-  ).toUpperCase();
-
-  const isTuStaff = isTU ||
-    user?.role === 'TU' ||
-    jenisPtk === 'TENAGA_KEPENDIDIKAN' ||
-    (guruProfile?.is_tu ?? false);
-
-  const isPendidik = (
-    !isTuStaff &&
-    !isKepsek &&
-    (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps)))
-  );
-
-  const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || (isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
-
-  const isWaliKelas = isWaliKelasFromCaps ||
-    !!guruProfile?.wali_kelas_di?.id ||
-    !!((user?.guru_profile as any)?.wali_kelas_di?.id);
-
-  const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas ||
-    (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
-
+  const jenisPtk = (guruProfile?.jenis_ptk || (user?.guru_profile as any)?.jenis_ptk || (user as any)?.jenis_ptk || '').toUpperCase();
+  const isTuStaff = isTU || user?.role === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
+  const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || !jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps));
+  const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum;
+  const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as any)?.wali_kelas_di?.id;
+  const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
   const currentTab = searchParams.get('tab');
   const currentSubtab = searchParams.get('subtab');
 
   // Dynamic TU Tab Label & Badge
   const tuTabMeta = useMemo(() => {
-    if (isTUKepala) return { label: 'Tata Usaha', shortLabel: 'TU', badge: 'KOR TU' };
-    if (isTUKepegawaian) return { label: 'TU Kepegawaian', shortLabel: 'Kepegawaian', badge: 'DAPODIK' };
-    if (isTUPersuratan) return { label: 'TU Persuratan', shortLabel: 'Persuratan', badge: 'SURAT' };
-    if (isTUKeuangan) return { label: 'TU Keuangan', shortLabel: 'Keuangan', badge: 'SPP' };
-    if (isTUSarpras) return { label: 'TU Sarpras & Logistik', shortLabel: 'Logistik', badge: 'KIB' };
-    return { label: 'Tata Usaha', shortLabel: 'TU', badge: 'TU' };
+    if (isTUKepala) return {
+      label: 'Tata Usaha',
+      shortLabel: 'TU',
+      badge: 'KOR TU'
+    };
+    if (isTUKepegawaian) return {
+      label: 'TU Kepegawaian',
+      shortLabel: 'Kepegawaian',
+      badge: 'DAPODIK'
+    };
+    if (isTUPersuratan) return {
+      label: 'TU Persuratan',
+      shortLabel: 'Persuratan',
+      badge: 'SURAT'
+    };
+    if (isTUKeuangan) return {
+      label: 'TU Keuangan',
+      shortLabel: 'Keuangan',
+      badge: 'SPP'
+    };
+    if (isTUSarpras) return {
+      label: 'TU Sarpras & Logistik',
+      shortLabel: 'Logistik',
+      badge: 'KIB'
+    };
+    return {
+      label: 'Tata Usaha',
+      shortLabel: 'TU',
+      badge: 'TU'
+    };
   }, [isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras]);
 
   // Close floating flyout when navigating or changing query params
@@ -130,109 +109,95 @@ export const BottomNavigation: React.FC = React.memo(() => {
   }, [location.pathname, location.search]);
 
   // Don't render for Parent App as it has its own parent layout
-  if (location.pathname.startsWith('/parent-app')) {
-    return null;
-  }
 
   // 1. Siswa Mobile Bottom Tabs
-  const siswaTabs = useMemo<MobileBottomTabItem[]>(() => [
-    {
-      id: 'beranda',
-      label: 'Beranda',
-      shortLabel: 'Beranda',
-      icon: Home,
-      targetPath: '/dashboard',
-      isActive: (pathname) => pathname === '/dashboard' || pathname === '/dashboard/',
-    },
-    {
-      id: 'jadwal',
-      label: 'Jadwal KBM',
-      shortLabel: 'Jadwal',
-      icon: Calendar,
-      targetPath: '/kbm/jadwal',
-      isActive: (pathname) => pathname.startsWith('/kbm/jadwal'),
-    },
-    {
-      id: 'presensi',
-      label: 'Presensi',
-      shortLabel: 'Absensi',
-      icon: Clock,
-      targetPath: '/my-attendance',
-      isActive: (pathname) => pathname.startsWith('/my-attendance'),
-    },
-    {
-      id: 'profil',
-      label: 'Profil',
-      shortLabel: 'Profil',
-      icon: User,
-      targetPath: '/profile',
-      isActive: (pathname) => pathname.startsWith('/profile'),
-    },
-  ], []);
+  const siswaTabs = useMemo<MobileBottomTabItem[]>(() => [{
+    id: 'beranda',
+    label: 'Beranda',
+    shortLabel: 'Beranda',
+    icon: Home,
+    targetPath: '/dashboard',
+    isActive: pathname => pathname === '/dashboard' || pathname === '/dashboard/'
+  }, {
+    id: 'jadwal',
+    label: 'Jadwal KBM',
+    shortLabel: 'Jadwal',
+    icon: Calendar,
+    targetPath: '/kbm/jadwal',
+    isActive: pathname => pathname.startsWith('/kbm/jadwal')
+  }, {
+    id: 'presensi',
+    label: 'Presensi',
+    shortLabel: 'Absensi',
+    icon: Clock,
+    targetPath: '/my-attendance',
+    isActive: pathname => pathname.startsWith('/my-attendance')
+  }, {
+    id: 'profil',
+    label: 'Profil',
+    shortLabel: 'Profil',
+    icon: User,
+    targetPath: '/profile',
+    isActive: pathname => pathname.startsWith('/profile')
+  }], []);
 
   // 1.1 Kepala Sekolah Mobile Bottom Tabs (6 Pilar 360° + Profil)
-  const { currentPillar, setPillar } = useExecutivePillarStore();
+  const {
+    currentPillar,
+    setPillar
+  } = useExecutivePillarStore();
   const kepsekTabs = useMemo<MobileBottomTabItem[]>(() => {
     const isProfileTab = currentTab === 'profil';
-
-    return [
-      {
-        id: 'kbm',
-        label: 'KBM & Kurikulum',
-        shortLabel: 'KBM',
-        icon: BookOpen,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab,
-      },
-      {
-        id: 'kesiswaan',
-        label: 'Kesiswaan & Disiplin',
-        shortLabel: 'Kesiswaan',
-        icon: Users,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab,
-      },
-      {
-        id: 'bk',
-        label: 'Bimbingan Konseling (EWS)',
-        shortLabel: 'BP/BK',
-        icon: HeartHandshake,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab,
-      },
-      {
-        id: 'sarpras',
-        label: 'Sarpras & Fasilitas',
-        shortLabel: 'Sarpras',
-        icon: Building,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'sarpras' && !isProfileTab,
-      },
-      {
-        id: 'hubin',
-        label: 'Hubin & Kemitraan',
-        shortLabel: 'Hubin',
-        icon: Briefcase,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'hubin' && !isProfileTab,
-      },
-      {
-        id: 'tu',
-        label: 'Tata Usaha & Surat',
-        shortLabel: 'TU',
-        icon: FileText,
-        targetPath: '/dashboard',
-        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'tu' && !isProfileTab,
-      },
-      {
-        id: 'profil',
-        label: 'Profil Saya',
-        shortLabel: 'Profil',
-        icon: User,
-        targetPath: '/dashboard?tab=profil',
-        isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile'),
-      },
-    ];
+    return [{
+      id: 'kbm',
+      label: 'KBM & Kurikulum',
+      shortLabel: 'KBM',
+      icon: BookOpen,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kbm' && !isProfileTab
+    }, {
+      id: 'kesiswaan',
+      label: 'Kesiswaan & Disiplin',
+      shortLabel: 'Kesiswaan',
+      icon: Users,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'kesiswaan' && !isProfileTab
+    }, {
+      id: 'bk',
+      label: 'Bimbingan Konseling (EWS)',
+      shortLabel: 'BP/BK',
+      icon: HeartHandshake,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'bk' && !isProfileTab
+    }, {
+      id: 'sarpras',
+      label: 'Sarpras & Fasilitas',
+      shortLabel: 'Sarpras',
+      icon: Building,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'sarpras' && !isProfileTab
+    }, {
+      id: 'hubin',
+      label: 'Hubin & Kemitraan',
+      shortLabel: 'Hubin',
+      icon: Briefcase,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'hubin' && !isProfileTab
+    }, {
+      id: 'tu',
+      label: 'Tata Usaha & Surat',
+      shortLabel: 'TU',
+      icon: FileText,
+      targetPath: '/dashboard',
+      isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan') && currentPillar === 'tu' && !isProfileTab
+    }, {
+      id: 'profil',
+      label: 'Profil Saya',
+      shortLabel: 'Profil',
+      icon: User,
+      targetPath: '/dashboard?tab=profil',
+      isActive: (pathname, tabParam) => tabParam === 'profil' || pathname.startsWith('/profile')
+    }];
   }, [currentPillar, currentTab]);
 
   // 2. Staff / Guru / Waka / Admin Mobile Bottom Tabs (Strictly by Position)
@@ -248,7 +213,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: ShieldCheck,
         badge: 'ADMIN',
         targetPath: '/dashboard?tab=admin',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'admin'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'admin'
       });
     }
 
@@ -261,9 +226,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Home,
         badge: 'KEPSEK',
         targetPath: '/dashboard',
-        isActive: (pathname, tabParam) =>
-          (pathname === '/dashboard' || pathname === '/dashboard/') &&
-          (!tabParam || tabParam === 'ringkasan'),
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan')
       });
     } else if ((isPendidik || isPureGerbangStaff) && !isAdminRole) {
       list.push({
@@ -272,9 +235,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         shortLabel: isPureGerbangStaff ? 'Gerbang' : 'Beranda',
         icon: Home,
         targetPath: '/dashboard',
-        isActive: (pathname, tabParam) =>
-          (pathname === '/dashboard' || pathname === '/dashboard/') &&
-          (!tabParam || tabParam === 'ringkasan'),
+        isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan')
       });
     }
 
@@ -287,7 +248,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: BookOpen,
         badge: 'AKTIF',
         targetPath: '/dashboard?tab=jadwal',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'jadwal') || pathname.startsWith('/attendance'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'jadwal' || pathname.startsWith('/attendance')
       });
     }
 
@@ -300,12 +261,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Users,
         badge: waliKelasNama || '8B',
         targetPath: '/dashboard?tab=binaan',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'binaan') || pathname.startsWith('/kurikulum/wali-kelas'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'binaan' || pathname.startsWith('/kurikulum/wali-kelas')
       });
     }
 
     // 4. Kurikulum (hanya jika ada SK Kurikulum / Admin murni)
-    if ((isKurikulum || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isKurikulum || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'kurikulum',
         label: 'Kurikulum',
@@ -313,12 +274,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: ShieldCheck,
         badge: 'WAKA',
         targetPath: '/dashboard?tab=kurikulum',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'kurikulum') || pathname.startsWith('/kurikulum'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kurikulum' || pathname.startsWith('/kurikulum')
       });
     }
 
     // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Admin murni)
-    if ((isKesiswaan || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isKesiswaan || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'kesiswaan',
         label: 'Kesiswaan',
@@ -326,12 +287,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Users,
         badge: 'WAKA',
         targetPath: '/dashboard?tab=kesiswaan',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'kesiswaan') || pathname.startsWith('/kesiswaan'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kesiswaan' || pathname.startsWith('/kesiswaan')
       });
     }
 
     // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin murni)
-    if ((isSarpras || isToolman || isKabeng || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isSarpras || isToolman || isKabeng || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'sarpras',
         label: 'Sarpras',
@@ -339,12 +300,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Building,
         badge: 'WAKA',
         targetPath: '/dashboard?tab=sarpras',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'sarpras') || pathname.startsWith('/sarpras'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'sarpras' || pathname.startsWith('/sarpras')
       });
     }
 
     // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin murni)
-    if ((isHubin || isBkk || isKaprog || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isHubin || isBkk || isKaprog || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'hubin',
         label: 'Hubin',
@@ -352,12 +313,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Briefcase,
         badge: 'WAKA',
         targetPath: '/dashboard?tab=hubin',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'hubin') || pathname.startsWith('/hubin'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'hubin' || pathname.startsWith('/hubin')
       });
     }
 
     // 8. Koperasi (hanya jika ada SK Koperasi / Admin murni)
-    if ((isKoperasi || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isKoperasi || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'koperasi',
         label: 'Koperasi',
@@ -365,12 +326,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: ShoppingCart,
         badge: 'UNIT',
         targetPath: '/dashboard?tab=koperasi',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'koperasi') || pathname.startsWith('/cooperative'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'koperasi' || pathname.startsWith('/cooperative')
       });
     }
 
     // 9. BP/BK (hanya jika ada SK BPBK / Admin murni)
-    if ((isBpbk || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isBpbk || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'bpbk',
         label: 'BP/BK',
@@ -378,12 +339,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: UserCheck,
         badge: 'BK',
         targetPath: '/dashboard?tab=bpbk',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'bpbk') || pathname.startsWith('/bpbk'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'bpbk' || pathname.startsWith('/bpbk')
       });
     }
 
     // 10. TU (hanya jika ada SK TU / Admin murni)
-    if ((isTUKepegawaian || isTU || (isAdminRole && !isKepsek)) && !isKepsek) {
+    if ((isTUKepegawaian || isTU || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'kepegawaian',
         label: tuTabMeta.label,
@@ -391,7 +352,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: ClipboardList,
         badge: tuTabMeta.badge,
         targetPath: '/dashboard?tab=kepegawaian',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'kepegawaian') || pathname.startsWith('/academic'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kepegawaian' || pathname.startsWith('/academic')
       });
     }
 
@@ -404,7 +365,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
         icon: Clock,
         badge: 'PIKET',
         targetPath: '/dashboard?tab=kelola',
-        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'kelola') || pathname.startsWith('/kesiswaan/piket'),
+        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kelola' || pathname.startsWith('/kesiswaan/piket')
       });
     }
 
@@ -415,39 +376,15 @@ export const BottomNavigation: React.FC = React.memo(() => {
       shortLabel: 'Profil',
       icon: User,
       targetPath: '/dashboard?tab=profil',
-      isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'profil') || pathname.startsWith('/profile'),
+      isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'profil' || pathname.startsWith('/profile')
     });
-
     return list;
-  }, [
-    isAdminRole,
-    isTuStaff,
-    isKurikulum,
-    isWaliKelas,
-    waliKelasNama,
-    isKesiswaan,
-    isKepsek,
-    isSarpras,
-    isToolman,
-    isKabeng,
-    isHubin,
-    isBkk,
-    isKaprog,
-    isKoperasi,
-    isBpbk,
-    isGerbang,
-    isTUKepegawaian,
-    isTU,
-    tuTabMeta,
-    guruProfile,
-    isPendidik,
-    isPureGerbangStaff,
-    isPiketGuru,
-  ]);
-
-  const activeTabsList = isSiswa ? siswaTabs : (isKepsek ? kepsekTabs : staffTabs);
-  const openFlyoutItem = activeTabsList.find((item) => item.id === openFlyoutId);
-
+  }, [isAdminRole, isTuStaff, isKurikulum, isWaliKelas, waliKelasNama, isKesiswaan, isKepsek, isSarpras, isToolman, isKabeng, isHubin, isBkk, isKaprog, isKoperasi, isBpbk, isGerbang, isTUKepegawaian, isTU, tuTabMeta, guruProfile, isPendidik, isPureGerbangStaff, isPiketGuru]);
+  if (location.pathname.startsWith('/parent-app')) {
+    return null;
+  }
+  const activeTabsList = isSiswa ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;
+  const openFlyoutItem = activeTabsList.find(item => item.id === openFlyoutId);
   const handleTabClick = (item: MobileBottomTabItem) => {
     if (item.children && item.children.length > 0) {
       if (openFlyoutId === item.id) {
@@ -470,38 +407,43 @@ export const BottomNavigation: React.FC = React.memo(() => {
       }
       return;
     }
-
     navigate(item.targetPath);
   };
-
   const handleSubItemClick = (subItem: MobileBottomSubItem) => {
     setOpenFlyoutId(null);
     navigate(subItem.targetPath);
   };
-
-  return (
-    <>
+  return <>
       {/* ── FLOATING FLYOUT SUB-MENU FOR TABS WITH CHILDREN (MELAYANG) ── */}
       <AnimatePresence>
-        {openFlyoutItem && openFlyoutItem.children && (
-          <>
+        {openFlyoutItem && openFlyoutItem.children && <>
             {/* Backdrop overlay to dismiss on tap */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpenFlyoutId(null)}
-              className="lg:hidden fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs"
-            />
+            <motion.div initial={{
+          opacity: 0
+        }} animate={{
+          opacity: 1
+        }} exit={{
+          opacity: 0
+        }} onClick={() => setOpenFlyoutId(null)} className="lg:hidden fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs" />
 
             {/* Floating Flyout Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.94 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 14, scale: 0.94 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="lg:hidden fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-3 right-3 max-w-sm mx-auto z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl p-3 shadow-2xl shadow-slate-950/30"
-            >
+            <motion.div initial={{
+          opacity: 0,
+          y: 18,
+          scale: 0.94
+        }} animate={{
+          opacity: 1,
+          y: 0,
+          scale: 1
+        }} exit={{
+          opacity: 0,
+          y: 14,
+          scale: 0.94
+        }} transition={{
+          type: 'spring',
+          damping: 25,
+          stiffness: 350
+        }} className="lg:hidden fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] left-3 right-3 max-w-sm mx-auto z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-3xl p-3 shadow-2xl shadow-slate-950/30">
               {/* Header Title */}
               <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-100 dark:border-slate-800 mb-1.5">
                 <div className="flex items-center gap-1.5">
@@ -517,38 +459,19 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
               {/* Sub-Items Grid */}
               <div className="grid grid-cols-2 gap-1.5">
-                {openFlyoutItem.children.map((sub) => {
-                  const SubIcon = sub.icon;
-                  const isSubActive = currentSubtab === sub.id || (!currentSubtab && sub.id === 'approval');
-
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      onClick={() => handleSubItemClick(sub)}
-                      className={cn(
-                        "flex items-center gap-2 p-2.5 rounded-2xl text-left font-bold text-xs transition-all cursor-pointer active:scale-95",
-                        isSubActive
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-xs"
-                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 border border-transparent"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-7 h-7 rounded-xl flex items-center justify-center shrink-0",
-                        isSubActive
-                          ? "bg-emerald-500 text-white shadow-xs"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                      )}>
+                {openFlyoutItem.children.map(sub => {
+              const SubIcon = sub.icon;
+              const isSubActive = currentSubtab === sub.id || !currentSubtab && sub.id === 'approval';
+              return <button key={sub.id} type="button" onClick={() => handleSubItemClick(sub)} className={cn("flex items-center gap-2 p-2.5 rounded-2xl text-left font-bold text-xs transition-all cursor-pointer active:scale-95", isSubActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-xs" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 border border-transparent")}>
+                      <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", isSubActive ? "bg-emerald-500 text-white shadow-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400")}>
                         <SubIcon size={14} />
                       </div>
                       <span className="truncate leading-tight text-[11px] font-extrabold">{sub.label}</span>
-                    </button>
-                  );
-                })}
+                    </button>;
+            })}
               </div>
             </motion.div>
-          </>
-        )}
+          </>}
       </AnimatePresence>
 
       {/* ── 2-LEVEL CONTEXTUAL MOBILE BOTTOM NAVIGATION ── */}
@@ -557,58 +480,30 @@ export const BottomNavigation: React.FC = React.memo(() => {
         <RelatedModuleNavPills variant="bottombar" />
 
         {/* LEVEL 1: Root Bottom Navigation Bar */}
-        <nav
-          aria-label="Navigasi Bawah Seluler"
-          className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl overflow-x-auto no-scrollbar"
-        >
+        <nav aria-label="Navigasi Bawah Seluler" className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl overflow-x-auto no-scrollbar">
           <div className="flex items-center justify-around w-full min-w-max gap-1 px-1">
-            {activeTabsList.map((item) => {
-              const ItemIcon = item.icon;
-              const isSelected = item.isActive(location.pathname, currentTab);
-              const hasChildren = Boolean(item.children && item.children.length > 0);
-              const isFlyoutOpen = openFlyoutId === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabClick(item)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-[58px] cursor-pointer relative",
-                    isSelected || isFlyoutOpen
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "p-1.5 rounded-xl transition-all relative",
-                      isSelected || isFlyoutOpen
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                        : "bg-transparent"
-                    )}
-                  >
+            {activeTabsList.map(item => {
+            const ItemIcon = item.icon;
+            const isSelected = item.isActive(location.pathname, currentTab);
+            const hasChildren = Boolean(item.children && item.children.length > 0);
+            const isFlyoutOpen = openFlyoutId === item.id;
+            return <button key={item.id} onClick={() => handleTabClick(item)} className={cn("flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl text-[10px] font-bold transition-all duration-200 select-none flex-1 min-w-[58px] cursor-pointer relative", isSelected || isFlyoutOpen ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200")}>
+                  <div className={cn("p-1.5 rounded-xl transition-all relative", isSelected || isFlyoutOpen ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-sm" : "bg-transparent")}>
                     <ItemIcon size={18} />
-                    {item.badge && (
-                      <span className="absolute -top-1 -right-1 text-[8px] font-black px-1 py-0.2 rounded-full bg-emerald-500 text-white leading-none scale-75">
+                    {item.badge && <span className="absolute -top-1 -right-1 text-[8px] font-black px-1 py-0.2 rounded-full bg-emerald-500 text-white leading-none scale-75">
                         {item.badge}
-                      </span>
-                    )}
-                    {hasChildren && (
-                      <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    )}
+                      </span>}
+                    {hasChildren && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
                   <span className="truncate max-w-[64px] font-extrabold text-[9.5px]">
                     {item.shortLabel}
                   </span>
-                </button>
-              );
-            })}
+                </button>;
+          })}
           </div>
         </nav>
       </div>
-    </>
-  );
+    </>;
 });
-
 BottomNavigation.displayName = 'BottomNavigation';
 export default BottomNavigation;

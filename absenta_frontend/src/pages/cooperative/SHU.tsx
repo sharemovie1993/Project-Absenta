@@ -449,15 +449,7 @@ const SHUPage: React.FC = React.memo(() => {
     );
   }
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Koperasi', path: '/cooperative' },
-    { label: 'SHU', path: isOperator ? '/cooperative/shu/manage' : '/cooperative/shu' }
-  ], [isOperator]);
-
-  const tabOptions = useMemo((): TabOption[] => [
-    { id: 'periods', label: 'Periode & Tahun Buku' },
-    { id: 'config', label: 'Aturan Distribusi SHU' }
-  ], []);
+  
 
   // Render Admin Layout (Period Lists & Configurations)
   return (

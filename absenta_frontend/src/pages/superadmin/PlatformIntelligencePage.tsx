@@ -120,9 +120,7 @@ export default function PlatformIntelligencePage() {
     );
   }
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Intelligence Center' }
-  ], []);
+  
 
   return (
     <InfraErrorBoundary>

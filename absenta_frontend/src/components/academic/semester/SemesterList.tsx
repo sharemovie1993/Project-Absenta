@@ -3,28 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Edit, Trash2, Eye, Plus, Search, RefreshCw, CheckCircle, Circle, FileSpreadsheet, Download, Calendar } from 'lucide-react';
-import { 
-  Table, 
-  Button, 
-  Input, 
-  Modal, 
-  Badge, 
-  Loader,
-  SectionCard
-} from '../../ui';
-import { 
-  getSemesterList, 
-  deleteSemester, 
-  setActiveSemester, 
-  getSemesterDetail,
-  semesterQueryKeys
-} from '../../../api/academic/semester.api';
+import { Table, Button, Input, Modal, Badge, Loader, SectionCard } from '../../ui';
+import { getSemesterList, deleteSemester, setActiveSemester, getSemesterDetail, semesterQueryKeys } from '../../../api/academic/semester.api';
 import type { Semester } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
-
 interface SemesterListProps {
   onEdit?: (semester: Semester) => void;
   onView?: (semester: Semester) => void;
@@ -34,10 +19,9 @@ interface SemesterListProps {
   tahunPelajaranId?: string;
   toolbarRight?: React.ReactNode;
 }
-
-const SemesterList: React.FC<SemesterListProps> = React.memo(({ 
-  onEdit, 
-  onView, 
+const SemesterList: React.FC<SemesterListProps> = React.memo(({
+  onEdit,
+  onView,
   onAdd,
   onRefresh,
   refreshTrigger = 0,
@@ -47,42 +31,48 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const invalidateSemesterCache = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['semester-aktif'] });
-    queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran-options-list'] });
-    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({
+      queryKey: ['semester-aktif']
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['tahun-pelajaran-options-list']
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['academic-stats']
+    });
   }, [queryClient]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleting, setDeleting] = useState(false);
   const [activating, setActivating] = useState(false);
-  
-
-  const { user, isLoading: isAuthLoading } = useAuthStore();
-  
-  if (isAuthLoading) {
-    return <Loader size="lg" />;
-  }
-  
+  const {
+    user,
+    isLoading: isAuthLoading
+  } = useAuthStore();
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
+
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
     return user?.capabilities?.includes('academic.semesters.update') || user?.capabilities?.includes('academic.semesters.delete');
   }, [user]);
 
   // Queries using React Query
-  const { data: listRes, isLoading: loading, refetch } = useQuery({
-    queryKey: semesterQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, tahunPelajaranId }),
+  const {
+    data: listRes,
+    isLoading: loading,
+    refetch
+  } = useQuery({
+    queryKey: semesterQueryKeys.list({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: debouncedSearchTerm,
+      tahunPelajaranId
+    }),
     queryFn: () => getSemesterList(currentPage, itemsPerPage, debouncedSearchTerm, tahunPelajaranId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000
   });
-
   const semesters = useMemo(() => listRes?.data || [], [listRes]);
-  const totalPages = listRes?.pagination?.totalPages || 1;
-  const totalItems = listRes?.pagination?.total || 0;
-
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -91,13 +81,23 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
-      exportDataToExcel(semesters || [], [
-        { header: 'Nama Semester', accessor: (row) => row.nama_semester, width: 25 },
-        { header: 'Tahun Pelajaran', accessor: (row) => row.TahunPelajaran?.tahun || '', width: 20 },
-        { header: 'Status', accessor: (row) => row.is_active ? 'Aktif' : 'Tidak Aktif', width: 15 }
-      ], 'Laporan_Semester', 'DATA SEMESTER AKADEMIK');
+      exportDataToExcel(semesters || [], [{
+        header: 'Nama Semester',
+        accessor: row => row.nama_semester,
+        width: 25
+      }, {
+        header: 'Tahun Pelajaran',
+        accessor: row => row.TahunPelajaran?.tahun || '',
+        width: 20
+      }, {
+        header: 'Status',
+        accessor: row => row.is_active ? 'Aktif' : 'Tidak Aktif',
+        width: 15
+      }], 'Laporan_Semester', 'DATA SEMESTER AKADEMIK');
     } catch (error: any) {
-      toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
+      toast(error.message || 'Gagal mengekspor data', {
+        icon: '⚠️'
+      });
     }
   }, [semesters]);
 
@@ -116,13 +116,10 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       const sesiCount = Number(typedDetail?._count?.SesiAbsensi || 0);
       const siswaCount = Number(typedDetail?._count?.Siswa || 0);
       const tp = String(typedDetail?.TahunPelajaran?.tahun || semester.TahunPelajaran?.tahun || '');
-      
       const hasRelated = sesiCount > 0 || siswaCount > 0;
-
       const ok = await confirm({
         title: 'Konfirmasi Hapus Semester',
-        description: (
-          <div className="space-y-4">
+        description: <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-slate-900/50">
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tahun Pelajaran</div>
@@ -142,35 +139,29 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
               </div>
             </div>
 
-            {hasRelated ? (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl">
+            {hasRelated ? <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl">
                 <p className="text-xs text-red-600 dark:text-red-400 font-bold leading-relaxed">
                   Semester ini tidak dapat dihapus karena masih memiliki keterkaitan dengan data Sesi Absensi atau Siswa.
                 </p>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              </div> : <p className="text-sm text-slate-600 dark:text-slate-400">
                 Apakah Anda yakin ingin menghapus semester ini? Tindakan ini tidak dapat dibatalkan.
-              </p>
-            )}
-          </div>
-        ),
+              </p>}
+          </div>,
         confirmText: hasRelated ? undefined : 'Hapus Semester',
         cancelText: 'Tutup',
         style: 'danger',
         withProgress: true,
-        progressLabel: 'Menghapus semester...',
+        progressLabel: 'Menghapus semester...'
       });
-
       if (!ok || hasRelated) return;
-
       setDeleting(true);
       const response = await deleteSemester(semester.id);
-      
       if (response.success) {
         toast.success(response.message || 'Semester berhasil dihapus');
         invalidateSemesterCache();
-        queryClient.invalidateQueries({ queryKey: semesterQueryKeys.all });
+        queryClient.invalidateQueries({
+          queryKey: semesterQueryKeys.all
+        });
         refetch();
         onRefresh?.();
       } else {
@@ -189,8 +180,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const handleSetActive = useCallback(async (semester: Semester) => {
     const ok = await confirm({
       title: 'Konfirmasi Aktivasi Semester',
-      description: (
-        <div className="space-y-3">
+      description: <div className="space-y-3">
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Apakah Anda yakin ingin mengaktifkan semester <strong>{semester.nama_semester}</strong>?
           </p>
@@ -199,25 +189,23 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
               Tindakan ini juga akan otomatis mengaktifkan Tahun Pelajaran "{semester.TahunPelajaran?.tahun}" dan mensinkronisasi status siswa menjadi AKTIF.
             </p>
           </div>
-        </div>
-      ),
+        </div>,
       confirmText: 'Aktifkan',
       cancelText: 'Batal',
       style: 'success',
       withProgress: true,
-      progressLabel: 'Mengaktifkan semester...',
+      progressLabel: 'Mengaktifkan semester...'
     });
-
     if (!ok) return;
-
     try {
       setActivating(true);
       const response = await setActiveSemester(semester.id);
-      
       if (response.success) {
         toast.success(`Semester "${semester.nama_semester}" berhasil diaktifkan`);
         invalidateSemesterCache();
-        queryClient.invalidateQueries({ queryKey: semesterQueryKeys.all });
+        queryClient.invalidateQueries({
+          queryKey: semesterQueryKeys.all
+        });
         refetch();
         onRefresh?.();
       } else {
@@ -233,52 +221,40 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   }, [confirm, currentPage, searchTerm, onRefresh, invalidateSemesterCache, queryClient, refetch]);
 
   // Table columns configuration
-  const columns = useMemo(() => [
-    { 
-      key: 'nama_semester', 
-      label: 'Nama Semester',
-      sortable: true,
-      render: (value: string, semester: Semester) => (
-        <div className="flex items-center gap-2">
+  const columns = useMemo(() => [{
+    key: 'nama_semester',
+    label: 'Nama Semester',
+    sortable: true,
+    render: (value: string, semester: Semester) => <div className="flex items-center gap-2">
           <div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">{value}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               {semester.TahunPelajaran?.tahun || 'N/A'}
             </div>
           </div>
-          {semester.is_active && (
-            <Badge variant="success" className="ml-1">
+          {semester.is_active && <Badge variant="success" className="ml-1">
               Aktif
-            </Badge>
-          )}
+            </Badge>}
         </div>
-      )
-    },
-    { 
-      key: 'TahunPelajaran', 
-      label: 'Tahun Pelajaran',
-      render: (tahunPelajaran: Semester['TahunPelajaran']) => tahunPelajaran?.tahun || '-'
-    },
-    { 
-      key: 'is_active', 
-      label: 'Status',
-      render: (isActive: boolean, sem: Semester) => (
-        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+  }, {
+    key: 'TahunPelajaran',
+    label: 'Tahun Pelajaran',
+    render: (tahunPelajaran: Semester['TahunPelajaran']) => tahunPelajaran?.tahun || '-'
+  }, {
+    key: 'is_active',
+    label: 'Status',
+    render: (isActive: boolean, sem: Semester) => <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
           <Badge variant={isActive ? "success" : "secondary"}>
             {isActive ? 'Aktif' : 'Nonaktif'}
           </Badge>
-          {canManage && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (isActive) {
-                  toast.error('Semester aktif tidak dapat dinonaktifkan secara langsung. Silakan aktifkan semester lainnya.');
-                  return;
-                }
-                const ok = await confirm({
-                  title: 'Konfirmasi Aktivasi Semester',
-                  description: (
-                    <div className="space-y-3">
+          {canManage && <button type="button" onClick={async () => {
+        if (isActive) {
+          toast.error('Semester aktif tidak dapat dinonaktifkan secara langsung. Silakan aktifkan semester lainnya.');
+          return;
+        }
+        const ok = await confirm({
+          title: 'Konfirmasi Aktivasi Semester',
+          description: <div className="space-y-3">
                       <p className="text-sm text-slate-600 dark:text-slate-400">
                         Apakah Anda yakin ingin mengaktifkan semester <strong>{sem.nama_semester}</strong>?
                       </p>
@@ -287,149 +263,83 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
                           Tindakan ini juga akan otomatis mengaktifkan Tahun Pelajaran "{sem.TahunPelajaran?.tahun || sem.TahunPelajaran?.tahun || ''}" dan mensinkronisasi status siswa menjadi AKTIF.
                         </p>
                       </div>
-                    </div>
-                  ),
-                  confirmText: 'Aktifkan',
-                  cancelText: 'Batal',
-                  style: 'success',
-                  withProgress: true,
-                  progressLabel: 'Mengaktifkan semester...',
-                });
-                if (ok) {
-                  await handleSetActive(sem);
-                }
-              }}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'}`}
-              style={{ transition: 'background-color 0.2s' }}
-              aria-label={`Toggle status ${sem.nama_semester}`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}`}
-                style={{ transition: 'transform 0.2s' }}
-              />
-            </button>
-          )}
+                    </div>,
+          confirmText: 'Aktifkan',
+          cancelText: 'Batal',
+          style: 'success',
+          withProgress: true,
+          progressLabel: 'Mengaktifkan semester...'
+        });
+        if (ok) {
+          await handleSetActive(sem);
+        }
+      }} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'}`} style={{
+        transition: 'background-color 0.2s'
+      }} aria-label={`Toggle status ${sem.nama_semester}`}>
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}`} style={{
+          transition: 'transform 0.2s'
+        }} />
+            </button>}
         </div>
-      )
-    },
-    { 
-      key: 'actions', 
-      label: 'Aksi', 
-      render: (_: unknown, semester: Semester) => (
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onView?.(semester)}
-            aria-label="Lihat Detail Semester"
-            className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-          >
+  }, {
+    key: 'actions',
+    label: 'Aksi',
+    render: (_: unknown, semester: Semester) => <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => onView?.(semester)} aria-label="Lihat Detail Semester" className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20">
             <Eye className="w-4 h-4" />
           </Button>
-          {canManage && (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                onClick={() => onEdit?.(semester)}
-                aria-label="Edit Data Semester"
-              >
+          {canManage && <>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20" onClick={() => onEdit?.(semester)} aria-label="Edit Data Semester">
                 <Edit className="w-4 h-4" />
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                onClick={() => handleDelete(semester)}
-                aria-label="Hapus Data Semester"
-                disabled={semester.is_active}
-              >
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => handleDelete(semester)} aria-label="Hapus Data Semester" disabled={semester.is_active}>
                 <Trash2 className="w-4 h-4" />
               </Button>
-            </>
-          )}
+            </>}
         </div>
-      )
-    },
-  ], [canManage, onEdit, onView, confirm, handleDelete, handleSetActive]);
-
-  return (
-    <div className="flex flex-col">
+  }], [canManage, onEdit, onView, confirm, handleDelete, handleSetActive]);
+  if (isAuthLoading) {
+    return <Loader size="lg" />;
+  }
+  const totalPages = listRes?.pagination?.totalPages || 1;
+  const totalItems = listRes?.pagination?.total || 0;
+  return <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
       <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Cari semester..."
-            aria-label="Cari Semester"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-9 text-[13px] rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
-          />
+          <Input type="text" placeholder="Cari semester..." aria-label="Cari Semester" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full h-9 text-[13px] rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9" />
         </div>
       </div>
       
       <div className="bg-transparent overflow-hidden">
-        <Table
-          columns={columns}
-          data={semesters}
-          loading={loading}
-          emptyMessage="Tidak ada data semester ditemukan"
-          compact={true}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalItems,
-            itemsPerPage,
-            onPageChange: handlePageChange,
-            onLimitChange: (limit) => {
-              setItemsPerPage(limit);
-              setCurrentPage(1);
-            }
-          }}
-          toolbarLeft={
-            <div className="flex flex-wrap items-center gap-2">
-               {canManage && onAdd && (
-                  <Button 
-                    onClick={onAdd}
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                  >
+        <Table columns={columns} data={semesters} loading={loading} emptyMessage="Tidak ada data semester ditemukan" compact={true} pagination={{
+        currentPage,
+        totalPages,
+        totalItems,
+        itemsPerPage,
+        onPageChange: handlePageChange,
+        onLimitChange: limit => {
+          setItemsPerPage(limit);
+          setCurrentPage(1);
+        }
+      }} toolbarLeft={<div className="flex flex-wrap items-center gap-2">
+               {canManage && onAdd && <Button onClick={onAdd} variant="toolbarPrimary" size="toolbar">
                     <Plus className="w-4 h-4 mr-1.5" />
                     Tambah Semester
-                  </Button>
-               )}
+                  </Button>}
                
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbar"
-                 onClick={handleExport}
-                 className="rounded-xl"
-               >
+               <Button variant="toolbarOutline" size="toolbar" onClick={handleExport} className="rounded-xl">
                  <Download className="w-3.5 h-3.5 mr-1.5" />
                  Export
                </Button>
   
-               <Button
-                  variant="toolbarOutline"
-                  size="toolbarIcon"
-                  onClick={() => refetch()}
-                  aria-label="Refresh Data"
-                  className="rounded-xl"
-                  disabled={loading}
-                >
+               <Button variant="toolbarOutline" size="toolbarIcon" onClick={() => refetch()} aria-label="Refresh Data" className="rounded-xl" disabled={loading}>
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
-            </div>
-          }
-          toolbarRight={toolbarRight}
-        />
+            </div>} toolbarRight={toolbarRight} />
       </div>
-    </div>
-  );
+    </div>;
 });
-
 SemesterList.displayName = 'SemesterList';
 export default SemesterList;

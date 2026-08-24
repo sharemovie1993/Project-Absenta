@@ -3,44 +3,56 @@ import { Modal } from '@/components/ui/Modal';
 import { Table } from '@/components/ui/Table';
 import { Badge, StatusBadge, PaymentStatusBadge } from '@/components/ui/Badge';
 import { Loader, PageLoader, ButtonLoader, CardLoader } from '@/components/ui/Loader';
-import { 
-  SuccessAlert,
-  ErrorAlert,
-  WarningAlert,
-  InfoAlert,
-  AlertContainer
-} from '@/components/ui/Alert';
+import { SuccessAlert, ErrorAlert, WarningAlert, InfoAlert, AlertContainer } from '@/components/ui/Alert';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Edit, Trash2, Eye } from 'lucide-react';
-
 const ComponentsDemo: React.FC = () => {
-  if (import.meta.env.MODE === 'production') {
-    return null;
-  }
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPageLoader, setShowPageLoader] = useState(false);
   const [isButtonLoading, setIsButtonLoading] = useState(false);
 
-
   // Sample data for table
-  const tableData = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', status: 'active', role: 'Admin' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', status: 'inactive', role: 'User' },
-    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', status: 'pending', role: 'Editor' },
-  ];
-
-  const tableColumns = [
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'status', label: 'Status', render: (value: any) => <StatusBadge status={String(value) as any} /> },
-    { key: 'role', label: 'Role' },
-    { 
-      key: 'actions', 
-      label: 'Actions', 
-      render: (_: any, __: any) => (
-        <div className="flex space-x-2">
+  if (import.meta.env.MODE === 'production') {
+    return null;
+  }
+  const tableData = [{
+    id: 1,
+    name: 'John Doe',
+    email: 'john@example.com',
+    status: 'active',
+    role: 'Admin'
+  }, {
+    id: 2,
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    status: 'inactive',
+    role: 'User'
+  }, {
+    id: 3,
+    name: 'Bob Johnson',
+    email: 'bob@example.com',
+    status: 'pending',
+    role: 'Editor'
+  }];
+  const tableColumns = [{
+    key: 'name',
+    label: 'Name'
+  }, {
+    key: 'email',
+    label: 'Email'
+  }, {
+    key: 'status',
+    label: 'Status',
+    render: (value: any) => <StatusBadge status={String(value) as any} />
+  }, {
+    key: 'role',
+    label: 'Role'
+  }, {
+    key: 'actions',
+    label: 'Actions',
+    render: (_: any, __: any) => <div className="flex space-x-2">
           <Button size="sm" variant="outline">
             <Eye className="w-4 h-4" />
           </Button>
@@ -51,53 +63,42 @@ const ComponentsDemo: React.FC = () => {
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
-      )
-    },
-  ];
-
+  }];
   const handleToastDemo = (type: 'success' | 'error' | 'warning' | 'info') => {
     const messages = {
       success: 'Operation completed successfully!',
       error: 'An error occurred while processing your request.',
       warning: 'Please review your input before proceeding.',
-      info: 'Here is some important information for you.',
+      info: 'Here is some important information for you.'
     };
-
-    if (type === 'success') toast.success(messages[type]);
-    else if (type === 'error') toast.error(messages[type]);
-    else if (type === 'warning') toast(messages[type], { icon: '⚠️' });
-    else toast(messages[type], { icon: 'ℹ️' });
+    if (type === 'success') toast.success(messages[type]);else if (type === 'error') toast.error(messages[type]);else if (type === 'warning') toast(messages[type], {
+      icon: '⚠️'
+    });else toast(messages[type], {
+      icon: 'ℹ️'
+    });
   };
-
   const handleButtonLoading = () => {
     setIsButtonLoading(true);
     setTimeout(() => setIsButtonLoading(false), 2000);
   };
-
   const handlePageLoader = () => {
     setShowPageLoader(true);
     setTimeout(() => setShowPageLoader(false), 3000);
   };
-
-  const alertsData = [
-    {
-      id: '1',
-      type: 'success' as const,
-      title: 'Success!',
-      description: 'Your changes have been saved successfully.',
-      dismissible: true,
-    },
-    {
-      id: '2',
-      type: 'warning' as const,
-      title: 'Warning!',
-      description: 'Please review your settings before proceeding.',
-      dismissible: true,
-    },
-  ];
-
-  return (
-    <div className="container mx-auto p-6 space-y-8">
+  const alertsData = [{
+    id: '1',
+    type: 'success' as const,
+    title: 'Success!',
+    description: 'Your changes have been saved successfully.',
+    dismissible: true
+  }, {
+    id: '2',
+    type: 'warning' as const,
+    title: 'Warning!',
+    description: 'Please review your settings before proceeding.',
+    dismissible: true
+  }];
+  return <div className="container mx-auto p-6 space-y-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">UI Components Demo</h1>
         <p className="text-muted-foreground">
@@ -114,12 +115,7 @@ const ComponentsDemo: React.FC = () => {
           <Button onClick={() => setIsModalOpen(true)}>
             Open Modal
           </Button>
-          <Modal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            title="Demo Modal"
-            size="md"
-          >
+          <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Demo Modal" size="md">
             <div className="space-y-4">
               <p>This is a demo modal with Framer Motion animations.</p>
               <p>It supports dark mode and has responsive sizing.</p>
@@ -134,13 +130,7 @@ const ComponentsDemo: React.FC = () => {
           <CardTitle>Table Component</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table
-            data={tableData}
-            columns={tableColumns}
-            onRowClick={(row) => console.log('Row clicked:', row)}
-            striped
-            hoverable
-          />
+          <Table data={tableData} columns={tableColumns} onRowClick={row => console.log('Row clicked:', row)} striped hoverable />
         </CardContent>
       </Card>
 
@@ -234,10 +224,7 @@ const ComponentsDemo: React.FC = () => {
               <h4 className="font-medium mb-2">Specialized Loaders</h4>
               <div className="space-y-4">
                 <div>
-                  <Button 
-                    onClick={handleButtonLoading}
-                    disabled={isButtonLoading}
-                  >
+                  <Button onClick={handleButtonLoading} disabled={isButtonLoading}>
                     {isButtonLoading && <ButtonLoader />}
                     {isButtonLoading ? 'Loading...' : 'Button with Loader'}
                   </Button>
@@ -291,25 +278,13 @@ const ComponentsDemo: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <SuccessAlert 
-              title="Success Alert"
-              description="This is a success alert with dismiss functionality."
-            />
+            <SuccessAlert title="Success Alert" description="This is a success alert with dismiss functionality." />
             
-            <ErrorAlert 
-              title="Error Alert"
-              description="This is an error alert that can be dismissed."
-            />
+            <ErrorAlert title="Error Alert" description="This is an error alert that can be dismissed." />
             
-            <WarningAlert 
-              title="Warning Alert"
-              description="This is a warning alert with important information."
-            />
+            <WarningAlert title="Warning Alert" description="This is a warning alert with important information." />
             
-            <InfoAlert 
-              title="Information Alert"
-              description="This is an informational alert for your reference."
-            />
+            <InfoAlert title="Information Alert" description="This is an informational alert for your reference." />
 
             <div>
               <h4 className="font-medium mb-2">Alert Container</h4>
@@ -323,11 +298,7 @@ const ComponentsDemo: React.FC = () => {
 
 
       {/* Page Loader */}
-      {showPageLoader && (
-        <PageLoader text="Loading page content..." />
-      )}
-    </div>
-  );
+      {showPageLoader && <PageLoader text="Loading page content..." />}
+    </div>;
 };
-
 export default ComponentsDemo;
