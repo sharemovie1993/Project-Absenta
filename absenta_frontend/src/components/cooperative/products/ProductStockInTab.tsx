@@ -222,18 +222,19 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
 
               {/* Suggestions Panel */}
               {showProductSuggestions && productSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden suggestions-container">
+                <div className="absolute z-30 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto suggestions-container">
                   {(productSuggestions || []).map((p) => (
                     <button
                       key={p.id}
+                      type="button"
                       onClick={() => handleAddStockInItem(p)}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors flex justify-between items-center text-sm"
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex justify-between items-center text-sm border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer"
                     >
-                      <div>
-                        <p className="font-semibold text-gray-800">{p.name}</p>
-                        <p className="text-xs text-gray-400">Kode: {p.code} | Stok: {p.stock}</p>
+                      <div className="min-w-0 pr-2">
+                        <p className="font-bold text-gray-800 dark:text-slate-100 truncate">{p.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">Kode: {p.code} | Stok: {p.stock}</p>
                       </div>
-                      <Plus size={16} className="text-blue-500" />
+                      <Plus size={16} className="text-blue-500 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -248,15 +249,15 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
               Belum ada produk yang ditambahkan. Gunakan kolom pencarian di atas.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-slate-50">
+            <div className="overflow-x-auto w-full min-w-0 max-w-full">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-800/60">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Barang</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">Kuantitas</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-48">Modal Beli (Rp)</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-36">Subtotal</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16"></th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Barang</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-28">Kuantitas</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-40">Modal Beli</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-36">Subtotal</th>
+                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-12"></th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">

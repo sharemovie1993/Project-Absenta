@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Search, Calendar, Info, ChevronDown, ChevronUp } from 'lucide-react';
@@ -41,6 +41,7 @@ interface ProductHistoryTabProps {
 }
 
 export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab }) => {
+  const queryClient = useQueryClient();
   const [historySupplierFilter, setHistorySupplierFilter] = useState('');
   const [historyStartDate, setHistoryStartDate] = useState('');
   const [historyEndDate, setHistoryEndDate] = useState('');
@@ -70,7 +71,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-xs border border-gray-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
         <div>
           <label htmlFor="history-supplier-filter" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Supplier</label>
           <input
@@ -79,7 +80,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
             placeholder="Nama vendor..."
             value={historySupplierFilter}
             onChange={(e) => setHistorySupplierFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
           />
         </div>
         <div>
@@ -89,7 +90,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
             type="date"
             value={historyStartDate}
             onChange={(e) => setHistoryStartDate(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
           />
         </div>
         <div>
@@ -99,7 +100,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
             type="date"
             value={historyEndDate}
             onChange={(e) => setHistoryEndDate(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+            className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
           />
         </div>
         <div className="flex space-x-2">
@@ -117,10 +118,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
               setHistorySupplierFilter('');
               setHistoryStartDate('');
               setHistoryEndDate('');
-              // Small delay to let states reset before triggering fetch
-              setTimeout(() => {
-                api.get('/cooperative/toko/stock-in').then(res => setHistoryList(res.data));
-              }, 10);
+              queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
             }}
           >
             Reset
@@ -132,7 +130,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
       {historyLoading ? (
         <div className="text-center py-12 text-gray-500">Loading riwayat...</div>
       ) : historyList.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200 text-gray-500 text-sm">
+        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-gray-500 text-sm">
           Tidak ada riwayat penerimaan barang masuk ditemukan.
         </div>
       ) : (
@@ -144,42 +142,46 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
             return (
               <div 
                 key={tx.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                className="bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-gray-200 dark:border-slate-800 overflow-hidden"
               >
-                {/* Transaction Header bar */}
+                {/* Transaction Header bar (Responsive for Mobile & Desktop) */}
                 <div 
                   onClick={() => setExpandedTxId(isExpanded ? null : tx.id)}
-                  className="px-6 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors"
+                  className="p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                 >
-                  <div className="flex items-center space-x-4">
-                    <Calendar size={20} className="text-slate-400" />
-                    <div>
-                      <p className="font-bold text-gray-800 text-sm">
+                  <div className="flex items-center space-x-3 w-full sm:w-auto">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                      <Calendar size={18} className="text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-800 dark:text-slate-100 text-xs sm:text-sm">
                         {new Date(tx.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
-                      <p className="text-xs text-gray-500">Supplier: <span className="font-semibold text-gray-700">{tx.supplier || 'Tidak Ada'}</span></p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">Supplier: <span className="font-semibold text-gray-700 dark:text-slate-300">{tx.supplier || 'Tidak Ada'}</span></p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center justify-between sm:justify-end space-x-3 sm:space-x-4 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
                     {/* Payment Method badge */}
-                    <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    <span className={`px-2.5 py-1 text-[11px] font-black rounded-full shrink-0 ${
                       tx.paymentMethod === 'CREDIT' 
-                        ? 'bg-red-50 text-red-600 border border-red-200' 
-                        : 'bg-sky-50 text-sky-600 border border-sky-200'
+                        ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' 
+                        : 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800'
                     }`}>
                       {tx.paymentMethod}
                     </span>
                     
                     <div className="text-right">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Pembayaran</p>
-                      <p className="font-black text-green-600 text-base">Rp {(totalCost + Number(tx.shippingFee || 0)).toLocaleString('id-ID')}</p>
+                      <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Total</p>
+                      <p className="font-black text-green-600 dark:text-green-400 text-sm sm:text-base">
+                        Rp {(totalCost + Number(tx.shippingFee || 0)).toLocaleString('id-ID')}
+                      </p>
                       {Number(tx.shippingFee || 0) > 0 && (
-                        <p className="text-[10px] text-orange-500 font-semibold">Termasuk ongkir Rp {Number(tx.shippingFee).toLocaleString('id-ID')}</p>
+                        <p className="text-[9px] text-orange-500 font-semibold">+ Ongkir Rp {Number(tx.shippingFee).toLocaleString('id-ID')}</p>
                       )}
                     </div>
 
-                    <div>
+                    <div className="shrink-0 p-1">
                       {isExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                     </div>
                   </div>

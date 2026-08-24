@@ -329,7 +329,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   }, [canUpdate, canDelete, handleOpenProductModal, handleOpenOpnameModal, handleProductDeleteClick]);
 
   const toolbarLeft = useMemo(() => (
-    <div className="flex-1 relative suggestions-input w-full md:max-w-md">
+    <div className="flex-1 relative suggestions-input w-full min-w-0 max-w-full md:max-w-md">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <Search className="h-4 w-4 text-gray-400" />
       </div>
@@ -339,14 +339,14 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
         placeholder="Cari produk berdasarkan nama / kode..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="block w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+        className="block w-full pl-9 pr-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
         aria-label="Cari produk berdasarkan nama atau kode"
       />
     </div>
   ), [searchQuery]);
 
   const toolbarRight = useMemo(() => (
-    <div className="w-full md:w-64">
+    <div className="w-full min-w-0 md:w-64">
       <SearchableSelect
         id="category-filter"
         options={categoryOptions}
@@ -361,11 +361,11 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   return (
     <div className="space-y-4">
       {canCreate && (
-        <div className="flex justify-end space-x-3 mb-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={18} />}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end items-stretch sm:items-center gap-2 mb-3">
+          <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={16} />} className="w-full sm:w-auto">
             Import Excel
           </Button>
-          <Button onClick={() => handleOpenProductModal()} icon={<Plus size={18} />}>
+          <Button onClick={() => handleOpenProductModal()} icon={<Plus size={16} />} className="w-full sm:w-auto">
             Tambah Produk Baru
           </Button>
         </div>

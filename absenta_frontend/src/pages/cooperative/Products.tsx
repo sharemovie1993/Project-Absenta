@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -37,6 +38,7 @@ interface ProductCategory {
 }
 
 const Products: React.FC = React.memo(() => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { isKoperasiStore, isKoperasiHead, isAdmin, can } = useCapabilities();
@@ -121,79 +123,85 @@ const Products: React.FC = React.memo(() => {
       >
         <div className="space-y-6">
           {/* Action buttons & Shortcuts */}
-          <div className="flex justify-between items-center">
-            {canViewReports && (
+          {canViewReports && (
+            <div className="flex justify-end items-center">
               <button
+                type="button"
                 onClick={() => navigate('/cooperative/inventory-report')}
-                className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-lg transition-all"
+                className="flex items-center gap-2 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
                 title="Buka Laporan Persediaan"
               >
-                <BarChart2 size={16} />
-                Laporan Persediaan
+                <BarChart2 size={15} />
+                <span>Laporan Persediaan</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Segmented Navigation Tab */}
-          <div className="flex border-b border-gray-200">
+          {/* Segmented Navigation Tab (Touch-Scroll Responsive for Mobile & Tablet) */}
+          <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar flex-nowrap gap-1 pb-0.5">
             <button
+              type="button"
               onClick={() => setActiveTab('catalog')}
-              className={`flex items-center space-x-2 py-3 px-6 border-b-2 font-semibold text-sm transition-all ${
+              className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 activeTab === 'catalog'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
               }`}
             >
-              <Package size={16} />
+              <Package size={15} className="shrink-0" />
               <span>Katalog Barang</span>
             </button>
             {canUpdateProducts && (
               <button
+                type="button"
                 onClick={() => setActiveTab('stock-in')}
-                className={`flex items-center space-x-2 py-3 px-6 border-b-2 font-semibold text-sm transition-all ${
+                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'stock-in'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
                 }`}
               >
-                <Plus size={16} />
+                <Plus size={15} className="shrink-0" />
                 <span>Input Barang Masuk</span>
               </button>
             )}
             <button
+              type="button"
               onClick={() => setActiveTab('history')}
-              className={`flex items-center space-x-2 py-3 px-6 border-b-2 font-semibold text-sm transition-all ${
+              className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                 activeTab === 'history'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
               }`}
             >
-              <History size={16} />
+              <History size={15} className="shrink-0" />
               <span>Riwayat Barang Masuk</span>
             </button>
             {canManageCategories && (
               <button
+                type="button"
                 onClick={() => setActiveTab('categories')}
-                className={`flex items-center space-x-2 py-3 px-6 border-b-2 font-semibold text-sm transition-all ${
+                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'categories'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
                 }`}
               >
-                <Tag size={16} />
+                <Tag size={15} className="shrink-0" />
                 <span>Kategori Barang</span>
               </button>
             )}
             {canManageInventory && (
               <button
+                type="button"
                 onClick={() => setActiveTab('opname')}
-                className={`flex items-center space-x-2 py-3 px-6 border-b-2 font-semibold text-sm transition-all ${
+                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   activeTab === 'opname'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
                 }`}
               >
-                <BarChart2 size={16} />
+                <BarChart2 size={15} className="shrink-0" />
                 <span>Stock Opname</span>
               </button>
             )}
