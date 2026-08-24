@@ -13,6 +13,7 @@ import { Package, Plus, History, Tag, BarChart2 } from 'lucide-react';
 
 // Lazy load modular tab subcomponents to reduce entry file bundle size
 const ProductCatalogTab = lazy(() => import('../../components/cooperative/products/ProductCatalogTab'));
+const ProductInventoryTab = lazy(() => import('../../components/cooperative/products/ProductInventoryTab'));
 const ProductStockInTab = lazy(() => import('../../components/cooperative/products/ProductStockInTab'));
 const ProductHistoryTab = lazy(() => import('../../components/cooperative/products/ProductHistoryTab'));
 const ProductCategoriesTab = lazy(() => import('../../components/cooperative/products/ProductCategoriesTab'));
@@ -49,7 +50,7 @@ const Products: React.FC = React.memo(() => {
   const canManageInventory = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.inventory.manage');
   const canViewReports = isAdmin || isKoperasiHead || can('cooperative.reports.view.financial');
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'stock-in' | 'history' | 'categories' | 'opname'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname'>('catalog');
   
   // Reset tab if user has no edit rights
   useEffect(() => {
@@ -59,7 +60,7 @@ const Products: React.FC = React.memo(() => {
     if (activeTab === 'categories' && !canManageCategories) {
       setActiveTab('catalog');
     }
-    if (activeTab === 'opname' && !canManageInventory) {
+    if ((activeTab === 'opname' || activeTab === 'inventory') && !canManageInventory) {
       setActiveTab('catalog');
     }
   }, [activeTab, canUpdateProducts, canManageCategories, canManageInventory]);
@@ -151,6 +152,20 @@ const Products: React.FC = React.memo(() => {
               <Package size={15} className="shrink-0" />
               <span>Katalog Barang</span>
             </button>
+            {canManageInventory && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('inventory')}
+                className={`flex items-center gap-2 py-2.5 px-4 sm:px-5 border-b-2 font-black text-xs sm:text-sm whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  activeTab === 'inventory'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 rounded-t-xl'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <Boxes size={15} className="shrink-0" />
+                <span>Manajemen Stok</span>
+              </button>
+            )}
             {canUpdateProducts && (
               <button
                 type="button"
@@ -218,6 +233,15 @@ const Products: React.FC = React.memo(() => {
                 loading={loading}
               />
             )}
+
+            {activeTab === 'inventory' && (
+              <ProductInventoryTab
+                products={products}
+                categories={categories}
+                fetchProducts={fetchProducts}
+                loading={loading}
+              />
+            )}
             
             {activeTab === 'stock-in' && (
               <ProductStockInTab
@@ -245,7 +269,6 @@ const Products: React.FC = React.memo(() => {
             {activeTab === 'opname' && (
               <ProductOpnameTab
                 categories={categories}
-                products={products}
                 fetchProducts={fetchProducts}
                 activeTab={activeTab}
               />
