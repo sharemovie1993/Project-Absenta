@@ -282,10 +282,12 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   };
 
   // Table columns definition (Desktop)
-  const catalogColumns = useMemo<Column<Product>[]>(() => [
+  const catalogColumns = useMemo<Column[]>(() => [
     {
-      header: 'Produk',
-      accessor: (p) => (
+      key: 'name',
+      label: 'Produk',
+      sortable: true,
+      render: (_val: unknown, p: Product) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 dark:border-emerald-900">
             {getInitials(p.name)}
@@ -295,35 +297,39 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
             <p className="text-xs text-gray-400 font-mono">{p.code}</p>
           </div>
         </div>
-      ),
-      sortable: true
+      )
     },
     {
-      header: 'Kategori',
-      accessor: (p) => (
+      key: 'category',
+      label: 'Kategori',
+      sortable: true,
+      render: (_val: unknown, p: Product) => (
         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
           {p.category || 'Umum'}
         </span>
-      ),
-      sortable: true
+      )
     },
     {
-      header: 'Harga Beli (Modal)',
-      accessor: (p) => `Rp ${Number(p.costPrice || 0).toLocaleString('id-ID')}`,
-      sortable: true
+      key: 'costPrice',
+      label: 'Harga Beli (Modal)',
+      sortable: true,
+      render: (_val: unknown, p: Product) => `Rp ${Number(p.costPrice || 0).toLocaleString('id-ID')}`
     },
     {
-      header: 'Harga Jual',
-      accessor: (p) => (
+      key: 'price',
+      label: 'Harga Jual',
+      sortable: true,
+      render: (_val: unknown, p: Product) => (
         <span className="font-bold text-emerald-600 dark:text-emerald-400">
           Rp ${Number(p.price || 0).toLocaleString('id-ID')}
         </span>
-      ),
-      sortable: true
+      )
     },
     {
-      header: 'Stok',
-      accessor: (p) => {
+      key: 'stock',
+      label: 'Stok',
+      sortable: true,
+      render: (_val: unknown, p: Product) => {
         const isLow = p.stock <= 5;
         return (
           <span className={cn(
@@ -333,12 +339,12 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
             {p.stock} pcs
           </span>
         );
-      },
-      sortable: true
+      }
     },
     {
-      header: 'Aksi',
-      accessor: (p) => (
+      key: 'actions',
+      label: 'Aksi',
+      render: (_val: unknown, p: Product) => (
         <div className="flex items-center space-x-2">
           {canUpdate && (
             <>
@@ -514,16 +520,42 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
         </>
       ) : (
         <>
-          {canCreate && (
-            <div className="flex flex-col-reverse sm:flex-row justify-end items-stretch sm:items-center gap-2 mb-3">
-              <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={16} />} className="w-full sm:w-auto">
-                Import Excel
-              </Button>
-              <Button onClick={() => handleOpenProductModal()} icon={<Plus size={16} />} className="w-full sm:w-auto">
-                Tambah Produk Baru
-              </Button>
+          {/* Desktop Search & Action Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-xl">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Cari produk berdasarkan nama atau kode..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="w-48 shrink-0">
+                <SearchableSelect
+                  id="desktop-category-filter"
+                  options={categoryOptions}
+                  value={categoryFilter}
+                  onValueChange={setCategoryFilter}
+                  placeholder="Semua Kategori"
+                  clearable
+                />
+              </div>
             </div>
-          )}
+
+            {canCreate && (
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={15} />}>
+                  Import Excel
+                </Button>
+                <Button onClick={() => handleOpenProductModal()} icon={<Plus size={15} />}>
+                  Tambah Produk Baru
+                </Button>
+              </div>
+            )}
+          </div>
 
           <Table 
             columns={catalogColumns}
