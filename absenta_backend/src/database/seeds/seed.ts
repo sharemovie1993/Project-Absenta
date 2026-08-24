@@ -422,6 +422,7 @@ async function main() {
             { label: 'Katalog Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
             { label: 'POS / Kasir', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage, cooperative.store.transactions.view' },
             { label: 'Voucher & Promo', icon: 'Tag', path: '/cooperative/vouchers/manage', required_capability: 'cooperative.vouchers.manage, cooperative.vouchers.view.list' },
+            { label: 'Supplier', icon: 'Building2', path: '/cooperative/suppliers', required_capability: 'cooperative.store.products.view.list' },
           ]
         },
       ]
