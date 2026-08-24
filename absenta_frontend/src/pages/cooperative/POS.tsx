@@ -241,36 +241,6 @@ const POS: React.FC = React.memo(() => {
           </SectionCard>
         )}
 
-        <SalesHistoryTable
-          salesLoading={salesLoading}
-          paginatedSalesHistory={paginatedSalesHistory}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSort={(key) => {
-            if (sortKey === key) {
-              setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-            } else {
-              setSortKey(key);
-              setSortDirection('desc');
-            }
-            setCurrentPage(1);
-          }}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-          limit={limit}
-          onLimitChange={(val) => {
-            setLimit(val);
-            setCurrentPage(1);
-          }}
-          historySearch={historySearch}
-          setHistorySearch={setHistorySearch}
-          processedSalesHistory={processedSalesHistory}
-          setSelectedSale={setSelectedSale}
-          setShowReceiptModal={setShowReceiptModal}
-          printReceipt={printReceipt}
-        />
-
         <Suspense fallback={
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs">
             <div className="bg-white dark:bg-slate-900 px-6 py-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 animate-pulse">

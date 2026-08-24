@@ -17,7 +17,9 @@ import {
   QrCode, 
   Award,
   Delete,
-  RotateCcw
+  Tag,
+  Receipt,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import type { 
@@ -169,7 +171,6 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
     }
     setCashReceived(prev => {
       const next = prev + val;
-      // Prevent leading zeros
       if (next.startsWith('0') && next.length > 1 && !next.startsWith('0.')) {
         return next.replace(/^0+/, '');
       }
@@ -186,12 +187,22 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
     setMobileStep('catalog');
   }, [setCheckoutSuccess]);
 
+  // Helper initial generator
+  const getInitials = (name: string) => {
+    if (!name) return 'PR';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
-  // STEP 4: TRANSAKSI BERHASIL / STRUK (Kasir Pintar Struk Screen)
+  // STEP 4: TRANSAKSI BERHASIL / STRUK
   // ─────────────────────────────────────────────────────────────────────────────
   if (mobileStep === 'success' && lastSaleRecord) {
     return (
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 p-4 flex flex-col justify-between">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 p-3 pb-[calc(130px+env(safe-area-inset-bottom))] flex flex-col justify-between">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm text-center space-y-5">
           <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
             <CheckCircle2 size={36} />
@@ -207,7 +218,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
           </div>
 
           {/* Kembalian & Total Box */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-2">
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-2.5 text-left">
             <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
               <span>Total Tagihan</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -217,7 +228,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
               <span>Metode Bayar</span>
               <span className="font-bold text-blue-600 dark:text-blue-400">
-                {lastSaleRecord.paymentMethod === 'SAVING' ? 'Saldo Sukarela' : 'Tunai / Cash'}
+                {lastSaleRecord.paymentMethod === 'SAVING' ? 'Saldo Sukarela Anggota' : 'Tunai / Cash'}
               </span>
             </div>
             {lastSaleRecord.paymentMethod === 'CASH' && (
@@ -230,7 +241,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 </div>
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
                   <span className="font-black text-sm text-slate-800 dark:text-slate-100">Kembalian</span>
-                  <span className="font-black text-lg text-emerald-600 dark:text-emerald-400">
+                  <span className="font-black text-xl text-emerald-600 dark:text-emerald-400">
                     Rp {(lastSaleRecord.change || 0).toLocaleString('id-ID')}
                   </span>
                 </div>
@@ -239,11 +250,11 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
           </div>
 
           {/* Action List (Cetak Struk, WA, Email) */}
-          <div className="space-y-2 text-left pt-2">
+          <div className="space-y-2 text-left pt-1">
             <button
               type="button"
               onClick={() => printReceipt(lastSaleRecord)}
-              className="w-full flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all"
+              className="w-full flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <Printer size={18} className="text-blue-600 dark:text-blue-400" />
@@ -255,8 +266,8 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             {selectedMember && (
               <button
                 type="button"
-                onClick={() => toast.success('Struk berhasil diteruskan ke sistem notifikasi WhatsApp')}
-                className="w-full flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm transition-all"
+                onClick={() => toast.success('Struk berhasil diteruskan ke sistem WhatsApp')}
+                className="w-full flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <Send size={18} className="text-emerald-600 dark:text-emerald-400" />
@@ -269,11 +280,11 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
         </div>
 
         {/* Bottom Primary Done Button */}
-        <div className="pt-4">
+        <div className="pt-3">
           <Button
             size="lg"
             onClick={handleFinishTransaction}
-            className="w-full h-12 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+            className="w-full h-13 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg cursor-pointer"
           >
             Transaksi Baru (Selesai)
           </Button>
@@ -283,18 +294,18 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // STEP 3: LAYAR PEMBAYARAN & NUMPAD INPUT UANG (Kasir Pintar Numpad Screen)
+  // STEP 3: LAYAR PEMBAYARAN & NUMPAD TOUCH
   // ─────────────────────────────────────────────────────────────────────────────
   if (mobileStep === 'payment') {
     return (
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 flex flex-col justify-between p-3">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 flex flex-col justify-between p-3 pb-[calc(130px+env(safe-area-inset-bottom))]">
         <div className="space-y-3">
-          {/* Header Navigation */}
+          {/* Header Bar */}
           <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <button
               type="button"
               onClick={() => setMobileStep('summary')}
-              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 cursor-pointer"
               aria-label="Kembali"
             >
               <ArrowLeft size={18} />
@@ -307,19 +318,19 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Payment Method Selector Pills */}
+          {/* Payment Method Selector */}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setPaymentMethod('CASH')}
               className={cn(
-                "py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all",
+                "py-3 px-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer",
                 paymentMethod === 'CASH'
                   ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
               )}
             >
-              <Wallet size={15} />
+              <Wallet size={16} />
               <span>Tunai (Cash)</span>
             </button>
 
@@ -334,30 +345,30 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 setPaymentMethod('SAVING');
               }}
               className={cn(
-                "py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all",
+                "py-3 px-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer",
                 paymentMethod === 'SAVING'
                   ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
               )}
             >
-              <CreditCard size={15} />
+              <CreditCard size={16} />
               <span>Saldo Sukarela</span>
             </button>
           </div>
 
-          {/* Numpad Input Display & Cash / Saving View */}
+          {/* Numpad Input Display & Keypad */}
           {paymentMethod === 'CASH' ? (
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="text-center py-2 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">
                   Uang Diterima
                 </p>
-                <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 font-mono">
+                <p className="text-3xl font-black text-slate-900 dark:text-slate-100 font-mono tracking-tight">
                   Rp {cashNum.toLocaleString('id-ID')}
                 </p>
                 {cashNum > 0 && (
                   <p className={cn(
-                    "text-xs font-extrabold mt-1",
+                    "text-xs font-black mt-1",
                     cashNum >= finalPayAmount ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
                   )}>
                     {cashNum >= finalPayAmount
@@ -373,28 +384,28 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => handleNumpadPress('EXACT')}
-                  className="py-1.5 px-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold text-[11px] rounded-lg border border-blue-200 dark:border-blue-800"
+                  className="py-2 px-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black text-[11px] rounded-xl border border-blue-200 dark:border-blue-800 active:scale-95 cursor-pointer"
                 >
                   Uang Pas
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAmount(20000)}
-                  className="py-1.5 px-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px] rounded-lg"
+                  className="py-2 px-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] rounded-xl active:scale-95 cursor-pointer"
                 >
                   20.000
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAmount(50000)}
-                  className="py-1.5 px-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px] rounded-lg"
+                  className="py-2 px-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] rounded-xl active:scale-95 cursor-pointer"
                 >
                   50.000
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAmount(100000)}
-                  className="py-1.5 px-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px] rounded-lg"
+                  className="py-2 px-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] rounded-xl active:scale-95 cursor-pointer"
                 >
                   100.000
                 </button>
@@ -407,7 +418,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     key={n}
                     type="button"
                     onClick={() => handleNumpadPress(n)}
-                    className="h-11 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-lg rounded-xl shadow-2xs active:scale-95 transition-transform"
+                    className="h-12 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-xl rounded-2xl shadow-2xs active:scale-95 transition-transform cursor-pointer"
                   >
                     {n}
                   </button>
@@ -415,7 +426,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => handleNumpadPress('CLEAR')}
-                  className="h-11 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black text-sm rounded-xl active:scale-95 transition-transform"
+                  className="h-12 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black text-sm rounded-2xl active:scale-95 transition-transform cursor-pointer"
                 >
                   C
                 </button>
@@ -425,7 +436,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     key={n}
                     type="button"
                     onClick={() => handleNumpadPress(n)}
-                    className="h-11 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-lg rounded-xl shadow-2xs active:scale-95 transition-transform"
+                    className="h-12 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-xl rounded-2xl shadow-2xs active:scale-95 transition-transform cursor-pointer"
                   >
                     {n}
                   </button>
@@ -433,10 +444,10 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => handleNumpadPress('BACKSPACE')}
-                  className="h-11 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-sm rounded-xl flex items-center justify-center active:scale-95 transition-transform"
+                  className="h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black text-sm rounded-2xl flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
                   aria-label="Hapus"
                 >
-                  <Delete size={18} />
+                  <Delete size={20} />
                 </button>
 
                 {['1', '2', '3'].map(n => (
@@ -444,7 +455,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     key={n}
                     type="button"
                     onClick={() => handleNumpadPress(n)}
-                    className="h-11 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-lg rounded-xl shadow-2xs active:scale-95 transition-transform"
+                    className="h-12 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-xl rounded-2xl shadow-2xs active:scale-95 transition-transform cursor-pointer"
                   >
                     {n}
                   </button>
@@ -452,7 +463,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 <button
                   type="button"
                   onClick={() => handleNumpadPress('EXACT')}
-                  className="row-span-2 h-auto bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-xs rounded-xl flex flex-col items-center justify-center p-1 active:scale-95 transition-transform leading-tight"
+                  className="row-span-2 h-auto bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-xs rounded-2xl flex flex-col items-center justify-center p-1 active:scale-95 transition-transform leading-tight cursor-pointer"
                 >
                   <span>Uang</span>
                   <span>Pas</span>
@@ -463,7 +474,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     key={n}
                     type="button"
                     onClick={() => handleNumpadPress(n)}
-                    className="h-11 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-base rounded-xl shadow-2xs active:scale-95 transition-transform"
+                    className="h-12 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 text-slate-800 dark:text-slate-100 font-black text-base rounded-2xl shadow-2xs active:scale-95 transition-transform cursor-pointer"
                   >
                     {n}
                   </button>
@@ -471,7 +482,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="text-center">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Potong Saldo Sukarela</p>
                 <h4 className="text-base font-black text-slate-800 dark:text-slate-100 mt-1">
@@ -483,7 +494,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
               </div>
 
               {(selectedMember?.sukarelaBalance || 0) < finalPayAmount ? (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold text-center border border-rose-200 dark:border-rose-800">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-2xl text-xs font-bold text-center border border-rose-200 dark:border-rose-800">
                   Saldo anggota tidak mencukupi untuk membayar Rp {finalPayAmount.toLocaleString('id-ID')}
                 </div>
               ) : (
@@ -498,7 +509,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     placeholder="Masukkan 6 Digit PIN"
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    className="w-full text-center tracking-widest text-lg font-bold py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-center tracking-widest text-lg font-bold py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               )}
@@ -513,7 +524,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             isLoading={processing}
             disabled={processing || (paymentMethod === 'CASH' && cashNum < finalPayAmount) || (paymentMethod === 'SAVING' && (selectedMember?.sukarelaBalance || 0) < finalPayAmount)}
             onClick={submitCheckout}
-            className="w-full h-12 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg disabled:opacity-40"
+            className="w-full h-13 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg disabled:opacity-40 cursor-pointer"
           >
             Selesaikan Transaksi (Bayar)
           </Button>
@@ -523,51 +534,53 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // STEP 2: LAYAR RINGKASAN PESANAN (Kasir Pintar Cart Summary Screen)
+  // STEP 2: LAYAR RINGKASAN PESANAN (KASIR PINTAR CLEAN PRO STYLE)
   // ─────────────────────────────────────────────────────────────────────────────
   if (mobileStep === 'summary') {
     return (
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 flex flex-col justify-between p-3">
+      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 flex flex-col justify-between p-3 pb-[calc(130px+env(safe-area-inset-bottom))]">
         <div className="space-y-3">
           {/* Header Bar */}
           <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <button
               type="button"
               onClick={() => setMobileStep('catalog')}
-              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 cursor-pointer"
               aria-label="Kembali ke Katalog"
             >
               <ArrowLeft size={18} />
             </button>
-            <h3 className="font-black text-sm text-slate-800 dark:text-slate-100">
-              Ringkasan Pesanan ({totalItemsCount})
-            </h3>
-            <span className="font-black text-sm text-blue-600 dark:text-blue-400">
-              Rp {totalAmount.toLocaleString('id-ID')}
-            </span>
+            <div className="text-right">
+              <span className="text-[11px] font-extrabold text-slate-400 block uppercase tracking-wider">
+                Total Tagihan ({totalItemsCount} item)
+              </span>
+              <span className="text-lg font-black text-blue-600 dark:text-blue-400">
+                Rp {totalAmount.toLocaleString('id-ID')}
+              </span>
+            </div>
           </div>
 
-          {/* Member Card Selector */}
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center justify-between">
+          {/* Member Selection Card */}
+          <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             {selectedMember ? (
-              <div className="flex items-center justify-between w-full">
-                <div className="min-w-0 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black uppercase bg-blue-50 dark:bg-blue-950/50 text-blue-600 px-1.5 py-0.5 rounded">
-                      Anggota
-                    </span>
-                    <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs shrink-0">
+                    <UserCheck size={18} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-black text-xs text-slate-900 dark:text-slate-100 truncate">
                       {selectedMember.name}
                     </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      No: {selectedMember.memberNo} • Saldo: <strong className="text-blue-600 dark:text-blue-400">Rp {selectedMember.sukarelaBalance.toLocaleString('id-ID')}</strong>
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Saldo Sukarela: <strong className="text-slate-700 dark:text-slate-300">Rp {selectedMember.sukarelaBalance.toLocaleString('id-ID')}</strong>
-                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedMember(null)}
-                  className="p-1 text-slate-400 hover:text-rose-500 shrink-0"
+                  className="p-1.5 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 shrink-0 cursor-pointer"
                   aria-label="Hapus Anggota"
                 >
                   <X size={16} />
@@ -577,63 +590,69 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => setShowMemberModal(true)}
-                className="w-full py-2 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 font-bold"
+                className="w-full py-1.5 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 font-bold cursor-pointer"
               >
-                <div className="flex items-center gap-2">
-                  <User size={16} className="text-blue-500" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                    <User size={16} />
+                  </div>
                   <span>Pilih Pelanggan / Anggota Koperasi</span>
                 </div>
-                <span className="text-blue-600 dark:text-blue-400">+ Tambah</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400">+ Pilih</span>
               </button>
             )}
           </div>
 
-          {/* Order Items List */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 max-h-[48vh] overflow-y-auto">
+          {/* Clean Order Items List (Kasir Pintar Style) */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800 max-h-[48vh] overflow-y-auto">
             {cart.map((item, index) => {
               const itemSubtotal = item.qty * Number(item.price);
               return (
                 <div key={item.id} className="p-3.5 flex items-center justify-between gap-3">
-                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                    <span className="text-xs font-black text-slate-400 w-4 pt-0.5 font-mono">
+                  {/* Left: Number + Product Avatar Initials + Details */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className="text-xs font-bold text-slate-400 w-3 font-mono">
                       {index + 1}
                     </span>
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black text-[11px] flex items-center justify-center shrink-0 select-none">
+                      {getInitials(item.name)}
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
                         {item.name}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {item.qty} × Rp {Number(item.price).toLocaleString('id-ID')} = <span className="font-bold text-slate-800 dark:text-slate-200">Rp {itemSubtotal.toLocaleString('id-ID')}</span>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
+                        {item.qty} × Rp {Number(item.price).toLocaleString('id-ID')} = <strong className="text-slate-800 dark:text-slate-200">Rp {itemSubtotal.toLocaleString('id-ID')}</strong>
                       </p>
                     </div>
                   </div>
 
-                  {/* Quantity Stepper & Delete */}
+                  {/* Right: Stepper Buttons & Trash */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => updateQty(item.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold active:scale-95"
+                      className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold active:scale-95 cursor-pointer"
                     >
                       <Minus size={13} />
                     </button>
-                    <span className="w-6 text-center font-black text-xs font-mono">
+                    <span className="w-5 text-center font-black text-xs font-mono">
                       {item.qty}
                     </span>
                     <button
                       type="button"
                       onClick={() => updateQty(item.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold active:scale-95"
+                      className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold active:scale-95 cursor-pointer"
                     >
                       <Plus size={13} />
                     </button>
                     <button
                       type="button"
                       onClick={() => removeFromCart(item.id)}
-                      className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 flex items-center justify-center ml-1"
+                      className="w-7 h-7 rounded-lg text-slate-300 hover:text-rose-600 flex items-center justify-center ml-0.5 cursor-pointer"
                       aria-label="Hapus Item"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
@@ -642,19 +661,20 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
           </div>
 
           {/* Voucher Bar */}
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2">
+            <Tag size={16} className="text-slate-400 ml-2" />
             <input
               type="text"
               placeholder="Kode Voucher..."
               value={voucherCode}
               onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-              className="flex-1 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-700 outline-none"
+              className="flex-1 bg-transparent px-2 py-1 text-xs font-bold uppercase tracking-wider outline-none"
             />
             {appliedVoucher ? (
               <button
                 type="button"
                 onClick={handleRemoveVoucher}
-                className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold"
+                className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold cursor-pointer"
               >
                 Hapus
               </button>
@@ -664,7 +684,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                 variant="outline"
                 onClick={handleApplyVoucher}
                 isLoading={checkingVoucher}
-                className="text-xs"
+                className="text-xs rounded-xl"
               >
                 Pakai
               </Button>
@@ -672,23 +692,24 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
           </div>
         </div>
 
-        {/* Bottom Actions: Hold & Bayar */}
-        <div className="pt-3 flex gap-2">
+        {/* Bottom Actions: Hold & Selesaikan Pembayaran */}
+        <div className="pt-3 flex gap-2.5 items-center">
           <button
             type="button"
             onClick={handleHoldCart}
-            className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+            className="w-13 h-13 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
             title="Tahan Keranjang"
           >
-            <PauseCircle size={20} />
+            <PauseCircle size={22} />
           </button>
+          
           <Button
             size="lg"
             onClick={() => setMobileStep('payment')}
-            className="flex-1 h-12 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex justify-between px-5 items-center"
+            className="flex-1 h-13 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex justify-between px-5 items-center cursor-pointer"
           >
             <span>BAYAR</span>
-            <span>Rp {finalPayAmount.toLocaleString('id-ID')}</span>
+            <span className="font-mono text-base">Rp {finalPayAmount.toLocaleString('id-ID')}</span>
           </Button>
         </div>
 
@@ -698,7 +719,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-4 space-y-3 max-h-[80vh] flex flex-col">
               <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="font-black text-sm">Pilih Anggota Koperasi</h3>
-                <button type="button" onClick={() => setShowMemberModal(false)} className="p-1">
+                <button type="button" onClick={() => setShowMemberModal(false)} className="p-1 cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
@@ -723,7 +744,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                       setSelectedMember(m);
                       setShowMemberModal(false);
                     }}
-                    className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex justify-between items-center transition-colors"
+                    className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex justify-between items-center transition-colors cursor-pointer"
                   >
                     <div>
                       <h5 className="font-bold text-xs text-slate-800 dark:text-slate-100">{m.name}</h5>
@@ -741,10 +762,10 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // STEP 1: LAYAR UTAMA TRANSAKSI / KATALOG BARANG (Kasir Pintar Style)
+  // STEP 1: LAYAR UTAMA KATALOG PRODUK
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-[calc(100vh-140px)] flex flex-col justify-between pb-16 relative">
+    <div className="min-h-[calc(100vh-140px)] flex flex-col justify-between pb-[calc(180px+env(safe-area-inset-bottom))] relative">
       <div className="space-y-3">
         {/* Top Search Bar & Held Carts Badge */}
         <div className="flex items-center gap-2">
@@ -763,7 +784,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             <button
               type="button"
               onClick={() => setShowHeldCartsModal(true)}
-              className="px-3 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-extrabold text-xs flex items-center gap-1 shadow-2xs"
+              className="px-3 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-extrabold text-xs flex items-center gap-1 shadow-2xs cursor-pointer"
             >
               <span>⏸️</span> {heldCarts.length}
             </button>
@@ -776,7 +797,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
             type="button"
             onClick={() => setSelectedCategory(null)}
             className={cn(
-              "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0",
+              "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer",
               !selectedCategory
                 ? "bg-blue-600 text-white shadow-xs"
                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800"
@@ -790,7 +811,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
               type="button"
               onClick={() => setSelectedCategory(cat.name)}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0",
+                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer",
                 selectedCategory?.toLowerCase() === cat.name.toLowerCase()
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800"
@@ -801,7 +822,7 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
           ))}
         </div>
 
-        {/* Product Items List (Kasir Pintar Style with Right Qty Badge) */}
+        {/* Product Items List (Kasir Pintar Style) */}
         {loading ? (
           <div className="py-12 text-center text-xs font-bold text-slate-400 animate-pulse">
             Memuat produk kasir...
@@ -829,9 +850,14 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     isOutOfStock && "opacity-40 pointer-events-none bg-slate-100 dark:bg-slate-900"
                   )}
                 >
-                  {/* Left: Product Name, Code, Stock & Price */}
+                  {/* Left Initial Avatar */}
+                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center shrink-0 select-none">
+                    {getInitials(product.name)}
+                  </div>
+
+                  {/* Middle: Product Name, Code, Stock & Price */}
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-black text-sm text-slate-900 dark:text-slate-100 leading-snug line-clamp-1">
+                    <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-snug line-clamp-1">
                       {product.name}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
@@ -844,13 +870,13 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
                     </p>
                   </div>
 
-                  {/* Right: Quantity Badge & Decrement (Kasir Pintar Style) */}
+                  {/* Right: Quantity Badge & Decrement */}
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {isSelected && (
                       <button
                         type="button"
                         onClick={() => updateQty(product.id, -1)}
-                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition-transform"
+                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
                         aria-label="Kurangi Jumlah"
                       >
                         <Minus size={13} />
@@ -872,10 +898,10 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          FLOATING BOTTOM STICKY BAR (Muncul jika ada minimal 1 barang di keranjang)
+          FLOATING BOTTOM STICKY BAR (Di atas bar bottom navigation)
           ─────────────────────────────────────────────────────────────────────── */}
       {cart.length > 0 && (
-        <div className="fixed bottom-3 inset-x-3 z-40 animate-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-[calc(118px+env(safe-area-inset-bottom))] inset-x-3 z-55 animate-in slide-in-from-bottom-3 duration-200">
           <div className="bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-md text-white p-2 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700/60">
             {/* Left info pill */}
             <div className="pl-3 pr-2 py-1 flex items-center gap-2.5 flex-1 min-w-0">
