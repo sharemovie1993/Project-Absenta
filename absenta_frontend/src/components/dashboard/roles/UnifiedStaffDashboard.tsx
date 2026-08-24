@@ -243,43 +243,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
 
 
-  // 🎯 SMART DEFAULT TAB RESOLUTION (Matriks Fokus Pertama Tab Berdasarkan Role/Jabatan)
+  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Beranda Guru / Ringkasan Utama)
   const defaultTabId = useMemo(() => {
-    if (isAdminRole) return 'admin';
-    if (isKepsek) return 'ringkasan';
-    if (isKurikulum) return 'kurikulum';
-    if (isKesiswaan) return 'kesiswaan';
-    if (isKoperasi) return 'koperasi';
-    if (isBpbk) return 'bpbk';
-    if (isSarpras || isToolman || isKabeng) return 'sarpras';
-    if (isHubin || isBkk || isKaprog) return 'hubin';
-    if (isTUKepegawaian || isTU) return 'kepegawaian';
-    if (isWaliKelas && !isPendidik) return 'binaan';
-    if (isPendidik) return 'jadwal';
-    if (isWaliKelas) return 'binaan';
-    if (isPiketGuru) return 'kelola';
-    if (isPureGerbangStaff) return 'ringkasan';
+    // 1. Admin murni mendarat di Dashboard Admin
+    if (isAdminRole && !isKepsek) return 'admin';
+    // 2. Kepala Sekolah, seluruh Pendidik (Guru yang punya tugas KBM / struktural), dan Staf Gerbang mendarat di Beranda / Ringkasan
+    if (isKepsek || isPendidik || isPureGerbangStaff) return 'ringkasan';
+    // 3. Staf TU murni mendarat di tab Tata Usaha
+    if (isTuStaff) return 'kepegawaian';
+    // 4. Default fallback aman
     return 'ringkasan';
-  }, [
-    isAdminRole,
-    isKurikulum,
-    isKepsek,
-    isKesiswaan,
-    isWaliKelas,
-    isPendidik,
-    isSarpras,
-    isToolman,
-    isKabeng,
-    isHubin,
-    isBkk,
-    isKaprog,
-    isBpbk,
-    isKoperasi,
-    isTUKepegawaian,
-    isTU,
-    isPiketGuru,
-    isPureGerbangStaff,
-  ]);
+  }, [isAdminRole, isKepsek, isPendidik, isPureGerbangStaff, isTuStaff]);
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab
   const activeTab = searchParams.get('tab') || defaultTabId;
