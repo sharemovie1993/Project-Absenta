@@ -5,6 +5,19 @@ import { MAIN_DOMAIN } from '../config/env-config';
 
 // 1. Startup Guard & Configuration
 const getEnvBaseUrl = () => {
+  // Check custom server domain configured via Capacitor or setup screen
+  if (typeof window !== 'undefined') {
+    try {
+      const customDomain = localStorage.getItem('absenta_custom_server_domain');
+      if (customDomain) {
+        const clean = customDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
+        const protocol = isLocal ? 'http://' : 'https://';
+        return `${protocol}${clean}/api`;
+      }
+    } catch {}
+  }
+
   const definedBaseUrl = (globalThis as any).__VITE_API_BASE_URL__ as string | undefined;
   if (definedBaseUrl) return definedBaseUrl;
 
@@ -74,6 +87,19 @@ export const resolvePublicApiBaseUrl = (): string => {
 // 3. Request Interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
+    // Dynamic baseURL override if custom domain is set
+    if (typeof window !== 'undefined') {
+      try {
+        const customDomain = localStorage.getItem('absenta_custom_server_domain');
+        if (customDomain) {
+          const clean = customDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+          const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
+          const protocol = isLocal ? 'http://' : 'https://';
+          config.baseURL = `${protocol}${clean}/api/`;
+        }
+      } catch {}
+    }
+
     // If request data is FormData, remove Content-Type to let browser set boundary
     if (config.data instanceof FormData && config.headers) {
       delete (config.headers as any)['Content-Type'];

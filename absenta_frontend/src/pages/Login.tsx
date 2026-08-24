@@ -3,8 +3,10 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../lib/axiosInstance';
 import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBoundary';
-import { User, Lock, Eye, EyeOff, LogIn, QrCode } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, QrCode, Server } from 'lucide-react';
 import { LoginQrScannerModal } from '../components/auth/LoginQrScannerModal';
+import { ServerDomainSetupModal } from '../components/auth/ServerDomainSetupModal';
+import { getSavedServerDomain } from '../services/serverConfig';
 import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {
@@ -16,6 +18,7 @@ const Login: React.FC = () => {
   const [tenantName, setTenantName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
@@ -184,7 +187,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md shadow-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md shadow-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center">
@@ -195,6 +198,22 @@ const Login: React.FC = () => {
                   'Masuk ke Akun'
                 )}
               </button>
+
+              {/* Server Domain Switcher */}
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setIsServerModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-all cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-slate-400">Server:</span>
+                  <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                    {getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default')}
+                  </span>
+                  <span className="text-blue-500 font-bold ml-1 hover:underline">Ganti</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -204,6 +223,12 @@ const Login: React.FC = () => {
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
           onScanSuccess={handleScanSuccess}
+        />
+
+        {/* Server Domain Gateway / Switcher Modal */}
+        <ServerDomainSetupModal
+          isOpen={isServerModalOpen}
+          onClose={() => setIsServerModalOpen(false)}
         />
       </div>
     </InfraErrorBoundary>
